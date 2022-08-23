@@ -14,21 +14,21 @@
 <span id="14">14</span>
 <span id="15">15</span>
 <span id="16">16</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+</span><span class="kw">use </span>displaydoc::Display;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="doccomment">/// Time related errors</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Display</span>, <span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TimeError</span> {
-    <span class="doccomment">/// Error converting</span>
-    <span class="ident">ConversionError</span>,
-    <span class="doccomment">/// Time overflow error</span>
-    <span class="ident">TimeOverflowError</span>,
-    <span class="doccomment">/// Checked operation error : {0}</span>
-    <span class="ident">CheckedOperationError</span>(<span class="ident">String</span>),
+<span class="doccomment">/// Time related errors
+</span><span class="attribute">#[non_exhaustive]
+#[derive(Display, Error, Debug, Clone)]
+</span><span class="kw">pub enum </span>TimeError {
+    <span class="doccomment">/// Error converting
+    </span>ConversionError,
+    <span class="doccomment">/// Time overflow error
+    </span>TimeOverflowError,
+    <span class="doccomment">/// Checked operation error : {0}
+    </span>CheckedOperationError(String),
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_time" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_time" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

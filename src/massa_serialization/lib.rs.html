@@ -250,257 +250,257 @@
 <span id="250">250</span>
 <span id="251">251</span>
 <span id="252">252</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">collections::VecDeque</span>,
-    <span class="ident">fmt</span>::{<span class="ident">Debug</span>, <span class="ident">Display</span>},
+</pre><pre class="rust"><code><span class="kw">use </span>std::{
+    collections::VecDeque,
+    fmt::{Debug, Display},
 };
 
-<span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
-<span class="kw">use</span> <span class="ident">nom</span>::{
-    <span class="ident">error</span>::{<span class="ident">ContextError</span>, <span class="ident">ParseError</span>},
-    <span class="ident">IResult</span>,
+<span class="kw">use </span>displaydoc::Display;
+<span class="kw">use </span>nom::{
+    error::{ContextError, ParseError},
+    IResult,
 };
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Display</span>, <span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SerializeError</span> {
-    <span class="doccomment">/// Number {0} is too big to be serialized</span>
-    <span class="ident">NumberTooBig</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// General error {0}</span>
-    <span class="ident">GeneralError</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// String too big {0},</span>
-    <span class="ident">StringTooBig</span>(<span class="ident">String</span>),
+<span class="attribute">#[non_exhaustive]
+#[derive(Display, Error, Debug, Clone)]
+</span><span class="kw">pub enum </span>SerializeError {
+    <span class="doccomment">/// Number {0} is too big to be serialized
+    </span>NumberTooBig(String),
+    <span class="doccomment">/// General error {0}
+    </span>GeneralError(String),
+    <span class="doccomment">/// String too big {0},
+    </span>StringTooBig(String),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Error</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DeserializeError</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="ident">errors</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">String</span>)<span class="op">&gt;</span>,
+<span class="attribute">#[derive(Clone, Error)]
+</span><span class="kw">pub struct </span>DeserializeError&lt;<span class="lifetime">&#39;a</span>&gt; {
+    errors: VecDeque&lt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], String)&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">DeserializeError</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">add_context</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>, <span class="kw-2">mut</span> <span class="ident">other</span>: <span class="self">Self</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">other</span>.<span class="ident">errors</span>.<span class="ident">push_front</span>((<span class="ident">input</span>, <span class="ident">ctx</span>.<span class="ident">to_string</span>()));
-        <span class="ident">other</span>
-    }
-}
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">DeserializeError</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">append</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">kind</span>: <span class="ident">nom::error::ErrorKind</span>, <span class="kw-2">mut</span> <span class="ident">other</span>: <span class="self">Self</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">other</span>
-            .<span class="ident">errors</span>
-            .<span class="ident">push_front</span>((<span class="ident">input</span>, <span class="ident">kind</span>.<span class="ident">description</span>().<span class="ident">to_string</span>()));
-        <span class="ident">other</span>
-    }
-    <span class="kw">fn</span> <span class="ident">from_error_kind</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">kind</span>: <span class="ident">nom::error::ErrorKind</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">errors</span> <span class="op">=</span> <span class="ident">VecDeque::new</span>();
-        <span class="ident">errors</span>.<span class="ident">push_front</span>((<span class="ident">input</span>, <span class="ident">kind</span>.<span class="ident">description</span>().<span class="ident">to_string</span>()));
-        <span class="self">Self</span> { <span class="ident">errors</span> }
-    }
-    <span class="kw">fn</span> <span class="ident">from_char</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="kw">_</span>: <span class="ident">char</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::from_error_kind</span>(<span class="ident">input</span>, <span class="ident">nom::error::ErrorKind::Char</span>)
-    }
-    <span class="kw">fn</span> <span class="ident">or</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">other</span>
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; <span class="kw">for </span>DeserializeError&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">fn </span>add_context(input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], ctx: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str, <span class="kw-2">mut </span>other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
+        other.errors.push_front((input, ctx.to_string()));
+        other
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">DeserializeError</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">last_input</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-        <span class="kw">for</span> <span class="ident">error</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">errors</span> {
-            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{} / &quot;</span>, <span class="ident">error</span>.<span class="number">1</span>)<span class="question-mark">?</span>;
-            <span class="ident">last_input</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">error</span>.<span class="number">0</span>);
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; <span class="kw">for </span>DeserializeError&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">fn </span>append(input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], kind: nom::error::ErrorKind, <span class="kw-2">mut </span>other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
+        other
+            .errors
+            .push_front((input, kind.description().to_string()));
+        other
+    }
+    <span class="kw">fn </span>from_error_kind(input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], kind: nom::error::ErrorKind) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>errors = VecDeque::new();
+        errors.push_front((input, kind.description().to_string()));
+        <span class="self">Self </span>{ errors }
+    }
+    <span class="kw">fn </span>from_char(input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], <span class="kw">_</span>: char) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::from_error_kind(input, nom::error::ErrorKind::Char)
+    }
+    <span class="kw">fn </span>or(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
+        other
+    }
+}
+
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; Display <span class="kw">for </span>DeserializeError&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="kw">let </span><span class="kw-2">mut </span>last_input = <span class="prelude-val">None</span>;
+        <span class="kw">for </span>error <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.errors {
+            <span class="macro">write!</span>(f, <span class="string">&quot;{} / &quot;</span>, error.<span class="number">1</span>)<span class="question-mark">?</span>;
+            last_input = <span class="prelude-val">Some</span>(error.<span class="number">0</span>);
         }
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">last_input</span>) <span class="op">=</span> <span class="ident">last_input</span> {
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Input: {:?}&quot;</span>, <span class="ident">last_input</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(last_input) = last_input {
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;Input: {:?}&quot;</span>, last_input)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">DeserializeError</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">last_input</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-        <span class="kw">for</span> <span class="ident">error</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">errors</span> {
-            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{} / &quot;</span>, <span class="ident">error</span>.<span class="number">1</span>)<span class="question-mark">?</span>;
-            <span class="ident">last_input</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">error</span>.<span class="number">0</span>);
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; Debug <span class="kw">for </span>DeserializeError&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="kw">let </span><span class="kw-2">mut </span>last_input = <span class="prelude-val">None</span>;
+        <span class="kw">for </span>error <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.errors {
+            <span class="macro">write!</span>(f, <span class="string">&quot;{} / &quot;</span>, error.<span class="number">1</span>)<span class="question-mark">?</span>;
+            last_input = <span class="prelude-val">Some</span>(error.<span class="number">0</span>);
         }
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">last_input</span>) <span class="op">=</span> <span class="ident">last_input</span> {
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Input: {:?}&quot;</span>, <span class="ident">last_input</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(last_input) = last_input {
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;Input: {:?}&quot;</span>, last_input)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// Trait that define the deserialize method that must be implemented for all types have serialize form in Massa.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This trait must be implemented on deserializers that will be defined for each type and can contains constraints.</span>
-<span class="doccomment">/// Example:</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">/// use std::ops::Bound;</span>
-<span class="doccomment">/// use unsigned_varint::nom as varint_nom;</span>
-<span class="doccomment">/// use nom::{IResult, error::{context, ContextError, ParseError}};</span>
-<span class="doccomment">/// use massa_serialization::Deserializer;</span>
-<span class="doccomment">/// use std::ops::RangeBounds;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// pub struct U64VarIntDeserializer {</span>
-<span class="doccomment">///     range: (Bound&lt;u64&gt;, Bound&lt;u64&gt;)</span>
-<span class="doccomment">/// }</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// impl U64VarIntDeserializer {</span>
-<span class="doccomment">///     fn new(min: Bound&lt;u64&gt;, max: Bound&lt;u64&gt;) -&gt; Self {</span>
-<span class="doccomment">///         Self {</span>
-<span class="doccomment">///             range: (min, max)</span>
-<span class="doccomment">///         }</span>
-<span class="doccomment">///     }</span>
-<span class="doccomment">/// }</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// impl Deserializer&lt;u64&gt; for U64VarIntDeserializer {</span>
-<span class="doccomment">///     fn deserialize&lt;&#39;a, E: ParseError&lt;&amp;&#39;a [u8]&gt; + ContextError&lt;&amp;&#39;a [u8]&gt;&gt;(&amp;self, buffer: &amp;&#39;a [u8]) -&gt; IResult&lt;&amp;&#39;a [u8], u64, E&gt; {</span>
-<span class="doccomment">///         context(concat!(&quot;Failed u64 deserialization&quot;), |input: &amp;&#39;a [u8]| {</span>
-<span class="doccomment">///             let (rest, value) = varint_nom::u64(input).map_err(|_| nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)))?;</span>
-<span class="doccomment">///             if !self.range.contains(&amp;value) {</span>
-<span class="doccomment">///                 return Err(nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)));</span>
-<span class="doccomment">///             }</span>
-<span class="doccomment">///             Ok((rest, value))</span>
-<span class="doccomment">///         })(buffer)</span>
-<span class="doccomment">///     }</span>
-<span class="doccomment">/// }</span>
-<span class="doccomment">/// ```</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Deserialize a value `T` from a buffer of `u8`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ## Parameters</span>
-    <span class="doccomment">/// * buffer: the buffer that contains the whole serialized data.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ## Returns</span>
-    <span class="doccomment">/// A nom result with the rest of the serialized data and the decoded value.</span>
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="doccomment">/// Trait that define the deserialize method that must be implemented for all types have serialize form in Massa.
+///
+/// This trait must be implemented on deserializers that will be defined for each type and can contains constraints.
+/// Example:
+/// ```
+/// use std::ops::Bound;
+/// use unsigned_varint::nom as varint_nom;
+/// use nom::{IResult, error::{context, ContextError, ParseError}};
+/// use massa_serialization::Deserializer;
+/// use std::ops::RangeBounds;
+///
+/// pub struct U64VarIntDeserializer {
+///     range: (Bound&lt;u64&gt;, Bound&lt;u64&gt;)
+/// }
+///
+/// impl U64VarIntDeserializer {
+///     fn new(min: Bound&lt;u64&gt;, max: Bound&lt;u64&gt;) -&gt; Self {
+///         Self {
+///             range: (min, max)
+///         }
+///     }
+/// }
+///
+/// impl Deserializer&lt;u64&gt; for U64VarIntDeserializer {
+///     fn deserialize&lt;&#39;a, E: ParseError&lt;&amp;&#39;a [u8]&gt; + ContextError&lt;&amp;&#39;a [u8]&gt;&gt;(&amp;self, buffer: &amp;&#39;a [u8]) -&gt; IResult&lt;&amp;&#39;a [u8], u64, E&gt; {
+///         context(concat!(&quot;Failed u64 deserialization&quot;), |input: &amp;&#39;a [u8]| {
+///             let (rest, value) = varint_nom::u64(input).map_err(|_| nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)))?;
+///             if !self.range.contains(&amp;value) {
+///                 return Err(nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)));
+///             }
+///             Ok((rest, value))
+///         })(buffer)
+///     }
+/// }
+/// ```
+</span><span class="kw">pub trait </span>Deserializer&lt;T&gt; {
+    <span class="doccomment">/// Deserialize a value `T` from a buffer of `u8`.
+    ///
+    /// ## Parameters
+    /// * buffer: the buffer that contains the whole serialized data.
+    ///
+    /// ## Returns
+    /// A nom result with the rest of the serialized data and the decoded value.
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">T</span>, <span class="ident">E</span><span class="op">&gt;</span>;
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], T, E&gt;;
 }
 
-<span class="doccomment">/// This trait must be implemented to serializes all data in Massa.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Example:</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">/// use std::ops::Bound;</span>
-<span class="doccomment">/// use unsigned_varint::nom as varint_nom;</span>
-<span class="doccomment">/// use nom::IResult;</span>
-<span class="doccomment">/// use massa_serialization::Serializer;</span>
-<span class="doccomment">/// use std::ops::RangeBounds;</span>
-<span class="doccomment">/// use unsigned_varint::encode::u64_buffer;</span>
-<span class="doccomment">/// use unsigned_varint::encode::u64;</span>
-<span class="doccomment">/// use massa_serialization::SerializeError;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// pub struct U64VarIntSerializer {</span>
-<span class="doccomment">///     range: (Bound&lt;u64&gt;, Bound&lt;u64&gt;)</span>
-<span class="doccomment">/// }</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// impl U64VarIntSerializer {</span>
-<span class="doccomment">///     fn new(min: Bound&lt;u64&gt;, max: Bound&lt;u64&gt;) -&gt; Self {</span>
-<span class="doccomment">///         Self {</span>
-<span class="doccomment">///             range: (min, max)</span>
-<span class="doccomment">///         }</span>
-<span class="doccomment">///     }</span>
-<span class="doccomment">/// }</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// impl Serializer&lt;u64&gt; for U64VarIntSerializer {</span>
-<span class="doccomment">///     fn serialize(&amp;self, value: &amp;u64, buffer: &amp;mut Vec&lt;u8&gt;) -&gt; Result&lt;(), SerializeError&gt; {</span>
-<span class="doccomment">///         if !self.range.contains(value) {</span>
-<span class="doccomment">///             return Err(SerializeError::NumberTooBig(format!(&quot;Value {:#?} is not in range {:#?}&quot;, value, self.range)));</span>
-<span class="doccomment">///         }</span>
-<span class="doccomment">///         buffer.extend_from_slice(u64(*value, &amp;mut u64_buffer()));</span>
-<span class="doccomment">///         Ok(())</span>
-<span class="doccomment">///     }</span>
-<span class="doccomment">/// }</span>
-<span class="doccomment">/// ```</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Serialize a value `T` into a buffer of `u8`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ## Parameters</span>
-    <span class="doccomment">/// * value: the value to be serialized.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ## Returns</span>
-    <span class="doccomment">/// A Result with the serialized data.</span>
-    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span>;
+<span class="doccomment">/// This trait must be implemented to serializes all data in Massa.
+///
+/// Example:
+/// ```
+/// use std::ops::Bound;
+/// use unsigned_varint::nom as varint_nom;
+/// use nom::IResult;
+/// use massa_serialization::Serializer;
+/// use std::ops::RangeBounds;
+/// use unsigned_varint::encode::u64_buffer;
+/// use unsigned_varint::encode::u64;
+/// use massa_serialization::SerializeError;
+///
+/// pub struct U64VarIntSerializer {
+///     range: (Bound&lt;u64&gt;, Bound&lt;u64&gt;)
+/// }
+///
+/// impl U64VarIntSerializer {
+///     fn new(min: Bound&lt;u64&gt;, max: Bound&lt;u64&gt;) -&gt; Self {
+///         Self {
+///             range: (min, max)
+///         }
+///     }
+/// }
+///
+/// impl Serializer&lt;u64&gt; for U64VarIntSerializer {
+///     fn serialize(&amp;self, value: &amp;u64, buffer: &amp;mut Vec&lt;u8&gt;) -&gt; Result&lt;(), SerializeError&gt; {
+///         if !self.range.contains(value) {
+///             return Err(SerializeError::NumberTooBig(format!(&quot;Value {:#?} is not in range {:#?}&quot;, value, self.range)));
+///         }
+///         buffer.extend_from_slice(u64(*value, &amp;mut u64_buffer()));
+///         Ok(())
+///     }
+/// }
+/// ```
+</span><span class="kw">pub trait </span>Serializer&lt;T&gt; {
+    <span class="doccomment">/// Serialize a value `T` into a buffer of `u8`.
+    ///
+    /// ## Parameters
+    /// * value: the value to be serialized.
+    ///
+    /// ## Returns
+    /// A Result with the serialized data.
+    </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>T, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt;;
 }
 
-<span class="macro">macro_rules!</span> <span class="ident">gen_varint</span> {
-    ($(<span class="macro-nonterminal">$</span><span class="kw">type</span>:<span class="macro-nonterminal">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">s</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">bs</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ds</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">d</span>:<span class="ident">expr</span>);<span class="kw-2">*</span>) =&gt; {
-        <span class="kw">use</span> <span class="ident">std::ops</span>::{<span class="ident">Bound</span>, <span class="ident">RangeBounds</span>};
-        <span class="kw">use</span> <span class="ident">nom::error::context</span>;
-        <span class="kw">use</span> <span class="ident">unsigned_varint::nom</span> <span class="kw">as</span> <span class="ident">unsigned_nom</span>;
+<span class="macro">macro_rules! </span>gen_varint {
+    ($(<span class="macro-nonterminal">$</span><span class="kw">type</span>:<span class="macro-nonterminal">ident</span>, <span class="macro-nonterminal">$s</span>:ident, <span class="macro-nonterminal">$bs</span>:ident, <span class="macro-nonterminal">$ds</span>:ident, <span class="macro-nonterminal">$d</span>:expr);<span class="kw-2">*</span>) =&gt; {
+        <span class="kw">use </span>std::ops::{Bound, RangeBounds};
+        <span class="kw">use </span>nom::error::context;
+        <span class="kw">use </span>unsigned_varint::nom <span class="kw">as </span>unsigned_nom;
         $(
-            <span class="kw">use</span> <span class="ident">unsigned_varint::encode</span>::{<span class="macro-nonterminal">$</span><span class="kw">type</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">bs</span>};
-            <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="string">&quot; Serializer for &quot;</span>]</span>
-            <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">d</span>]</span>
-            <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="string">&quot; in a varint form.&quot;</span>]</span>
-            <span class="kw">pub</span> <span class="kw">struct</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">s</span>;
+            <span class="kw">use </span>unsigned_varint::encode::{<span class="macro-nonterminal">$</span><span class="kw">type</span>, <span class="macro-nonterminal">$bs</span>};
+            <span class="attribute">#[doc = <span class="string">&quot; Serializer for &quot;</span>]
+            #[doc = <span class="macro-nonterminal">$d</span>]
+            #[doc = <span class="string">&quot; in a varint form.&quot;</span>]
+            </span><span class="kw">pub struct </span><span class="macro-nonterminal">$s</span>;
 
-            <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">s</span> {
-                <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="string">&quot;Create a basic serializer for &quot;</span>]</span>
-                <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">d</span>]</span>
-                <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="string">&quot; in a varint form.&quot;</span>]</span>
-                <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-                <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-                    <span class="self">Self</span>
+            <span class="kw">impl </span><span class="macro-nonterminal">$s </span>{
+                <span class="attribute">#[doc = <span class="string">&quot;Create a basic serializer for &quot;</span>]
+                #[doc = <span class="macro-nonterminal">$d</span>]
+                #[doc = <span class="string">&quot; in a varint form.&quot;</span>]
+                #[allow(dead_code)]
+                </span><span class="kw">pub const fn </span>new() -&gt; <span class="self">Self </span>{
+                    <span class="self">Self
+                </span>}
+            }
+
+            <span class="kw">impl </span>Default <span class="kw">for </span><span class="macro-nonterminal">$s </span>{
+                <span class="kw">fn </span>default() -&gt; <span class="macro-nonterminal">$s </span>{
+                    <span class="macro-nonterminal">$s::new</span>()
                 }
             }
 
-            <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">s</span> {
-                <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">s</span> {
-                    <span class="macro-nonterminal">$</span><span class="macro-nonterminal">s::new</span>()
-                }
-            }
-
-            <span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">type</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">s</span> {
-                <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="kw">type</span>, <span class="macro-nonterminal">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-                    <span class="ident">buffer</span>.<span class="ident">extend_from_slice</span>(<span class="macro-nonterminal">$</span><span class="kw">type</span>(<span class="kw-2">*</span><span class="macro-nonterminal">value</span>, <span class="kw-2">&amp;mut</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">bs</span>()));
+            <span class="kw">impl </span>Serializer&lt;<span class="macro-nonterminal">$</span><span class="kw">type</span>&gt; <span class="kw">for </span><span class="macro-nonterminal">$s </span>{
+                <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="kw">type</span>, <span class="macro-nonterminal">buffer</span>: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+                    buffer.extend_from_slice(<span class="macro-nonterminal">$</span><span class="kw">type</span>(<span class="kw-2">*</span><span class="macro-nonterminal">value</span>, <span class="kw-2">&amp;mut </span><span class="macro-nonterminal">$bs</span>()));
                     <span class="prelude-val">Ok</span>(())
                 }
             }
 
-            <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="string">&quot; Deserializer for &quot;</span>]</span>
-            <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">d</span>]</span>
-            <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="string">&quot; in a varint form.&quot;</span>]</span>
-            <span class="kw">pub</span> <span class="kw">struct</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ds</span> {
-                <span class="ident">range</span>: (<span class="ident">Bound</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">type</span><span class="op">&gt;</span>, <span class="macro-nonterminal">Bound</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">type</span><span class="op">&gt;</span>)
+            <span class="attribute">#[doc = <span class="string">&quot; Deserializer for &quot;</span>]
+            #[doc = <span class="macro-nonterminal">$d</span>]
+            #[doc = <span class="string">&quot; in a varint form.&quot;</span>]
+            </span><span class="kw">pub struct </span><span class="macro-nonterminal">$ds </span>{
+                range: (Bound&lt;<span class="macro-nonterminal">$</span><span class="kw">type</span>&gt;, <span class="macro-nonterminal">Bound</span>&lt;<span class="macro-nonterminal">$</span><span class="kw">type</span>&gt;)
             }
 
-            <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ds</span> {
-                <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="string">&quot;Create a basic deserializer for &quot;</span>]</span>
-                <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">d</span>]</span>
-                <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="string">&quot; in a varint form.&quot;</span>]</span>
-                <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-                <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">min</span>: <span class="ident">Bound</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">type</span><span class="op">&gt;</span>, <span class="macro-nonterminal">max</span>: <span class="ident">Bound</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">type</span><span class="op">&gt;</span>) -&gt; <span class="macro-nonterminal">Self</span> {
-                    <span class="self">Self</span> {
-                        <span class="ident">range</span>: (<span class="ident">min</span>, <span class="ident">max</span>)
+            <span class="kw">impl </span><span class="macro-nonterminal">$ds </span>{
+                <span class="attribute">#[doc = <span class="string">&quot;Create a basic deserializer for &quot;</span>]
+                #[doc = <span class="macro-nonterminal">$d</span>]
+                #[doc = <span class="string">&quot; in a varint form.&quot;</span>]
+                #[allow(dead_code)]
+                </span><span class="kw">pub const fn </span>new(min: Bound&lt;<span class="macro-nonterminal">$</span><span class="kw">type</span>&gt;, <span class="macro-nonterminal">max</span>: Bound&lt;<span class="macro-nonterminal">$</span><span class="kw">type</span>&gt;) -&gt; <span class="macro-nonterminal">Self </span>{
+                    <span class="self">Self </span>{
+                        range: (min, max)
                     }
                 }
             }
 
-            <span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">type</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ds</span> {
-                <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="macro-nonterminal">$</span><span class="kw">type</span>, <span class="macro-nonterminal">E</span><span class="op">&gt;</span> {
-                    <span class="ident">context</span>(<span class="macro">concat!</span>(<span class="string">&quot;Failed &quot;</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$</span><span class="kw">type</span>), <span class="string">&quot; deserialization&quot;</span>), <span class="op">|</span><span class="macro-nonterminal">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">|</span> {
-                        <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">value</span>) <span class="op">=</span> <span class="ident">unsigned_nom</span>::<span class="macro-nonterminal">$</span><span class="kw">type</span>(<span class="macro-nonterminal">input</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">nom::Err::Error</span>(<span class="ident">ParseError::from_error_kind</span>(<span class="ident">input</span>, <span class="ident">nom::error::ErrorKind::Fail</span>)))<span class="question-mark">?</span>;
-                        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">range</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>) {
-                            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">nom::Err::Error</span>(<span class="ident">ParseError::from_error_kind</span>(<span class="ident">input</span>, <span class="ident">nom::error::ErrorKind::Fail</span>)));
+            <span class="kw">impl </span>Deserializer&lt;<span class="macro-nonterminal">$</span><span class="kw">type</span>&gt; <span class="kw">for </span><span class="macro-nonterminal">$ds </span>{
+                <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], <span class="macro-nonterminal">$</span><span class="kw">type</span>, <span class="macro-nonterminal">E</span>&gt; {
+                    context(<span class="macro">concat!</span>(<span class="string">&quot;Failed &quot;</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$</span><span class="kw">type</span>), <span class="string">&quot; deserialization&quot;</span>), |<span class="macro-nonterminal">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
+                        <span class="kw">let </span>(rest, value) = unsigned_nom::<span class="macro-nonterminal">$</span><span class="kw">type</span>(<span class="macro-nonterminal">input</span>).map_err(|<span class="kw">_</span>| nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)))<span class="question-mark">?</span>;
+                        <span class="kw">if </span>!<span class="self">self</span>.range.contains(<span class="kw-2">&amp;</span>value) {
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)));
                         }
-                        <span class="prelude-val">Ok</span>((<span class="ident">rest</span>, <span class="ident">value</span>))
-                    })(<span class="ident">buffer</span>)
+                        <span class="prelude-val">Ok</span>((rest, value))
+                    })(buffer)
                 }
             }
-        )<span class="op">*</span>
+        )*
     };
 }
 
-<span class="macro">gen_varint!</span> {
-<span class="ident">u16</span>, <span class="ident">U16VarIntSerializer</span>, <span class="ident">u16_buffer</span>, <span class="ident">U16VarIntDeserializer</span>, <span class="string">&quot;`u16`&quot;</span>;
-<span class="ident">u32</span>, <span class="ident">U32VarIntSerializer</span>, <span class="ident">u32_buffer</span>, <span class="ident">U32VarIntDeserializer</span>, <span class="string">&quot;`u32`&quot;</span>;
-<span class="ident">u64</span>, <span class="ident">U64VarIntSerializer</span>, <span class="ident">u64_buffer</span>, <span class="ident">U64VarIntDeserializer</span>, <span class="string">&quot;`u64`&quot;</span>
-}
+<span class="macro">gen_varint! </span>{
+u16, U16VarIntSerializer, u16_buffer, U16VarIntDeserializer, <span class="string">&quot;`u16`&quot;</span>;
+u32, U32VarIntSerializer, u32_buffer, U32VarIntDeserializer, <span class="string">&quot;`u32`&quot;</span>;
+u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string">&quot;`u64`&quot;
+</span>}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_serialization" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_serialization" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

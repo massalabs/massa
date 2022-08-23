@@ -713,210 +713,210 @@
 <span id="713">713</span>
 <span id="714">714</span>
 <span id="715">715</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">massa_models::WrappedOperation</span>;
-<span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-<span class="kw">use</span> <span class="ident">massa_models::ledger_models</span>::{<span class="ident">LedgerChange</span>, <span class="ident">LedgerChanges</span>, <span class="ident">LedgerData</span>};
-<span class="kw">use</span> <span class="ident">massa_models::prehash::Set</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">array_from_slice</span>, <span class="ident">constants::ADDRESS_SIZE_BYTES</span>, <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">DeserializeCompact</span>,
-    <span class="ident">DeserializeVarInt</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>,
+</pre><pre class="rust"><code><span class="kw">use </span>massa_models::WrappedOperation;
+<span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</span><span class="kw">use </span>massa_models::ledger_models::{LedgerChange, LedgerChanges, LedgerData};
+<span class="kw">use </span>massa_models::prehash::Set;
+<span class="kw">use </span>massa_models::{
+    array_from_slice, constants::ADDRESS_SIZE_BYTES, Address, Amount, DeserializeCompact,
+    DeserializeVarInt, SerializeCompact, SerializeVarInt,
 };
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">sled</span>::{<span class="ident">Transactional</span>, <span class="ident">Tree</span>};
-<span class="kw">use</span> <span class="ident">std::collections::btree_map::Entry</span>;
-<span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">convert</span>::{<span class="ident">TryFrom</span>, <span class="ident">TryInto</span>},
-    <span class="ident">usize</span>,
-};
-
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">error</span>::{<span class="ident">GraphError</span>, <span class="ident">InternalError</span>, <span class="ident">LedgerError</span>, <span class="ident">LedgerResult</span> <span class="kw">as</span> <span class="prelude-ty">Result</span>},
-    <span class="ident">settings::LedgerConfig</span>,
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>sled::{Transactional, Tree};
+<span class="kw">use </span>std::collections::btree_map::Entry;
+<span class="kw">use </span>std::collections::BTreeMap;
+<span class="kw">use </span>std::{
+    convert::{TryFrom, TryInto},
+    usize,
 };
 
-<span class="doccomment">/// Here we map an address to its balance.</span>
-<span class="doccomment">/// When a balance becomes final it is written on the disk.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Ledger</span> {
-    <span class="doccomment">/// containing `(Address, LedgerData)`, one per thread</span>
-    <span class="ident">ledger_per_thread</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Tree</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// containing `(thread_number: u8, latest_final_period: u64)`</span>
-    <span class="ident">latest_final_periods</span>: <span class="ident">Tree</span>,
-    <span class="doccomment">/// consensus related configuration</span>
-    <span class="ident">cfg</span>: <span class="ident">LedgerConfig</span>,
+<span class="kw">use crate</span>::{
+    error::{GraphError, InternalError, LedgerError, LedgerResult <span class="kw">as </span><span class="prelude-ty">Result</span>},
+    settings::LedgerConfig,
+};
+
+<span class="doccomment">/// Here we map an address to its balance.
+/// When a balance becomes final it is written on the disk.
+</span><span class="kw">pub struct </span>Ledger {
+    <span class="doccomment">/// containing `(Address, LedgerData)`, one per thread
+    </span>ledger_per_thread: Vec&lt;Tree&gt;,
+    <span class="doccomment">/// containing `(thread_number: u8, latest_final_period: u64)`
+    </span>latest_final_periods: Tree,
+    <span class="doccomment">/// consensus related configuration
+    </span>cfg: LedgerConfig,
 }
 
-<span class="doccomment">/// Read the initial ledger.</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">read_genesis_ledger</span>(<span class="ident">ledger_config</span>: <span class="kw-2">&amp;</span><span class="ident">LedgerConfig</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Ledger</span><span class="op">&gt;</span> {
-    <span class="comment">// load ledger from file</span>
-    <span class="kw">let</span> <span class="ident">ledger</span> <span class="op">=</span> <span class="ident">serde_json::from_str</span>::<span class="op">&lt;</span><span class="ident">ConsensusLedgerSubset</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="ident">tokio::fs::read_to_string</span>(<span class="kw-2">&amp;</span><span class="ident">ledger_config</span>.<span class="ident">initial_ledger_path</span>).<span class="kw">await</span><span class="question-mark">?</span>,
+<span class="doccomment">/// Read the initial ledger.
+</span><span class="kw">pub async fn </span>read_genesis_ledger(ledger_config: <span class="kw-2">&amp;</span>LedgerConfig) -&gt; <span class="prelude-ty">Result</span>&lt;Ledger&gt; {
+    <span class="comment">// load ledger from file
+    </span><span class="kw">let </span>ledger = serde_json::from_str::&lt;ConsensusLedgerSubset&gt;(
+        <span class="kw-2">&amp;</span>tokio::fs::read_to_string(<span class="kw-2">&amp;</span>ledger_config.initial_ledger_path).<span class="kw">await</span><span class="question-mark">?</span>,
     )<span class="question-mark">?</span>;
-    <span class="ident">Ledger::new</span>(<span class="ident">ledger_config</span>.<span class="ident">to_owned</span>(), <span class="prelude-val">Some</span>(<span class="ident">ledger</span>))
+    Ledger::new(ledger_config.to_owned(), <span class="prelude-val">Some</span>(ledger))
 }
 
-<span class="doccomment">/// Ledger specific method on operations</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">OperationLedgerInterface</span> {
-    <span class="doccomment">/// Retrieve and aggregate ledger specific changes in the context of a block</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * block creator</span>
-    <span class="doccomment">/// * included endorsement producers</span>
-    <span class="doccomment">/// * creator of the endorsed block</span>
-    <span class="doccomment">/// * thread count (fixed by the configuration)</span>
-    <span class="doccomment">/// * roll price (fixed by the configuration)</span>
-    <span class="doccomment">/// * max expected number of endorsements (fixed by the configuration)</span>
-    <span class="kw">fn</span> <span class="ident">get_ledger_changes</span>(
+<span class="doccomment">/// Ledger specific method on operations
+</span><span class="kw">pub trait </span>OperationLedgerInterface {
+    <span class="doccomment">/// Retrieve and aggregate ledger specific changes in the context of a block
+    ///
+    /// # Arguments
+    /// * block creator
+    /// * included endorsement producers
+    /// * creator of the endorsed block
+    /// * thread count (fixed by the configuration)
+    /// * roll price (fixed by the configuration)
+    /// * max expected number of endorsements (fixed by the configuration)
+    </span><span class="kw">fn </span>get_ledger_changes(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">creator</span>: <span class="ident">Address</span>,
-        <span class="ident">endorsers</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-        <span class="ident">parent_creator</span>: <span class="ident">Address</span>,
-        <span class="ident">roll_price</span>: <span class="ident">Amount</span>,
-        <span class="ident">endorsement_count</span>: <span class="ident">u32</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LedgerChanges</span><span class="op">&gt;</span>;
+        creator: Address,
+        endorsers: Vec&lt;Address&gt;,
+        parent_creator: Address,
+        roll_price: Amount,
+        endorsement_count: u32,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;LedgerChanges&gt;;
 }
 
-<span class="kw">impl</span> <span class="ident">OperationLedgerInterface</span> <span class="kw">for</span> <span class="ident">WrappedOperation</span> {
-    <span class="kw">fn</span> <span class="ident">get_ledger_changes</span>(
+<span class="kw">impl </span>OperationLedgerInterface <span class="kw">for </span>WrappedOperation {
+    <span class="kw">fn </span>get_ledger_changes(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">creator</span>: <span class="ident">Address</span>,
-        <span class="ident">endorsers</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-        <span class="ident">parent_creator</span>: <span class="ident">Address</span>,
-        <span class="ident">roll_price</span>: <span class="ident">Amount</span>,
-        <span class="ident">endorsement_count</span>: <span class="ident">u32</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LedgerChanges</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">LedgerChanges::default</span>();
+        creator: Address,
+        endorsers: Vec&lt;Address&gt;,
+        parent_creator: Address,
+        roll_price: Amount,
+        endorsement_count: u32,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;LedgerChanges&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res = LedgerChanges::default();
 
-        <span class="comment">// sender fee</span>
-        <span class="ident">res</span>.<span class="ident">apply</span>(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">creator_address</span>,
-            <span class="kw-2">&amp;</span><span class="ident">LedgerChange</span> {
-                <span class="ident">balance_delta</span>: <span class="self">self</span>.<span class="ident">content</span>.<span class="ident">fee</span>,
-                <span class="ident">balance_increment</span>: <span class="bool-val">false</span>,
+        <span class="comment">// sender fee
+        </span>res.apply(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.creator_address,
+            <span class="kw-2">&amp;</span>LedgerChange {
+                balance_delta: <span class="self">self</span>.content.fee,
+                balance_increment: <span class="bool-val">false</span>,
             },
         )<span class="question-mark">?</span>;
 
-        <span class="comment">// fee target</span>
-        <span class="ident">res</span>.<span class="ident">add_reward</span>(
-            <span class="ident">creator</span>,
-            <span class="ident">endorsers</span>,
-            <span class="ident">parent_creator</span>,
-            <span class="self">self</span>.<span class="ident">content</span>.<span class="ident">fee</span>,
-            <span class="ident">endorsement_count</span>,
+        <span class="comment">// fee target
+        </span>res.add_reward(
+            creator,
+            endorsers,
+            parent_creator,
+            <span class="self">self</span>.content.fee,
+            endorsement_count,
         )<span class="question-mark">?</span>;
 
-        <span class="comment">// operation type specific</span>
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">content</span>.<span class="ident">op</span> {
-            <span class="ident">massa_models::OperationType::Transaction</span> {
-                <span class="ident">recipient_address</span>,
-                <span class="ident">amount</span>,
+        <span class="comment">// operation type specific
+        </span><span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.content.op {
+            massa_models::OperationType::Transaction {
+                recipient_address,
+                amount,
             } =&gt; {
-                <span class="ident">res</span>.<span class="ident">apply</span>(
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">creator_address</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">LedgerChange</span> {
-                        <span class="ident">balance_delta</span>: (<span class="kw-2">*</span><span class="ident">amount</span>),
-                        <span class="ident">balance_increment</span>: <span class="bool-val">false</span>,
+                res.apply(
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.creator_address,
+                    <span class="kw-2">&amp;</span>LedgerChange {
+                        balance_delta: (<span class="kw-2">*</span>amount),
+                        balance_increment: <span class="bool-val">false</span>,
                     },
                 )<span class="question-mark">?</span>;
-                <span class="ident">res</span>.<span class="ident">apply</span>(
-                    <span class="ident">recipient_address</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">LedgerChange</span> {
-                        <span class="ident">balance_delta</span>: (<span class="kw-2">*</span><span class="ident">amount</span>),
-                        <span class="ident">balance_increment</span>: <span class="bool-val">true</span>,
-                    },
-                )<span class="question-mark">?</span>;
-            }
-            <span class="ident">massa_models::OperationType::RollBuy</span> { <span class="ident">roll_count</span> } =&gt; {
-                <span class="ident">res</span>.<span class="ident">apply</span>(
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">creator_address</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">LedgerChange</span> {
-                        <span class="ident">balance_delta</span>: <span class="ident">roll_price</span>
-                            .<span class="ident">checked_mul_u64</span>(<span class="kw-2">*</span><span class="ident">roll_count</span>)
-                            .<span class="ident">ok_or</span>(<span class="ident">LedgerError::AmountOverflowError</span>)<span class="question-mark">?</span>,
-                        <span class="ident">balance_increment</span>: <span class="bool-val">false</span>,
+                res.apply(
+                    recipient_address,
+                    <span class="kw-2">&amp;</span>LedgerChange {
+                        balance_delta: (<span class="kw-2">*</span>amount),
+                        balance_increment: <span class="bool-val">true</span>,
                     },
                 )<span class="question-mark">?</span>;
             }
-            <span class="comment">// roll sale is handled separately with a delay</span>
-            <span class="ident">massa_models::OperationType::RollSell</span> { .. } =&gt; {}
-            <span class="ident">massa_models::OperationType::ExecuteSC</span> {
-                <span class="ident">max_gas</span>,
-                <span class="ident">gas_price</span>,
-                <span class="ident">coins</span>,
+            massa_models::OperationType::RollBuy { roll_count } =&gt; {
+                res.apply(
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.creator_address,
+                    <span class="kw-2">&amp;</span>LedgerChange {
+                        balance_delta: roll_price
+                            .checked_mul_u64(<span class="kw-2">*</span>roll_count)
+                            .ok_or(LedgerError::AmountOverflowError)<span class="question-mark">?</span>,
+                        balance_increment: <span class="bool-val">false</span>,
+                    },
+                )<span class="question-mark">?</span>;
+            }
+            <span class="comment">// roll sale is handled separately with a delay
+            </span>massa_models::OperationType::RollSell { .. } =&gt; {}
+            massa_models::OperationType::ExecuteSC {
+                max_gas,
+                gas_price,
+                coins,
                 ..
             } =&gt; {
-                <span class="ident">res</span>.<span class="ident">apply</span>(
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">creator_address</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">LedgerChange</span> {
-                        <span class="ident">balance_delta</span>: <span class="ident">gas_price</span>
-                            .<span class="ident">checked_mul_u64</span>(<span class="kw-2">*</span><span class="ident">max_gas</span>)
-                            .<span class="ident">ok_or</span>(<span class="ident">LedgerError::AmountOverflowError</span>)<span class="question-mark">?</span>
-                            .<span class="ident">checked_add</span>(<span class="kw-2">*</span><span class="ident">coins</span>)
-                            .<span class="ident">ok_or</span>(<span class="ident">LedgerError::AmountOverflowError</span>)<span class="question-mark">?</span>,
-                        <span class="ident">balance_increment</span>: <span class="bool-val">false</span>,
+                res.apply(
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.creator_address,
+                    <span class="kw-2">&amp;</span>LedgerChange {
+                        balance_delta: gas_price
+                            .checked_mul_u64(<span class="kw-2">*</span>max_gas)
+                            .ok_or(LedgerError::AmountOverflowError)<span class="question-mark">?
+                            </span>.checked_add(<span class="kw-2">*</span>coins)
+                            .ok_or(LedgerError::AmountOverflowError)<span class="question-mark">?</span>,
+                        balance_increment: <span class="bool-val">false</span>,
                     },
                 )<span class="question-mark">?</span>;
             }
-            <span class="ident">massa_models::OperationType::CallSC</span> {
-                <span class="ident">max_gas</span>,
-                <span class="ident">gas_price</span>,
-                <span class="ident">sequential_coins</span>,
+            massa_models::OperationType::CallSC {
+                max_gas,
+                gas_price,
+                sequential_coins,
                 ..
             } =&gt; {
-                <span class="ident">res</span>.<span class="ident">apply</span>(
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">creator_address</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">LedgerChange</span> {
-                        <span class="ident">balance_delta</span>: <span class="ident">gas_price</span>
-                            .<span class="ident">checked_mul_u64</span>(<span class="kw-2">*</span><span class="ident">max_gas</span>)
-                            .<span class="ident">ok_or</span>(<span class="ident">LedgerError::AmountOverflowError</span>)<span class="question-mark">?</span>
-                            .<span class="ident">checked_add</span>(<span class="kw-2">*</span><span class="ident">sequential_coins</span>)
-                            .<span class="ident">ok_or</span>(<span class="ident">LedgerError::AmountOverflowError</span>)<span class="question-mark">?</span>,
-                        <span class="ident">balance_increment</span>: <span class="bool-val">false</span>,
+                res.apply(
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.creator_address,
+                    <span class="kw-2">&amp;</span>LedgerChange {
+                        balance_delta: gas_price
+                            .checked_mul_u64(<span class="kw-2">*</span>max_gas)
+                            .ok_or(LedgerError::AmountOverflowError)<span class="question-mark">?
+                            </span>.checked_add(<span class="kw-2">*</span>sequential_coins)
+                            .ok_or(LedgerError::AmountOverflowError)<span class="question-mark">?</span>,
+                        balance_increment: <span class="bool-val">false</span>,
                     },
                 )<span class="question-mark">?</span>;
             }
         }
 
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+        <span class="prelude-val">Ok</span>(res)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Ledger</span> {
-    <span class="doccomment">/// if no `latest_final_periods` in file, they are initialized at `0u64`</span>
-    <span class="doccomment">/// if there is a ledger in the given file, it is loaded</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">cfg</span>: <span class="ident">LedgerConfig</span>, <span class="ident">opt_init_data</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ConsensusLedgerSubset</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Ledger</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">sled_config</span> <span class="op">=</span> <span class="ident">sled::Config::default</span>()
-            .<span class="ident">path</span>(<span class="kw-2">&amp;</span><span class="ident">cfg</span>.<span class="ident">ledger_path</span>)
-            .<span class="ident">cache_capacity</span>(<span class="ident">cfg</span>.<span class="ident">ledger_cache_capacity</span>)
-            .<span class="ident">flush_every_ms</span>(<span class="ident">cfg</span>.<span class="ident">ledger_flush_interval</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">to_millis</span>()));
-        <span class="kw">let</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">sled_config</span>.<span class="ident">open</span>()<span class="question-mark">?</span>;
+<span class="kw">impl </span>Ledger {
+    <span class="doccomment">/// if no `latest_final_periods` in file, they are initialized at `0u64`
+    /// if there is a ledger in the given file, it is loaded
+    </span><span class="kw">pub fn </span>new(cfg: LedgerConfig, opt_init_data: <span class="prelude-ty">Option</span>&lt;ConsensusLedgerSubset&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Ledger&gt; {
+        <span class="kw">let </span>sled_config = sled::Config::default()
+            .path(<span class="kw-2">&amp;</span>cfg.ledger_path)
+            .cache_capacity(cfg.ledger_cache_capacity)
+            .flush_every_ms(cfg.ledger_flush_interval.map(|v| v.to_millis()));
+        <span class="kw">let </span>db = sled_config.open()<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ledger_per_thread</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">for</span> <span class="ident">thread</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">cfg</span>.<span class="ident">thread_count</span> {
-            <span class="ident">db</span>.<span class="ident">drop_tree</span>(<span class="macro">format!</span>(<span class="string">&quot;ledger_thread_{}&quot;</span>, <span class="ident">thread</span>))<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">current_tree</span> <span class="op">=</span> <span class="ident">db</span>.<span class="ident">open_tree</span>(<span class="macro">format!</span>(<span class="string">&quot;ledger_thread_{}&quot;</span>, <span class="ident">thread</span>))<span class="question-mark">?</span>;
-            <span class="ident">ledger_per_thread</span>.<span class="ident">push</span>(<span class="ident">current_tree</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>ledger_per_thread = Vec::new();
+        <span class="kw">for </span>thread <span class="kw">in </span><span class="number">0</span>..cfg.thread_count {
+            db.drop_tree(<span class="macro">format!</span>(<span class="string">&quot;ledger_thread_{}&quot;</span>, thread))<span class="question-mark">?</span>;
+            <span class="kw">let </span>current_tree = db.open_tree(<span class="macro">format!</span>(<span class="string">&quot;ledger_thread_{}&quot;</span>, thread))<span class="question-mark">?</span>;
+            ledger_per_thread.push(current_tree);
         }
-        <span class="ident">db</span>.<span class="ident">drop_tree</span>(<span class="string">&quot;latest_final_periods&quot;</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">latest_final_periods</span> <span class="op">=</span> <span class="ident">db</span>.<span class="ident">open_tree</span>(<span class="string">&quot;latest_final_periods&quot;</span>)<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">latest_final_periods</span>.<span class="ident">is_empty</span>() {
-            <span class="kw">for</span> <span class="ident">thread</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">cfg</span>.<span class="ident">thread_count</span> {
-                <span class="kw">let</span> <span class="ident">zero</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-                <span class="ident">latest_final_periods</span>.<span class="ident">insert</span>([<span class="ident">thread</span>], <span class="kw-2">&amp;</span><span class="ident">zero</span>.<span class="ident">to_be_bytes</span>())<span class="question-mark">?</span>;
+        db.drop_tree(<span class="string">&quot;latest_final_periods&quot;</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>latest_final_periods = db.open_tree(<span class="string">&quot;latest_final_periods&quot;</span>)<span class="question-mark">?</span>;
+        <span class="kw">if </span>latest_final_periods.is_empty() {
+            <span class="kw">for </span>thread <span class="kw">in </span><span class="number">0</span>..cfg.thread_count {
+                <span class="kw">let </span>zero: u64 = <span class="number">0</span>;
+                latest_final_periods.insert([thread], <span class="kw-2">&amp;</span>zero.to_be_bytes())<span class="question-mark">?</span>;
             }
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">init_ledger</span>) <span class="op">=</span> <span class="ident">opt_init_data</span> {
-            <span class="ident">ledger_per_thread</span>.<span class="ident">transaction</span>(<span class="op">|</span><span class="ident">ledger</span><span class="op">|</span> {
-                <span class="kw">for</span> (<span class="ident">address</span>, <span class="ident">data</span>) <span class="kw">in</span> <span class="ident">init_ledger</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
-                    <span class="kw">let</span> <span class="ident">thread</span> <span class="op">=</span> <span class="ident">address</span>.<span class="ident">get_thread</span>(<span class="ident">cfg</span>.<span class="ident">thread_count</span>);
-                    <span class="ident">ledger</span>[<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>].<span class="ident">insert</span>(
-                        <span class="ident">address</span>.<span class="ident">to_bytes</span>(),
-                        <span class="ident">data</span>.<span class="ident">to_bytes_compact</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                            <span class="ident">sled::transaction::ConflictableTransactionError::Abort</span>(
-                                <span class="ident">InternalError::TransactionError</span>(<span class="macro">format!</span>(
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(init_ledger) = opt_init_data {
+            ledger_per_thread.transaction(|ledger| {
+                <span class="kw">for </span>(address, data) <span class="kw">in </span>init_ledger.<span class="number">0</span>.iter() {
+                    <span class="kw">let </span>thread = address.get_thread(cfg.thread_count);
+                    ledger[thread <span class="kw">as </span>usize].insert(
+                        address.to_bytes(),
+                        data.to_bytes_compact().map_err(|err| {
+                            sled::transaction::ConflictableTransactionError::Abort(
+                                InternalError::TransactionError(<span class="macro">format!</span>(
                                     <span class="string">&quot;error serializing ledger data: {}&quot;</span>,
-                                    <span class="ident">err</span>
+                                    err
                                 )),
                             )
                         })<span class="question-mark">?</span>,
@@ -925,165 +925,165 @@
                 <span class="prelude-val">Ok</span>(())
             })<span class="question-mark">?</span>;
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">Ledger</span> {
-            <span class="ident">ledger_per_thread</span>,
-            <span class="ident">latest_final_periods</span>,
-            <span class="ident">cfg</span>,
+        <span class="prelude-val">Ok</span>(Ledger {
+            ledger_per_thread,
+            latest_final_periods,
+            cfg,
         })
     }
 
-    <span class="doccomment">/// Returns the final ledger data of a list of unique addresses belonging to any thread.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_final_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addresses</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsensusLedgerSubset</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">ledger_per_thread</span>
-            .<span class="ident">transaction</span>(<span class="op">|</span><span class="ident">ledger_per_thread</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">ConsensusLedgerSubset::default</span>();
-                <span class="kw">for</span> <span class="ident">address</span> <span class="kw">in</span> <span class="ident">addresses</span>.<span class="ident">iter</span>() {
-                    <span class="kw">let</span> <span class="ident">thread</span> <span class="op">=</span> <span class="ident">address</span>.<span class="ident">get_thread</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span>);
-                    <span class="kw">let</span> <span class="ident">ledger</span> <span class="op">=</span> <span class="ident">ledger_per_thread</span>.<span class="ident">get</span>(<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                        <span class="ident">sled::transaction::ConflictableTransactionError::Abort</span>(
-                            <span class="ident">InternalError::TransactionError</span>(<span class="macro">format!</span>(
+    <span class="doccomment">/// Returns the final ledger data of a list of unique addresses belonging to any thread.
+    </span><span class="kw">pub fn </span>get_final_data(<span class="kw-2">&amp;</span><span class="self">self</span>, addresses: Set&lt;Address&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;ConsensusLedgerSubset&gt; {
+        <span class="self">self</span>.ledger_per_thread
+            .transaction(|ledger_per_thread| {
+                <span class="kw">let </span><span class="kw-2">mut </span>result = ConsensusLedgerSubset::default();
+                <span class="kw">for </span>address <span class="kw">in </span>addresses.iter() {
+                    <span class="kw">let </span>thread = address.get_thread(<span class="self">self</span>.cfg.thread_count);
+                    <span class="kw">let </span>ledger = ledger_per_thread.get(thread <span class="kw">as </span>usize).ok_or_else(|| {
+                        sled::transaction::ConflictableTransactionError::Abort(
+                            InternalError::TransactionError(<span class="macro">format!</span>(
                                 <span class="string">&quot;Could not get ledger for thread {}&quot;</span>,
-                                <span class="ident">thread</span>
+                                thread
                             )),
                         )
                     })<span class="question-mark">?</span>;
-                    <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">res</span>) <span class="op">=</span> <span class="ident">ledger</span>.<span class="ident">get</span>(<span class="ident">address</span>.<span class="ident">to_bytes</span>())<span class="question-mark">?</span> {
-                        <span class="ident">LedgerData::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">res</span>)
-                            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                                <span class="ident">sled::transaction::ConflictableTransactionError::Abort</span>(
-                                    <span class="ident">InternalError::TransactionError</span>(<span class="macro">format!</span>(
+                    <span class="kw">let </span>data = <span class="kw">if let </span><span class="prelude-val">Some</span>(res) = ledger.get(address.to_bytes())<span class="question-mark">? </span>{
+                        LedgerData::from_bytes_compact(<span class="kw-2">&amp;</span>res)
+                            .map_err(|err| {
+                                sled::transaction::ConflictableTransactionError::Abort(
+                                    InternalError::TransactionError(<span class="macro">format!</span>(
                                         <span class="string">&quot;error deserializing ledger data: {}&quot;</span>,
-                                        <span class="ident">err</span>
+                                        err
                                     )),
                                 )
-                            })<span class="question-mark">?</span>
-                            .<span class="number">0</span>
-                    } <span class="kw">else</span> {
-                        <span class="ident">LedgerData::default</span>()
+                            })<span class="question-mark">?
+                            </span>.<span class="number">0
+                    </span>} <span class="kw">else </span>{
+                        LedgerData::default()
                     };
 
-                    <span class="comment">// Should never panic since we are operating on a set of addresses.</span>
-                    <span class="macro">assert!</span>(<span class="ident">result</span>.<span class="number">0</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">address</span>, <span class="ident">data</span>).<span class="ident">is_none</span>());
+                    <span class="comment">// Should never panic since we are operating on a set of addresses.
+                    </span><span class="macro">assert!</span>(result.<span class="number">0</span>.insert(<span class="kw-2">*</span>address, data).is_none());
                 }
-                <span class="prelude-val">Ok</span>(<span class="ident">result</span>)
+                <span class="prelude-val">Ok</span>(result)
             })
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">LedgerError::LedgerInconsistency</span>(<span class="macro">format!</span>(
+            .map_err(|<span class="kw">_</span>| {
+                LedgerError::LedgerInconsistency(<span class="macro">format!</span>(
                     <span class="string">&quot;Unable to fetch data for addresses {:?}&quot;</span>,
-                    <span class="ident">addresses</span>
+                    addresses
                 ))
             })
     }
 
-    <span class="doccomment">/// If there is something in the ledger file, it is overwritten</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_export</span>(
-        <span class="ident">export</span>: <span class="ident">ConsensusLedgerSubset</span>,
-        <span class="ident">latest_final_periods</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
-        <span class="ident">cfg</span>: <span class="ident">LedgerConfig</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Ledger</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">ledger</span> <span class="op">=</span> <span class="ident">Ledger::new</span>(<span class="ident">cfg</span>.<span class="ident">clone</span>(), <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
-        <span class="ident">ledger</span>.<span class="ident">clear</span>()<span class="question-mark">?</span>;
+    <span class="doccomment">/// If there is something in the ledger file, it is overwritten
+    </span><span class="kw">pub fn </span>from_export(
+        export: ConsensusLedgerSubset,
+        latest_final_periods: Vec&lt;u64&gt;,
+        cfg: LedgerConfig,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Ledger&gt; {
+        <span class="kw">let </span>ledger = Ledger::new(cfg.clone(), <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
+        ledger.clear()<span class="question-mark">?</span>;
 
-        <span class="comment">// fill ledger per thread</span>
-        <span class="kw">for</span> (<span class="ident">address</span>, <span class="ident">addr_data</span>) <span class="kw">in</span> <span class="ident">export</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
-            <span class="kw">let</span> <span class="ident">thread</span> <span class="op">=</span> <span class="ident">address</span>.<span class="ident">get_thread</span>(<span class="ident">cfg</span>.<span class="ident">thread_count</span>);
-            <span class="kw">if</span> <span class="ident">ledger</span>.<span class="ident">ledger_per_thread</span>[<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>]
-                .<span class="ident">insert</span>(<span class="ident">address</span>.<span class="ident">into_bytes</span>(), <span class="ident">addr_data</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>)<span class="question-mark">?</span>
-                .<span class="ident">is_some</span>()
+        <span class="comment">// fill ledger per thread
+        </span><span class="kw">for </span>(address, addr_data) <span class="kw">in </span>export.<span class="number">0</span>.iter() {
+            <span class="kw">let </span>thread = address.get_thread(cfg.thread_count);
+            <span class="kw">if </span>ledger.ledger_per_thread[thread <span class="kw">as </span>usize]
+                .insert(address.into_bytes(), addr_data.to_bytes_compact()<span class="question-mark">?</span>)<span class="question-mark">?
+                </span>.is_some()
             {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">LedgerError::LedgerInconsistency</span>(<span class="macro">format!</span>(
+                <span class="kw">return </span><span class="prelude-val">Err</span>(LedgerError::LedgerInconsistency(<span class="macro">format!</span>(
                     <span class="string">&quot;address {} already in ledger while bootstrapping&quot;</span>,
-                    <span class="ident">address</span>
+                    address
                 )));
             };
         }
 
-        <span class="comment">// initialize final periods</span>
-        <span class="ident">ledger</span>.<span class="ident">latest_final_periods</span>.<span class="ident">transaction</span>(<span class="op">|</span><span class="ident">tree</span><span class="op">|</span> {
-            <span class="kw">for</span> (<span class="ident">thread</span>, <span class="ident">period</span>) <span class="kw">in</span> <span class="ident">latest_final_periods</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-                <span class="ident">tree</span>.<span class="ident">insert</span>(<span class="kw-2">&amp;</span>[<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">u8</span>], <span class="kw-2">&amp;</span><span class="ident">period</span>.<span class="ident">to_be_bytes</span>())<span class="question-mark">?</span>;
+        <span class="comment">// initialize final periods
+        </span>ledger.latest_final_periods.transaction(|tree| {
+            <span class="kw">for </span>(thread, period) <span class="kw">in </span>latest_final_periods.iter().enumerate() {
+                tree.insert(<span class="kw-2">&amp;</span>[thread <span class="kw">as </span>u8], <span class="kw-2">&amp;</span>period.to_be_bytes())<span class="question-mark">?</span>;
             }
             <span class="prelude-val">Ok</span>(())
         })<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">ledger</span>)
+        <span class="prelude-val">Ok</span>(ledger)
     }
 
-    <span class="doccomment">/// Returns the final balance of an address. 0 if the address does not exist.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_final_balance</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">thread</span> <span class="op">=</span> <span class="ident">address</span>.<span class="ident">get_thread</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span>);
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">res</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">ledger_per_thread</span>[<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>].<span class="ident">get</span>(<span class="ident">address</span>.<span class="ident">to_bytes</span>())<span class="question-mark">?</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">LedgerData::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">res</span>)<span class="question-mark">?</span>.<span class="number">0</span>.<span class="ident">balance</span>)
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">Amount::default</span>())
+    <span class="doccomment">/// Returns the final balance of an address. 0 if the address does not exist.
+    </span><span class="kw">pub fn </span>get_final_balance(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Result</span>&lt;Amount&gt; {
+        <span class="kw">let </span>thread = address.get_thread(<span class="self">self</span>.cfg.thread_count);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(res) = <span class="self">self</span>.ledger_per_thread[thread <span class="kw">as </span>usize].get(address.to_bytes())<span class="question-mark">? </span>{
+            <span class="prelude-val">Ok</span>(LedgerData::from_bytes_compact(<span class="kw-2">&amp;</span>res)<span class="question-mark">?</span>.<span class="number">0</span>.balance)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Ok</span>(Amount::default())
         }
     }
 
-    <span class="doccomment">/// Atomically apply a batch of changes to the ledger.</span>
-    <span class="doccomment">/// All changes should occur in one thread.</span>
-    <span class="doccomment">/// Update last final period.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// * If the balance of an address falls exactly to 0, it is removed from the ledger.</span>
-    <span class="doccomment">/// * If the balance of a non-existing address increases, the address is added to the ledger.</span>
-    <span class="doccomment">/// * If we attempt to subtract more than the balance of an address, the transaction is canceled and the function returns an error.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_final_changes</span>(
+    <span class="doccomment">/// Atomically apply a batch of changes to the ledger.
+    /// All changes should occur in one thread.
+    /// Update last final period.
+    ///
+    /// * If the balance of an address falls exactly to 0, it is removed from the ledger.
+    /// * If the balance of a non-existing address increases, the address is added to the ledger.
+    /// * If we attempt to subtract more than the balance of an address, the transaction is canceled and the function returns an error.
+    </span><span class="kw">pub fn </span>apply_final_changes(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">thread</span>: <span class="ident">u8</span>,
-        <span class="ident">changes</span>: <span class="kw-2">&amp;</span><span class="ident">LedgerChanges</span>,
-        <span class="ident">latest_final_period</span>: <span class="ident">u64</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">ledger</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ledger_per_thread</span>.<span class="ident">get</span>(<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="ident">LedgerError::LedgerInconsistency</span>(<span class="macro">format!</span>(<span class="string">&quot;missing ledger for thread {}&quot;</span>, <span class="ident">thread</span>))
+        thread: u8,
+        changes: <span class="kw-2">&amp;</span>LedgerChanges,
+        latest_final_period: u64,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">let </span>ledger = <span class="self">self</span>.ledger_per_thread.get(thread <span class="kw">as </span>usize).ok_or_else(|| {
+            LedgerError::LedgerInconsistency(<span class="macro">format!</span>(<span class="string">&quot;missing ledger for thread {}&quot;</span>, thread))
         })<span class="question-mark">?</span>;
 
-        (<span class="ident">ledger</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">latest_final_periods</span>).<span class="ident">transaction</span>(<span class="op">|</span>(<span class="ident">db</span>, <span class="ident">latest_final_periods_db</span>)<span class="op">|</span> {
-            <span class="kw">for</span> (<span class="ident">address</span>, <span class="ident">change</span>) <span class="kw">in</span> <span class="ident">changes</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
-                <span class="kw">if</span> <span class="ident">address</span>.<span class="ident">get_thread</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">thread</span> {
+        (ledger, <span class="kw-2">&amp;</span><span class="self">self</span>.latest_final_periods).transaction(|(db, latest_final_periods_db)| {
+            <span class="kw">for </span>(address, change) <span class="kw">in </span>changes.<span class="number">0</span>.iter() {
+                <span class="kw">if </span>address.get_thread(<span class="self">self</span>.cfg.thread_count) != thread {
                     <span class="kw">continue</span>;
                 }
-                <span class="kw">let</span> <span class="ident">address_bytes</span> <span class="op">=</span> <span class="ident">address</span>.<span class="ident">to_bytes</span>();
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">data</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">old_bytes</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">db</span>.<span class="ident">get</span>(<span class="ident">address_bytes</span>)<span class="question-mark">?</span> {
-                    <span class="kw">let</span> (<span class="ident">old</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">LedgerData::from_bytes_compact</span>(<span class="ident">old_bytes</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                        <span class="ident">sled::transaction::ConflictableTransactionError::Abort</span>(
-                            <span class="ident">InternalError::TransactionError</span>(<span class="macro">format!</span>(
+                <span class="kw">let </span>address_bytes = address.to_bytes();
+                <span class="kw">let </span><span class="kw-2">mut </span>data = <span class="kw">if let </span><span class="prelude-val">Some</span>(old_bytes) = <span class="kw-2">&amp;</span>db.get(address_bytes)<span class="question-mark">? </span>{
+                    <span class="kw">let </span>(old, <span class="kw">_</span>) = LedgerData::from_bytes_compact(old_bytes).map_err(|err| {
+                        sled::transaction::ConflictableTransactionError::Abort(
+                            InternalError::TransactionError(<span class="macro">format!</span>(
                                 <span class="string">&quot;error deserializing ledger data: {}&quot;</span>,
-                                <span class="ident">err</span>
+                                err
                             )),
                         )
                     })<span class="question-mark">?</span>;
-                    <span class="ident">old</span>
-                } <span class="kw">else</span> {
-                    <span class="comment">// creating new entry</span>
-                    <span class="ident">LedgerData::default</span>()
+                    old
+                } <span class="kw">else </span>{
+                    <span class="comment">// creating new entry
+                    </span>LedgerData::default()
                 };
-                <span class="ident">data</span>.<span class="ident">apply_change</span>(<span class="ident">change</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                    <span class="ident">sled::transaction::ConflictableTransactionError::Abort</span>(
-                        <span class="ident">InternalError::TransactionError</span>(<span class="macro">format!</span>(<span class="string">&quot;error applying change: {}&quot;</span>, <span class="ident">err</span>)),
+                data.apply_change(change).map_err(|err| {
+                    sled::transaction::ConflictableTransactionError::Abort(
+                        InternalError::TransactionError(<span class="macro">format!</span>(<span class="string">&quot;error applying change: {}&quot;</span>, err)),
                     )
                 })<span class="question-mark">?</span>;
-                <span class="comment">// remove entry if nil</span>
-                <span class="kw">if</span> <span class="ident">data</span>.<span class="ident">is_nil</span>() {
-                    <span class="ident">db</span>.<span class="ident">remove</span>(<span class="ident">address_bytes</span>)<span class="question-mark">?</span>;
-                } <span class="kw">else</span> {
-                    <span class="ident">db</span>.<span class="ident">insert</span>(
-                        <span class="ident">address_bytes</span>,
-                        <span class="ident">data</span>.<span class="ident">to_bytes_compact</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                            <span class="ident">sled::transaction::ConflictableTransactionError::Abort</span>(
-                                <span class="ident">InternalError::TransactionError</span>(<span class="macro">format!</span>(
+                <span class="comment">// remove entry if nil
+                </span><span class="kw">if </span>data.is_nil() {
+                    db.remove(address_bytes)<span class="question-mark">?</span>;
+                } <span class="kw">else </span>{
+                    db.insert(
+                        address_bytes,
+                        data.to_bytes_compact().map_err(|err| {
+                            sled::transaction::ConflictableTransactionError::Abort(
+                                InternalError::TransactionError(<span class="macro">format!</span>(
                                     <span class="string">&quot;error serializing ledger data: {}&quot;</span>,
-                                    <span class="ident">err</span>
+                                    err
                                 )),
                             )
                         })<span class="question-mark">?</span>,
                     )<span class="question-mark">?</span>;
                 }
             }
-            <span class="ident">latest_final_periods_db</span>
-                .<span class="ident">insert</span>(<span class="kw-2">&amp;</span>[<span class="ident">thread</span>], <span class="kw-2">&amp;</span><span class="ident">latest_final_period</span>.<span class="ident">to_be_bytes</span>())
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                    <span class="ident">sled::transaction::ConflictableTransactionError::Abort</span>(
-                        <span class="ident">InternalError::TransactionError</span>(<span class="macro">format!</span>(
+            latest_final_periods_db
+                .insert(<span class="kw-2">&amp;</span>[thread], <span class="kw-2">&amp;</span>latest_final_period.to_be_bytes())
+                .map_err(|err| {
+                    sled::transaction::ConflictableTransactionError::Abort(
+                        InternalError::TransactionError(<span class="macro">format!</span>(
                             <span class="string">&quot;error inserting transaction: {}&quot;</span>,
-                            <span class="ident">err</span>
+                            err
                         )),
                     )
                 })<span class="question-mark">?</span>;
@@ -1092,341 +1092,341 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// returns the final periods.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_latest_final_periods</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">latest_final_periods</span>
-            .<span class="ident">transaction</span>(<span class="op">|</span><span class="ident">db</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">usize</span>);
-                <span class="kw">for</span> <span class="ident">thread</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">val</span>) <span class="op">=</span> <span class="ident">db</span>.<span class="ident">get</span>([<span class="ident">thread</span>])<span class="question-mark">?</span> {
-                        <span class="kw">let</span> <span class="ident">latest</span> <span class="op">=</span> <span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">val</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                            <span class="ident">sled::transaction::ConflictableTransactionError::Abort</span>(
-                                <span class="ident">InternalError::TransactionError</span>(<span class="macro">format!</span>(
+    <span class="doccomment">/// returns the final periods.
+    </span><span class="kw">pub fn </span>get_latest_final_periods(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u64&gt;&gt; {
+        <span class="self">self</span>.latest_final_periods
+            .transaction(|db| {
+                <span class="kw">let </span><span class="kw-2">mut </span>res = Vec::with_capacity(<span class="self">self</span>.cfg.thread_count <span class="kw">as </span>usize);
+                <span class="kw">for </span>thread <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.cfg.thread_count {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(val) = db.get([thread])<span class="question-mark">? </span>{
+                        <span class="kw">let </span>latest = array_from_slice(<span class="kw-2">&amp;</span>val).map_err(|err| {
+                            sled::transaction::ConflictableTransactionError::Abort(
+                                InternalError::TransactionError(<span class="macro">format!</span>(
                                     <span class="string">&quot;error getting latest final period for thread: {} {}&quot;</span>,
-                                    <span class="ident">thread</span>, <span class="ident">err</span>
+                                    thread, err
                                 )),
                             )
                         })<span class="question-mark">?</span>;
-                        <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">u64::from_be_bytes</span>(<span class="ident">latest</span>));
-                    } <span class="kw">else</span> {
-                        <span class="comment">// Note: this should never happen,</span>
-                        <span class="comment">// since they are initialized in ::new().</span>
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">sled::transaction::ConflictableTransactionError::Abort</span>(
-                            <span class="ident">InternalError::TransactionError</span>(<span class="macro">format!</span>(
+                        res.push(u64::from_be_bytes(latest));
+                    } <span class="kw">else </span>{
+                        <span class="comment">// Note: this should never happen,
+                        // since they are initialized in ::new().
+                        </span><span class="kw">return </span><span class="prelude-val">Err</span>(sled::transaction::ConflictableTransactionError::Abort(
+                            InternalError::TransactionError(<span class="macro">format!</span>(
                                 <span class="string">&quot;error getting latest final period for thread: {}&quot;</span>,
-                                <span class="ident">thread</span>
+                                thread
                             )),
                         ));
                     }
                 }
-                <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+                <span class="prelude-val">Ok</span>(res)
             })
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">LedgerError::LedgerInconsistency</span>(<span class="string">&quot;Unable to fetch latest final periods.&quot;</span>.<span class="ident">into</span>())
+            .map_err(|<span class="kw">_</span>| {
+                LedgerError::LedgerInconsistency(<span class="string">&quot;Unable to fetch latest final periods.&quot;</span>.into())
             })
     }
 
-    <span class="doccomment">/// To empty the db.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="comment">// Note: this cannot be done transactionally.</span>
-        <span class="kw">for</span> <span class="ident">db</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">ledger_per_thread</span>.<span class="ident">iter</span>() {
-            <span class="ident">db</span>.<span class="ident">clear</span>()<span class="question-mark">?</span>;
+    <span class="doccomment">/// To empty the db.
+    </span><span class="kw">pub fn </span>clear(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="comment">// Note: this cannot be done transactionally.
+        </span><span class="kw">for </span>db <span class="kw">in </span><span class="self">self</span>.ledger_per_thread.iter() {
+            db.clear()<span class="question-mark">?</span>;
         }
-        <span class="self">self</span>.<span class="ident">latest_final_periods</span>.<span class="ident">clear</span>()<span class="question-mark">?</span>;
+        <span class="self">self</span>.latest_final_periods.clear()<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Used for bootstrap.</span>
-    <span class="doccomment">/// Note: this cannot be done transactionally.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read_whole</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsensusLedgerSubset</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">ConsensusLedgerSubset::default</span>();
-        <span class="kw">for</span> <span class="ident">tree</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">ledger_per_thread</span>.<span class="ident">iter</span>() {
-            <span class="kw">for</span> <span class="ident">element</span> <span class="kw">in</span> <span class="ident">tree</span>.<span class="ident">iter</span>() {
-                <span class="kw">let</span> (<span class="ident">addr</span>, <span class="ident">data</span>) <span class="op">=</span> <span class="ident">element</span><span class="question-mark">?</span>;
-                <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">Address::from_bytes</span>(<span class="ident">addr</span>.<span class="ident">as_ref</span>().<span class="ident">try_into</span>()<span class="question-mark">?</span>);
-                <span class="kw">let</span> (<span class="ident">ledger_data</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">LedgerData::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>)<span class="question-mark">?</span>;
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">val</span>) <span class="op">=</span> <span class="ident">res</span>.<span class="number">0</span>.<span class="ident">insert</span>(<span class="ident">address</span>, <span class="ident">ledger_data</span>) {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">LedgerError::LedgerInconsistency</span>(<span class="macro">format!</span>(
+    <span class="doccomment">/// Used for bootstrap.
+    /// Note: this cannot be done transactionally.
+    </span><span class="kw">pub fn </span>read_whole(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;ConsensusLedgerSubset&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res = ConsensusLedgerSubset::default();
+        <span class="kw">for </span>tree <span class="kw">in </span><span class="self">self</span>.ledger_per_thread.iter() {
+            <span class="kw">for </span>element <span class="kw">in </span>tree.iter() {
+                <span class="kw">let </span>(addr, data) = element<span class="question-mark">?</span>;
+                <span class="kw">let </span>address = Address::from_bytes(addr.as_ref().try_into()<span class="question-mark">?</span>);
+                <span class="kw">let </span>(ledger_data, <span class="kw">_</span>) = LedgerData::from_bytes_compact(<span class="kw-2">&amp;</span>data)<span class="question-mark">?</span>;
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(val) = res.<span class="number">0</span>.insert(address, ledger_data) {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(LedgerError::LedgerInconsistency(<span class="macro">format!</span>(
                         <span class="string">&quot;address {:?} twice in ledger&quot;</span>,
-                        <span class="ident">val</span>
+                        val
                     )));
                 }
             }
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+        <span class="prelude-val">Ok</span>(res)
     }
 
-    <span class="doccomment">/// Gets ledger at latest final blocks for `query_addrs`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_final_ledger_subset</span>(
+    <span class="doccomment">/// Gets ledger at latest final blocks for `query_addrs`
+    </span><span class="kw">pub fn </span>get_final_ledger_subset(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">query_addrs</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsensusLedgerSubset</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ledger_per_thread</span>.<span class="ident">transaction</span>(<span class="op">|</span><span class="ident">ledger_per_thread</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">ConsensusLedgerSubset::default</span>();
-            <span class="kw">for</span> <span class="ident">addr</span> <span class="kw">in</span> <span class="ident">query_addrs</span> {
-                <span class="kw">let</span> <span class="ident">thread</span> <span class="op">=</span> <span class="ident">addr</span>.<span class="ident">get_thread</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span>);
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">data_bytes</span>) <span class="op">=</span> <span class="ident">ledger_per_thread</span>[<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>].<span class="ident">get</span>(<span class="ident">addr</span>.<span class="ident">to_bytes</span>())<span class="question-mark">?</span> {
-                    <span class="kw">let</span> (<span class="ident">ledger_data</span>, <span class="kw">_</span>) <span class="op">=</span>
-                        <span class="ident">LedgerData::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">data_bytes</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                            <span class="ident">sled::transaction::ConflictableTransactionError::Abort</span>(
-                                <span class="ident">InternalError::TransactionError</span>(<span class="macro">format!</span>(
+        query_addrs: <span class="kw-2">&amp;</span>Set&lt;Address&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ConsensusLedgerSubset&gt; {
+        <span class="kw">let </span>res = <span class="self">self</span>.ledger_per_thread.transaction(|ledger_per_thread| {
+            <span class="kw">let </span><span class="kw-2">mut </span>data = ConsensusLedgerSubset::default();
+            <span class="kw">for </span>addr <span class="kw">in </span>query_addrs {
+                <span class="kw">let </span>thread = addr.get_thread(<span class="self">self</span>.cfg.thread_count);
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(data_bytes) = ledger_per_thread[thread <span class="kw">as </span>usize].get(addr.to_bytes())<span class="question-mark">? </span>{
+                    <span class="kw">let </span>(ledger_data, <span class="kw">_</span>) =
+                        LedgerData::from_bytes_compact(<span class="kw-2">&amp;</span>data_bytes).map_err(|err| {
+                            sled::transaction::ConflictableTransactionError::Abort(
+                                InternalError::TransactionError(<span class="macro">format!</span>(
                                     <span class="string">&quot;error deserializing ledger data: {}&quot;</span>,
-                                    <span class="ident">err</span>
+                                    err
                                 )),
                             )
                         })<span class="question-mark">?</span>;
-                    <span class="ident">data</span>.<span class="number">0</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">addr</span>, <span class="ident">ledger_data</span>);
-                } <span class="kw">else</span> {
-                    <span class="ident">data</span>.<span class="number">0</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">addr</span>, <span class="ident">LedgerData::default</span>());
+                    data.<span class="number">0</span>.insert(<span class="kw-2">*</span>addr, ledger_data);
+                } <span class="kw">else </span>{
+                    data.<span class="number">0</span>.insert(<span class="kw-2">*</span>addr, LedgerData::default());
                 }
             }
-            <span class="prelude-val">Ok</span>(<span class="ident">data</span>)
+            <span class="prelude-val">Ok</span>(data)
         })<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+        <span class="prelude-val">Ok</span>(res)
     }
 
-    <span class="doccomment">/// Get a part of the ledger</span>
-    <span class="doccomment">/// Used for bootstrap</span>
-    <span class="doccomment">/// Parameters:</span>
-    <span class="doccomment">/// * address: Address to start fetching</span>
-    <span class="doccomment">/// * batch_size: Size of the batch of address to return</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns:</span>
-    <span class="doccomment">/// A subset of the ledger starting at `start_address` and of size `batch_size` or less</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ledger_part</span>(
+    <span class="doccomment">/// Get a part of the ledger
+    /// Used for bootstrap
+    /// Parameters:
+    /// * address: Address to start fetching
+    /// * batch_size: Size of the batch of address to return
+    ///
+    /// Returns:
+    /// A subset of the ledger starting at `start_address` and of size `batch_size` or less
+    </span><span class="kw">pub fn </span>get_ledger_part(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">start_address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-        <span class="ident">subset_size</span>: <span class="ident">usize</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsensusLedgerSubset</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">ConsensusLedgerSubset::default</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">start</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="ident">start_address</span>.<span class="ident">is_none</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">count</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">for</span> <span class="ident">tree</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">ledger_per_thread</span>.<span class="ident">iter</span>() {
-            <span class="kw">for</span> <span class="ident">element</span> <span class="kw">in</span> <span class="ident">tree</span>.<span class="ident">iter</span>() {
-                <span class="kw">let</span> (<span class="ident">addr</span>, <span class="ident">data</span>) <span class="op">=</span> <span class="ident">element</span><span class="question-mark">?</span>;
-                <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">Address::from_bytes</span>(<span class="ident">addr</span>.<span class="ident">as_ref</span>().<span class="ident">try_into</span>()<span class="question-mark">?</span>);
-                <span class="kw">if</span> <span class="ident">start</span> <span class="op">&amp;&amp;</span> <span class="ident">count</span> <span class="op">&lt;</span> <span class="ident">subset_size</span> {
-                    <span class="kw">let</span> (<span class="ident">ledger_data</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">LedgerData::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>)<span class="question-mark">?</span>;
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">val</span>) <span class="op">=</span> <span class="ident">res</span>.<span class="number">0</span>.<span class="ident">insert</span>(<span class="ident">address</span>, <span class="ident">ledger_data</span>) {
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">LedgerError::LedgerInconsistency</span>(<span class="macro">format!</span>(
+        start_address: <span class="prelude-ty">Option</span>&lt;Address&gt;,
+        subset_size: usize,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ConsensusLedgerSubset&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res = ConsensusLedgerSubset::default();
+        <span class="kw">let </span><span class="kw-2">mut </span>start: bool = start_address.is_none();
+        <span class="kw">let </span><span class="kw-2">mut </span>count: usize = <span class="number">0</span>;
+        <span class="kw">for </span>tree <span class="kw">in </span><span class="self">self</span>.ledger_per_thread.iter() {
+            <span class="kw">for </span>element <span class="kw">in </span>tree.iter() {
+                <span class="kw">let </span>(addr, data) = element<span class="question-mark">?</span>;
+                <span class="kw">let </span>address = Address::from_bytes(addr.as_ref().try_into()<span class="question-mark">?</span>);
+                <span class="kw">if </span>start &amp;&amp; count &lt; subset_size {
+                    <span class="kw">let </span>(ledger_data, <span class="kw">_</span>) = LedgerData::from_bytes_compact(<span class="kw-2">&amp;</span>data)<span class="question-mark">?</span>;
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(val) = res.<span class="number">0</span>.insert(address, ledger_data) {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(LedgerError::LedgerInconsistency(<span class="macro">format!</span>(
                             <span class="string">&quot;address {:?} twice in ledger&quot;</span>,
-                            <span class="ident">val</span>
+                            val
                         )));
                     }
-                    <span class="ident">count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+                    count += <span class="number">1</span>;
                 }
-                <span class="kw">if</span> <span class="op">!</span><span class="ident">start</span> {
-                    <span class="ident">start</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">start_address</span> {
-                        <span class="prelude-val">Some</span>(<span class="ident">inner_start_address</span>) <span class="kw">if</span> <span class="ident">inner_start_address</span> <span class="op">==</span> <span class="ident">address</span> =&gt; <span class="bool-val">true</span>,
+                <span class="kw">if </span>!start {
+                    start = <span class="kw">match </span>start_address {
+                        <span class="prelude-val">Some</span>(inner_start_address) <span class="kw">if </span>inner_start_address == address =&gt; <span class="bool-val">true</span>,
                         <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-                        <span class="prelude-val">None</span> =&gt; <span class="bool-val">true</span>,
+                        <span class="prelude-val">None </span>=&gt; <span class="bool-val">true</span>,
                     };
                 }
             }
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+        <span class="prelude-val">Ok</span>(res)
     }
 }
 
-<span class="doccomment">/// address to ledger data map</span>
-<span class="doccomment">/// Only part of a ledger</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusLedgerSubset</span>(<span class="kw">pub</span> <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">LedgerData</span><span class="op">&gt;</span>);
+<span class="doccomment">/// address to ledger data map
+/// Only part of a ledger
+</span><span class="attribute">#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+</span><span class="kw">pub struct </span>ConsensusLedgerSubset(<span class="kw">pub </span>BTreeMap&lt;Address, LedgerData&gt;);
 
-<span class="kw">impl</span> <span class="ident">ConsensusLedgerSubset</span> {
-    <span class="doccomment">/// If subset contains given address</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">contains_key</span>(<span class="ident">address</span>)
+<span class="kw">impl </span>ConsensusLedgerSubset {
+    <span class="doccomment">/// If subset contains given address
+    </span><span class="kw">pub fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address) -&gt; bool {
+        <span class="self">self</span>.<span class="number">0</span>.contains_key(address)
     }
 
-    <span class="doccomment">/// Get the data for given address</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>) -&gt; <span class="ident">LedgerData</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">get</span>(<span class="ident">address</span>).<span class="ident">cloned</span>().<span class="ident">unwrap_or</span>(<span class="ident">LedgerData</span> {
-            <span class="ident">balance</span>: <span class="ident">Amount::default</span>(),
+    <span class="doccomment">/// Get the data for given address
+    </span><span class="kw">pub fn </span>get_data(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address) -&gt; LedgerData {
+        <span class="self">self</span>.<span class="number">0</span>.get(address).cloned().unwrap_or(LedgerData {
+            balance: Amount::default(),
         })
     }
 
-    <span class="doccomment">/// List involved addresses</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_involved_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>()
+    <span class="doccomment">/// List involved addresses
+    </span><span class="kw">pub fn </span>get_involved_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Set&lt;Address&gt; {
+        <span class="self">self</span>.<span class="number">0</span>.keys().copied().collect()
     }
 
-    <span class="doccomment">/// Applies given change to that ledger subset</span>
-    <span class="doccomment">/// note: a failure may still leave the entry modified</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_change</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>, <span class="ident">change</span>: <span class="kw-2">&amp;</span><span class="ident">LedgerChange</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">entry</span>(<span class="kw-2">*</span><span class="ident">addr</span>) {
-            <span class="ident">Entry::Occupied</span>(<span class="kw-2">mut</span> <span class="ident">occ</span>) =&gt; {
-                <span class="ident">occ</span>.<span class="ident">get_mut</span>().<span class="ident">apply_change</span>(<span class="ident">change</span>)<span class="question-mark">?</span>;
-                <span class="kw">if</span> <span class="ident">occ</span>.<span class="ident">get</span>().<span class="ident">is_nil</span>() {
-                    <span class="ident">occ</span>.<span class="ident">remove</span>();
+    <span class="doccomment">/// Applies given change to that ledger subset
+    /// note: a failure may still leave the entry modified
+    </span><span class="kw">pub fn </span>apply_change(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, change: <span class="kw-2">&amp;</span>LedgerChange) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.entry(<span class="kw-2">*</span>addr) {
+            Entry::Occupied(<span class="kw-2">mut </span>occ) =&gt; {
+                occ.get_mut().apply_change(change)<span class="question-mark">?</span>;
+                <span class="kw">if </span>occ.get().is_nil() {
+                    occ.remove();
                 }
             }
-            <span class="ident">Entry::Vacant</span>(<span class="ident">vac</span>) =&gt; {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">LedgerData::default</span>();
-                <span class="ident">res</span>.<span class="ident">apply_change</span>(<span class="ident">change</span>)<span class="question-mark">?</span>;
-                <span class="kw">if</span> <span class="op">!</span><span class="ident">res</span>.<span class="ident">is_nil</span>() {
-                    <span class="ident">vac</span>.<span class="ident">insert</span>(<span class="ident">res</span>);
+            Entry::Vacant(vac) =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>res = LedgerData::default();
+                res.apply_change(change)<span class="question-mark">?</span>;
+                <span class="kw">if </span>!res.is_nil() {
+                    vac.insert(res);
                 }
             }
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// apply ledger changes</span>
-    <span class="doccomment">///  note: a failure may still leave the entry modified</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_changes</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">changes</span>: <span class="kw-2">&amp;</span><span class="ident">LedgerChanges</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">for</span> (<span class="ident">addr</span>, <span class="ident">change</span>) <span class="kw">in</span> <span class="ident">changes</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
-            <span class="self">self</span>.<span class="ident">apply_change</span>(<span class="ident">addr</span>, <span class="ident">change</span>)<span class="question-mark">?</span>;
+    <span class="doccomment">/// apply ledger changes
+    ///  note: a failure may still leave the entry modified
+    </span><span class="kw">pub fn </span>apply_changes(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: <span class="kw-2">&amp;</span>LedgerChanges) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">for </span>(addr, change) <span class="kw">in </span>changes.<span class="number">0</span>.iter() {
+            <span class="self">self</span>.apply_change(addr, change)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Applies thread changes change to that ledger subset</span>
-    <span class="doccomment">/// note: a failure may still leave the entry modified</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">chain</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">changes</span>: <span class="kw-2">&amp;</span><span class="ident">LedgerChanges</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">for</span> (<span class="ident">addr</span>, <span class="ident">change</span>) <span class="kw">in</span> <span class="ident">changes</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
-            <span class="self">self</span>.<span class="ident">apply_change</span>(<span class="ident">addr</span>, <span class="ident">change</span>)<span class="question-mark">?</span>;
+    <span class="doccomment">/// Applies thread changes change to that ledger subset
+    /// note: a failure may still leave the entry modified
+    </span><span class="kw">pub fn </span>chain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: <span class="kw-2">&amp;</span>LedgerChanges) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">for </span>(addr, change) <span class="kw">in </span>changes.<span class="number">0</span>.iter() {
+            <span class="self">self</span>.apply_change(addr, change)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// merge another ledger subset into self, overwriting existing data</span>
-    <span class="doccomment">/// address that are in not other are removed from self</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sync_from</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addrs</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>, <span class="kw-2">mut</span> <span class="ident">other</span>: <span class="ident">ConsensusLedgerSubset</span>) {
-        <span class="kw">for</span> <span class="ident">addr</span> <span class="kw">in</span> <span class="ident">addrs</span>.<span class="ident">iter</span>() {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">new_val</span>) <span class="op">=</span> <span class="ident">other</span>.<span class="number">0</span>.<span class="ident">remove</span>(<span class="ident">addr</span>) {
-                <span class="self">self</span>.<span class="number">0</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">addr</span>, <span class="ident">new_val</span>);
-            } <span class="kw">else</span> {
-                <span class="self">self</span>.<span class="number">0</span>.<span class="ident">remove</span>(<span class="ident">addr</span>);
+    <span class="doccomment">/// merge another ledger subset into self, overwriting existing data
+    /// address that are in not other are removed from self
+    </span><span class="kw">pub fn </span>sync_from(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>Set&lt;Address&gt;, <span class="kw-2">mut </span>other: ConsensusLedgerSubset) {
+        <span class="kw">for </span>addr <span class="kw">in </span>addrs.iter() {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(new_val) = other.<span class="number">0</span>.remove(addr) {
+                <span class="self">self</span>.<span class="number">0</span>.insert(<span class="kw-2">*</span>addr, new_val);
+            } <span class="kw">else </span>{
+                <span class="self">self</span>.<span class="number">0</span>.remove(addr);
             }
         }
     }
 
-    <span class="doccomment">/// clone subset</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clone_subset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addrs</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">ConsensusLedgerSubset</span>(
-            <span class="self">self</span>.<span class="number">0</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">a</span>, <span class="ident">dta</span>)<span class="op">|</span> {
-                    <span class="kw">if</span> <span class="ident">addrs</span>.<span class="ident">contains</span>(<span class="ident">a</span>) {
-                        <span class="prelude-val">Some</span>((<span class="kw-2">*</span><span class="ident">a</span>, <span class="kw-2">*</span><span class="ident">dta</span>))
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">None</span>
-                    }
+    <span class="doccomment">/// clone subset
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">pub fn </span>clone_subset(<span class="kw-2">&amp;</span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>Set&lt;Address&gt;) -&gt; <span class="self">Self </span>{
+        ConsensusLedgerSubset(
+            <span class="self">self</span>.<span class="number">0
+                </span>.iter()
+                .filter_map(|(a, dta)| {
+                    <span class="kw">if </span>addrs.contains(a) {
+                        <span class="prelude-val">Some</span>((<span class="kw-2">*</span>a, <span class="kw-2">*</span>dta))
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">None
+                    </span>}
                 })
-                .<span class="ident">collect</span>(),
+                .collect(),
         )
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Ledger</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ConsensusLedgerSubset</span> {
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">GraphError</span>;
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; TryFrom&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Ledger&gt; <span class="kw">for </span>ConsensusLedgerSubset {
+    <span class="kw">type </span>Error = GraphError;
 
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Ledger</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">ConsensusLedgerSubset</span>(
-            <span class="ident">value</span>
-                .<span class="ident">read_whole</span>()<span class="question-mark">?</span>
-                .<span class="number">0</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> (<span class="kw-2">*</span><span class="ident">k</span>, <span class="kw-2">*</span><span class="ident">v</span>))
-                .<span class="ident">collect</span>(),
+    <span class="kw">fn </span>try_from(value: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Ledger) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+        <span class="prelude-val">Ok</span>(ConsensusLedgerSubset(
+            value
+                .read_whole()<span class="question-mark">?
+                </span>.<span class="number">0
+                </span>.iter()
+                .map(|(k, v)| (<span class="kw-2">*</span>k, <span class="kw-2">*</span>v))
+                .collect(),
         ))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">ConsensusLedgerSubset</span> {
-    <span class="doccomment">/// ## Example</span>
-    <span class="doccomment">/// ```rust</span>
-    <span class="doccomment">/// # use massa_models::{SerializeCompact, DeserializeCompact, SerializationContext, Address, Amount};</span>
-    <span class="doccomment">/// # use std::str::FromStr;</span>
-    <span class="doccomment">/// # use massa_models::ledger_models::LedgerData;</span>
-    <span class="doccomment">/// # use massa_graph::ledger::ConsensusLedgerSubset;</span>
-    <span class="doccomment">/// # let ledger = ConsensusLedgerSubset(vec![</span>
-    <span class="doccomment">/// #   (Address::from_bs58_check(&quot;2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi&quot;.into()).unwrap(), LedgerData::new(Amount::from_str(&quot;1022&quot;).unwrap())),</span>
-    <span class="doccomment">/// #   (Address::from_bs58_check(&quot;2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q&quot;.into()).unwrap(), LedgerData::new(Amount::from_str(&quot;1020&quot;).unwrap())),</span>
-    <span class="doccomment">/// # ].into_iter().collect());</span>
-    <span class="doccomment">/// # massa_models::init_serialization_context(massa_models::SerializationContext::default());</span>
-    <span class="doccomment">/// let bytes = ledger.clone().to_bytes_compact().unwrap();</span>
-    <span class="doccomment">/// let (res, _) = ConsensusLedgerSubset::from_bytes_compact(&amp;bytes).unwrap();</span>
-    <span class="doccomment">/// for (address, data) in &amp;ledger.0 {</span>
-    <span class="doccomment">///    assert!(res.0.iter().filter(|(addr, dta)| &amp;address == addr &amp;&amp; dta.to_bytes_compact().unwrap() == data.to_bytes_compact().unwrap()).count() == 1)</span>
-    <span class="doccomment">/// }</span>
-    <span class="doccomment">/// assert_eq!(ledger.0.len(), res.0.len());</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">massa_models::ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+<span class="kw">impl </span>SerializeCompact <span class="kw">for </span>ConsensusLedgerSubset {
+    <span class="doccomment">/// ## Example
+    /// ```rust
+    /// # use massa_models::{SerializeCompact, DeserializeCompact, SerializationContext, Address, Amount};
+    /// # use std::str::FromStr;
+    /// # use massa_models::ledger_models::LedgerData;
+    /// # use massa_graph::ledger::ConsensusLedgerSubset;
+    /// # let ledger = ConsensusLedgerSubset(vec![
+    /// #   (Address::from_bs58_check(&quot;2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi&quot;.into()).unwrap(), LedgerData::new(Amount::from_str(&quot;1022&quot;).unwrap())),
+    /// #   (Address::from_bs58_check(&quot;2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q&quot;.into()).unwrap(), LedgerData::new(Amount::from_str(&quot;1020&quot;).unwrap())),
+    /// # ].into_iter().collect());
+    /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
+    /// let bytes = ledger.clone().to_bytes_compact().unwrap();
+    /// let (res, _) = ConsensusLedgerSubset::from_bytes_compact(&amp;bytes).unwrap();
+    /// for (address, data) in &amp;ledger.0 {
+    ///    assert!(res.0.iter().filter(|(addr, dta)| &amp;address == addr &amp;&amp; dta.to_bytes_compact().unwrap() == data.to_bytes_compact().unwrap()).count() == 1)
+    /// }
+    /// assert_eq!(ledger.0.len(), res.0.len());
+    /// ```
+    </span><span class="kw">fn </span>to_bytes_compact(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, massa_models::ModelsError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;u8&gt; = Vec::new();
 
-        <span class="kw">let</span> <span class="ident">entry_count</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-            <span class="ident">massa_models::ModelsError::SerializeError</span>(<span class="macro">format!</span>(
+        <span class="kw">let </span>entry_count: u64 = <span class="self">self</span>.<span class="number">0</span>.len().try_into().map_err(|err| {
+            massa_models::ModelsError::SerializeError(<span class="macro">format!</span>(
                 <span class="string">&quot;too many entries in ConsensusLedgerSubset: {}&quot;</span>,
-                <span class="ident">err</span>
+                err
             ))
         })<span class="question-mark">?</span>;
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">entry_count</span>.<span class="ident">to_varint_bytes</span>());
-        <span class="kw">for</span> (<span class="ident">address</span>, <span class="ident">data</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">address</span>.<span class="ident">to_bytes</span>());
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
+        res.extend(entry_count.to_varint_bytes());
+        <span class="kw">for </span>(address, data) <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.iter() {
+            res.extend(address.to_bytes());
+            res.extend(<span class="kw-2">&amp;</span>data.to_bytes_compact()<span class="question-mark">?</span>);
         }
 
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+        <span class="prelude-val">Ok</span>(res)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">ConsensusLedgerSubset</span> {
-    <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">massa_models::ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0usize</span>;
+<span class="kw">impl </span>DeserializeCompact <span class="kw">for </span>ConsensusLedgerSubset {
+    <span class="kw">fn </span>from_bytes_compact(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), massa_models::ModelsError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="number">0usize</span>;
 
-        <span class="kw">let</span> (<span class="ident">entry_count</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u64::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-        <span class="comment">// TODO: add entry_count checks ... see #1200</span>
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
+        <span class="kw">let </span>(entry_count, delta) = u64::from_varint_bytes(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+        <span class="comment">// TODO: add entry_count checks ... see #1200
+        </span>cursor += delta;
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ledger_subset</span> <span class="op">=</span> <span class="ident">ConsensusLedgerSubset</span>(<span class="ident">BTreeMap::new</span>());
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">entry_count</span> {
-            <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">Address::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
-            <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">ADDRESS_SIZE_BYTES</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>ledger_subset = ConsensusLedgerSubset(BTreeMap::new());
+        <span class="kw">for _ in </span><span class="number">0</span>..entry_count {
+            <span class="kw">let </span>address = Address::from_bytes(<span class="kw-2">&amp;</span>array_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>);
+            cursor += ADDRESS_SIZE_BYTES;
 
-            <span class="kw">let</span> (<span class="ident">data</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">LedgerData::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-            <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
+            <span class="kw">let </span>(data, delta) = LedgerData::from_bytes_compact(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+            cursor += delta;
 
-            <span class="ident">ledger_subset</span>.<span class="number">0</span>.<span class="ident">insert</span>(<span class="ident">address</span>, <span class="ident">data</span>);
+            ledger_subset.<span class="number">0</span>.insert(address, data);
         }
 
-        <span class="prelude-val">Ok</span>((<span class="ident">ledger_subset</span>, <span class="ident">cursor</span>))
+        <span class="prelude-val">Ok</span>((ledger_subset, cursor))
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span>std::str::FromStr;
 
-    <span class="kw">use</span> <span class="ident">serial_test::serial</span>;
+    <span class="kw">use </span>serial_test::serial;
 
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="attribute">#[<span class="ident">serial</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_ledger_change_chain</span>() {
-        <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">v1</span> <span class="kw">in</span> <span class="kw-2">&amp;</span>[<span class="op">-</span><span class="number">100i32</span>, <span class="op">-</span><span class="number">10</span>, <span class="number">0</span>, <span class="number">10</span>, <span class="number">100</span>] {
-            <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">v2</span> <span class="kw">in</span> <span class="kw-2">&amp;</span>[<span class="op">-</span><span class="number">100i32</span>, <span class="op">-</span><span class="number">10</span>, <span class="number">0</span>, <span class="number">10</span>, <span class="number">100</span>] {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">LedgerChange</span> {
-                    <span class="ident">balance_increment</span>: (<span class="ident">v1</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">0</span>),
-                    <span class="ident">balance_delta</span>: <span class="ident">Amount::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">v1</span>.<span class="ident">abs</span>().<span class="ident">to_string</span>()).<span class="ident">unwrap</span>(),
+    <span class="attribute">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_ledger_change_chain() {
+        <span class="kw">for </span><span class="kw-2">&amp;</span>v1 <span class="kw">in </span><span class="kw-2">&amp;</span>[-<span class="number">100i32</span>, -<span class="number">10</span>, <span class="number">0</span>, <span class="number">10</span>, <span class="number">100</span>] {
+            <span class="kw">for </span><span class="kw-2">&amp;</span>v2 <span class="kw">in </span><span class="kw-2">&amp;</span>[-<span class="number">100i32</span>, -<span class="number">10</span>, <span class="number">0</span>, <span class="number">10</span>, <span class="number">100</span>] {
+                <span class="kw">let </span><span class="kw-2">mut </span>res = LedgerChange {
+                    balance_increment: (v1 &gt;= <span class="number">0</span>),
+                    balance_delta: Amount::from_str(<span class="kw-2">&amp;</span>v1.abs().to_string()).unwrap(),
                 };
-                <span class="ident">res</span>.<span class="ident">chain</span>(<span class="kw-2">&amp;</span><span class="ident">LedgerChange</span> {
-                    <span class="ident">balance_increment</span>: (<span class="ident">v2</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">0</span>),
-                    <span class="ident">balance_delta</span>: <span class="ident">Amount::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">v2</span>.<span class="ident">abs</span>().<span class="ident">to_string</span>()).<span class="ident">unwrap</span>(),
+                res.chain(<span class="kw-2">&amp;</span>LedgerChange {
+                    balance_increment: (v2 &gt;= <span class="number">0</span>),
+                    balance_delta: Amount::from_str(<span class="kw-2">&amp;</span>v2.abs().to_string()).unwrap(),
                 })
-                .<span class="ident">unwrap</span>();
-                <span class="kw">let</span> <span class="ident">expect</span>: <span class="ident">i32</span> <span class="op">=</span> <span class="ident">v1</span> <span class="op">+</span> <span class="ident">v2</span>;
-                <span class="macro">assert_eq!</span>(<span class="ident">res</span>.<span class="ident">balance_increment</span>, (<span class="ident">expect</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">0</span>));
+                .unwrap();
+                <span class="kw">let </span>expect: i32 = v1 + v2;
+                <span class="macro">assert_eq!</span>(res.balance_increment, (expect &gt;= <span class="number">0</span>));
                 <span class="macro">assert_eq!</span>(
-                    <span class="ident">res</span>.<span class="ident">balance_delta</span>,
-                    <span class="ident">Amount::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">expect</span>.<span class="ident">abs</span>().<span class="ident">to_string</span>()).<span class="ident">unwrap</span>()
+                    res.balance_delta,
+                    Amount::from_str(<span class="kw-2">&amp;</span>expect.abs().to_string()).unwrap()
                 );
             }
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

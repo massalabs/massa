@@ -106,113 +106,113 @@
 <span id="106">106</span>
 <span id="107">107</span>
 <span id="108">108</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-<span class="kw">mod</span> <span class="ident">types</span> {
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::test_exports::mock_establisher</span>;
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</span><span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+</span><span class="kw">mod </span>types {
+    <span class="kw">use </span><span class="kw">crate</span>::test_exports::mock_establisher;
 
-    <span class="doccomment">/// read half of the duplex stream</span>
-    <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">ReadHalf</span> <span class="op">=</span> <span class="ident">mock_establisher::ReadHalf</span>;
-    <span class="doccomment">/// write half of the duplex stream</span>
-    <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">WriteHalf</span> <span class="op">=</span> <span class="ident">mock_establisher::WriteHalf</span>;
-    <span class="doccomment">/// connection listener</span>
-    <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">Listener</span> <span class="op">=</span> <span class="ident">mock_establisher::MockListener</span>;
-    <span class="doccomment">/// connection establisher</span>
-    <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">Establisher</span> <span class="op">=</span> <span class="ident">mock_establisher::MockEstablisher</span>;
+    <span class="doccomment">/// read half of the duplex stream
+    </span><span class="kw">pub type </span>ReadHalf = mock_establisher::ReadHalf;
+    <span class="doccomment">/// write half of the duplex stream
+    </span><span class="kw">pub type </span>WriteHalf = mock_establisher::WriteHalf;
+    <span class="doccomment">/// connection listener
+    </span><span class="kw">pub type </span>Listener = mock_establisher::MockListener;
+    <span class="doccomment">/// connection establisher
+    </span><span class="kw">pub type </span>Establisher = mock_establisher::MockEstablisher;
 }
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>))]</span>
-<span class="kw">mod</span> <span class="ident">types</span> {
-    <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
-    <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">io</span>, <span class="ident">net::SocketAddr</span>};
-    <span class="kw">use</span> <span class="ident">tokio</span>::{
-        <span class="ident">net</span>::{<span class="ident">TcpListener</span>, <span class="ident">TcpStream</span>},
-        <span class="ident">time::timeout</span>,
+<span class="attribute">#[cfg(not(feature = <span class="string">&quot;testing&quot;</span>))]
+</span><span class="kw">mod </span>types {
+    <span class="kw">use </span>massa_time::MassaTime;
+    <span class="kw">use </span>std::{io, net::SocketAddr};
+    <span class="kw">use </span>tokio::{
+        net::{TcpListener, TcpStream},
+        time::timeout,
     };
 
-    <span class="doccomment">/// read half of the TCP stream</span>
-    <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">ReadHalf</span> <span class="op">=</span> <span class="ident">tokio::net::tcp::OwnedReadHalf</span>;
-    <span class="doccomment">/// Write half of the TCP stream</span>
-    <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">WriteHalf</span> <span class="op">=</span> <span class="ident">tokio::net::tcp::OwnedWriteHalf</span>;
-    <span class="doccomment">/// Connection listener</span>
-    <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">Listener</span> <span class="op">=</span> <span class="ident">DefaultListener</span>;
-    <span class="doccomment">/// Connection establisher</span>
-    <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">Establisher</span> <span class="op">=</span> <span class="ident">DefaultEstablisher</span>;
+    <span class="doccomment">/// read half of the TCP stream
+    </span><span class="kw">pub type </span>ReadHalf = tokio::net::tcp::OwnedReadHalf;
+    <span class="doccomment">/// Write half of the TCP stream
+    </span><span class="kw">pub type </span>WriteHalf = tokio::net::tcp::OwnedWriteHalf;
+    <span class="doccomment">/// Connection listener
+    </span><span class="kw">pub type </span>Listener = DefaultListener;
+    <span class="doccomment">/// Connection establisher
+    </span><span class="kw">pub type </span>Establisher = DefaultEstablisher;
 
-    <span class="doccomment">/// The listener we are using</span>
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DefaultListener</span>(<span class="ident">TcpListener</span>);
+    <span class="doccomment">/// The listener we are using
+    </span><span class="attribute">#[derive(Debug)]
+    </span><span class="kw">pub struct </span>DefaultListener(TcpListener);
 
-    <span class="kw">impl</span> <span class="ident">DefaultListener</span> {
-        <span class="doccomment">/// Accepts a new incoming connection from this listener.</span>
-        <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">accept</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span>(<span class="ident">ReadHalf</span>, <span class="ident">WriteHalf</span>, <span class="ident">SocketAddr</span>)<span class="op">&gt;</span> {
-            <span class="comment">// accept</span>
-            <span class="kw">let</span> (<span class="ident">sock</span>, <span class="kw-2">mut</span> <span class="ident">remote_addr</span>) <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">accept</span>().<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="comment">// normalize IP</span>
-            <span class="ident">remote_addr</span>.<span class="ident">set_ip</span>(<span class="ident">remote_addr</span>.<span class="ident">ip</span>().<span class="ident">to_canonical</span>());
-            <span class="comment">// split into read half and write half</span>
-            <span class="kw">let</span> (<span class="ident">read_half</span>, <span class="ident">write_half</span>) <span class="op">=</span> <span class="ident">sock</span>.<span class="ident">into_split</span>();
-            <span class="prelude-val">Ok</span>((<span class="ident">read_half</span>, <span class="ident">write_half</span>, <span class="ident">remote_addr</span>))
+    <span class="kw">impl </span>DefaultListener {
+        <span class="doccomment">/// Accepts a new incoming connection from this listener.
+        </span><span class="kw">pub async fn </span>accept(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; io::Result&lt;(ReadHalf, WriteHalf, SocketAddr)&gt; {
+            <span class="comment">// accept
+            </span><span class="kw">let </span>(sock, <span class="kw-2">mut </span>remote_addr) = <span class="self">self</span>.<span class="number">0</span>.accept().<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="comment">// normalize IP
+            </span>remote_addr.set_ip(remote_addr.ip().to_canonical());
+            <span class="comment">// split into read half and write half
+            </span><span class="kw">let </span>(read_half, write_half) = sock.into_split();
+            <span class="prelude-val">Ok</span>((read_half, write_half, remote_addr))
         }
     }
 
-    <span class="doccomment">/// Initiates a connection with given timeout in milliseconds</span>
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DefaultConnector</span>(<span class="ident">MassaTime</span>);
+    <span class="doccomment">/// Initiates a connection with given timeout in milliseconds
+    </span><span class="attribute">#[derive(Debug)]
+    </span><span class="kw">pub struct </span>DefaultConnector(MassaTime);
 
-    <span class="kw">impl</span> <span class="ident">DefaultConnector</span> {
-        <span class="doccomment">/// Tries to connect to a address</span>
-        <span class="doccomment">///</span>
-        <span class="doccomment">/// # Argument</span>
-        <span class="doccomment">/// * `addr`: `SocketAddr` we are trying to connect to.</span>
-        <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">connect</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addr</span>: <span class="ident">SocketAddr</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span>(<span class="ident">ReadHalf</span>, <span class="ident">WriteHalf</span>)<span class="op">&gt;</span> {
-            <span class="kw">match</span> <span class="ident">timeout</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">to_duration</span>(), <span class="ident">TcpStream::connect</span>(<span class="ident">addr</span>)).<span class="kw">await</span> {
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="ident">sock</span>)) =&gt; {
-                    <span class="kw">let</span> (<span class="ident">reader</span>, <span class="ident">writer</span>) <span class="op">=</span> <span class="ident">sock</span>.<span class="ident">into_split</span>();
-                    <span class="prelude-val">Ok</span>((<span class="ident">reader</span>, <span class="ident">writer</span>))
+    <span class="kw">impl </span>DefaultConnector {
+        <span class="doccomment">/// Tries to connect to a address
+        ///
+        /// # Argument
+        /// * `addr`: `SocketAddr` we are trying to connect to.
+        </span><span class="kw">pub async fn </span>connect(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: SocketAddr) -&gt; io::Result&lt;(ReadHalf, WriteHalf)&gt; {
+            <span class="kw">match </span>timeout(<span class="self">self</span>.<span class="number">0</span>.to_duration(), TcpStream::connect(addr)).<span class="kw">await </span>{
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(sock)) =&gt; {
+                    <span class="kw">let </span>(reader, writer) = sock.into_split();
+                    <span class="prelude-val">Ok</span>((reader, writer))
                 }
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">io::Error::new</span>(<span class="ident">io::ErrorKind::TimedOut</span>, <span class="ident">e</span>)),
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="prelude-val">Err</span>(e),
+                <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(io::Error::new(io::ErrorKind::TimedOut, e)),
             }
         }
     }
 
-    <span class="doccomment">/// Establishes a connection</span>
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DefaultEstablisher</span>;
+    <span class="doccomment">/// Establishes a connection
+    </span><span class="attribute">#[derive(Debug)]
+    </span><span class="kw">pub struct </span>DefaultEstablisher;
 
-    <span class="kw">impl</span> <span class="ident">DefaultEstablisher</span> {
-        <span class="doccomment">/// Creates an Establisher.</span>
-        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-            <span class="ident">DefaultEstablisher</span> {}
+    <span class="kw">impl </span>DefaultEstablisher {
+        <span class="doccomment">/// Creates an Establisher.
+        </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+            DefaultEstablisher {}
         }
 
-        <span class="doccomment">/// Gets the associated listener</span>
-        <span class="doccomment">///</span>
-        <span class="doccomment">/// # Argument</span>
-        <span class="doccomment">/// * `addr`: `SocketAddr` we want to bind to.</span>
-        <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_listener</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addr</span>: <span class="ident">SocketAddr</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">DefaultListener</span><span class="op">&gt;</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">DefaultListener</span>(<span class="ident">TcpListener::bind</span>(<span class="ident">addr</span>).<span class="kw">await</span><span class="question-mark">?</span>))
+        <span class="doccomment">/// Gets the associated listener
+        ///
+        /// # Argument
+        /// * `addr`: `SocketAddr` we want to bind to.
+        </span><span class="kw">pub async fn </span>get_listener(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: SocketAddr) -&gt; io::Result&lt;DefaultListener&gt; {
+            <span class="prelude-val">Ok</span>(DefaultListener(TcpListener::bind(addr).<span class="kw">await</span><span class="question-mark">?</span>))
         }
 
-        <span class="doccomment">/// Get the connector with associated timeout</span>
-        <span class="doccomment">///</span>
-        <span class="doccomment">/// # Argument</span>
-        <span class="doccomment">/// *` timeout_duration`: timeout duration in milliseconds</span>
-        <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_connector</span>(
-            <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-            <span class="ident">timeout_duration</span>: <span class="ident">MassaTime</span>,
-        ) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">DefaultConnector</span><span class="op">&gt;</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">DefaultConnector</span>(<span class="ident">timeout_duration</span>))
+        <span class="doccomment">/// Get the connector with associated timeout
+        ///
+        /// # Argument
+        /// *` timeout_duration`: timeout duration in milliseconds
+        </span><span class="kw">pub async fn </span>get_connector(
+            <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+            timeout_duration: MassaTime,
+        ) -&gt; io::Result&lt;DefaultConnector&gt; {
+            <span class="prelude-val">Ok</span>(DefaultConnector(timeout_duration))
         }
     }
 
-    <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">DefaultEstablisher</span> {
-        <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-            <span class="ident"><span class="self">Self</span>::new</span>()
+    <span class="kw">impl </span>Default <span class="kw">for </span>DefaultEstablisher {
+        <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+            <span class="self">Self</span>::new()
         }
     }
 }
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">types</span>::<span class="kw-2">*</span>;
+<span class="kw">pub use </span>types::<span class="kw-2">*</span>;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

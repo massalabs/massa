@@ -59,66 +59,66 @@
 <span id="59">59</span>
 <span id="60">60</span>
 <span id="61">61</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! Build here the default node settings from the configuration file toml</span>
-<span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
+</span><span class="doccomment">//! Build here the default node settings from the configuration file toml
+</span><span class="kw">use </span>std::path::PathBuf;
 
-<span class="kw">use</span> <span class="ident">massa_api::APISettings</span>;
-<span class="kw">use</span> <span class="ident">massa_bootstrap::BootstrapSettings</span>;
-<span class="kw">use</span> <span class="ident">massa_consensus_exports::ConsensusSettings</span>;
-<span class="kw">use</span> <span class="ident">massa_models::constants</span>::{<span class="ident">build_massa_settings</span>, <span class="ident">OPERATION_VALIDITY_PERIODS</span>, <span class="ident">THREAD_COUNT</span>};
-<span class="kw">use</span> <span class="ident">massa_network_exports::NetworkSettings</span>;
-<span class="kw">use</span> <span class="ident">massa_pool</span>::{<span class="ident">PoolConfig</span>, <span class="ident">PoolSettings</span>};
-<span class="kw">use</span> <span class="ident">massa_protocol_exports::ProtocolSettings</span>;
-<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
-<span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
+<span class="kw">use </span>massa_api::APISettings;
+<span class="kw">use </span>massa_bootstrap::BootstrapSettings;
+<span class="kw">use </span>massa_consensus_exports::ConsensusSettings;
+<span class="kw">use </span>massa_models::constants::{build_massa_settings, OPERATION_VALIDITY_PERIODS, THREAD_COUNT};
+<span class="kw">use </span>massa_network_exports::NetworkSettings;
+<span class="kw">use </span>massa_pool::{PoolConfig, PoolSettings};
+<span class="kw">use </span>massa_protocol_exports::ProtocolSettings;
+<span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>serde::Deserialize;
 
-<span class="macro">lazy_static::lazy_static!</span> {
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">SETTINGS</span>: <span class="ident">Settings</span> <span class="op">=</span> <span class="ident">build_massa_settings</span>(<span class="string">&quot;massa-node&quot;</span>, <span class="string">&quot;MASSA_NODE&quot;</span>);
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">POOL_CONFIG</span>: <span class="ident">PoolConfig</span> <span class="op">=</span> <span class="ident">PoolConfig</span> {
-        <span class="ident">settings</span>: <span class="ident">SETTINGS</span>.<span class="ident">pool</span>,
-        <span class="ident">thread_count</span>: <span class="ident">THREAD_COUNT</span>,
-        <span class="ident">operation_validity_periods</span>: <span class="ident">OPERATION_VALIDITY_PERIODS</span>
+<span class="macro">lazy_static::lazy_static! </span>{
+    <span class="kw">pub static </span><span class="kw-2">ref </span>SETTINGS: Settings = build_massa_settings(<span class="string">&quot;massa-node&quot;</span>, <span class="string">&quot;MASSA_NODE&quot;</span>);
+    <span class="kw">pub static </span><span class="kw-2">ref </span>POOL_CONFIG: PoolConfig = PoolConfig {
+        settings: SETTINGS.pool,
+        thread_count: THREAD_COUNT,
+        operation_validity_periods: OPERATION_VALIDITY_PERIODS
     };
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LoggingSettings</span> {
-    <span class="kw">pub</span> <span class="ident">level</span>: <span class="ident">usize</span>,
+<span class="attribute">#[derive(Debug, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>LoggingSettings {
+    <span class="kw">pub </span>level: usize,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExecutionSettings</span> {
-    <span class="kw">pub</span> <span class="ident">max_final_events</span>: <span class="ident">usize</span>,
-    <span class="kw">pub</span> <span class="ident">readonly_queue_length</span>: <span class="ident">usize</span>,
-    <span class="kw">pub</span> <span class="ident">cursor_delay</span>: <span class="ident">MassaTime</span>,
+<span class="attribute">#[derive(Clone, Debug, Deserialize)]
+</span><span class="kw">pub struct </span>ExecutionSettings {
+    <span class="kw">pub </span>max_final_events: usize,
+    <span class="kw">pub </span>readonly_queue_length: usize,
+    <span class="kw">pub </span>cursor_delay: MassaTime,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerSettings</span> {
-    <span class="kw">pub</span> <span class="ident">initial_sce_ledger_path</span>: <span class="ident">PathBuf</span>,
-    <span class="kw">pub</span> <span class="ident">disk_ledger_path</span>: <span class="ident">PathBuf</span>,
-    <span class="kw">pub</span> <span class="ident">final_history_length</span>: <span class="ident">usize</span>,
+<span class="attribute">#[derive(Clone, Debug, Deserialize)]
+</span><span class="kw">pub struct </span>LedgerSettings {
+    <span class="kw">pub </span>initial_sce_ledger_path: PathBuf,
+    <span class="kw">pub </span>disk_ledger_path: PathBuf,
+    <span class="kw">pub </span>final_history_length: usize,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Settings</span> {
-    <span class="kw">pub</span> <span class="ident">logging</span>: <span class="ident">LoggingSettings</span>,
-    <span class="kw">pub</span> <span class="ident">protocol</span>: <span class="ident">ProtocolSettings</span>,
-    <span class="kw">pub</span> <span class="ident">network</span>: <span class="ident">NetworkSettings</span>,
-    <span class="kw">pub</span> <span class="ident">consensus</span>: <span class="ident">ConsensusSettings</span>,
-    <span class="kw">pub</span> <span class="ident">api</span>: <span class="ident">APISettings</span>,
-    <span class="kw">pub</span> <span class="ident">bootstrap</span>: <span class="ident">BootstrapSettings</span>,
-    <span class="kw">pub</span> <span class="ident">pool</span>: <span class="ident">PoolSettings</span>,
-    <span class="kw">pub</span> <span class="ident">execution</span>: <span class="ident">ExecutionSettings</span>,
-    <span class="kw">pub</span> <span class="ident">ledger</span>: <span class="ident">LedgerSettings</span>,
+<span class="attribute">#[derive(Debug, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>Settings {
+    <span class="kw">pub </span>logging: LoggingSettings,
+    <span class="kw">pub </span>protocol: ProtocolSettings,
+    <span class="kw">pub </span>network: NetworkSettings,
+    <span class="kw">pub </span>consensus: ConsensusSettings,
+    <span class="kw">pub </span>api: APISettings,
+    <span class="kw">pub </span>bootstrap: BootstrapSettings,
+    <span class="kw">pub </span>pool: PoolSettings,
+    <span class="kw">pub </span>execution: ExecutionSettings,
+    <span class="kw">pub </span>ledger: LedgerSettings,
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="attribute">#[<span class="ident">test</span>]</span>
-<span class="kw">fn</span> <span class="ident">test_load_node_config</span>() {
-    <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">SETTINGS</span>;
+<span class="attribute">#[cfg(test)]
+#[test]
+</span><span class="kw">fn </span>test_load_node_config() {
+    <span class="kw">let _ </span>= <span class="kw-2">*</span>SETTINGS;
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

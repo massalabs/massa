@@ -269,276 +269,276 @@
 <span id="269">269</span>
 <span id="270">270</span>
 <span id="271">271</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::fmt::Display</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::fmt::Display;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">node_configuration::THREAD_COUNT</span>, <span class="ident">Address</span>, <span class="ident">ModelsError</span>};
-<span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
-<span class="kw">use</span> <span class="ident">massa_serialization</span>::{<span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>};
-<span class="kw">use</span> <span class="ident">massa_signature</span>::{
-    <span class="ident">KeyPair</span>, <span class="ident">PublicKey</span>, <span class="ident">PublicKeyDeserializer</span>, <span class="ident">Signature</span>, <span class="ident">SignatureDeserializer</span>,
+<span class="kw">use crate</span>::{node_configuration::THREAD_COUNT, Address, ModelsError};
+<span class="kw">use </span>massa_hash::Hash;
+<span class="kw">use </span>massa_serialization::{Deserializer, SerializeError, Serializer};
+<span class="kw">use </span>massa_signature::{
+    KeyPair, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer,
 };
-<span class="kw">use</span> <span class="ident">nom</span>::{
-    <span class="ident">error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ParseError</span>},
-    <span class="ident">sequence::tuple</span>,
-    <span class="ident">IResult</span>,
+<span class="kw">use </span>nom::{
+    error::{context, ContextError, ParseError},
+    sequence::tuple,
+    IResult,
 };
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
 
-<span class="doccomment">/// Wrapped structure T where U is the associated id</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Wrapped</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">U</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">T</span>: <span class="ident">Display</span> <span class="op">+</span> <span class="ident">WrappedContent</span>,
-    <span class="ident">U</span>: <span class="ident">Id</span>,
+<span class="doccomment">/// Wrapped structure T where U is the associated id
+</span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>Wrapped&lt;T, U&gt;
+<span class="kw">where
+    </span>T: Display + WrappedContent,
+    U: Id,
 {
-    <span class="doccomment">/// content</span>
-    <span class="kw">pub</span> <span class="ident">content</span>: <span class="ident">T</span>,
-    <span class="doccomment">/// signature</span>
-    <span class="kw">pub</span> <span class="ident">signature</span>: <span class="ident">Signature</span>,
-    <span class="doccomment">/// the content creator public key</span>
-    <span class="kw">pub</span> <span class="ident">creator_public_key</span>: <span class="ident">PublicKey</span>,
-    <span class="doccomment">/// the content creator address</span>
-    <span class="kw">pub</span> <span class="ident">creator_address</span>: <span class="ident">Address</span>,
-    <span class="doccomment">/// Thread of the operation creator</span>
-    <span class="kw">pub</span> <span class="ident">thread</span>: <span class="ident">u8</span>,
-    <span class="doccomment">/// Id</span>
-    <span class="kw">pub</span> <span class="ident">id</span>: <span class="ident">U</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
-    <span class="doccomment">/// Content serialized</span>
-    <span class="kw">pub</span> <span class="ident">serialized_data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// content
+    </span><span class="kw">pub </span>content: T,
+    <span class="doccomment">/// signature
+    </span><span class="kw">pub </span>signature: Signature,
+    <span class="doccomment">/// the content creator public key
+    </span><span class="kw">pub </span>creator_public_key: PublicKey,
+    <span class="doccomment">/// the content creator address
+    </span><span class="kw">pub </span>creator_address: Address,
+    <span class="doccomment">/// Thread of the operation creator
+    </span><span class="kw">pub </span>thread: u8,
+    <span class="doccomment">/// Id
+    </span><span class="kw">pub </span>id: U,
+    <span class="attribute">#[serde(skip)]
+    </span><span class="doccomment">/// Content serialized
+    </span><span class="kw">pub </span>serialized_data: Vec&lt;u8&gt;,
 }
 
-<span class="doccomment">/// Used by signed structure</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Id</span> {
-    <span class="doccomment">/// new id from hash</span>
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">hash</span>: <span class="ident">Hash</span>) -&gt; <span class="self">Self</span>;
-    <span class="doccomment">/// Get the hash</span>
-    <span class="kw">fn</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Hash</span>;
+<span class="doccomment">/// Used by signed structure
+</span><span class="kw">pub trait </span>Id {
+    <span class="doccomment">/// new id from hash
+    </span><span class="kw">fn </span>new(hash: Hash) -&gt; <span class="self">Self</span>;
+    <span class="doccomment">/// Get the hash
+    </span><span class="kw">fn </span>hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Hash;
 }
 
-<span class="doccomment">/// Trait that define a structure that can be wrapped.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">WrappedContent</span>
-<span class="kw">where</span>
-    <span class="self">Self</span>: <span class="ident">Sized</span> <span class="op">+</span> <span class="ident">Display</span>,
+<span class="doccomment">/// Trait that define a structure that can be wrapped.
+</span><span class="kw">pub trait </span>WrappedContent
+<span class="kw">where
+    </span><span class="self">Self</span>: Sized + Display,
 {
-    <span class="doccomment">/// Creates a wrapped version of the object</span>
-    <span class="kw">fn</span> <span class="ident">new_wrapped</span><span class="op">&lt;</span><span class="ident">SC</span>: <span class="ident">Serializer</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">U</span>: <span class="ident">Id</span><span class="op">&gt;</span>(
-        <span class="ident">content</span>: <span class="self">Self</span>,
-        <span class="ident">content_serializer</span>: <span class="ident">SC</span>,
-        <span class="ident">keypair</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPair</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Wrapped</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">U</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">content_serialized</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="ident">content_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">content</span>, <span class="kw-2">&amp;mut</span> <span class="ident">content_serialized</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hash_data</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">keypair</span>.<span class="ident">get_public_key</span>();
-        <span class="ident">hash_data</span>.<span class="ident">extend</span>(<span class="ident">public_key</span>.<span class="ident">to_bytes</span>());
-        <span class="ident">hash_data</span>.<span class="ident">extend</span>(<span class="ident">content_serialized</span>.<span class="ident">clone</span>());
-        <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">hash_data</span>);
-        <span class="kw">let</span> <span class="ident">creator_address</span> <span class="op">=</span> <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">public_key</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">Wrapped</span> {
-            <span class="ident">signature</span>: <span class="ident">keypair</span>.<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>)<span class="question-mark">?</span>,
-            <span class="ident">creator_public_key</span>: <span class="ident">public_key</span>,
-            <span class="ident">creator_address</span>,
-            <span class="ident">thread</span>: <span class="ident">creator_address</span>.<span class="ident">get_thread</span>(<span class="ident">THREAD_COUNT</span>),
-            <span class="ident">content</span>,
-            <span class="ident">serialized_data</span>: <span class="ident">content_serialized</span>,
-            <span class="ident">id</span>: <span class="ident">U::new</span>(<span class="ident">hash</span>),
+    <span class="doccomment">/// Creates a wrapped version of the object
+    </span><span class="kw">fn </span>new_wrapped&lt;SC: Serializer&lt;<span class="self">Self</span>&gt;, U: Id&gt;(
+        content: <span class="self">Self</span>,
+        content_serializer: SC,
+        keypair: <span class="kw-2">&amp;</span>KeyPair,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Wrapped&lt;<span class="self">Self</span>, U&gt;, ModelsError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>content_serialized = Vec::new();
+        content_serializer.serialize(<span class="kw-2">&amp;</span>content, <span class="kw-2">&amp;mut </span>content_serialized)<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>hash_data = Vec::new();
+        <span class="kw">let </span>public_key = keypair.get_public_key();
+        hash_data.extend(public_key.to_bytes());
+        hash_data.extend(content_serialized.clone());
+        <span class="kw">let </span>hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_data);
+        <span class="kw">let </span>creator_address = Address::from_public_key(<span class="kw-2">&amp;</span>public_key);
+        <span class="prelude-val">Ok</span>(Wrapped {
+            signature: keypair.sign(<span class="kw-2">&amp;</span>hash)<span class="question-mark">?</span>,
+            creator_public_key: public_key,
+            creator_address,
+            thread: creator_address.get_thread(THREAD_COUNT),
+            content,
+            serialized_data: content_serialized,
+            id: U::new(hash),
         })
     }
 
-    <span class="doccomment">/// Serialize the wrapped structure</span>
-    <span class="kw">fn</span> <span class="ident">serialize</span>(
-        <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="ident">Signature</span>,
-        <span class="ident">creator_public_key</span>: <span class="kw-2">&amp;</span><span class="ident">PublicKey</span>,
-        <span class="ident">serialized_content</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="ident">signature</span>.<span class="ident">into_bytes</span>());
-        <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="ident">creator_public_key</span>.<span class="ident">into_bytes</span>());
-        <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="ident">serialized_content</span>);
+    <span class="doccomment">/// Serialize the wrapped structure
+    </span><span class="kw">fn </span>serialize(
+        signature: <span class="kw-2">&amp;</span>Signature,
+        creator_public_key: <span class="kw-2">&amp;</span>PublicKey,
+        serialized_content: <span class="kw-2">&amp;</span>[u8],
+        buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        buffer.extend(signature.into_bytes());
+        buffer.extend(creator_public_key.into_bytes());
+        buffer.extend(serialized_content);
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Deserialize the wrapped structure</span>
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span>
+    <span class="doccomment">/// Deserialize the wrapped structure
+    </span><span class="kw">fn </span>deserialize&lt;
         <span class="lifetime">&#39;a</span>,
-        <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span>,
-        <span class="ident">DC</span>: <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">U</span>: <span class="ident">Id</span>,
-    <span class="op">&gt;</span>(
-        <span class="ident">signature_deserializer</span>: <span class="kw-2">&amp;</span><span class="ident">SignatureDeserializer</span>,
-        <span class="ident">creator_public_key_deserializer</span>: <span class="kw-2">&amp;</span><span class="ident">PublicKeyDeserializer</span>,
-        <span class="ident">content_deserializer</span>: <span class="kw-2">&amp;</span><span class="ident">DC</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">Wrapped</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">U</span><span class="op">&gt;</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">serialized_data</span>, (<span class="ident">signature</span>, <span class="ident">creator_public_key</span>)) <span class="op">=</span> <span class="ident">context</span>(
+        E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;,
+        DC: Deserializer&lt;<span class="self">Self</span>&gt;,
+        U: Id,
+    &gt;(
+        signature_deserializer: <span class="kw-2">&amp;</span>SignatureDeserializer,
+        creator_public_key_deserializer: <span class="kw-2">&amp;</span>PublicKeyDeserializer,
+        content_deserializer: <span class="kw-2">&amp;</span>DC,
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Wrapped&lt;<span class="self">Self</span>, U&gt;, E&gt; {
+        <span class="kw">let </span>(serialized_data, (signature, creator_public_key)) = context(
             <span class="string">&quot;Failed wrapped deserialization&quot;</span>,
-            <span class="ident">tuple</span>((
-                <span class="ident">context</span>(<span class="string">&quot;Failed signature deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                    <span class="ident">signature_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+            tuple((
+                context(<span class="string">&quot;Failed signature deserialization&quot;</span>, |input| {
+                    signature_deserializer.deserialize(input)
                 }),
-                <span class="ident">context</span>(<span class="string">&quot;Failed public_key deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                    <span class="ident">creator_public_key_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                context(<span class="string">&quot;Failed public_key deserialization&quot;</span>, |input| {
+                    creator_public_key_deserializer.deserialize(input)
                 }),
             )),
-        )(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">content</span>) <span class="op">=</span> <span class="ident">content_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">serialized_data</span>)<span class="question-mark">?</span>;
-        <span class="comment">// Avoid getting the rest of the data in the serialized data</span>
-        <span class="kw">let</span> <span class="ident">content_serialized</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">serialized_data</span>[..<span class="ident">serialized_data</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">rest</span>.<span class="ident">len</span>()];
-        <span class="kw">let</span> <span class="ident">creator_address</span> <span class="op">=</span> <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">creator_public_key</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">serialized_full_data</span> <span class="op">=</span> <span class="ident">creator_public_key</span>.<span class="ident">to_bytes</span>().<span class="ident">to_vec</span>();
-        <span class="ident">serialized_full_data</span>.<span class="ident">extend</span>(<span class="ident">content_serialized</span>);
+        )(buffer)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(rest, content) = content_deserializer.deserialize(serialized_data)<span class="question-mark">?</span>;
+        <span class="comment">// Avoid getting the rest of the data in the serialized data
+        </span><span class="kw">let </span>content_serialized = <span class="kw-2">&amp;</span>serialized_data[..serialized_data.len() - rest.len()];
+        <span class="kw">let </span>creator_address = Address::from_public_key(<span class="kw-2">&amp;</span>creator_public_key);
+        <span class="kw">let </span><span class="kw-2">mut </span>serialized_full_data = creator_public_key.to_bytes().to_vec();
+        serialized_full_data.extend(content_serialized);
         <span class="prelude-val">Ok</span>((
-            <span class="ident">rest</span>,
-            <span class="ident">Wrapped</span> {
-                <span class="ident">content</span>,
-                <span class="ident">signature</span>,
-                <span class="ident">creator_public_key</span>,
-                <span class="ident">creator_address</span>,
-                <span class="ident">thread</span>: <span class="ident">creator_address</span>.<span class="ident">get_thread</span>(<span class="ident">THREAD_COUNT</span>),
-                <span class="ident">serialized_data</span>: <span class="ident">content_serialized</span>.<span class="ident">to_vec</span>(),
-                <span class="ident">id</span>: <span class="ident">U::new</span>(<span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">serialized_full_data</span>)),
+            rest,
+            Wrapped {
+                content,
+                signature,
+                creator_public_key,
+                creator_address,
+                thread: creator_address.get_thread(THREAD_COUNT),
+                serialized_data: content_serialized.to_vec(),
+                id: U::new(Hash::compute_from(<span class="kw-2">&amp;</span>serialized_full_data)),
             },
         ))
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">U</span><span class="op">&gt;</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Wrapped</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">U</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">T</span>: <span class="ident">Display</span> <span class="op">+</span> <span class="ident">WrappedContent</span>,
-    <span class="ident">U</span>: <span class="ident">Id</span>,
+<span class="kw">impl</span>&lt;T, U&gt; Display <span class="kw">for </span>Wrapped&lt;T, U&gt;
+<span class="kw">where
+    </span>T: Display + WrappedContent,
+    U: Id,
 {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Signature: {}&quot;</span>, <span class="self">self</span>.<span class="ident">signature</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Creator pubkey: {}&quot;</span>, <span class="self">self</span>.<span class="ident">creator_public_key</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Creator address: {}&quot;</span>, <span class="self">self</span>.<span class="ident">creator_address</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Id: {}&quot;</span>, <span class="self">self</span>.<span class="ident">id</span>.<span class="ident">hash</span>())<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="ident">content</span>)<span class="question-mark">?</span>;
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;Signature: {}&quot;</span>, <span class="self">self</span>.signature)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;Creator pubkey: {}&quot;</span>, <span class="self">self</span>.creator_public_key)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;Creator address: {}&quot;</span>, <span class="self">self</span>.creator_address)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;Id: {}&quot;</span>, <span class="self">self</span>.id.hash())<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.content)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">U</span><span class="op">&gt;</span> <span class="ident">Wrapped</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">U</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">T</span>: <span class="ident">Display</span> <span class="op">+</span> <span class="ident">WrappedContent</span>,
-    <span class="ident">U</span>: <span class="ident">Id</span>,
+<span class="kw">impl</span>&lt;T, U&gt; Wrapped&lt;T, U&gt;
+<span class="kw">where
+    </span>T: Display + WrappedContent,
+    U: Id,
 {
-    <span class="doccomment">/// check if self has been signed by public key</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_signature</span><span class="op">&lt;</span><span class="ident">SC</span>: <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span>(
+    <span class="doccomment">/// check if self has been signed by public key
+    </span><span class="kw">pub fn </span>verify_signature&lt;SC: Serializer&lt;T&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">content_serializer</span>: <span class="ident">SC</span>,
-        <span class="ident">public_key</span>: <span class="kw-2">&amp;</span><span class="ident">PublicKey</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">content_serialized</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="ident">content_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">content</span>, <span class="kw-2">&amp;mut</span> <span class="ident">content_serialized</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hash_data</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="ident">hash_data</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">creator_public_key</span>.<span class="ident">to_bytes</span>());
-        <span class="ident">hash_data</span>.<span class="ident">extend</span>(<span class="ident">content_serialized</span>.<span class="ident">clone</span>());
-        <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">hash_data</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">public_key</span>.<span class="ident">verify_signature</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">signature</span>)<span class="question-mark">?</span>)
+        content_serializer: SC,
+        public_key: <span class="kw-2">&amp;</span>PublicKey,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ModelsError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>content_serialized = Vec::new();
+        content_serializer.serialize(<span class="kw-2">&amp;</span><span class="self">self</span>.content, <span class="kw-2">&amp;mut </span>content_serialized)<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>hash_data = Vec::new();
+        hash_data.extend(<span class="self">self</span>.creator_public_key.to_bytes());
+        hash_data.extend(content_serialized.clone());
+        <span class="kw">let </span>hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_data);
+        <span class="prelude-val">Ok</span>(public_key.verify_signature(<span class="kw-2">&amp;</span>hash, <span class="kw-2">&amp;</span><span class="self">self</span>.signature)<span class="question-mark">?</span>)
     }
 }
 
-<span class="comment">// NOTE FOR EXPLICATION: No content serializer because serialized data is already here.</span>
-<span class="doccomment">/// Serializer for `Wrapped` structure</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WrappedSerializer</span>;
+<span class="comment">// NOTE FOR EXPLICATION: No content serializer because serialized data is already here.
+</span><span class="doccomment">/// Serializer for `Wrapped` structure
+</span><span class="attribute">#[derive(Default)]
+</span><span class="kw">pub struct </span>WrappedSerializer;
 
-<span class="kw">impl</span> <span class="ident">WrappedSerializer</span> {
-    <span class="doccomment">/// Creates a new `WrappedSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span>
-    }
+<span class="kw">impl </span>WrappedSerializer {
+    <span class="doccomment">/// Creates a new `WrappedSerializer`
+    </span><span class="kw">pub const fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self
+    </span>}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">U</span><span class="op">&gt;</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">Wrapped</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">WrappedSerializer</span>
-<span class="kw">where</span>
-    <span class="ident">T</span>: <span class="ident">Display</span> <span class="op">+</span> <span class="ident">WrappedContent</span>,
-    <span class="ident">U</span>: <span class="ident">Id</span>,
+<span class="kw">impl</span>&lt;T, U&gt; Serializer&lt;Wrapped&lt;T, U&gt;&gt; <span class="kw">for </span>WrappedSerializer
+<span class="kw">where
+    </span>T: Display + WrappedContent,
+    U: Id,
 {
-    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Wrapped</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">U</span><span class="op">&gt;</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="ident">T::serialize</span>(
-            <span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">signature</span>,
-            <span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">creator_public_key</span>,
-            <span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">serialized_data</span>,
-            <span class="ident">buffer</span>,
+    <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>Wrapped&lt;T, U&gt;, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        T::serialize(
+            <span class="kw-2">&amp;</span>value.signature,
+            <span class="kw-2">&amp;</span>value.creator_public_key,
+            <span class="kw-2">&amp;</span>value.serialized_data,
+            buffer,
         )
     }
 }
 
-<span class="doccomment">/// Deserializer for Wrapped structure</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WrappedDeserializer</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">DT</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">T</span>: <span class="ident">Display</span> <span class="op">+</span> <span class="ident">WrappedContent</span>,
-    <span class="ident">DT</span>: <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Deserializer for Wrapped structure
+</span><span class="kw">pub struct </span>WrappedDeserializer&lt;T, DT&gt;
+<span class="kw">where
+    </span>T: Display + WrappedContent,
+    DT: Deserializer&lt;T&gt;,
 {
-    <span class="ident">signature_deserializer</span>: <span class="ident">SignatureDeserializer</span>,
-    <span class="ident">public_key_deserializer</span>: <span class="ident">PublicKeyDeserializer</span>,
-    <span class="ident">content_deserializer</span>: <span class="ident">DT</span>,
-    <span class="ident">marker_t</span>: <span class="ident">std::marker::PhantomData</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>,
+    signature_deserializer: SignatureDeserializer,
+    public_key_deserializer: PublicKeyDeserializer,
+    content_deserializer: DT,
+    marker_t: std::marker::PhantomData&lt;T&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">DT</span><span class="op">&gt;</span> <span class="ident">WrappedDeserializer</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">DT</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">T</span>: <span class="ident">Display</span> <span class="op">+</span> <span class="ident">WrappedContent</span>,
-    <span class="ident">DT</span>: <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;T, DT&gt; WrappedDeserializer&lt;T, DT&gt;
+<span class="kw">where
+    </span>T: Display + WrappedContent,
+    DT: Deserializer&lt;T&gt;,
 {
-    <span class="doccomment">/// Creates a new WrappedDeserializer</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `content_deserializer` - Deserializer for the content</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">content_deserializer</span>: <span class="ident">DT</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">signature_deserializer</span>: <span class="ident">SignatureDeserializer::new</span>(),
-            <span class="ident">public_key_deserializer</span>: <span class="ident">PublicKeyDeserializer::new</span>(),
-            <span class="ident">content_deserializer</span>,
-            <span class="ident">marker_t</span>: <span class="ident">std::marker::PhantomData</span>,
+    <span class="doccomment">/// Creates a new WrappedDeserializer
+    ///
+    /// # Arguments
+    /// * `content_deserializer` - Deserializer for the content
+    </span><span class="kw">pub const fn </span>new(content_deserializer: DT) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            signature_deserializer: SignatureDeserializer::new(),
+            public_key_deserializer: PublicKeyDeserializer::new(),
+            content_deserializer,
+            marker_t: std::marker::PhantomData,
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">U</span>, <span class="ident">DT</span><span class="op">&gt;</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">Wrapped</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">WrappedDeserializer</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">DT</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">T</span>: <span class="ident">Display</span> <span class="op">+</span> <span class="ident">WrappedContent</span>,
-    <span class="ident">U</span>: <span class="ident">Id</span>,
-    <span class="ident">DT</span>: <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;T, U, DT&gt; Deserializer&lt;Wrapped&lt;T, U&gt;&gt; <span class="kw">for </span>WrappedDeserializer&lt;T, DT&gt;
+<span class="kw">where
+    </span>T: Display + WrappedContent,
+    U: Id,
+    DT: Deserializer&lt;T&gt;,
 {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_models::{BlockId, Endorsement, EndorsementSerializer, EndorsementDeserializer, Slot, wrapped::{Wrapped, WrappedSerializer, WrappedDeserializer, WrappedContent}};</span>
-    <span class="doccomment">/// # use massa_serialization::{Deserializer, Serializer, DeserializeError, U16VarIntSerializer, U16VarIntDeserializer};</span>
-    <span class="doccomment">/// # use massa_signature::KeyPair;</span>
-    <span class="doccomment">/// # use std::ops::Bound::Included;</span>
-    <span class="doccomment">/// # use massa_hash::Hash;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let content = Endorsement {</span>
-    <span class="doccomment">///    slot: Slot::new(10, 1),</span>
-    <span class="doccomment">///    index: 0,</span>
-    <span class="doccomment">///    endorsed_block: BlockId(Hash::compute_from(&quot;blk&quot;.as_bytes())),</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
-    <span class="doccomment">/// let wrapped: Wrapped&lt;Endorsement, BlockId&gt; = Endorsement::new_wrapped(</span>
-    <span class="doccomment">///    content,</span>
-    <span class="doccomment">///    EndorsementSerializer::new(),</span>
-    <span class="doccomment">///    &amp;keypair</span>
-    <span class="doccomment">/// ).unwrap();</span>
-    <span class="doccomment">/// let mut serialized_data = Vec::new();</span>
-    <span class="doccomment">/// let serialized = WrappedSerializer::new().serialize(&amp;wrapped, &amp;mut serialized_data).unwrap();</span>
-    <span class="doccomment">/// let deserializer = WrappedDeserializer::new(EndorsementDeserializer::new(1));</span>
-    <span class="doccomment">/// let (rest, deserialized): (&amp;[u8], Wrapped&lt;Endorsement, BlockId&gt;) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized_data).unwrap();</span>
-    <span class="doccomment">/// assert!(rest.is_empty());</span>
-    <span class="doccomment">/// assert_eq!(wrapped.id, deserialized.id);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+    <span class="doccomment">/// ```
+    /// # use massa_models::{BlockId, Endorsement, EndorsementSerializer, EndorsementDeserializer, Slot, wrapped::{Wrapped, WrappedSerializer, WrappedDeserializer, WrappedContent}};
+    /// # use massa_serialization::{Deserializer, Serializer, DeserializeError, U16VarIntSerializer, U16VarIntDeserializer};
+    /// # use massa_signature::KeyPair;
+    /// # use std::ops::Bound::Included;
+    /// # use massa_hash::Hash;
+    ///
+    /// let content = Endorsement {
+    ///    slot: Slot::new(10, 1),
+    ///    index: 0,
+    ///    endorsed_block: BlockId(Hash::compute_from(&quot;blk&quot;.as_bytes())),
+    /// };
+    /// let keypair = KeyPair::generate();
+    /// let wrapped: Wrapped&lt;Endorsement, BlockId&gt; = Endorsement::new_wrapped(
+    ///    content,
+    ///    EndorsementSerializer::new(),
+    ///    &amp;keypair
+    /// ).unwrap();
+    /// let mut serialized_data = Vec::new();
+    /// let serialized = WrappedSerializer::new().serialize(&amp;wrapped, &amp;mut serialized_data).unwrap();
+    /// let deserializer = WrappedDeserializer::new(EndorsementDeserializer::new(1));
+    /// let (rest, deserialized): (&amp;[u8], Wrapped&lt;Endorsement, BlockId&gt;) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized_data).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(wrapped.id, deserialized.id);
+    /// ```
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">Wrapped</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">U</span><span class="op">&gt;</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">T::deserialize</span>(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">signature_deserializer</span>,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">public_key_deserializer</span>,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">content_deserializer</span>,
-            <span class="ident">buffer</span>,
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Wrapped&lt;T, U&gt;, E&gt; {
+        T::deserialize(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.signature_deserializer,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.public_key_deserializer,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.content_deserializer,
+            buffer,
         )
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

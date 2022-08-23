@@ -107,114 +107,114 @@
 <span id="107">107</span>
 <span id="108">108</span>
 <span id="109">109</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! This module represents an event store allowing to store, search and retrieve</span>
-<span class="doccomment">//! a config-limited number of execution-generated events</span>
+</span><span class="doccomment">//! This module represents an event store allowing to store, search and retrieve
+//! a config-limited number of execution-generated events
 
-<span class="kw">use</span> <span class="ident">massa_models::api::EventFilter</span>;
-<span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
-<span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
+</span><span class="kw">use </span>massa_models::api::EventFilter;
+<span class="kw">use </span>massa_models::output_event::SCOutputEvent;
+<span class="kw">use </span>std::collections::VecDeque;
 
-<span class="doccomment">/// Store for events emitted by smart contracts</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EventStore</span>(<span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span>);
+<span class="doccomment">/// Store for events emitted by smart contracts
+</span><span class="attribute">#[derive(Default, Debug, Clone)]
+</span><span class="kw">pub struct </span>EventStore(VecDeque&lt;SCOutputEvent&gt;);
 
-<span class="kw">impl</span> <span class="ident">EventStore</span> {
-    <span class="doccomment">/// Push a new smart contract event to the store</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">event</span>: <span class="ident">SCOutputEvent</span>) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">push_back</span>(<span class="ident">event</span>);
+<span class="kw">impl </span>EventStore {
+    <span class="doccomment">/// Push a new smart contract event to the store
+    </span><span class="kw">pub fn </span>push(<span class="kw-2">&amp;mut </span><span class="self">self</span>, event: SCOutputEvent) {
+        <span class="self">self</span>.<span class="number">0</span>.push_back(event);
     }
 
-    <span class="doccomment">/// Take the event store</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">take</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span> {
-        <span class="ident">std::mem::take</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="number">0</span>)
+    <span class="doccomment">/// Take the event store
+    </span><span class="kw">pub fn </span>take(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; VecDeque&lt;SCOutputEvent&gt; {
+        std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0</span>)
     }
 
-    <span class="doccomment">/// Clear the event store</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">clear</span>()
+    <span class="doccomment">/// Clear the event store
+    </span><span class="kw">pub fn </span>clear(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.<span class="number">0</span>.clear()
     }
 
-    <span class="doccomment">/// Prune the event store if its size is over the given limit</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">prune</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">max_events</span>: <span class="ident">usize</span>) {
-        <span class="kw">while</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">max_events</span> {
-            <span class="self">self</span>.<span class="number">0</span>.<span class="ident">pop_front</span>();
+    <span class="doccomment">/// Prune the event store if its size is over the given limit
+    </span><span class="kw">pub fn </span>prune(<span class="kw-2">&amp;mut </span><span class="self">self</span>, max_events: usize) {
+        <span class="kw">while </span><span class="self">self</span>.<span class="number">0</span>.len() &gt; max_events {
+            <span class="self">self</span>.<span class="number">0</span>.pop_front();
         }
     }
 
-    <span class="doccomment">/// Extend the event store with another store</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extend</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="ident">EventStore</span>) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">extend</span>(<span class="ident">other</span>.<span class="number">0</span>.<span class="ident">into_iter</span>());
+    <span class="doccomment">/// Extend the event store with another store
+    </span><span class="kw">pub fn </span>extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: EventStore) {
+        <span class="self">self</span>.<span class="number">0</span>.extend(other.<span class="number">0</span>.into_iter());
     }
 
-    <span class="doccomment">/// Get events optionally filtered by:</span>
-    <span class="doccomment">/// * start slot</span>
-    <span class="doccomment">/// * end slot</span>
-    <span class="doccomment">/// * emitter address</span>
-    <span class="doccomment">/// * original caller address</span>
-    <span class="doccomment">/// * operation id</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_filtered_sc_output_event</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="kw-2">&amp;</span><span class="ident">EventFilter</span>) -&gt; <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">start</span>) <span class="op">=</span> <span class="ident">filter</span>.<span class="ident">start</span> {
-                    <span class="kw">if</span> <span class="ident">x</span>.<span class="ident">context</span>.<span class="ident">slot</span> <span class="op">&lt;</span> <span class="ident">start</span> {
-                        <span class="kw">return</span> <span class="bool-val">false</span>;
+    <span class="doccomment">/// Get events optionally filtered by:
+    /// * start slot
+    /// * end slot
+    /// * emitter address
+    /// * original caller address
+    /// * operation id
+    </span><span class="kw">pub fn </span>get_filtered_sc_output_event(<span class="kw-2">&amp;</span><span class="self">self</span>, filter: <span class="kw-2">&amp;</span>EventFilter) -&gt; VecDeque&lt;SCOutputEvent&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.iter()
+            .filter(|x| {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(start) = filter.start {
+                    <span class="kw">if </span>x.context.slot &lt; start {
+                        <span class="kw">return </span><span class="bool-val">false</span>;
                     }
                 }
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">end</span>) <span class="op">=</span> <span class="ident">filter</span>.<span class="ident">end</span> {
-                    <span class="kw">if</span> <span class="ident">x</span>.<span class="ident">context</span>.<span class="ident">slot</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">end</span> {
-                        <span class="kw">return</span> <span class="bool-val">false</span>;
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = filter.end {
+                    <span class="kw">if </span>x.context.slot &gt;= end {
+                        <span class="kw">return </span><span class="bool-val">false</span>;
                     }
                 }
-                <span class="kw">match</span> (<span class="ident">filter</span>.<span class="ident">emitter_address</span>, <span class="ident">x</span>.<span class="ident">context</span>.<span class="ident">call_stack</span>.<span class="ident">front</span>()) {
-                    (<span class="prelude-val">Some</span>(<span class="ident">addr1</span>), <span class="prelude-val">Some</span>(<span class="ident">addr2</span>)) <span class="kw">if</span> <span class="ident">addr1</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">addr2</span> =&gt; <span class="kw">return</span> <span class="bool-val">false</span>,
-                    (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="kw">return</span> <span class="bool-val">false</span>,
-                    <span class="kw">_</span> =&gt; (),
+                <span class="kw">match </span>(filter.emitter_address, x.context.call_stack.front()) {
+                    (<span class="prelude-val">Some</span>(addr1), <span class="prelude-val">Some</span>(addr2)) <span class="kw">if </span>addr1 != <span class="kw-2">*</span>addr2 =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
+                    (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
+                    <span class="kw">_ </span>=&gt; (),
                 }
-                <span class="kw">match</span> (<span class="ident">filter</span>.<span class="ident">original_caller_address</span>, <span class="ident">x</span>.<span class="ident">context</span>.<span class="ident">call_stack</span>.<span class="ident">back</span>()) {
-                    (<span class="prelude-val">Some</span>(<span class="ident">addr1</span>), <span class="prelude-val">Some</span>(<span class="ident">addr2</span>)) <span class="kw">if</span> <span class="ident">addr1</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">addr2</span> =&gt; <span class="kw">return</span> <span class="bool-val">false</span>,
-                    (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="kw">return</span> <span class="bool-val">false</span>,
-                    <span class="kw">_</span> =&gt; (),
+                <span class="kw">match </span>(filter.original_caller_address, x.context.call_stack.back()) {
+                    (<span class="prelude-val">Some</span>(addr1), <span class="prelude-val">Some</span>(addr2)) <span class="kw">if </span>addr1 != <span class="kw-2">*</span>addr2 =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
+                    (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
+                    <span class="kw">_ </span>=&gt; (),
                 }
-                <span class="kw">match</span> (<span class="ident">filter</span>.<span class="ident">original_operation_id</span>, <span class="ident">x</span>.<span class="ident">context</span>.<span class="ident">origin_operation_id</span>) {
-                    (<span class="prelude-val">Some</span>(<span class="ident">addr1</span>), <span class="prelude-val">Some</span>(<span class="ident">addr2</span>)) <span class="kw">if</span> <span class="ident">addr1</span> <span class="op">!</span><span class="op">=</span> <span class="ident">addr2</span> =&gt; <span class="kw">return</span> <span class="bool-val">false</span>,
-                    (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="kw">return</span> <span class="bool-val">false</span>,
-                    <span class="kw">_</span> =&gt; (),
+                <span class="kw">match </span>(filter.original_operation_id, x.context.origin_operation_id) {
+                    (<span class="prelude-val">Some</span>(addr1), <span class="prelude-val">Some</span>(addr2)) <span class="kw">if </span>addr1 != addr2 =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
+                    (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
+                    <span class="kw">_ </span>=&gt; (),
                 }
-                <span class="bool-val">true</span>
-            })
-            .<span class="ident">cloned</span>()
-            .<span class="ident">collect</span>()
+                <span class="bool-val">true
+            </span>})
+            .cloned()
+            .collect()
     }
 }
 
-<span class="attribute">#[<span class="ident">test</span>]</span>
-<span class="kw">fn</span> <span class="ident">test_prune</span>() {
-    <span class="kw">use</span> <span class="ident">massa_models::output_event</span>::{<span class="ident">EventExecutionContext</span>, <span class="ident">SCOutputEvent</span>};
-    <span class="kw">use</span> <span class="ident">massa_models::Slot</span>;
+<span class="attribute">#[test]
+</span><span class="kw">fn </span>test_prune() {
+    <span class="kw">use </span>massa_models::output_event::{EventExecutionContext, SCOutputEvent};
+    <span class="kw">use </span>massa_models::Slot;
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">store</span> <span class="op">=</span> <span class="ident">EventStore</span>(<span class="ident">VecDeque::new</span>());
-    <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">10</span> {
-        <span class="ident">store</span>.<span class="ident">push</span>(<span class="ident">SCOutputEvent</span> {
-            <span class="ident">context</span>: <span class="ident">EventExecutionContext</span> {
-                <span class="ident">slot</span>: <span class="ident">Slot::new</span>(<span class="ident">i</span>, <span class="number">0</span>),
-                <span class="ident">block</span>: <span class="prelude-val">None</span>,
-                <span class="ident">read_only</span>: <span class="bool-val">false</span>,
-                <span class="ident">index_in_slot</span>: <span class="number">1</span>,
-                <span class="ident">call_stack</span>: <span class="ident">VecDeque::new</span>(),
-                <span class="ident">origin_operation_id</span>: <span class="prelude-val">None</span>,
+    <span class="kw">let </span><span class="kw-2">mut </span>store = EventStore(VecDeque::new());
+    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">10 </span>{
+        store.push(SCOutputEvent {
+            context: EventExecutionContext {
+                slot: Slot::new(i, <span class="number">0</span>),
+                block: <span class="prelude-val">None</span>,
+                read_only: <span class="bool-val">false</span>,
+                index_in_slot: <span class="number">1</span>,
+                call_stack: VecDeque::new(),
+                origin_operation_id: <span class="prelude-val">None</span>,
             },
-            <span class="ident">data</span>: <span class="ident">i</span>.<span class="ident">to_string</span>(),
+            data: i.to_string(),
         });
     }
-    <span class="macro">assert_eq!</span>(<span class="ident">store</span>.<span class="number">0</span>.<span class="ident">len</span>(), <span class="number">10</span>);
-    <span class="ident">store</span>.<span class="ident">prune</span>(<span class="number">3</span>);
-    <span class="macro">assert_eq!</span>(<span class="ident">store</span>.<span class="number">0</span>.<span class="ident">len</span>(), <span class="number">3</span>);
-    <span class="macro">assert_eq!</span>(<span class="ident">store</span>.<span class="number">0</span>[<span class="number">2</span>].<span class="ident">data</span>, <span class="string">&quot;9&quot;</span>);
-    <span class="macro">assert_eq!</span>(<span class="ident">store</span>.<span class="number">0</span>[<span class="number">1</span>].<span class="ident">data</span>, <span class="string">&quot;8&quot;</span>);
-    <span class="macro">assert_eq!</span>(<span class="ident">store</span>.<span class="number">0</span>[<span class="number">0</span>].<span class="ident">data</span>, <span class="string">&quot;7&quot;</span>);
+    <span class="macro">assert_eq!</span>(store.<span class="number">0</span>.len(), <span class="number">10</span>);
+    store.prune(<span class="number">3</span>);
+    <span class="macro">assert_eq!</span>(store.<span class="number">0</span>.len(), <span class="number">3</span>);
+    <span class="macro">assert_eq!</span>(store.<span class="number">0</span>[<span class="number">2</span>].data, <span class="string">&quot;9&quot;</span>);
+    <span class="macro">assert_eq!</span>(store.<span class="number">0</span>[<span class="number">1</span>].data, <span class="string">&quot;8&quot;</span>);
+    <span class="macro">assert_eq!</span>(store.<span class="number">0</span>[<span class="number">0</span>].data, <span class="string">&quot;7&quot;</span>);
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

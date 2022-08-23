@@ -84,91 +84,91 @@
 <span id="84">84</span>
 <span id="85">85</span>
 <span id="86">86</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! # General description</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The execution worker launches a persistent thread allowing the execution</span>
-<span class="doccomment">//! of operations that can contain executable bytecode and managing interactions with the ledger.</span>
-<span class="doccomment">//! When the worker is launched, a `ExecutionManager` and a `ExecutionController` are returned.</span>
-<span class="doccomment">//! `ExecutionManager` allows stopping the worker,</span>
-<span class="doccomment">//! and `ExecutionController` is the clonable structure through which users interact with the worker.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The worker is fed through the `ExecutionController` with information about blockclique changes and newly finalized blocks</span>
-<span class="doccomment">//! and will execute the operations in those blocks, as well as pending asynchronous operations on empty slots.</span>
-<span class="doccomment">//! The worker can also query the current state of the ledger, and simulate operations in a read-only context.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The execution worker has shared read access to the final ledger,</span>
-<span class="doccomment">//! and must be the only module with runtime write access to the final ledger.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # A note on finality</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The operations contained in a final slot are ready to be executed as final</span>
-<span class="doccomment">//! only once all the previous slots are final and their operations are executed as final or ready to be so.</span>
-<span class="doccomment">//! This ensures the sequential order of the final executions of operations,</span>
-<span class="doccomment">//! thus ensuring that writes to the final ledger are irreversible.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Slots are called &quot;active&quot; if they have not been executed as final, and are not ready to be executed as final.</span>
-<span class="doccomment">//! Active slots can therefore be final slots, or slots containing blocks from the blockclique, or empty (miss) slots.</span>
-<span class="doccomment">//! Active slots can be executed in a speculative way: their execution might need to be reverted</span>
-<span class="doccomment">//! as new blocks finalize or arrive, causing changes to them or to active slots before them.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Miss slots are executed as well because they can contain implicit and asynchronous operations.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Architecture</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This crate is meant to be included only at the binary level to launch the worker,</span>
-<span class="doccomment">//! not by the lib crates that will interact with it.</span>
-<span class="doccomment">//! It depends on the massa-execution-exports crate that contains all the publicly exposed elements</span>
-<span class="doccomment">//! and through which users will actually interact with the worker.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## worker.rs</span>
-<span class="doccomment">//! This module runs the main loop of the worker thread.</span>
-<span class="doccomment">//! It contains the logic to process incoming blockclique change notifications and read-only execution requests.</span>
-<span class="doccomment">//! It sequences the blocks according to their slot number into queues,</span>
-<span class="doccomment">//! and requests the execution of active and final slots to execution.rs.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## controller.rs</span>
-<span class="doccomment">//! Implements `ExecutionManager` and `ExecutionController`</span>
-<span class="doccomment">//! that serve as interfaces for users to interact with the worker in worker.rs.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## execution.rs</span>
-<span class="doccomment">//! Contains the machinery to execute final and non-final slots,</span>
-<span class="doccomment">//! and track the state and results of those executions.</span>
-<span class="doccomment">//! This module initializes and holds a reference to the interface from `interface_impl.rs`</span>
-<span class="doccomment">//! that allows the crate to provide execution state access</span>
-<span class="doccomment">//! to the virtual machine runtime (massa-sc-runtime crate).</span>
-<span class="doccomment">//! It also serves as an access point to the current execution state and speculative ledger</span>
-<span class="doccomment">//! as defined in `speculative_ledger.rs`.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## `speculative_ledger.rs`</span>
-<span class="doccomment">//! A speculative (non-final) ledger that supports canceling already-executed operations</span>
-<span class="doccomment">//! in the case of some blockclique changes.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## `request_queue.rs`</span>
-<span class="doccomment">//! This module contains the implementation of a generic finite-size execution request queue.</span>
-<span class="doccomment">//! It handles requests that come with an MPSC to send back the result of their execution once it&#39;s done.</span>
-<span class="doccomment">//!</span>
+</span><span class="doccomment">//! # General description
+//!
+//! The execution worker launches a persistent thread allowing the execution
+//! of operations that can contain executable bytecode and managing interactions with the ledger.
+//! When the worker is launched, a `ExecutionManager` and a `ExecutionController` are returned.
+//! `ExecutionManager` allows stopping the worker,
+//! and `ExecutionController` is the clonable structure through which users interact with the worker.
+//!
+//! The worker is fed through the `ExecutionController` with information about blockclique changes and newly finalized blocks
+//! and will execute the operations in those blocks, as well as pending asynchronous operations on empty slots.
+//! The worker can also query the current state of the ledger, and simulate operations in a read-only context.
+//!
+//! The execution worker has shared read access to the final ledger,
+//! and must be the only module with runtime write access to the final ledger.
+//!
+//! # A note on finality
+//!
+//!
+//!
+//! The operations contained in a final slot are ready to be executed as final
+//! only once all the previous slots are final and their operations are executed as final or ready to be so.
+//! This ensures the sequential order of the final executions of operations,
+//! thus ensuring that writes to the final ledger are irreversible.
+//!
+//! Slots are called &quot;active&quot; if they have not been executed as final, and are not ready to be executed as final.
+//! Active slots can therefore be final slots, or slots containing blocks from the blockclique, or empty (miss) slots.
+//! Active slots can be executed in a speculative way: their execution might need to be reverted
+//! as new blocks finalize or arrive, causing changes to them or to active slots before them.
+//!
+//! Miss slots are executed as well because they can contain implicit and asynchronous operations.
+//!
+//! # Architecture
+//!
+//! This crate is meant to be included only at the binary level to launch the worker,
+//! not by the lib crates that will interact with it.
+//! It depends on the massa-execution-exports crate that contains all the publicly exposed elements
+//! and through which users will actually interact with the worker.
+//!
+//! ## worker.rs
+//! This module runs the main loop of the worker thread.
+//! It contains the logic to process incoming blockclique change notifications and read-only execution requests.
+//! It sequences the blocks according to their slot number into queues,
+//! and requests the execution of active and final slots to execution.rs.
+//!
+//! ## controller.rs
+//! Implements `ExecutionManager` and `ExecutionController`
+//! that serve as interfaces for users to interact with the worker in worker.rs.
+//!
+//! ## execution.rs
+//! Contains the machinery to execute final and non-final slots,
+//! and track the state and results of those executions.
+//! This module initializes and holds a reference to the interface from `interface_impl.rs`
+//! that allows the crate to provide execution state access
+//! to the virtual machine runtime (massa-sc-runtime crate).
+//! It also serves as an access point to the current execution state and speculative ledger
+//! as defined in `speculative_ledger.rs`.
+//!
+//! ## `speculative_ledger.rs`
+//! A speculative (non-final) ledger that supports canceling already-executed operations
+//! in the case of some blockclique changes.
+//!
+//! ## `request_queue.rs`
+//! This module contains the implementation of a generic finite-size execution request queue.
+//! It handles requests that come with an MPSC to send back the result of their execution once it&#39;s done.
+//!
 
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">is_sorted</span>)]</span>
+</span><span class="attribute">#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
+#![feature(is_sorted)]
 
-<span class="kw">mod</span> <span class="ident">active_history</span>;
-<span class="kw">mod</span> <span class="ident">context</span>;
-<span class="kw">mod</span> <span class="ident">controller</span>;
-<span class="kw">mod</span> <span class="ident">execution</span>;
-<span class="kw">mod</span> <span class="ident">interface_impl</span>;
-<span class="kw">mod</span> <span class="ident">request_queue</span>;
-<span class="kw">mod</span> <span class="ident">speculative_async_pool</span>;
-<span class="kw">mod</span> <span class="ident">speculative_ledger</span>;
-<span class="kw">mod</span> <span class="ident">worker</span>;
+</span><span class="kw">mod </span>active_history;
+<span class="kw">mod </span>context;
+<span class="kw">mod </span>controller;
+<span class="kw">mod </span>execution;
+<span class="kw">mod </span>interface_impl;
+<span class="kw">mod </span>request_queue;
+<span class="kw">mod </span>speculative_async_pool;
+<span class="kw">mod </span>speculative_ledger;
+<span class="kw">mod </span>worker;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">worker::start_execution_worker</span>;
+<span class="kw">pub use </span>worker::start_execution_worker;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

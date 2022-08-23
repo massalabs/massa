@@ -145,147 +145,147 @@
 <span id="145">145</span>
 <span id="146">146</span>
 <span id="147">147</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-<span class="doccomment">//! Massa stateless CLI</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">str_split_whitespace_as_str</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::SETTINGS</span>;
-<span class="kw">use</span> <span class="ident">anyhow::Result</span>;
-<span class="kw">use</span> <span class="ident">atty::Stream</span>;
-<span class="kw">use</span> <span class="ident">cmds::Command</span>;
-<span class="kw">use</span> <span class="ident">console::style</span>;
-<span class="kw">use</span> <span class="ident">dialoguer::Password</span>;
-<span class="kw">use</span> <span class="ident">massa_sdk::Client</span>;
-<span class="kw">use</span> <span class="ident">massa_wallet::Wallet</span>;
-<span class="kw">use</span> <span class="ident">serde::Serialize</span>;
-<span class="kw">use</span> <span class="ident">std::net::IpAddr</span>;
-<span class="kw">use</span> <span class="ident">std::path</span>::{<span class="ident">Path</span>, <span class="ident">PathBuf</span>};
-<span class="kw">use</span> <span class="ident">structopt::StructOpt</span>;
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</span><span class="doccomment">//! Massa stateless CLI
+</span><span class="attribute">#![feature(str_split_whitespace_as_str)]
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
+</span><span class="kw">use </span><span class="kw">crate</span>::settings::SETTINGS;
+<span class="kw">use </span>anyhow::Result;
+<span class="kw">use </span>atty::Stream;
+<span class="kw">use </span>cmds::Command;
+<span class="kw">use </span>console::style;
+<span class="kw">use </span>dialoguer::Password;
+<span class="kw">use </span>massa_sdk::Client;
+<span class="kw">use </span>massa_wallet::Wallet;
+<span class="kw">use </span>serde::Serialize;
+<span class="kw">use </span>std::net::IpAddr;
+<span class="kw">use </span>std::path::{Path, PathBuf};
+<span class="kw">use </span>structopt::StructOpt;
 
-<span class="kw">mod</span> <span class="ident">cmds</span>;
-<span class="kw">mod</span> <span class="ident">repl</span>;
-<span class="kw">mod</span> <span class="ident">settings</span>;
-<span class="kw">mod</span> <span class="ident">utils</span>;
+<span class="kw">mod </span>cmds;
+<span class="kw">mod </span>repl;
+<span class="kw">mod </span>settings;
+<span class="kw">mod </span>utils;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tests</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">pub mod </span>tests;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">StructOpt</span>)]</span>
-<span class="kw">struct</span> <span class="ident">Args</span> {
-    <span class="doccomment">/// Port to listen on (Massa public API).</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">long</span>)]</span>
-    <span class="ident">public_port</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u16</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Port to listen on (Massa private API).</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">long</span>)]</span>
-    <span class="ident">private_port</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u16</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Address to listen on</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">long</span>)]</span>
-    <span class="ident">ip</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Command that client would execute (non-interactive mode)</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;COMMAND&quot;</span>, <span class="ident">default_value</span> <span class="op">=</span> <span class="string">&quot;help&quot;</span>)]</span>
-    <span class="ident">command</span>: <span class="ident">Command</span>,
-    <span class="doccomment">/// Optional command parameter (as a JSON string)</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;PARAMETERS&quot;</span>)]</span>
-    <span class="ident">parameters</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Path of wallet file</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(
-        <span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;w&quot;</span>,
-        <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;wallet&quot;</span>,
-        <span class="ident">parse</span>(<span class="ident">from_os_str</span>),
-        <span class="ident">default_value</span> <span class="op">=</span> <span class="string">&quot;wallet.dat&quot;</span>
-    )]</span>
-    <span class="ident">wallet</span>: <span class="ident">PathBuf</span>,
-    <span class="doccomment">/// Enable a mode where input/output are serialized as JSON</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;j&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;json&quot;</span>)]</span>
-    <span class="ident">json</span>: <span class="ident">bool</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;p&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;pwd&quot;</span>)]</span>
-    <span class="doccomment">/// Wallet password</span>
-    <span class="ident">password</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(StructOpt)]
+</span><span class="kw">struct </span>Args {
+    <span class="doccomment">/// Port to listen on (Massa public API).
+    </span><span class="attribute">#[structopt(long)]
+    </span>public_port: <span class="prelude-ty">Option</span>&lt;u16&gt;,
+    <span class="doccomment">/// Port to listen on (Massa private API).
+    </span><span class="attribute">#[structopt(long)]
+    </span>private_port: <span class="prelude-ty">Option</span>&lt;u16&gt;,
+    <span class="doccomment">/// Address to listen on
+    </span><span class="attribute">#[structopt(long)]
+    </span>ip: <span class="prelude-ty">Option</span>&lt;IpAddr&gt;,
+    <span class="doccomment">/// Command that client would execute (non-interactive mode)
+    </span><span class="attribute">#[structopt(name = <span class="string">&quot;COMMAND&quot;</span>, default_value = <span class="string">&quot;help&quot;</span>)]
+    </span>command: Command,
+    <span class="doccomment">/// Optional command parameter (as a JSON string)
+    </span><span class="attribute">#[structopt(name = <span class="string">&quot;PARAMETERS&quot;</span>)]
+    </span>parameters: Vec&lt;String&gt;,
+    <span class="doccomment">/// Path of wallet file
+    </span><span class="attribute">#[structopt(
+        short = <span class="string">&quot;w&quot;</span>,
+        long = <span class="string">&quot;wallet&quot;</span>,
+        parse(from_os_str),
+        default_value = <span class="string">&quot;wallet.dat&quot;
+    </span>)]
+    </span>wallet: PathBuf,
+    <span class="doccomment">/// Enable a mode where input/output are serialized as JSON
+    </span><span class="attribute">#[structopt(short = <span class="string">&quot;j&quot;</span>, long = <span class="string">&quot;json&quot;</span>)]
+    </span>json: bool,
+    <span class="attribute">#[structopt(short = <span class="string">&quot;p&quot;</span>, long = <span class="string">&quot;pwd&quot;</span>)]
+    </span><span class="doccomment">/// Wallet password
+    </span>password: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>)]</span>
-<span class="kw">struct</span> <span class="ident">JsonError</span> {
-    <span class="ident">error</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Serialize)]
+</span><span class="kw">struct </span>JsonError {
+    error: String,
 }
 
-<span class="doccomment">/// Ask for the wallet password</span>
-<span class="doccomment">/// If the wallet does not exist, it will require password confirmation</span>
-<span class="kw">fn</span> <span class="ident">ask_password</span>(<span class="ident">wallet_path</span>: <span class="kw-2">&amp;</span><span class="ident">Path</span>) -&gt; <span class="ident">String</span> {
-    <span class="kw">if</span> <span class="ident">wallet_path</span>.<span class="ident">is_file</span>() {
-        <span class="ident">Password::new</span>()
-            .<span class="ident">with_prompt</span>(<span class="string">&quot;Enter wallet password&quot;</span>)
-            .<span class="ident">interact</span>()
-            .<span class="ident">expect</span>(<span class="string">&quot;IO error: Password reading failed, walled couldn&#39;t be unlocked&quot;</span>)
-    } <span class="kw">else</span> {
-        <span class="ident">Password::new</span>()
-            .<span class="ident">with_prompt</span>(<span class="string">&quot;Enter new password for wallet&quot;</span>)
-            .<span class="ident">with_confirmation</span>(<span class="string">&quot;Confirm password&quot;</span>, <span class="string">&quot;Passwords mismatching&quot;</span>)
-            .<span class="ident">interact</span>()
-            .<span class="ident">expect</span>(<span class="string">&quot;IO error: Password reading failed, wallet couldn&#39;t be created&quot;</span>)
+<span class="doccomment">/// Ask for the wallet password
+/// If the wallet does not exist, it will require password confirmation
+</span><span class="kw">fn </span>ask_password(wallet_path: <span class="kw-2">&amp;</span>Path) -&gt; String {
+    <span class="kw">if </span>wallet_path.is_file() {
+        Password::new()
+            .with_prompt(<span class="string">&quot;Enter wallet password&quot;</span>)
+            .interact()
+            .expect(<span class="string">&quot;IO error: Password reading failed, walled couldn&#39;t be unlocked&quot;</span>)
+    } <span class="kw">else </span>{
+        Password::new()
+            .with_prompt(<span class="string">&quot;Enter new password for wallet&quot;</span>)
+            .with_confirmation(<span class="string">&quot;Confirm password&quot;</span>, <span class="string">&quot;Passwords mismatching&quot;</span>)
+            .interact()
+            .expect(<span class="string">&quot;IO error: Password reading failed, wallet couldn&#39;t be created&quot;</span>)
     }
 }
 
-<span class="attribute">#[<span class="ident">paw::main</span>]</span>
-<span class="attribute">#[<span class="ident">tokio::main</span>]</span>
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>(<span class="ident">args</span>: <span class="ident">Args</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-    <span class="comment">// TODO: move settings loading in another crate ... see #1277</span>
-    <span class="kw">let</span> <span class="ident">settings</span> <span class="op">=</span> <span class="ident">SETTINGS</span>.<span class="ident">clone</span>();
-    <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">args</span>.<span class="ident">ip</span> {
-        <span class="prelude-val">Some</span>(<span class="ident">ip</span>) =&gt; <span class="ident">ip</span>,
-        <span class="prelude-val">None</span> =&gt; <span class="ident">settings</span>.<span class="ident">default_node</span>.<span class="ident">ip</span>,
+<span class="attribute">#[paw::main]
+#[tokio::main]
+</span><span class="kw">async fn </span>main(args: Args) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="comment">// TODO: move settings loading in another crate ... see #1277
+    </span><span class="kw">let </span>settings = SETTINGS.clone();
+    <span class="kw">let </span>address = <span class="kw">match </span>args.ip {
+        <span class="prelude-val">Some</span>(ip) =&gt; ip,
+        <span class="prelude-val">None </span>=&gt; settings.default_node.ip,
     };
-    <span class="kw">let</span> <span class="ident">public_port</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">args</span>.<span class="ident">public_port</span> {
-        <span class="prelude-val">Some</span>(<span class="ident">public_port</span>) =&gt; <span class="ident">public_port</span>,
-        <span class="prelude-val">None</span> =&gt; <span class="ident">settings</span>.<span class="ident">default_node</span>.<span class="ident">public_port</span>,
+    <span class="kw">let </span>public_port = <span class="kw">match </span>args.public_port {
+        <span class="prelude-val">Some</span>(public_port) =&gt; public_port,
+        <span class="prelude-val">None </span>=&gt; settings.default_node.public_port,
     };
-    <span class="kw">let</span> <span class="ident">private_port</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">args</span>.<span class="ident">private_port</span> {
-        <span class="prelude-val">Some</span>(<span class="ident">private_port</span>) =&gt; <span class="ident">private_port</span>,
-        <span class="prelude-val">None</span> =&gt; <span class="ident">settings</span>.<span class="ident">default_node</span>.<span class="ident">private_port</span>,
+    <span class="kw">let </span>private_port = <span class="kw">match </span>args.private_port {
+        <span class="prelude-val">Some</span>(private_port) =&gt; private_port,
+        <span class="prelude-val">None </span>=&gt; settings.default_node.private_port,
     };
 
-    <span class="comment">// Setup panic handlers,</span>
-    <span class="comment">// and when a panic occurs,</span>
-    <span class="comment">// run default handler,</span>
-    <span class="comment">// and then shutdown.</span>
-    <span class="kw">let</span> <span class="ident">default_panic</span> <span class="op">=</span> <span class="ident">std::panic::take_hook</span>();
-    <span class="ident">std::panic::set_hook</span>(<span class="ident">Box::new</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">info</span><span class="op">|</span> {
-        <span class="ident">default_panic</span>(<span class="ident">info</span>);
-        <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+    <span class="comment">// Setup panic handlers,
+    // and when a panic occurs,
+    // run default handler,
+    // and then shutdown.
+    </span><span class="kw">let </span>default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(<span class="kw">move </span>|info| {
+        default_panic(info);
+        std::process::exit(<span class="number">1</span>);
     }));
 
-    <span class="comment">// ...</span>
-    <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">args</span>.<span class="ident">password</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">ask_password</span>(<span class="kw-2">&amp;</span><span class="ident">args</span>.<span class="ident">wallet</span>));
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>(<span class="ident">args</span>.<span class="ident">wallet</span>, <span class="ident">password</span>)<span class="question-mark">?</span>;
-    <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">Client::new</span>(<span class="ident">address</span>, <span class="ident">public_port</span>, <span class="ident">private_port</span>).<span class="kw">await</span>;
-    <span class="kw">if</span> <span class="ident">atty::is</span>(<span class="ident">Stream::Stdout</span>) <span class="op">&amp;&amp;</span> <span class="ident">args</span>.<span class="ident">command</span> <span class="op">==</span> <span class="ident">Command::help</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">args</span>.<span class="ident">json</span> {
-        <span class="comment">// Interactive mode</span>
-        <span class="ident">repl::run</span>(<span class="kw-2">&amp;</span><span class="ident">client</span>, <span class="kw-2">&amp;mut</span> <span class="ident">wallet</span>).<span class="kw">await</span>;
-    } <span class="kw">else</span> {
-        <span class="comment">// Non-Interactive mode</span>
-        <span class="kw">match</span> <span class="ident">args</span>
-            .<span class="ident">command</span>
-            .<span class="ident">run</span>(<span class="kw-2">&amp;</span><span class="ident">client</span>, <span class="kw-2">&amp;mut</span> <span class="ident">wallet</span>, <span class="kw-2">&amp;</span><span class="ident">args</span>.<span class="ident">parameters</span>, <span class="ident">args</span>.<span class="ident">json</span>)
-            .<span class="kw">await</span>
-        {
-            <span class="prelude-val">Ok</span>(<span class="ident">output</span>) =&gt; {
-                <span class="kw">if</span> <span class="ident">args</span>.<span class="ident">json</span> {
-                    <span class="ident">output</span>
-                        .<span class="ident">stdout_json</span>()
-                        .<span class="ident">expect</span>(<span class="string">&quot;fail to serialize to JSON command output&quot;</span>)
-                } <span class="kw">else</span> {
-                    <span class="ident">output</span>.<span class="ident">pretty_print</span>();
+    <span class="comment">// ...
+    </span><span class="kw">let </span>password = args.password.unwrap_or_else(|| ask_password(<span class="kw-2">&amp;</span>args.wallet));
+    <span class="kw">let </span><span class="kw-2">mut </span>wallet = Wallet::new(args.wallet, password)<span class="question-mark">?</span>;
+    <span class="kw">let </span>client = Client::new(address, public_port, private_port).<span class="kw">await</span>;
+    <span class="kw">if </span>atty::is(Stream::Stdout) &amp;&amp; args.command == Command::help &amp;&amp; !args.json {
+        <span class="comment">// Interactive mode
+        </span>repl::run(<span class="kw-2">&amp;</span>client, <span class="kw-2">&amp;mut </span>wallet).<span class="kw">await</span>;
+    } <span class="kw">else </span>{
+        <span class="comment">// Non-Interactive mode
+        </span><span class="kw">match </span>args
+            .command
+            .run(<span class="kw-2">&amp;</span>client, <span class="kw-2">&amp;mut </span>wallet, <span class="kw-2">&amp;</span>args.parameters, args.json)
+            .<span class="kw">await
+        </span>{
+            <span class="prelude-val">Ok</span>(output) =&gt; {
+                <span class="kw">if </span>args.json {
+                    output
+                        .stdout_json()
+                        .expect(<span class="string">&quot;fail to serialize to JSON command output&quot;</span>)
+                } <span class="kw">else </span>{
+                    output.pretty_print();
                 }
             }
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="kw">if</span> <span class="ident">args</span>.<span class="ident">json</span> {
-                    <span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">JsonError</span> {
-                        <span class="ident">error</span>: <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>),
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="kw">if </span>args.json {
+                    <span class="kw">let </span>error = serde_json::to_string(<span class="kw-2">&amp;</span>JsonError {
+                        error: <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, e),
                     })
-                    .<span class="ident">expect</span>(<span class="string">&quot;fail to serialize to JSON error&quot;</span>);
-                    <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">error</span>);
-                } <span class="kw">else</span> {
-                    <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">style</span>(<span class="macro">format!</span>(<span class="string">&quot;Error: {}&quot;</span>, <span class="ident">e</span>)).<span class="ident">red</span>());
+                    .expect(<span class="string">&quot;fail to serialize to JSON error&quot;</span>);
+                    <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, error);
+                } <span class="kw">else </span>{
+                    <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, style(<span class="macro">format!</span>(<span class="string">&quot;Error: {}&quot;</span>, e)).red());
                 }
             }
         }
@@ -293,4 +293,4 @@
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

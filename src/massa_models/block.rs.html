@@ -665,672 +665,672 @@
 <span id="665">665</span>
 <span id="666">666</span>
 <span id="667">667</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::BLOCK_ID_SIZE_BYTES</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::node_configuration::default::ENDORSEMENT_COUNT</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::node_configuration</span>::{<span class="ident">MAX_BLOCK_SIZE</span>, <span class="ident">MAX_OPERATIONS_PER_BLOCK</span>, <span class="ident">THREAD_COUNT</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::operation::OperationDeserializer</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash</span>::{<span class="ident">Map</span>, <span class="ident">PreHashed</span>, <span class="ident">Set</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::wrapped</span>::{<span class="ident">Id</span>, <span class="ident">Wrapped</span>, <span class="ident">WrappedContent</span>, <span class="ident">WrappedDeserializer</span>, <span class="ident">WrappedSerializer</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">Address</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementDeserializer</span>, <span class="ident">EndorsementId</span>, <span class="ident">ModelsError</span>, <span class="ident">Operation</span>,
-    <span class="ident">OperationId</span>, <span class="ident">Slot</span>, <span class="ident">SlotDeserializer</span>, <span class="ident">SlotSerializer</span>, <span class="ident">WrappedEndorsement</span>, <span class="ident">WrappedOperation</span>,
+</span><span class="kw">use </span><span class="kw">crate</span>::constants::BLOCK_ID_SIZE_BYTES;
+<span class="kw">use </span><span class="kw">crate</span>::node_configuration::default::ENDORSEMENT_COUNT;
+<span class="kw">use </span><span class="kw">crate</span>::node_configuration::{MAX_BLOCK_SIZE, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT};
+<span class="kw">use </span><span class="kw">crate</span>::operation::OperationDeserializer;
+<span class="kw">use </span><span class="kw">crate</span>::prehash::{Map, PreHashed, Set};
+<span class="kw">use </span><span class="kw">crate</span>::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
+<span class="kw">use crate</span>::{
+    Address, Endorsement, EndorsementDeserializer, EndorsementId, ModelsError, Operation,
+    OperationId, Slot, SlotDeserializer, SlotSerializer, WrappedEndorsement, WrappedOperation,
 };
-<span class="kw">use</span> <span class="ident">massa_hash</span>::{<span class="ident">Hash</span>, <span class="ident">HashDeserializer</span>};
-<span class="kw">use</span> <span class="ident">massa_serialization</span>::{
-    <span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>, <span class="ident">U32VarIntDeserializer</span>, <span class="ident">U32VarIntSerializer</span>,
+<span class="kw">use </span>massa_hash::{Hash, HashDeserializer};
+<span class="kw">use </span>massa_serialization::{
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
-<span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">KeyPair</span>, <span class="ident">PublicKey</span>, <span class="ident">Signature</span>};
-<span class="kw">use</span> <span class="ident">nom::branch::alt</span>;
-<span class="kw">use</span> <span class="ident">nom::bytes::complete::tag</span>;
-<span class="kw">use</span> <span class="ident">nom::error::context</span>;
-<span class="kw">use</span> <span class="ident">nom::multi</span>::{<span class="ident">count</span>, <span class="ident">length_count</span>};
-<span class="kw">use</span> <span class="ident">nom::sequence</span>::{<span class="ident">preceded</span>, <span class="ident">tuple</span>};
-<span class="kw">use</span> <span class="ident">nom::Parser</span>;
-<span class="kw">use</span> <span class="ident">nom</span>::{
-    <span class="ident">error</span>::{<span class="ident">ContextError</span>, <span class="ident">ParseError</span>},
-    <span class="ident">IResult</span>,
+<span class="kw">use </span>massa_signature::{KeyPair, PublicKey, Signature};
+<span class="kw">use </span>nom::branch::alt;
+<span class="kw">use </span>nom::bytes::complete::tag;
+<span class="kw">use </span>nom::error::context;
+<span class="kw">use </span>nom::multi::{count, length_count};
+<span class="kw">use </span>nom::sequence::{preceded, tuple};
+<span class="kw">use </span>nom::Parser;
+<span class="kw">use </span>nom::{
+    error::{ContextError, ParseError},
+    IResult,
 };
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
-<span class="kw">use</span> <span class="ident">std::fmt::Formatter</span>;
-<span class="kw">use</span> <span class="ident">std::ops::Bound</span>::{<span class="ident">Excluded</span>, <span class="ident">Included</span>};
-<span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::convert::TryInto;
+<span class="kw">use </span>std::fmt::Formatter;
+<span class="kw">use </span>std::ops::Bound::{Excluded, Included};
+<span class="kw">use </span>std::str::FromStr;
 
-<span class="kw">const</span> <span class="ident">BLOCK_ID_STRING_PREFIX</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;BLO&quot;</span>;
+<span class="kw">const </span>BLOCK_ID_STRING_PREFIX: <span class="kw-2">&amp;</span>str = <span class="string">&quot;BLO&quot;</span>;
 
-<span class="doccomment">/// block id</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockId</span>(<span class="kw">pub</span> <span class="ident">Hash</span>);
+<span class="doccomment">/// block id
+</span><span class="attribute">#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>BlockId(<span class="kw">pub </span>Hash);
 
-<span class="kw">impl</span> <span class="ident">PreHashed</span> <span class="kw">for</span> <span class="ident">BlockId</span> {}
+<span class="kw">impl </span>PreHashed <span class="kw">for </span>BlockId {}
 
-<span class="kw">impl</span> <span class="ident">Id</span> <span class="kw">for</span> <span class="ident">BlockId</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">hash</span>: <span class="ident">Hash</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">BlockId</span>(<span class="ident">hash</span>)
+<span class="kw">impl </span>Id <span class="kw">for </span>BlockId {
+    <span class="kw">fn </span>new(hash: Hash) -&gt; <span class="self">Self </span>{
+        BlockId(hash)
     }
 
-    <span class="kw">fn</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Hash</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-    }
+    <span class="kw">fn </span>hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Hash {
+        <span class="self">self</span>.<span class="number">0
+    </span>}
 }
 
-<span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">BlockId</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;hash-prefix&quot;</span>) {
-            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}-{}&quot;</span>, <span class="ident">BLOCK_ID_STRING_PREFIX</span>, <span class="self">self</span>.<span class="number">0</span>.<span class="ident">to_bs58_check</span>())
-        } <span class="kw">else</span> {
-            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>.<span class="ident">to_bs58_check</span>())
+<span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>BlockId {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
+        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;hash-prefix&quot;</span>) {
+            <span class="macro">write!</span>(f, <span class="string">&quot;{}-{}&quot;</span>, BLOCK_ID_STRING_PREFIX, <span class="self">self</span>.<span class="number">0</span>.to_bs58_check())
+        } <span class="kw">else </span>{
+            <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>.to_bs58_check())
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">std::fmt::Debug</span> <span class="kw">for</span> <span class="ident">BlockId</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;hash-prefix&quot;</span>) {
-            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}-{}&quot;</span>, <span class="ident">BLOCK_ID_STRING_PREFIX</span>, <span class="self">self</span>.<span class="number">0</span>.<span class="ident">to_bs58_check</span>())
-        } <span class="kw">else</span> {
-            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>.<span class="ident">to_bs58_check</span>())
+<span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>BlockId {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
+        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;hash-prefix&quot;</span>) {
+            <span class="macro">write!</span>(f, <span class="string">&quot;{}-{}&quot;</span>, BLOCK_ID_STRING_PREFIX, <span class="self">self</span>.<span class="number">0</span>.to_bs58_check())
+        } <span class="kw">else </span>{
+            <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>.to_bs58_check())
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">FromStr</span> <span class="kw">for</span> <span class="ident">BlockId</span> {
-    <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident">ModelsError</span>;
-    <span class="kw">fn</span> <span class="ident">from_str</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;hash-prefix&quot;</span>) {
-            <span class="kw">let</span> <span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">split</span>(<span class="string">&#39;-&#39;</span>).<span class="ident">collect</span>();
-            <span class="kw">if</span> <span class="ident">v</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="number">2</span> {
-                <span class="comment">// assume there is no prefix</span>
-                <span class="prelude-val">Ok</span>(<span class="ident">BlockId</span>(<span class="ident">Hash::from_str</span>(<span class="ident">s</span>)<span class="question-mark">?</span>))
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">v</span>[<span class="number">0</span>] <span class="op">!</span><span class="op">=</span> <span class="ident">BLOCK_ID_STRING_PREFIX</span> {
-                <span class="prelude-val">Err</span>(<span class="ident">ModelsError::WrongPrefix</span>(
-                    <span class="ident">BLOCK_ID_STRING_PREFIX</span>.<span class="ident">to_string</span>(),
-                    <span class="ident">v</span>[<span class="number">0</span>].<span class="ident">to_string</span>(),
+<span class="kw">impl </span>FromStr <span class="kw">for </span>BlockId {
+    <span class="kw">type </span><span class="prelude-val">Err </span>= ModelsError;
+    <span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
+        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;hash-prefix&quot;</span>) {
+            <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = s.split(<span class="string">&#39;-&#39;</span>).collect();
+            <span class="kw">if </span>v.len() != <span class="number">2 </span>{
+                <span class="comment">// assume there is no prefix
+                </span><span class="prelude-val">Ok</span>(BlockId(Hash::from_str(s)<span class="question-mark">?</span>))
+            } <span class="kw">else if </span>v[<span class="number">0</span>] != BLOCK_ID_STRING_PREFIX {
+                <span class="prelude-val">Err</span>(ModelsError::WrongPrefix(
+                    BLOCK_ID_STRING_PREFIX.to_string(),
+                    v[<span class="number">0</span>].to_string(),
                 ))
-            } <span class="kw">else</span> {
-                <span class="prelude-val">Ok</span>(<span class="ident">BlockId</span>(<span class="ident">Hash::from_str</span>(<span class="ident">v</span>[<span class="number">1</span>])<span class="question-mark">?</span>))
+            } <span class="kw">else </span>{
+                <span class="prelude-val">Ok</span>(BlockId(Hash::from_str(v[<span class="number">1</span>])<span class="question-mark">?</span>))
             }
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">BlockId</span>(<span class="ident">Hash::from_str</span>(<span class="ident">s</span>)<span class="question-mark">?</span>))
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Ok</span>(BlockId(Hash::from_str(s)<span class="question-mark">?</span>))
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">BlockId</span> {
-    <span class="doccomment">/// block id to bytes</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="ident">BLOCK_ID_SIZE_BYTES</span>] {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">to_bytes</span>()
+<span class="kw">impl </span>BlockId {
+    <span class="doccomment">/// block id to bytes
+    </span><span class="kw">pub fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8; BLOCK_ID_SIZE_BYTES] {
+        <span class="self">self</span>.<span class="number">0</span>.to_bytes()
     }
 
-    <span class="doccomment">/// block id into bytes</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_bytes</span>(<span class="self">self</span>) -&gt; [<span class="ident">u8</span>; <span class="ident">BLOCK_ID_SIZE_BYTES</span>] {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">into_bytes</span>()
+    <span class="doccomment">/// block id into bytes
+    </span><span class="kw">pub fn </span>into_bytes(<span class="self">self</span>) -&gt; [u8; BLOCK_ID_SIZE_BYTES] {
+        <span class="self">self</span>.<span class="number">0</span>.into_bytes()
     }
 
-    <span class="doccomment">/// block id from bytes</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bytes</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="ident">BLOCK_ID_SIZE_BYTES</span>]) -&gt; <span class="ident">BlockId</span> {
-        <span class="ident">BlockId</span>(<span class="ident">Hash::from_bytes</span>(<span class="ident">data</span>))
+    <span class="doccomment">/// block id from bytes
+    </span><span class="kw">pub fn </span>from_bytes(data: <span class="kw-2">&amp;</span>[u8; BLOCK_ID_SIZE_BYTES]) -&gt; BlockId {
+        BlockId(Hash::from_bytes(data))
     }
 
-    <span class="doccomment">/// block id fro `bs58` check</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bs58_check</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">BlockId</span>(
-            <span class="ident">Hash::from_bs58_check</span>(<span class="ident">data</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ModelsError::HashError</span>)<span class="question-mark">?</span>,
+    <span class="doccomment">/// block id fro `bs58` check
+    </span><span class="kw">pub fn </span>from_bs58_check(data: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;BlockId, ModelsError&gt; {
+        <span class="prelude-val">Ok</span>(BlockId(
+            Hash::from_bs58_check(data).map_err(|<span class="kw">_</span>| ModelsError::HashError)<span class="question-mark">?</span>,
         ))
     }
 
-    <span class="doccomment">/// first bit of the hashed block id</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_first_bit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">to_bytes</span>()[<span class="number">0</span>] <span class="op">&gt;</span><span class="op">&gt;</span> <span class="number">7</span> <span class="op">==</span> <span class="number">1</span>
-    }
+    <span class="doccomment">/// first bit of the hashed block id
+    </span><span class="kw">pub fn </span>get_first_bit(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.to_bytes()[<span class="number">0</span>] &gt;&gt; <span class="number">7 </span>== <span class="number">1
+    </span>}
 }
 
-<span class="doccomment">/// block</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Block</span> {
-    <span class="doccomment">/// signed header</span>
-    <span class="kw">pub</span> <span class="ident">header</span>: <span class="ident">WrappedHeader</span>,
-    <span class="doccomment">/// operations</span>
-    <span class="kw">pub</span> <span class="ident">operations</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedOperation</span><span class="op">&gt;</span>,
+<span class="doccomment">/// block
+</span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>Block {
+    <span class="doccomment">/// signed header
+    </span><span class="kw">pub </span>header: WrappedHeader,
+    <span class="doccomment">/// operations
+    </span><span class="kw">pub </span>operations: Vec&lt;WrappedOperation&gt;,
 }
 
-<span class="doccomment">/// Wrapped Block</span>
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">WrappedBlock</span> <span class="op">=</span> <span class="ident">Wrapped</span><span class="op">&lt;</span><span class="ident">Block</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>;
+<span class="doccomment">/// Wrapped Block
+</span><span class="kw">pub type </span>WrappedBlock = Wrapped&lt;Block, BlockId&gt;;
 
-<span class="kw">impl</span> <span class="ident">WrappedContent</span> <span class="kw">for</span> <span class="ident">Block</span> {
-    <span class="kw">fn</span> <span class="ident">new_wrapped</span><span class="op">&lt;</span><span class="ident">SC</span>: <span class="ident">Serializer</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">U</span>: <span class="ident">Id</span><span class="op">&gt;</span>(
-        <span class="ident">content</span>: <span class="self">Self</span>,
-        <span class="ident">content_serializer</span>: <span class="ident">SC</span>,
-        <span class="ident">keypair</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPair</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Wrapped</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">U</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">keypair</span>.<span class="ident">get_public_key</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">content_serialized</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="ident">content_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">content</span>, <span class="kw-2">&amp;mut</span> <span class="ident">content_serialized</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">creator_address</span> <span class="op">=</span> <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">public_key</span>);
+<span class="kw">impl </span>WrappedContent <span class="kw">for </span>Block {
+    <span class="kw">fn </span>new_wrapped&lt;SC: Serializer&lt;<span class="self">Self</span>&gt;, U: Id&gt;(
+        content: <span class="self">Self</span>,
+        content_serializer: SC,
+        keypair: <span class="kw-2">&amp;</span>KeyPair,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Wrapped&lt;<span class="self">Self</span>, U&gt;, ModelsError&gt; {
+        <span class="kw">let </span>public_key = keypair.get_public_key();
+        <span class="kw">let </span><span class="kw-2">mut </span>content_serialized = Vec::new();
+        content_serializer.serialize(<span class="kw-2">&amp;</span>content, <span class="kw-2">&amp;mut </span>content_serialized)<span class="question-mark">?</span>;
+        <span class="kw">let </span>creator_address = Address::from_public_key(<span class="kw-2">&amp;</span>public_key);
 
-        <span class="prelude-val">Ok</span>(<span class="ident">Wrapped</span> {
-            <span class="ident">signature</span>: <span class="ident">content</span>.<span class="ident">header</span>.<span class="ident">signature</span>,
-            <span class="ident">creator_public_key</span>: <span class="ident">public_key</span>,
-            <span class="ident">creator_address</span>,
-            <span class="ident">thread</span>: <span class="ident">creator_address</span>.<span class="ident">get_thread</span>(<span class="ident">THREAD_COUNT</span>),
-            <span class="ident">id</span>: <span class="ident">U::new</span>(<span class="ident">content</span>.<span class="ident">header</span>.<span class="ident">id</span>.<span class="ident">hash</span>()),
-            <span class="ident">content</span>,
-            <span class="ident">serialized_data</span>: <span class="ident">content_serialized</span>,
+        <span class="prelude-val">Ok</span>(Wrapped {
+            signature: content.header.signature,
+            creator_public_key: public_key,
+            creator_address,
+            thread: creator_address.get_thread(THREAD_COUNT),
+            id: U::new(content.header.id.hash()),
+            content,
+            serialized_data: content_serialized,
         })
     }
 
-    <span class="kw">fn</span> <span class="ident">serialize</span>(
-        <span class="ident">_signature</span>: <span class="kw-2">&amp;</span><span class="ident">Signature</span>,
-        <span class="ident">_creator_public_key</span>: <span class="kw-2">&amp;</span><span class="ident">PublicKey</span>,
-        <span class="ident">serialized_content</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="ident">serialized_content</span>);
+    <span class="kw">fn </span>serialize(
+        _signature: <span class="kw-2">&amp;</span>Signature,
+        _creator_public_key: <span class="kw-2">&amp;</span>PublicKey,
+        serialized_content: <span class="kw-2">&amp;</span>[u8],
+        buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        buffer.extend(serialized_content);
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span>
+    <span class="kw">fn </span>deserialize&lt;
         <span class="lifetime">&#39;a</span>,
-        <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span>,
-        <span class="ident">DC</span>: <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">U</span>: <span class="ident">Id</span>,
-    <span class="op">&gt;</span>(
-        <span class="ident">_signature_deserializer</span>: <span class="kw-2">&amp;</span><span class="ident">massa_signature::SignatureDeserializer</span>,
-        <span class="ident">_creator_public_key_deserializer</span>: <span class="kw-2">&amp;</span><span class="ident">massa_signature::PublicKeyDeserializer</span>,
-        <span class="ident">content_deserializer</span>: <span class="kw-2">&amp;</span><span class="ident">DC</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">Wrapped</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">U</span><span class="op">&gt;</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">content</span>) <span class="op">=</span> <span class="ident">content_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;,
+        DC: Deserializer&lt;<span class="self">Self</span>&gt;,
+        U: Id,
+    &gt;(
+        _signature_deserializer: <span class="kw-2">&amp;</span>massa_signature::SignatureDeserializer,
+        _creator_public_key_deserializer: <span class="kw-2">&amp;</span>massa_signature::PublicKeyDeserializer,
+        content_deserializer: <span class="kw-2">&amp;</span>DC,
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Wrapped&lt;<span class="self">Self</span>, U&gt;, E&gt; {
+        <span class="kw">let </span>(rest, content) = content_deserializer.deserialize(buffer)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>((
-            <span class="ident">rest</span>,
-            <span class="ident">Wrapped</span> {
-                <span class="ident">signature</span>: <span class="ident">content</span>.<span class="ident">header</span>.<span class="ident">signature</span>,
-                <span class="ident">creator_public_key</span>: <span class="ident">content</span>.<span class="ident">header</span>.<span class="ident">creator_public_key</span>,
-                <span class="ident">creator_address</span>: <span class="ident">content</span>.<span class="ident">header</span>.<span class="ident">creator_address</span>,
-                <span class="ident">thread</span>: <span class="ident">content</span>.<span class="ident">header</span>.<span class="ident">thread</span>,
-                <span class="ident">id</span>: <span class="ident">U::new</span>(<span class="ident">content</span>.<span class="ident">header</span>.<span class="ident">id</span>.<span class="ident">hash</span>()),
-                <span class="ident">content</span>,
-                <span class="ident">serialized_data</span>: <span class="ident">buffer</span>[..<span class="ident">buffer</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">rest</span>.<span class="ident">len</span>()].<span class="ident">to_vec</span>(),
+            rest,
+            Wrapped {
+                signature: content.header.signature,
+                creator_public_key: content.header.creator_public_key,
+                creator_address: content.header.creator_address,
+                thread: content.header.thread,
+                id: U::new(content.header.id.hash()),
+                content,
+                serialized_data: buffer[..buffer.len() - rest.len()].to_vec(),
             },
         ))
     }
 }
-<span class="doccomment">/// Serializer for `Block`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockSerializer</span> {
-    <span class="ident">header_serializer</span>: <span class="ident">WrappedSerializer</span>,
-    <span class="ident">operation_serializer</span>: <span class="ident">WrappedSerializer</span>,
-    <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer</span>,
+<span class="doccomment">/// Serializer for `Block`
+</span><span class="kw">pub struct </span>BlockSerializer {
+    header_serializer: WrappedSerializer,
+    operation_serializer: WrappedSerializer,
+    u32_serializer: U32VarIntSerializer,
 }
 
-<span class="kw">impl</span> <span class="ident">BlockSerializer</span> {
-    <span class="doccomment">/// Creates a new `BlockSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">BlockSerializer</span> {
-            <span class="ident">header_serializer</span>: <span class="ident">WrappedSerializer::new</span>(),
-            <span class="ident">operation_serializer</span>: <span class="ident">WrappedSerializer::new</span>(),
-            <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer::new</span>(),
+<span class="kw">impl </span>BlockSerializer {
+    <span class="doccomment">/// Creates a new `BlockSerializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        BlockSerializer {
+            header_serializer: WrappedSerializer::new(),
+            operation_serializer: WrappedSerializer::new(),
+            u32_serializer: U32VarIntSerializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">BlockSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>BlockSerializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BlockSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Block</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">header_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">header</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">u32_serializer</span>.<span class="ident">serialize</span>(
-            <span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">operations</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                <span class="ident">SerializeError::NumberTooBig</span>(<span class="macro">format!</span>(<span class="string">&quot;too many operations: {}&quot;</span>, <span class="ident">err</span>))
+<span class="kw">impl </span>Serializer&lt;Block&gt; <span class="kw">for </span>BlockSerializer {
+    <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>Block, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="self">self</span>.header_serializer.serialize(<span class="kw-2">&amp;</span>value.header, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.u32_serializer.serialize(
+            <span class="kw-2">&amp;</span>value.operations.len().try_into().map_err(|err| {
+                SerializeError::NumberTooBig(<span class="macro">format!</span>(<span class="string">&quot;too many operations: {}&quot;</span>, err))
             })<span class="question-mark">?</span>,
-            <span class="ident">buffer</span>,
+            buffer,
         )<span class="question-mark">?</span>;
-        <span class="kw">for</span> <span class="ident">operation</span> <span class="kw">in</span> <span class="ident">value</span>.<span class="ident">operations</span>.<span class="ident">iter</span>() {
-            <span class="self">self</span>.<span class="ident">operation_serializer</span>.<span class="ident">serialize</span>(<span class="ident">operation</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="kw">for </span>operation <span class="kw">in </span>value.operations.iter() {
+            <span class="self">self</span>.operation_serializer.serialize(operation, buffer)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// Deserializer for `Block`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockDeserializer</span> {
-    <span class="ident">header_deserializer</span>: <span class="ident">WrappedDeserializer</span><span class="op">&lt;</span><span class="ident">BlockHeader</span>, <span class="ident">BlockHeaderDeserializer</span><span class="op">&gt;</span>,
-    <span class="ident">operation_deserializer</span>: <span class="ident">WrappedDeserializer</span><span class="op">&lt;</span><span class="ident">Operation</span>, <span class="ident">OperationDeserializer</span><span class="op">&gt;</span>,
-    <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer</span>,
+<span class="doccomment">/// Deserializer for `Block`
+</span><span class="kw">pub struct </span>BlockDeserializer {
+    header_deserializer: WrappedDeserializer&lt;BlockHeader, BlockHeaderDeserializer&gt;,
+    operation_deserializer: WrappedDeserializer&lt;Operation, OperationDeserializer&gt;,
+    u32_deserializer: U32VarIntDeserializer,
 }
 
-<span class="kw">impl</span> <span class="ident">BlockDeserializer</span> {
-    <span class="doccomment">/// Creates a new `BlockDeserializer`</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">BlockDeserializer</span> {
-            <span class="ident">header_deserializer</span>: <span class="ident">WrappedDeserializer::new</span>(<span class="ident">BlockHeaderDeserializer::new</span>()),
-            <span class="ident">operation_deserializer</span>: <span class="ident">WrappedDeserializer::new</span>(<span class="ident">OperationDeserializer::new</span>()),
-            <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer::new</span>(
-                <span class="ident">Included</span>(<span class="number">0</span>),
-                <span class="ident">Included</span>(<span class="ident">MAX_OPERATIONS_PER_BLOCK</span>),
+<span class="kw">impl </span>BlockDeserializer {
+    <span class="doccomment">/// Creates a new `BlockDeserializer`
+    </span><span class="kw">pub const fn </span>new() -&gt; <span class="self">Self </span>{
+        BlockDeserializer {
+            header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new()),
+            operation_deserializer: WrappedDeserializer::new(OperationDeserializer::new()),
+            u32_deserializer: U32VarIntDeserializer::new(
+                Included(<span class="number">0</span>),
+                Included(MAX_OPERATIONS_PER_BLOCK),
             ),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">BlockDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>BlockDeserializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BlockDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">impl </span>Deserializer&lt;Block&gt; <span class="kw">for </span>BlockDeserializer {
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">Block</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">context</span>(
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Block, E&gt; {
+        context(
             <span class="string">&quot;Failed Block deserialization&quot;</span>,
-            <span class="ident">tuple</span>((
-                <span class="ident">context</span>(<span class="string">&quot;Failed header deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">header_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+            tuple((
+                context(<span class="string">&quot;Failed header deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.header_deserializer.deserialize(input)
                 }),
-                <span class="ident">length_count</span>(
-                    <span class="ident">context</span>(<span class="string">&quot;Failed length operation deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                        <span class="self">self</span>.<span class="ident">u32_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                length_count(
+                    context(<span class="string">&quot;Failed length operation deserialization&quot;</span>, |input| {
+                        <span class="self">self</span>.u32_deserializer.deserialize(input)
                     }),
-                    <span class="ident">context</span>(<span class="string">&quot;Failed operation deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                        <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">operation</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">operation_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)<span class="question-mark">?</span>;
-                        <span class="kw">if</span> <span class="ident">buffer</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">rest</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">MAX_BLOCK_SIZE</span> <span class="kw">as</span> <span class="ident">usize</span> {
-                            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">nom::Err::Error</span>(<span class="ident">ParseError::from_error_kind</span>(
-                                <span class="ident">input</span>,
-                                <span class="ident">nom::error::ErrorKind::TooLarge</span>,
+                    context(<span class="string">&quot;Failed operation deserialization&quot;</span>, |input| {
+                        <span class="kw">let </span>(rest, operation) = <span class="self">self</span>.operation_deserializer.deserialize(input)<span class="question-mark">?</span>;
+                        <span class="kw">if </span>buffer.len() - rest.len() &gt; MAX_BLOCK_SIZE <span class="kw">as </span>usize {
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
+                                input,
+                                nom::error::ErrorKind::TooLarge,
                             )));
                         }
-                        <span class="prelude-val">Ok</span>((<span class="ident">rest</span>, <span class="ident">operation</span>))
+                        <span class="prelude-val">Ok</span>((rest, operation))
                     }),
                 ),
             )),
         )
-        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">header</span>, <span class="ident">operations</span>)<span class="op">|</span> <span class="ident">Block</span> { <span class="ident">header</span>, <span class="ident">operations</span> })
-        .<span class="ident">parse</span>(<span class="ident">buffer</span>)
+        .map(|(header, operations)| Block { header, operations })
+        .parse(buffer)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">WrappedBlock</span> {
-    <span class="doccomment">/// size in bytes of the whole block</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bytes_count</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
-        <span class="self">self</span>.<span class="ident">serialized_data</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>
+<span class="kw">impl </span>WrappedBlock {
+    <span class="doccomment">/// size in bytes of the whole block
+    </span><span class="kw">pub fn </span>bytes_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="self">self</span>.serialized_data.len() <span class="kw">as </span>u64
     }
 
-    <span class="doccomment">/// true if given operation is included in the block</span>
-    <span class="doccomment">/// may fail if computing an id of an operation in the block</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">contains_operation</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">op</span>: <span class="ident">WrappedOperation</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">op_id</span> <span class="op">=</span> <span class="ident">op</span>.<span class="ident">id</span>;
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">content</span>.<span class="ident">operations</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="ident">op_id</span> <span class="op">==</span> <span class="ident">o</span>.<span class="ident">id</span>))
+    <span class="doccomment">/// true if given operation is included in the block
+    /// may fail if computing an id of an operation in the block
+    </span><span class="kw">pub fn </span>contains_operation(<span class="kw-2">&amp;</span><span class="self">self</span>, op: WrappedOperation) -&gt; <span class="prelude-ty">Result</span>&lt;bool, ModelsError&gt; {
+        <span class="kw">let </span>op_id = op.id;
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.content.operations.iter().any(|o| op_id == o.id))
     }
 
-    <span class="doccomment">/// Retrieve roll involving addresses</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_roll_involved_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">roll_involved_addrs</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="ident">::default</span>();
-        <span class="kw">for</span> <span class="ident">op</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">content</span>.<span class="ident">operations</span>.<span class="ident">iter</span>() {
-            <span class="ident">roll_involved_addrs</span>.<span class="ident">extend</span>(<span class="ident">op</span>.<span class="ident">get_roll_involved_addresses</span>()<span class="question-mark">?</span>);
+    <span class="doccomment">/// Retrieve roll involving addresses
+    </span><span class="kw">pub fn </span>get_roll_involved_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Set&lt;Address&gt;, ModelsError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>roll_involved_addrs = Set::&lt;Address&gt;::default();
+        <span class="kw">for </span>op <span class="kw">in </span><span class="self">self</span>.content.operations.iter() {
+            roll_involved_addrs.extend(op.get_roll_involved_addresses()<span class="question-mark">?</span>);
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">roll_involved_addrs</span>)
+        <span class="prelude-val">Ok</span>(roll_involved_addrs)
     }
 
-    <span class="doccomment">/// retrieves a mapping of addresses to the list of operation IDs they are involved with in terms of ledger</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">involved_addresses</span>(
+    <span class="doccomment">/// retrieves a mapping of addresses to the list of operation IDs they are involved with in terms of ledger
+    </span><span class="kw">pub fn </span>involved_addresses(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">operation_set</span>: <span class="kw-2">&amp;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">addresses_to_operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span>
-            <span class="ident">Map</span>::<span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::default</span>();
-        <span class="ident">operation_set</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">try_for_each</span>::<span class="op">&lt;</span><span class="kw">_</span>, <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ModelsError</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="op">|</span>(<span class="ident">op_id</span>, (<span class="ident">op_idx</span>, <span class="ident">_op_expiry</span>))<span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">content</span>.<span class="ident">operations</span>[<span class="kw-2">*</span><span class="ident">op_idx</span>];
-                <span class="kw">let</span> <span class="ident">addrs</span> <span class="op">=</span> <span class="ident">op</span>.<span class="ident">get_ledger_involved_addresses</span>();
-                <span class="kw">for</span> <span class="ident">ad</span> <span class="kw">in</span> <span class="ident">addrs</span>.<span class="ident">into_iter</span>() {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">entry</span>) <span class="op">=</span> <span class="ident">addresses_to_operations</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">ad</span>) {
-                        <span class="ident">entry</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">op_id</span>);
-                    } <span class="kw">else</span> {
-                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">set</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="ident">::default</span>();
-                        <span class="ident">set</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">op_id</span>);
-                        <span class="ident">addresses_to_operations</span>.<span class="ident">insert</span>(<span class="ident">ad</span>, <span class="ident">set</span>);
+        operation_set: <span class="kw-2">&amp;</span>Map&lt;OperationId, (usize, u64)&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Map&lt;Address, Set&lt;OperationId&gt;&gt;, ModelsError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>addresses_to_operations: Map&lt;Address, Set&lt;OperationId&gt;&gt; =
+            Map::&lt;Address, Set&lt;OperationId&gt;&gt;::default();
+        operation_set
+            .iter()
+            .try_for_each::&lt;<span class="kw">_</span>, <span class="prelude-ty">Result</span>&lt;(), ModelsError&gt;&gt;(|(op_id, (op_idx, _op_expiry))| {
+                <span class="kw">let </span>op = <span class="kw-2">&amp;</span><span class="self">self</span>.content.operations[<span class="kw-2">*</span>op_idx];
+                <span class="kw">let </span>addrs = op.get_ledger_involved_addresses();
+                <span class="kw">for </span>ad <span class="kw">in </span>addrs.into_iter() {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(entry) = addresses_to_operations.get_mut(<span class="kw-2">&amp;</span>ad) {
+                        entry.insert(<span class="kw-2">*</span>op_id);
+                    } <span class="kw">else </span>{
+                        <span class="kw">let </span><span class="kw-2">mut </span>set = Set::&lt;OperationId&gt;::default();
+                        set.insert(<span class="kw-2">*</span>op_id);
+                        addresses_to_operations.insert(ad, set);
                     }
                 }
                 <span class="prelude-val">Ok</span>(())
             })<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">addresses_to_operations</span>)
+        <span class="prelude-val">Ok</span>(addresses_to_operations)
     }
 
-    <span class="doccomment">/// returns the set of addresses mapped the the endorsements they are involved in</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">addresses_to_endorsements</span>(
+    <span class="doccomment">/// returns the set of addresses mapped the the endorsements they are involved in
+    </span><span class="kw">pub fn </span>addresses_to_endorsements(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::default</span>();
-        <span class="self">self</span>.<span class="ident">content</span>
-            .<span class="ident">header</span>
-            .<span class="ident">content</span>
-            .<span class="ident">endorsements</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">try_for_each</span>::<span class="op">&lt;</span><span class="kw">_</span>, <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ModelsError</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">e</span>.<span class="ident">creator_public_key</span>);
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">old</span>) <span class="op">=</span> <span class="ident">res</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">address</span>) {
-                    <span class="ident">old</span>.<span class="ident">insert</span>(<span class="ident">e</span>.<span class="ident">id</span>);
-                } <span class="kw">else</span> {
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">set</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="ident">::default</span>();
-                    <span class="ident">set</span>.<span class="ident">insert</span>(<span class="ident">e</span>.<span class="ident">id</span>);
-                    <span class="ident">res</span>.<span class="ident">insert</span>(<span class="ident">address</span>, <span class="ident">set</span>);
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Map&lt;Address, Set&lt;EndorsementId&gt;&gt;, ModelsError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res: Map&lt;Address, Set&lt;EndorsementId&gt;&gt; = Map::default();
+        <span class="self">self</span>.content
+            .header
+            .content
+            .endorsements
+            .iter()
+            .try_for_each::&lt;<span class="kw">_</span>, <span class="prelude-ty">Result</span>&lt;(), ModelsError&gt;&gt;(|e| {
+                <span class="kw">let </span>address = Address::from_public_key(<span class="kw-2">&amp;</span>e.creator_public_key);
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(old) = res.get_mut(<span class="kw-2">&amp;</span>address) {
+                    old.insert(e.id);
+                } <span class="kw">else </span>{
+                    <span class="kw">let </span><span class="kw-2">mut </span>set = Set::&lt;EndorsementId&gt;::default();
+                    set.insert(e.id);
+                    res.insert(address, set);
                 }
                 <span class="prelude-val">Ok</span>(())
             })<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+        <span class="prelude-val">Ok</span>(res)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">Block</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="ident">header</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>Block {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.header)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
-            <span class="ident">f</span>,
+            f,
             <span class="string">&quot;Operations: {}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">operations</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">op</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">op</span>))
-                .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>()
-                .<span class="ident">join</span>(<span class="string">&quot; &quot;</span>)
+            <span class="self">self</span>.operations
+                .iter()
+                .map(|op| <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, op))
+                .collect::&lt;Vec&lt;String&gt;&gt;()
+                .join(<span class="string">&quot; &quot;</span>)
         )<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// block header</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockHeader</span> {
-    <span class="doccomment">/// slot</span>
-    <span class="kw">pub</span> <span class="ident">slot</span>: <span class="ident">Slot</span>,
-    <span class="doccomment">/// parents</span>
-    <span class="kw">pub</span> <span class="ident">parents</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// all operations hash</span>
-    <span class="kw">pub</span> <span class="ident">operation_merkle_root</span>: <span class="ident">Hash</span>,
-    <span class="doccomment">/// endorsements</span>
-    <span class="kw">pub</span> <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>,
+<span class="doccomment">/// block header
+</span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>BlockHeader {
+    <span class="doccomment">/// slot
+    </span><span class="kw">pub </span>slot: Slot,
+    <span class="doccomment">/// parents
+    </span><span class="kw">pub </span>parents: Vec&lt;BlockId&gt;,
+    <span class="doccomment">/// all operations hash
+    </span><span class="kw">pub </span>operation_merkle_root: Hash,
+    <span class="doccomment">/// endorsements
+    </span><span class="kw">pub </span>endorsements: Vec&lt;WrappedEndorsement&gt;,
 }
-<span class="comment">// NOTE: TODO</span>
-<span class="comment">// impl Signable&lt;BlockId&gt; for BlockHeader {</span>
-<span class="comment">//     fn get_signature_message(&amp;self) -&gt; Result&lt;Hash, ModelsError&gt; {</span>
-<span class="comment">//         let hash = self.compute_hash()?;</span>
-<span class="comment">//         let mut res = [0u8; SLOT_KEY_SIZE + BLOCK_ID_SIZE_BYTES];</span>
-<span class="comment">//         res[..SLOT_KEY_SIZE].copy_from_slice(&amp;self.slot.to_bytes_key());</span>
-<span class="comment">//         res[SLOT_KEY_SIZE..].copy_from_slice(hash.to_bytes());</span>
-<span class="comment">//         // rehash for safety</span>
-<span class="comment">//         Ok(Hash::compute_from(&amp;res))</span>
-<span class="comment">//     }</span>
-<span class="comment">// }</span>
+<span class="comment">// NOTE: TODO
+// impl Signable&lt;BlockId&gt; for BlockHeader {
+//     fn get_signature_message(&amp;self) -&gt; Result&lt;Hash, ModelsError&gt; {
+//         let hash = self.compute_hash()?;
+//         let mut res = [0u8; SLOT_KEY_SIZE + BLOCK_ID_SIZE_BYTES];
+//         res[..SLOT_KEY_SIZE].copy_from_slice(&amp;self.slot.to_bytes_key());
+//         res[SLOT_KEY_SIZE..].copy_from_slice(hash.to_bytes());
+//         // rehash for safety
+//         Ok(Hash::compute_from(&amp;res))
+//     }
+// }
 
-<span class="doccomment">/// wrapped header</span>
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">WrappedHeader</span> <span class="op">=</span> <span class="ident">Wrapped</span><span class="op">&lt;</span><span class="ident">BlockHeader</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>;
+</span><span class="doccomment">/// wrapped header
+</span><span class="kw">pub type </span>WrappedHeader = Wrapped&lt;BlockHeader, BlockId&gt;;
 
-<span class="kw">impl</span> <span class="ident">WrappedContent</span> <span class="kw">for</span> <span class="ident">BlockHeader</span> {}
+<span class="kw">impl </span>WrappedContent <span class="kw">for </span>BlockHeader {}
 
-<span class="doccomment">/// Serializer for `BlockHeader`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockHeaderSerializer</span> {
-    <span class="ident">slot_serializer</span>: <span class="ident">SlotSerializer</span>,
-    <span class="ident">endorsement_serializer</span>: <span class="ident">WrappedSerializer</span>,
-    <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer</span>,
+<span class="doccomment">/// Serializer for `BlockHeader`
+</span><span class="kw">pub struct </span>BlockHeaderSerializer {
+    slot_serializer: SlotSerializer,
+    endorsement_serializer: WrappedSerializer,
+    u32_serializer: U32VarIntSerializer,
 }
 
-<span class="kw">impl</span> <span class="ident">BlockHeaderSerializer</span> {
-    <span class="doccomment">/// Creates a new `BlockHeaderSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">slot_serializer</span>: <span class="ident">SlotSerializer::new</span>(),
-            <span class="ident">endorsement_serializer</span>: <span class="ident">WrappedSerializer::new</span>(),
-            <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer::new</span>(),
+<span class="kw">impl </span>BlockHeaderSerializer {
+    <span class="doccomment">/// Creates a new `BlockHeaderSerializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            slot_serializer: SlotSerializer::new(),
+            endorsement_serializer: WrappedSerializer::new(),
+            u32_serializer: U32VarIntSerializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">BlockHeaderSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>BlockHeaderSerializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">BlockHeader</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BlockHeaderSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">BlockHeader</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">slot_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">slot</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="comment">// parents (note: there should be none if slot period=0)</span>
-        <span class="kw">if</span> <span class="ident">value</span>.<span class="ident">parents</span>.<span class="ident">is_empty</span>() {
-            <span class="ident">buffer</span>.<span class="ident">push</span>(<span class="number">0</span>);
-        } <span class="kw">else</span> {
-            <span class="ident">buffer</span>.<span class="ident">push</span>(<span class="number">1</span>);
+<span class="kw">impl </span>Serializer&lt;BlockHeader&gt; <span class="kw">for </span>BlockHeaderSerializer {
+    <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>BlockHeader, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="self">self</span>.slot_serializer.serialize(<span class="kw-2">&amp;</span>value.slot, buffer)<span class="question-mark">?</span>;
+        <span class="comment">// parents (note: there should be none if slot period=0)
+        </span><span class="kw">if </span>value.parents.is_empty() {
+            buffer.push(<span class="number">0</span>);
+        } <span class="kw">else </span>{
+            buffer.push(<span class="number">1</span>);
         }
-        <span class="kw">for</span> <span class="ident">parent_h</span> <span class="kw">in</span> <span class="ident">value</span>.<span class="ident">parents</span>.<span class="ident">iter</span>() {
-            <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="ident">parent_h</span>.<span class="number">0</span>.<span class="ident">to_bytes</span>());
+        <span class="kw">for </span>parent_h <span class="kw">in </span>value.parents.iter() {
+            buffer.extend(parent_h.<span class="number">0</span>.to_bytes());
         }
 
-        <span class="comment">// operations merkle root</span>
-        <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="ident">value</span>.<span class="ident">operation_merkle_root</span>.<span class="ident">to_bytes</span>());
+        <span class="comment">// operations merkle root
+        </span>buffer.extend(value.operation_merkle_root.to_bytes());
 
-        <span class="self">self</span>.<span class="ident">u32_serializer</span>.<span class="ident">serialize</span>(
-            <span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">endorsements</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                <span class="ident">SerializeError::GeneralError</span>(<span class="macro">format!</span>(<span class="string">&quot;too many endorsements: {}&quot;</span>, <span class="ident">err</span>))
+        <span class="self">self</span>.u32_serializer.serialize(
+            <span class="kw-2">&amp;</span>value.endorsements.len().try_into().map_err(|err| {
+                SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;too many endorsements: {}&quot;</span>, err))
             })<span class="question-mark">?</span>,
-            <span class="ident">buffer</span>,
+            buffer,
         )<span class="question-mark">?</span>;
-        <span class="kw">for</span> <span class="ident">endorsement</span> <span class="kw">in</span> <span class="ident">value</span>.<span class="ident">endorsements</span>.<span class="ident">iter</span>() {
-            <span class="self">self</span>.<span class="ident">endorsement_serializer</span>.<span class="ident">serialize</span>(<span class="ident">endorsement</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="kw">for </span>endorsement <span class="kw">in </span>value.endorsements.iter() {
+            <span class="self">self</span>.endorsement_serializer.serialize(endorsement, buffer)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// Deserializer for `BlockHeader`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockHeaderDeserializer</span> {
-    <span class="ident">slot_deserializer</span>: <span class="ident">SlotDeserializer</span>,
-    <span class="ident">endorsement_deserializer</span>: <span class="ident">WrappedDeserializer</span><span class="op">&lt;</span><span class="ident">Endorsement</span>, <span class="ident">EndorsementDeserializer</span><span class="op">&gt;</span>,
-    <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer</span>,
-    <span class="ident">hash_deserializer</span>: <span class="ident">HashDeserializer</span>,
+<span class="doccomment">/// Deserializer for `BlockHeader`
+</span><span class="kw">pub struct </span>BlockHeaderDeserializer {
+    slot_deserializer: SlotDeserializer,
+    endorsement_deserializer: WrappedDeserializer&lt;Endorsement, EndorsementDeserializer&gt;,
+    u32_deserializer: U32VarIntDeserializer,
+    hash_deserializer: HashDeserializer,
 }
 
-<span class="kw">impl</span> <span class="ident">BlockHeaderDeserializer</span> {
-    <span class="doccomment">/// Creates a new `BlockHeaderDeserializer`</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">slot_deserializer</span>: <span class="ident">SlotDeserializer::new</span>(
-                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Excluded</span>(<span class="ident">THREAD_COUNT</span>)),
+<span class="kw">impl </span>BlockHeaderDeserializer {
+    <span class="doccomment">/// Creates a new `BlockHeaderDeserializer`
+    </span><span class="kw">pub const fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            slot_deserializer: SlotDeserializer::new(
+                (Included(<span class="number">0</span>), Included(u64::MAX)),
+                (Included(<span class="number">0</span>), Excluded(THREAD_COUNT)),
             ),
-            <span class="ident">endorsement_deserializer</span>: <span class="ident">WrappedDeserializer::new</span>(<span class="ident">EndorsementDeserializer::new</span>(
-                <span class="ident">ENDORSEMENT_COUNT</span>,
+            endorsement_deserializer: WrappedDeserializer::new(EndorsementDeserializer::new(
+                ENDORSEMENT_COUNT,
             )),
-            <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u32::MAX</span>)),
-            <span class="ident">hash_deserializer</span>: <span class="ident">HashDeserializer::new</span>(),
+            u32_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u32::MAX)),
+            hash_deserializer: HashDeserializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">BlockHeaderDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>BlockHeaderDeserializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">BlockHeader</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BlockHeaderDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">impl </span>Deserializer&lt;BlockHeader&gt; <span class="kw">for </span>BlockHeaderDeserializer {
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">BlockHeader</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">context</span>(
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BlockHeader, E&gt; {
+        context(
             <span class="string">&quot;Failed BlockHeader deserialization&quot;</span>,
-            <span class="ident">tuple</span>((
-                <span class="ident">context</span>(<span class="string">&quot;Failed slot deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">slot_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+            tuple((
+                context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.slot_deserializer.deserialize(input)
                 }),
-                <span class="ident">context</span>(
+                context(
                     <span class="string">&quot;Failed parents deserialization&quot;</span>,
-                    <span class="ident">alt</span>((
-                        <span class="ident">preceded</span>(<span class="ident">tag</span>(<span class="kw-2">&amp;</span>[<span class="number">0</span>]), <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="prelude-val">Ok</span>((<span class="ident">input</span>, <span class="ident">Vec::new</span>()))),
-                        <span class="ident">preceded</span>(
-                            <span class="ident">tag</span>(<span class="kw-2">&amp;</span>[<span class="number">1</span>]),
-                            <span class="ident">count</span>(
-                                <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                                    <span class="self">self</span>.<span class="ident">hash_deserializer</span>
-                                        .<span class="ident">deserialize</span>(<span class="ident">input</span>)
-                                        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">rest</span>, <span class="ident">hash</span>)<span class="op">|</span> (<span class="ident">rest</span>, <span class="ident">BlockId</span>(<span class="ident">hash</span>)))
+                    alt((
+                        preceded(tag(<span class="kw-2">&amp;</span>[<span class="number">0</span>]), |input| <span class="prelude-val">Ok</span>((input, Vec::new()))),
+                        preceded(
+                            tag(<span class="kw-2">&amp;</span>[<span class="number">1</span>]),
+                            count(
+                                |input| {
+                                    <span class="self">self</span>.hash_deserializer
+                                        .deserialize(input)
+                                        .map(|(rest, hash)| (rest, BlockId(hash)))
                                 },
-                                <span class="ident">THREAD_COUNT</span> <span class="kw">as</span> <span class="ident">usize</span>,
+                                THREAD_COUNT <span class="kw">as </span>usize,
                             ),
                         ),
                     )),
                 ),
-                <span class="ident">context</span>(<span class="string">&quot;Failed operation_merkle_root&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">hash_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                context(<span class="string">&quot;Failed operation_merkle_root&quot;</span>, |input| {
+                    <span class="self">self</span>.hash_deserializer.deserialize(input)
                 }),
-                <span class="ident">context</span>(
+                context(
                     <span class="string">&quot;Failed endorsements deserialization&quot;</span>,
-                    <span class="ident">length_count</span>(
-                        <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">u32_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
-                        <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">endorsement_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
+                    length_count(
+                        |input| <span class="self">self</span>.u32_deserializer.deserialize(input),
+                        |input| <span class="self">self</span>.endorsement_deserializer.deserialize(input),
                     ),
                 ),
             )),
         )
-        .<span class="ident">map</span>(
-            <span class="op">|</span>(<span class="ident">slot</span>, <span class="ident">parents</span>, <span class="ident">operation_merkle_root</span>, <span class="ident">endorsements</span>)<span class="op">|</span> <span class="ident">BlockHeader</span> {
-                <span class="ident">slot</span>,
-                <span class="ident">parents</span>,
-                <span class="ident">operation_merkle_root</span>,
-                <span class="ident">endorsements</span>,
+        .map(
+            |(slot, parents, operation_merkle_root, endorsements)| BlockHeader {
+                slot,
+                parents,
+                operation_merkle_root,
+                endorsements,
             },
         )
-        .<span class="ident">parse</span>(<span class="ident">buffer</span>)
+        .parse(buffer)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">BlockHeader</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
+<span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>BlockHeader {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
         <span class="macro">writeln!</span>(
-            <span class="ident">f</span>,
+            f,
             <span class="string">&quot;\t(period: {}, thread: {})&quot;</span>,
-            <span class="self">self</span>.<span class="ident">slot</span>.<span class="ident">period</span>, <span class="self">self</span>.<span class="ident">slot</span>.<span class="ident">thread</span>,
+            <span class="self">self</span>.slot.period, <span class="self">self</span>.slot.thread,
         )<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tMerkle root: {}&quot;</span>, <span class="self">self</span>.<span class="ident">operation_merkle_root</span>,)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tParents: &quot;</span>)<span class="question-mark">?</span>;
-        <span class="kw">for</span> <span class="ident">id</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">parents</span>.<span class="ident">iter</span>() {
-            <span class="kw">let</span> <span class="ident">str_id</span> <span class="op">=</span> <span class="ident">id</span>.<span class="ident">to_string</span>();
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\t\t{}&quot;</span>, <span class="ident">str_id</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tMerkle root: {}&quot;</span>, <span class="self">self</span>.operation_merkle_root,)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tParents: &quot;</span>)<span class="question-mark">?</span>;
+        <span class="kw">for </span>id <span class="kw">in </span><span class="self">self</span>.parents.iter() {
+            <span class="kw">let </span>str_id = id.to_string();
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\t{}&quot;</span>, str_id)<span class="question-mark">?</span>;
         }
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">parents</span>.<span class="ident">is_empty</span>() {
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;No parents found: This is a genesis header&quot;</span>)<span class="question-mark">?</span>;
+        <span class="kw">if </span><span class="self">self</span>.parents.is_empty() {
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;No parents found: This is a genesis header&quot;</span>)<span class="question-mark">?</span>;
         }
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tEndorsements:&quot;</span>)<span class="question-mark">?</span>;
-        <span class="kw">for</span> <span class="ident">ed</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">endorsements</span>.<span class="ident">iter</span>() {
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\t\t-----&quot;</span>)<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\t\tId: {}&quot;</span>, <span class="ident">ed</span>.<span class="ident">id</span>)<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\t\tIndex: {}&quot;</span>, <span class="ident">ed</span>.<span class="ident">content</span>.<span class="ident">index</span>)<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\t\tEndorsed slot: {}&quot;</span>, <span class="ident">ed</span>.<span class="ident">content</span>.<span class="ident">slot</span>)<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\t\tEndorser&#39;s public key: {}&quot;</span>, <span class="ident">ed</span>.<span class="ident">creator_public_key</span>)<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\t\tEndorsed block: {}&quot;</span>, <span class="ident">ed</span>.<span class="ident">content</span>.<span class="ident">endorsed_block</span>)<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\t\tSignature: {}&quot;</span>, <span class="ident">ed</span>.<span class="ident">signature</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tEndorsements:&quot;</span>)<span class="question-mark">?</span>;
+        <span class="kw">for </span>ed <span class="kw">in </span><span class="self">self</span>.endorsements.iter() {
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\t-----&quot;</span>)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\tId: {}&quot;</span>, ed.id)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\tIndex: {}&quot;</span>, ed.content.index)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\tEndorsed slot: {}&quot;</span>, ed.content.slot)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\tEndorser&#39;s public key: {}&quot;</span>, ed.creator_public_key)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\tEndorsed block: {}&quot;</span>, ed.content.endorsed_block)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\tSignature: {}&quot;</span>, ed.signature)<span class="question-mark">?</span>;
         }
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">endorsements</span>.<span class="ident">is_empty</span>() {
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tNo endorsements found&quot;</span>)<span class="question-mark">?</span>;
+        <span class="kw">if </span><span class="self">self</span>.endorsements.is_empty() {
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;\tNo endorsements found&quot;</span>)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">test</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">endorsement::EndorsementSerializer</span>, <span class="ident">Endorsement</span>};
-    <span class="kw">use</span> <span class="ident">massa_serialization::DeserializeError</span>;
-    <span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
-    <span class="kw">use</span> <span class="ident">serial_test::serial</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>test {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use crate</span>::{endorsement::EndorsementSerializer, Endorsement};
+    <span class="kw">use </span>massa_serialization::DeserializeError;
+    <span class="kw">use </span>massa_signature::KeyPair;
+    <span class="kw">use </span>serial_test::serial;
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="attribute">#[<span class="ident">serial</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_block_serialization</span>() {
-        <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
-        <span class="kw">let</span> <span class="ident">parents</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">THREAD_COUNT</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span>[<span class="ident">i</span>])))
-            .<span class="ident">collect</span>();
+    <span class="attribute">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_block_serialization() {
+        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
+            .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
+            .collect();
 
-        <span class="comment">// create block header</span>
-        <span class="kw">let</span> <span class="ident">orig_header</span> <span class="op">=</span> <span class="ident">BlockHeader::new_wrapped</span>(
-            <span class="ident">BlockHeader</span> {
-                <span class="ident">slot</span>: <span class="ident">Slot::new</span>(<span class="number">1</span>, <span class="number">1</span>),
-                <span class="ident">parents</span>,
-                <span class="ident">operation_merkle_root</span>: <span class="ident">Hash::compute_from</span>(<span class="string">&quot;mno&quot;</span>.<span class="ident">as_bytes</span>()),
-                <span class="ident">endorsements</span>: <span class="macro">vec!</span>[
-                    <span class="ident">Endorsement::new_wrapped</span>(
-                        <span class="ident">Endorsement</span> {
-                            <span class="ident">slot</span>: <span class="ident">Slot::new</span>(<span class="number">1</span>, <span class="number">1</span>),
-                            <span class="ident">index</span>: <span class="number">1</span>,
-                            <span class="ident">endorsed_block</span>: <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="string">&quot;blk1&quot;</span>.<span class="ident">as_bytes</span>())),
+        <span class="comment">// create block header
+        </span><span class="kw">let </span>orig_header = BlockHeader::new_wrapped(
+            BlockHeader {
+                slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
+                parents,
+                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                endorsements: <span class="macro">vec!</span>[
+                    Endorsement::new_wrapped(
+                        Endorsement {
+                            slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
+                            index: <span class="number">1</span>,
+                            endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk1&quot;</span>.as_bytes())),
                         },
-                        <span class="ident">EndorsementSerializer::new</span>(),
-                        <span class="kw-2">&amp;</span><span class="ident">keypair</span>,
+                        EndorsementSerializer::new(),
+                        <span class="kw-2">&amp;</span>keypair,
                     )
-                    .<span class="ident">unwrap</span>(),
-                    <span class="ident">Endorsement::new_wrapped</span>(
-                        <span class="ident">Endorsement</span> {
-                            <span class="ident">slot</span>: <span class="ident">Slot::new</span>(<span class="number">4</span>, <span class="number">0</span>),
-                            <span class="ident">index</span>: <span class="number">3</span>,
-                            <span class="ident">endorsed_block</span>: <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="string">&quot;blk2&quot;</span>.<span class="ident">as_bytes</span>())),
+                    .unwrap(),
+                    Endorsement::new_wrapped(
+                        Endorsement {
+                            slot: Slot::new(<span class="number">4</span>, <span class="number">0</span>),
+                            index: <span class="number">3</span>,
+                            endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk2&quot;</span>.as_bytes())),
                         },
-                        <span class="ident">EndorsementSerializer::new</span>(),
-                        <span class="kw-2">&amp;</span><span class="ident">keypair</span>,
+                        EndorsementSerializer::new(),
+                        <span class="kw-2">&amp;</span>keypair,
                     )
-                    .<span class="ident">unwrap</span>(),
+                    .unwrap(),
                 ],
             },
-            <span class="ident">BlockHeaderSerializer::new</span>(),
-            <span class="kw-2">&amp;</span><span class="ident">keypair</span>,
+            BlockHeaderSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
         )
-        .<span class="ident">unwrap</span>();
+        .unwrap();
 
-        <span class="comment">// create block</span>
-        <span class="kw">let</span> <span class="ident">orig_block</span> <span class="op">=</span> <span class="ident">Block</span> {
-            <span class="ident">header</span>: <span class="ident">orig_header</span>,
-            <span class="ident">operations</span>: <span class="macro">vec!</span>[],
+        <span class="comment">// create block
+        </span><span class="kw">let </span>orig_block = Block {
+            header: orig_header,
+            operations: <span class="macro">vec!</span>[],
         };
 
-        <span class="comment">// serialize block</span>
-        <span class="kw">let</span> <span class="ident">wrapped_block</span>: <span class="ident">WrappedBlock</span> <span class="op">=</span>
-            <span class="ident">Block::new_wrapped</span>(<span class="ident">orig_block</span>.<span class="ident">clone</span>(), <span class="ident">BlockSerializer::new</span>(), <span class="kw-2">&amp;</span><span class="ident">keypair</span>).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ser_block</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="ident">WrappedSerializer::new</span>()
-            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">wrapped_block</span>, <span class="kw-2">&amp;mut</span> <span class="ident">ser_block</span>)
-            .<span class="ident">unwrap</span>();
+        <span class="comment">// serialize block
+        </span><span class="kw">let </span>wrapped_block: WrappedBlock =
+            Block::new_wrapped(orig_block.clone(), BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
+        WrappedSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>wrapped_block, <span class="kw-2">&amp;mut </span>ser_block)
+            .unwrap();
 
-        <span class="comment">// deserialize</span>
-        <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">res_block</span>): (<span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">WrappedBlock</span>) <span class="op">=</span>
-            <span class="ident">WrappedDeserializer::new</span>(<span class="ident">BlockDeserializer::new</span>())
-                .<span class="ident">deserialize</span>::<span class="op">&lt;</span><span class="ident">DeserializeError</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">ser_block</span>)
-                .<span class="ident">unwrap</span>();
-        <span class="macro">assert!</span>(<span class="ident">rest</span>.<span class="ident">is_empty</span>());
-        <span class="comment">// check equality</span>
-        <span class="macro">assert_eq!</span>(<span class="ident">orig_block</span>.<span class="ident">header</span>.<span class="ident">id</span>, <span class="ident">res_block</span>.<span class="ident">content</span>.<span class="ident">header</span>.<span class="ident">id</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">orig_block</span>.<span class="ident">header</span>.<span class="ident">id</span>, <span class="ident">res_block</span>.<span class="ident">id</span>);
+        <span class="comment">// deserialize
+        </span><span class="kw">let </span>(rest, res_block): (<span class="kw-2">&amp;</span>[u8], WrappedBlock) =
+            WrappedDeserializer::new(BlockDeserializer::new())
+                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_block)
+                .unwrap();
+        <span class="macro">assert!</span>(rest.is_empty());
+        <span class="comment">// check equality
+        </span><span class="macro">assert_eq!</span>(orig_block.header.id, res_block.content.header.id);
+        <span class="macro">assert_eq!</span>(orig_block.header.id, res_block.id);
         <span class="macro">assert_eq!</span>(
-            <span class="ident">orig_block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>,
-            <span class="ident">res_block</span>.<span class="ident">content</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>
+            orig_block.header.content.slot,
+            res_block.content.header.content.slot
         );
         <span class="macro">assert_eq!</span>(
-            <span class="ident">orig_block</span>.<span class="ident">header</span>.<span class="ident">serialized_data</span>,
-            <span class="ident">res_block</span>.<span class="ident">content</span>.<span class="ident">header</span>.<span class="ident">serialized_data</span>
+            orig_block.header.serialized_data,
+            res_block.content.header.serialized_data
         );
         <span class="macro">assert_eq!</span>(
-            <span class="ident">orig_block</span>.<span class="ident">header</span>.<span class="ident">signature</span>,
-            <span class="ident">res_block</span>.<span class="ident">content</span>.<span class="ident">header</span>.<span class="ident">signature</span>
+            orig_block.header.signature,
+            res_block.content.header.signature
         );
-        <span class="macro">assert_eq!</span>(<span class="ident">orig_block</span>.<span class="ident">header</span>.<span class="ident">signature</span>, <span class="ident">res_block</span>.<span class="ident">signature</span>);
+        <span class="macro">assert_eq!</span>(orig_block.header.signature, res_block.signature);
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

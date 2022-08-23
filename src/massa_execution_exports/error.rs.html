@@ -21,28 +21,28 @@
 <span id="21">21</span>
 <span id="22">22</span>
 <span id="23">23</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! this file defines all possible execution error categories</span>
+</span><span class="doccomment">//! this file defines all possible execution error categories
 
-<span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+</span><span class="kw">use </span>displaydoc::Display;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="doccomment">/// Errors of the execution component.</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Display</span>, <span class="ident">Error</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExecutionError</span> {
-    <span class="doccomment">/// Channel error</span>
-    <span class="ident">ChannelError</span>(<span class="ident">String</span>),
+<span class="doccomment">/// Errors of the execution component.
+</span><span class="attribute">#[non_exhaustive]
+#[derive(Clone, Display, Error, Debug)]
+</span><span class="kw">pub enum </span>ExecutionError {
+    <span class="doccomment">/// Channel error
+    </span>ChannelError(String),
 
-    <span class="doccomment">/// Runtime error: {0}</span>
-    <span class="ident">RuntimeError</span>(<span class="ident">String</span>),
+    <span class="doccomment">/// Runtime error: {0}
+    </span>RuntimeError(String),
 
-    <span class="doccomment">/// `MassaHashError`: {0}</span>
-    <span class="ident">MassaHashError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_hash::MassaHashError</span>),
+    <span class="doccomment">/// `MassaHashError`: {0}
+    </span>MassaHashError(<span class="attribute">#[from] </span>massa_hash::MassaHashError),
 
-    <span class="doccomment">/// `ModelsError`: {0}</span>
-    <span class="ident">ModelsError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_models::ModelsError</span>),
+    <span class="doccomment">/// `ModelsError`: {0}
+    </span>ModelsError(<span class="attribute">#[from] </span>massa_models::ModelsError),
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

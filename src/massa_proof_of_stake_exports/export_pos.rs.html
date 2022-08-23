@@ -124,131 +124,131 @@
 <span id="124">124</span>
 <span id="125">125</span>
 <span id="126">126</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
-<span class="kw">use</span> <span class="ident">std::ops::Bound::Included</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::collections::VecDeque;
+<span class="kw">use </span>std::ops::Bound::Included;
 
-<span class="kw">use</span> <span class="ident">massa_models::constants</span>::{<span class="ident">MAX_BOOTSTRAP_POS_CYCLES</span>, <span class="ident">THREAD_COUNT</span>};
-<span class="kw">use</span> <span class="ident">massa_serialization</span>::{
-    <span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>, <span class="ident">U32VarIntDeserializer</span>, <span class="ident">U32VarIntSerializer</span>,
+<span class="kw">use </span>massa_models::constants::{MAX_BOOTSTRAP_POS_CYCLES, THREAD_COUNT};
+<span class="kw">use </span>massa_serialization::{
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
-<span class="kw">use</span> <span class="ident">nom</span>::{
-    <span class="ident">error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ParseError</span>},
-    <span class="ident">multi</span>::{<span class="ident">count</span>, <span class="ident">length_count</span>},
-    <span class="ident">IResult</span>, <span class="ident">Parser</span>,
+<span class="kw">use </span>nom::{
+    error::{context, ContextError, ParseError},
+    multi::{count, length_count},
+    IResult, Parser,
 };
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">proof_of_stake::ProofOfStake</span>,
-    <span class="ident">thread_cycle_state</span>::{
-        <span class="ident">ThreadCycleState</span>, <span class="ident">ThreadCycleStateDeserializer</span>, <span class="ident">ThreadCycleStateSerializer</span>,
+<span class="kw">use crate</span>::{
+    proof_of_stake::ProofOfStake,
+    thread_cycle_state::{
+        ThreadCycleState, ThreadCycleStateDeserializer, ThreadCycleStateSerializer,
     },
 };
-<span class="doccomment">/// serializable version of the proof of stake</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExportProofOfStake</span> {
-    <span class="doccomment">/// Index by thread and cycle number</span>
-    <span class="kw">pub</span> <span class="ident">cycle_states</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">ThreadCycleState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="doccomment">/// serializable version of the proof of stake
+</span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>ExportProofOfStake {
+    <span class="doccomment">/// Index by thread and cycle number
+    </span><span class="kw">pub </span>cycle_states: Vec&lt;VecDeque&lt;ThreadCycleState&gt;&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ProofOfStake</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ExportProofOfStake</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">pos</span>: <span class="kw-2">&amp;</span><span class="ident">ProofOfStake</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">ExportProofOfStake</span> {
-            <span class="ident">cycle_states</span>: <span class="ident">pos</span>.<span class="ident">cycle_states</span>.<span class="ident">clone</span>(),
+<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>ProofOfStake&gt; <span class="kw">for </span>ExportProofOfStake {
+    <span class="kw">fn </span>from(pos: <span class="kw-2">&amp;</span>ProofOfStake) -&gt; <span class="self">Self </span>{
+        ExportProofOfStake {
+            cycle_states: pos.cycle_states.clone(),
         }
     }
 }
 
-<span class="doccomment">/// Serializer for `ExportProofOfStake`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExportProofOfStakeSerializer</span> {
-    <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer</span>,
-    <span class="ident">cycle_state_serializer</span>: <span class="ident">ThreadCycleStateSerializer</span>,
+<span class="doccomment">/// Serializer for `ExportProofOfStake`
+</span><span class="kw">pub struct </span>ExportProofOfStakeSerializer {
+    u32_serializer: U32VarIntSerializer,
+    cycle_state_serializer: ThreadCycleStateSerializer,
 }
 
-<span class="kw">impl</span> <span class="ident">ExportProofOfStakeSerializer</span> {
-    <span class="doccomment">/// Creates a `ExportProofOfStakeSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer::new</span>(),
-            <span class="ident">cycle_state_serializer</span>: <span class="ident">ThreadCycleStateSerializer::new</span>(),
+<span class="kw">impl </span>ExportProofOfStakeSerializer {
+    <span class="doccomment">/// Creates a `ExportProofOfStakeSerializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u32_serializer: U32VarIntSerializer::new(),
+            cycle_state_serializer: ThreadCycleStateSerializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">ExportProofOfStakeSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>ExportProofOfStakeSerializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">ExportProofOfStake</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ExportProofOfStakeSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">serialize</span>(
+<span class="kw">impl </span>Serializer&lt;ExportProofOfStake&gt; <span class="kw">for </span>ExportProofOfStakeSerializer {
+    <span class="kw">fn </span>serialize(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">ExportProofOfStake</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="kw">for</span> <span class="ident">thread_lst</span> <span class="kw">in</span> <span class="ident">value</span>.<span class="ident">cycle_states</span>.<span class="ident">iter</span>() {
-            <span class="kw">let</span> <span class="ident">cycle_count</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">thread_lst</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                <span class="ident">SerializeError::NumberTooBig</span>(<span class="macro">format!</span>(
+        value: <span class="kw-2">&amp;</span>ExportProofOfStake,
+        buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="kw">for </span>thread_lst <span class="kw">in </span>value.cycle_states.iter() {
+            <span class="kw">let </span>cycle_count: u32 = thread_lst.len().try_into().map_err(|err| {
+                SerializeError::NumberTooBig(<span class="macro">format!</span>(
                     <span class="string">&quot;too many cycles when serializing ExportProofOfStake: {}&quot;</span>,
-                    <span class="ident">err</span>
+                    err
                 ))
             })<span class="question-mark">?</span>;
-            <span class="self">self</span>.<span class="ident">u32_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">cycle_count</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-            <span class="kw">for</span> <span class="ident">cycle_state</span> <span class="kw">in</span> <span class="ident">thread_lst</span>.<span class="ident">iter</span>() {
-                <span class="self">self</span>.<span class="ident">cycle_state_serializer</span>.<span class="ident">serialize</span>(<span class="ident">cycle_state</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+            <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>cycle_count, buffer)<span class="question-mark">?</span>;
+            <span class="kw">for </span>cycle_state <span class="kw">in </span>thread_lst.iter() {
+                <span class="self">self</span>.cycle_state_serializer.serialize(cycle_state, buffer)<span class="question-mark">?</span>;
             }
         }
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// Deserializer for `ExportProofOfStake`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExportProofOfStakeDeserializer</span> {
-    <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer</span>,
-    <span class="ident">thread_count</span>: <span class="ident">u8</span>,
-    <span class="ident">cycle_state_deserializer</span>: <span class="ident">ThreadCycleStateDeserializer</span>,
+<span class="doccomment">/// Deserializer for `ExportProofOfStake`
+</span><span class="kw">pub struct </span>ExportProofOfStakeDeserializer {
+    u32_deserializer: U32VarIntDeserializer,
+    thread_count: u8,
+    cycle_state_deserializer: ThreadCycleStateDeserializer,
 }
 
-<span class="kw">impl</span> <span class="ident">ExportProofOfStakeDeserializer</span> {
-    <span class="doccomment">/// Creates a `ExportProofOfStakeDeserializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer::new</span>(
-                <span class="ident">Included</span>(<span class="number">0</span>),
-                <span class="ident">Included</span>(<span class="ident">MAX_BOOTSTRAP_POS_CYCLES</span>),
+<span class="kw">impl </span>ExportProofOfStakeDeserializer {
+    <span class="doccomment">/// Creates a `ExportProofOfStakeDeserializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u32_deserializer: U32VarIntDeserializer::new(
+                Included(<span class="number">0</span>),
+                Included(MAX_BOOTSTRAP_POS_CYCLES),
             ),
-            <span class="ident">cycle_state_deserializer</span>: <span class="ident">ThreadCycleStateDeserializer::new</span>(),
-            <span class="ident">thread_count</span>: <span class="ident">THREAD_COUNT</span>,
+            cycle_state_deserializer: ThreadCycleStateDeserializer::new(),
+            thread_count: THREAD_COUNT,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">ExportProofOfStakeDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>ExportProofOfStakeDeserializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">ExportProofOfStake</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ExportProofOfStakeDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">impl </span>Deserializer&lt;ExportProofOfStake&gt; <span class="kw">for </span>ExportProofOfStakeDeserializer {
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">ExportProofOfStake</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">context</span>(
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], ExportProofOfStake, E&gt; {
+        context(
             <span class="string">&quot;Failed ExportProofOfStake deserialization&quot;</span>,
-            <span class="ident">count</span>(
-                <span class="ident">length_count</span>(
-                    <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">u32_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
-                    <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">cycle_state_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
+            count(
+                length_count(
+                    |input| <span class="self">self</span>.u32_deserializer.deserialize(input),
+                    |input| <span class="self">self</span>.cycle_state_deserializer.deserialize(input),
                 )
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">cycles</span><span class="op">|</span> <span class="ident">cycles</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>()),
-                <span class="self">self</span>.<span class="ident">thread_count</span>.<span class="ident">into</span>(),
+                .map(|cycles| cycles.into_iter().collect()),
+                <span class="self">self</span>.thread_count.into(),
             ),
         )
-        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">cycle_states</span><span class="op">|</span> <span class="ident">ExportProofOfStake</span> { <span class="ident">cycle_states</span> })
-        .<span class="ident">parse</span>(<span class="ident">buffer</span>)
+        .map(|cycle_states| ExportProofOfStake { cycle_states })
+        .parse(buffer)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_proof_of_stake_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_proof_of_stake_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

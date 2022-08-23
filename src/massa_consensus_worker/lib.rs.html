@@ -18,25 +18,25 @@
 <span id="18">18</span>
 <span id="19">19</span>
 <span id="20">20</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../endorsements.md&quot;</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">hash_drain_filter</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">map_first_last</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">int_roundings</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_use</span>]</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">massa_logging</span>;
+</span><span class="attribute">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../endorsements.md&quot;</span>)]
+#![feature(async_closure)]
+#![feature(hash_drain_filter)]
+#![feature(map_first_last)]
+#![feature(int_roundings)]
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
+#[macro_use]
+</span><span class="kw">extern crate </span>massa_logging;
 
-<span class="kw">mod</span> <span class="ident">consensus_worker</span>;
+<span class="kw">mod </span>consensus_worker;
 
-<span class="comment">// Tools as starting controller etc...</span>
-<span class="kw">mod</span> <span class="ident">tools</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">tools::start_consensus_controller</span>;
+<span class="comment">// Tools as starting controller etc...
+</span><span class="kw">mod </span>tools;
+<span class="kw">pub use </span>tools::start_consensus_controller;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

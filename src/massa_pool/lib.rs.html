@@ -22,29 +22,29 @@
 <span id="22">22</span>
 <span id="23">23</span>
 <span id="24">24</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-<span class="doccomment">//! Pool of operation and endorsements waiting to be included in a block</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">map_first_last</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</span><span class="doccomment">//! Pool of operation and endorsements waiting to be included in a block
+</span><span class="attribute">#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
+#![feature(map_first_last)]
+#![feature(async_closure)]
 
-<span class="attribute">#[<span class="ident">macro_use</span>]</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">massa_logging</span>;
+#[macro_use]
+</span><span class="kw">extern crate </span>massa_logging;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error::PoolError</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">pool_controller</span>::{<span class="ident">start_pool_controller</span>, <span class="ident">PoolCommandSender</span>, <span class="ident">PoolManager</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">pool_worker::PoolCommand</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">settings</span>::{<span class="ident">PoolConfig</span>, <span class="ident">PoolSettings</span>};
+<span class="kw">pub use </span>error::PoolError;
+<span class="kw">pub use </span>pool_controller::{start_pool_controller, PoolCommandSender, PoolManager};
+<span class="kw">pub use </span>pool_worker::PoolCommand;
+<span class="kw">pub use </span>settings::{PoolConfig, PoolSettings};
 
-<span class="kw">mod</span> <span class="ident">endorsement_pool</span>;
-<span class="kw">mod</span> <span class="ident">error</span>;
-<span class="kw">mod</span> <span class="ident">operation_pool</span>;
-<span class="kw">mod</span> <span class="ident">pool_controller</span>;
-<span class="kw">mod</span> <span class="ident">pool_worker</span>;
-<span class="kw">mod</span> <span class="ident">settings</span>;
+<span class="kw">mod </span>endorsement_pool;
+<span class="kw">mod </span>error;
+<span class="kw">mod </span>operation_pool;
+<span class="kw">mod </span>pool_controller;
+<span class="kw">mod </span>pool_worker;
+<span class="kw">mod </span>settings;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

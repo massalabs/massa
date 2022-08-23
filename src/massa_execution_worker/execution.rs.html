@@ -829,836 +829,836 @@
 <span id="829">829</span>
 <span id="830">830</span>
 <span id="831">831</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.</span>
-<span class="doccomment">//! It also keeps a history of executed slots, thus holding the speculative state of the ledger.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Execution usually happens in the following way:</span>
-<span class="doccomment">//! * an execution context is set up</span>
-<span class="doccomment">//! * the VM is called for execution within this context</span>
-<span class="doccomment">//! * the output of the execution is extracted from the context</span>
+</span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
+//! It also keeps a history of executed slots, thus holding the speculative state of the ledger.
+//!
+//! Execution usually happens in the following way:
+//! * an execution context is set up
+//! * the VM is called for execution within this context
+//! * the output of the execution is extracted from the context
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::active_history</span>::{<span class="ident">ActiveHistory</span>, <span class="ident">HistorySearchResult</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::context::ExecutionContext</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::interface_impl::InterfaceImpl</span>;
-<span class="kw">use</span> <span class="ident">massa_async_pool::AsyncMessage</span>;
-<span class="kw">use</span> <span class="ident">massa_execution_exports</span>::{
-    <span class="ident">EventStore</span>, <span class="ident">ExecutionConfig</span>, <span class="ident">ExecutionError</span>, <span class="ident">ExecutionOutput</span>, <span class="ident">ExecutionStackElement</span>,
-    <span class="ident">ReadOnlyExecutionRequest</span>, <span class="ident">ReadOnlyExecutionTarget</span>,
+</span><span class="kw">use </span><span class="kw">crate</span>::active_history::{ActiveHistory, HistorySearchResult};
+<span class="kw">use </span><span class="kw">crate</span>::context::ExecutionContext;
+<span class="kw">use </span><span class="kw">crate</span>::interface_impl::InterfaceImpl;
+<span class="kw">use </span>massa_async_pool::AsyncMessage;
+<span class="kw">use </span>massa_execution_exports::{
+    EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
+    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
-<span class="kw">use</span> <span class="ident">massa_final_state::FinalState</span>;
-<span class="kw">use</span> <span class="ident">massa_ledger_exports</span>::{<span class="ident">SetOrDelete</span>, <span class="ident">SetUpdateOrDelete</span>};
-<span class="kw">use</span> <span class="ident">massa_models::api::EventFilter</span>;
-<span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">OperationId</span>, <span class="ident">OperationType</span>, <span class="ident">WrappedOperation</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Amount</span>, <span class="ident">Slot</span>};
-<span class="kw">use</span> <span class="ident">massa_sc_runtime::Interface</span>;
-<span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
-<span class="kw">use</span> <span class="ident">parking_lot</span>::{<span class="ident">Mutex</span>, <span class="ident">RwLock</span>};
-<span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashMap</span>, <span class="ident">sync::Arc</span>};
-<span class="kw">use</span> <span class="ident">tracing::debug</span>;
+<span class="kw">use </span>massa_final_state::FinalState;
+<span class="kw">use </span>massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
+<span class="kw">use </span>massa_models::api::EventFilter;
+<span class="kw">use </span>massa_models::output_event::SCOutputEvent;
+<span class="kw">use </span>massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
+<span class="kw">use </span>massa_models::{Amount, Slot};
+<span class="kw">use </span>massa_sc_runtime::Interface;
+<span class="kw">use </span>massa_storage::Storage;
+<span class="kw">use </span>parking_lot::{Mutex, RwLock};
+<span class="kw">use </span>std::collections::BTreeSet;
+<span class="kw">use </span>std::{collections::HashMap, sync::Arc};
+<span class="kw">use </span>tracing::debug;
 
-<span class="doccomment">/// Used to acquire a lock on the execution context</span>
-<span class="macro">macro_rules!</span> <span class="ident">context_guard</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>:<span class="ident">ident</span>) =&gt; {
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">execution_context</span>.<span class="ident">lock</span>()
+<span class="doccomment">/// Used to acquire a lock on the execution context
+</span><span class="macro">macro_rules! </span>context_guard {
+    (<span class="macro-nonterminal">$self</span>:ident) =&gt; {
+        <span class="macro-nonterminal">$self</span>.execution_context.lock()
     };
 }
 
-<span class="doccomment">/// Structure holding consistent speculative and final execution states,</span>
-<span class="doccomment">/// and allowing access to them.</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ExecutionState</span> {
-    <span class="comment">// execution config</span>
-    <span class="ident">config</span>: <span class="ident">ExecutionConfig</span>,
-    <span class="comment">// History of the outputs of recently executed slots. Slots should be consecutive, newest at the back.</span>
-    <span class="comment">// Whenever an active slot is executed, it is appended at the back of active_history.</span>
-    <span class="comment">// Whenever an executed active slot becomes final,</span>
-    <span class="comment">// its output is popped from the front of active_history and applied to the final state.</span>
-    <span class="comment">// It has atomic R/W access.</span>
-    <span class="ident">active_history</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">ActiveHistory</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="comment">// a cursor pointing to the highest executed slot</span>
-    <span class="kw">pub</span> <span class="ident">active_cursor</span>: <span class="ident">Slot</span>,
-    <span class="comment">// a cursor pointing to the highest executed final slot</span>
-    <span class="kw">pub</span> <span class="ident">final_cursor</span>: <span class="ident">Slot</span>,
-    <span class="comment">// store containing execution events that became final</span>
-    <span class="ident">final_events</span>: <span class="ident">EventStore</span>,
-    <span class="comment">// final state with atomic R/W access</span>
-    <span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="comment">// execution context (see documentation in context.rs)</span>
-    <span class="ident">execution_context</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">ExecutionContext</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="comment">// execution interface allowing the VM runtime to access the Massa context</span>
-    <span class="ident">execution_interface</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Interface</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Shared storage across all modules</span>
-    <span class="ident">storage</span>: <span class="ident">Storage</span>,
+<span class="doccomment">/// Structure holding consistent speculative and final execution states,
+/// and allowing access to them.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ExecutionState {
+    <span class="comment">// execution config
+    </span>config: ExecutionConfig,
+    <span class="comment">// History of the outputs of recently executed slots. Slots should be consecutive, newest at the back.
+    // Whenever an active slot is executed, it is appended at the back of active_history.
+    // Whenever an executed active slot becomes final,
+    // its output is popped from the front of active_history and applied to the final state.
+    // It has atomic R/W access.
+    </span>active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
+    <span class="comment">// a cursor pointing to the highest executed slot
+    </span><span class="kw">pub </span>active_cursor: Slot,
+    <span class="comment">// a cursor pointing to the highest executed final slot
+    </span><span class="kw">pub </span>final_cursor: Slot,
+    <span class="comment">// store containing execution events that became final
+    </span>final_events: EventStore,
+    <span class="comment">// final state with atomic R/W access
+    </span>final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+    <span class="comment">// execution context (see documentation in context.rs)
+    </span>execution_context: Arc&lt;Mutex&lt;ExecutionContext&gt;&gt;,
+    <span class="comment">// execution interface allowing the VM runtime to access the Massa context
+    </span>execution_interface: Box&lt;<span class="kw">dyn </span>Interface&gt;,
+    <span class="doccomment">/// Shared storage across all modules
+    </span>storage: Storage,
 }
 
-<span class="kw">impl</span> <span class="ident">ExecutionState</span> {
-    <span class="doccomment">/// Create a new execution state. This should be called only once at the start of the execution worker.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `config`: execution configuration</span>
-    <span class="doccomment">/// * `final_state`: atomic access to the final state</span>
-    <span class="doccomment">/// * `storage`: Shared storage with data shared all across the modules</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # returns</span>
-    <span class="doccomment">/// A new `ExecutionState`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">config</span>: <span class="ident">ExecutionConfig</span>,
-        <span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">storage</span>: <span class="ident">Storage</span>,
-    ) -&gt; <span class="ident">ExecutionState</span> {
-        <span class="comment">// Get the slot at the output of which the final state is attached.</span>
-        <span class="comment">// This should be among the latest final slots.</span>
-        <span class="kw">let</span> <span class="ident">last_final_slot</span> <span class="op">=</span> <span class="ident">final_state</span>.<span class="ident">read</span>().<span class="ident">slot</span>;
+<span class="kw">impl </span>ExecutionState {
+    <span class="doccomment">/// Create a new execution state. This should be called only once at the start of the execution worker.
+    ///
+    /// # Arguments
+    /// * `config`: execution configuration
+    /// * `final_state`: atomic access to the final state
+    /// * `storage`: Shared storage with data shared all across the modules
+    ///
+    /// # returns
+    /// A new `ExecutionState`
+    </span><span class="kw">pub fn </span>new(
+        config: ExecutionConfig,
+        final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+        storage: Storage,
+    ) -&gt; ExecutionState {
+        <span class="comment">// Get the slot at the output of which the final state is attached.
+        // This should be among the latest final slots.
+        </span><span class="kw">let </span>last_final_slot = final_state.read().slot;
 
-        <span class="comment">// Create default active history</span>
-        <span class="kw">let</span> <span class="ident">active_history</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">ActiveHistory</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Default::default</span>();
+        <span class="comment">// Create default active history
+        </span><span class="kw">let </span>active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt; = Default::default();
 
-        <span class="comment">// Create an empty placeholder execution context, with shared atomic access</span>
-        <span class="kw">let</span> <span class="ident">execution_context</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident">ExecutionContext::new</span>(
-            <span class="ident">final_state</span>.<span class="ident">clone</span>(),
-            <span class="ident">active_history</span>.<span class="ident">clone</span>(),
+        <span class="comment">// Create an empty placeholder execution context, with shared atomic access
+        </span><span class="kw">let </span>execution_context = Arc::new(Mutex::new(ExecutionContext::new(
+            final_state.clone(),
+            active_history.clone(),
         )));
 
-        <span class="comment">// Instantiate the interface providing ABI access to the VM, share the execution context with it</span>
-        <span class="kw">let</span> <span class="ident">execution_interface</span> <span class="op">=</span> <span class="ident">Box::new</span>(<span class="ident">InterfaceImpl::new</span>(
-            <span class="ident">config</span>.<span class="ident">clone</span>(),
-            <span class="ident">execution_context</span>.<span class="ident">clone</span>(),
+        <span class="comment">// Instantiate the interface providing ABI access to the VM, share the execution context with it
+        </span><span class="kw">let </span>execution_interface = Box::new(InterfaceImpl::new(
+            config.clone(),
+            execution_context.clone(),
         ));
 
-        <span class="comment">// build the execution state</span>
-        <span class="ident">ExecutionState</span> {
-            <span class="ident">config</span>,
-            <span class="ident">final_state</span>,
-            <span class="ident">execution_context</span>,
-            <span class="ident">execution_interface</span>,
-            <span class="comment">// empty execution output history: it is not recovered through bootstrap</span>
-            <span class="ident">active_history</span>,
-            <span class="comment">// empty final event store: it is not recovered through bootstrap</span>
-            <span class="ident">final_events</span>: <span class="ident">Default::default</span>(),
-            <span class="comment">// no active slots executed yet: set active_cursor to the last final block</span>
-            <span class="ident">active_cursor</span>: <span class="ident">last_final_slot</span>,
-            <span class="ident">final_cursor</span>: <span class="ident">last_final_slot</span>,
-            <span class="ident">storage</span>,
+        <span class="comment">// build the execution state
+        </span>ExecutionState {
+            config,
+            final_state,
+            execution_context,
+            execution_interface,
+            <span class="comment">// empty execution output history: it is not recovered through bootstrap
+            </span>active_history,
+            <span class="comment">// empty final event store: it is not recovered through bootstrap
+            </span>final_events: Default::default(),
+            <span class="comment">// no active slots executed yet: set active_cursor to the last final block
+            </span>active_cursor: last_final_slot,
+            final_cursor: last_final_slot,
+            storage,
         }
     }
 
-    <span class="doccomment">/// Gets out the first (oldest) execution history item, removing it from history.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// The earliest `ExecutionOutput` from the execution history, or None if the history is empty</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_first_execution_result</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ExecutionOutput</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">active_history</span>.<span class="ident">write</span>().<span class="number">0</span>.<span class="ident">pop_front</span>()
+    <span class="doccomment">/// Gets out the first (oldest) execution history item, removing it from history.
+    ///
+    /// # Returns
+    /// The earliest `ExecutionOutput` from the execution history, or None if the history is empty
+    </span><span class="kw">pub fn </span>pop_first_execution_result(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;ExecutionOutput&gt; {
+        <span class="self">self</span>.active_history.write().<span class="number">0</span>.pop_front()
     }
 
-    <span class="doccomment">/// Applies the output of an execution to the final execution state.</span>
-    <span class="doccomment">/// The newly applied final output should be from the slot just after the last executed final slot</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `exec_ou`t: execution output to apply</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_final_execution_output</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">exec_out</span>: <span class="ident">ExecutionOutput</span>) {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">final_cursor</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">exec_out</span>.<span class="ident">slot</span> {
+    <span class="doccomment">/// Applies the output of an execution to the final execution state.
+    /// The newly applied final output should be from the slot just after the last executed final slot
+    ///
+    /// # Arguments
+    /// * `exec_ou`t: execution output to apply
+    </span><span class="kw">pub fn </span>apply_final_execution_output(<span class="kw-2">&amp;mut </span><span class="self">self</span>, exec_out: ExecutionOutput) {
+        <span class="kw">if </span><span class="self">self</span>.final_cursor &gt;= exec_out.slot {
             <span class="macro">panic!</span>(<span class="string">&quot;attempting to apply a final execution output at or before the current final_cursor&quot;</span>);
         }
 
-        <span class="comment">// apply state changes to the final ledger</span>
-        <span class="self">self</span>.<span class="ident">final_state</span>
-            .<span class="ident">write</span>()
-            .<span class="ident">finalize</span>(<span class="ident">exec_out</span>.<span class="ident">slot</span>, <span class="ident">exec_out</span>.<span class="ident">state_changes</span>);
-        <span class="comment">// update the final ledger&#39;s slot</span>
-        <span class="self">self</span>.<span class="ident">final_cursor</span> <span class="op">=</span> <span class="ident">exec_out</span>.<span class="ident">slot</span>;
+        <span class="comment">// apply state changes to the final ledger
+        </span><span class="self">self</span>.final_state
+            .write()
+            .finalize(exec_out.slot, exec_out.state_changes);
+        <span class="comment">// update the final ledger&#39;s slot
+        </span><span class="self">self</span>.final_cursor = exec_out.slot;
 
-        <span class="comment">// update active cursor:</span>
-        <span class="comment">// if it was at the previous latest final block, set it to point to the new one</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">active_cursor</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">final_cursor</span> {
-            <span class="self">self</span>.<span class="ident">active_cursor</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">final_cursor</span>;
+        <span class="comment">// update active cursor:
+        // if it was at the previous latest final block, set it to point to the new one
+        </span><span class="kw">if </span><span class="self">self</span>.active_cursor &lt; <span class="self">self</span>.final_cursor {
+            <span class="self">self</span>.active_cursor = <span class="self">self</span>.final_cursor;
         }
 
-        <span class="comment">// append generated events to the final event store</span>
-        <span class="self">self</span>.<span class="ident">final_events</span>.<span class="ident">extend</span>(<span class="ident">exec_out</span>.<span class="ident">events</span>);
-        <span class="self">self</span>.<span class="ident">final_events</span>.<span class="ident">prune</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">max_final_events</span>);
+        <span class="comment">// append generated events to the final event store
+        </span><span class="self">self</span>.final_events.extend(exec_out.events);
+        <span class="self">self</span>.final_events.prune(<span class="self">self</span>.config.max_final_events);
     }
 
-    <span class="doccomment">/// Applies an execution output to the active (non-final) state</span>
-    <span class="doccomment">/// The newly active final output should be from the slot just after the last executed active slot</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `exec_out`: execution output to apply</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_active_execution_output</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">exec_out</span>: <span class="ident">ExecutionOutput</span>) {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">active_cursor</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">exec_out</span>.<span class="ident">slot</span> {
+    <span class="doccomment">/// Applies an execution output to the active (non-final) state
+    /// The newly active final output should be from the slot just after the last executed active slot
+    ///
+    /// # Arguments
+    /// * `exec_out`: execution output to apply
+    </span><span class="kw">pub fn </span>apply_active_execution_output(<span class="kw-2">&amp;mut </span><span class="self">self</span>, exec_out: ExecutionOutput) {
+        <span class="kw">if </span><span class="self">self</span>.active_cursor &gt;= exec_out.slot {
             <span class="macro">panic!</span>(<span class="string">&quot;attempting to apply an active execution output at or before the current active_cursor&quot;</span>);
         }
-        <span class="kw">if</span> <span class="ident">exec_out</span>.<span class="ident">slot</span> <span class="op">&lt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">final_cursor</span> {
+        <span class="kw">if </span>exec_out.slot &lt;= <span class="self">self</span>.final_cursor {
             <span class="macro">panic!</span>(<span class="string">&quot;attempting to apply an active execution output at or before the current final_cursor&quot;</span>);
         }
 
-        <span class="comment">// update active cursor to reflect the new latest active slot</span>
-        <span class="self">self</span>.<span class="ident">active_cursor</span> <span class="op">=</span> <span class="ident">exec_out</span>.<span class="ident">slot</span>;
+        <span class="comment">// update active cursor to reflect the new latest active slot
+        </span><span class="self">self</span>.active_cursor = exec_out.slot;
 
-        <span class="comment">// add the execution output at the end of the output history</span>
-        <span class="self">self</span>.<span class="ident">active_history</span>.<span class="ident">write</span>().<span class="number">0</span>.<span class="ident">push_back</span>(<span class="ident">exec_out</span>);
+        <span class="comment">// add the execution output at the end of the output history
+        </span><span class="self">self</span>.active_history.write().<span class="number">0</span>.push_back(exec_out);
     }
 
-    <span class="doccomment">/// Clear the whole execution history,</span>
-    <span class="doccomment">/// deleting caches on executed non-final slots.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear_history</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="comment">// clear history</span>
-        <span class="self">self</span>.<span class="ident">active_history</span>.<span class="ident">write</span>().<span class="number">0</span>.<span class="ident">clear</span>();
+    <span class="doccomment">/// Clear the whole execution history,
+    /// deleting caches on executed non-final slots.
+    </span><span class="kw">pub fn </span>clear_history(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="comment">// clear history
+        </span><span class="self">self</span>.active_history.write().<span class="number">0</span>.clear();
 
-        <span class="comment">// reset active cursor to point to the latest final slot</span>
-        <span class="self">self</span>.<span class="ident">active_cursor</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">final_cursor</span>;
+        <span class="comment">// reset active cursor to point to the latest final slot
+        </span><span class="self">self</span>.active_cursor = <span class="self">self</span>.final_cursor;
     }
 
-    <span class="doccomment">/// This function receives a new sequence of blocks to execute as argument.</span>
-    <span class="doccomment">/// It then scans the output history to see until which slot this sequence was already executed (and is outputs cached).</span>
-    <span class="doccomment">/// If a mismatch is found, it means that the sequence of blocks to execute has changed</span>
-    <span class="doccomment">/// and the existing output cache is truncated to keep output history only until the mismatch slot (excluded).</span>
-    <span class="doccomment">/// Slots after that point will need to be (re-executed) to account for the new sequence.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `active_slots`: A `HashMap` mapping each active slot to a block or None if the slot is a miss</span>
-    <span class="doccomment">/// * `ready_final_slots`:  A `HashMap` mapping each ready-to-execute final slot to a block or None if the slot is a miss</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">truncate_history</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">active_slots</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">ready_final_slots</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// This function receives a new sequence of blocks to execute as argument.
+    /// It then scans the output history to see until which slot this sequence was already executed (and is outputs cached).
+    /// If a mismatch is found, it means that the sequence of blocks to execute has changed
+    /// and the existing output cache is truncated to keep output history only until the mismatch slot (excluded).
+    /// Slots after that point will need to be (re-executed) to account for the new sequence.
+    ///
+    /// # Arguments
+    /// * `active_slots`: A `HashMap` mapping each active slot to a block or None if the slot is a miss
+    /// * `ready_final_slots`:  A `HashMap` mapping each ready-to-execute final slot to a block or None if the slot is a miss
+    </span><span class="kw">pub fn </span>truncate_history(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        active_slots: <span class="kw-2">&amp;</span>HashMap&lt;Slot, <span class="prelude-ty">Option</span>&lt;BlockId&gt;&gt;,
+        ready_final_slots: <span class="kw-2">&amp;</span>HashMap&lt;Slot, <span class="prelude-ty">Option</span>&lt;BlockId&gt;&gt;,
     ) {
-        <span class="comment">// find mismatch point (included)</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">truncate_at</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-        <span class="comment">// iterate over the output history, in chronological order</span>
-        <span class="kw">for</span> (<span class="ident">hist_index</span>, <span class="ident">exec_output</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">active_history</span>.<span class="ident">read</span>().<span class="number">0</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-            <span class="comment">// try to find the corresponding slot in active_slots or ready_final_slots.</span>
-            <span class="kw">let</span> <span class="ident">found_block_id</span> <span class="op">=</span> <span class="ident">active_slots</span>
-                .<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">exec_output</span>.<span class="ident">slot</span>)
-                .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">ready_final_slots</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">exec_output</span>.<span class="ident">slot</span>));
-            <span class="kw">if</span> <span class="ident">found_block_id</span> <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">exec_output</span>.<span class="ident">block_id</span>) {
-                <span class="comment">// the slot number and block ID still match. Continue scanning</span>
-                <span class="kw">continue</span>;
+        <span class="comment">// find mismatch point (included)
+        </span><span class="kw">let </span><span class="kw-2">mut </span>truncate_at = <span class="prelude-val">None</span>;
+        <span class="comment">// iterate over the output history, in chronological order
+        </span><span class="kw">for </span>(hist_index, exec_output) <span class="kw">in </span><span class="self">self</span>.active_history.read().<span class="number">0</span>.iter().enumerate() {
+            <span class="comment">// try to find the corresponding slot in active_slots or ready_final_slots.
+            </span><span class="kw">let </span>found_block_id = active_slots
+                .get(<span class="kw-2">&amp;</span>exec_output.slot)
+                .or_else(|| ready_final_slots.get(<span class="kw-2">&amp;</span>exec_output.slot));
+            <span class="kw">if </span>found_block_id == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>exec_output.block_id) {
+                <span class="comment">// the slot number and block ID still match. Continue scanning
+                </span><span class="kw">continue</span>;
             }
-            <span class="comment">// mismatch found: stop scanning and return the cutoff index</span>
-            <span class="ident">truncate_at</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">hist_index</span>);
+            <span class="comment">// mismatch found: stop scanning and return the cutoff index
+            </span>truncate_at = <span class="prelude-val">Some</span>(hist_index);
             <span class="kw">break</span>;
         }
 
-        <span class="comment">// If a mismatch was found</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">truncate_at</span>) <span class="op">=</span> <span class="ident">truncate_at</span> {
-            <span class="comment">// Truncate the execution output history at the cutoff index (excluded)</span>
-            <span class="self">self</span>.<span class="ident">active_history</span>.<span class="ident">write</span>().<span class="number">0</span>.<span class="ident">truncate</span>(<span class="ident">truncate_at</span>);
-            <span class="comment">// Now that part of the speculative executions were cancelled,</span>
-            <span class="comment">// update the active cursor to match the latest executed slot.</span>
-            <span class="comment">// The cursor is set to the latest executed final slot if the history is empty.</span>
-            <span class="self">self</span>.<span class="ident">active_cursor</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">active_history</span>
-                .<span class="ident">read</span>()
-                .<span class="number">0</span>
-                .<span class="ident">back</span>()
-                .<span class="ident">map_or</span>(<span class="self">self</span>.<span class="ident">final_cursor</span>, <span class="op">|</span><span class="ident">out</span><span class="op">|</span> <span class="ident">out</span>.<span class="ident">slot</span>);
-            <span class="comment">// safety check to ensure that the active cursor cannot go too far back in time</span>
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">active_cursor</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">final_cursor</span> {
+        <span class="comment">// If a mismatch was found
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(truncate_at) = truncate_at {
+            <span class="comment">// Truncate the execution output history at the cutoff index (excluded)
+            </span><span class="self">self</span>.active_history.write().<span class="number">0</span>.truncate(truncate_at);
+            <span class="comment">// Now that part of the speculative executions were cancelled,
+            // update the active cursor to match the latest executed slot.
+            // The cursor is set to the latest executed final slot if the history is empty.
+            </span><span class="self">self</span>.active_cursor = <span class="self">self
+                </span>.active_history
+                .read()
+                .<span class="number">0
+                </span>.back()
+                .map_or(<span class="self">self</span>.final_cursor, |out| out.slot);
+            <span class="comment">// safety check to ensure that the active cursor cannot go too far back in time
+            </span><span class="kw">if </span><span class="self">self</span>.active_cursor &lt; <span class="self">self</span>.final_cursor {
                 <span class="macro">panic!</span>(
-                    <span class="string">&quot;active_cursor moved before final_cursor after execution history truncation&quot;</span>
-                );
+                    <span class="string">&quot;active_cursor moved before final_cursor after execution history truncation&quot;
+                </span>);
             }
         }
     }
 
-    <span class="doccomment">/// Execute an operation in the context of a block.</span>
-    <span class="doccomment">/// Assumes the execution context was initialized at the beginning of the slot.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `operation`: operation to execute</span>
-    <span class="doccomment">/// * `block_creator_addr`: address of the block creator</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">execute_operation</span>(
+    <span class="doccomment">/// Execute an operation in the context of a block.
+    /// Assumes the execution context was initialized at the beginning of the slot.
+    ///
+    /// # Arguments
+    /// * `operation`: operation to execute
+    /// * `block_creator_addr`: address of the block creator
+    </span><span class="kw">pub fn </span>execute_operation(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">operation</span>: <span class="kw-2">&amp;</span><span class="ident">WrappedOperation</span>,
-        <span class="ident">block_creator_addr</span>: <span class="ident">Address</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ExecutionError</span><span class="op">&gt;</span> {
-        <span class="comment">// prefilter only SC operations</span>
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">op</span> {
-            <span class="ident">OperationType::ExecuteSC</span> { .. } =&gt; {}
-            <span class="ident">OperationType::CallSC</span> { .. } =&gt; {}
-            <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Ok</span>(()),
+        operation: <span class="kw-2">&amp;</span>WrappedOperation,
+        block_creator_addr: Address,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
+        <span class="comment">// prefilter only SC operations
+        </span><span class="kw">match </span><span class="kw-2">&amp;</span>operation.content.op {
+            OperationType::ExecuteSC { .. } =&gt; {}
+            OperationType::CallSC { .. } =&gt; {}
+            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
         };
 
-        <span class="comment">// call the execution process specific to the operation type</span>
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">op</span> {
-            <span class="ident">OperationType::ExecuteSC</span> { .. } =&gt; <span class="self">self</span>.<span class="ident">execute_executesc_op</span>(
-                <span class="kw-2">&amp;</span><span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">op</span>,
-                <span class="ident">block_creator_addr</span>,
-                <span class="ident">operation</span>.<span class="ident">id</span>,
-                <span class="ident">operation</span>.<span class="ident">creator_address</span>,
+        <span class="comment">// call the execution process specific to the operation type
+        </span><span class="kw">match </span><span class="kw-2">&amp;</span>operation.content.op {
+            OperationType::ExecuteSC { .. } =&gt; <span class="self">self</span>.execute_executesc_op(
+                <span class="kw-2">&amp;</span>operation.content.op,
+                block_creator_addr,
+                operation.id,
+                operation.creator_address,
             ),
-            <span class="ident">OperationType::CallSC</span> { .. } =&gt; <span class="self">self</span>.<span class="ident">execute_callsc_op</span>(
-                <span class="kw-2">&amp;</span><span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">op</span>,
-                <span class="ident">block_creator_addr</span>,
-                <span class="ident">operation</span>.<span class="ident">id</span>,
-                <span class="ident">operation</span>.<span class="ident">creator_address</span>,
+            OperationType::CallSC { .. } =&gt; <span class="self">self</span>.execute_callsc_op(
+                <span class="kw-2">&amp;</span>operation.content.op,
+                block_creator_addr,
+                operation.id,
+                operation.creator_address,
             ),
-            <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>), <span class="comment">// checked at the beginning of the function</span>
-        }
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>), <span class="comment">// checked at the beginning of the function
+        </span>}
     }
 
-    <span class="doccomment">/// Execute an operation of type `ExecuteSC`</span>
-    <span class="doccomment">/// Will panic if called with another operation type</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `operation`: the `WrappedOperation` to process, must be an `ExecuteSC`</span>
-    <span class="doccomment">/// * `block_creator_addr`: address of the block creator</span>
-    <span class="doccomment">/// * `operation_id`: ID of the operation</span>
-    <span class="doccomment">/// * `sender_addr`: address of the sender</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">execute_executesc_op</span>(
+    <span class="doccomment">/// Execute an operation of type `ExecuteSC`
+    /// Will panic if called with another operation type
+    ///
+    /// # Arguments
+    /// * `operation`: the `WrappedOperation` to process, must be an `ExecuteSC`
+    /// * `block_creator_addr`: address of the block creator
+    /// * `operation_id`: ID of the operation
+    /// * `sender_addr`: address of the sender
+    </span><span class="kw">pub fn </span>execute_executesc_op(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">operation</span>: <span class="kw-2">&amp;</span><span class="ident">OperationType</span>,
-        <span class="ident">block_creator_addr</span>: <span class="ident">Address</span>,
-        <span class="ident">operation_id</span>: <span class="ident">OperationId</span>,
-        <span class="ident">sender_addr</span>: <span class="ident">Address</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ExecutionError</span><span class="op">&gt;</span> {
-        <span class="comment">// process ExecuteSC operations only</span>
-        <span class="kw">let</span> (<span class="ident">bytecode</span>, <span class="ident">max_gas</span>, <span class="ident">coins</span>, <span class="ident">gas_price</span>) <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">operation</span> {
-            <span class="ident">OperationType::ExecuteSC</span> {
-                <span class="ident">data</span>,
-                <span class="ident">max_gas</span>,
-                <span class="ident">coins</span>,
-                <span class="ident">gas_price</span>,
-            } =&gt; (<span class="ident">data</span>, <span class="ident">max_gas</span>, <span class="ident">coins</span>, <span class="ident">gas_price</span>),
-            <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>),
+        operation: <span class="kw-2">&amp;</span>OperationType,
+        block_creator_addr: Address,
+        operation_id: OperationId,
+        sender_addr: Address,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
+        <span class="comment">// process ExecuteSC operations only
+        </span><span class="kw">let </span>(bytecode, max_gas, coins, gas_price) = <span class="kw">match </span><span class="kw-2">&amp;</span>operation {
+            OperationType::ExecuteSC {
+                data,
+                max_gas,
+                coins,
+                gas_price,
+            } =&gt; (data, max_gas, coins, gas_price),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>),
         };
 
-        <span class="comment">// prepare the current slot context for executing the operation</span>
-        <span class="kw">let</span> <span class="ident">context_snapshot</span>;
+        <span class="comment">// prepare the current slot context for executing the operation
+        </span><span class="kw">let </span>context_snapshot;
         {
-            <span class="comment">// acquire write access to the context</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
+            <span class="comment">// acquire write access to the context
+            </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
-            <span class="comment">// Use the context to credit the producer of the block with max_gas * gas_price parallel coins.</span>
-            <span class="comment">// Note that errors are deterministic and do not cancel the operation execution.</span>
-            <span class="comment">// That way, even if the sender sent an invalid operation, the block producer will still get credited.</span>
-            <span class="kw">let</span> <span class="ident">gas_fees</span> <span class="op">=</span> <span class="ident">gas_price</span>.<span class="ident">saturating_mul_u64</span>(<span class="kw-2">*</span><span class="ident">max_gas</span>);
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span>
-                <span class="ident">context</span>.<span class="ident">transfer_parallel_coins</span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">block_creator_addr</span>), <span class="ident">gas_fees</span>)
+            <span class="comment">// Use the context to credit the producer of the block with max_gas * gas_price parallel coins.
+            // Note that errors are deterministic and do not cancel the operation execution.
+            // That way, even if the sender sent an invalid operation, the block producer will still get credited.
+            </span><span class="kw">let </span>gas_fees = gas_price.saturating_mul_u64(<span class="kw-2">*</span>max_gas);
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
+                context.transfer_parallel_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(block_creator_addr), gas_fees)
             {
                 <span class="macro">debug!</span>(
                     <span class="string">&quot;failed to credit block producer {} with {} gas fee coins: {}&quot;</span>,
-                    <span class="ident">block_creator_addr</span>, <span class="ident">gas_fees</span>, <span class="ident">err</span>
+                    block_creator_addr, gas_fees, err
                 );
             }
 
-            <span class="comment">// Credit the operation sender with `coins` parallel coins.</span>
-            <span class="comment">// Note that errors are deterministic and do not cancel op execution.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">context</span>.<span class="ident">transfer_parallel_coins</span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">sender_addr</span>), <span class="kw-2">*</span><span class="ident">coins</span>) {
+            <span class="comment">// Credit the operation sender with `coins` parallel coins.
+            // Note that errors are deterministic and do not cancel op execution.
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = context.transfer_parallel_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(sender_addr), <span class="kw-2">*</span>coins) {
                 <span class="macro">debug!</span>(
                     <span class="string">&quot;failed to credit operation sender {} with {} operation coins: {}&quot;</span>,
-                    <span class="ident">sender_addr</span>, <span class="kw-2">*</span><span class="ident">coins</span>, <span class="ident">err</span>
+                    sender_addr, <span class="kw-2">*</span>coins, err
                 );
             }
 
-            <span class="comment">// save a snapshot of the context state to restore it if the op fails to execute,</span>
-            <span class="comment">// this reverting any changes except the coin transfers above</span>
-            <span class="ident">context_snapshot</span> <span class="op">=</span> <span class="ident">context</span>.<span class="ident">get_snapshot</span>();
+            <span class="comment">// save a snapshot of the context state to restore it if the op fails to execute,
+            // this reverting any changes except the coin transfers above
+            </span>context_snapshot = context.get_snapshot();
 
-            <span class="comment">// set the context gas price to match the one defined in the operation</span>
-            <span class="ident">context</span>.<span class="ident">gas_price</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">gas_price</span>;
+            <span class="comment">// set the context gas price to match the one defined in the operation
+            </span>context.gas_price = <span class="kw-2">*</span>gas_price;
 
-            <span class="comment">// set the context max gas to match the one defined in the operation</span>
-            <span class="ident">context</span>.<span class="ident">max_gas</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">max_gas</span>;
+            <span class="comment">// set the context max gas to match the one defined in the operation
+            </span>context.max_gas = <span class="kw-2">*</span>max_gas;
 
-            <span class="comment">// Set the call stack to a single element:</span>
-            <span class="comment">// * the execution will happen in the context of the address of the operation&#39;s sender</span>
-            <span class="comment">// * the context will signal that `coins` were credited to the parallel balance of the sender during that call</span>
-            <span class="comment">// * the context will give the operation&#39;s sender write access to its own ledger entry</span>
-            <span class="ident">context</span>.<span class="ident">stack</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ExecutionStackElement</span> {
-                <span class="ident">address</span>: <span class="ident">sender_addr</span>,
-                <span class="ident">coins</span>: <span class="kw-2">*</span><span class="ident">coins</span>,
-                <span class="ident">owned_addresses</span>: <span class="macro">vec!</span>[<span class="ident">sender_addr</span>],
+            <span class="comment">// Set the call stack to a single element:
+            // * the execution will happen in the context of the address of the operation&#39;s sender
+            // * the context will signal that `coins` were credited to the parallel balance of the sender during that call
+            // * the context will give the operation&#39;s sender write access to its own ledger entry
+            </span>context.stack = <span class="macro">vec!</span>[ExecutionStackElement {
+                address: sender_addr,
+                coins: <span class="kw-2">*</span>coins,
+                owned_addresses: <span class="macro">vec!</span>[sender_addr],
             }];
 
-            <span class="comment">// set the context origin operation ID</span>
-            <span class="ident">context</span>.<span class="ident">origin_operation_id</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">operation_id</span>);
+            <span class="comment">// set the context origin operation ID
+            </span>context.origin_operation_id = <span class="prelude-val">Some</span>(operation_id);
         };
 
-        <span class="comment">// run the VM on the bytecode contained in the operation</span>
-        <span class="kw">let</span> <span class="ident">run_result</span> <span class="op">=</span> <span class="ident">massa_sc_runtime::run_main</span>(<span class="ident">bytecode</span>, <span class="kw-2">*</span><span class="ident">max_gas</span>, <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">execution_interface</span>);
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">run_result</span> {
-            <span class="comment">// there was an error during bytecode execution:</span>
-            <span class="comment">// cancel the effects of the execution by resetting the context to the previously saved snapshot</span>
-            <span class="kw">let</span> <span class="ident">err</span> <span class="op">=</span> <span class="ident">ExecutionError::RuntimeError</span>(<span class="macro">format!</span>(<span class="string">&quot;bytecode execution error: {}&quot;</span>, <span class="ident">err</span>));
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
-            <span class="ident">context</span>.<span class="ident">reset_to_snapshot</span>(<span class="ident">context_snapshot</span>, <span class="prelude-val">Some</span>(<span class="ident">err</span>.<span class="ident">clone</span>()));
-            <span class="ident">context</span>.<span class="ident">origin_operation_id</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>);
+        <span class="comment">// run the VM on the bytecode contained in the operation
+        </span><span class="kw">let </span>run_result = massa_sc_runtime::run_main(bytecode, <span class="kw-2">*</span>max_gas, <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface);
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = run_result {
+            <span class="comment">// there was an error during bytecode execution:
+            // cancel the effects of the execution by resetting the context to the previously saved snapshot
+            </span><span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;bytecode execution error: {}&quot;</span>, err));
+            <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+            context.reset_to_snapshot(context_snapshot, <span class="prelude-val">Some</span>(err.clone()));
+            context.origin_operation_id = <span class="prelude-val">None</span>;
+            <span class="kw">return </span><span class="prelude-val">Err</span>(err);
         }
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Execute an operation of type `CallSC`</span>
-    <span class="doccomment">/// Will panic if called with another operation type</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `operation`: the `WrappedOperation` to process, must be an `CallSC`</span>
-    <span class="doccomment">/// * `block_creator_addr`: address of the block creator</span>
-    <span class="doccomment">/// * `operation_id`: ID of the operation</span>
-    <span class="doccomment">/// * `sender_addr`: address of the sender</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">execute_callsc_op</span>(
+    <span class="doccomment">/// Execute an operation of type `CallSC`
+    /// Will panic if called with another operation type
+    ///
+    /// # Arguments
+    /// * `operation`: the `WrappedOperation` to process, must be an `CallSC`
+    /// * `block_creator_addr`: address of the block creator
+    /// * `operation_id`: ID of the operation
+    /// * `sender_addr`: address of the sender
+    </span><span class="kw">pub fn </span>execute_callsc_op(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">operation</span>: <span class="kw-2">&amp;</span><span class="ident">OperationType</span>,
-        <span class="ident">block_creator_addr</span>: <span class="ident">Address</span>,
-        <span class="ident">operation_id</span>: <span class="ident">OperationId</span>,
-        <span class="ident">sender_addr</span>: <span class="ident">Address</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ExecutionError</span><span class="op">&gt;</span> {
-        <span class="comment">// process CallSC operations only</span>
-        <span class="kw">let</span> (<span class="ident">gas_price</span>, <span class="ident">max_gas</span>, <span class="ident">target_addr</span>, <span class="ident">target_func</span>, <span class="ident">param</span>, <span class="ident">parallel_coins</span>, <span class="ident">sequential_coins</span>) <span class="op">=</span>
-            <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">operation</span> {
-                <span class="ident">OperationType::CallSC</span> {
-                    <span class="ident">gas_price</span>,
-                    <span class="ident">max_gas</span>,
-                    <span class="ident">target_addr</span>,
-                    <span class="ident">target_func</span>,
-                    <span class="ident">param</span>,
-                    <span class="ident">parallel_coins</span>,
-                    <span class="ident">sequential_coins</span>,
+        operation: <span class="kw-2">&amp;</span>OperationType,
+        block_creator_addr: Address,
+        operation_id: OperationId,
+        sender_addr: Address,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
+        <span class="comment">// process CallSC operations only
+        </span><span class="kw">let </span>(gas_price, max_gas, target_addr, target_func, param, parallel_coins, sequential_coins) =
+            <span class="kw">match </span><span class="kw-2">&amp;</span>operation {
+                OperationType::CallSC {
+                    gas_price,
+                    max_gas,
+                    target_addr,
+                    target_func,
+                    param,
+                    parallel_coins,
+                    sequential_coins,
                 } =&gt; (
-                    <span class="kw-2">*</span><span class="ident">gas_price</span>,
-                    <span class="kw-2">*</span><span class="ident">max_gas</span>,
-                    <span class="kw-2">*</span><span class="ident">target_addr</span>,
-                    <span class="ident">target_func</span>,
-                    <span class="ident">param</span>,
-                    <span class="kw-2">*</span><span class="ident">parallel_coins</span>,
-                    <span class="kw-2">*</span><span class="ident">sequential_coins</span>,
+                    <span class="kw-2">*</span>gas_price,
+                    <span class="kw-2">*</span>max_gas,
+                    <span class="kw-2">*</span>target_addr,
+                    target_func,
+                    param,
+                    <span class="kw-2">*</span>parallel_coins,
+                    <span class="kw-2">*</span>sequential_coins,
                 ),
-                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>),
+                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>),
             };
 
-        <span class="comment">// prepare the current slot context for executing the operation</span>
-        <span class="kw">let</span> <span class="ident">context_snapshot</span>;
-        <span class="kw">let</span> <span class="ident">bytecode</span>;
+        <span class="comment">// prepare the current slot context for executing the operation
+        </span><span class="kw">let </span>context_snapshot;
+        <span class="kw">let </span>bytecode;
         {
-            <span class="comment">// acquire write access to the context</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
+            <span class="comment">// acquire write access to the context
+            </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
-            <span class="comment">// Use the context to credit the producer of the block with max_gas * gas_price parallel coins.</span>
-            <span class="comment">// Note that errors are deterministic and do not cancel the operation execution.</span>
-            <span class="comment">// That way, even if the sender sent an invalid operation, the block producer will still get credited.</span>
-            <span class="kw">let</span> <span class="ident">gas_fees</span> <span class="op">=</span> <span class="ident">gas_price</span>.<span class="ident">saturating_mul_u64</span>(<span class="ident">max_gas</span>);
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span>
-                <span class="ident">context</span>.<span class="ident">transfer_parallel_coins</span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">block_creator_addr</span>), <span class="ident">gas_fees</span>)
+            <span class="comment">// Use the context to credit the producer of the block with max_gas * gas_price parallel coins.
+            // Note that errors are deterministic and do not cancel the operation execution.
+            // That way, even if the sender sent an invalid operation, the block producer will still get credited.
+            </span><span class="kw">let </span>gas_fees = gas_price.saturating_mul_u64(max_gas);
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
+                context.transfer_parallel_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(block_creator_addr), gas_fees)
             {
                 <span class="macro">debug!</span>(
                     <span class="string">&quot;failed to credit block producer {} with {} gas fee coins: {}&quot;</span>,
-                    <span class="ident">block_creator_addr</span>, <span class="ident">gas_fees</span>, <span class="ident">err</span>
+                    block_creator_addr, gas_fees, err
                 );
             }
 
-            <span class="comment">// Credit the operation sender with `sequential_coins` parallel coins.</span>
-            <span class="comment">// This is used to ensure that those coins are not lost in case of failure,</span>
-            <span class="comment">// since they have been debited by consensus beforehand.</span>
-            <span class="comment">// Note that errors are deterministic and do not cancel op execution.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span>
-                <span class="ident">context</span>.<span class="ident">transfer_parallel_coins</span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">sender_addr</span>), <span class="ident">sequential_coins</span>)
+            <span class="comment">// Credit the operation sender with `sequential_coins` parallel coins.
+            // This is used to ensure that those coins are not lost in case of failure,
+            // since they have been debited by consensus beforehand.
+            // Note that errors are deterministic and do not cancel op execution.
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
+                context.transfer_parallel_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(sender_addr), sequential_coins)
             {
                 <span class="macro">debug!</span>(
                     <span class="string">&quot;failed to credit operation sender {} with {} operation coins: {}&quot;</span>,
-                    <span class="ident">sender_addr</span>, <span class="ident">sequential_coins</span>, <span class="ident">err</span>
+                    sender_addr, sequential_coins, err
                 );
             }
 
-            <span class="comment">// Load bytecode. Assume empty bytecode if not found.</span>
-            <span class="ident">bytecode</span> <span class="op">=</span> <span class="ident">context</span>.<span class="ident">get_bytecode</span>(<span class="kw-2">&amp;</span><span class="ident">target_addr</span>).<span class="ident">unwrap_or_default</span>();
+            <span class="comment">// Load bytecode. Assume empty bytecode if not found.
+            </span>bytecode = context.get_bytecode(<span class="kw-2">&amp;</span>target_addr).unwrap_or_default();
 
-            <span class="comment">// save a snapshot of the context state to restore it if the op fails to execute,</span>
-            <span class="comment">// thus reverting any changes except the coin transfers above</span>
-            <span class="ident">context_snapshot</span> <span class="op">=</span> <span class="ident">context</span>.<span class="ident">get_snapshot</span>();
+            <span class="comment">// save a snapshot of the context state to restore it if the op fails to execute,
+            // thus reverting any changes except the coin transfers above
+            </span>context_snapshot = context.get_snapshot();
 
-            <span class="comment">// compute the total amount of coins that need to be transferred</span>
-            <span class="comment">// from the sender&#39;s parallel balance to the target&#39;s parallel balance</span>
-            <span class="kw">let</span> <span class="ident">coins</span> <span class="op">=</span> <span class="ident">sequential_coins</span>.<span class="ident">saturating_add</span>(<span class="ident">parallel_coins</span>);
+            <span class="comment">// compute the total amount of coins that need to be transferred
+            // from the sender&#39;s parallel balance to the target&#39;s parallel balance
+            </span><span class="kw">let </span>coins = sequential_coins.saturating_add(parallel_coins);
 
-            <span class="comment">// set the context gas price to match the one defined in the operation</span>
-            <span class="ident">context</span>.<span class="ident">gas_price</span> <span class="op">=</span> <span class="ident">gas_price</span>;
+            <span class="comment">// set the context gas price to match the one defined in the operation
+            </span>context.gas_price = gas_price;
 
-            <span class="comment">// set the context max gas to match the one defined in the operation</span>
-            <span class="ident">context</span>.<span class="ident">max_gas</span> <span class="op">=</span> <span class="ident">max_gas</span>;
+            <span class="comment">// set the context max gas to match the one defined in the operation
+            </span>context.max_gas = max_gas;
 
-            <span class="comment">// set the context origin operation ID</span>
-            <span class="ident">context</span>.<span class="ident">origin_operation_id</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">operation_id</span>);
+            <span class="comment">// set the context origin operation ID
+            </span>context.origin_operation_id = <span class="prelude-val">Some</span>(operation_id);
 
-            <span class="comment">// Set the call stack o the sender addr only to allow it to send parallel coins (access rights)</span>
-            <span class="ident">context</span>.<span class="ident">stack</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ExecutionStackElement</span> {
-                <span class="ident">address</span>: <span class="ident">sender_addr</span>,
-                <span class="ident">coins</span>,
-                <span class="ident">owned_addresses</span>: <span class="macro">vec!</span>[<span class="ident">sender_addr</span>],
+            <span class="comment">// Set the call stack o the sender addr only to allow it to send parallel coins (access rights)
+            </span>context.stack = <span class="macro">vec!</span>[ExecutionStackElement {
+                address: sender_addr,
+                coins,
+                owned_addresses: <span class="macro">vec!</span>[sender_addr],
             }];
 
-            <span class="comment">// try to transfer parallel coins from the sender to the target</span>
-            <span class="kw">let</span> <span class="ident">coin_transfer_result</span> <span class="op">=</span>
-                <span class="ident">context</span>.<span class="ident">transfer_parallel_coins</span>(<span class="prelude-val">Some</span>(<span class="ident">sender_addr</span>), <span class="prelude-val">Some</span>(<span class="ident">target_addr</span>), <span class="ident">coins</span>);
+            <span class="comment">// try to transfer parallel coins from the sender to the target
+            </span><span class="kw">let </span>coin_transfer_result =
+                context.transfer_parallel_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">Some</span>(target_addr), coins);
 
-            <span class="comment">// Add the second part of the stack (the target)</span>
-            <span class="comment">// Note that we do it here so that the sender is on the top of the stack for the coin transfer above.</span>
-            <span class="comment">// and we don&#39;t do it after the coin transfer error handling because the emitted error event must show the correct stack.</span>
-            <span class="ident">context</span>.<span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">ExecutionStackElement</span> {
-                <span class="ident">address</span>: <span class="ident">target_addr</span>,
-                <span class="ident">coins</span>,
-                <span class="ident">owned_addresses</span>: <span class="macro">vec!</span>[<span class="ident">target_addr</span>],
+            <span class="comment">// Add the second part of the stack (the target)
+            // Note that we do it here so that the sender is on the top of the stack for the coin transfer above.
+            // and we don&#39;t do it after the coin transfer error handling because the emitted error event must show the correct stack.
+            </span>context.stack.push(ExecutionStackElement {
+                address: target_addr,
+                coins,
+                owned_addresses: <span class="macro">vec!</span>[target_addr],
             });
 
-            <span class="comment">// check the coin transfer result</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">coin_transfer_result</span> {
-                <span class="comment">// cancel the effects of the execution by resetting the context to the previously saved snapshot</span>
-                <span class="kw">let</span> <span class="ident">err</span> <span class="op">=</span> <span class="ident">ExecutionError::RuntimeError</span>(<span class="macro">format!</span>(
+            <span class="comment">// check the coin transfer result
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = coin_transfer_result {
+                <span class="comment">// cancel the effects of the execution by resetting the context to the previously saved snapshot
+                </span><span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(
                     <span class="string">&quot;failed to transfer {} call coins from {} to {}: {}&quot;</span>,
-                    <span class="ident">coins</span>, <span class="ident">sender_addr</span>, <span class="ident">target_addr</span>, <span class="ident">err</span>
+                    coins, sender_addr, target_addr, err
                 ));
-                <span class="ident">context</span>.<span class="ident">reset_to_snapshot</span>(<span class="ident">context_snapshot</span>, <span class="prelude-val">Some</span>(<span class="ident">err</span>.<span class="ident">clone</span>()));
-                <span class="ident">context</span>.<span class="ident">origin_operation_id</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>);
+                context.reset_to_snapshot(context_snapshot, <span class="prelude-val">Some</span>(err.clone()));
+                context.origin_operation_id = <span class="prelude-val">None</span>;
+                <span class="kw">return </span><span class="prelude-val">Err</span>(err);
             }
         };
 
-        <span class="comment">// quit if there is no function to be called</span>
-        <span class="kw">if</span> <span class="ident">target_func</span>.<span class="ident">is_empty</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
+        <span class="comment">// quit if there is no function to be called
+        </span><span class="kw">if </span>target_func.is_empty() {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
 
-        <span class="comment">// run the VM on the called fucntion of the bytecode</span>
-        <span class="kw">let</span> <span class="ident">run_result</span> <span class="op">=</span> <span class="ident">massa_sc_runtime::run_function</span>(
-            <span class="kw-2">&amp;</span><span class="ident">bytecode</span>,
-            <span class="ident">max_gas</span>,
-            <span class="ident">target_func</span>,
-            <span class="ident">param</span>,
-            <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">execution_interface</span>,
+        <span class="comment">// run the VM on the called fucntion of the bytecode
+        </span><span class="kw">let </span>run_result = massa_sc_runtime::run_function(
+            <span class="kw-2">&amp;</span>bytecode,
+            max_gas,
+            target_func,
+            param,
+            <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
         );
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">run_result</span> {
-            <span class="comment">// there was an error during bytecode execution:</span>
-            <span class="comment">// cancel the effects of the execution by resetting the context to the previously saved snapshot</span>
-            <span class="kw">let</span> <span class="ident">err</span> <span class="op">=</span> <span class="ident">ExecutionError::RuntimeError</span>(<span class="macro">format!</span>(<span class="string">&quot;bytecode execution error: {}&quot;</span>, <span class="ident">err</span>));
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
-            <span class="ident">context</span>.<span class="ident">reset_to_snapshot</span>(<span class="ident">context_snapshot</span>, <span class="prelude-val">Some</span>(<span class="ident">err</span>.<span class="ident">clone</span>()));
-            <span class="ident">context</span>.<span class="ident">origin_operation_id</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>);
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = run_result {
+            <span class="comment">// there was an error during bytecode execution:
+            // cancel the effects of the execution by resetting the context to the previously saved snapshot
+            </span><span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;bytecode execution error: {}&quot;</span>, err));
+            <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+            context.reset_to_snapshot(context_snapshot, <span class="prelude-val">Some</span>(err.clone()));
+            context.origin_operation_id = <span class="prelude-val">None</span>;
+            <span class="kw">return </span><span class="prelude-val">Err</span>(err);
         }
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Tries to execute an asynchronous message</span>
-    <span class="doccomment">/// If the execution failed reimburse the message sender.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * message: message information</span>
-    <span class="doccomment">/// * bytecode: executable target bytecode, or None if unavailable</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">execute_async_message</span>(
+    <span class="doccomment">/// Tries to execute an asynchronous message
+    /// If the execution failed reimburse the message sender.
+    ///
+    /// # Arguments
+    /// * message: message information
+    /// * bytecode: executable target bytecode, or None if unavailable
+    </span><span class="kw">pub fn </span>execute_async_message(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">message</span>: <span class="ident">AsyncMessage</span>,
-        <span class="ident">bytecode</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ExecutionError</span><span class="op">&gt;</span> {
-        <span class="comment">// prepare execution context</span>
-        <span class="kw">let</span> <span class="ident">context_snapshot</span>;
-        <span class="kw">let</span> (<span class="ident">bytecode</span>, <span class="ident">data</span>): (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">=</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
-            <span class="ident">context_snapshot</span> <span class="op">=</span> <span class="ident">context</span>.<span class="ident">get_snapshot</span>();
-            <span class="ident">context</span>.<span class="ident">max_gas</span> <span class="op">=</span> <span class="ident">message</span>.<span class="ident">max_gas</span>;
-            <span class="ident">context</span>.<span class="ident">gas_price</span> <span class="op">=</span> <span class="ident">message</span>.<span class="ident">gas_price</span>;
-            <span class="ident">context</span>.<span class="ident">stack</span> <span class="op">=</span> <span class="macro">vec!</span>[
-                <span class="ident">ExecutionStackElement</span> {
-                    <span class="ident">address</span>: <span class="ident">message</span>.<span class="ident">sender</span>,
-                    <span class="ident">coins</span>: <span class="ident">message</span>.<span class="ident">coins</span>,
-                    <span class="ident">owned_addresses</span>: <span class="macro">vec!</span>[<span class="ident">message</span>.<span class="ident">sender</span>],
+        message: AsyncMessage,
+        bytecode: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
+        <span class="comment">// prepare execution context
+        </span><span class="kw">let </span>context_snapshot;
+        <span class="kw">let </span>(bytecode, data): (Vec&lt;u8&gt;, <span class="kw-2">&amp;</span>str) = {
+            <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+            context_snapshot = context.get_snapshot();
+            context.max_gas = message.max_gas;
+            context.gas_price = message.gas_price;
+            context.stack = <span class="macro">vec!</span>[
+                ExecutionStackElement {
+                    address: message.sender,
+                    coins: message.coins,
+                    owned_addresses: <span class="macro">vec!</span>[message.sender],
                 },
-                <span class="ident">ExecutionStackElement</span> {
-                    <span class="ident">address</span>: <span class="ident">message</span>.<span class="ident">destination</span>,
-                    <span class="ident">coins</span>: <span class="ident">message</span>.<span class="ident">coins</span>,
-                    <span class="ident">owned_addresses</span>: <span class="macro">vec!</span>[<span class="ident">message</span>.<span class="ident">destination</span>],
+                ExecutionStackElement {
+                    address: message.destination,
+                    coins: message.coins,
+                    owned_addresses: <span class="macro">vec!</span>[message.destination],
                 },
             ];
 
-            <span class="comment">// If there is no target bytecode or if message data is invalid,</span>
-            <span class="comment">// reimburse sender with coins and quit</span>
-            <span class="kw">let</span> (<span class="ident">bytecode</span>, <span class="ident">data</span>) <span class="op">=</span> <span class="kw">match</span> (<span class="ident">bytecode</span>, <span class="ident">std::str::from_utf8</span>(<span class="kw-2">&amp;</span><span class="ident">message</span>.<span class="ident">data</span>)) {
-                (<span class="prelude-val">Some</span>(<span class="ident">bc</span>), <span class="prelude-val">Ok</span>(<span class="ident">d</span>)) =&gt; (<span class="ident">bc</span>, <span class="ident">d</span>),
-                (<span class="ident">bc</span>, <span class="ident">_d</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">err</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">bc</span>.<span class="ident">is_none</span>() {
-                        <span class="ident">ExecutionError::RuntimeError</span>(<span class="string">&quot;no target bytecode found&quot;</span>.<span class="ident">into</span>())
-                    } <span class="kw">else</span> {
-                        <span class="ident">ExecutionError::RuntimeError</span>(
-                            <span class="string">&quot;message data does not convert to utf-8&quot;</span>.<span class="ident">into</span>(),
+            <span class="comment">// If there is no target bytecode or if message data is invalid,
+            // reimburse sender with coins and quit
+            </span><span class="kw">let </span>(bytecode, data) = <span class="kw">match </span>(bytecode, std::str::from_utf8(<span class="kw-2">&amp;</span>message.data)) {
+                (<span class="prelude-val">Some</span>(bc), <span class="prelude-val">Ok</span>(d)) =&gt; (bc, d),
+                (bc, _d) =&gt; {
+                    <span class="kw">let </span>err = <span class="kw">if </span>bc.is_none() {
+                        ExecutionError::RuntimeError(<span class="string">&quot;no target bytecode found&quot;</span>.into())
+                    } <span class="kw">else </span>{
+                        ExecutionError::RuntimeError(
+                            <span class="string">&quot;message data does not convert to utf-8&quot;</span>.into(),
                         )
                     };
-                    <span class="ident">context</span>.<span class="ident">reset_to_snapshot</span>(<span class="ident">context_snapshot</span>, <span class="prelude-val">Some</span>(<span class="ident">err</span>.<span class="ident">clone</span>()));
-                    <span class="ident">context</span>.<span class="ident">cancel_async_message</span>(<span class="kw-2">&amp;</span><span class="ident">message</span>);
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>);
+                    context.reset_to_snapshot(context_snapshot, <span class="prelude-val">Some</span>(err.clone()));
+                    context.cancel_async_message(<span class="kw-2">&amp;</span>message);
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(err);
                 }
             };
 
-            <span class="comment">// credit coins to the target address</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span>
-                <span class="ident">context</span>.<span class="ident">transfer_parallel_coins</span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">message</span>.<span class="ident">destination</span>), <span class="ident">message</span>.<span class="ident">coins</span>)
+            <span class="comment">// credit coins to the target address
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
+                context.transfer_parallel_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(message.destination), message.coins)
             {
-                <span class="comment">// coin crediting failed: reset context to snapshot and reimburse sender</span>
-                <span class="kw">let</span> <span class="ident">err</span> <span class="op">=</span> <span class="ident">ExecutionError::RuntimeError</span>(<span class="macro">format!</span>(
+                <span class="comment">// coin crediting failed: reset context to snapshot and reimburse sender
+                </span><span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(
                     <span class="string">&quot;could not credit coins to target of async execution: {}&quot;</span>,
-                    <span class="ident">err</span>
+                    err
                 ));
-                <span class="ident">context</span>.<span class="ident">reset_to_snapshot</span>(<span class="ident">context_snapshot</span>, <span class="prelude-val">Some</span>(<span class="ident">err</span>.<span class="ident">clone</span>()));
-                <span class="ident">context</span>.<span class="ident">cancel_async_message</span>(<span class="kw-2">&amp;</span><span class="ident">message</span>);
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>);
+                context.reset_to_snapshot(context_snapshot, <span class="prelude-val">Some</span>(err.clone()));
+                context.cancel_async_message(<span class="kw-2">&amp;</span>message);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(err);
             }
 
-            (<span class="ident">bytecode</span>, <span class="ident">data</span>)
+            (bytecode, data)
         };
 
-        <span class="comment">// run the target function</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">massa_sc_runtime::run_function</span>(
-            <span class="kw-2">&amp;</span><span class="ident">bytecode</span>,
-            <span class="ident">message</span>.<span class="ident">max_gas</span>,
-            <span class="kw-2">&amp;</span><span class="ident">message</span>.<span class="ident">handler</span>,
-            <span class="ident">data</span>,
-            <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">execution_interface</span>,
+        <span class="comment">// run the target function
+        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = massa_sc_runtime::run_function(
+            <span class="kw-2">&amp;</span>bytecode,
+            message.max_gas,
+            <span class="kw-2">&amp;</span>message.handler,
+            data,
+            <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
         ) {
-            <span class="comment">// execution failed: reset context to snapshot and reimburse sender</span>
-            <span class="kw">let</span> <span class="ident">err</span> <span class="op">=</span> <span class="ident">ExecutionError::RuntimeError</span>(<span class="macro">format!</span>(
+            <span class="comment">// execution failed: reset context to snapshot and reimburse sender
+            </span><span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(
                 <span class="string">&quot;async message runtime execution error: {}&quot;</span>,
-                <span class="ident">err</span>
+                err
             ));
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
-            <span class="ident">context</span>.<span class="ident">reset_to_snapshot</span>(<span class="ident">context_snapshot</span>, <span class="prelude-val">Some</span>(<span class="ident">err</span>.<span class="ident">clone</span>()));
-            <span class="ident">context</span>.<span class="ident">cancel_async_message</span>(<span class="kw-2">&amp;</span><span class="ident">message</span>);
-            <span class="prelude-val">Err</span>(<span class="ident">err</span>)
-        } <span class="kw">else</span> {
+            <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+            context.reset_to_snapshot(context_snapshot, <span class="prelude-val">Some</span>(err.clone()));
+            context.cancel_async_message(<span class="kw-2">&amp;</span>message);
+            <span class="prelude-val">Err</span>(err)
+        } <span class="kw">else </span>{
             <span class="prelude-val">Ok</span>(())
         }
     }
 
-    <span class="doccomment">/// Executes a full slot (with or without a block inside) without causing any changes to the state,</span>
-    <span class="doccomment">/// just yielding the execution output.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `slot`: slot to execute</span>
-    <span class="doccomment">/// * `opt_block`: block ID if there is a block a that slot, otherwise None</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// An `ExecutionOutput` structure summarizing the output of the executed slot</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">execute_slot</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>, <span class="ident">opt_block_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>) -&gt; <span class="ident">ExecutionOutput</span> {
-        <span class="comment">// create a new execution context for the whole active slot</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">execution_context</span> <span class="op">=</span> <span class="ident">ExecutionContext::active_slot</span>(
-            <span class="ident">slot</span>,
-            <span class="ident">opt_block_id</span>,
-            <span class="self">self</span>.<span class="ident">final_state</span>.<span class="ident">clone</span>(),
-            <span class="self">self</span>.<span class="ident">active_history</span>.<span class="ident">clone</span>(),
+    <span class="doccomment">/// Executes a full slot (with or without a block inside) without causing any changes to the state,
+    /// just yielding the execution output.
+    ///
+    /// # Arguments
+    /// * `slot`: slot to execute
+    /// * `opt_block`: block ID if there is a block a that slot, otherwise None
+    ///
+    /// # Returns
+    /// An `ExecutionOutput` structure summarizing the output of the executed slot
+    </span><span class="kw">pub fn </span>execute_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot, opt_block_id: <span class="prelude-ty">Option</span>&lt;BlockId&gt;) -&gt; ExecutionOutput {
+        <span class="comment">// create a new execution context for the whole active slot
+        </span><span class="kw">let </span><span class="kw-2">mut </span>execution_context = ExecutionContext::active_slot(
+            slot,
+            opt_block_id,
+            <span class="self">self</span>.final_state.clone(),
+            <span class="self">self</span>.active_history.clone(),
         );
 
-        <span class="comment">// note that here, some pre-operations (like crediting block producers) can be performed before the lock</span>
+        <span class="comment">// note that here, some pre-operations (like crediting block producers) can be performed before the lock
 
-        <span class="comment">// get asynchronous messages to execute</span>
-        <span class="kw">let</span> <span class="ident">messages</span> <span class="op">=</span> <span class="ident">execution_context</span>.<span class="ident">take_async_batch</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">max_async_gas</span>);
+        // get asynchronous messages to execute
+        </span><span class="kw">let </span>messages = execution_context.take_async_batch(<span class="self">self</span>.config.max_async_gas);
 
-        <span class="comment">// apply the created execution context for slot execution</span>
-        <span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) <span class="op">=</span> <span class="ident">execution_context</span>;
+        <span class="comment">// apply the created execution context for slot execution
+        </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
 
-        <span class="comment">// Try executing asynchronous messages.</span>
-        <span class="comment">// Effects are cancelled on failure and the sender is reimbursed.</span>
-        <span class="kw">for</span> (<span class="ident">opt_bytecode</span>, <span class="ident">message</span>) <span class="kw">in</span> <span class="ident">messages</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">execute_async_message</span>(<span class="ident">message</span>, <span class="ident">opt_bytecode</span>) {
-                <span class="macro">debug!</span>(<span class="string">&quot;failed executing async message: {}&quot;</span>, <span class="ident">err</span>);
+        <span class="comment">// Try executing asynchronous messages.
+        // Effects are cancelled on failure and the sender is reimbursed.
+        </span><span class="kw">for </span>(opt_bytecode, message) <span class="kw">in </span>messages {
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.execute_async_message(message, opt_bytecode) {
+                <span class="macro">debug!</span>(<span class="string">&quot;failed executing async message: {}&quot;</span>, err);
             }
         }
 
-        <span class="comment">// check if there is a block at this slot</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block_id</span>) <span class="op">=</span> <span class="ident">opt_block_id</span> {
-            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">storage</span>
-                .<span class="ident">retrieve_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_id</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Missing block in storage.&quot;</span>);
-            <span class="kw">let</span> <span class="ident">stored_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">read</span>();
-            <span class="comment">// Try executing the operations of this block in the order in which they appear in the block.</span>
-            <span class="comment">// Errors are logged but do not interrupt the execution of the slot.</span>
-            <span class="kw">for</span> (<span class="ident">op_idx</span>, <span class="ident">operation</span>) <span class="kw">in</span> <span class="ident">stored_block</span>.<span class="ident">content</span>.<span class="ident">operations</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span>
-                    <span class="self">self</span>.<span class="ident">execute_operation</span>(<span class="ident">operation</span>, <span class="ident">stored_block</span>.<span class="ident">content</span>.<span class="ident">header</span>.<span class="ident">creator_address</span>)
+        <span class="comment">// check if there is a block at this slot
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(block_id) = opt_block_id {
+            <span class="kw">let </span>block = <span class="self">self
+                </span>.storage
+                .retrieve_block(<span class="kw-2">&amp;</span>block_id)
+                .expect(<span class="string">&quot;Missing block in storage.&quot;</span>);
+            <span class="kw">let </span>stored_block = block.read();
+            <span class="comment">// Try executing the operations of this block in the order in which they appear in the block.
+            // Errors are logged but do not interrupt the execution of the slot.
+            </span><span class="kw">for </span>(op_idx, operation) <span class="kw">in </span>stored_block.content.operations.iter().enumerate() {
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
+                    <span class="self">self</span>.execute_operation(operation, stored_block.content.header.creator_address)
                 {
                     <span class="macro">debug!</span>(
                         <span class="string">&quot;failed executing operation index {} in block {}: {}&quot;</span>,
-                        <span class="ident">op_idx</span>, <span class="ident">block_id</span>, <span class="ident">err</span>
+                        op_idx, block_id, err
                     );
                 }
             }
         }
 
-        <span class="comment">// finish slot and return the execution output</span>
-        <span class="macro">context_guard!</span>(<span class="self">self</span>).<span class="ident">settle_slot</span>()
+        <span class="comment">// finish slot and return the execution output
+        </span><span class="macro">context_guard!</span>(<span class="self">self</span>).settle_slot()
     }
 
-    <span class="doccomment">/// Runs a read-only execution request.</span>
-    <span class="doccomment">/// The executed bytecode appears to be able to read and write the consensus state,</span>
-    <span class="doccomment">/// but all accumulated changes are simply returned as an `ExecutionOutput` object,</span>
-    <span class="doccomment">/// and not actually applied to the consensus state.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `req`: a read-only execution request</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">///  `ExecutionOutput` describing the output of the execution, or an error</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">execute_readonly_request</span>(
+    <span class="doccomment">/// Runs a read-only execution request.
+    /// The executed bytecode appears to be able to read and write the consensus state,
+    /// but all accumulated changes are simply returned as an `ExecutionOutput` object,
+    /// and not actually applied to the consensus state.
+    ///
+    /// # Arguments
+    /// * `req`: a read-only execution request
+    ///
+    /// # Returns
+    ///  `ExecutionOutput` describing the output of the execution, or an error
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>execute_readonly_request(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">req</span>: <span class="ident">ReadOnlyExecutionRequest</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ExecutionOutput</span>, <span class="ident">ExecutionError</span><span class="op">&gt;</span> {
-        <span class="comment">// set the execution slot to be the one after the latest executed active slot</span>
-        <span class="kw">let</span> <span class="ident">slot</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">active_cursor</span>
-            .<span class="ident">get_next_slot</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">thread_count</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;slot overflow in readonly execution&quot;</span>);
+        req: ReadOnlyExecutionRequest,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionOutput, ExecutionError&gt; {
+        <span class="comment">// set the execution slot to be the one after the latest executed active slot
+        </span><span class="kw">let </span>slot = <span class="self">self
+            </span>.active_cursor
+            .get_next_slot(<span class="self">self</span>.config.thread_count)
+            .expect(<span class="string">&quot;slot overflow in readonly execution&quot;</span>);
 
-        <span class="comment">// create a readonly execution context</span>
-        <span class="kw">let</span> <span class="ident">execution_context</span> <span class="op">=</span> <span class="ident">ExecutionContext::readonly</span>(
-            <span class="ident">slot</span>,
-            <span class="ident">req</span>.<span class="ident">max_gas</span>,
-            <span class="ident">req</span>.<span class="ident">simulated_gas_price</span>,
-            <span class="ident">req</span>.<span class="ident">call_stack</span>,
-            <span class="self">self</span>.<span class="ident">final_state</span>.<span class="ident">clone</span>(),
-            <span class="self">self</span>.<span class="ident">active_history</span>.<span class="ident">clone</span>(),
+        <span class="comment">// create a readonly execution context
+        </span><span class="kw">let </span>execution_context = ExecutionContext::readonly(
+            slot,
+            req.max_gas,
+            req.simulated_gas_price,
+            req.call_stack,
+            <span class="self">self</span>.final_state.clone(),
+            <span class="self">self</span>.active_history.clone(),
         );
 
-        <span class="comment">// run the intepreter according to the target type</span>
-        <span class="kw">match</span> <span class="ident">req</span>.<span class="ident">target</span> {
-            <span class="ident">ReadOnlyExecutionTarget::BytecodeExecution</span>(<span class="ident">bytecode</span>) =&gt; {
-                <span class="comment">// set the execution context for execution</span>
-                <span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) <span class="op">=</span> <span class="ident">execution_context</span>;
+        <span class="comment">// run the intepreter according to the target type
+        </span><span class="kw">match </span>req.target {
+            ReadOnlyExecutionTarget::BytecodeExecution(bytecode) =&gt; {
+                <span class="comment">// set the execution context for execution
+                </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
 
-                <span class="comment">// run the bytecode&#39;s main function</span>
-                <span class="ident">massa_sc_runtime::run_main</span>(<span class="kw-2">&amp;</span><span class="ident">bytecode</span>, <span class="ident">req</span>.<span class="ident">max_gas</span>, <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">execution_interface</span>)
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> <span class="ident">ExecutionError::RuntimeError</span>(<span class="ident">err</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>;
+                <span class="comment">// run the bytecode&#39;s main function
+                </span>massa_sc_runtime::run_main(<span class="kw-2">&amp;</span>bytecode, req.max_gas, <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface)
+                    .map_err(|err| ExecutionError::RuntimeError(err.to_string()))<span class="question-mark">?</span>;
             }
-            <span class="ident">ReadOnlyExecutionTarget::FunctionCall</span> {
-                <span class="ident">target_addr</span>,
-                <span class="ident">target_func</span>,
-                <span class="ident">parameter</span>,
+            ReadOnlyExecutionTarget::FunctionCall {
+                target_addr,
+                target_func,
+                parameter,
             } =&gt; {
-                <span class="comment">// get the bytecode, default to an empty vector</span>
-                <span class="kw">let</span> <span class="ident">bytecode</span> <span class="op">=</span> <span class="ident">execution_context</span>
-                    .<span class="ident">get_bytecode</span>(<span class="kw-2">&amp;</span><span class="ident">target_addr</span>)
-                    .<span class="ident">unwrap_or_default</span>();
+                <span class="comment">// get the bytecode, default to an empty vector
+                </span><span class="kw">let </span>bytecode = execution_context
+                    .get_bytecode(<span class="kw-2">&amp;</span>target_addr)
+                    .unwrap_or_default();
 
-                <span class="comment">// set the execution context for execution</span>
-                <span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) <span class="op">=</span> <span class="ident">execution_context</span>;
+                <span class="comment">// set the execution context for execution
+                </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
 
-                <span class="comment">// run the target function in the bytecode</span>
-                <span class="ident">massa_sc_runtime::run_function</span>(
-                    <span class="kw-2">&amp;</span><span class="ident">bytecode</span>,
-                    <span class="ident">req</span>.<span class="ident">max_gas</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">target_func</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">parameter</span>,
-                    <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">execution_interface</span>,
+                <span class="comment">// run the target function in the bytecode
+                </span>massa_sc_runtime::run_function(
+                    <span class="kw-2">&amp;</span>bytecode,
+                    req.max_gas,
+                    <span class="kw-2">&amp;</span>target_func,
+                    <span class="kw-2">&amp;</span>parameter,
+                    <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
                 )
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> <span class="ident">ExecutionError::RuntimeError</span>(<span class="ident">err</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>;
+                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))<span class="question-mark">?</span>;
             }
         }
 
-        <span class="comment">// return the execution output</span>
-        <span class="prelude-val">Ok</span>(<span class="macro">context_guard!</span>(<span class="self">self</span>).<span class="ident">settle_slot</span>())
+        <span class="comment">// return the execution output
+        </span><span class="prelude-val">Ok</span>(<span class="macro">context_guard!</span>(<span class="self">self</span>).settle_slot())
     }
 
-    <span class="doccomment">/// Gets a parallel balance both at the latest final and active executed slots</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_final_and_active_parallel_balance</span>(
+    <span class="doccomment">/// Gets a parallel balance both at the latest final and active executed slots
+    </span><span class="kw">pub fn </span>get_final_and_active_parallel_balance(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>,
-    ) -&gt; (<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="ident">final_balance</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">final_state</span>.<span class="ident">read</span>().<span class="ident">ledger</span>.<span class="ident">get_parallel_balance</span>(<span class="ident">address</span>);
-        <span class="kw">let</span> <span class="ident">search_result</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">active_history</span>
-            .<span class="ident">read</span>()
-            .<span class="ident">fetch_active_history_balance</span>(<span class="ident">address</span>);
+        address: <span class="kw-2">&amp;</span>Address,
+    ) -&gt; (<span class="prelude-ty">Option</span>&lt;Amount&gt;, <span class="prelude-ty">Option</span>&lt;Amount&gt;) {
+        <span class="kw">let </span>final_balance = <span class="self">self</span>.final_state.read().ledger.get_parallel_balance(address);
+        <span class="kw">let </span>search_result = <span class="self">self
+            </span>.active_history
+            .read()
+            .fetch_active_history_balance(address);
         (
-            <span class="ident">final_balance</span>,
-            <span class="kw">match</span> <span class="ident">search_result</span> {
-                <span class="ident">HistorySearchResult::Present</span>(<span class="ident">active_balance</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">active_balance</span>),
-                <span class="ident">HistorySearchResult::NoInfo</span> =&gt; <span class="ident">final_balance</span>,
-                <span class="ident">HistorySearchResult::Absent</span> =&gt; <span class="prelude-val">None</span>,
+            final_balance,
+            <span class="kw">match </span>search_result {
+                HistorySearchResult::Present(active_balance) =&gt; <span class="prelude-val">Some</span>(active_balance),
+                HistorySearchResult::NoInfo =&gt; final_balance,
+                HistorySearchResult::Absent =&gt; <span class="prelude-val">None</span>,
             },
         )
     }
 
-    <span class="doccomment">/// Gets a data entry both at the latest final and active executed slots</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_final_and_active_data_entry</span>(
+    <span class="doccomment">/// Gets a data entry both at the latest final and active executed slots
+    </span><span class="kw">pub fn </span>get_final_and_active_data_entry(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>,
-        <span class="ident">key</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-    ) -&gt; (<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="ident">final_entry</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">final_state</span>.<span class="ident">read</span>().<span class="ident">ledger</span>.<span class="ident">get_data_entry</span>(<span class="ident">address</span>, <span class="ident">key</span>);
-        <span class="kw">let</span> <span class="ident">search_result</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">active_history</span>
-            .<span class="ident">read</span>()
-            .<span class="ident">fetch_active_history_data_entry</span>(<span class="ident">address</span>, <span class="ident">key</span>);
+        address: <span class="kw-2">&amp;</span>Address,
+        key: <span class="kw-2">&amp;</span>[u8],
+    ) -&gt; (<span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;) {
+        <span class="kw">let </span>final_entry = <span class="self">self</span>.final_state.read().ledger.get_data_entry(address, key);
+        <span class="kw">let </span>search_result = <span class="self">self
+            </span>.active_history
+            .read()
+            .fetch_active_history_data_entry(address, key);
         (
-            <span class="ident">final_entry</span>.<span class="ident">clone</span>(),
-            <span class="kw">match</span> <span class="ident">search_result</span> {
-                <span class="ident">HistorySearchResult::Present</span>(<span class="ident">active_entry</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">active_entry</span>),
-                <span class="ident">HistorySearchResult::NoInfo</span> =&gt; <span class="ident">final_entry</span>,
-                <span class="ident">HistorySearchResult::Absent</span> =&gt; <span class="prelude-val">None</span>,
+            final_entry.clone(),
+            <span class="kw">match </span>search_result {
+                HistorySearchResult::Present(active_entry) =&gt; <span class="prelude-val">Some</span>(active_entry),
+                HistorySearchResult::NoInfo =&gt; final_entry,
+                HistorySearchResult::Absent =&gt; <span class="prelude-val">None</span>,
             },
         )
     }
 
-    <span class="doccomment">/// Get every final and active datastore key of the given address</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_final_and_active_datastore_keys</span>(
+    <span class="doccomment">/// Get every final and active datastore key of the given address
+    </span><span class="kw">pub fn </span>get_final_and_active_datastore_keys(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>,
-    ) -&gt; (<span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
-        <span class="comment">// here, get the final keys from the final ledger, and make a copy of it for the candidate list</span>
-        <span class="kw">let</span> <span class="ident">final_keys</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">final_state</span>.<span class="ident">read</span>().<span class="ident">ledger</span>.<span class="ident">get_datastore_keys</span>(<span class="ident">addr</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">candidate_keys</span> <span class="op">=</span> <span class="ident">final_keys</span>.<span class="ident">clone</span>();
+        addr: <span class="kw-2">&amp;</span>Address,
+    ) -&gt; (BTreeSet&lt;Vec&lt;u8&gt;&gt;, BTreeSet&lt;Vec&lt;u8&gt;&gt;) {
+        <span class="comment">// here, get the final keys from the final ledger, and make a copy of it for the candidate list
+        </span><span class="kw">let </span>final_keys = <span class="self">self</span>.final_state.read().ledger.get_datastore_keys(addr);
+        <span class="kw">let </span><span class="kw-2">mut </span>candidate_keys = final_keys.clone();
 
-        <span class="comment">// here, traverse the history from oldest to newest, applying additions and deletions</span>
-        <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">active_history</span>.<span class="ident">read</span>().<span class="number">0</span> {
-            <span class="kw">match</span> <span class="ident">output</span>.<span class="ident">state_changes</span>.<span class="ident">ledger_changes</span>.<span class="ident">get</span>(<span class="ident">addr</span>) {
-                <span class="comment">// address absent from the changes</span>
-                <span class="prelude-val">None</span> =&gt; (),
+        <span class="comment">// here, traverse the history from oldest to newest, applying additions and deletions
+        </span><span class="kw">for </span>output <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.active_history.read().<span class="number">0 </span>{
+            <span class="kw">match </span>output.state_changes.ledger_changes.get(addr) {
+                <span class="comment">// address absent from the changes
+                </span><span class="prelude-val">None </span>=&gt; (),
 
-                <span class="comment">// address ledger entry being reset to an absolute new list of keys</span>
-                <span class="prelude-val">Some</span>(<span class="ident">SetUpdateOrDelete::Set</span>(<span class="ident">new_ledger_entry</span>)) =&gt; {
-                    <span class="ident">candidate_keys</span> <span class="op">=</span> <span class="ident">new_ledger_entry</span>.<span class="ident">datastore</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>();
+                <span class="comment">// address ledger entry being reset to an absolute new list of keys
+                </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Set(new_ledger_entry)) =&gt; {
+                    candidate_keys = new_ledger_entry.datastore.keys().cloned().collect();
                 }
 
-                <span class="comment">// address ledger entry being updated</span>
-                <span class="prelude-val">Some</span>(<span class="ident">SetUpdateOrDelete::Update</span>(<span class="ident">entry_updates</span>)) =&gt; {
-                    <span class="kw">for</span> (<span class="ident">ds_key</span>, <span class="ident">ds_update</span>) <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">entry_updates</span>.<span class="ident">datastore</span> {
-                        <span class="kw">match</span> <span class="ident">ds_update</span> {
-                            <span class="ident">SetOrDelete::Set</span>(<span class="kw">_</span>) =&gt; <span class="ident">candidate_keys</span>.<span class="ident">insert</span>(<span class="ident">ds_key</span>.<span class="ident">clone</span>()),
-                            <span class="ident">SetOrDelete::Delete</span> =&gt; <span class="ident">candidate_keys</span>.<span class="ident">remove</span>(<span class="ident">ds_key</span>),
+                <span class="comment">// address ledger entry being updated
+                </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Update(entry_updates)) =&gt; {
+                    <span class="kw">for </span>(ds_key, ds_update) <span class="kw">in </span><span class="kw-2">&amp;</span>entry_updates.datastore {
+                        <span class="kw">match </span>ds_update {
+                            SetOrDelete::Set(<span class="kw">_</span>) =&gt; candidate_keys.insert(ds_key.clone()),
+                            SetOrDelete::Delete =&gt; candidate_keys.remove(ds_key),
                         };
                     }
                 }
 
-                <span class="comment">// address ledger entry being deleted</span>
-                <span class="prelude-val">Some</span>(<span class="ident">SetUpdateOrDelete::Delete</span>) =&gt; {
-                    <span class="ident">candidate_keys</span>.<span class="ident">clear</span>();
+                <span class="comment">// address ledger entry being deleted
+                </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Delete) =&gt; {
+                    candidate_keys.clear();
                 }
             }
         }
 
-        (<span class="ident">final_keys</span>, <span class="ident">candidate_keys</span>)
+        (final_keys, candidate_keys)
     }
 
-    <span class="doccomment">/// Gets execution events optionally filtered by:</span>
-    <span class="doccomment">/// * start slot</span>
-    <span class="doccomment">/// * end slot</span>
-    <span class="doccomment">/// * emitter address</span>
-    <span class="doccomment">/// * original caller address</span>
-    <span class="doccomment">/// * operation id</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_filtered_sc_output_event</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">EventFilter</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">final_events</span>
-            .<span class="ident">get_filtered_sc_output_event</span>(<span class="kw-2">&amp;</span><span class="ident">filter</span>)
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">chain</span>(
-                <span class="self">self</span>.<span class="ident">active_history</span>
-                    .<span class="ident">read</span>()
-                    .<span class="number">0</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">item</span><span class="op">|</span> <span class="ident">item</span>.<span class="ident">events</span>.<span class="ident">get_filtered_sc_output_event</span>(<span class="kw-2">&amp;</span><span class="ident">filter</span>)),
+    <span class="doccomment">/// Gets execution events optionally filtered by:
+    /// * start slot
+    /// * end slot
+    /// * emitter address
+    /// * original caller address
+    /// * operation id
+    </span><span class="kw">pub fn </span>get_filtered_sc_output_event(<span class="kw-2">&amp;</span><span class="self">self</span>, filter: EventFilter) -&gt; Vec&lt;SCOutputEvent&gt; {
+        <span class="self">self</span>.final_events
+            .get_filtered_sc_output_event(<span class="kw-2">&amp;</span>filter)
+            .into_iter()
+            .chain(
+                <span class="self">self</span>.active_history
+                    .read()
+                    .<span class="number">0
+                    </span>.iter()
+                    .flat_map(|item| item.events.get_filtered_sc_output_event(<span class="kw-2">&amp;</span>filter)),
             )
-            .<span class="ident">collect</span>()
+            .collect()
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

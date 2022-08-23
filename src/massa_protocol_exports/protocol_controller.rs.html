@@ -304,311 +304,311 @@
 <span id="304">304</span>
 <span id="305">305</span>
 <span id="306">306</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ProtocolError</span>;
-<span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
+</span><span class="kw">use </span><span class="kw">crate</span>::error::ProtocolError;
+<span class="kw">use </span>massa_logging::massa_trace;
 
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">operation::OperationIds</span>,
-    <span class="ident">prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>},
-    <span class="ident">Slot</span>, <span class="ident">WrappedBlock</span>,
+<span class="kw">use </span>massa_models::{
+    operation::OperationIds,
+    prehash::{Map, Set},
+    Slot, WrappedBlock,
 };
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">WrappedEndorsement</span>, <span class="ident">WrappedHeader</span>, <span class="ident">WrappedOperation</span>,
+<span class="kw">use </span>massa_models::{
+    BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader, WrappedOperation,
 };
-<span class="kw">use</span> <span class="ident">massa_network_exports::NetworkEventReceiver</span>;
-<span class="kw">use</span> <span class="ident">serde::Serialize</span>;
-<span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
-<span class="kw">use</span> <span class="ident">tokio</span>::{<span class="ident">sync::mpsc</span>, <span class="ident">task::JoinHandle</span>};
-<span class="kw">use</span> <span class="ident">tracing::debug</span>;
+<span class="kw">use </span>massa_network_exports::NetworkEventReceiver;
+<span class="kw">use </span>serde::Serialize;
+<span class="kw">use </span>std::collections::VecDeque;
+<span class="kw">use </span>tokio::{sync::mpsc, task::JoinHandle};
+<span class="kw">use </span>tracing::debug;
 
-<span class="doccomment">/// Possible types of events that can happen.</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::large_enum_variant</span>)]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProtocolEvent</span> {
-    <span class="doccomment">/// A block with a valid signature has been received.</span>
-    <span class="ident">ReceivedBlock</span> {
-        <span class="doccomment">/// corresponding block</span>
-        <span class="ident">block</span>: <span class="ident">WrappedBlock</span>,
-        <span class="doccomment">/// the slot</span>
-        <span class="ident">slot</span>: <span class="ident">Slot</span>,
-        <span class="doccomment">/// operations in the block by (index, validity end period)</span>
-        <span class="ident">operation_set</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
-        <span class="doccomment">/// endorsements in the block with index</span>
-        <span class="ident">endorsement_ids</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Possible types of events that can happen.
+</span><span class="attribute">#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Serialize)]
+</span><span class="kw">pub enum </span>ProtocolEvent {
+    <span class="doccomment">/// A block with a valid signature has been received.
+    </span>ReceivedBlock {
+        <span class="doccomment">/// corresponding block
+        </span>block: WrappedBlock,
+        <span class="doccomment">/// the slot
+        </span>slot: Slot,
+        <span class="doccomment">/// operations in the block by (index, validity end period)
+        </span>operation_set: Map&lt;OperationId, (usize, u64)&gt;,
+        <span class="doccomment">/// endorsements in the block with index
+        </span>endorsement_ids: Map&lt;EndorsementId, u32&gt;,
     },
-    <span class="doccomment">/// A block header with a valid signature has been received.</span>
-    <span class="ident">ReceivedBlockHeader</span> {
-        <span class="doccomment">/// its id</span>
-        <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
-        <span class="doccomment">/// The header</span>
-        <span class="ident">header</span>: <span class="ident">WrappedHeader</span>,
+    <span class="doccomment">/// A block header with a valid signature has been received.
+    </span>ReceivedBlockHeader {
+        <span class="doccomment">/// its id
+        </span>block_id: BlockId,
+        <span class="doccomment">/// The header
+        </span>header: WrappedHeader,
     },
-    <span class="doccomment">/// Ask for a list of blocks from consensus.</span>
-    <span class="ident">GetBlocks</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>),
+    <span class="doccomment">/// Ask for a list of blocks from consensus.
+    </span>GetBlocks(Vec&lt;BlockId&gt;),
 }
-<span class="doccomment">/// Possible types of pool events that can happen.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProtocolPoolEvent</span> {
-    <span class="doccomment">/// Operations were received</span>
-    <span class="ident">ReceivedOperations</span> {
-        <span class="doccomment">/// the operations</span>
-        <span class="ident">operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">WrappedOperation</span><span class="op">&gt;</span>,
-        <span class="doccomment">/// whether or not to propagate operations</span>
-        <span class="ident">propagate</span>: <span class="ident">bool</span>,
+<span class="doccomment">/// Possible types of pool events that can happen.
+</span><span class="attribute">#[derive(Debug, Serialize)]
+</span><span class="kw">pub enum </span>ProtocolPoolEvent {
+    <span class="doccomment">/// Operations were received
+    </span>ReceivedOperations {
+        <span class="doccomment">/// the operations
+        </span>operations: Map&lt;OperationId, WrappedOperation&gt;,
+        <span class="doccomment">/// whether or not to propagate operations
+        </span>propagate: bool,
     },
-    <span class="doccomment">/// Endorsements were received</span>
-    <span class="ident">ReceivedEndorsements</span> {
-        <span class="doccomment">/// the endorsements</span>
-        <span class="ident">endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>,
-        <span class="doccomment">/// whether or not to propagate endorsements</span>
-        <span class="ident">propagate</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// Endorsements were received
+    </span>ReceivedEndorsements {
+        <span class="doccomment">/// the endorsements
+        </span>endorsements: Map&lt;EndorsementId, WrappedEndorsement&gt;,
+        <span class="doccomment">/// whether or not to propagate endorsements
+        </span>propagate: bool,
     },
-}
-
-<span class="doccomment">/// block result: map block id to</span>
-<span class="doccomment">/// ```md</span>
-<span class="doccomment">/// Option(</span>
-<span class="doccomment">///     Option(set(operation id)),</span>
-<span class="doccomment">///     Option(Vec(endorsement id))</span>
-<span class="doccomment">/// )</span>
-<span class="doccomment">/// ```</span>
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">BlocksResults</span> <span class="op">=</span>
-    <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="op">&gt;</span>)<span class="op">&gt;</span><span class="op">&gt;</span>;
-
-<span class="doccomment">/// Commands that protocol worker can process</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProtocolCommand</span> {
-    <span class="doccomment">/// Notify block integration of a given block.</span>
-    <span class="ident">IntegratedBlock</span> {
-        <span class="doccomment">/// block id</span>
-        <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
-        <span class="doccomment">/// operations ids in the block</span>
-        <span class="ident">operation_ids</span>: <span class="ident">OperationIds</span>,
-        <span class="doccomment">/// endorsement ids in the block</span>
-        <span class="ident">endorsement_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
-    },
-    <span class="doccomment">/// A block, or it&#39;s header, amounted to an attempted attack.</span>
-    <span class="ident">AttackBlockDetected</span>(<span class="ident">BlockId</span>),
-    <span class="doccomment">/// Wish list delta</span>
-    <span class="ident">WishlistDelta</span> {
-        <span class="doccomment">/// add to wish list</span>
-        <span class="ident">new</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
-        <span class="doccomment">/// remove from wish list</span>
-        <span class="ident">remove</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
-    },
-    <span class="doccomment">/// The response to a `[ProtocolEvent::GetBlocks]`.</span>
-    <span class="ident">GetBlocksResults</span>(<span class="ident">BlocksResults</span>),
-    <span class="doccomment">/// Propagate operations (send batches)</span>
-    <span class="doccomment">/// note: OperationIds are replaced with OperationPrefixIds</span>
-    <span class="doccomment">///       by the controller</span>
-    <span class="ident">PropagateOperations</span>(<span class="ident">OperationIds</span>),
-    <span class="doccomment">/// Propagate endorsements</span>
-    <span class="ident">PropagateEndorsements</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>),
 }
 
-<span class="doccomment">/// protocol management commands</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProtocolManagementCommand</span> {}
+<span class="doccomment">/// block result: map block id to
+/// ```md
+/// Option(
+///     Option(set(operation id)),
+///     Option(Vec(endorsement id))
+/// )
+/// ```
+</span><span class="kw">pub type </span>BlocksResults =
+    Map&lt;BlockId, <span class="prelude-ty">Option</span>&lt;(<span class="prelude-ty">Option</span>&lt;Set&lt;OperationId&gt;&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;EndorsementId&gt;&gt;)&gt;&gt;;
 
-<span class="doccomment">/// protocol command sender</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProtocolCommandSender</span>(<span class="kw">pub</span> <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ProtocolCommand</span><span class="op">&gt;</span>);
+<span class="doccomment">/// Commands that protocol worker can process
+</span><span class="attribute">#[derive(Debug, Serialize)]
+</span><span class="kw">pub enum </span>ProtocolCommand {
+    <span class="doccomment">/// Notify block integration of a given block.
+    </span>IntegratedBlock {
+        <span class="doccomment">/// block id
+        </span>block_id: BlockId,
+        <span class="doccomment">/// operations ids in the block
+        </span>operation_ids: OperationIds,
+        <span class="doccomment">/// endorsement ids in the block
+        </span>endorsement_ids: Vec&lt;EndorsementId&gt;,
+    },
+    <span class="doccomment">/// A block, or it&#39;s header, amounted to an attempted attack.
+    </span>AttackBlockDetected(BlockId),
+    <span class="doccomment">/// Wish list delta
+    </span>WishlistDelta {
+        <span class="doccomment">/// add to wish list
+        </span>new: Set&lt;BlockId&gt;,
+        <span class="doccomment">/// remove from wish list
+        </span>remove: Set&lt;BlockId&gt;,
+    },
+    <span class="doccomment">/// The response to a `[ProtocolEvent::GetBlocks]`.
+    </span>GetBlocksResults(BlocksResults),
+    <span class="doccomment">/// Propagate operations (send batches)
+    /// note: OperationIds are replaced with OperationPrefixIds
+    ///       by the controller
+    </span>PropagateOperations(OperationIds),
+    <span class="doccomment">/// Propagate endorsements
+    </span>PropagateEndorsements(Map&lt;EndorsementId, WrappedEndorsement&gt;),
+}
 
-<span class="kw">impl</span> <span class="ident">ProtocolCommandSender</span> {
-    <span class="doccomment">/// Sends the order to propagate the header of a block</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * hash : hash of the block header</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">integrated_block</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
-        <span class="ident">operation_ids</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
-        <span class="ident">endorsement_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
+<span class="doccomment">/// protocol management commands
+</span><span class="attribute">#[derive(Debug, Serialize)]
+</span><span class="kw">pub enum </span>ProtocolManagementCommand {}
+
+<span class="doccomment">/// protocol command sender
+</span><span class="attribute">#[derive(Clone)]
+</span><span class="kw">pub struct </span>ProtocolCommandSender(<span class="kw">pub </span>mpsc::Sender&lt;ProtocolCommand&gt;);
+
+<span class="kw">impl </span>ProtocolCommandSender {
+    <span class="doccomment">/// Sends the order to propagate the header of a block
+    ///
+    /// # Arguments
+    /// * hash : hash of the block header
+    </span><span class="kw">pub async fn </span>integrated_block(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        block_id: BlockId,
+        operation_ids: Set&lt;OperationId&gt;,
+        endorsement_ids: Vec&lt;EndorsementId&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.integrated_block&quot;</span>, {
-            <span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span>
+            <span class="string">&quot;block_id&quot;</span>: block_id
         });
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">ProtocolCommand::IntegratedBlock</span> {
-                <span class="ident">block_id</span>,
-                <span class="ident">operation_ids</span>,
-                <span class="ident">endorsement_ids</span>,
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(ProtocolCommand::IntegratedBlock {
+                block_id,
+                operation_ids,
+                endorsement_ids,
             })
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ProtocolError::ChannelError</span>(<span class="string">&quot;block_integrated command send error&quot;</span>.<span class="ident">into</span>()))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| ProtocolError::ChannelError(<span class="string">&quot;block_integrated command send error&quot;</span>.into()))
     }
 
-    <span class="doccomment">/// Notify to protocol an attack attempt.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">notify_block_attack</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">block_id</span>: <span class="ident">BlockId</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// Notify to protocol an attack attempt.
+    </span><span class="kw">pub async fn </span>notify_block_attack(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_id: BlockId) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.notify_block_attack&quot;</span>, {
-            <span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span>
+            <span class="string">&quot;block_id&quot;</span>: block_id
         });
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">ProtocolCommand::AttackBlockDetected</span>(<span class="ident">block_id</span>))
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">ProtocolError::ChannelError</span>(<span class="string">&quot;notify_block_attack command send error&quot;</span>.<span class="ident">into</span>())
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(ProtocolCommand::AttackBlockDetected(block_id))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
+                ProtocolError::ChannelError(<span class="string">&quot;notify_block_attack command send error&quot;</span>.into())
             })
     }
 
-    <span class="doccomment">/// Send the response to a `ProtocolEvent::GetBlocks`.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_get_blocks_results</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">results</span>: <span class="ident">BlocksResults</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// Send the response to a `ProtocolEvent::GetBlocks`.
+    </span><span class="kw">pub async fn </span>send_get_blocks_results(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        results: BlocksResults,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.send_get_blocks_results&quot;</span>, {
-            <span class="string">&quot;results&quot;</span>: <span class="ident">results</span>
+            <span class="string">&quot;results&quot;</span>: results
         });
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">ProtocolCommand::GetBlocksResults</span>(<span class="ident">results</span>))
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">ProtocolError::ChannelError</span>(<span class="string">&quot;send_get_blocks_results command send error&quot;</span>.<span class="ident">into</span>())
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(ProtocolCommand::GetBlocksResults(results))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
+                ProtocolError::ChannelError(<span class="string">&quot;send_get_blocks_results command send error&quot;</span>.into())
             })
     }
 
-    <span class="doccomment">/// update the block wish list</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_wishlist_delta</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">new</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
-        <span class="ident">remove</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.send_wishlist_delta&quot;</span>, { <span class="string">&quot;new&quot;</span>: <span class="ident">new</span>, <span class="string">&quot;remove&quot;</span>: <span class="ident">remove</span> });
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">ProtocolCommand::WishlistDelta</span> { <span class="ident">new</span>, <span class="ident">remove</span> })
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">ProtocolError::ChannelError</span>(<span class="string">&quot;send_wishlist_delta command send error&quot;</span>.<span class="ident">into</span>())
+    <span class="doccomment">/// update the block wish list
+    </span><span class="kw">pub async fn </span>send_wishlist_delta(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        new: Set&lt;BlockId&gt;,
+        remove: Set&lt;BlockId&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.send_wishlist_delta&quot;</span>, { <span class="string">&quot;new&quot;</span>: new, <span class="string">&quot;remove&quot;</span>: remove });
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(ProtocolCommand::WishlistDelta { new, remove })
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
+                ProtocolError::ChannelError(<span class="string">&quot;send_wishlist_delta command send error&quot;</span>.into())
             })
     }
 
-    <span class="doccomment">/// Propagate a batch of operation ids (from pool).</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// note: Full `OperationId` is replaced by a `OperationPrefixId` later by the worker.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">propagate_operations</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">operation_ids</span>: <span class="ident">OperationIds</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// Propagate a batch of operation ids (from pool).
+    ///
+    /// note: Full `OperationId` is replaced by a `OperationPrefixId` later by the worker.
+    </span><span class="kw">pub async fn </span>propagate_operations(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        operation_ids: OperationIds,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.propagate_operations&quot;</span>, {
-            <span class="string">&quot;operations&quot;</span>: <span class="ident">operation_ids</span>
+            <span class="string">&quot;operations&quot;</span>: operation_ids
         });
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">ProtocolCommand::PropagateOperations</span>(<span class="ident">operation_ids</span>))
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">ProtocolError::ChannelError</span>(<span class="string">&quot;propagate_operation command send error&quot;</span>.<span class="ident">into</span>())
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(ProtocolCommand::PropagateOperations(operation_ids))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
+                ProtocolError::ChannelError(<span class="string">&quot;propagate_operation command send error&quot;</span>.into())
             })
     }
 
-    <span class="doccomment">/// propagate endorsements to connected node</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">propagate_endorsements</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// propagate endorsements to connected node
+    </span><span class="kw">pub async fn </span>propagate_endorsements(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        endorsements: Map&lt;EndorsementId, WrappedEndorsement&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.propagate_endorsements&quot;</span>, {
-            <span class="string">&quot;endorsements&quot;</span>: <span class="ident">endorsements</span>
+            <span class="string">&quot;endorsements&quot;</span>: endorsements
         });
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">ProtocolCommand::PropagateEndorsements</span>(<span class="ident">endorsements</span>))
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">ProtocolError::ChannelError</span>(<span class="string">&quot;propagate_endorsements command send error&quot;</span>.<span class="ident">into</span>())
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(ProtocolCommand::PropagateEndorsements(endorsements))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
+                ProtocolError::ChannelError(<span class="string">&quot;propagate_endorsements command send error&quot;</span>.into())
             })
     }
 }
 
-<span class="doccomment">/// Protocol event receiver</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProtocolEventReceiver</span>(<span class="kw">pub</span> <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ProtocolEvent</span><span class="op">&gt;</span>);
+<span class="doccomment">/// Protocol event receiver
+</span><span class="kw">pub struct </span>ProtocolEventReceiver(<span class="kw">pub </span>mpsc::Receiver&lt;ProtocolEvent&gt;);
 
-<span class="kw">impl</span> <span class="ident">ProtocolEventReceiver</span> {
-    <span class="doccomment">/// Receives the next `ProtocolEvent` from connected Node.</span>
-    <span class="doccomment">/// None is returned when all Sender halves have dropped,</span>
-    <span class="doccomment">/// indicating that no further values can be sent on the channel</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">wait_event</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProtocolEvent</span>, <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
+<span class="kw">impl </span>ProtocolEventReceiver {
+    <span class="doccomment">/// Receives the next `ProtocolEvent` from connected Node.
+    /// None is returned when all Sender halves have dropped,
+    /// indicating that no further values can be sent on the channel
+    </span><span class="kw">pub async fn </span>wait_event(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;ProtocolEvent, ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.event_receiver.wait_event&quot;</span>, {});
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">recv</span>().<span class="kw">await</span>.<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="ident">ProtocolError::ChannelError</span>(
-                <span class="string">&quot;DefaultProtocolController wait_event channel recv failed&quot;</span>.<span class="ident">into</span>(),
+        <span class="self">self</span>.<span class="number">0</span>.recv().<span class="kw">await</span>.ok_or_else(|| {
+            ProtocolError::ChannelError(
+                <span class="string">&quot;DefaultProtocolController wait_event channel recv failed&quot;</span>.into(),
             )
         })
     }
 
-    <span class="doccomment">/// drains remaining events and returns them in a `VecDeque`</span>
-    <span class="doccomment">/// note: events are sorted from oldest to newest</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">drain</span>(<span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">ProtocolEvent</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">remaining_events</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">ProtocolEvent</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">VecDeque::new</span>();
-        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">evt</span>) <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">recv</span>().<span class="kw">await</span> {
+    <span class="doccomment">/// drains remaining events and returns them in a `VecDeque`
+    /// note: events are sorted from oldest to newest
+    </span><span class="kw">pub async fn </span>drain(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; VecDeque&lt;ProtocolEvent&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>remaining_events: VecDeque&lt;ProtocolEvent&gt; = VecDeque::new();
+        <span class="kw">while let </span><span class="prelude-val">Some</span>(evt) = <span class="self">self</span>.<span class="number">0</span>.recv().<span class="kw">await </span>{
             <span class="macro">debug!</span>(
-                <span class="string">&quot;after receiving event from ProtocolEventReceiver.0 in protocol_controller drain&quot;</span>
-            );
-            <span class="ident">remaining_events</span>.<span class="ident">push_back</span>(<span class="ident">evt</span>);
+                <span class="string">&quot;after receiving event from ProtocolEventReceiver.0 in protocol_controller drain&quot;
+            </span>);
+            remaining_events.push_back(evt);
         }
-        <span class="ident">remaining_events</span>
+        remaining_events
     }
 }
 
-<span class="doccomment">/// Protocol pool event receiver</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProtocolPoolEventReceiver</span>(<span class="kw">pub</span> <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEvent</span><span class="op">&gt;</span>);
+<span class="doccomment">/// Protocol pool event receiver
+</span><span class="kw">pub struct </span>ProtocolPoolEventReceiver(<span class="kw">pub </span>mpsc::Receiver&lt;ProtocolPoolEvent&gt;);
 
-<span class="kw">impl</span> <span class="ident">ProtocolPoolEventReceiver</span> {
-    <span class="doccomment">/// Receives the next `ProtocolPoolEvent`</span>
-    <span class="doccomment">/// None is returned when all Sender halves have dropped,</span>
-    <span class="doccomment">/// indicating that no further values can be sent on the channel</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">wait_event</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEvent</span>, <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
+<span class="kw">impl </span>ProtocolPoolEventReceiver {
+    <span class="doccomment">/// Receives the next `ProtocolPoolEvent`
+    /// None is returned when all Sender halves have dropped,
+    /// indicating that no further values can be sent on the channel
+    </span><span class="kw">pub async fn </span>wait_event(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;ProtocolPoolEvent, ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.pool_event_receiver.wait_event&quot;</span>, {});
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">recv</span>().<span class="kw">await</span>.<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="ident">ProtocolError::ChannelError</span>(
-                <span class="string">&quot;DefaultProtocolController wait_pool_event channel recv failed&quot;</span>.<span class="ident">into</span>(),
+        <span class="self">self</span>.<span class="number">0</span>.recv().<span class="kw">await</span>.ok_or_else(|| {
+            ProtocolError::ChannelError(
+                <span class="string">&quot;DefaultProtocolController wait_pool_event channel recv failed&quot;</span>.into(),
             )
         })
     }
 
-    <span class="doccomment">/// drains remaining events and returns them in a `VecDeque`</span>
-    <span class="doccomment">/// note: events are sorted from oldest to newest</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">drain</span>(<span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEvent</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">remaining_events</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEvent</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">VecDeque::new</span>();
-        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">evt</span>) <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">recv</span>().<span class="kw">await</span> {
+    <span class="doccomment">/// drains remaining events and returns them in a `VecDeque`
+    /// note: events are sorted from oldest to newest
+    </span><span class="kw">pub async fn </span>drain(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; VecDeque&lt;ProtocolPoolEvent&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>remaining_events: VecDeque&lt;ProtocolPoolEvent&gt; = VecDeque::new();
+        <span class="kw">while let </span><span class="prelude-val">Some</span>(evt) = <span class="self">self</span>.<span class="number">0</span>.recv().<span class="kw">await </span>{
             <span class="macro">debug!</span>(
-                <span class="string">&quot;after receiving event from ProtocolPoolEventReceiver.0 in protocol_controller drain&quot;</span>
-            );
-            <span class="ident">remaining_events</span>.<span class="ident">push_back</span>(<span class="ident">evt</span>);
+                <span class="string">&quot;after receiving event from ProtocolPoolEventReceiver.0 in protocol_controller drain&quot;
+            </span>);
+            remaining_events.push_back(evt);
         }
-        <span class="ident">remaining_events</span>
+        remaining_events
     }
 }
 
-<span class="doccomment">/// protocol manager used to stop the protocol</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProtocolManager</span> {
-    <span class="ident">join_handle</span>: <span class="ident">JoinHandle</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NetworkEventReceiver</span>, <span class="ident">ProtocolError</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">manager_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ProtocolManagementCommand</span><span class="op">&gt;</span>,
+<span class="doccomment">/// protocol manager used to stop the protocol
+</span><span class="kw">pub struct </span>ProtocolManager {
+    join_handle: JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;NetworkEventReceiver, ProtocolError&gt;&gt;,
+    manager_tx: mpsc::Sender&lt;ProtocolManagementCommand&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ProtocolManager</span> {
-    <span class="doccomment">/// new protocol manager</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">join_handle</span>: <span class="ident">JoinHandle</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NetworkEventReceiver</span>, <span class="ident">ProtocolError</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">manager_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ProtocolManagementCommand</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="ident">ProtocolManager</span> {
-            <span class="ident">join_handle</span>,
-            <span class="ident">manager_tx</span>,
+<span class="kw">impl </span>ProtocolManager {
+    <span class="doccomment">/// new protocol manager
+    </span><span class="kw">pub fn </span>new(
+        join_handle: JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;NetworkEventReceiver, ProtocolError&gt;&gt;,
+        manager_tx: mpsc::Sender&lt;ProtocolManagementCommand&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        ProtocolManager {
+            join_handle,
+            manager_tx,
         }
     }
 
-    <span class="doccomment">/// Stop the protocol controller</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">stop</span>(
+    <span class="doccomment">/// Stop the protocol controller
+    </span><span class="kw">pub async fn </span>stop(
         <span class="self">self</span>,
-        <span class="ident">protocol_event_receiver</span>: <span class="ident">ProtocolEventReceiver</span>,
-        <span class="ident">protocol_pool_event_receiver</span>: <span class="ident">ProtocolPoolEventReceiver</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NetworkEventReceiver</span>, <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
-        <span class="ident">drop</span>(<span class="self">self</span>.<span class="ident">manager_tx</span>);
-        <span class="kw">let</span> <span class="ident">_remaining_events</span> <span class="op">=</span> <span class="ident">protocol_event_receiver</span>.<span class="ident">drain</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">_remaining_events</span> <span class="op">=</span> <span class="ident">protocol_pool_event_receiver</span>.<span class="ident">drain</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">network_event_receiver</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">join_handle</span>.<span class="kw">await</span><span class="question-mark">?</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">network_event_receiver</span>)
+        protocol_event_receiver: ProtocolEventReceiver,
+        protocol_pool_event_receiver: ProtocolPoolEventReceiver,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;NetworkEventReceiver, ProtocolError&gt; {
+        drop(<span class="self">self</span>.manager_tx);
+        <span class="kw">let </span>_remaining_events = protocol_event_receiver.drain().<span class="kw">await</span>;
+        <span class="kw">let </span>_remaining_events = protocol_pool_event_receiver.drain().<span class="kw">await</span>;
+        <span class="kw">let </span>network_event_receiver = <span class="self">self</span>.join_handle.<span class="kw">await</span><span class="question-mark">??</span>;
+        <span class="prelude-val">Ok</span>(network_event_receiver)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

@@ -300,277 +300,277 @@
 <span id="300">300</span>
 <span id="301">301</span>
 <span id="302">302</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">error::ModelsResult</span> <span class="kw">as</span> <span class="prelude-ty">Result</span>,
-    <span class="ident">prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>},
-    <span class="ident">Address</span>, <span class="ident">ModelsError</span>,
+</pre><pre class="rust"><code><span class="kw">use crate</span>::{
+    error::ModelsResult <span class="kw">as </span><span class="prelude-ty">Result</span>,
+    prehash::{Map, Set},
+    Address, ModelsError,
 };
-<span class="kw">use</span> <span class="ident">massa_serialization</span>::{
-    <span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>, <span class="ident">U64VarIntDeserializer</span>, <span class="ident">U64VarIntSerializer</span>,
+<span class="kw">use </span>massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
-<span class="kw">use</span> <span class="ident">nom</span>::{
-    <span class="ident">error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ParseError</span>},
-    <span class="ident">sequence::tuple</span>,
-    <span class="ident">IResult</span>, <span class="ident">Parser</span>,
+<span class="kw">use </span>nom::{
+    error::{context, ContextError, ParseError},
+    sequence::tuple,
+    IResult, Parser,
 };
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::collections::hash_map</span>;
-<span class="kw">use</span> <span class="ident">std::ops::Bound::Included</span>;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::collections::hash_map;
+<span class="kw">use </span>std::ops::Bound::Included;
 
-<span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">btree_map</span>, <span class="ident">BTreeMap</span>};
+<span class="kw">use </span>std::collections::{btree_map, BTreeMap};
 
-<span class="doccomment">/// just a `u64` to keep track of the roll sells and buys during a cycle</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RollCompensation</span>(<span class="kw">pub</span> <span class="ident">u64</span>);
+<span class="doccomment">/// just a `u64` to keep track of the roll sells and buys during a cycle
+</span><span class="attribute">#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>RollCompensation(<span class="kw">pub </span>u64);
 
-<span class="doccomment">/// roll sales and purchases</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RollUpdate</span> {
-    <span class="doccomment">/// roll purchases</span>
-    <span class="kw">pub</span> <span class="ident">roll_purchases</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// roll sales</span>
-    <span class="kw">pub</span> <span class="ident">roll_sales</span>: <span class="ident">u64</span>,
-    <span class="comment">// Here is space for registering any denunciations/resets</span>
-}
+<span class="doccomment">/// roll sales and purchases
+</span><span class="attribute">#[derive(Clone, Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>RollUpdate {
+    <span class="doccomment">/// roll purchases
+    </span><span class="kw">pub </span>roll_purchases: u64,
+    <span class="doccomment">/// roll sales
+    </span><span class="kw">pub </span>roll_sales: u64,
+    <span class="comment">// Here is space for registering any denunciations/resets
+</span>}
 
-<span class="kw">impl</span> <span class="ident">RollUpdate</span> {
-    <span class="doccomment">/// chain two roll updates, compensate and return compensation count</span>
-    <span class="kw">fn</span> <span class="ident">chain</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">change</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RollCompensation</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">compensation_other</span> <span class="op">=</span> <span class="ident">std::cmp::min</span>(<span class="ident">change</span>.<span class="ident">roll_purchases</span>, <span class="ident">change</span>.<span class="ident">roll_sales</span>);
-        <span class="self">self</span>.<span class="ident">roll_purchases</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">roll_purchases</span>
-            .<span class="ident">checked_add</span>(<span class="ident">change</span>.<span class="ident">roll_purchases</span> <span class="op">-</span> <span class="ident">compensation_other</span>)
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">ModelsError::InvalidRollUpdate</span>(
-                    <span class="string">&quot;roll_purchases overflow in RollUpdate::chain&quot;</span>.<span class="ident">into</span>(),
+<span class="kw">impl </span>RollUpdate {
+    <span class="doccomment">/// chain two roll updates, compensate and return compensation count
+    </span><span class="kw">fn </span>chain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, change: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;RollCompensation&gt; {
+        <span class="kw">let </span>compensation_other = std::cmp::min(change.roll_purchases, change.roll_sales);
+        <span class="self">self</span>.roll_purchases = <span class="self">self
+            </span>.roll_purchases
+            .checked_add(change.roll_purchases - compensation_other)
+            .ok_or_else(|| {
+                ModelsError::InvalidRollUpdate(
+                    <span class="string">&quot;roll_purchases overflow in RollUpdate::chain&quot;</span>.into(),
                 )
             })<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">roll_sales</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">roll_sales</span>
-            .<span class="ident">checked_add</span>(<span class="ident">change</span>.<span class="ident">roll_sales</span> <span class="op">-</span> <span class="ident">compensation_other</span>)
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">ModelsError::InvalidRollUpdate</span>(<span class="string">&quot;roll_sales overflow in RollUpdate::chain&quot;</span>.<span class="ident">into</span>())
+        <span class="self">self</span>.roll_sales = <span class="self">self
+            </span>.roll_sales
+            .checked_add(change.roll_sales - compensation_other)
+            .ok_or_else(|| {
+                ModelsError::InvalidRollUpdate(<span class="string">&quot;roll_sales overflow in RollUpdate::chain&quot;</span>.into())
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">compensation_self</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">compensate</span>().<span class="number">0</span>;
+        <span class="kw">let </span>compensation_self = <span class="self">self</span>.compensate().<span class="number">0</span>;
 
-        <span class="kw">let</span> <span class="ident">compensation_total</span> <span class="op">=</span> <span class="ident">compensation_other</span>
-            .<span class="ident">checked_add</span>(<span class="ident">compensation_self</span>)
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">ModelsError::InvalidRollUpdate</span>(<span class="string">&quot;compensation overflow in RollUpdate::chain&quot;</span>.<span class="ident">into</span>())
+        <span class="kw">let </span>compensation_total = compensation_other
+            .checked_add(compensation_self)
+            .ok_or_else(|| {
+                ModelsError::InvalidRollUpdate(<span class="string">&quot;compensation overflow in RollUpdate::chain&quot;</span>.into())
             })<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">RollCompensation</span>(<span class="ident">compensation_total</span>))
+        <span class="prelude-val">Ok</span>(RollCompensation(compensation_total))
     }
 
-    <span class="doccomment">/// compensate a roll update, return compensation count</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">compensate</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">RollCompensation</span> {
-        <span class="kw">let</span> <span class="ident">compensation</span> <span class="op">=</span> <span class="ident">std::cmp::min</span>(<span class="self">self</span>.<span class="ident">roll_purchases</span>, <span class="self">self</span>.<span class="ident">roll_sales</span>);
-        <span class="self">self</span>.<span class="ident">roll_purchases</span> <span class="op">-</span><span class="op">=</span> <span class="ident">compensation</span>;
-        <span class="self">self</span>.<span class="ident">roll_sales</span> <span class="op">-</span><span class="op">=</span> <span class="ident">compensation</span>;
-        <span class="ident">RollCompensation</span>(<span class="ident">compensation</span>)
+    <span class="doccomment">/// compensate a roll update, return compensation count
+    </span><span class="kw">pub fn </span>compensate(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; RollCompensation {
+        <span class="kw">let </span>compensation = std::cmp::min(<span class="self">self</span>.roll_purchases, <span class="self">self</span>.roll_sales);
+        <span class="self">self</span>.roll_purchases -= compensation;
+        <span class="self">self</span>.roll_sales -= compensation;
+        RollCompensation(compensation)
     }
 
-    <span class="doccomment">/// true if the update has no effect</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_nil</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">roll_purchases</span> <span class="op">==</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">roll_sales</span> <span class="op">==</span> <span class="number">0</span>
-    }
+    <span class="doccomment">/// true if the update has no effect
+    </span><span class="kw">pub fn </span>is_nil(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.roll_purchases == <span class="number">0 </span>&amp;&amp; <span class="self">self</span>.roll_sales == <span class="number">0
+    </span>}
 }
 
-<span class="doccomment">/// Serializer for `RollUpdate`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RollUpdateSerializer</span> {
-    <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer</span>,
+<span class="doccomment">/// Serializer for `RollUpdate`
+</span><span class="kw">pub struct </span>RollUpdateSerializer {
+    u64_serializer: U64VarIntSerializer,
 }
 
-<span class="kw">impl</span> <span class="ident">RollUpdateSerializer</span> {
-    <span class="doccomment">/// Creates a new `RollUpdateSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">RollUpdateSerializer</span> {
-            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(),
+<span class="kw">impl </span>RollUpdateSerializer {
+    <span class="doccomment">/// Creates a new `RollUpdateSerializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        RollUpdateSerializer {
+            u64_serializer: U64VarIntSerializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">RollUpdateSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>RollUpdateSerializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">RollUpdate</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RollUpdateSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">RollUpdate</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">u64_serializer</span>
-            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">roll_purchases</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">u64_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">roll_sales</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>Serializer&lt;RollUpdate&gt; <span class="kw">for </span>RollUpdateSerializer {
+    <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>RollUpdate, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="self">self</span>.u64_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.roll_purchases, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span>value.roll_sales, buffer)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// Deserializer for `RollUpdate`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RollUpdateDeserializer</span> {
-    <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer</span>,
+<span class="doccomment">/// Deserializer for `RollUpdate`
+</span><span class="kw">pub struct </span>RollUpdateDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
 }
 
-<span class="kw">impl</span> <span class="ident">RollUpdateDeserializer</span> {
-    <span class="doccomment">/// Creates a new `RollUpdateDeserializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">RollUpdateDeserializer</span> {
-            <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
+<span class="kw">impl </span>RollUpdateDeserializer {
+    <span class="doccomment">/// Creates a new `RollUpdateDeserializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        RollUpdateDeserializer {
+            u64_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">RollUpdateDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>RollUpdateDeserializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">RollUpdate</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RollUpdateDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">impl </span>Deserializer&lt;RollUpdate&gt; <span class="kw">for </span>RollUpdateDeserializer {
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">RollUpdate</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">context</span>(
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], RollUpdate, E&gt; {
+        context(
             <span class="string">&quot;Failed RollUpdate deserialization&quot;</span>,
-            <span class="ident">tuple</span>((
-                <span class="ident">context</span>(<span class="string">&quot;Failed roll_purchases deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">u64_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+            tuple((
+                context(<span class="string">&quot;Failed roll_purchases deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.u64_deserializer.deserialize(input)
                 }),
-                <span class="ident">context</span>(<span class="string">&quot;Failed roll_sales deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">u64_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                context(<span class="string">&quot;Failed roll_sales deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.u64_deserializer.deserialize(input)
                 }),
             )),
         )
-        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">roll_purchases</span>, <span class="ident">roll_sales</span>)<span class="op">|</span> <span class="ident">RollUpdate</span> {
-            <span class="ident">roll_purchases</span>,
-            <span class="ident">roll_sales</span>,
+        .map(|(roll_purchases, roll_sales)| RollUpdate {
+            roll_purchases,
+            roll_sales,
         })
-        .<span class="ident">parse</span>(<span class="ident">buffer</span>)
+        .parse(buffer)
     }
 }
 
-<span class="doccomment">/// maps addresses to roll updates</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RollUpdates</span>(<span class="kw">pub</span> <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">RollUpdate</span><span class="op">&gt;</span>);
+<span class="doccomment">/// maps addresses to roll updates
+</span><span class="attribute">#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+</span><span class="kw">pub struct </span>RollUpdates(<span class="kw">pub </span>Map&lt;Address, RollUpdate&gt;);
 
-<span class="kw">impl</span> <span class="ident">RollUpdates</span> {
-    <span class="doccomment">/// the addresses impacted by the updates</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_involved_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>()
+<span class="kw">impl </span>RollUpdates {
+    <span class="doccomment">/// the addresses impacted by the updates
+    </span><span class="kw">pub fn </span>get_involved_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Set&lt;Address&gt; {
+        <span class="self">self</span>.<span class="number">0</span>.keys().copied().collect()
     }
 
-    <span class="doccomment">/// chains with another `RollUpdates`, compensates and returns compensations</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">chain</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">updates</span>: <span class="kw-2">&amp;</span><span class="ident">RollUpdates</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">RollCompensation</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Map::default</span>();
-        <span class="kw">for</span> (<span class="ident">addr</span>, <span class="ident">update</span>) <span class="kw">in</span> <span class="ident">updates</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
-            <span class="ident">res</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">addr</span>, <span class="self">self</span>.<span class="ident">apply</span>(<span class="ident">addr</span>, <span class="ident">update</span>)<span class="question-mark">?</span>);
-            <span class="comment">// remove if nil</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">hash_map::Entry::Occupied</span>(<span class="ident">occ</span>) <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">entry</span>(<span class="kw-2">*</span><span class="ident">addr</span>) {
-                <span class="kw">if</span> <span class="ident">occ</span>.<span class="ident">get</span>().<span class="ident">is_nil</span>() {
-                    <span class="ident">occ</span>.<span class="ident">remove</span>();
+    <span class="doccomment">/// chains with another `RollUpdates`, compensates and returns compensations
+    </span><span class="kw">pub fn </span>chain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, updates: <span class="kw-2">&amp;</span>RollUpdates) -&gt; <span class="prelude-ty">Result</span>&lt;Map&lt;Address, RollCompensation&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res = Map::default();
+        <span class="kw">for </span>(addr, update) <span class="kw">in </span>updates.<span class="number">0</span>.iter() {
+            res.insert(<span class="kw-2">*</span>addr, <span class="self">self</span>.apply(addr, update)<span class="question-mark">?</span>);
+            <span class="comment">// remove if nil
+            </span><span class="kw">if let </span>hash_map::Entry::Occupied(occ) = <span class="self">self</span>.<span class="number">0</span>.entry(<span class="kw-2">*</span>addr) {
+                <span class="kw">if </span>occ.get().is_nil() {
+                    occ.remove();
                 }
             }
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+        <span class="prelude-val">Ok</span>(res)
     }
 
-    <span class="doccomment">/// applies a `RollUpdate`, compensates and returns compensation</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>, <span class="ident">update</span>: <span class="kw-2">&amp;</span><span class="ident">RollUpdate</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RollCompensation</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">update</span>.<span class="ident">is_nil</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">RollCompensation</span>(<span class="number">0</span>));
+    <span class="doccomment">/// applies a `RollUpdate`, compensates and returns compensation
+    </span><span class="kw">pub fn </span>apply(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, update: <span class="kw-2">&amp;</span>RollUpdate) -&gt; <span class="prelude-ty">Result</span>&lt;RollCompensation&gt; {
+        <span class="kw">if </span>update.is_nil() {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(RollCompensation(<span class="number">0</span>));
         }
-        <span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">entry</span>(<span class="kw-2">*</span><span class="ident">addr</span>) {
-            <span class="ident">hash_map::Entry::Occupied</span>(<span class="kw-2">mut</span> <span class="ident">occ</span>) =&gt; <span class="ident">occ</span>.<span class="ident">get_mut</span>().<span class="ident">chain</span>(<span class="ident">update</span>),
-            <span class="ident">hash_map::Entry::Vacant</span>(<span class="ident">vac</span>) =&gt; {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">compensated_update</span> <span class="op">=</span> <span class="ident">update</span>.<span class="ident">clone</span>();
-                <span class="kw">let</span> <span class="ident">compensation</span> <span class="op">=</span> <span class="ident">compensated_update</span>.<span class="ident">compensate</span>();
-                <span class="ident">vac</span>.<span class="ident">insert</span>(<span class="ident">compensated_update</span>);
-                <span class="prelude-val">Ok</span>(<span class="ident">compensation</span>)
+        <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.entry(<span class="kw-2">*</span>addr) {
+            hash_map::Entry::Occupied(<span class="kw-2">mut </span>occ) =&gt; occ.get_mut().chain(update),
+            hash_map::Entry::Vacant(vac) =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>compensated_update = update.clone();
+                <span class="kw">let </span>compensation = compensated_update.compensate();
+                vac.insert(compensated_update);
+                <span class="prelude-val">Ok</span>(compensation)
             }
         }
     }
 
-    <span class="doccomment">/// get the roll update for a subset of addresses</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clone_subset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addrs</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+    <span class="doccomment">/// get the roll update for a subset of addresses
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">pub fn </span>clone_subset(<span class="kw-2">&amp;</span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>Set&lt;Address&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>(
-            <span class="ident">addrs</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">addr</span><span class="op">|</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">get</span>(<span class="ident">addr</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> (<span class="kw-2">*</span><span class="ident">addr</span>, <span class="ident">v</span>.<span class="ident">clone</span>())))
-                .<span class="ident">collect</span>(),
+            addrs
+                .iter()
+                .filter_map(|addr| <span class="self">self</span>.<span class="number">0</span>.get(addr).map(|v| (<span class="kw-2">*</span>addr, v.clone())))
+                .collect(),
         )
     }
 
-    <span class="doccomment">/// merge another roll updates into self, overwriting existing data</span>
-    <span class="doccomment">/// addresses that are in not other are removed from self</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sync_from</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addrs</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>, <span class="kw-2">mut</span> <span class="ident">other</span>: <span class="ident">RollUpdates</span>) {
-        <span class="kw">for</span> <span class="ident">addr</span> <span class="kw">in</span> <span class="ident">addrs</span>.<span class="ident">iter</span>() {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">new_val</span>) <span class="op">=</span> <span class="ident">other</span>.<span class="number">0</span>.<span class="ident">remove</span>(<span class="ident">addr</span>) {
-                <span class="self">self</span>.<span class="number">0</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">addr</span>, <span class="ident">new_val</span>);
-            } <span class="kw">else</span> {
-                <span class="self">self</span>.<span class="number">0</span>.<span class="ident">remove</span>(<span class="ident">addr</span>);
+    <span class="doccomment">/// merge another roll updates into self, overwriting existing data
+    /// addresses that are in not other are removed from self
+    </span><span class="kw">pub fn </span>sync_from(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>Set&lt;Address&gt;, <span class="kw-2">mut </span>other: RollUpdates) {
+        <span class="kw">for </span>addr <span class="kw">in </span>addrs.iter() {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(new_val) = other.<span class="number">0</span>.remove(addr) {
+                <span class="self">self</span>.<span class="number">0</span>.insert(<span class="kw-2">*</span>addr, new_val);
+            } <span class="kw">else </span>{
+                <span class="self">self</span>.<span class="number">0</span>.remove(addr);
             }
         }
     }
 }
 
-<span class="doccomment">/// counts the roll for each address</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RollCounts</span>(<span class="kw">pub</span> <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">u64</span><span class="op">&gt;</span>);
+<span class="doccomment">/// counts the roll for each address
+</span><span class="attribute">#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+</span><span class="kw">pub struct </span>RollCounts(<span class="kw">pub </span>BTreeMap&lt;Address, u64&gt;);
 
-<span class="kw">impl</span> <span class="ident">RollCounts</span> {
-    <span class="doccomment">/// Makes a new, empty `RollCounts`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">RollCounts</span>(<span class="ident">BTreeMap::new</span>())
+<span class="kw">impl </span>RollCounts {
+    <span class="doccomment">/// Makes a new, empty `RollCounts`.
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        RollCounts(BTreeMap::new())
     }
 
-    <span class="doccomment">/// Returns the number of elements in the `RollCounts`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">len</span>()
+    <span class="doccomment">/// Returns the number of elements in the `RollCounts`.
+    </span><span class="kw">pub fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.<span class="number">0</span>.len()
     }
 
-    <span class="doccomment">/// Returns true if the `RollCounts` contains no elements.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_empty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">is_empty</span>()
+    <span class="doccomment">/// Returns true if the `RollCounts` contains no elements.
+    </span><span class="kw">pub fn </span>is_empty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.<span class="number">0</span>.is_empty()
     }
 
-    <span class="doccomment">/// applies `RollUpdates` to self with compensations</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_updates</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">updates</span>: <span class="kw-2">&amp;</span><span class="ident">RollUpdates</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">for</span> (<span class="ident">addr</span>, <span class="ident">update</span>) <span class="kw">in</span> <span class="ident">updates</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
-            <span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">entry</span>(<span class="kw-2">*</span><span class="ident">addr</span>) {
-                <span class="ident">btree_map::Entry::Occupied</span>(<span class="kw-2">mut</span> <span class="ident">occ</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">cur_val</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">occ</span>.<span class="ident">get</span>();
-                    <span class="kw">if</span> <span class="ident">update</span>.<span class="ident">roll_purchases</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">update</span>.<span class="ident">roll_sales</span> {
-                        <span class="kw-2">*</span><span class="ident">occ</span>.<span class="ident">get_mut</span>() <span class="op">=</span> <span class="ident">cur_val</span>
-                            .<span class="ident">checked_add</span>(<span class="ident">update</span>.<span class="ident">roll_purchases</span> <span class="op">-</span> <span class="ident">update</span>.<span class="ident">roll_sales</span>)
-                            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                                <span class="ident">ModelsError::InvalidRollUpdate</span>(
-                                    <span class="string">&quot;overflow while incrementing roll count&quot;</span>.<span class="ident">into</span>(),
+    <span class="doccomment">/// applies `RollUpdates` to self with compensations
+    </span><span class="kw">pub fn </span>apply_updates(<span class="kw-2">&amp;mut </span><span class="self">self</span>, updates: <span class="kw-2">&amp;</span>RollUpdates) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">for </span>(addr, update) <span class="kw">in </span>updates.<span class="number">0</span>.iter() {
+            <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.entry(<span class="kw-2">*</span>addr) {
+                btree_map::Entry::Occupied(<span class="kw-2">mut </span>occ) =&gt; {
+                    <span class="kw">let </span>cur_val = <span class="kw-2">*</span>occ.get();
+                    <span class="kw">if </span>update.roll_purchases &gt;= update.roll_sales {
+                        <span class="kw-2">*</span>occ.get_mut() = cur_val
+                            .checked_add(update.roll_purchases - update.roll_sales)
+                            .ok_or_else(|| {
+                                ModelsError::InvalidRollUpdate(
+                                    <span class="string">&quot;overflow while incrementing roll count&quot;</span>.into(),
                                 )
                             })<span class="question-mark">?</span>;
-                    } <span class="kw">else</span> {
-                        <span class="kw-2">*</span><span class="ident">occ</span>.<span class="ident">get_mut</span>() <span class="op">=</span> <span class="ident">cur_val</span>
-                            .<span class="ident">checked_sub</span>(<span class="ident">update</span>.<span class="ident">roll_sales</span> <span class="op">-</span> <span class="ident">update</span>.<span class="ident">roll_purchases</span>)
-                            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                                <span class="ident">ModelsError::InvalidRollUpdate</span>(
-                                    <span class="string">&quot;underflow while decrementing roll count&quot;</span>.<span class="ident">into</span>(),
+                    } <span class="kw">else </span>{
+                        <span class="kw-2">*</span>occ.get_mut() = cur_val
+                            .checked_sub(update.roll_sales - update.roll_purchases)
+                            .ok_or_else(|| {
+                                ModelsError::InvalidRollUpdate(
+                                    <span class="string">&quot;underflow while decrementing roll count&quot;</span>.into(),
                                 )
                             })<span class="question-mark">?</span>;
                     }
-                    <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">occ</span>.<span class="ident">get</span>() <span class="op">==</span> <span class="number">0</span> {
-                        <span class="comment">// remove if 0</span>
-                        <span class="ident">occ</span>.<span class="ident">remove</span>();
+                    <span class="kw">if </span><span class="kw-2">*</span>occ.get() == <span class="number">0 </span>{
+                        <span class="comment">// remove if 0
+                        </span>occ.remove();
                     }
                 }
-                <span class="ident">btree_map::Entry::Vacant</span>(<span class="ident">vac</span>) =&gt; {
-                    <span class="kw">if</span> <span class="ident">update</span>.<span class="ident">roll_purchases</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">update</span>.<span class="ident">roll_sales</span> {
-                        <span class="kw">if</span> <span class="ident">update</span>.<span class="ident">roll_purchases</span> <span class="op">&gt;</span> <span class="ident">update</span>.<span class="ident">roll_sales</span> {
-                            <span class="comment">// ignore if 0</span>
-                            <span class="ident">vac</span>.<span class="ident">insert</span>(<span class="ident">update</span>.<span class="ident">roll_purchases</span> <span class="op">-</span> <span class="ident">update</span>.<span class="ident">roll_sales</span>);
+                btree_map::Entry::Vacant(vac) =&gt; {
+                    <span class="kw">if </span>update.roll_purchases &gt;= update.roll_sales {
+                        <span class="kw">if </span>update.roll_purchases &gt; update.roll_sales {
+                            <span class="comment">// ignore if 0
+                            </span>vac.insert(update.roll_purchases - update.roll_sales);
                         }
-                    } <span class="kw">else</span> {
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::InvalidRollUpdate</span>(
-                            <span class="string">&quot;underflow while decrementing roll count&quot;</span>.<span class="ident">into</span>(),
+                    } <span class="kw">else </span>{
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::InvalidRollUpdate(
+                            <span class="string">&quot;underflow while decrementing roll count&quot;</span>.into(),
                         ));
                     }
                 }
@@ -579,28 +579,28 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// get roll counts for a subset of addresses.</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clone_subset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addrs</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+    <span class="doccomment">/// get roll counts for a subset of addresses.
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">pub fn </span>clone_subset(<span class="kw-2">&amp;</span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>Set&lt;Address&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>(
-            <span class="ident">addrs</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">addr</span><span class="op">|</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">get</span>(<span class="ident">addr</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> (<span class="kw-2">*</span><span class="ident">addr</span>, <span class="kw-2">*</span><span class="ident">v</span>)))
-                .<span class="ident">collect</span>(),
+            addrs
+                .iter()
+                .filter_map(|addr| <span class="self">self</span>.<span class="number">0</span>.get(addr).map(|v| (<span class="kw-2">*</span>addr, <span class="kw-2">*</span>v)))
+                .collect(),
         )
     }
 
-    <span class="doccomment">/// merge another roll counts into self, overwriting existing data</span>
-    <span class="doccomment">/// addresses that are in not other are removed from self</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sync_from</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addrs</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>, <span class="kw-2">mut</span> <span class="ident">other</span>: <span class="ident">RollCounts</span>) {
-        <span class="kw">for</span> <span class="ident">addr</span> <span class="kw">in</span> <span class="ident">addrs</span>.<span class="ident">iter</span>() {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">new_val</span>) <span class="op">=</span> <span class="ident">other</span>.<span class="number">0</span>.<span class="ident">remove</span>(<span class="ident">addr</span>) {
-                <span class="self">self</span>.<span class="number">0</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">addr</span>, <span class="ident">new_val</span>);
-            } <span class="kw">else</span> {
-                <span class="self">self</span>.<span class="number">0</span>.<span class="ident">remove</span>(<span class="ident">addr</span>);
+    <span class="doccomment">/// merge another roll counts into self, overwriting existing data
+    /// addresses that are in not other are removed from self
+    </span><span class="kw">pub fn </span>sync_from(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>Set&lt;Address&gt;, <span class="kw-2">mut </span>other: RollCounts) {
+        <span class="kw">for </span>addr <span class="kw">in </span>addrs.iter() {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(new_val) = other.<span class="number">0</span>.remove(addr) {
+                <span class="self">self</span>.<span class="number">0</span>.insert(<span class="kw-2">*</span>addr, new_val);
+            } <span class="kw">else </span>{
+                <span class="self">self</span>.<span class="number">0</span>.remove(addr);
             }
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

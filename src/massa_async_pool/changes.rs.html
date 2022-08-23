@@ -226,110 +226,110 @@
 <span id="226">226</span>
 <span id="227">227</span>
 <span id="228">228</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::ops::Bound::Included</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::ops::Bound::Included;
 
-<span class="kw">use</span> <span class="ident">massa_serialization</span>::{
-    <span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>, <span class="ident">U64VarIntDeserializer</span>, <span class="ident">U64VarIntSerializer</span>,
+<span class="kw">use </span>massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
-<span class="kw">use</span> <span class="ident">nom</span>::{
-    <span class="ident">error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ParseError</span>},
-    <span class="ident">multi::length_count</span>,
-    <span class="ident">sequence::tuple</span>,
-    <span class="ident">IResult</span>, <span class="ident">Parser</span>,
-};
-
-<span class="doccomment">///! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-
-<span class="doccomment">///! This file provides structures representing changes to the asynchronous message pool</span>
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">message</span>::{<span class="ident">AsyncMessage</span>, <span class="ident">AsyncMessageId</span>, <span class="ident">AsyncMessageIdDeserializer</span>, <span class="ident">AsyncMessageIdSerializer</span>},
-    <span class="ident">AsyncMessageDeserializer</span>, <span class="ident">AsyncMessageSerializer</span>,
+<span class="kw">use </span>nom::{
+    error::{context, ContextError, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult, Parser,
 };
 
-<span class="doccomment">/// Enum representing a value U with identifier T being added or deleted</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Change</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">U</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// an item with identifier T and value U is added</span>
-    <span class="ident">Add</span>(<span class="ident">T</span>, <span class="ident">U</span>),
+<span class="doccomment">///! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-    <span class="doccomment">/// an item with identifier T is deleted</span>
-    <span class="ident">Delete</span>(<span class="ident">T</span>),
+///! This file provides structures representing changes to the asynchronous message pool
+</span><span class="kw">use crate</span>::{
+    message::{AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
+    AsyncMessageDeserializer, AsyncMessageSerializer,
+};
+
+<span class="doccomment">/// Enum representing a value U with identifier T being added or deleted
+</span><span class="attribute">#[derive(Debug, Clone, PartialEq, Eq)]
+</span><span class="kw">pub enum </span>Change&lt;T, U&gt; {
+    <span class="doccomment">/// an item with identifier T and value U is added
+    </span>Add(T, U),
+
+    <span class="doccomment">/// an item with identifier T is deleted
+    </span>Delete(T),
 }
 
-<span class="doccomment">/// represents a list of additions and deletions to the asynchronous message pool</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AsyncPoolChanges</span>(<span class="kw">pub</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Change</span><span class="op">&lt;</span><span class="ident">AsyncMessageId</span>, <span class="ident">AsyncMessage</span><span class="op">&gt;</span><span class="op">&gt;</span>);
+<span class="doccomment">/// represents a list of additions and deletions to the asynchronous message pool
+</span><span class="attribute">#[derive(Default, Debug, Clone, PartialEq, Eq)]
+</span><span class="kw">pub struct </span>AsyncPoolChanges(<span class="kw">pub </span>Vec&lt;Change&lt;AsyncMessageId, AsyncMessage&gt;&gt;);
 
-<span class="doccomment">/// `AsyncPoolChanges` serializer</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AsyncPoolChangesSerializer</span> {
-    <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer</span>,
-    <span class="ident">id_serializer</span>: <span class="ident">AsyncMessageIdSerializer</span>,
-    <span class="ident">message_serializer</span>: <span class="ident">AsyncMessageSerializer</span>,
+<span class="doccomment">/// `AsyncPoolChanges` serializer
+</span><span class="kw">pub struct </span>AsyncPoolChangesSerializer {
+    u64_serializer: U64VarIntSerializer,
+    id_serializer: AsyncMessageIdSerializer,
+    message_serializer: AsyncMessageSerializer,
 }
 
-<span class="kw">impl</span> <span class="ident">AsyncPoolChangesSerializer</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(),
-            <span class="ident">id_serializer</span>: <span class="ident">AsyncMessageIdSerializer::new</span>(),
-            <span class="ident">message_serializer</span>: <span class="ident">AsyncMessageSerializer::new</span>(),
+<span class="kw">impl </span>AsyncPoolChangesSerializer {
+    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u64_serializer: U64VarIntSerializer::new(),
+            id_serializer: AsyncMessageIdSerializer::new(),
+            message_serializer: AsyncMessageSerializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">AsyncPoolChangesSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>AsyncPoolChangesSerializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">AsyncPoolChanges</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">AsyncPoolChangesSerializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use std::ops::Bound::Included;</span>
-    <span class="doccomment">/// use massa_serialization::Serializer;</span>
-    <span class="doccomment">/// use massa_models::{Address, Amount, Slot};</span>
-    <span class="doccomment">/// use std::str::FromStr;</span>
-    <span class="doccomment">/// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges, AsyncPoolChangesSerializer};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let message = AsyncMessage {</span>
-    <span class="doccomment">///     emission_slot: Slot::new(1, 0),</span>
-    <span class="doccomment">///     emission_index: 0,</span>
-    <span class="doccomment">///     sender:  Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),</span>
-    <span class="doccomment">///     destination: Address::from_str(&quot;A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),</span>
-    <span class="doccomment">///     handler: String::from(&quot;test&quot;),</span>
-    <span class="doccomment">///     max_gas: 10000000,</span>
-    <span class="doccomment">///     gas_price: Amount::from_str(&quot;1&quot;).unwrap(),</span>
-    <span class="doccomment">///     coins: Amount::from_str(&quot;1&quot;).unwrap(),</span>
-    <span class="doccomment">///     validity_start: Slot::new(2, 0),</span>
-    <span class="doccomment">///     validity_end: Slot::new(3, 0),</span>
-    <span class="doccomment">///     data: vec![1, 2, 3, 4]</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">/// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);</span>
-    <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// let serializer = AsyncPoolChangesSerializer::new();</span>
-    <span class="doccomment">/// serializer.serialize(&amp;changes, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">serialize</span>(
+<span class="kw">impl </span>Serializer&lt;AsyncPoolChanges&gt; <span class="kw">for </span>AsyncPoolChangesSerializer {
+    <span class="doccomment">/// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::Serializer;
+    /// use massa_models::{Address, Amount, Slot};
+    /// use std::str::FromStr;
+    /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges, AsyncPoolChangesSerializer};
+    ///
+    /// let message = AsyncMessage {
+    ///     emission_slot: Slot::new(1, 0),
+    ///     emission_index: 0,
+    ///     sender:  Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
+    ///     destination: Address::from_str(&quot;A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),
+    ///     handler: String::from(&quot;test&quot;),
+    ///     max_gas: 10000000,
+    ///     gas_price: Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     coins: Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     validity_start: Slot::new(2, 0),
+    ///     validity_end: Slot::new(3, 0),
+    ///     data: vec![1, 2, 3, 4]
+    /// };
+    /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
+    /// let mut serialized = Vec::new();
+    /// let serializer = AsyncPoolChangesSerializer::new();
+    /// serializer.serialize(&amp;changes, &amp;mut serialized).unwrap();
+    /// ```
+    </span><span class="kw">fn </span>serialize(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">AsyncPoolChanges</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">u64_serializer</span>.<span class="ident">serialize</span>(
-            <span class="kw-2">&amp;</span>(<span class="ident">value</span>.<span class="number">0</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">SerializeError::GeneralError</span>(<span class="string">&quot;Fail to transform usize to u64&quot;</span>.<span class="ident">to_string</span>())
+        value: <span class="kw-2">&amp;</span>AsyncPoolChanges,
+        buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="self">self</span>.u64_serializer.serialize(
+            <span class="kw-2">&amp;</span>(value.<span class="number">0</span>.len().try_into().map_err(|<span class="kw">_</span>| {
+                SerializeError::GeneralError(<span class="string">&quot;Fail to transform usize to u64&quot;</span>.to_string())
             })<span class="question-mark">?</span>),
-            <span class="ident">buffer</span>,
+            buffer,
         )<span class="question-mark">?</span>;
-        <span class="kw">for</span> <span class="ident">change</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="number">0</span> {
-            <span class="kw">match</span> <span class="ident">change</span> {
-                <span class="ident">Change::Add</span>(<span class="ident">id</span>, <span class="ident">message</span>) =&gt; {
-                    <span class="ident">buffer</span>.<span class="ident">push</span>(<span class="number">0</span>);
-                    <span class="self">self</span>.<span class="ident">id_serializer</span>.<span class="ident">serialize</span>(<span class="ident">id</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-                    <span class="self">self</span>.<span class="ident">message_serializer</span>.<span class="ident">serialize</span>(<span class="ident">message</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="kw">for </span>change <span class="kw">in </span><span class="kw-2">&amp;</span>value.<span class="number">0 </span>{
+            <span class="kw">match </span>change {
+                Change::Add(id, message) =&gt; {
+                    buffer.push(<span class="number">0</span>);
+                    <span class="self">self</span>.id_serializer.serialize(id, buffer)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.message_serializer.serialize(message, buffer)<span class="question-mark">?</span>;
                 }
-                <span class="ident">Change::Delete</span>(<span class="ident">id</span>) =&gt; {
-                    <span class="ident">buffer</span>.<span class="ident">push</span>(<span class="number">1</span>);
-                    <span class="self">self</span>.<span class="ident">id_serializer</span>.<span class="ident">serialize</span>(<span class="ident">id</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+                Change::Delete(id) =&gt; {
+                    buffer.push(<span class="number">1</span>);
+                    <span class="self">self</span>.id_serializer.serialize(id, buffer)<span class="question-mark">?</span>;
                 }
             }
         }
@@ -337,122 +337,122 @@
     }
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AsyncPoolChangesDeserializer</span> {
-    <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer</span>,
-    <span class="ident">id_deserializer</span>: <span class="ident">AsyncMessageIdDeserializer</span>,
-    <span class="ident">message_deserializer</span>: <span class="ident">AsyncMessageDeserializer</span>,
+<span class="kw">pub struct </span>AsyncPoolChangesDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    id_deserializer: AsyncMessageIdDeserializer,
+    message_deserializer: AsyncMessageDeserializer,
 }
 
-<span class="kw">impl</span> <span class="ident">AsyncPoolChangesDeserializer</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="number">1000000</span>)),
-            <span class="ident">id_deserializer</span>: <span class="ident">AsyncMessageIdDeserializer::new</span>(),
-            <span class="ident">message_deserializer</span>: <span class="ident">AsyncMessageDeserializer::new</span>(),
+<span class="kw">impl </span>AsyncPoolChangesDeserializer {
+    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(<span class="number">1000000</span>)),
+            id_deserializer: AsyncMessageIdDeserializer::new(),
+            message_deserializer: AsyncMessageDeserializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">AsyncPoolChangesDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>AsyncPoolChangesDeserializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">AsyncPoolChanges</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">AsyncPoolChangesDeserializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use std::ops::Bound::Included;</span>
-    <span class="doccomment">/// use massa_serialization::{Serializer, Deserializer, DeserializeError};</span>
-    <span class="doccomment">/// use massa_models::{Address, Amount, Slot};</span>
-    <span class="doccomment">/// use std::str::FromStr;</span>
-    <span class="doccomment">/// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges, AsyncPoolChangesSerializer, AsyncPoolChangesDeserializer};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let message = AsyncMessage {</span>
-    <span class="doccomment">///     emission_slot: Slot::new(1, 0),</span>
-    <span class="doccomment">///     emission_index: 0,</span>
-    <span class="doccomment">///     sender:  Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),</span>
-    <span class="doccomment">///     destination: Address::from_str(&quot;A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),</span>
-    <span class="doccomment">///     handler: String::from(&quot;test&quot;),</span>
-    <span class="doccomment">///     max_gas: 10000000,</span>
-    <span class="doccomment">///     gas_price: Amount::from_str(&quot;1&quot;).unwrap(),</span>
-    <span class="doccomment">///     coins: Amount::from_str(&quot;1&quot;).unwrap(),</span>
-    <span class="doccomment">///     validity_start: Slot::new(2, 0),</span>
-    <span class="doccomment">///     validity_end: Slot::new(3, 0),</span>
-    <span class="doccomment">///     data: vec![1, 2, 3, 4]</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">/// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);</span>
-    <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// let serializer = AsyncPoolChangesSerializer::new();</span>
-    <span class="doccomment">/// let deserializer = AsyncPoolChangesDeserializer::new();</span>
-    <span class="doccomment">/// serializer.serialize(&amp;changes, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// let (rest, changes_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
-    <span class="doccomment">/// assert!(rest.is_empty());</span>
-    <span class="doccomment">/// assert_eq!(changes, changes_deser);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">impl </span>Deserializer&lt;AsyncPoolChanges&gt; <span class="kw">for </span>AsyncPoolChangesDeserializer {
+    <span class="doccomment">/// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use massa_models::{Address, Amount, Slot};
+    /// use std::str::FromStr;
+    /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges, AsyncPoolChangesSerializer, AsyncPoolChangesDeserializer};
+    ///
+    /// let message = AsyncMessage {
+    ///     emission_slot: Slot::new(1, 0),
+    ///     emission_index: 0,
+    ///     sender:  Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
+    ///     destination: Address::from_str(&quot;A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),
+    ///     handler: String::from(&quot;test&quot;),
+    ///     max_gas: 10000000,
+    ///     gas_price: Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     coins: Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     validity_start: Slot::new(2, 0),
+    ///     validity_end: Slot::new(3, 0),
+    ///     data: vec![1, 2, 3, 4]
+    /// };
+    /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
+    /// let mut serialized = Vec::new();
+    /// let serializer = AsyncPoolChangesSerializer::new();
+    /// let deserializer = AsyncPoolChangesDeserializer::new();
+    /// serializer.serialize(&amp;changes, &amp;mut serialized).unwrap();
+    /// let (rest, changes_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(changes, changes_deser);
+    /// ```
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">AsyncPoolChanges</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">context</span>(
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], AsyncPoolChanges, E&gt; {
+        context(
             <span class="string">&quot;Failed AsyncPoolChanges deserialization&quot;</span>,
-            <span class="ident">length_count</span>(
-                <span class="ident">context</span>(<span class="string">&quot;Failed length deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">u64_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+            length_count(
+                context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.u64_deserializer.deserialize(input)
                 }),
-                <span class="op">|</span><span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">|</span> <span class="kw">match</span> <span class="ident">input</span>.<span class="ident">first</span>() {
+                |input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| <span class="kw">match </span>input.first() {
                     <span class="prelude-val">Some</span>(<span class="number">0</span>) =&gt; {
-                        <span class="kw">let</span> (<span class="ident">rest</span>, (<span class="ident">id</span>, <span class="ident">message</span>)) <span class="op">=</span> <span class="ident">tuple</span>((
-                            <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">id_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
-                            <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">message_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
-                        ))(<span class="kw-2">&amp;</span><span class="ident">input</span>[<span class="number">1</span>..])<span class="question-mark">?</span>;
-                        <span class="prelude-val">Ok</span>((<span class="ident">rest</span>, <span class="ident">Change::Add</span>(<span class="ident">id</span>, <span class="ident">message</span>)))
+                        <span class="kw">let </span>(rest, (id, message)) = tuple((
+                            |input| <span class="self">self</span>.id_deserializer.deserialize(input),
+                            |input| <span class="self">self</span>.message_deserializer.deserialize(input),
+                        ))(<span class="kw-2">&amp;</span>input[<span class="number">1</span>..])<span class="question-mark">?</span>;
+                        <span class="prelude-val">Ok</span>((rest, Change::Add(id, message)))
                     }
                     <span class="prelude-val">Some</span>(<span class="number">1</span>) =&gt; {
-                        <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">id_deserializer</span>.<span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>[<span class="number">1</span>..])<span class="question-mark">?</span>;
-                        <span class="prelude-val">Ok</span>((<span class="ident">rest</span>, <span class="ident">Change::Delete</span>(<span class="ident">id</span>)))
+                        <span class="kw">let </span>(rest, id) = <span class="self">self</span>.id_deserializer.deserialize(<span class="kw-2">&amp;</span>input[<span class="number">1</span>..])<span class="question-mark">?</span>;
+                        <span class="prelude-val">Ok</span>((rest, Change::Delete(id)))
                     }
-                    <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">nom::Err::Error</span>(<span class="ident">ParseError::from_error_kind</span>(
-                        <span class="ident">buffer</span>,
-                        <span class="ident">nom::error::ErrorKind::Digit</span>,
+                    <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
+                        buffer,
+                        nom::error::ErrorKind::Digit,
                     ))),
-                    <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">nom::Err::Error</span>(<span class="ident">ParseError::from_error_kind</span>(
-                        <span class="ident">buffer</span>,
-                        <span class="ident">nom::error::ErrorKind::LengthValue</span>,
+                    <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
+                        buffer,
+                        nom::error::ErrorKind::LengthValue,
                     ))),
                 },
             ),
         )
-        .<span class="ident">map</span>(<span class="ident">AsyncPoolChanges</span>)
-        .<span class="ident">parse</span>(<span class="ident">buffer</span>)
+        .map(AsyncPoolChanges)
+        .parse(buffer)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">AsyncPoolChanges</span> {
-    <span class="doccomment">/// Extends self with another another `AsyncPoolChanges`.</span>
-    <span class="doccomment">/// This simply appends the contents of other to self.</span>
-    <span class="doccomment">/// No add/delete compensations are done.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extend</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="ident">AsyncPoolChanges</span>) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">extend</span>(<span class="ident">other</span>.<span class="number">0</span>);
+<span class="kw">impl </span>AsyncPoolChanges {
+    <span class="doccomment">/// Extends self with another another `AsyncPoolChanges`.
+    /// This simply appends the contents of other to self.
+    /// No add/delete compensations are done.
+    </span><span class="kw">pub fn </span>extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: AsyncPoolChanges) {
+        <span class="self">self</span>.<span class="number">0</span>.extend(other.<span class="number">0</span>);
     }
 
-    <span class="doccomment">/// Pushes a message addition to the list of changes.</span>
-    <span class="doccomment">/// No add/delete compensations are done.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Arguments:</span>
-    <span class="doccomment">/// * `msg_id`: ID of the message to push as added to the list of changes</span>
-    <span class="doccomment">/// * `msg`: message to push as added to the list of changes</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push_add</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">msg_id</span>: <span class="ident">AsyncMessageId</span>, <span class="ident">msg</span>: <span class="ident">AsyncMessage</span>) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">push</span>(<span class="ident">Change::Add</span>(<span class="ident">msg_id</span>, <span class="ident">msg</span>));
+    <span class="doccomment">/// Pushes a message addition to the list of changes.
+    /// No add/delete compensations are done.
+    ///
+    /// Arguments:
+    /// * `msg_id`: ID of the message to push as added to the list of changes
+    /// * `msg`: message to push as added to the list of changes
+    </span><span class="kw">pub fn </span>push_add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, msg_id: AsyncMessageId, msg: AsyncMessage) {
+        <span class="self">self</span>.<span class="number">0</span>.push(Change::Add(msg_id, msg));
     }
 
-    <span class="doccomment">/// Pushes a message deletion to the list of changes.</span>
-    <span class="doccomment">/// No add/delete compensations are done.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Arguments:</span>
-    <span class="doccomment">/// * `msg_id`: ID of the message to push as deleted to the list of changes</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push_delete</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">msg_id</span>: <span class="ident">AsyncMessageId</span>) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">push</span>(<span class="ident">Change::Delete</span>(<span class="ident">msg_id</span>));
+    <span class="doccomment">/// Pushes a message deletion to the list of changes.
+    /// No add/delete compensations are done.
+    ///
+    /// Arguments:
+    /// * `msg_id`: ID of the message to push as deleted to the list of changes
+    </span><span class="kw">pub fn </span>push_delete(<span class="kw-2">&amp;mut </span><span class="self">self</span>, msg_id: AsyncMessageId) {
+        <span class="self">self</span>.<span class="number">0</span>.push(Change::Delete(msg_id));
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_async_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_async_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

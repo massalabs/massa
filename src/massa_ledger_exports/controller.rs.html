@@ -83,90 +83,90 @@
 <span id="83">83</span>
 <span id="84">84</span>
 <span id="85">85</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">ModelsError</span>, <span class="ident">Slot</span>};
-<span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span>;
-<span class="kw">use</span> <span class="ident">std::fmt::Debug</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>massa_models::{Address, Amount, ModelsError, Slot};
+<span class="kw">use </span>std::collections::BTreeSet;
+<span class="kw">use </span>std::fmt::Debug;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::LedgerChanges</span>;
+<span class="kw">use </span><span class="kw">crate</span>::LedgerChanges;
 
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">LedgerController</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="ident">Debug</span> {
-    <span class="doccomment">/// Allows applying `LedgerChanges` to the final ledger</span>
-    <span class="kw">fn</span> <span class="ident">apply_changes</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">changes</span>: <span class="ident">LedgerChanges</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>);
+<span class="kw">pub trait </span>LedgerController: Send + Sync + Debug {
+    <span class="doccomment">/// Allows applying `LedgerChanges` to the final ledger
+    </span><span class="kw">fn </span>apply_changes(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: LedgerChanges, slot: Slot);
 
-    <span class="doccomment">/// Gets the parallel balance of a ledger entry</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// The parallel balance, or None if the ledger entry was not found</span>
-    <span class="kw">fn</span> <span class="ident">get_parallel_balance</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Gets the parallel balance of a ledger entry
+    ///
+    /// # Returns
+    /// The parallel balance, or None if the ledger entry was not found
+    </span><span class="kw">fn </span>get_parallel_balance(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Option</span>&lt;Amount&gt;;
 
-    <span class="doccomment">/// Gets a copy of the bytecode of a ledger entry</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// A copy of the found bytecode, or None if the ledger entry was not found</span>
-    <span class="kw">fn</span> <span class="ident">get_bytecode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Gets a copy of the bytecode of a ledger entry
+    ///
+    /// # Returns
+    /// A copy of the found bytecode, or None if the ledger entry was not found
+    </span><span class="kw">fn </span>get_bytecode(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;;
 
-    <span class="doccomment">/// Checks if a ledger entry exists</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// true if it exists, false otherwise.</span>
-    <span class="kw">fn</span> <span class="ident">entry_exists</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>) -&gt; <span class="ident">bool</span>;
+    <span class="doccomment">/// Checks if a ledger entry exists
+    ///
+    /// # Returns
+    /// true if it exists, false otherwise.
+    </span><span class="kw">fn </span>entry_exists(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; bool;
 
-    <span class="doccomment">/// Gets a copy of the value of a datastore entry for a given address.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `addr`: target address</span>
-    <span class="doccomment">/// * `key`: datastore key</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// A copy of the datastore value, or `None` if the ledger entry or datastore entry was not found</span>
-    <span class="kw">fn</span> <span class="ident">get_data_entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Gets a copy of the value of a datastore entry for a given address.
+    ///
+    /// # Arguments
+    /// * `addr`: target address
+    /// * `key`: datastore key
+    ///
+    /// # Returns
+    /// A copy of the datastore value, or `None` if the ledger entry or datastore entry was not found
+    </span><span class="kw">fn </span>get_data_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;;
 
-    <span class="doccomment">/// Checks for the existence of a datastore entry for a given address.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `addr`: target address</span>
-    <span class="doccomment">/// * `key`: datastore key</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// true if the datastore entry was found, or false if the ledger entry or datastore entry was not found</span>
-    <span class="kw">fn</span> <span class="ident">has_data_entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="ident">bool</span>;
+    <span class="doccomment">/// Checks for the existence of a datastore entry for a given address.
+    ///
+    /// # Arguments
+    /// * `addr`: target address
+    /// * `key`: datastore key
+    ///
+    /// # Returns
+    /// true if the datastore entry was found, or false if the ledger entry or datastore entry was not found
+    </span><span class="kw">fn </span>has_data_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, key: <span class="kw-2">&amp;</span>[u8]) -&gt; bool;
 
-    <span class="doccomment">/// Get every key of the datastore for a given address.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// A BTreeSet of the datastore keys</span>
-    <span class="kw">fn</span> <span class="ident">get_datastore_keys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>) -&gt; <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Get every key of the datastore for a given address.
+    ///
+    /// # Returns
+    /// A BTreeSet of the datastore keys
+    </span><span class="kw">fn </span>get_datastore_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; BTreeSet&lt;Vec&lt;u8&gt;&gt;;
 
-    <span class="doccomment">/// Get a part of the ledger</span>
-    <span class="doccomment">/// Used for bootstrap</span>
-    <span class="doccomment">/// Return: Tuple with data and last key</span>
-    <span class="kw">fn</span> <span class="ident">get_ledger_part</span>(
+    <span class="doccomment">/// Get a part of the ledger
+    /// Used for bootstrap
+    /// Return: Tuple with data and last key
+    </span><span class="kw">fn </span>get_ledger_part(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">last_key</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span>;
+        last_key: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;), ModelsError&gt;;
 
-    <span class="doccomment">/// Set a part of the ledger</span>
-    <span class="doccomment">/// Used for bootstrap</span>
-    <span class="doccomment">/// Return: Last key inserted</span>
-    <span class="kw">fn</span> <span class="ident">set_ledger_part</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Set a part of the ledger
+    /// Used for bootstrap
+    /// Return: Last key inserted
+    </span><span class="kw">fn </span>set_ledger_part(<span class="kw-2">&amp;</span><span class="self">self</span>, data: Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;, ModelsError&gt;;
 
-    <span class="doccomment">/// Get every address and their corresponding balance.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// IMPORTANT: This should only be used for debug and test purposes.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// A BTreeMap with the address as key and the balance as value</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">get_every_address</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">std::collections::BTreeMap</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">Amount</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Get every address and their corresponding balance.
+    ///
+    /// IMPORTANT: This should only be used for debug and test purposes.
+    ///
+    /// # Returns
+    /// A BTreeMap with the address as key and the balance as value
+    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+    </span><span class="kw">fn </span>get_every_address(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; std::collections::BTreeMap&lt;Address, Amount&gt;;
 
-    <span class="doccomment">/// Get the entire datastore for a given address.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// IMPORTANT: This should only be used for debug purposes.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// A BTreeMap with the entry hash as key and the data bytes as value</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">get_entire_datastore</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>) -&gt; <span class="ident">std::collections::BTreeMap</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Get the entire datastore for a given address.
+    ///
+    /// IMPORTANT: This should only be used for debug purposes.
+    ///
+    /// # Returns
+    /// A BTreeMap with the entry hash as key and the data bytes as value
+    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+    </span><span class="kw">fn </span>get_entire_datastore(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; std::collections::BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;;
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

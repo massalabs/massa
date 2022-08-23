@@ -207,151 +207,151 @@
 <span id="207">207</span>
 <span id="208">208</span>
 <span id="209">209</span>
-</pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES</span>
-<span class="doccomment">//! Same as default constants but in testing mode. You can access to them with</span>
-<span class="doccomment">//! the `testing` feature activated.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Default hard-coded</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Each crates may contains a `settings.rs` or a `config.rs` the `Default`</span>
-<span class="doccomment">//! implementation of each object take the default Values from the following</span>
-<span class="doccomment">//! file.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! These values are the hard-coded values that make sens to never be modified</span>
-<span class="doccomment">//! by a user. Generally, this values are passed with dependency injection in a `cfg`</span>
-<span class="doccomment">//! parameter for each worker, that is convenient for unit tests.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! See `./default.rs` for more documentation about each constants</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The following values are good as it. If you want a specific configuration,</span>
-<span class="doccomment">//! create a mutable configuration and inject it as a dependency in the worker.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Ex:</span>
-<span class="doccomment">//! ```ignore</span>
-<span class="doccomment">//! let cfg = UsedConfig {</span>
-<span class="doccomment">//!    value_to_modify: 5,</span>
-<span class="doccomment">//!    ..UsedConfig::default()</span>
-<span class="doccomment">//! };</span>
-<span class="doccomment">//! ```</span>
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Amount</span>, <span class="ident">Version</span>};
-<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
-<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
-<span class="kw">use</span> <span class="ident">num::rational::Ratio</span>;
-<span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">Ipv4Addr</span>};
+</pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
+//! Same as default constants but in testing mode. You can access to them with
+//! the `testing` feature activated.
+//!
+//! # Default hard-coded
+//!
+//! Each crates may contains a `settings.rs` or a `config.rs` the `Default`
+//! implementation of each object take the default Values from the following
+//! file.
+//!
+//! These values are the hard-coded values that make sens to never be modified
+//! by a user. Generally, this values are passed with dependency injection in a `cfg`
+//! parameter for each worker, that is convenient for unit tests.
+//!
+//! See `./default.rs` for more documentation about each constants
+//!
+//! The following values are good as it. If you want a specific configuration,
+//! create a mutable configuration and inject it as a dependency in the worker.
+//!
+//! Ex:
+//! ```ignore
+//! let cfg = UsedConfig {
+//!    value_to_modify: 5,
+//!    ..UsedConfig::default()
+//! };
+//! ```
+</span><span class="kw">use crate</span>::{Amount, Version};
+<span class="kw">use </span>massa_signature::KeyPair;
+<span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>num::rational::Ratio;
+<span class="kw">use </span>std::net::{IpAddr, Ipv4Addr};
 
-<span class="macro">lazy_static::lazy_static!</span> {
-    <span class="doccomment">/// genesis keypair</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_KEY</span>: <span class="ident">KeyPair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
-    <span class="doccomment">/// Time in milliseconds when the blockclique started.</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_TIMESTAMP</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>) {
-        <span class="ident">MassaTime::now</span>()
-            .<span class="ident">unwrap</span>()
-            .<span class="ident">saturating_add</span>(<span class="ident">MassaTime::from</span>(<span class="number">1000</span> <span class="op">*</span> <span class="number">60</span> <span class="op">*</span> <span class="number">3</span>))
-    } <span class="kw">else</span> {
-        <span class="number">1643918400000</span>.<span class="ident">into</span>()
+<span class="macro">lazy_static::lazy_static! </span>{
+    <span class="doccomment">/// genesis keypair
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>GENESIS_KEY: KeyPair = KeyPair::generate();
+    <span class="doccomment">/// Time in milliseconds when the blockclique started.
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>GENESIS_TIMESTAMP: MassaTime = <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;sandbox&quot;</span>) {
+        MassaTime::now()
+            .unwrap()
+            .saturating_add(MassaTime::from(<span class="number">1000 </span>* <span class="number">60 </span>* <span class="number">3</span>))
+    } <span class="kw">else </span>{
+        <span class="number">1643918400000</span>.into()
     };
 
-    <span class="doccomment">/// TESTNET: time when the blockclique is ended.</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">END_TIMESTAMP</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-    <span class="doccomment">/// Be careful:</span>
-    <span class="doccomment">/// The `GENESIS_TIMESTAMP` shouldn&#39;t be used as it in test because if you start the full test</span>
-    <span class="doccomment">/// process, the first use is effectively `MassaTime::now().unwrap()` but will be outdated for</span>
-    <span class="doccomment">/// the latest test. That&#39;s the reason why we choose to reset it each time we get a `ConsensusConfig`.</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">POS_MISS_RATE_DEACTIVATION_THRESHOLD</span>: <span class="ident">Ratio</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Ratio::new</span>(<span class="number">1</span>, <span class="number">1</span>);
-    <span class="doccomment">/// node version</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">VERSION</span>: <span class="ident">Version</span> <span class="op">=</span> <span class="string">&quot;DEVE.0.0&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>();
+    <span class="doccomment">/// TESTNET: time when the blockclique is ended.
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>END_TIMESTAMP: <span class="prelude-ty">Option</span>&lt;MassaTime&gt; = <span class="prelude-val">None</span>;
+    <span class="doccomment">/// Be careful:
+    /// The `GENESIS_TIMESTAMP` shouldn&#39;t be used as it in test because if you start the full test
+    /// process, the first use is effectively `MassaTime::now().unwrap()` but will be outdated for
+    /// the latest test. That&#39;s the reason why we choose to reset it each time we get a `ConsensusConfig`.
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio&lt;u64&gt; = Ratio::new(<span class="number">1</span>, <span class="number">1</span>);
+    <span class="doccomment">/// node version
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>VERSION: Version = <span class="string">&quot;DEVE.0.0&quot;</span>.parse().unwrap();
 }
 
-<span class="doccomment">/// Size of the random bytes array used for the bootstrap, safe to import</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ADDRESS_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">massa_hash::HASH_SIZE_BYTES</span>;
-<span class="doccomment">/// Safe to import</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">AMOUNT_DECIMAL_FACTOR</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1_000_000_000</span>;
-<span class="doccomment">/// our default ip</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BASE_NETWORK_CONTROLLER_IP</span>: <span class="ident">IpAddr</span> <span class="op">=</span> <span class="ident">IpAddr::V4</span>(<span class="ident">Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">10</span>));
-<span class="doccomment">/// block id size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">massa_hash::HASH_SIZE_BYTES</span>;
-<span class="doccomment">/// reward for a block</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BLOCK_REWARD</span>: <span class="ident">Amount</span> <span class="op">=</span> <span class="ident">Amount::from_mantissa_scale</span>(<span class="number">1</span>, <span class="number">0</span>);
-<span class="doccomment">/// random bootstrap message size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BOOTSTRAP_RANDOMNESS_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">32</span>;
-<span class="doccomment">/// channel size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CHANNEL_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">256</span>;
-<span class="doccomment">/// fitness threshold</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DELTA_F0</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">32</span>;
-<span class="doccomment">/// target endorsement count</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ENDORSEMENT_COUNT</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0</span>;
-<span class="doccomment">/// endorsement id size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ENDORSEMENT_ID_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">massa_hash::HASH_SIZE_BYTES</span>;
-<span class="doccomment">/// event id size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">EVENT_ID_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">massa_hash::HASH_SIZE_BYTES</span>;
-<span class="doccomment">/// random handshake message size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">HANDSHAKE_RANDOMNESS_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">32</span>;
-<span class="doccomment">/// initial seed</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">INITIAL_DRAW_SEED</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;massa_genesis_seed&quot;</span>;
-<span class="doccomment">/// max bootstrap ips kept size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IP_LIST_MAX_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10000</span>;
-<span class="doccomment">/// max advertised id length</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ADVERTISE_LENGTH</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">10</span>;
-<span class="doccomment">/// max ask for block per message</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ASK_BLOCKS_PER_MESSAGE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">3</span>;
-<span class="doccomment">/// max block size 3 * 1024 * 1024</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BLOCK_SIZE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">3145728</span>;
-<span class="doccomment">/// max asynchronous pool length</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ASYNC_POOL_LENGTH</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10_000</span>;
-<span class="doccomment">/// Maximum size batch of data in a part of the ledger</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">LEDGER_PART_SIZE_MESSAGE_BYTES</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">30</span>;
-<span class="doccomment">/// Maximum async messages in a batch of the bootstrap of the async pool</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ASYNC_POOL_PART_SIZE_MESSAGE_BYTES</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">30</span>;
-<span class="doccomment">/// max bootstrapped blocks</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_BLOCKS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">100</span>;
-<span class="doccomment">/// max bootstrapped children per block</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_CHILDREN</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">10</span>;
-<span class="doccomment">/// max bootstrapped cliques</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_CLIQUES</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">100</span>;
-<span class="doccomment">/// max bootstrapped dependencies</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_DEPS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">100</span>;
-<span class="doccomment">/// max duplex buffer size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_DUPLEX_BUFFER_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1024</span>;
-<span class="doccomment">/// max endorsements per message</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ENDORSEMENTS_PER_MESSAGE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1024</span>;
-<span class="doccomment">/// max bootstrap message size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_MESSAGE_SIZE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">100_000_000</span>;
-<span class="doccomment">/// max bootstrapped proof of stake entries</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_POS_ENTRIES</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1000</span>;
-<span class="doccomment">/// max bootstrapped proof of take cycles</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_POS_CYCLES</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">5</span>;
-<span class="doccomment">/// max gas per block</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_GAS_PER_BLOCK</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">100_000_000</span>;
-<span class="doccomment">/// max asynchronous gas</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ASYNC_GAS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10_000_000</span>;
-<span class="doccomment">/// max message size 3 * 1024 * 1024</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_MESSAGE_SIZE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">3145728</span>;
-<span class="doccomment">/// max number of operation per block</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_OPERATIONS_PER_BLOCK</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1024</span>;
-<span class="doccomment">/// max number of operation per message</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_OPERATIONS_PER_MESSAGE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1024</span>;
-<span class="doccomment">/// node send channel size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">NODE_SEND_CHANNEL_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1024</span>;
-<span class="doccomment">/// operation id size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OPERATION_ID_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">massa_hash::HASH_SIZE_BYTES</span>;
-<span class="doccomment">/// operation id prefix size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OPERATION_ID_PREFIX_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">17</span>;
-<span class="doccomment">/// operation validity periods</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OPERATION_VALIDITY_PERIODS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1</span>;
-<span class="doccomment">/// periods per cycle</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PERIODS_PER_CYCLE</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">100</span>;
-<span class="doccomment">/// proof of stake lock cycles</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">POS_LOCK_CYCLES</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1</span>;
-<span class="doccomment">/// proof of stake look back cycle</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">POS_LOOKBACK_CYCLES</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">2</span>;
-<span class="doccomment">/// roll price</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ROLL_PRICE</span>: <span class="ident">Amount</span> <span class="op">=</span> <span class="ident">Amount::from_mantissa_scale</span>(<span class="number">100</span>, <span class="number">0</span>);
-<span class="doccomment">/// serialized slot size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SLOT_KEY_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">9</span>;
-<span class="doccomment">/// thread count</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">THREAD_COUNT</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">2</span>;
-<span class="doccomment">/// period length in milliseconds, sometimes overridden in `config.rs` or `setting.rs`</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">T0</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="ident">MassaTime::from</span>(<span class="number">32000</span>);
+<span class="doccomment">/// Size of the random bytes array used for the bootstrap, safe to import
+</span><span class="kw">pub const </span>ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+<span class="doccomment">/// Safe to import
+</span><span class="kw">pub const </span>AMOUNT_DECIMAL_FACTOR: u64 = <span class="number">1_000_000_000</span>;
+<span class="doccomment">/// our default ip
+</span><span class="kw">pub const </span>BASE_NETWORK_CONTROLLER_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">10</span>));
+<span class="doccomment">/// block id size
+</span><span class="kw">pub const </span>BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+<span class="doccomment">/// reward for a block
+</span><span class="kw">pub const </span>BLOCK_REWARD: Amount = Amount::from_mantissa_scale(<span class="number">1</span>, <span class="number">0</span>);
+<span class="doccomment">/// random bootstrap message size
+</span><span class="kw">pub const </span>BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = <span class="number">32</span>;
+<span class="doccomment">/// channel size
+</span><span class="kw">pub const </span>CHANNEL_SIZE: usize = <span class="number">256</span>;
+<span class="doccomment">/// fitness threshold
+</span><span class="kw">pub const </span>DELTA_F0: u64 = <span class="number">32</span>;
+<span class="doccomment">/// target endorsement count
+</span><span class="kw">pub const </span>ENDORSEMENT_COUNT: u32 = <span class="number">0</span>;
+<span class="doccomment">/// endorsement id size
+</span><span class="kw">pub const </span>ENDORSEMENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+<span class="doccomment">/// event id size
+</span><span class="kw">pub const </span>EVENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+<span class="doccomment">/// random handshake message size
+</span><span class="kw">pub const </span>HANDSHAKE_RANDOMNESS_SIZE_BYTES: usize = <span class="number">32</span>;
+<span class="doccomment">/// initial seed
+</span><span class="kw">pub const </span>INITIAL_DRAW_SEED: <span class="kw-2">&amp;</span>str = <span class="string">&quot;massa_genesis_seed&quot;</span>;
+<span class="doccomment">/// max bootstrap ips kept size
+</span><span class="kw">pub const </span>IP_LIST_MAX_SIZE: usize = <span class="number">10000</span>;
+<span class="doccomment">/// max advertised id length
+</span><span class="kw">pub const </span>MAX_ADVERTISE_LENGTH: u32 = <span class="number">10</span>;
+<span class="doccomment">/// max ask for block per message
+</span><span class="kw">pub const </span>MAX_ASK_BLOCKS_PER_MESSAGE: u32 = <span class="number">3</span>;
+<span class="doccomment">/// max block size 3 * 1024 * 1024
+</span><span class="kw">pub const </span>MAX_BLOCK_SIZE: u32 = <span class="number">3145728</span>;
+<span class="doccomment">/// max asynchronous pool length
+</span><span class="kw">pub const </span>MAX_ASYNC_POOL_LENGTH: u64 = <span class="number">10_000</span>;
+<span class="doccomment">/// Maximum size batch of data in a part of the ledger
+</span><span class="kw">pub const </span>LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = <span class="number">30</span>;
+<span class="doccomment">/// Maximum async messages in a batch of the bootstrap of the async pool
+</span><span class="kw">pub const </span>ASYNC_POOL_PART_SIZE_MESSAGE_BYTES: u64 = <span class="number">30</span>;
+<span class="doccomment">/// max bootstrapped blocks
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_BLOCKS: u32 = <span class="number">100</span>;
+<span class="doccomment">/// max bootstrapped children per block
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_CHILDREN: u32 = <span class="number">10</span>;
+<span class="doccomment">/// max bootstrapped cliques
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_CLIQUES: u32 = <span class="number">100</span>;
+<span class="doccomment">/// max bootstrapped dependencies
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_DEPS: u32 = <span class="number">100</span>;
+<span class="doccomment">/// max duplex buffer size
+</span><span class="kw">pub const </span>MAX_DUPLEX_BUFFER_SIZE: usize = <span class="number">1024</span>;
+<span class="doccomment">/// max endorsements per message
+</span><span class="kw">pub const </span>MAX_ENDORSEMENTS_PER_MESSAGE: u32 = <span class="number">1024</span>;
+<span class="doccomment">/// max bootstrap message size
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_MESSAGE_SIZE: u32 = <span class="number">100_000_000</span>;
+<span class="doccomment">/// max bootstrapped proof of stake entries
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_POS_ENTRIES: u32 = <span class="number">1000</span>;
+<span class="doccomment">/// max bootstrapped proof of take cycles
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_POS_CYCLES: u32 = <span class="number">5</span>;
+<span class="doccomment">/// max gas per block
+</span><span class="kw">pub const </span>MAX_GAS_PER_BLOCK: u64 = <span class="number">100_000_000</span>;
+<span class="doccomment">/// max asynchronous gas
+</span><span class="kw">pub const </span>MAX_ASYNC_GAS: u64 = <span class="number">10_000_000</span>;
+<span class="doccomment">/// max message size 3 * 1024 * 1024
+</span><span class="kw">pub const </span>MAX_MESSAGE_SIZE: u32 = <span class="number">3145728</span>;
+<span class="doccomment">/// max number of operation per block
+</span><span class="kw">pub const </span>MAX_OPERATIONS_PER_BLOCK: u32 = <span class="number">1024</span>;
+<span class="doccomment">/// max number of operation per message
+</span><span class="kw">pub const </span>MAX_OPERATIONS_PER_MESSAGE: u32 = <span class="number">1024</span>;
+<span class="doccomment">/// node send channel size
+</span><span class="kw">pub const </span>NODE_SEND_CHANNEL_SIZE: usize = <span class="number">1024</span>;
+<span class="doccomment">/// operation id size
+</span><span class="kw">pub const </span>OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+<span class="doccomment">/// operation id prefix size
+</span><span class="kw">pub const </span>OPERATION_ID_PREFIX_SIZE_BYTES: usize = <span class="number">17</span>;
+<span class="doccomment">/// operation validity periods
+</span><span class="kw">pub const </span>OPERATION_VALIDITY_PERIODS: u64 = <span class="number">1</span>;
+<span class="doccomment">/// periods per cycle
+</span><span class="kw">pub const </span>PERIODS_PER_CYCLE: u64 = <span class="number">100</span>;
+<span class="doccomment">/// proof of stake lock cycles
+</span><span class="kw">pub const </span>POS_LOCK_CYCLES: u64 = <span class="number">1</span>;
+<span class="doccomment">/// proof of stake look back cycle
+</span><span class="kw">pub const </span>POS_LOOKBACK_CYCLES: u64 = <span class="number">2</span>;
+<span class="doccomment">/// roll price
+</span><span class="kw">pub const </span>ROLL_PRICE: Amount = Amount::from_mantissa_scale(<span class="number">100</span>, <span class="number">0</span>);
+<span class="doccomment">/// serialized slot size
+</span><span class="kw">pub const </span>SLOT_KEY_SIZE: usize = <span class="number">9</span>;
+<span class="doccomment">/// thread count
+</span><span class="kw">pub const </span>THREAD_COUNT: u8 = <span class="number">2</span>;
+<span class="doccomment">/// period length in milliseconds, sometimes overridden in `config.rs` or `setting.rs`
+</span><span class="kw">pub const </span>T0: MassaTime = MassaTime::from(<span class="number">32000</span>);
 
 <span class="comment">/*************************
 * Mocked constant section
@@ -368,53 +368,53 @@
 *    future_block_processing_max_periods: 5,
 *    ..Default::default()
 * };
-*/</span>
+*/
 
-<span class="doccomment">/// normally in `config.toml`, allow execution worker to lag smoothly</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CURSOR_DELAY</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="ident">MassaTime::from</span>(<span class="number">0</span>);
-<span class="doccomment">/// normally in `config.toml`, if the node will create blocks</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DISABLE_BLOCK_CREATION</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
-<span class="doccomment">/// normally in `config.toml`, final history length</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FINAL_HISTORY_LENGTH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10</span>;
-<span class="doccomment">/// normally in `config.toml`, forcefully kept periods</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FORCE_KEEP_FINAL_PERIOD</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-<span class="doccomment">/// normally in `config.toml`, if slot is after `FUTURE_BLOCK_PROCESSING_MAX_PERIODS`, the block is not processed</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FUTURE_BLOCK_PROCESSING_MAX_PERIODS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
-<span class="doccomment">/// normally in `config.toml`, ledger cache capacity</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">LEDGER_CACHE_CAPACITY</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1_000_000</span>;
-<span class="doccomment">/// normally in `config.toml`, if the ledger need a reset at start up</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">LEDGER_RESET_AT_STARTUP</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
-<span class="doccomment">/// normally in `config.toml`, max unknown dependencies kept</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_DEPENDENCY_BLOCK</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10</span>;
-<span class="doccomment">/// normally in `config.toml`, max discarded blocks kept</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_DISCARDED_BLOCKS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10</span>;
-<span class="doccomment">/// normally in `config.toml`, max final events kept</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_FINAL_EVENTS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10</span>;
-<span class="doccomment">/// normally in `config.toml`, max in the future kept blocks</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_FUTURE_PROCESSING_BLOCK</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10</span>;
-<span class="doccomment">/// normally in `config.toml`, max item count returned</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ITEM_RETURN_COUNT</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1000</span>;
-<span class="doccomment">/// normally in `config.toml`, max operation fill attempts</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_OPERATION_FILL_ATTEMPTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">6</span>;
-<span class="doccomment">/// normally in `config.toml`, operation batch size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OPERATION_BATCH_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">3</span>;
-<span class="doccomment">/// normally in `config.toml`, proof of stake cached cycle</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">POS_DRAW_CACHED_CYCLE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10</span>;
-<span class="doccomment">/// normally in `config.toml`, read only queue length</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">READONLY_QUEUE_LENGTH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10</span>;
+</span><span class="doccomment">/// normally in `config.toml`, allow execution worker to lag smoothly
+</span><span class="kw">pub const </span>CURSOR_DELAY: MassaTime = MassaTime::from(<span class="number">0</span>);
+<span class="doccomment">/// normally in `config.toml`, if the node will create blocks
+</span><span class="kw">pub const </span>DISABLE_BLOCK_CREATION: bool = <span class="bool-val">true</span>;
+<span class="doccomment">/// normally in `config.toml`, final history length
+</span><span class="kw">pub const </span>FINAL_HISTORY_LENGTH: usize = <span class="number">10</span>;
+<span class="doccomment">/// normally in `config.toml`, forcefully kept periods
+</span><span class="kw">pub const </span>FORCE_KEEP_FINAL_PERIOD: u64 = <span class="number">0</span>;
+<span class="doccomment">/// normally in `config.toml`, if slot is after `FUTURE_BLOCK_PROCESSING_MAX_PERIODS`, the block is not processed
+</span><span class="kw">pub const </span>FUTURE_BLOCK_PROCESSING_MAX_PERIODS: u64 = <span class="number">10</span>;
+<span class="doccomment">/// normally in `config.toml`, ledger cache capacity
+</span><span class="kw">pub const </span>LEDGER_CACHE_CAPACITY: u64 = <span class="number">1_000_000</span>;
+<span class="doccomment">/// normally in `config.toml`, if the ledger need a reset at start up
+</span><span class="kw">pub const </span>LEDGER_RESET_AT_STARTUP: bool = <span class="bool-val">true</span>;
+<span class="doccomment">/// normally in `config.toml`, max unknown dependencies kept
+</span><span class="kw">pub const </span>MAX_DEPENDENCY_BLOCK: usize = <span class="number">10</span>;
+<span class="doccomment">/// normally in `config.toml`, max discarded blocks kept
+</span><span class="kw">pub const </span>MAX_DISCARDED_BLOCKS: usize = <span class="number">10</span>;
+<span class="doccomment">/// normally in `config.toml`, max final events kept
+</span><span class="kw">pub const </span>MAX_FINAL_EVENTS: usize = <span class="number">10</span>;
+<span class="doccomment">/// normally in `config.toml`, max in the future kept blocks
+</span><span class="kw">pub const </span>MAX_FUTURE_PROCESSING_BLOCK: usize = <span class="number">10</span>;
+<span class="doccomment">/// normally in `config.toml`, max item count returned
+</span><span class="kw">pub const </span>MAX_ITEM_RETURN_COUNT: usize = <span class="number">1000</span>;
+<span class="doccomment">/// normally in `config.toml`, max operation fill attempts
+</span><span class="kw">pub const </span>MAX_OPERATION_FILL_ATTEMPTS: u32 = <span class="number">6</span>;
+<span class="doccomment">/// normally in `config.toml`, operation batch size
+</span><span class="kw">pub const </span>OPERATION_BATCH_SIZE: usize = <span class="number">3</span>;
+<span class="doccomment">/// normally in `config.toml`, proof of stake cached cycle
+</span><span class="kw">pub const </span>POS_DRAW_CACHED_CYCLE: usize = <span class="number">10</span>;
+<span class="doccomment">/// normally in `config.toml`, read only queue length
+</span><span class="kw">pub const </span>READONLY_QUEUE_LENGTH: usize = <span class="number">10</span>;
 
-<span class="comment">// Note: In the `massa-network`, the default values are defined in the `settings.rs` of the</span>
-<span class="comment">// `massa-network` crate.</span>
+<span class="comment">// Note: In the `massa-network`, the default values are defined in the `settings.rs` of the
+// `massa-network` crate.
 
-<span class="macro">lazy_static::lazy_static!</span> {
-    <span class="doccomment">/// blocks are pruned every `BLOCK_DB_PRUNE_INTERVAL` milliseconds</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">BLOCK_DB_PRUNE_INTERVAL</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="number">1000</span>.<span class="ident">into</span>();
-    <span class="doccomment">/// ledger is saved on disk every `LEDGER_FLUSH_INTERVAL` milliseconds</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">LEDGER_FLUSH_INTERVAL</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="number">200</span>.<span class="ident">into</span>());
-    <span class="doccomment">/// we wait `MAX_SEND_WAIT` milliseconds to send a message</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">MAX_SEND_WAIT</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="number">500</span>.<span class="ident">into</span>();
-    <span class="doccomment">/// stats are considered for `STATS_TIMESPAN` milliseconds</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">STATS_TIMESPAN</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="number">60000</span>.<span class="ident">into</span>();
+</span><span class="macro">lazy_static::lazy_static! </span>{
+    <span class="doccomment">/// blocks are pruned every `BLOCK_DB_PRUNE_INTERVAL` milliseconds
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>BLOCK_DB_PRUNE_INTERVAL: MassaTime = <span class="number">1000</span>.into();
+    <span class="doccomment">/// ledger is saved on disk every `LEDGER_FLUSH_INTERVAL` milliseconds
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>LEDGER_FLUSH_INTERVAL: <span class="prelude-ty">Option</span>&lt;MassaTime&gt; = <span class="prelude-val">Some</span>(<span class="number">200</span>.into());
+    <span class="doccomment">/// we wait `MAX_SEND_WAIT` milliseconds to send a message
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>MAX_SEND_WAIT: MassaTime = <span class="number">500</span>.into();
+    <span class="doccomment">/// stats are considered for `STATS_TIMESPAN` milliseconds
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>STATS_TIMESPAN: MassaTime = <span class="number">60000</span>.into();
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

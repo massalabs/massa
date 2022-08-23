@@ -288,295 +288,295 @@
 <span id="288">288</span>
 <span id="289">289</span>
 <span id="290">290</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::PeerTypeConnectionConfig</span>;
-<span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
-<span class="kw">use</span> <span class="ident">enum_map::Enum</span>;
-<span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">IpAddrDeserializer</span>, <span class="ident">IpAddrSerializer</span>};
-<span class="kw">use</span> <span class="ident">massa_serialization</span>::{
-    <span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>, <span class="ident">U32VarIntDeserializer</span>, <span class="ident">U32VarIntSerializer</span>,
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::settings::PeerTypeConnectionConfig;
+<span class="kw">use </span>displaydoc::Display;
+<span class="kw">use </span>enum_map::Enum;
+<span class="kw">use </span>massa_models::node::NodeId;
+<span class="kw">use </span>massa_models::{IpAddrDeserializer, IpAddrSerializer};
+<span class="kw">use </span>massa_serialization::{
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
-<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
-<span class="kw">use</span> <span class="ident">nom::error</span>::{<span class="ident">ContextError</span>, <span class="ident">ParseError</span>};
-<span class="kw">use</span> <span class="ident">nom::multi::length_count</span>;
-<span class="kw">use</span> <span class="ident">nom</span>::{<span class="ident">IResult</span>, <span class="ident">Parser</span>};
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::ops::Bound::Included</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashMap</span>, <span class="ident">net::IpAddr</span>};
-<span class="doccomment">/// Associate a peer info with nodes</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Peer</span> {
-    <span class="doccomment">/// peer info</span>
-    <span class="kw">pub</span> <span class="ident">peer_info</span>: <span class="ident">PeerInfo</span>,
-    <span class="doccomment">/// corresponding nodes (true if the connection is outgoing, false if incoming)</span>
-    <span class="kw">pub</span> <span class="ident">active_nodes</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">NodeId</span>, <span class="ident">bool</span>)<span class="op">&gt;</span>,
+<span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>nom::error::{ContextError, ParseError};
+<span class="kw">use </span>nom::multi::length_count;
+<span class="kw">use </span>nom::{IResult, Parser};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::ops::Bound::Included;
+<span class="kw">use </span>std::{collections::HashMap, net::IpAddr};
+<span class="doccomment">/// Associate a peer info with nodes
+</span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>Peer {
+    <span class="doccomment">/// peer info
+    </span><span class="kw">pub </span>peer_info: PeerInfo,
+    <span class="doccomment">/// corresponding nodes (true if the connection is outgoing, false if incoming)
+    </span><span class="kw">pub </span>active_nodes: Vec&lt;(NodeId, bool)&gt;,
 }
 
-<span class="doccomment">/// peers</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Peers</span> {
-    <span class="doccomment">/// our node id</span>
-    <span class="kw">pub</span> <span class="ident">our_node_id</span>: <span class="ident">NodeId</span>,
-    <span class="doccomment">/// peers</span>
-    <span class="kw">pub</span> <span class="ident">peers</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">Peer</span><span class="op">&gt;</span>,
+<span class="doccomment">/// peers
+</span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>Peers {
+    <span class="doccomment">/// our node id
+    </span><span class="kw">pub </span>our_node_id: NodeId,
+    <span class="doccomment">/// peers
+    </span><span class="kw">pub </span>peers: HashMap&lt;IpAddr, Peer&gt;,
 }
 
-<span class="doccomment">/// Peers that are transmitted during bootstrap</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BootstrapPeers</span>(<span class="kw">pub</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>);
+<span class="doccomment">/// Peers that are transmitted during bootstrap
+</span><span class="attribute">#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>BootstrapPeers(<span class="kw">pub </span>Vec&lt;IpAddr&gt;);
 
-<span class="doccomment">/// Serializer for `BootstrapPeers`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BootstrapPeersSerializer</span> {
-    <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer</span>,
-    <span class="ident">ip_addr_serializer</span>: <span class="ident">IpAddrSerializer</span>,
+<span class="doccomment">/// Serializer for `BootstrapPeers`
+</span><span class="kw">pub struct </span>BootstrapPeersSerializer {
+    u32_serializer: U32VarIntSerializer,
+    ip_addr_serializer: IpAddrSerializer,
 }
 
-<span class="kw">impl</span> <span class="ident">BootstrapPeersSerializer</span> {
-    <span class="doccomment">/// Creates a new `BootstrapPeersSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer::new</span>(),
-            <span class="ident">ip_addr_serializer</span>: <span class="ident">IpAddrSerializer::new</span>(),
+<span class="kw">impl </span>BootstrapPeersSerializer {
+    <span class="doccomment">/// Creates a new `BootstrapPeersSerializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u32_serializer: U32VarIntSerializer::new(),
+            ip_addr_serializer: IpAddrSerializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">BootstrapPeersSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>BootstrapPeersSerializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">BootstrapPeers</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BootstrapPeersSerializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use massa_network_exports::{BootstrapPeers, BootstrapPeersSerializer};</span>
-    <span class="doccomment">/// use massa_serialization::Serializer;</span>
-    <span class="doccomment">/// use std::str::FromStr;</span>
-    <span class="doccomment">/// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let localhost_v4 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));</span>
-    <span class="doccomment">/// let localhost_v6 = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));</span>
-    <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// let peers = BootstrapPeers(vec![localhost_v4, localhost_v6]);</span>
-    <span class="doccomment">/// let peers_serializer = BootstrapPeersSerializer::new();</span>
-    <span class="doccomment">/// peers_serializer.serialize(&amp;peers, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">serialize</span>(
+<span class="kw">impl </span>Serializer&lt;BootstrapPeers&gt; <span class="kw">for </span>BootstrapPeersSerializer {
+    <span class="doccomment">/// ```
+    /// use massa_network_exports::{BootstrapPeers, BootstrapPeersSerializer};
+    /// use massa_serialization::Serializer;
+    /// use std::str::FromStr;
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// let localhost_v4 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+    /// let localhost_v6 = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+    /// let mut serialized = Vec::new();
+    /// let peers = BootstrapPeers(vec![localhost_v4, localhost_v6]);
+    /// let peers_serializer = BootstrapPeersSerializer::new();
+    /// peers_serializer.serialize(&amp;peers, &amp;mut serialized).unwrap();
+    /// ```
+    </span><span class="kw">fn </span>serialize(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">BootstrapPeers</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">massa_serialization::SerializeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">peers_count</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">value</span>.<span class="number">0</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-            <span class="ident">SerializeError::NumberTooBig</span>(<span class="macro">format!</span>(
+        value: <span class="kw-2">&amp;</span>BootstrapPeers,
+        buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), massa_serialization::SerializeError&gt; {
+        <span class="kw">let </span>peers_count: u32 = value.<span class="number">0</span>.len().try_into().map_err(|err| {
+            SerializeError::NumberTooBig(<span class="macro">format!</span>(
                 <span class="string">&quot;too many peers blocks in BootstrapPeers: {}&quot;</span>,
-                <span class="ident">err</span>
+                err
             ))
         })<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">u32_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">peers_count</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="kw">for</span> <span class="ident">peer</span> <span class="kw">in</span> <span class="ident">value</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
-            <span class="self">self</span>.<span class="ident">ip_addr_serializer</span>.<span class="ident">serialize</span>(<span class="ident">peer</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>peers_count, buffer)<span class="question-mark">?</span>;
+        <span class="kw">for </span>peer <span class="kw">in </span>value.<span class="number">0</span>.iter() {
+            <span class="self">self</span>.ip_addr_serializer.serialize(peer, buffer)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// Deserializer for `BootstrapPeers`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BootstrapPeersDeserializer</span> {
-    <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer</span>,
-    <span class="ident">ip_addr_deserializer</span>: <span class="ident">IpAddrDeserializer</span>,
+<span class="doccomment">/// Deserializer for `BootstrapPeers`
+</span><span class="kw">pub struct </span>BootstrapPeersDeserializer {
+    u32_deserializer: U32VarIntDeserializer,
+    ip_addr_deserializer: IpAddrDeserializer,
 }
 
-<span class="kw">impl</span> <span class="ident">BootstrapPeersDeserializer</span> {
-    <span class="doccomment">/// Creates a new `BootstrapPeersDeserializer`</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Arguments:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// * max_peers: maximum peers that can be serialized</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">max_peers</span>: <span class="ident">u32</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">max_peers</span>)),
-            <span class="ident">ip_addr_deserializer</span>: <span class="ident">IpAddrDeserializer::new</span>(),
+<span class="kw">impl </span>BootstrapPeersDeserializer {
+    <span class="doccomment">/// Creates a new `BootstrapPeersDeserializer`
+    ///
+    /// Arguments:
+    ///
+    /// * max_peers: maximum peers that can be serialized
+    </span><span class="kw">pub fn </span>new(max_peers: u32) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u32_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(max_peers)),
+            ip_addr_deserializer: IpAddrDeserializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">BootstrapPeers</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BootstrapPeersDeserializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use massa_network_exports::{BootstrapPeers, BootstrapPeersSerializer, BootstrapPeersDeserializer};</span>
-    <span class="doccomment">/// use massa_serialization::{Serializer, Deserializer, DeserializeError};</span>
-    <span class="doccomment">/// use std::str::FromStr;</span>
-    <span class="doccomment">/// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let localhost_v4 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));</span>
-    <span class="doccomment">/// let localhost_v6 = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));</span>
-    <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// let peers = BootstrapPeers(vec![localhost_v4, localhost_v6]);</span>
-    <span class="doccomment">/// let peers_serializer = BootstrapPeersSerializer::new();</span>
-    <span class="doccomment">/// let peers_deserializer = BootstrapPeersDeserializer::new(1000);</span>
-    <span class="doccomment">/// peers_serializer.serialize(&amp;peers, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// let (rest, peers_deser) = peers_deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
-    <span class="doccomment">/// assert!(rest.is_empty());</span>
-    <span class="doccomment">/// assert_eq!(peers, peers_deser);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">impl </span>Deserializer&lt;BootstrapPeers&gt; <span class="kw">for </span>BootstrapPeersDeserializer {
+    <span class="doccomment">/// ```
+    /// use massa_network_exports::{BootstrapPeers, BootstrapPeersSerializer, BootstrapPeersDeserializer};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// let localhost_v4 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+    /// let localhost_v6 = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+    /// let mut serialized = Vec::new();
+    /// let peers = BootstrapPeers(vec![localhost_v4, localhost_v6]);
+    /// let peers_serializer = BootstrapPeersSerializer::new();
+    /// let peers_deserializer = BootstrapPeersDeserializer::new(1000);
+    /// peers_serializer.serialize(&amp;peers, &amp;mut serialized).unwrap();
+    /// let (rest, peers_deser) = peers_deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(peers, peers_deser);
+    /// ```
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">BootstrapPeers</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">length_count</span>(
-            <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">u32_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
-            <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">ip_addr_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BootstrapPeers, E&gt; {
+        length_count(
+            |input| <span class="self">self</span>.u32_deserializer.deserialize(input),
+            |input| <span class="self">self</span>.ip_addr_deserializer.deserialize(input),
         )
-        .<span class="ident">map</span>(<span class="ident">BootstrapPeers</span>)
-        .<span class="ident">parse</span>(<span class="ident">buffer</span>)
+        .map(BootstrapPeers)
+        .parse(buffer)
     }
 }
 
-<span class="doccomment">/// Peer categories.</span>
-<span class="doccomment">/// There is a defined number of slots for each category.</span>
-<span class="doccomment">/// Order matters: less prioritized peer type first</span>
-<span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Hash</span>, <span class="ident">Display</span>, <span class="ident">Enum</span>,
-)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PeerType</span> {
-    <span class="doccomment">/// Just a peer</span>
-    <span class="ident">Standard</span>,
-    <span class="doccomment">/// Connection from these nodes are always accepted</span>
-    <span class="ident">WhiteListed</span>,
+<span class="doccomment">/// Peer categories.
+/// There is a defined number of slots for each category.
+/// Order matters: less prioritized peer type first
+</span><span class="attribute">#[derive(
+    Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Display, Enum,
+)]
+</span><span class="kw">pub enum </span>PeerType {
+    <span class="doccomment">/// Just a peer
+    </span>Standard,
+    <span class="doccomment">/// Connection from these nodes are always accepted
+    </span>WhiteListed,
     <span class="doccomment">/** if the peer is in bootstrap servers list
     for now it is decoupled from the real bootstrap sever list, it&#39;s just parsed
     TODO: `https://github.com/massalabs/massa/issues/2320`
-    */</span>
-    <span class="ident">Bootstrap</span>,
+    */
+    </span>Bootstrap,
 }
 
-<span class="kw">mod</span> <span class="ident">test</span> {
+<span class="kw">mod </span>test {
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_order</span>() {
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::peers::PeerType</span>;
-        <span class="macro">assert!</span>(<span class="ident">PeerType::Bootstrap</span> <span class="op">&gt;</span> <span class="ident">PeerType::WhiteListed</span>);
-        <span class="macro">assert!</span>(<span class="ident">PeerType::WhiteListed</span> <span class="op">&gt;</span> <span class="ident">PeerType::Standard</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_order() {
+        <span class="kw">use </span><span class="kw">crate</span>::peers::PeerType;
+        <span class="macro">assert!</span>(PeerType::Bootstrap &gt; PeerType::WhiteListed);
+        <span class="macro">assert!</span>(PeerType::WhiteListed &gt; PeerType::Standard);
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">PeerType</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">PeerType::Standard</span>
+<span class="kw">impl </span>Default <span class="kw">for </span>PeerType {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        PeerType::Standard
     }
 }
 
-<span class="doccomment">/// All information concerning a peer is here</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PeerInfo</span> {
-    <span class="doccomment">/// Peer ip address.</span>
-    <span class="kw">pub</span> <span class="ident">ip</span>: <span class="ident">IpAddr</span>,
-    <span class="doccomment">/// The category the peer is in affects how it&#39;s treated.</span>
-    <span class="kw">pub</span> <span class="ident">peer_type</span>: <span class="ident">PeerType</span>,
-    <span class="doccomment">/// Time in milliseconds when peer was last alive</span>
-    <span class="kw">pub</span> <span class="ident">last_alive</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Time in milliseconds of peer&#39;s last failure</span>
-    <span class="kw">pub</span> <span class="ident">last_failure</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Whether peer was promoted through another peer</span>
-    <span class="kw">pub</span> <span class="ident">advertised</span>: <span class="ident">bool</span>,
-    <span class="doccomment">/// peer was banned</span>
-    <span class="kw">pub</span> <span class="ident">banned</span>: <span class="ident">bool</span>,
-    <span class="doccomment">/// Current number of active out connection attempts with that peer.</span>
-    <span class="doccomment">/// Isn&#39;t dump into peer file.</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;usize::default&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">active_out_connection_attempts</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Current number of active out connections with that peer.</span>
-    <span class="doccomment">/// Isn&#39;t dump into peer file.</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;usize::default&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">active_out_connections</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Current number of active in connections with that peer.</span>
-    <span class="doccomment">/// Isn&#39;t dump into peer file.</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;usize::default&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">active_in_connections</span>: <span class="ident">usize</span>,
+<span class="doccomment">/// All information concerning a peer is here
+</span><span class="attribute">#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>PeerInfo {
+    <span class="doccomment">/// Peer ip address.
+    </span><span class="kw">pub </span>ip: IpAddr,
+    <span class="doccomment">/// The category the peer is in affects how it&#39;s treated.
+    </span><span class="kw">pub </span>peer_type: PeerType,
+    <span class="doccomment">/// Time in milliseconds when peer was last alive
+    </span><span class="kw">pub </span>last_alive: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
+    <span class="doccomment">/// Time in milliseconds of peer&#39;s last failure
+    </span><span class="kw">pub </span>last_failure: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
+    <span class="doccomment">/// Whether peer was promoted through another peer
+    </span><span class="kw">pub </span>advertised: bool,
+    <span class="doccomment">/// peer was banned
+    </span><span class="kw">pub </span>banned: bool,
+    <span class="doccomment">/// Current number of active out connection attempts with that peer.
+    /// Isn&#39;t dump into peer file.
+    </span><span class="attribute">#[serde(default = <span class="string">&quot;usize::default&quot;</span>)]
+    </span><span class="kw">pub </span>active_out_connection_attempts: usize,
+    <span class="doccomment">/// Current number of active out connections with that peer.
+    /// Isn&#39;t dump into peer file.
+    </span><span class="attribute">#[serde(default = <span class="string">&quot;usize::default&quot;</span>)]
+    </span><span class="kw">pub </span>active_out_connections: usize,
+    <span class="doccomment">/// Current number of active in connections with that peer.
+    /// Isn&#39;t dump into peer file.
+    </span><span class="attribute">#[serde(default = <span class="string">&quot;usize::default&quot;</span>)]
+    </span><span class="kw">pub </span>active_in_connections: usize,
 }
 
-<span class="kw">impl</span> <span class="ident">PeerInfo</span> {
-    <span class="doccomment">/// Cleans up the `PeerInfo` by normalizing the IP address</span>
-    <span class="doccomment">/// and resetting active connection counts.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cleanup</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="comment">// canonicalize IP</span>
-        <span class="self">self</span>.<span class="ident">ip</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ip</span>.<span class="ident">to_canonical</span>();
-        <span class="comment">// ensure that connections are set to zero</span>
-        <span class="self">self</span>.<span class="ident">active_out_connection_attempts</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="self">self</span>.<span class="ident">active_out_connections</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="self">self</span>.<span class="ident">active_in_connections</span> <span class="op">=</span> <span class="number">0</span>;
+<span class="kw">impl </span>PeerInfo {
+    <span class="doccomment">/// Cleans up the `PeerInfo` by normalizing the IP address
+    /// and resetting active connection counts.
+    </span><span class="kw">pub fn </span>cleanup(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="comment">// canonicalize IP
+        </span><span class="self">self</span>.ip = <span class="self">self</span>.ip.to_canonical();
+        <span class="comment">// ensure that connections are set to zero
+        </span><span class="self">self</span>.active_out_connection_attempts = <span class="number">0</span>;
+        <span class="self">self</span>.active_out_connections = <span class="number">0</span>;
+        <span class="self">self</span>.active_in_connections = <span class="number">0</span>;
     }
 
-    <span class="doccomment">/// Returns true if there is at least one connection attempt /</span>
-    <span class="doccomment">/// one active connection in either direction</span>
-    <span class="doccomment">/// with this peer</span>
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_active</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">active_out_connection_attempts</span> <span class="op">&gt;</span> <span class="number">0</span>
-            <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">active_out_connections</span> <span class="op">&gt;</span> <span class="number">0</span>
-            <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">active_in_connections</span> <span class="op">&gt;</span> <span class="number">0</span>
-    }
+    <span class="doccomment">/// Returns true if there is at least one connection attempt /
+    /// one active connection in either direction
+    /// with this peer
+    </span><span class="attribute">#[inline]
+    </span><span class="kw">pub fn </span>is_active(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.active_out_connection_attempts &gt; <span class="number">0
+            </span>|| <span class="self">self</span>.active_out_connections &gt; <span class="number">0
+            </span>|| <span class="self">self</span>.active_in_connections &gt; <span class="number">0
+    </span>}
 
-    <span class="doccomment">/// New standard `PeerInfo` for `IpAddr`</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `ip`: the IP address of the peer</span>
-    <span class="doccomment">/// * `advertised`: true if this peer was advertised as routable,</span>
-    <span class="doccomment">/// which means that our node can attempt outgoing connections to it</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ip</span>: <span class="ident">IpAddr</span>, <span class="ident">advertised</span>: <span class="ident">bool</span>) -&gt; <span class="ident">PeerInfo</span> {
-        <span class="ident">PeerInfo</span> {
-            <span class="ident">ip</span>,
-            <span class="ident">last_alive</span>: <span class="prelude-val">None</span>,
-            <span class="ident">last_failure</span>: <span class="prelude-val">None</span>,
-            <span class="ident">advertised</span>,
-            <span class="ident">active_out_connection_attempts</span>: <span class="number">0</span>,
-            <span class="ident">active_out_connections</span>: <span class="number">0</span>,
-            <span class="ident">active_in_connections</span>: <span class="number">0</span>,
-            <span class="ident">peer_type</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">banned</span>: <span class="bool-val">false</span>,
+    <span class="doccomment">/// New standard `PeerInfo` for `IpAddr`
+    ///
+    /// # Arguments
+    /// * `ip`: the IP address of the peer
+    /// * `advertised`: true if this peer was advertised as routable,
+    /// which means that our node can attempt outgoing connections to it
+    </span><span class="kw">pub fn </span>new(ip: IpAddr, advertised: bool) -&gt; PeerInfo {
+        PeerInfo {
+            ip,
+            last_alive: <span class="prelude-val">None</span>,
+            last_failure: <span class="prelude-val">None</span>,
+            advertised,
+            active_out_connection_attempts: <span class="number">0</span>,
+            active_out_connections: <span class="number">0</span>,
+            active_in_connections: <span class="number">0</span>,
+            peer_type: Default::default(),
+            banned: <span class="bool-val">false</span>,
         }
     }
 
-    <span class="doccomment">/// peer is ready to be retried, enough time has elapsed since last failure</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_peer_ready</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">wakeup_interval</span>: <span class="ident">MassaTime</span>, <span class="ident">now</span>: <span class="ident">MassaTime</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">last_failure</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">last_failure</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">last_alive</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">last_alive</span> {
-                <span class="kw">if</span> <span class="ident">last_alive</span> <span class="op">&gt;</span> <span class="ident">last_failure</span> {
-                    <span class="kw">return</span> <span class="bool-val">true</span>;
+    <span class="doccomment">/// peer is ready to be retried, enough time has elapsed since last failure
+    </span><span class="kw">pub fn </span>is_peer_ready(<span class="kw-2">&amp;</span><span class="self">self</span>, wakeup_interval: MassaTime, now: MassaTime) -&gt; bool {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(last_failure) = <span class="self">self</span>.last_failure {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(last_alive) = <span class="self">self</span>.last_alive {
+                <span class="kw">if </span>last_alive &gt; last_failure {
+                    <span class="kw">return </span><span class="bool-val">true</span>;
                 }
             }
-            <span class="kw">return</span> <span class="ident">now</span>
-                .<span class="ident">saturating_sub</span>(<span class="ident">last_failure</span>)
-                .<span class="ident">saturating_sub</span>(<span class="ident">wakeup_interval</span>)
-                <span class="op">&gt;</span> <span class="ident">MassaTime::from</span>(<span class="number">0u64</span>);
+            <span class="kw">return </span>now
+                .saturating_sub(last_failure)
+                .saturating_sub(wakeup_interval)
+                &gt; MassaTime::from(<span class="number">0u64</span>);
         }
-        <span class="bool-val">true</span>
-    }
+        <span class="bool-val">true
+    </span>}
 }
 
-<span class="doccomment">/// Connection count for a category</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConnectionCount</span> {
-    <span class="doccomment">/// Number of outgoing connections our node is currently trying to establish.</span>
-    <span class="doccomment">/// We might be in the process of establishing a TCP connection or handshaking with the peer.</span>
-    <span class="kw">pub</span> <span class="ident">active_out_connection_attempts</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Number of currently live (TCP connection active, handshake successful) outgoing connections</span>
-    <span class="kw">pub</span> <span class="ident">active_out_connections</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Number of currently live (TCP connection active, handshake successful) incoming connections</span>
-    <span class="kw">pub</span> <span class="ident">active_in_connections</span>: <span class="ident">usize</span>,
+<span class="doccomment">/// Connection count for a category
+</span><span class="attribute">#[derive(Default, Debug)]
+</span><span class="kw">pub struct </span>ConnectionCount {
+    <span class="doccomment">/// Number of outgoing connections our node is currently trying to establish.
+    /// We might be in the process of establishing a TCP connection or handshaking with the peer.
+    </span><span class="kw">pub </span>active_out_connection_attempts: usize,
+    <span class="doccomment">/// Number of currently live (TCP connection active, handshake successful) outgoing connections
+    </span><span class="kw">pub </span>active_out_connections: usize,
+    <span class="doccomment">/// Number of currently live (TCP connection active, handshake successful) incoming connections
+    </span><span class="kw">pub </span>active_in_connections: usize,
 }
 
-<span class="kw">impl</span> <span class="ident">ConnectionCount</span> {
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="doccomment">/// Gets available out connection attempts for given connection count and settings</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_available_out_connection_attempts</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="ident">PeerTypeConnectionConfig</span>) -&gt; <span class="ident">usize</span> {
-        <span class="ident">std::cmp::min</span>(
-            <span class="ident">cfg</span>.<span class="ident">target_out_connections</span>
-                .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">active_out_connection_attempts</span>)
-                .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">active_out_connections</span>),
-            <span class="ident">cfg</span>.<span class="ident">max_out_attempts</span>
-                .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">active_out_connection_attempts</span>),
+<span class="kw">impl </span>ConnectionCount {
+    <span class="attribute">#[inline]
+    </span><span class="doccomment">/// Gets available out connection attempts for given connection count and settings
+    </span><span class="kw">pub fn </span>get_available_out_connection_attempts(<span class="kw-2">&amp;</span><span class="self">self</span>, cfg: <span class="kw-2">&amp;</span>PeerTypeConnectionConfig) -&gt; usize {
+        std::cmp::min(
+            cfg.target_out_connections
+                .saturating_sub(<span class="self">self</span>.active_out_connection_attempts)
+                .saturating_sub(<span class="self">self</span>.active_out_connections),
+            cfg.max_out_attempts
+                .saturating_sub(<span class="self">self</span>.active_out_connection_attempts),
         )
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

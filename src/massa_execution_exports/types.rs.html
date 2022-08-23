@@ -88,95 +88,95 @@
 <span id="88">88</span>
 <span id="89">89</span>
 <span id="90">90</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! This file exports useful types used to interact with the execution worker</span>
+</span><span class="doccomment">//! This file exports useful types used to interact with the execution worker
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event_store::EventStore</span>;
-<span class="kw">use</span> <span class="ident">massa_final_state::StateChanges</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">BlockId</span>, <span class="ident">Slot</span>};
+</span><span class="kw">use </span><span class="kw">crate</span>::event_store::EventStore;
+<span class="kw">use </span>massa_final_state::StateChanges;
+<span class="kw">use </span>massa_models::{Address, Amount, BlockId, Slot};
 
-<span class="doccomment">/// structure describing the output of a single execution</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExecutionOutput</span> {
-    <span class="doccomment">/// slot</span>
-    <span class="kw">pub</span> <span class="ident">slot</span>: <span class="ident">Slot</span>,
-    <span class="doccomment">/// optional block ID at that slot (None if miss)</span>
-    <span class="kw">pub</span> <span class="ident">block_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// state changes caused by the execution step</span>
-    <span class="kw">pub</span> <span class="ident">state_changes</span>: <span class="ident">StateChanges</span>,
-    <span class="doccomment">/// events emitted by the execution step</span>
-    <span class="kw">pub</span> <span class="ident">events</span>: <span class="ident">EventStore</span>,
+<span class="doccomment">/// structure describing the output of a single execution
+</span><span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>ExecutionOutput {
+    <span class="doccomment">/// slot
+    </span><span class="kw">pub </span>slot: Slot,
+    <span class="doccomment">/// optional block ID at that slot (None if miss)
+    </span><span class="kw">pub </span>block_id: <span class="prelude-ty">Option</span>&lt;BlockId&gt;,
+    <span class="doccomment">/// state changes caused by the execution step
+    </span><span class="kw">pub </span>state_changes: StateChanges,
+    <span class="doccomment">/// events emitted by the execution step
+    </span><span class="kw">pub </span>events: EventStore,
 }
 
-<span class="doccomment">/// structure describing different types of read-only execution request</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReadOnlyExecutionRequest</span> {
-    <span class="doccomment">/// Maximum gas to spend in the execution.</span>
-    <span class="kw">pub</span> <span class="ident">max_gas</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// The simulated price of gas for the read-only execution.</span>
-    <span class="kw">pub</span> <span class="ident">simulated_gas_price</span>: <span class="ident">Amount</span>,
-    <span class="doccomment">/// Call stack to simulate, older caller first</span>
-    <span class="kw">pub</span> <span class="ident">call_stack</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExecutionStackElement</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Target of the request</span>
-    <span class="kw">pub</span> <span class="ident">target</span>: <span class="ident">ReadOnlyExecutionTarget</span>,
+<span class="doccomment">/// structure describing different types of read-only execution request
+</span><span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>ReadOnlyExecutionRequest {
+    <span class="doccomment">/// Maximum gas to spend in the execution.
+    </span><span class="kw">pub </span>max_gas: u64,
+    <span class="doccomment">/// The simulated price of gas for the read-only execution.
+    </span><span class="kw">pub </span>simulated_gas_price: Amount,
+    <span class="doccomment">/// Call stack to simulate, older caller first
+    </span><span class="kw">pub </span>call_stack: Vec&lt;ExecutionStackElement&gt;,
+    <span class="doccomment">/// Target of the request
+    </span><span class="kw">pub </span>target: ReadOnlyExecutionTarget,
 }
 
-<span class="doccomment">/// structure describing different possible targets of a read-only execution request</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ReadOnlyExecutionTarget</span> {
-    <span class="doccomment">/// Execute the main function of a bytecode</span>
-    <span class="ident">BytecodeExecution</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
+<span class="doccomment">/// structure describing different possible targets of a read-only execution request
+</span><span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub enum </span>ReadOnlyExecutionTarget {
+    <span class="doccomment">/// Execute the main function of a bytecode
+    </span>BytecodeExecution(Vec&lt;u8&gt;),
 
-    <span class="doccomment">/// Execute a function call</span>
-    <span class="ident">FunctionCall</span> {
-        <span class="doccomment">/// Target address</span>
-        <span class="ident">target_addr</span>: <span class="ident">Address</span>,
-        <span class="doccomment">/// Target function</span>
-        <span class="ident">target_func</span>: <span class="ident">String</span>,
-        <span class="doccomment">/// Parameter to pass to the target function</span>
-        <span class="ident">parameter</span>: <span class="ident">String</span>,
+    <span class="doccomment">/// Execute a function call
+    </span>FunctionCall {
+        <span class="doccomment">/// Target address
+        </span>target_addr: Address,
+        <span class="doccomment">/// Target function
+        </span>target_func: String,
+        <span class="doccomment">/// Parameter to pass to the target function
+        </span>parameter: String,
     },
 }
 
-<span class="doccomment">/// structure describing a read-only call</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReadOnlyCallRequest</span> {
-    <span class="doccomment">/// Maximum gas to spend in the execution.</span>
-    <span class="kw">pub</span> <span class="ident">max_gas</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// The simulated price of gas for the read-only execution.</span>
-    <span class="kw">pub</span> <span class="ident">simulated_gas_price</span>: <span class="ident">Amount</span>,
-    <span class="doccomment">/// Call stack to simulate, older caller first. Target should be last.</span>
-    <span class="kw">pub</span> <span class="ident">call_stack</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExecutionStackElement</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Target address</span>
-    <span class="kw">pub</span> <span class="ident">target_addr</span>: <span class="ident">Address</span>,
-    <span class="doccomment">/// Target function</span>
-    <span class="kw">pub</span> <span class="ident">target_func</span>: <span class="ident">String</span>,
-    <span class="doccomment">/// Parameter to pass to the target function</span>
-    <span class="kw">pub</span> <span class="ident">parameter</span>: <span class="ident">String</span>,
+<span class="doccomment">/// structure describing a read-only call
+</span><span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>ReadOnlyCallRequest {
+    <span class="doccomment">/// Maximum gas to spend in the execution.
+    </span><span class="kw">pub </span>max_gas: u64,
+    <span class="doccomment">/// The simulated price of gas for the read-only execution.
+    </span><span class="kw">pub </span>simulated_gas_price: Amount,
+    <span class="doccomment">/// Call stack to simulate, older caller first. Target should be last.
+    </span><span class="kw">pub </span>call_stack: Vec&lt;ExecutionStackElement&gt;,
+    <span class="doccomment">/// Target address
+    </span><span class="kw">pub </span>target_addr: Address,
+    <span class="doccomment">/// Target function
+    </span><span class="kw">pub </span>target_func: String,
+    <span class="doccomment">/// Parameter to pass to the target function
+    </span><span class="kw">pub </span>parameter: String,
 }
 
-<span class="doccomment">/// Structure describing an element of the execution stack.</span>
-<span class="doccomment">/// Every time a function is called from bytecode,</span>
-<span class="doccomment">/// a new `ExecutionStackElement` is pushed at the top of the execution stack</span>
-<span class="doccomment">/// to represent the local execution context of the called function,</span>
-<span class="doccomment">/// instead of the caller&#39;s which should lie just below in the stack.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExecutionStackElement</span> {
-    <span class="doccomment">/// Called address</span>
-    <span class="kw">pub</span> <span class="ident">address</span>: <span class="ident">Address</span>,
-    <span class="doccomment">/// Coins transferred to the target address during the call</span>
-    <span class="kw">pub</span> <span class="ident">coins</span>: <span class="ident">Amount</span>,
-    <span class="doccomment">/// List of addresses owned by the current call, and on which the current call has write access.</span>
-    <span class="doccomment">/// This list should contain `ExecutionStackElement::address` in the sense that an address should have write access to itself.</span>
-    <span class="doccomment">/// This list should also contain all addresses created previously during the call</span>
-    <span class="doccomment">/// to allow write access on newly created addresses in order to set them up,</span>
-    <span class="doccomment">/// but only within the scope of the current stack element.</span>
-    <span class="doccomment">/// That way, only the current scope and neither its caller not the functions it calls gain this write access,</span>
-    <span class="doccomment">/// which is important for security.  </span>
-    <span class="doccomment">/// Note that we use a vector instead of a pre-hashed set to ensure order determinism,</span>
-    <span class="doccomment">/// the performance hit of linear search remains minimal because `owned_addresses` will always contain very few elements.</span>
-    <span class="kw">pub</span> <span class="ident">owned_addresses</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Structure describing an element of the execution stack.
+/// Every time a function is called from bytecode,
+/// a new `ExecutionStackElement` is pushed at the top of the execution stack
+/// to represent the local execution context of the called function,
+/// instead of the caller&#39;s which should lie just below in the stack.
+</span><span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>ExecutionStackElement {
+    <span class="doccomment">/// Called address
+    </span><span class="kw">pub </span>address: Address,
+    <span class="doccomment">/// Coins transferred to the target address during the call
+    </span><span class="kw">pub </span>coins: Amount,
+    <span class="doccomment">/// List of addresses owned by the current call, and on which the current call has write access.
+    /// This list should contain `ExecutionStackElement::address` in the sense that an address should have write access to itself.
+    /// This list should also contain all addresses created previously during the call
+    /// to allow write access on newly created addresses in order to set them up,
+    /// but only within the scope of the current stack element.
+    /// That way, only the current scope and neither its caller not the functions it calls gain this write access,
+    /// which is important for security.  
+    /// Note that we use a vector instead of a pre-hashed set to ensure order determinism,
+    /// the performance hit of linear search remains minimal because `owned_addresses` will always contain very few elements.
+    </span><span class="kw">pub </span>owned_addresses: Vec&lt;Address&gt;,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

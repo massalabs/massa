@@ -73,80 +73,80 @@
 <span id="73">73</span>
 <span id="74">74</span>
 <span id="75">75</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-<span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
-<span class="kw">use</span> <span class="ident">massa_execution_exports::ExecutionError</span>;
-<span class="kw">use</span> <span class="ident">massa_models::ModelsError</span>;
-<span class="kw">use</span> <span class="ident">massa_proof_of_stake_exports::error::ProofOfStakeError</span>;
-<span class="kw">use</span> <span class="ident">std::array::TryFromSliceError</span>;
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</span><span class="kw">use </span>displaydoc::Display;
+<span class="kw">use </span>massa_execution_exports::ExecutionError;
+<span class="kw">use </span>massa_models::ModelsError;
+<span class="kw">use </span>massa_proof_of_stake_exports::error::ProofOfStakeError;
+<span class="kw">use </span>std::array::TryFromSliceError;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="doccomment">/// Result used in the graph</span>
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">GraphResult</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">E</span> <span class="op">=</span> <span class="ident">GraphError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">core::result::Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">E</span><span class="op">&gt;</span>;
+<span class="doccomment">/// Result used in the graph
+</span><span class="kw">pub type </span>GraphResult&lt;T, E = GraphError&gt; = core::result::Result&lt;T, E&gt;;
 
-<span class="doccomment">/// Result used in the ledger</span>
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">LedgerResult</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">E</span> <span class="op">=</span> <span class="ident">LedgerError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">core::result::Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">E</span><span class="op">&gt;</span>;
+<span class="doccomment">/// Result used in the ledger
+</span><span class="kw">pub type </span>LedgerResult&lt;T, E = LedgerError&gt; = core::result::Result&lt;T, E&gt;;
 
-<span class="doccomment">/// Graph error</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Display</span>, <span class="ident">Error</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GraphError</span> {
-    <span class="doccomment">/// execution error: {0}</span>
-    <span class="ident">ExecutionError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ExecutionError</span>),
-    <span class="doccomment">/// models error: {0}</span>
-    <span class="ident">ModelsError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ModelsError</span>),
-    <span class="doccomment">/// Could not create genesis block {0}</span>
-    <span class="ident">GenesisCreationError</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// missing block {0}</span>
-    <span class="ident">MissingBlock</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// there was an inconsistency between containers {0}</span>
-    <span class="ident">ContainerInconsistency</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// fitness overflow</span>
-    <span class="ident">FitnessOverflow</span>,
-    <span class="doccomment">/// invalid ledger change: {0}</span>
-    <span class="ident">InvalidLedgerChange</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// io error {0}</span>
-    <span class="ident">IOError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">std::io::Error</span>),
-    <span class="doccomment">/// serde error</span>
-    <span class="ident">SerdeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">serde_json::Error</span>),
-    <span class="doccomment">/// Proof of Stake error {0}</span>
-    <span class="ident">ProofOfStakeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ProofOfStakeError</span>),
-    <span class="doccomment">/// Proof of stake cycle unavailable {0}</span>
-    <span class="ident">PosCycleUnavailable</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// Ledger error {0}</span>
-    <span class="ident">LedgerError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LedgerError</span>),
-    <span class="doccomment">/// transaction error {0}</span>
-    <span class="ident">TransactionError</span>(<span class="ident">String</span>),
+<span class="doccomment">/// Graph error
+</span><span class="attribute">#[non_exhaustive]
+#[derive(Display, Error, Debug)]
+</span><span class="kw">pub enum </span>GraphError {
+    <span class="doccomment">/// execution error: {0}
+    </span>ExecutionError(<span class="attribute">#[from] </span>ExecutionError),
+    <span class="doccomment">/// models error: {0}
+    </span>ModelsError(<span class="attribute">#[from] </span>ModelsError),
+    <span class="doccomment">/// Could not create genesis block {0}
+    </span>GenesisCreationError(String),
+    <span class="doccomment">/// missing block {0}
+    </span>MissingBlock(String),
+    <span class="doccomment">/// there was an inconsistency between containers {0}
+    </span>ContainerInconsistency(String),
+    <span class="doccomment">/// fitness overflow
+    </span>FitnessOverflow,
+    <span class="doccomment">/// invalid ledger change: {0}
+    </span>InvalidLedgerChange(String),
+    <span class="doccomment">/// io error {0}
+    </span>IOError(<span class="attribute">#[from] </span>std::io::Error),
+    <span class="doccomment">/// serde error
+    </span>SerdeError(<span class="attribute">#[from] </span>serde_json::Error),
+    <span class="doccomment">/// Proof of Stake error {0}
+    </span>ProofOfStakeError(<span class="attribute">#[from] </span>ProofOfStakeError),
+    <span class="doccomment">/// Proof of stake cycle unavailable {0}
+    </span>PosCycleUnavailable(String),
+    <span class="doccomment">/// Ledger error {0}
+    </span>LedgerError(<span class="attribute">#[from] </span>LedgerError),
+    <span class="doccomment">/// transaction error {0}
+    </span>TransactionError(String),
 }
 
-<span class="doccomment">/// Internal error</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Display</span>, <span class="ident">Error</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">InternalError</span> {
-    <span class="doccomment">/// transaction error {0}</span>
-    <span class="ident">TransactionError</span>(<span class="ident">String</span>),
+<span class="doccomment">/// Internal error
+</span><span class="attribute">#[non_exhaustive]
+#[derive(Display, Error, Debug)]
+</span><span class="kw">pub enum </span>InternalError {
+    <span class="doccomment">/// transaction error {0}
+    </span>TransactionError(String),
 }
 
-<span class="doccomment">/// Ledger error</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Display</span>, <span class="ident">Error</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">LedgerError</span> {
-    <span class="doccomment">/// amount overflow</span>
-    <span class="ident">AmountOverflowError</span>,
-    <span class="doccomment">/// ledger inconsistency error {0}</span>
-    <span class="ident">LedgerInconsistency</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// sled error: {0}</span>
-    <span class="ident">SledError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">sled::Error</span>),
-    <span class="doccomment">/// sled error {0}</span>
-    <span class="ident">SledTransactionError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">sled::transaction::TransactionError</span><span class="op">&lt;</span><span class="ident">InternalError</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// models error: {0}</span>
-    <span class="ident">ModelsError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ModelsError</span>),
-    <span class="doccomment">/// try from slice error {0}</span>
-    <span class="ident">TryFromSliceError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TryFromSliceError</span>),
-    <span class="doccomment">/// io error {0}</span>
-    <span class="ident">IOError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">std::io::Error</span>),
-    <span class="doccomment">/// serde error</span>
-    <span class="ident">SerdeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">serde_json::Error</span>),
+<span class="doccomment">/// Ledger error
+</span><span class="attribute">#[non_exhaustive]
+#[derive(Display, Error, Debug)]
+</span><span class="kw">pub enum </span>LedgerError {
+    <span class="doccomment">/// amount overflow
+    </span>AmountOverflowError,
+    <span class="doccomment">/// ledger inconsistency error {0}
+    </span>LedgerInconsistency(String),
+    <span class="doccomment">/// sled error: {0}
+    </span>SledError(<span class="attribute">#[from] </span>sled::Error),
+    <span class="doccomment">/// sled error {0}
+    </span>SledTransactionError(<span class="attribute">#[from] </span>sled::transaction::TransactionError&lt;InternalError&gt;),
+    <span class="doccomment">/// models error: {0}
+    </span>ModelsError(<span class="attribute">#[from] </span>ModelsError),
+    <span class="doccomment">/// try from slice error {0}
+    </span>TryFromSliceError(<span class="attribute">#[from] </span>TryFromSliceError),
+    <span class="doccomment">/// io error {0}
+    </span>IOError(<span class="attribute">#[from] </span>std::io::Error),
+    <span class="doccomment">/// serde error
+    </span>SerdeError(<span class="attribute">#[from] </span>serde_json::Error),
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

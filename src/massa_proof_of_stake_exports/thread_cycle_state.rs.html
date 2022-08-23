@@ -259,266 +259,266 @@
 <span id="259">259</span>
 <span id="260">260</span>
 <span id="261">261</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">bitvec::prelude::BitVec</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">constants</span>::{<span class="ident">MAX_BOOTSTRAP_POS_ENTRIES</span>, <span class="ident">THREAD_COUNT</span>},
-    <span class="ident">prehash::Map</span>,
-    <span class="ident">rolls</span>::{<span class="ident">RollCounts</span>, <span class="ident">RollUpdateDeserializer</span>, <span class="ident">RollUpdateSerializer</span>, <span class="ident">RollUpdates</span>},
-    <span class="ident">Address</span>, <span class="ident">AddressDeserializer</span>, <span class="ident">Slot</span>, <span class="ident">SlotDeserializer</span>, <span class="ident">SlotSerializer</span>,
+</pre><pre class="rust"><code><span class="kw">use </span>bitvec::prelude::BitVec;
+<span class="kw">use </span>massa_models::{
+    constants::{MAX_BOOTSTRAP_POS_ENTRIES, THREAD_COUNT},
+    prehash::Map,
+    rolls::{RollCounts, RollUpdateDeserializer, RollUpdateSerializer, RollUpdates},
+    Address, AddressDeserializer, Slot, SlotDeserializer, SlotSerializer,
 };
-<span class="kw">use</span> <span class="ident">massa_serialization</span>::{
-    <span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>, <span class="ident">U32VarIntDeserializer</span>, <span class="ident">U32VarIntSerializer</span>,
-    <span class="ident">U64VarIntDeserializer</span>, <span class="ident">U64VarIntSerializer</span>,
+<span class="kw">use </span>massa_serialization::{
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+    U64VarIntDeserializer, U64VarIntSerializer,
 };
-<span class="kw">use</span> <span class="ident">nom</span>::{
-    <span class="ident">error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ErrorKind</span>, <span class="ident">ParseError</span>},
-    <span class="ident">multi::length_count</span>,
-    <span class="ident">sequence::tuple</span>,
-    <span class="ident">IResult</span>, <span class="ident">Parser</span>,
+<span class="kw">use </span>nom::{
+    error::{context, ContextError, ErrorKind, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult, Parser,
 };
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::ops::Bound::Included</span>;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::ops::Bound::Included;
 
-<span class="doccomment">/// Rolls state for a cycle in a thread</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ThreadCycleState</span> {
-    <span class="doccomment">/// Cycle number</span>
-    <span class="kw">pub</span> <span class="ident">cycle</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// Last final slot (can be a miss)</span>
-    <span class="kw">pub</span> <span class="ident">last_final_slot</span>: <span class="ident">Slot</span>,
-    <span class="doccomment">/// Number of rolls an address has</span>
-    <span class="kw">pub</span> <span class="ident">roll_count</span>: <span class="ident">RollCounts</span>,
-    <span class="doccomment">/// Cycle roll updates</span>
-    <span class="kw">pub</span> <span class="ident">cycle_updates</span>: <span class="ident">RollUpdates</span>,
-    <span class="doccomment">/// Used to seed the random selector at each cycle</span>
-    <span class="kw">pub</span> <span class="ident">rng_seed</span>: <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Per-address production statistics `(ok_count, nok_count)`</span>
-    <span class="kw">pub</span> <span class="ident">production_stats</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, (<span class="ident">u64</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
+<span class="doccomment">/// Rolls state for a cycle in a thread
+</span><span class="attribute">#[derive(Clone, Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>ThreadCycleState {
+    <span class="doccomment">/// Cycle number
+    </span><span class="kw">pub </span>cycle: u64,
+    <span class="doccomment">/// Last final slot (can be a miss)
+    </span><span class="kw">pub </span>last_final_slot: Slot,
+    <span class="doccomment">/// Number of rolls an address has
+    </span><span class="kw">pub </span>roll_count: RollCounts,
+    <span class="doccomment">/// Cycle roll updates
+    </span><span class="kw">pub </span>cycle_updates: RollUpdates,
+    <span class="doccomment">/// Used to seed the random selector at each cycle
+    </span><span class="kw">pub </span>rng_seed: BitVec&lt;u8&gt;,
+    <span class="doccomment">/// Per-address production statistics `(ok_count, nok_count)`
+    </span><span class="kw">pub </span>production_stats: Map&lt;Address, (u64, u64)&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ThreadCycleState</span> {
-    <span class="doccomment">/// returns true if all slots of this cycle for this thread are final</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_complete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">periods_per_cycle</span>: <span class="ident">u64</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">last_final_slot</span>.<span class="ident">period</span> <span class="op">==</span> (<span class="self">self</span>.<span class="ident">cycle</span> <span class="op">+</span> <span class="number">1</span>) <span class="op">*</span> <span class="ident">periods_per_cycle</span> <span class="op">-</span> <span class="number">1</span>
-    }
+<span class="kw">impl </span>ThreadCycleState {
+    <span class="doccomment">/// returns true if all slots of this cycle for this thread are final
+    </span><span class="kw">pub fn </span>is_complete(<span class="kw-2">&amp;</span><span class="self">self</span>, periods_per_cycle: u64) -&gt; bool {
+        <span class="self">self</span>.last_final_slot.period == (<span class="self">self</span>.cycle + <span class="number">1</span>) * periods_per_cycle - <span class="number">1
+    </span>}
 }
 
-<span class="doccomment">/// Serializer for `ThreadCycleState`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ThreadCycleStateSerializer</span> {
-    <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer</span>,
-    <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer</span>,
-    <span class="ident">slot_serializer</span>: <span class="ident">SlotSerializer</span>,
-    <span class="ident">roll_update_serializer</span>: <span class="ident">RollUpdateSerializer</span>,
+<span class="doccomment">/// Serializer for `ThreadCycleState`
+</span><span class="kw">pub struct </span>ThreadCycleStateSerializer {
+    u32_serializer: U32VarIntSerializer,
+    u64_serializer: U64VarIntSerializer,
+    slot_serializer: SlotSerializer,
+    roll_update_serializer: RollUpdateSerializer,
 }
 
-<span class="kw">impl</span> <span class="ident">ThreadCycleStateSerializer</span> {
-    <span class="doccomment">/// Creates a new `ThreadCycleStateSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">ThreadCycleStateSerializer</span> {
-            <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer::new</span>(),
-            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(),
-            <span class="ident">slot_serializer</span>: <span class="ident">SlotSerializer::new</span>(),
-            <span class="ident">roll_update_serializer</span>: <span class="ident">RollUpdateSerializer::new</span>(),
+<span class="kw">impl </span>ThreadCycleStateSerializer {
+    <span class="doccomment">/// Creates a new `ThreadCycleStateSerializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        ThreadCycleStateSerializer {
+            u32_serializer: U32VarIntSerializer::new(),
+            u64_serializer: U64VarIntSerializer::new(),
+            slot_serializer: SlotSerializer::new(),
+            roll_update_serializer: RollUpdateSerializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">ThreadCycleStateSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>ThreadCycleStateSerializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">ThreadCycleState</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ThreadCycleStateSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">serialize</span>(
+<span class="kw">impl </span>Serializer&lt;ThreadCycleState&gt; <span class="kw">for </span>ThreadCycleStateSerializer {
+    <span class="kw">fn </span>serialize(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">ThreadCycleState</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="comment">// cycle</span>
-        <span class="self">self</span>.<span class="ident">u64_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">cycle</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="comment">// last final slot</span>
-        <span class="self">self</span>.<span class="ident">slot_serializer</span>
-            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">last_final_slot</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="comment">// roll count</span>
-        <span class="kw">let</span> <span class="ident">n_entries</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">roll_count</span>.<span class="number">0</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-            <span class="ident">SerializeError::NumberTooBig</span>(<span class="macro">format!</span>(
+        value: <span class="kw-2">&amp;</span>ThreadCycleState,
+        buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="comment">// cycle
+        </span><span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span>value.cycle, buffer)<span class="question-mark">?</span>;
+        <span class="comment">// last final slot
+        </span><span class="self">self</span>.slot_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.last_final_slot, buffer)<span class="question-mark">?</span>;
+        <span class="comment">// roll count
+        </span><span class="kw">let </span>n_entries: u32 = value.roll_count.<span class="number">0</span>.len().try_into().map_err(|err| {
+            SerializeError::NumberTooBig(<span class="macro">format!</span>(
                 <span class="string">&quot;too many entries when serializing ExportThreadCycleState roll_count: {}&quot;</span>,
-                <span class="ident">err</span>
+                err
             ))
         })<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">u32_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">n_entries</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="kw">for</span> (<span class="ident">address</span>, <span class="ident">count</span>) <span class="kw">in</span> <span class="ident">value</span>.<span class="ident">roll_count</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
-            <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="ident">address</span>.<span class="ident">to_bytes</span>());
-            <span class="self">self</span>.<span class="ident">u64_serializer</span>.<span class="ident">serialize</span>(<span class="ident">count</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>n_entries, buffer)<span class="question-mark">?</span>;
+        <span class="kw">for </span>(address, count) <span class="kw">in </span>value.roll_count.<span class="number">0</span>.iter() {
+            buffer.extend(address.to_bytes());
+            <span class="self">self</span>.u64_serializer.serialize(count, buffer)<span class="question-mark">?</span>;
         }
 
-        <span class="comment">// cycle updates</span>
-        <span class="kw">let</span> <span class="ident">n_entries</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">cycle_updates</span>.<span class="number">0</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-            <span class="ident">SerializeError::NumberTooBig</span>(<span class="macro">format!</span>(
+        <span class="comment">// cycle updates
+        </span><span class="kw">let </span>n_entries: u32 = value.cycle_updates.<span class="number">0</span>.len().try_into().map_err(|err| {
+            SerializeError::NumberTooBig(<span class="macro">format!</span>(
                 <span class="string">&quot;too many entries when serializing ExportThreadCycleState cycle_updates: {}&quot;</span>,
-                <span class="ident">err</span>
+                err
             ))
         })<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">u32_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">n_entries</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="kw">for</span> (<span class="ident">address</span>, <span class="ident">update</span>) <span class="kw">in</span> <span class="ident">value</span>.<span class="ident">cycle_updates</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
-            <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="ident">address</span>.<span class="ident">to_bytes</span>());
-            <span class="self">self</span>.<span class="ident">roll_update_serializer</span>.<span class="ident">serialize</span>(<span class="ident">update</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>n_entries, buffer)<span class="question-mark">?</span>;
+        <span class="kw">for </span>(address, update) <span class="kw">in </span>value.cycle_updates.<span class="number">0</span>.iter() {
+            buffer.extend(address.to_bytes());
+            <span class="self">self</span>.roll_update_serializer.serialize(update, buffer)<span class="question-mark">?</span>;
         }
 
-        <span class="comment">// rng seed</span>
-        <span class="kw">let</span> <span class="ident">n_entries</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">rng_seed</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-            <span class="ident">SerializeError::NumberTooBig</span>(<span class="macro">format!</span>(
+        <span class="comment">// rng seed
+        </span><span class="kw">let </span>n_entries: u32 = value.rng_seed.len().try_into().map_err(|err| {
+            SerializeError::NumberTooBig(<span class="macro">format!</span>(
                 <span class="string">&quot;too many entries when serializing ExportThreadCycleState rng_seed: {}&quot;</span>,
-                <span class="ident">err</span>
+                err
             ))
         })<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">u32_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">n_entries</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="ident">value</span>.<span class="ident">rng_seed</span>.<span class="ident">clone</span>().<span class="ident">into_vec</span>());
+        <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>n_entries, buffer)<span class="question-mark">?</span>;
+        buffer.extend(value.rng_seed.clone().into_vec());
 
-        <span class="comment">// production stats</span>
-        <span class="kw">let</span> <span class="ident">n_entries</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">production_stats</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-            <span class="ident">SerializeError::NumberTooBig</span>(<span class="macro">format!</span>(
+        <span class="comment">// production stats
+        </span><span class="kw">let </span>n_entries: u32 = value.production_stats.len().try_into().map_err(|err| {
+            SerializeError::NumberTooBig(<span class="macro">format!</span>(
                 <span class="string">&quot;too many entries when serializing ExportThreadCycleState production_stats: {}&quot;</span>,
-                <span class="ident">err</span>
+                err
             ))
         })<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">u32_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">n_entries</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="kw">for</span> (<span class="ident">address</span>, (<span class="ident">ok_count</span>, <span class="ident">nok_count</span>)) <span class="kw">in</span> <span class="ident">value</span>.<span class="ident">production_stats</span>.<span class="ident">iter</span>() {
-            <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="ident">address</span>.<span class="ident">to_bytes</span>());
-            <span class="self">self</span>.<span class="ident">u64_serializer</span>.<span class="ident">serialize</span>(<span class="ident">ok_count</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-            <span class="self">self</span>.<span class="ident">u64_serializer</span>.<span class="ident">serialize</span>(<span class="ident">nok_count</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>n_entries, buffer)<span class="question-mark">?</span>;
+        <span class="kw">for </span>(address, (ok_count, nok_count)) <span class="kw">in </span>value.production_stats.iter() {
+            buffer.extend(address.to_bytes());
+            <span class="self">self</span>.u64_serializer.serialize(ok_count, buffer)<span class="question-mark">?</span>;
+            <span class="self">self</span>.u64_serializer.serialize(nok_count, buffer)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// Deserializer for `ThreadCycleState`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ThreadCycleStateDeserializer</span> {
-    <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer</span>,
-    <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer</span>,
-    <span class="ident">slot_deserializer</span>: <span class="ident">SlotDeserializer</span>,
-    <span class="ident">roll_update_deserializer</span>: <span class="ident">RollUpdateDeserializer</span>,
-    <span class="ident">address_deserializer</span>: <span class="ident">AddressDeserializer</span>,
+<span class="doccomment">/// Deserializer for `ThreadCycleState`
+</span><span class="kw">pub struct </span>ThreadCycleStateDeserializer {
+    u32_deserializer: U32VarIntDeserializer,
+    u64_deserializer: U64VarIntDeserializer,
+    slot_deserializer: SlotDeserializer,
+    roll_update_deserializer: RollUpdateDeserializer,
+    address_deserializer: AddressDeserializer,
 }
 
-<span class="kw">impl</span> <span class="ident">ThreadCycleStateDeserializer</span> {
-    <span class="doccomment">/// Creates a new `ThreadCycleStateDeserializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">ThreadCycleStateDeserializer</span> {
-            <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer::new</span>(
-                <span class="ident">Included</span>(<span class="number">0</span>),
-                <span class="ident">Included</span>(<span class="ident">MAX_BOOTSTRAP_POS_ENTRIES</span>),
+<span class="kw">impl </span>ThreadCycleStateDeserializer {
+    <span class="doccomment">/// Creates a new `ThreadCycleStateDeserializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        ThreadCycleStateDeserializer {
+            u32_deserializer: U32VarIntDeserializer::new(
+                Included(<span class="number">0</span>),
+                Included(MAX_BOOTSTRAP_POS_ENTRIES),
             ),
-            <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-            <span class="ident">slot_deserializer</span>: <span class="ident">SlotDeserializer::new</span>(
-                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">THREAD_COUNT</span>)),
+            u64_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
+            slot_deserializer: SlotDeserializer::new(
+                (Included(<span class="number">0</span>), Included(u64::MAX)),
+                (Included(<span class="number">0</span>), Included(THREAD_COUNT)),
             ),
-            <span class="ident">roll_update_deserializer</span>: <span class="ident">RollUpdateDeserializer::new</span>(),
-            <span class="ident">address_deserializer</span>: <span class="ident">AddressDeserializer::new</span>(),
+            roll_update_deserializer: RollUpdateDeserializer::new(),
+            address_deserializer: AddressDeserializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">ThreadCycleStateDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>ThreadCycleStateDeserializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">ThreadCycleState</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ThreadCycleStateDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">impl </span>Deserializer&lt;ThreadCycleState&gt; <span class="kw">for </span>ThreadCycleStateDeserializer {
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">ThreadCycleState</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">context</span>(
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], ThreadCycleState, E&gt; {
+        context(
             <span class="string">&quot;Failed ThreadCycleState deserialization&quot;</span>,
-            <span class="ident">tuple</span>((
-                <span class="ident">context</span>(<span class="string">&quot;Failed cycle deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">u64_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+            tuple((
+                context(<span class="string">&quot;Failed cycle deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.u64_deserializer.deserialize(input)
                 }),
-                <span class="ident">context</span>(<span class="string">&quot;Failed last_final_slot deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">slot_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                context(<span class="string">&quot;Failed last_final_slot deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.slot_deserializer.deserialize(input)
                 }),
-                <span class="ident">context</span>(
+                context(
                     <span class="string">&quot;Failed roll_count deserialization&quot;</span>,
-                    <span class="ident">length_count</span>(
-                        <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">u32_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
-                        <span class="ident">tuple</span>((
-                            <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">address_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
-                            <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">u64_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
+                    length_count(
+                        |input| <span class="self">self</span>.u32_deserializer.deserialize(input),
+                        tuple((
+                            |input| <span class="self">self</span>.address_deserializer.deserialize(input),
+                            |input| <span class="self">self</span>.u64_deserializer.deserialize(input),
                         )),
                     )
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">res</span><span class="op">|</span> <span class="ident">RollCounts</span>(<span class="ident">res</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>())),
+                    .map(|res| RollCounts(res.into_iter().collect())),
                 ),
-                <span class="ident">context</span>(
+                context(
                     <span class="string">&quot;Failed cycle_updates deserialization&quot;</span>,
-                    <span class="ident">length_count</span>(
-                        <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">u32_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
-                        <span class="ident">tuple</span>((
-                            <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">address_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
-                            <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">roll_update_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
+                    length_count(
+                        |input| <span class="self">self</span>.u32_deserializer.deserialize(input),
+                        tuple((
+                            |input| <span class="self">self</span>.address_deserializer.deserialize(input),
+                            |input| <span class="self">self</span>.roll_update_deserializer.deserialize(input),
                         )),
                     )
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">res</span><span class="op">|</span> <span class="ident">RollUpdates</span>(<span class="ident">res</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>())),
+                    .map(|res| RollUpdates(res.into_iter().collect())),
                 ),
-                <span class="ident">context</span>(<span class="string">&quot;Failed rng_seed deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                    <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">n_entries</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">u32_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)<span class="question-mark">?</span>;
-                    <span class="kw">let</span> <span class="ident">bits_u8_len</span> <span class="op">=</span> <span class="ident">n_entries</span>.<span class="ident">div_ceil</span>(<span class="ident">u8::BITS</span>) <span class="kw">as</span> <span class="ident">usize</span>;
-                    <span class="kw">if</span> <span class="ident">rest</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="ident">bits_u8_len</span> {
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">nom::Err::Error</span>(<span class="ident">ParseError::from_error_kind</span>(
-                            <span class="ident">input</span>,
-                            <span class="ident">ErrorKind::Eof</span>,
+                context(<span class="string">&quot;Failed rng_seed deserialization&quot;</span>, |input| {
+                    <span class="kw">let </span>(rest, n_entries) = <span class="self">self</span>.u32_deserializer.deserialize(input)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>bits_u8_len = n_entries.div_ceil(u8::BITS) <span class="kw">as </span>usize;
+                    <span class="kw">if </span>rest.len() &lt; bits_u8_len {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
+                            input,
+                            ErrorKind::Eof,
                         )));
                     }
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng_seed</span>: <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span>
-                        <span class="ident">BitVec::try_from_vec</span>(<span class="ident">rest</span>[..<span class="ident">bits_u8_len</span>].<span class="ident">to_vec</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                            <span class="ident">nom::Err::Error</span>(<span class="ident">ParseError::from_error_kind</span>(<span class="ident">input</span>, <span class="ident">ErrorKind::Eof</span>))
+                    <span class="kw">let </span><span class="kw-2">mut </span>rng_seed: BitVec&lt;u8&gt; =
+                        BitVec::try_from_vec(rest[..bits_u8_len].to_vec()).map_err(|<span class="kw">_</span>| {
+                            nom::Err::Error(ParseError::from_error_kind(input, ErrorKind::Eof))
                         })<span class="question-mark">?</span>;
-                    <span class="ident">rng_seed</span>.<span class="ident">truncate</span>(<span class="ident">n_entries</span> <span class="kw">as</span> <span class="ident">usize</span>);
-                    <span class="kw">if</span> <span class="ident">rng_seed</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">n_entries</span> <span class="kw">as</span> <span class="ident">usize</span> {
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">nom::Err::Error</span>(<span class="ident">ParseError::from_error_kind</span>(
-                            <span class="ident">input</span>,
-                            <span class="ident">ErrorKind::Eof</span>,
+                    rng_seed.truncate(n_entries <span class="kw">as </span>usize);
+                    <span class="kw">if </span>rng_seed.len() != n_entries <span class="kw">as </span>usize {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
+                            input,
+                            ErrorKind::Eof,
                         )));
                     }
-                    <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span><span class="ident">rest</span>[<span class="ident">bits_u8_len</span>..], <span class="ident">rng_seed</span>))
+                    <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span>rest[bits_u8_len..], rng_seed))
                 }),
-                <span class="ident">context</span>(
+                context(
                     <span class="string">&quot;Failed production_stats deserialization&quot;</span>,
-                    <span class="ident">length_count</span>(
-                        <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">u32_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
-                        <span class="ident">tuple</span>((
-                            <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">address_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
-                            <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">u64_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
-                            <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">u64_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
+                    length_count(
+                        |input| <span class="self">self</span>.u32_deserializer.deserialize(input),
+                        tuple((
+                            |input| <span class="self">self</span>.address_deserializer.deserialize(input),
+                            |input| <span class="self">self</span>.u64_deserializer.deserialize(input),
+                            |input| <span class="self">self</span>.u64_deserializer.deserialize(input),
                         )),
                     )
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">res</span><span class="op">|</span> {
-                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">production_stats</span> <span class="op">=</span> <span class="ident">Map::default</span>();
-                        <span class="ident">production_stats</span>.<span class="ident">extend</span>(<span class="ident">res</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(
-                            <span class="op">|</span>(<span class="ident">address</span>, <span class="ident">ok_count</span>, <span class="ident">nok_count</span>)<span class="op">|</span> (<span class="ident">address</span>, (<span class="ident">ok_count</span>, <span class="ident">nok_count</span>)),
+                    .map(|res| {
+                        <span class="kw">let </span><span class="kw-2">mut </span>production_stats = Map::default();
+                        production_stats.extend(res.into_iter().map(
+                            |(address, ok_count, nok_count)| (address, (ok_count, nok_count)),
                         ));
-                        <span class="ident">production_stats</span>
+                        production_stats
                     }),
                 ),
             )),
         )
-        .<span class="ident">map</span>(
-            <span class="op">|</span>(<span class="ident">cycle</span>, <span class="ident">last_final_slot</span>, <span class="ident">roll_count</span>, <span class="ident">cycle_updates</span>, <span class="ident">rng_seed</span>, <span class="ident">production_stats</span>)<span class="op">|</span> {
-                <span class="ident">ThreadCycleState</span> {
-                    <span class="ident">cycle</span>,
-                    <span class="ident">last_final_slot</span>,
-                    <span class="ident">roll_count</span>,
-                    <span class="ident">cycle_updates</span>,
-                    <span class="ident">rng_seed</span>,
-                    <span class="ident">production_stats</span>,
+        .map(
+            |(cycle, last_final_slot, roll_count, cycle_updates, rng_seed, production_stats)| {
+                ThreadCycleState {
+                    cycle,
+                    last_final_slot,
+                    roll_count,
+                    cycle_updates,
+                    rng_seed,
+                    production_stats,
                 }
             },
         )
-        .<span class="ident">parse</span>(<span class="ident">buffer</span>)
+        .parse(buffer)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_proof_of_stake_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_proof_of_stake_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

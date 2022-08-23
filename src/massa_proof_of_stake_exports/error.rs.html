@@ -25,32 +25,32 @@
 <span id="25">25</span>
 <span id="26">26</span>
 <span id="27">27</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-<span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
-<span class="kw">use</span> <span class="ident">massa_models::ModelsError</span>;
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</span><span class="kw">use </span>displaydoc::Display;
+<span class="kw">use </span>massa_models::ModelsError;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="doccomment">/// Proof of stake result</span>
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">POSResult</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">E</span> <span class="op">=</span> <span class="ident">ProofOfStakeError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">core::result::Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">E</span><span class="op">&gt;</span>;
+<span class="doccomment">/// Proof of stake result
+</span><span class="kw">pub type </span>POSResult&lt;T, E = ProofOfStakeError&gt; = core::result::Result&lt;T, E&gt;;
 
-<span class="doccomment">/// proof of stake error</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Display</span>, <span class="ident">Error</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProofOfStakeError</span> {
-    <span class="doccomment">/// Proof of stake cycle unavailable {0}</span>
-    <span class="ident">PosCycleUnavailable</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// there was an inconsistency between containers {0}</span>
-    <span class="ident">ContainerInconsistency</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// not final roll</span>
-    <span class="ident">NotFinalRollError</span>,
-    <span class="doccomment">/// roll overflow</span>
-    <span class="ident">RollOverflowError</span>,
-    <span class="doccomment">/// io error {0}</span>
-    <span class="ident">IOError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">std::io::Error</span>),
-    <span class="doccomment">/// serde error</span>
-    <span class="ident">SerdeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">serde_json::Error</span>),
-    <span class="doccomment">/// models error: {0}</span>
-    <span class="ident">ModelsError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ModelsError</span>),
+<span class="doccomment">/// proof of stake error
+</span><span class="attribute">#[non_exhaustive]
+#[derive(Display, Error, Debug)]
+</span><span class="kw">pub enum </span>ProofOfStakeError {
+    <span class="doccomment">/// Proof of stake cycle unavailable {0}
+    </span>PosCycleUnavailable(String),
+    <span class="doccomment">/// there was an inconsistency between containers {0}
+    </span>ContainerInconsistency(String),
+    <span class="doccomment">/// not final roll
+    </span>NotFinalRollError,
+    <span class="doccomment">/// roll overflow
+    </span>RollOverflowError,
+    <span class="doccomment">/// io error {0}
+    </span>IOError(<span class="attribute">#[from] </span>std::io::Error),
+    <span class="doccomment">/// serde error
+    </span>SerdeError(<span class="attribute">#[from] </span>serde_json::Error),
+    <span class="doccomment">/// models error: {0}
+    </span>ModelsError(<span class="attribute">#[from] </span>ModelsError),
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_proof_of_stake_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_proof_of_stake_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

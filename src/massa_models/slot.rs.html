@@ -330,337 +330,337 @@
 <span id="330">330</span>
 <span id="331">331</span>
 <span id="332">332</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">serialization</span>::{
-        <span class="ident">u8_from_slice</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>,
+</span><span class="kw">use super</span>::{
+    serialization::{
+        u8_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
-    <span class="ident">with_serialization_context</span>,
+    with_serialization_context,
 };
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::SLOT_KEY_SIZE</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ModelsError</span>;
-<span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
-<span class="kw">use</span> <span class="ident">massa_serialization</span>::{
-    <span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>, <span class="ident">U64VarIntDeserializer</span>, <span class="ident">U64VarIntSerializer</span>,
+<span class="kw">use </span><span class="kw">crate</span>::constants::SLOT_KEY_SIZE;
+<span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
+<span class="kw">use </span>massa_hash::Hash;
+<span class="kw">use </span>massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
-<span class="kw">use</span> <span class="ident">nom::error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ParseError</span>};
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::ops</span>::{<span class="ident">Bound</span>, <span class="ident">RangeBounds</span>};
-<span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">cmp::Ordering</span>, <span class="ident">convert::TryInto</span>};
+<span class="kw">use </span>nom::error::{context, ContextError, ParseError};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::ops::{Bound, RangeBounds};
+<span class="kw">use </span>std::str::FromStr;
+<span class="kw">use </span>std::{cmp::Ordering, convert::TryInto};
 
-<span class="doccomment">/// a point in time where a block is expected</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Hash</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Slot</span> {
-    <span class="doccomment">/// period</span>
-    <span class="kw">pub</span> <span class="ident">period</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// thread</span>
-    <span class="kw">pub</span> <span class="ident">thread</span>: <span class="ident">u8</span>,
+<span class="doccomment">/// a point in time where a block is expected
+</span><span class="attribute">#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>Slot {
+    <span class="doccomment">/// period
+    </span><span class="kw">pub </span>period: u64,
+    <span class="doccomment">/// thread
+    </span><span class="kw">pub </span>thread: u8,
 }
 
-<span class="doccomment">/// Basic serializer for `Slot`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SlotSerializer</span> {
-    <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer</span>,
+<span class="doccomment">/// Basic serializer for `Slot`
+</span><span class="kw">pub struct </span>SlotSerializer {
+    u64_serializer: U64VarIntSerializer,
 }
 
-<span class="kw">impl</span> <span class="ident">SlotSerializer</span> {
-    <span class="doccomment">/// Creates a `SlotSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(),
+<span class="kw">impl </span>SlotSerializer {
+    <span class="doccomment">/// Creates a `SlotSerializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u64_serializer: U64VarIntSerializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">SlotSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>SlotSerializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SlotSerializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use std::ops::Bound::Included;</span>
-    <span class="doccomment">/// use massa_serialization::Serializer;</span>
-    <span class="doccomment">/// use massa_models::{Slot, SlotSerializer};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let slot: Slot = Slot::new(1, 3);</span>
-    <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// let serializer = SlotSerializer::new();</span>
-    <span class="doccomment">/// serializer.serialize(&amp;slot, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Slot</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">u64_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">period</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="ident">buffer</span>.<span class="ident">push</span>(<span class="ident">value</span>.<span class="ident">thread</span>);
+<span class="kw">impl </span>Serializer&lt;Slot&gt; <span class="kw">for </span>SlotSerializer {
+    <span class="doccomment">/// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::Serializer;
+    /// use massa_models::{Slot, SlotSerializer};
+    ///
+    /// let slot: Slot = Slot::new(1, 3);
+    /// let mut serialized = Vec::new();
+    /// let serializer = SlotSerializer::new();
+    /// serializer.serialize(&amp;slot, &amp;mut serialized).unwrap();
+    /// ```
+    </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>Slot, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span>value.period, buffer)<span class="question-mark">?</span>;
+        buffer.push(value.thread);
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// Basic `Slot` Deserializer</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SlotDeserializer</span> {
-    <span class="ident">period_deserializer</span>: <span class="ident">U64VarIntDeserializer</span>,
-    <span class="ident">range_thread</span>: (<span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
+<span class="doccomment">/// Basic `Slot` Deserializer
+</span><span class="kw">pub struct </span>SlotDeserializer {
+    period_deserializer: U64VarIntDeserializer,
+    range_thread: (Bound&lt;u8&gt;, Bound&lt;u8&gt;),
 }
 
-<span class="kw">impl</span> <span class="ident">SlotDeserializer</span> {
-    <span class="doccomment">/// Creates a `SlotDeserializer`</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">range_period</span>: (<span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>, <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>),
-        <span class="ident">range_thread</span>: (<span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
-    ) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">period_deserializer</span>: <span class="ident">U64VarIntDeserializer::new</span>(<span class="ident">range_period</span>.<span class="number">0</span>, <span class="ident">range_period</span>.<span class="number">1</span>),
-            <span class="ident">range_thread</span>,
+<span class="kw">impl </span>SlotDeserializer {
+    <span class="doccomment">/// Creates a `SlotDeserializer`
+    </span><span class="kw">pub const fn </span>new(
+        range_period: (Bound&lt;u64&gt;, Bound&lt;u64&gt;),
+        range_thread: (Bound&lt;u8&gt;, Bound&lt;u8&gt;),
+    ) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            period_deserializer: U64VarIntDeserializer::new(range_period.<span class="number">0</span>, range_period.<span class="number">1</span>),
+            range_thread,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SlotDeserializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use std::ops::Bound::Included;</span>
-    <span class="doccomment">/// use massa_serialization::{Serializer, Deserializer, DeserializeError};</span>
-    <span class="doccomment">/// use massa_models::{Slot, SlotSerializer, SlotDeserializer};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let slot: Slot = Slot::new(1, 3);</span>
-    <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// let serializer = SlotSerializer::new();</span>
-    <span class="doccomment">/// let deserializer = SlotDeserializer::new((Included(u64::MIN), Included(u64::MAX)), (Included(u8::MIN), Included(u8::MAX.into())));</span>
-    <span class="doccomment">/// serializer.serialize(&amp;slot, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// let (rest, slot_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
-    <span class="doccomment">/// assert!(rest.is_empty());</span>
-    <span class="doccomment">/// assert_eq!(slot, slot_deser);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">impl </span>Deserializer&lt;Slot&gt; <span class="kw">for </span>SlotDeserializer {
+    <span class="doccomment">/// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use massa_models::{Slot, SlotSerializer, SlotDeserializer};
+    ///
+    /// let slot: Slot = Slot::new(1, 3);
+    /// let mut serialized = Vec::new();
+    /// let serializer = SlotSerializer::new();
+    /// let deserializer = SlotDeserializer::new((Included(u64::MIN), Included(u64::MAX)), (Included(u8::MIN), Included(u8::MAX.into())));
+    /// serializer.serialize(&amp;slot, &amp;mut serialized).unwrap();
+    /// let (rest, slot_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(slot, slot_deser);
+    /// ```
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">nom::IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">Slot</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">context</span>(<span class="string">&quot;Failed Slot deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">|</span> {
-            <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">period</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">period_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">thread</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">rest</span>.<span class="ident">first</span>().<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">nom::Err::Error</span>(<span class="ident">ParseError::from_error_kind</span>(
-                    <span class="ident">input</span>,
-                    <span class="ident">nom::error::ErrorKind::LengthValue</span>,
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; nom::IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Slot, E&gt; {
+        context(<span class="string">&quot;Failed Slot deserialization&quot;</span>, |input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
+            <span class="kw">let </span>(rest, period) = <span class="self">self</span>.period_deserializer.deserialize(input)<span class="question-mark">?</span>;
+            <span class="kw">let </span>thread = <span class="kw-2">*</span>rest.first().ok_or_else(|| {
+                nom::Err::Error(ParseError::from_error_kind(
+                    input,
+                    nom::error::ErrorKind::LengthValue,
                 ))
             })<span class="question-mark">?</span>;
-            <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">range_thread</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">thread</span>) {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">nom::Err::Error</span>(<span class="ident">ParseError::from_error_kind</span>(
-                    <span class="kw-2">&amp;</span><span class="ident">rest</span>[<span class="number">0</span>..<span class="number">1</span>],
-                    <span class="ident">nom::error::ErrorKind::Digit</span>,
+            <span class="kw">if </span>!<span class="self">self</span>.range_thread.contains(<span class="kw-2">&amp;</span>thread) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
+                    <span class="kw-2">&amp;</span>rest[<span class="number">0</span>..<span class="number">1</span>],
+                    nom::error::ErrorKind::Digit,
                 )));
             }
-            <span class="comment">// Safe because we throw just above if there is no character.</span>
-            <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span><span class="ident">rest</span>[<span class="number">1</span>..], <span class="ident">Slot</span> { <span class="ident">period</span>, <span class="ident">thread</span> }))
-        })(<span class="ident">buffer</span>)
+            <span class="comment">// Safe because we throw just above if there is no character.
+            </span><span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..], Slot { period, thread }))
+        })(buffer)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">PartialOrd</span> <span class="kw">for</span> <span class="ident">Slot</span> {
-    <span class="kw">fn</span> <span class="ident">partial_cmp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Ordering</span><span class="op">&gt;</span> {
-        (<span class="self">self</span>.<span class="ident">period</span>, <span class="self">self</span>.<span class="ident">thread</span>).<span class="ident">partial_cmp</span>(<span class="kw-2">&amp;</span>(<span class="ident">other</span>.<span class="ident">period</span>, <span class="ident">other</span>.<span class="ident">thread</span>))
+<span class="kw">impl </span>PartialOrd <span class="kw">for </span>Slot {
+    <span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Ordering&gt; {
+        (<span class="self">self</span>.period, <span class="self">self</span>.thread).partial_cmp(<span class="kw-2">&amp;</span>(other.period, other.thread))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Ord</span> <span class="kw">for</span> <span class="ident">Slot</span> {
-    <span class="kw">fn</span> <span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">Ordering</span> {
-        (<span class="self">self</span>.<span class="ident">period</span>, <span class="self">self</span>.<span class="ident">thread</span>).<span class="ident">cmp</span>(<span class="kw-2">&amp;</span>(<span class="ident">other</span>.<span class="ident">period</span>, <span class="ident">other</span>.<span class="ident">thread</span>))
+<span class="kw">impl </span>Ord <span class="kw">for </span>Slot {
+    <span class="kw">fn </span>cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; Ordering {
+        (<span class="self">self</span>.period, <span class="self">self</span>.thread).cmp(<span class="kw-2">&amp;</span>(other.period, other.thread))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">Slot</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;(period: {}, thread: {})&quot;</span>, <span class="self">self</span>.<span class="ident">period</span>, <span class="self">self</span>.<span class="ident">thread</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>Slot {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">&quot;(period: {}, thread: {})&quot;</span>, <span class="self">self</span>.period, <span class="self">self</span>.thread)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="kw">impl</span> <span class="ident">FromStr</span> <span class="kw">for</span> <span class="ident">Slot</span> {
-    <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident">ModelsError</span>;
-    <span class="kw">fn</span> <span class="ident">from_str</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">split</span>(<span class="string">&#39;,&#39;</span>).<span class="ident">collect</span>();
-        <span class="kw">if</span> <span class="ident">v</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="number">2</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">ModelsError::DeserializeError</span>(
-                <span class="string">&quot;invalid slot format&quot;</span>.<span class="ident">to_string</span>(),
+<span class="kw">impl </span>FromStr <span class="kw">for </span>Slot {
+    <span class="kw">type </span><span class="prelude-val">Err </span>= ModelsError;
+    <span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
+        <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = s.split(<span class="string">&#39;,&#39;</span>).collect();
+        <span class="kw">if </span>v.len() != <span class="number">2 </span>{
+            <span class="prelude-val">Err</span>(ModelsError::DeserializeError(
+                <span class="string">&quot;invalid slot format&quot;</span>.to_string(),
             ))
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">Slot::new</span>(
-                <span class="ident">v</span>[<span class="number">0</span>].<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>()
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ModelsError::DeserializeError</span>(<span class="string">&quot;invalid period&quot;</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>,
-                <span class="ident">v</span>[<span class="number">1</span>].<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>()
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ModelsError::DeserializeError</span>(<span class="string">&quot;invalid thread&quot;</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>,
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Ok</span>(Slot::new(
+                v[<span class="number">0</span>].parse::&lt;u64&gt;()
+                    .map_err(|<span class="kw">_</span>| ModelsError::DeserializeError(<span class="string">&quot;invalid period&quot;</span>.to_string()))<span class="question-mark">?</span>,
+                v[<span class="number">1</span>].parse::&lt;u8&gt;()
+                    .map_err(|<span class="kw">_</span>| ModelsError::DeserializeError(<span class="string">&quot;invalid thread&quot;</span>.to_string()))<span class="question-mark">?</span>,
             ))
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Slot</span> {
-    <span class="doccomment">/// new slot from period and thread</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">period</span>: <span class="ident">u64</span>, <span class="ident">thread</span>: <span class="ident">u8</span>) -&gt; <span class="ident">Slot</span> {
-        <span class="ident">Slot</span> { <span class="ident">period</span>, <span class="ident">thread</span> }
+<span class="kw">impl </span>Slot {
+    <span class="doccomment">/// new slot from period and thread
+    </span><span class="kw">pub fn </span>new(period: u64, thread: u8) -&gt; Slot {
+        Slot { period, thread }
     }
 
-    <span class="doccomment">/// returns the minimal slot</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">min</span>() -&gt; <span class="ident">Slot</span> {
-        <span class="ident">Slot</span> {
-            <span class="ident">period</span>: <span class="number">0</span>,
-            <span class="ident">thread</span>: <span class="number">0</span>,
+    <span class="doccomment">/// returns the minimal slot
+    </span><span class="kw">pub const fn </span>min() -&gt; Slot {
+        Slot {
+            period: <span class="number">0</span>,
+            thread: <span class="number">0</span>,
         }
     }
 
-    <span class="doccomment">/// returns the maximal slot</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">max</span>() -&gt; <span class="ident">Slot</span> {
-        <span class="ident">Slot</span> {
-            <span class="ident">period</span>: <span class="ident">u64::MAX</span>,
-            <span class="ident">thread</span>: <span class="ident">u8::MAX</span>,
+    <span class="doccomment">/// returns the maximal slot
+    </span><span class="kw">pub const fn </span>max() -&gt; Slot {
+        Slot {
+            period: u64::MAX,
+            thread: u8::MAX,
         }
     }
 
-    <span class="doccomment">/// first bit of the slot, for seed purpose</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_first_bit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_bytes_key</span>()).<span class="ident">to_bytes</span>()[<span class="number">0</span>] <span class="op">&gt;</span><span class="op">&gt;</span> <span class="number">7</span> <span class="op">==</span> <span class="number">1</span>
+    <span class="doccomment">/// first bit of the slot, for seed purpose
+    </span><span class="kw">pub fn </span>get_first_bit(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        Hash::compute_from(<span class="kw-2">&amp;</span><span class="self">self</span>.to_bytes_key()).to_bytes()[<span class="number">0</span>] &gt;&gt; <span class="number">7 </span>== <span class="number">1
+    </span>}
+
+    <span class="doccomment">/// cycle associated to that slot
+    </span><span class="kw">pub fn </span>get_cycle(<span class="kw-2">&amp;</span><span class="self">self</span>, periods_per_cycle: u64) -&gt; u64 {
+        <span class="self">self</span>.period / periods_per_cycle
     }
 
-    <span class="doccomment">/// cycle associated to that slot</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_cycle</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">periods_per_cycle</span>: <span class="ident">u64</span>) -&gt; <span class="ident">u64</span> {
-        <span class="self">self</span>.<span class="ident">period</span> <span class="op">/</span> <span class="ident">periods_per_cycle</span>
+    <span class="doccomment">/// Returns a fixed-size sortable binary key
+    ///
+    /// ## Example
+    /// ```rust
+    /// # use massa_models::Slot;
+    /// let slot = Slot::new(10,5);
+    /// let key = slot.to_bytes_key();
+    /// let res = Slot::from_bytes_key(&amp;key);
+    /// assert_eq!(slot, res);
+    /// ```
+    </span><span class="kw">pub fn </span>to_bytes_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [u8; SLOT_KEY_SIZE] {
+        <span class="kw">let </span><span class="kw-2">mut </span>res = [<span class="number">0u8</span>; SLOT_KEY_SIZE];
+        res[..<span class="number">8</span>].clone_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.period.to_be_bytes());
+        res[<span class="number">8</span>] = <span class="self">self</span>.thread;
+        res
     }
 
-    <span class="doccomment">/// Returns a fixed-size sortable binary key</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ## Example</span>
-    <span class="doccomment">/// ```rust</span>
-    <span class="doccomment">/// # use massa_models::Slot;</span>
-    <span class="doccomment">/// let slot = Slot::new(10,5);</span>
-    <span class="doccomment">/// let key = slot.to_bytes_key();</span>
-    <span class="doccomment">/// let res = Slot::from_bytes_key(&amp;key);</span>
-    <span class="doccomment">/// assert_eq!(slot, res);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_bytes_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="ident">u8</span>; <span class="ident">SLOT_KEY_SIZE</span>] {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="ident">SLOT_KEY_SIZE</span>];
-        <span class="ident">res</span>[..<span class="number">8</span>].<span class="ident">clone_from_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">period</span>.<span class="ident">to_be_bytes</span>());
-        <span class="ident">res</span>[<span class="number">8</span>] <span class="op">=</span> <span class="self">self</span>.<span class="ident">thread</span>;
-        <span class="ident">res</span>
-    }
-
-    <span class="doccomment">/// Deserializes a slot from its fixed-size sortable binary key representation</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ## Example</span>
-    <span class="doccomment">/// ```rust</span>
-    <span class="doccomment">/// # use massa_models::Slot;</span>
-    <span class="doccomment">/// let slot = Slot::new(10,5);</span>
-    <span class="doccomment">/// let key = slot.to_bytes_key();</span>
-    <span class="doccomment">/// let res = Slot::from_bytes_key(&amp;key);</span>
-    <span class="doccomment">/// assert_eq!(slot, res);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bytes_key</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="ident">SLOT_KEY_SIZE</span>]) -&gt; <span class="self">Self</span> {
-        <span class="ident">Slot</span> {
-            <span class="ident">period</span>: <span class="ident">u64::from_be_bytes</span>(<span class="ident">buffer</span>[..<span class="number">8</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>()), <span class="comment">// cannot fail</span>
-            <span class="ident">thread</span>: <span class="ident">buffer</span>[<span class="number">8</span>],
+    <span class="doccomment">/// Deserializes a slot from its fixed-size sortable binary key representation
+    ///
+    /// ## Example
+    /// ```rust
+    /// # use massa_models::Slot;
+    /// let slot = Slot::new(10,5);
+    /// let key = slot.to_bytes_key();
+    /// let res = Slot::from_bytes_key(&amp;key);
+    /// assert_eq!(slot, res);
+    /// ```
+    </span><span class="kw">pub fn </span>from_bytes_key(buffer: <span class="kw-2">&amp;</span>[u8; SLOT_KEY_SIZE]) -&gt; <span class="self">Self </span>{
+        Slot {
+            period: u64::from_be_bytes(buffer[..<span class="number">8</span>].try_into().unwrap()), <span class="comment">// cannot fail
+            </span>thread: buffer[<span class="number">8</span>],
         }
     }
 
-    <span class="doccomment">/// Returns the next Slot</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ## Example</span>
-    <span class="doccomment">/// ```rust</span>
-    <span class="doccomment">/// # use massa_models::Slot;</span>
-    <span class="doccomment">/// let slot = Slot::new(10,5);</span>
-    <span class="doccomment">/// assert_eq!(slot.get_next_slot(5).unwrap(), Slot::new(11, 0))</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_next_slot</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">thread_count</span>: <span class="ident">u8</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">thread</span>.<span class="ident">saturating_add</span>(<span class="number">1u8</span>) <span class="op">&gt;</span><span class="op">=</span> <span class="ident">thread_count</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">Slot::new</span>(
-                <span class="self">self</span>.<span class="ident">period</span>
-                    .<span class="ident">checked_add</span>(<span class="number">1u64</span>)
-                    .<span class="ident">ok_or</span>(<span class="ident">ModelsError::PeriodOverflowError</span>)<span class="question-mark">?</span>,
+    <span class="doccomment">/// Returns the next Slot
+    ///
+    /// ## Example
+    /// ```rust
+    /// # use massa_models::Slot;
+    /// let slot = Slot::new(10,5);
+    /// assert_eq!(slot.get_next_slot(5).unwrap(), Slot::new(11, 0))
+    /// ```
+    </span><span class="kw">pub fn </span>get_next_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, thread_count: u8) -&gt; <span class="prelude-ty">Result</span>&lt;Slot, ModelsError&gt; {
+        <span class="kw">if </span><span class="self">self</span>.thread.saturating_add(<span class="number">1u8</span>) &gt;= thread_count {
+            <span class="prelude-val">Ok</span>(Slot::new(
+                <span class="self">self</span>.period
+                    .checked_add(<span class="number">1u64</span>)
+                    .ok_or(ModelsError::PeriodOverflowError)<span class="question-mark">?</span>,
                 <span class="number">0u8</span>,
             ))
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">Slot::new</span>(
-                <span class="self">self</span>.<span class="ident">period</span>,
-                <span class="self">self</span>.<span class="ident">thread</span>
-                    .<span class="ident">checked_add</span>(<span class="number">1u8</span>)
-                    .<span class="ident">ok_or</span>(<span class="ident">ModelsError::ThreadOverflowError</span>)<span class="question-mark">?</span>,
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Ok</span>(Slot::new(
+                <span class="self">self</span>.period,
+                <span class="self">self</span>.thread
+                    .checked_add(<span class="number">1u8</span>)
+                    .ok_or(ModelsError::ThreadOverflowError)<span class="question-mark">?</span>,
             ))
         }
     }
 
-    <span class="doccomment">/// Counts the number of slots since the one passed in parameter and until self</span>
-    <span class="doccomment">/// If the two slots are equal, the returned value is `0`.</span>
-    <span class="doccomment">/// If the passed slot is strictly higher than self, an error is returned</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">slots_since</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">Slot</span>, <span class="ident">thread_count</span>: <span class="ident">u8</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="comment">// if s &gt; self, return an error</span>
-        <span class="kw">if</span> <span class="ident">s</span> <span class="op">&gt;</span> <span class="self">self</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::PeriodOverflowError</span>);
+    <span class="doccomment">/// Counts the number of slots since the one passed in parameter and until self
+    /// If the two slots are equal, the returned value is `0`.
+    /// If the passed slot is strictly higher than self, an error is returned
+    </span><span class="kw">pub fn </span>slots_since(<span class="kw-2">&amp;</span><span class="self">self</span>, s: <span class="kw-2">&amp;</span>Slot, thread_count: u8) -&gt; <span class="prelude-ty">Result</span>&lt;u64, ModelsError&gt; {
+        <span class="comment">// if s &gt; self, return an error
+        </span><span class="kw">if </span>s &gt; <span class="self">self </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::PeriodOverflowError);
         }
 
-        <span class="comment">// compute the number of slots from s to self</span>
-        <span class="prelude-val">Ok</span>((<span class="self">self</span>.<span class="ident">period</span> <span class="op">-</span> <span class="ident">s</span>.<span class="ident">period</span>)
-            .<span class="ident">checked_mul</span>(<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">u64</span>)
-            .<span class="ident">ok_or</span>(<span class="ident">ModelsError::PeriodOverflowError</span>)<span class="question-mark">?</span>
-            .<span class="ident">checked_add</span>(<span class="self">self</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">u64</span>)
-            .<span class="ident">ok_or</span>(<span class="ident">ModelsError::PeriodOverflowError</span>)<span class="question-mark">?</span>
-            .<span class="ident">saturating_sub</span>(<span class="ident">s</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">u64</span>))
+        <span class="comment">// compute the number of slots from s to self
+        </span><span class="prelude-val">Ok</span>((<span class="self">self</span>.period - s.period)
+            .checked_mul(thread_count <span class="kw">as </span>u64)
+            .ok_or(ModelsError::PeriodOverflowError)<span class="question-mark">?
+            </span>.checked_add(<span class="self">self</span>.thread <span class="kw">as </span>u64)
+            .ok_or(ModelsError::PeriodOverflowError)<span class="question-mark">?
+            </span>.saturating_sub(s.thread <span class="kw">as </span>u64))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">Slot</span> {
-    <span class="doccomment">/// Returns a compact binary representation of the slot</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ## Example</span>
-    <span class="doccomment">/// ```rust</span>
-    <span class="doccomment">/// # use massa_models::Slot;</span>
-    <span class="doccomment">/// # use massa_models::{DeserializeCompact, SerializeCompact};</span>
-    <span class="doccomment">/// # massa_models::init_serialization_context(massa_models::SerializationContext::default());</span>
-    <span class="doccomment">/// # let context = massa_models::get_serialization_context();</span>
-    <span class="doccomment">/// let slot = Slot::new(10,1);</span>
-    <span class="doccomment">/// let ser = slot.to_bytes_compact().unwrap();</span>
-    <span class="doccomment">/// let (deser, _) = Slot::from_bytes_compact(&amp;ser).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(slot, deser);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Checks performed: none.</span>
-    <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="number">9</span>);
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">period</span>.<span class="ident">to_varint_bytes</span>());
-        <span class="ident">res</span>.<span class="ident">push</span>(<span class="self">self</span>.<span class="ident">thread</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+<span class="kw">impl </span>SerializeCompact <span class="kw">for </span>Slot {
+    <span class="doccomment">/// Returns a compact binary representation of the slot
+    ///
+    /// ## Example
+    /// ```rust
+    /// # use massa_models::Slot;
+    /// # use massa_models::{DeserializeCompact, SerializeCompact};
+    /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
+    /// # let context = massa_models::get_serialization_context();
+    /// let slot = Slot::new(10,1);
+    /// let ser = slot.to_bytes_compact().unwrap();
+    /// let (deser, _) = Slot::from_bytes_compact(&amp;ser).unwrap();
+    /// assert_eq!(slot, deser);
+    /// ```
+    ///
+    /// Checks performed: none.
+    </span><span class="kw">fn </span>to_bytes_compact(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;u8&gt; = Vec::with_capacity(<span class="number">9</span>);
+        res.extend(<span class="self">self</span>.period.to_varint_bytes());
+        res.push(<span class="self">self</span>.thread);
+        <span class="prelude-val">Ok</span>(res)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">Slot</span> {
-    <span class="doccomment">/// Deserializes from a compact representation</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ## Example</span>
-    <span class="doccomment">/// ```rust</span>
-    <span class="doccomment">/// # use massa_models::Slot;</span>
-    <span class="doccomment">/// # use massa_models::{DeserializeCompact, SerializeCompact};</span>
-    <span class="doccomment">/// # massa_models::init_serialization_context(massa_models::SerializationContext::default());</span>
-    <span class="doccomment">/// # let context = massa_models::get_serialization_context();</span>
-    <span class="doccomment">/// let slot = Slot::new(10,1);</span>
-    <span class="doccomment">/// let ser = slot.to_bytes_compact().unwrap();</span>
-    <span class="doccomment">/// let (deser, _) = Slot::from_bytes_compact(&amp;ser).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(slot, deser);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Checks performed:</span>
-    <span class="doccomment">/// - Valid period and delta.</span>
-    <span class="doccomment">/// - Valid thread.</span>
-    <span class="doccomment">/// - Valid thread number.</span>
-    <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">parent_count</span> <span class="op">=</span> <span class="ident">with_serialization_context</span>(<span class="op">|</span><span class="ident">context</span><span class="op">|</span> <span class="ident">context</span>.<span class="ident">thread_count</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0usize</span>;
-        <span class="kw">let</span> (<span class="ident">period</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u64::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-        <span class="kw">let</span> <span class="ident">thread</span> <span class="op">=</span> <span class="ident">u8_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="kw">if</span> <span class="ident">thread</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">parent_count</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::DeserializeError</span>(
-                <span class="string">&quot;invalid thread number&quot;</span>.<span class="ident">into</span>(),
+<span class="kw">impl </span>DeserializeCompact <span class="kw">for </span>Slot {
+    <span class="doccomment">/// Deserializes from a compact representation
+    ///
+    /// ## Example
+    /// ```rust
+    /// # use massa_models::Slot;
+    /// # use massa_models::{DeserializeCompact, SerializeCompact};
+    /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
+    /// # let context = massa_models::get_serialization_context();
+    /// let slot = Slot::new(10,1);
+    /// let ser = slot.to_bytes_compact().unwrap();
+    /// let (deser, _) = Slot::from_bytes_compact(&amp;ser).unwrap();
+    /// assert_eq!(slot, deser);
+    /// ```
+    ///
+    /// Checks performed:
+    /// - Valid period and delta.
+    /// - Valid thread.
+    /// - Valid thread number.
+    </span><span class="kw">fn </span>from_bytes_compact(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
+        <span class="kw">let </span>parent_count = with_serialization_context(|context| context.thread_count);
+        <span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="number">0usize</span>;
+        <span class="kw">let </span>(period, delta) = u64::from_varint_bytes(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+        cursor += delta;
+        <span class="kw">let </span>thread = u8_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+        cursor += <span class="number">1</span>;
+        <span class="kw">if </span>thread &gt;= parent_count {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::DeserializeError(
+                <span class="string">&quot;invalid thread number&quot;</span>.into(),
             ));
         }
-        <span class="prelude-val">Ok</span>((<span class="ident">Slot</span> { <span class="ident">period</span>, <span class="ident">thread</span> }, <span class="ident">cursor</span>))
+        <span class="prelude-val">Ok</span>((Slot { period, thread }, cursor))
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

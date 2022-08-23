@@ -289,296 +289,296 @@
 <span id="289">289</span>
 <span id="290">290</span>
 <span id="291">291</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-<span class="doccomment">//! Utilities for a massa client</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</span><span class="doccomment">//! Utilities for a massa client
 
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
+</span><span class="attribute">#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 
-<span class="kw">use</span> <span class="ident">jsonrpc_core_client::transports::http</span>;
-<span class="kw">use</span> <span class="ident">jsonrpc_core_client</span>::{<span class="ident">RpcChannel</span>, <span class="ident">RpcError</span>, <span class="ident">RpcResult</span>, <span class="ident">TypedClient</span>};
-<span class="kw">use</span> <span class="ident">massa_models::api</span>::{
-    <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">BlockSummary</span>, <span class="ident">DatastoreEntryInput</span>, <span class="ident">DatastoreEntryOutput</span>,
-    <span class="ident">EndorsementInfo</span>, <span class="ident">EventFilter</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>, <span class="ident">OperationInput</span>,
-    <span class="ident">ReadOnlyBytecodeExecution</span>, <span class="ident">ReadOnlyCall</span>, <span class="ident">TimeInterval</span>,
+</span><span class="kw">use </span>jsonrpc_core_client::transports::http;
+<span class="kw">use </span>jsonrpc_core_client::{RpcChannel, RpcError, RpcResult, TypedClient};
+<span class="kw">use </span>massa_models::api::{
+    AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
+    EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
+    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
 };
-<span class="kw">use</span> <span class="ident">massa_models::clique::Clique</span>;
-<span class="kw">use</span> <span class="ident">massa_models::composite::PubkeySig</span>;
-<span class="kw">use</span> <span class="ident">massa_models::execution::ExecuteReadOnlyResponse</span>;
-<span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
-<span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
-<span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>};
-<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
-<span class="kw">use</span> <span class="ident">serde::de::DeserializeOwned</span>;
-<span class="kw">use</span> <span class="ident">serde::Serialize</span>;
-<span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">SocketAddr</span>};
+<span class="kw">use </span>massa_models::clique::Clique;
+<span class="kw">use </span>massa_models::composite::PubkeySig;
+<span class="kw">use </span>massa_models::execution::ExecuteReadOnlyResponse;
+<span class="kw">use </span>massa_models::node::NodeId;
+<span class="kw">use </span>massa_models::output_event::SCOutputEvent;
+<span class="kw">use </span>massa_models::prehash::{Map, Set};
+<span class="kw">use </span>massa_models::{Address, BlockId, EndorsementId, OperationId};
+<span class="kw">use </span>massa_signature::KeyPair;
+<span class="kw">use </span>serde::de::DeserializeOwned;
+<span class="kw">use </span>serde::Serialize;
+<span class="kw">use </span>std::net::{IpAddr, SocketAddr};
 
-<span class="doccomment">/// Client</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Client</span> {
-    <span class="doccomment">/// public component</span>
-    <span class="kw">pub</span> <span class="ident">public</span>: <span class="ident">RpcClient</span>,
-    <span class="doccomment">/// private component</span>
-    <span class="kw">pub</span> <span class="ident">private</span>: <span class="ident">RpcClient</span>,
+<span class="doccomment">/// Client
+</span><span class="kw">pub struct </span>Client {
+    <span class="doccomment">/// public component
+    </span><span class="kw">pub </span>public: RpcClient,
+    <span class="doccomment">/// private component
+    </span><span class="kw">pub </span>private: RpcClient,
 }
 
-<span class="kw">impl</span> <span class="ident">Client</span> {
-    <span class="doccomment">/// creates a new client</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ip</span>: <span class="ident">IpAddr</span>, <span class="ident">public_port</span>: <span class="ident">u16</span>, <span class="ident">private_port</span>: <span class="ident">u16</span>) -&gt; <span class="ident">Client</span> {
-        <span class="kw">let</span> <span class="ident">public_socket_addr</span> <span class="op">=</span> <span class="ident">SocketAddr::new</span>(<span class="ident">ip</span>, <span class="ident">public_port</span>);
-        <span class="kw">let</span> <span class="ident">private_socket_addr</span> <span class="op">=</span> <span class="ident">SocketAddr::new</span>(<span class="ident">ip</span>, <span class="ident">private_port</span>);
-        <span class="kw">let</span> <span class="ident">public_url</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;http://{}&quot;</span>, <span class="ident">public_socket_addr</span>);
-        <span class="kw">let</span> <span class="ident">private_url</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;http://{}&quot;</span>, <span class="ident">private_socket_addr</span>);
-        <span class="ident">Client</span> {
-            <span class="ident">public</span>: <span class="ident">RpcClient::from_url</span>(<span class="kw-2">&amp;</span><span class="ident">public_url</span>).<span class="kw">await</span>,
-            <span class="ident">private</span>: <span class="ident">RpcClient::from_url</span>(<span class="kw-2">&amp;</span><span class="ident">private_url</span>).<span class="kw">await</span>,
+<span class="kw">impl </span>Client {
+    <span class="doccomment">/// creates a new client
+    </span><span class="kw">pub async fn </span>new(ip: IpAddr, public_port: u16, private_port: u16) -&gt; Client {
+        <span class="kw">let </span>public_socket_addr = SocketAddr::new(ip, public_port);
+        <span class="kw">let </span>private_socket_addr = SocketAddr::new(ip, private_port);
+        <span class="kw">let </span>public_url = <span class="macro">format!</span>(<span class="string">&quot;http://{}&quot;</span>, public_socket_addr);
+        <span class="kw">let </span>private_url = <span class="macro">format!</span>(<span class="string">&quot;http://{}&quot;</span>, private_socket_addr);
+        Client {
+            public: RpcClient::from_url(<span class="kw-2">&amp;</span>public_url).<span class="kw">await</span>,
+            private: RpcClient::from_url(<span class="kw-2">&amp;</span>private_url).<span class="kw">await</span>,
         }
     }
 }
 
-<span class="doccomment">/// TODO ask @yvan-sraka</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RpcClient</span> {
-    <span class="ident">client</span>: <span class="ident">TypedClient</span>,
-    <span class="ident">timeout</span>: <span class="ident">u64</span>,
+<span class="doccomment">/// TODO ask @yvan-sraka
+</span><span class="kw">pub struct </span>RpcClient {
+    client: TypedClient,
+    timeout: u64,
 }
 
-<span class="doccomment">/// This is required by `jsonrpc_core_client::transports::http::connect`</span>
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">RpcChannel</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RpcClient</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">channel</span>: <span class="ident">RpcChannel</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">RpcClient</span> {
-            <span class="ident">client</span>: <span class="ident">channel</span>.<span class="ident">into</span>(),
-            <span class="ident">timeout</span>: <span class="number">10000</span>,
+<span class="doccomment">/// This is required by `jsonrpc_core_client::transports::http::connect`
+</span><span class="kw">impl </span>From&lt;RpcChannel&gt; <span class="kw">for </span>RpcClient {
+    <span class="kw">fn </span>from(channel: RpcChannel) -&gt; <span class="self">Self </span>{
+        RpcClient {
+            client: channel.into(),
+            timeout: <span class="number">10000</span>,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">RpcClient</span> {
-    <span class="doccomment">/// Default constructor</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">from_url</span>(<span class="ident">url</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">RpcClient</span> {
-        <span class="kw">match</span> <span class="ident">http::connect</span>::<span class="op">&lt;</span><span class="ident">RpcClient</span><span class="op">&gt;</span>(<span class="ident">url</span>).<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">client</span>) =&gt; <span class="ident">client</span>,
+<span class="kw">impl </span>RpcClient {
+    <span class="doccomment">/// Default constructor
+    </span><span class="kw">pub async fn </span>from_url(url: <span class="kw-2">&amp;</span>str) -&gt; RpcClient {
+        <span class="kw">match </span>http::connect::&lt;RpcClient&gt;(url).<span class="kw">await </span>{
+            <span class="prelude-val">Ok</span>(client) =&gt; client,
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;unable to connect to Node.&quot;</span>),
         }
     }
 
-    <span class="doccomment">/// Typed wrapper to API calls based on the method given by `jsonrpc_core_client`</span>
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">call_method</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Serialize</span>, <span class="ident">R</span>: <span class="ident">DeserializeOwned</span><span class="op">&gt;</span>(
+    <span class="doccomment">/// Typed wrapper to API calls based on the method given by `jsonrpc_core_client`
+    </span><span class="kw">async fn </span>call_method&lt;T: Serialize, R: DeserializeOwned&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">method</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">returns</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">args</span>: <span class="ident">T</span>,
-    ) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> {
-        <span class="ident">tokio::time::timeout</span>(
-            <span class="ident">tokio::time::Duration::from_millis</span>(<span class="self">self</span>.<span class="ident">timeout</span>),
-            <span class="self">self</span>.<span class="ident">client</span>.<span class="ident">call_method</span>(<span class="ident">method</span>, <span class="ident">returns</span>, <span class="ident">args</span>),
+        method: <span class="kw-2">&amp;</span>str,
+        returns: <span class="kw-2">&amp;</span>str,
+        args: T,
+    ) -&gt; RpcResult&lt;R&gt; {
+        tokio::time::timeout(
+            tokio::time::Duration::from_millis(<span class="self">self</span>.timeout),
+            <span class="self">self</span>.client.call_method(method, returns, args),
         )
-        .<span class="kw">await</span>
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">RpcError::Client</span>(<span class="macro">format!</span>(<span class="string">&quot;timeout during {}: {}&quot;</span>, <span class="ident">method</span>, <span class="ident">e</span>)))<span class="question-mark">?</span>
-    }
+        .<span class="kw">await
+        </span>.map_err(|e| RpcError::Client(<span class="macro">format!</span>(<span class="string">&quot;timeout during {}: {}&quot;</span>, method, e)))<span class="question-mark">?
+    </span>}
 
-    <span class="doccomment">/// Gracefully stop the node.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">stop_node</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;stop_node&quot;</span>, <span class="string">&quot;()&quot;</span>, ()).<span class="kw">await</span>
-    }
+    <span class="doccomment">/// Gracefully stop the node.
+    </span><span class="kw">pub async fn </span>stop_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;()&gt; {
+        <span class="self">self</span>.call_method(<span class="string">&quot;stop_node&quot;</span>, <span class="string">&quot;()&quot;</span>, ()).<span class="kw">await
+    </span>}
 
-    <span class="doccomment">/// Sign message with node&#39;s key.</span>
-    <span class="doccomment">/// Returns the public key that signed the message and the signature.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_sign_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">message</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">PubkeySig</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;node_sign_message&quot;</span>, <span class="string">&quot;PubkeySig&quot;</span>, <span class="macro">vec!</span>[<span class="ident">message</span>])
-            .<span class="kw">await</span>
-    }
+    <span class="doccomment">/// Sign message with node&#39;s key.
+    /// Returns the public key that signed the message and the signature.
+    </span><span class="kw">pub async fn </span>node_sign_message(<span class="kw-2">&amp;</span><span class="self">self</span>, message: Vec&lt;u8&gt;) -&gt; RpcResult&lt;PubkeySig&gt; {
+        <span class="self">self</span>.call_method(<span class="string">&quot;node_sign_message&quot;</span>, <span class="string">&quot;PubkeySig&quot;</span>, <span class="macro">vec!</span>[message])
+            .<span class="kw">await
+    </span>}
 
-    <span class="doccomment">/// Add a vector of new keypair for the node to use to stake.</span>
-    <span class="doccomment">/// No confirmation to expect.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_staking_secret_keys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">keypairs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">KeyPair</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;add_staking_secret_keys&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">keypairs</span>])
-            .<span class="kw">await</span>
-    }
+    <span class="doccomment">/// Add a vector of new keypair for the node to use to stake.
+    /// No confirmation to expect.
+    </span><span class="kw">pub async fn </span>add_staking_secret_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, keypairs: Vec&lt;KeyPair&gt;) -&gt; RpcResult&lt;()&gt; {
+        <span class="self">self</span>.call_method(<span class="string">&quot;add_staking_secret_keys&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[keypairs])
+            .<span class="kw">await
+    </span>}
 
-    <span class="doccomment">/// Remove a vector of addresses used to stake.</span>
-    <span class="doccomment">/// No confirmation to expect.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">remove_staking_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addresses</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;remove_staking_addresses&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">addresses</span>])
-            .<span class="kw">await</span>
-    }
+    <span class="doccomment">/// Remove a vector of addresses used to stake.
+    /// No confirmation to expect.
+    </span><span class="kw">pub async fn </span>remove_staking_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>, addresses: Vec&lt;Address&gt;) -&gt; RpcResult&lt;()&gt; {
+        <span class="self">self</span>.call_method(<span class="string">&quot;remove_staking_addresses&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[addresses])
+            .<span class="kw">await
+    </span>}
 
-    <span class="doccomment">/// Return hash-set of staking addresses.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_staking_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_staking_addresses&quot;</span>, <span class="string">&quot;Set&lt;Address&gt;&quot;</span>, ())
-            .<span class="kw">await</span>
-    }
+    <span class="doccomment">/// Return hash-set of staking addresses.
+    </span><span class="kw">pub async fn </span>get_staking_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Set&lt;Address&gt;&gt; {
+        <span class="self">self</span>.call_method(<span class="string">&quot;get_staking_addresses&quot;</span>, <span class="string">&quot;Set&lt;Address&gt;&quot;</span>, ())
+            .<span class="kw">await
+    </span>}
 
-    <span class="doccomment">/// Bans given ip address(es)</span>
-    <span class="doccomment">/// No confirmation to expect.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_ban_by_ip</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;node_ban_by_ip&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>]).<span class="kw">await</span>
-    }
+    <span class="doccomment">/// Bans given ip address(es)
+    /// No confirmation to expect.
+    </span><span class="kw">pub async fn </span>node_ban_by_ip(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
+        <span class="self">self</span>.call_method(<span class="string">&quot;node_ban_by_ip&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[ips]).<span class="kw">await
+    </span>}
 
-    <span class="doccomment">/// Bans given node id(s)</span>
-    <span class="doccomment">/// No confirmation to expect.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_ban_by_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;node_ban_by_id&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ids</span>]).<span class="kw">await</span>
-    }
+    <span class="doccomment">/// Bans given node id(s)
+    /// No confirmation to expect.
+    </span><span class="kw">pub async fn </span>node_ban_by_id(<span class="kw-2">&amp;</span><span class="self">self</span>, ids: Vec&lt;NodeId&gt;) -&gt; RpcResult&lt;()&gt; {
+        <span class="self">self</span>.call_method(<span class="string">&quot;node_ban_by_id&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[ids]).<span class="kw">await
+    </span>}
 
-    <span class="doccomment">/// Unbans given ip address(es)</span>
-    <span class="doccomment">/// No confirmation to expect.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_unban_by_ip</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;node_unban_by_ip&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>]).<span class="kw">await</span>
-    }
+    <span class="doccomment">/// Unbans given ip address(es)
+    /// No confirmation to expect.
+    </span><span class="kw">pub async fn </span>node_unban_by_ip(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
+        <span class="self">self</span>.call_method(<span class="string">&quot;node_unban_by_ip&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[ips]).<span class="kw">await
+    </span>}
 
-    <span class="doccomment">/// Unbans given node id(s)</span>
-    <span class="doccomment">/// No confirmation to expect.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_unban_by_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;node_unban_by_id&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ids</span>]).<span class="kw">await</span>
-    }
+    <span class="doccomment">/// Unbans given node id(s)
+    /// No confirmation to expect.
+    </span><span class="kw">pub async fn </span>node_unban_by_id(<span class="kw-2">&amp;</span><span class="self">self</span>, ids: Vec&lt;NodeId&gt;) -&gt; RpcResult&lt;()&gt; {
+        <span class="self">self</span>.call_method(<span class="string">&quot;node_unban_by_id&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[ids]).<span class="kw">await
+    </span>}
 
-    <span class="doccomment">/// add ips to whitelist</span>
-    <span class="doccomment">/// create peer if it was unknown</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_whitelist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;node_whitelist&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>]).<span class="kw">await</span>
-    }
+    <span class="doccomment">/// add ips to whitelist
+    /// create peer if it was unknown
+    </span><span class="kw">pub async fn </span>node_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
+        <span class="self">self</span>.call_method(<span class="string">&quot;node_whitelist&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[ips]).<span class="kw">await
+    </span>}
 
-    <span class="doccomment">/// remove IPs from whitelist</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_remove_from_whitelist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;node_remove_from_whitelist&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>])
-            .<span class="kw">await</span>
-    }
+    <span class="doccomment">/// remove IPs from whitelist
+    </span><span class="kw">pub async fn </span>node_remove_from_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
+        <span class="self">self</span>.call_method(<span class="string">&quot;node_remove_from_whitelist&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[ips])
+            .<span class="kw">await
+    </span>}
 
-    <span class="comment">////////////////</span>
-    <span class="comment">// public-api //</span>
-    <span class="comment">////////////////</span>
+    <span class="comment">////////////////
+    // public-api //
+    ////////////////
 
-    <span class="comment">// Explorer (aggregated stats)</span>
+    // Explorer (aggregated stats)
 
-    <span class="doccomment">/// summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_status</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">NodeStatus</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_status&quot;</span>, <span class="string">&quot;NodeStatus&quot;</span>, ()).<span class="kw">await</span>
-    }
+    </span><span class="doccomment">/// summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count
+    </span><span class="kw">pub async fn </span>get_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;NodeStatus&gt; {
+        <span class="self">self</span>.call_method(<span class="string">&quot;get_status&quot;</span>, <span class="string">&quot;NodeStatus&quot;</span>, ()).<span class="kw">await
+    </span>}
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">_get_cliques</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Clique</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_cliques&quot;</span>, <span class="string">&quot;Vec&lt;Clique&gt;&quot;</span>, ()).<span class="kw">await</span>
-    }
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>_get_cliques(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;Clique&gt;&gt; {
+        <span class="self">self</span>.call_method(<span class="string">&quot;get_cliques&quot;</span>, <span class="string">&quot;Vec&lt;Clique&gt;&quot;</span>, ()).<span class="kw">await
+    </span>}
 
-    <span class="comment">// Debug (specific information)</span>
+    <span class="comment">// Debug (specific information)
 
-    <span class="doccomment">/// Returns the active stakers and their roll counts for the current cycle.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">_get_stakers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_stakers&quot;</span>, <span class="string">&quot;Map&lt;Address, u64&gt;&quot;</span>, ())
-            .<span class="kw">await</span>
-    }
+    </span><span class="doccomment">/// Returns the active stakers and their roll counts for the current cycle.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>_get_stakers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Map&lt;Address, u64&gt;&gt; {
+        <span class="self">self</span>.call_method(<span class="string">&quot;get_stakers&quot;</span>, <span class="string">&quot;Map&lt;Address, u64&gt;&quot;</span>, ())
+            .<span class="kw">await
+    </span>}
 
-    <span class="doccomment">/// Returns operations information associated to a given list of operations&#39; IDs.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_operations</span>(
+    <span class="doccomment">/// Returns operations information associated to a given list of operations&#39; IDs.
+    </span><span class="kw">pub async fn </span>get_operations(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">operation_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationInfo</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_operations&quot;</span>, <span class="string">&quot;Vec&lt;OperationInfo&gt;&quot;</span>, <span class="macro">vec!</span>[<span class="ident">operation_ids</span>])
-            .<span class="kw">await</span>
-    }
+        operation_ids: Vec&lt;OperationId&gt;,
+    ) -&gt; RpcResult&lt;Vec&lt;OperationInfo&gt;&gt; {
+        <span class="self">self</span>.call_method(<span class="string">&quot;get_operations&quot;</span>, <span class="string">&quot;Vec&lt;OperationInfo&gt;&quot;</span>, <span class="macro">vec!</span>[operation_ids])
+            .<span class="kw">await
+    </span>}
 
-    <span class="doccomment">/// get info on endorsements by ids</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_endorsements</span>(
+    <span class="doccomment">/// get info on endorsements by ids
+    </span><span class="kw">pub async fn </span>get_endorsements(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">endorsement_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementInfo</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(
+        endorsement_ids: Vec&lt;EndorsementId&gt;,
+    ) -&gt; RpcResult&lt;Vec&lt;EndorsementInfo&gt;&gt; {
+        <span class="self">self</span>.call_method(
             <span class="string">&quot;get_endorsements&quot;</span>,
             <span class="string">&quot;Vec&lt;EndorsementInfo&gt;&quot;</span>,
-            <span class="macro">vec!</span>[<span class="ident">endorsement_ids</span>],
+            <span class="macro">vec!</span>[endorsement_ids],
         )
-        .<span class="kw">await</span>
-    }
+        .<span class="kw">await
+    </span>}
 
-    <span class="doccomment">/// Get information on a block given its `BlockId`</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_block</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">block_id</span>: <span class="ident">BlockId</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">BlockInfo</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_block&quot;</span>, <span class="string">&quot;BlockInfo&quot;</span>, <span class="macro">vec!</span>[<span class="ident">block_id</span>])
-            .<span class="kw">await</span>
-    }
+    <span class="doccomment">/// Get information on a block given its `BlockId`
+    </span><span class="kw">pub async fn </span>get_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId) -&gt; RpcResult&lt;BlockInfo&gt; {
+        <span class="self">self</span>.call_method(<span class="string">&quot;get_block&quot;</span>, <span class="string">&quot;BlockInfo&quot;</span>, <span class="macro">vec!</span>[block_id])
+            .<span class="kw">await
+    </span>}
 
-    <span class="doccomment">/// Get events emitted by smart contracts with various filters</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_filtered_sc_output_event</span>(
+    <span class="doccomment">/// Get events emitted by smart contracts with various filters
+    </span><span class="kw">pub async fn </span>get_filtered_sc_output_event(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">filter</span>: <span class="ident">EventFilter</span>,
-    ) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(
+        filter: EventFilter,
+    ) -&gt; RpcResult&lt;Vec&lt;SCOutputEvent&gt;&gt; {
+        <span class="self">self</span>.call_method(
             <span class="string">&quot;get_filtered_sc_output_event&quot;</span>,
             <span class="string">&quot;Vec&lt;SCOutputEvent&gt;&quot;</span>,
-            <span class="macro">vec!</span>[<span class="ident">filter</span>],
+            <span class="macro">vec!</span>[filter],
         )
-        .<span class="kw">await</span>
-    }
+        .<span class="kw">await
+    </span>}
 
-    <span class="doccomment">/// Get the block graph within the specified time interval.</span>
-    <span class="doccomment">/// Optional parameters: from `&lt;time_start&gt;` (included) and to `&lt;time_end&gt;` (excluded) millisecond timestamp</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">_get_graph_interval</span>(
+    <span class="doccomment">/// Get the block graph within the specified time interval.
+    /// Optional parameters: from `&lt;time_start&gt;` (included) and to `&lt;time_end&gt;` (excluded) millisecond timestamp
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>_get_graph_interval(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">time_interval</span>: <span class="ident">TimeInterval</span>,
-    ) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockSummary</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_graph_interval&quot;</span>, <span class="string">&quot;Vec&lt;BlockSummary&gt;&quot;</span>, <span class="ident">time_interval</span>)
-            .<span class="kw">await</span>
-    }
+        time_interval: TimeInterval,
+    ) -&gt; RpcResult&lt;Vec&lt;BlockSummary&gt;&gt; {
+        <span class="self">self</span>.call_method(<span class="string">&quot;get_graph_interval&quot;</span>, <span class="string">&quot;Vec&lt;BlockSummary&gt;&quot;</span>, time_interval)
+            .<span class="kw">await
+    </span>}
 
-    <span class="doccomment">/// Get info by addresses</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addresses</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AddressInfo</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_addresses&quot;</span>, <span class="string">&quot;Vec&lt;AddressInfo&gt;&quot;</span>, <span class="macro">vec!</span>[<span class="ident">addresses</span>])
-            .<span class="kw">await</span>
-    }
+    <span class="doccomment">/// Get info by addresses
+    </span><span class="kw">pub async fn </span>get_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>, addresses: Vec&lt;Address&gt;) -&gt; RpcResult&lt;Vec&lt;AddressInfo&gt;&gt; {
+        <span class="self">self</span>.call_method(<span class="string">&quot;get_addresses&quot;</span>, <span class="string">&quot;Vec&lt;AddressInfo&gt;&quot;</span>, <span class="macro">vec!</span>[addresses])
+            .<span class="kw">await
+    </span>}
 
-    <span class="doccomment">/// Get datastore entries</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_datastore_entries</span>(
+    <span class="doccomment">/// Get datastore entries
+    </span><span class="kw">pub async fn </span>get_datastore_entries(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">input</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DatastoreEntryInput</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DatastoreEntryOutput</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(
+        input: Vec&lt;DatastoreEntryInput&gt;,
+    ) -&gt; RpcResult&lt;Vec&lt;DatastoreEntryOutput&gt;&gt; {
+        <span class="self">self</span>.call_method(
             <span class="string">&quot;get_datastore_entries&quot;</span>,
             <span class="string">&quot;Vec&lt;DatastoreEntryOutput&gt;&quot;</span>,
-            <span class="macro">vec!</span>[<span class="ident">input</span>],
+            <span class="macro">vec!</span>[input],
         )
-        .<span class="kw">await</span>
-    }
+        .<span class="kw">await
+    </span>}
 
-    <span class="comment">// User (interaction with the node)</span>
+    <span class="comment">// User (interaction with the node)
 
-    <span class="doccomment">/// Adds operations to pool. Returns operations that were ok and sent to pool.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_operations</span>(
+    </span><span class="doccomment">/// Adds operations to pool. Returns operations that were ok and sent to pool.
+    </span><span class="kw">pub async fn </span>send_operations(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">operations</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationInput</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;send_operations&quot;</span>, <span class="string">&quot;Vec&lt;OperationId&gt;&quot;</span>, <span class="macro">vec!</span>[<span class="ident">operations</span>])
-            .<span class="kw">await</span>
-    }
+        operations: Vec&lt;OperationInput&gt;,
+    ) -&gt; RpcResult&lt;Vec&lt;OperationId&gt;&gt; {
+        <span class="self">self</span>.call_method(<span class="string">&quot;send_operations&quot;</span>, <span class="string">&quot;Vec&lt;OperationId&gt;&quot;</span>, <span class="macro">vec!</span>[operations])
+            .<span class="kw">await
+    </span>}
 
-    <span class="doccomment">/// execute read only bytecode</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">execute_read_only_bytecode</span>(
+    <span class="doccomment">/// execute read only bytecode
+    </span><span class="kw">pub async fn </span>execute_read_only_bytecode(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">read_only_execution</span>: <span class="ident">ReadOnlyBytecodeExecution</span>,
-    ) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">ExecuteReadOnlyResponse</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ReadOnlyBytecodeExecution</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExecuteReadOnlyResponse</span><span class="op">&gt;</span><span class="op">&gt;</span>(
+        read_only_execution: ReadOnlyBytecodeExecution,
+    ) -&gt; RpcResult&lt;ExecuteReadOnlyResponse&gt; {
+        <span class="self">self</span>.call_method::&lt;Vec&lt;Vec&lt;ReadOnlyBytecodeExecution&gt;&gt;, Vec&lt;ExecuteReadOnlyResponse&gt;&gt;(
             <span class="string">&quot;execute_read_only_bytecode&quot;</span>,
             <span class="string">&quot;Vec&lt;ExecuteReadOnlyResponse&gt;&quot;</span>,
-            <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="ident">read_only_execution</span>]],
+            <span class="macro">vec!</span>[<span class="macro">vec!</span>[read_only_execution]],
         )
-        .<span class="kw">await</span><span class="question-mark">?</span>
-        .<span class="ident">pop</span>()
-        .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="ident">RpcError::Client</span>(<span class="string">&quot;missing return value on execute_read_only_bytecode&quot;</span>.<span class="ident">into</span>())
+        .<span class="kw">await</span><span class="question-mark">?
+        </span>.pop()
+        .ok_or_else(|| {
+            RpcError::Client(<span class="string">&quot;missing return value on execute_read_only_bytecode&quot;</span>.into())
         })
     }
 
-    <span class="doccomment">/// execute read only SC call</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">execute_read_only_call</span>(
+    <span class="doccomment">/// execute read only SC call
+    </span><span class="kw">pub async fn </span>execute_read_only_call(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">read_only_execution</span>: <span class="ident">ReadOnlyCall</span>,
-    ) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">ExecuteReadOnlyResponse</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ReadOnlyCall</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExecuteReadOnlyResponse</span><span class="op">&gt;</span><span class="op">&gt;</span>(
+        read_only_execution: ReadOnlyCall,
+    ) -&gt; RpcResult&lt;ExecuteReadOnlyResponse&gt; {
+        <span class="self">self</span>.call_method::&lt;Vec&lt;Vec&lt;ReadOnlyCall&gt;&gt;, Vec&lt;ExecuteReadOnlyResponse&gt;&gt;(
             <span class="string">&quot;execute_read_only_call&quot;</span>,
             <span class="string">&quot;Vec&lt;ExecuteReadOnlyResponse&gt;&quot;</span>,
-            <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="ident">read_only_execution</span>]],
+            <span class="macro">vec!</span>[<span class="macro">vec!</span>[read_only_execution]],
         )
-        .<span class="kw">await</span><span class="question-mark">?</span>
-        .<span class="ident">pop</span>()
-        .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">RpcError::Client</span>(<span class="string">&quot;missing return value on execute_read_only_call&quot;</span>.<span class="ident">into</span>()))
+        .<span class="kw">await</span><span class="question-mark">?
+        </span>.pop()
+        .ok_or_else(|| RpcError::Client(<span class="string">&quot;missing return value on execute_read_only_call&quot;</span>.into()))
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_sdk" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_sdk" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

@@ -25,32 +25,32 @@
 <span id="25">25</span>
 <span id="26">26</span>
 <span id="27">27</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+</span><span class="kw">use </span>serde::{Deserialize, Serialize};
 
-<span class="doccomment">/// Pool configuration</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PoolConfig</span> {
-    <span class="doccomment">/// Configuration set in file configuration (ex: `config.toml`)</span>
-    <span class="kw">pub</span> <span class="ident">settings</span>: <span class="ident">PoolSettings</span>,
-    <span class="doccomment">/// thread count</span>
-    <span class="kw">pub</span> <span class="ident">thread_count</span>: <span class="ident">u8</span>,
-    <span class="doccomment">/// operation validity periods</span>
-    <span class="kw">pub</span> <span class="ident">operation_validity_periods</span>: <span class="ident">u64</span>,
+<span class="doccomment">/// Pool configuration
+</span><span class="attribute">#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
+</span><span class="kw">pub struct </span>PoolConfig {
+    <span class="doccomment">/// Configuration set in file configuration (ex: `config.toml`)
+    </span><span class="kw">pub </span>settings: PoolSettings,
+    <span class="doccomment">/// thread count
+    </span><span class="kw">pub </span>thread_count: u8,
+    <span class="doccomment">/// operation validity periods
+    </span><span class="kw">pub </span>operation_validity_periods: u64,
 }
 
-<span class="doccomment">/// Pool configuration, read from a file configuration</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PoolSettings</span> {
-    <span class="doccomment">/// max pool size per thread (in number of operations)</span>
-    <span class="kw">pub</span> <span class="ident">max_pool_size_per_thread</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// how many periods in the future can an op validity start ? Otherwise op is ignored</span>
-    <span class="kw">pub</span> <span class="ident">max_operation_future_validity_start_periods</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// max endorsement we keep in pool</span>
-    <span class="kw">pub</span> <span class="ident">max_endorsement_count</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// Maximum number of item the pool can pop at a time</span>
-    <span class="kw">pub</span> <span class="ident">max_item_return_count</span>: <span class="ident">usize</span>,
+<span class="doccomment">/// Pool configuration, read from a file configuration
+</span><span class="attribute">#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
+</span><span class="kw">pub struct </span>PoolSettings {
+    <span class="doccomment">/// max pool size per thread (in number of operations)
+    </span><span class="kw">pub </span>max_pool_size_per_thread: u64,
+    <span class="doccomment">/// how many periods in the future can an op validity start ? Otherwise op is ignored
+    </span><span class="kw">pub </span>max_operation_future_validity_start_periods: u64,
+    <span class="doccomment">/// max endorsement we keep in pool
+    </span><span class="kw">pub </span>max_endorsement_count: u64,
+    <span class="doccomment">/// Maximum number of item the pool can pop at a time
+    </span><span class="kw">pub </span>max_item_return_count: usize,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

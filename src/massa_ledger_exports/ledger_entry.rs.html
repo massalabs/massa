@@ -271,278 +271,278 @@
 <span id="271">271</span>
 <span id="272">272</span>
 <span id="273">273</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! This file defines the structure representing an entry in the `FinalLedger`</span>
+</span><span class="doccomment">//! This file defines the structure representing an entry in the `FinalLedger`
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ledger_changes::LedgerEntryUpdate</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::types</span>::{<span class="ident">Applicable</span>, <span class="ident">SetOrDelete</span>};
-<span class="kw">use</span> <span class="ident">massa_models::amount</span>::{<span class="ident">AmountDeserializer</span>, <span class="ident">AmountSerializer</span>};
-<span class="kw">use</span> <span class="ident">massa_models::constants::default::MAX_DATASTORE_KEY_LENGTH</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Amount</span>, <span class="ident">VecU8Deserializer</span>, <span class="ident">VecU8Serializer</span>};
-<span class="kw">use</span> <span class="ident">massa_serialization</span>::{
-    <span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>, <span class="ident">U64VarIntDeserializer</span>, <span class="ident">U64VarIntSerializer</span>,
+</span><span class="kw">use </span><span class="kw">crate</span>::ledger_changes::LedgerEntryUpdate;
+<span class="kw">use </span><span class="kw">crate</span>::types::{Applicable, SetOrDelete};
+<span class="kw">use </span>massa_models::amount::{AmountDeserializer, AmountSerializer};
+<span class="kw">use </span>massa_models::constants::default::MAX_DATASTORE_KEY_LENGTH;
+<span class="kw">use </span>massa_models::{Amount, VecU8Deserializer, VecU8Serializer};
+<span class="kw">use </span>massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
-<span class="kw">use</span> <span class="ident">nom::error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ParseError</span>};
-<span class="kw">use</span> <span class="ident">nom::multi::length_count</span>;
-<span class="kw">use</span> <span class="ident">nom::sequence::tuple</span>;
-<span class="kw">use</span> <span class="ident">nom</span>::{<span class="ident">IResult</span>, <span class="ident">Parser</span>};
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
-<span class="kw">use</span> <span class="ident">std::ops::Bound::Included</span>;
+<span class="kw">use </span>nom::error::{context, ContextError, ParseError};
+<span class="kw">use </span>nom::multi::length_count;
+<span class="kw">use </span>nom::sequence::tuple;
+<span class="kw">use </span>nom::{IResult, Parser};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::collections::BTreeMap;
+<span class="kw">use </span>std::ops::Bound::Included;
 
-<span class="doccomment">/// Structure defining an entry associated to an address in the `FinalLedger`</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerEntry</span> {
-    <span class="doccomment">/// The parallel balance of that entry.</span>
-    <span class="doccomment">/// See lib.rs for an explanation on parallel vs sequential balances.</span>
-    <span class="kw">pub</span> <span class="ident">parallel_balance</span>: <span class="ident">Amount</span>,
+<span class="doccomment">/// Structure defining an entry associated to an address in the `FinalLedger`
+</span><span class="attribute">#[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+</span><span class="kw">pub struct </span>LedgerEntry {
+    <span class="doccomment">/// The parallel balance of that entry.
+    /// See lib.rs for an explanation on parallel vs sequential balances.
+    </span><span class="kw">pub </span>parallel_balance: Amount,
 
-    <span class="doccomment">/// Executable bytecode</span>
-    <span class="kw">pub</span> <span class="ident">bytecode</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Executable bytecode
+    </span><span class="kw">pub </span>bytecode: Vec&lt;u8&gt;,
 
-    <span class="doccomment">/// A key-value store associating a hash to arbitrary bytes</span>
-    <span class="kw">pub</span> <span class="ident">datastore</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// A key-value store associating a hash to arbitrary bytes
+    </span><span class="kw">pub </span>datastore: BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;,
 }
 
-<span class="doccomment">/// Serializer for `Datastore` field in `LedgerEntry`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DatastoreSerializer</span> {
-    <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer</span>,
-    <span class="ident">vec_u8_serializer</span>: <span class="ident">VecU8Serializer</span>,
+<span class="doccomment">/// Serializer for `Datastore` field in `LedgerEntry`
+</span><span class="kw">pub struct </span>DatastoreSerializer {
+    u64_serializer: U64VarIntSerializer,
+    vec_u8_serializer: VecU8Serializer,
 }
 
-<span class="kw">impl</span> <span class="ident">DatastoreSerializer</span> {
-    <span class="doccomment">/// Creates a new `DatastoreSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(),
-            <span class="ident">vec_u8_serializer</span>: <span class="ident">VecU8Serializer::new</span>(),
+<span class="kw">impl </span>DatastoreSerializer {
+    <span class="doccomment">/// Creates a new `DatastoreSerializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u64_serializer: U64VarIntSerializer::new(),
+            vec_u8_serializer: VecU8Serializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">DatastoreSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">serialize</span>(
+<span class="kw">impl </span>Serializer&lt;BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;&gt; <span class="kw">for </span>DatastoreSerializer {
+    <span class="kw">fn </span>serialize(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">entry_count</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-            <span class="ident">SerializeError::GeneralError</span>(<span class="macro">format!</span>(
+        value: <span class="kw-2">&amp;</span>BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;,
+        buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="kw">let </span>entry_count: u64 = value.len().try_into().map_err(|err| {
+            SerializeError::GeneralError(<span class="macro">format!</span>(
                 <span class="string">&quot;too many entries in ConsensusLedgerSubset: {}&quot;</span>,
-                <span class="ident">err</span>
+                err
             ))
         })<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">u64_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">entry_count</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="kw">for</span> (<span class="ident">key</span>, <span class="ident">value</span>) <span class="kw">in</span> <span class="ident">value</span>.<span class="ident">iter</span>() {
-            <span class="self">self</span>.<span class="ident">vec_u8_serializer</span>.<span class="ident">serialize</span>(<span class="ident">key</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-            <span class="self">self</span>.<span class="ident">vec_u8_serializer</span>.<span class="ident">serialize</span>(<span class="ident">value</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span>entry_count, buffer)<span class="question-mark">?</span>;
+        <span class="kw">for </span>(key, value) <span class="kw">in </span>value.iter() {
+            <span class="self">self</span>.vec_u8_serializer.serialize(key, buffer)<span class="question-mark">?</span>;
+            <span class="self">self</span>.vec_u8_serializer.serialize(value, buffer)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// Deserializer for `Datastore` field in `LedgerEntry`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DatastoreDeserializer</span> {
-    <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer</span>,
-    <span class="ident">vec_u8_deserializer</span>: <span class="ident">VecU8Deserializer</span>,
+<span class="doccomment">/// Deserializer for `Datastore` field in `LedgerEntry`
+</span><span class="kw">pub struct </span>DatastoreDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    vec_u8_deserializer: VecU8Deserializer,
 }
 
-<span class="kw">impl</span> <span class="ident">DatastoreDeserializer</span> {
-    <span class="doccomment">/// Creates a new `DatastoreDeserializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-            <span class="ident">vec_u8_deserializer</span>: <span class="ident">VecU8Deserializer::new</span>(
-                <span class="ident">Included</span>(<span class="ident">u64::MIN</span>),
-                <span class="ident">Included</span>(<span class="ident">MAX_DATASTORE_KEY_LENGTH</span> <span class="kw">as</span> <span class="ident">u64</span>),
+<span class="kw">impl </span>DatastoreDeserializer {
+    <span class="doccomment">/// Creates a new `DatastoreDeserializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            vec_u8_deserializer: VecU8Deserializer::new(
+                Included(u64::MIN),
+                Included(MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>u64),
             ),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">DatastoreDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">impl </span>Deserializer&lt;BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;&gt; <span class="kw">for </span>DatastoreDeserializer {
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">context</span>(
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;, E&gt; {
+        context(
             <span class="string">&quot;Failed Datastore deserialization&quot;</span>,
-            <span class="ident">length_count</span>(
-                <span class="ident">context</span>(<span class="string">&quot;Failed length deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">u64_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+            length_count(
+                context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.u64_deserializer.deserialize(input)
                 }),
-                <span class="ident">tuple</span>((
-                    <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">vec_u8_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
-                    <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">vec_u8_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
+                tuple((
+                    |input| <span class="self">self</span>.vec_u8_deserializer.deserialize(input),
+                    |input| <span class="self">self</span>.vec_u8_deserializer.deserialize(input),
                 )),
             ),
         )
-        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">elements</span><span class="op">|</span> <span class="ident">elements</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>())
-        .<span class="ident">parse</span>(<span class="ident">buffer</span>)
+        .map(|elements| elements.into_iter().collect())
+        .parse(buffer)
     }
 }
 
-<span class="doccomment">/// Serializer for `LedgerEntry`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerEntrySerializer</span> {
-    <span class="ident">amount_serializer</span>: <span class="ident">AmountSerializer</span>,
-    <span class="ident">vec_u8_serializer</span>: <span class="ident">VecU8Serializer</span>,
-    <span class="ident">datastore_serializer</span>: <span class="ident">DatastoreSerializer</span>,
+<span class="doccomment">/// Serializer for `LedgerEntry`
+</span><span class="kw">pub struct </span>LedgerEntrySerializer {
+    amount_serializer: AmountSerializer,
+    vec_u8_serializer: VecU8Serializer,
+    datastore_serializer: DatastoreSerializer,
 }
 
-<span class="kw">impl</span> <span class="ident">LedgerEntrySerializer</span> {
-    <span class="doccomment">/// Creates a new `LedgerEntrySerializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">vec_u8_serializer</span>: <span class="ident">VecU8Serializer::new</span>(),
-            <span class="ident">amount_serializer</span>: <span class="ident">AmountSerializer::new</span>(),
-            <span class="ident">datastore_serializer</span>: <span class="ident">DatastoreSerializer::new</span>(),
+<span class="kw">impl </span>LedgerEntrySerializer {
+    <span class="doccomment">/// Creates a new `LedgerEntrySerializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            vec_u8_serializer: VecU8Serializer::new(),
+            amount_serializer: AmountSerializer::new(),
+            datastore_serializer: DatastoreSerializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">LedgerEntrySerializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>LedgerEntrySerializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">LedgerEntry</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">LedgerEntrySerializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use massa_serialization::Serializer;</span>
-    <span class="doccomment">/// use std::collections::BTreeMap;</span>
-    <span class="doccomment">/// use std::str::FromStr;</span>
-    <span class="doccomment">/// use massa_models::Amount;</span>
-    <span class="doccomment">/// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let key = &quot;hello world&quot;.as_bytes().to_vec();</span>
-    <span class="doccomment">/// let mut store = BTreeMap::new();</span>
-    <span class="doccomment">/// store.insert(key, vec![1, 2, 3]);</span>
-    <span class="doccomment">/// let amount = Amount::from_str(&quot;1&quot;).unwrap();</span>
-    <span class="doccomment">/// let bytecode = vec![1, 2, 3];</span>
-    <span class="doccomment">/// let ledger_entry = LedgerEntry {</span>
-    <span class="doccomment">///    parallel_balance: amount,</span>
-    <span class="doccomment">///    bytecode,</span>
-    <span class="doccomment">///    datastore: store,</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// let serializer = LedgerEntrySerializer::new();</span>
-    <span class="doccomment">/// serializer.serialize(&amp;ledger_entry, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">LedgerEntry</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">amount_serializer</span>
-            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">parallel_balance</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">vec_u8_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">bytecode</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">datastore_serializer</span>
-            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">datastore</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>Serializer&lt;LedgerEntry&gt; <span class="kw">for </span>LedgerEntrySerializer {
+    <span class="doccomment">/// ```
+    /// use massa_serialization::Serializer;
+    /// use std::collections::BTreeMap;
+    /// use std::str::FromStr;
+    /// use massa_models::Amount;
+    /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer};
+    ///
+    /// let key = &quot;hello world&quot;.as_bytes().to_vec();
+    /// let mut store = BTreeMap::new();
+    /// store.insert(key, vec![1, 2, 3]);
+    /// let amount = Amount::from_str(&quot;1&quot;).unwrap();
+    /// let bytecode = vec![1, 2, 3];
+    /// let ledger_entry = LedgerEntry {
+    ///    parallel_balance: amount,
+    ///    bytecode,
+    ///    datastore: store,
+    /// };
+    /// let mut serialized = Vec::new();
+    /// let serializer = LedgerEntrySerializer::new();
+    /// serializer.serialize(&amp;ledger_entry, &amp;mut serialized).unwrap();
+    /// ```
+    </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>LedgerEntry, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="self">self</span>.amount_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.parallel_balance, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.vec_u8_serializer.serialize(<span class="kw-2">&amp;</span>value.bytecode, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.datastore_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.datastore, buffer)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// Deserializer for `LedgerEntry`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerEntryDeserializer</span> {
-    <span class="ident">amount_deserializer</span>: <span class="ident">AmountDeserializer</span>,
-    <span class="ident">vec_u8_deserializer</span>: <span class="ident">VecU8Deserializer</span>,
-    <span class="ident">datastore_deserializer</span>: <span class="ident">DatastoreDeserializer</span>,
+<span class="doccomment">/// Deserializer for `LedgerEntry`
+</span><span class="kw">pub struct </span>LedgerEntryDeserializer {
+    amount_deserializer: AmountDeserializer,
+    vec_u8_deserializer: VecU8Deserializer,
+    datastore_deserializer: DatastoreDeserializer,
 }
 
-<span class="kw">impl</span> <span class="ident">LedgerEntryDeserializer</span> {
-    <span class="doccomment">/// Creates a new `LedgerEntryDeserializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">amount_deserializer</span>: <span class="ident">AmountDeserializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-            <span class="ident">vec_u8_deserializer</span>: <span class="ident">VecU8Deserializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-            <span class="ident">datastore_deserializer</span>: <span class="ident">DatastoreDeserializer::new</span>(),
+<span class="kw">impl </span>LedgerEntryDeserializer {
+    <span class="doccomment">/// Creates a new `LedgerEntryDeserializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            amount_deserializer: AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            vec_u8_deserializer: VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            datastore_deserializer: DatastoreDeserializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">LedgerEntryDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>LedgerEntryDeserializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">LedgerEntry</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">LedgerEntryDeserializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use massa_serialization::{Deserializer, Serializer, DeserializeError};</span>
-    <span class="doccomment">/// use std::collections::BTreeMap;</span>
-    <span class="doccomment">/// use std::str::FromStr;</span>
-    <span class="doccomment">/// use massa_models::Amount;</span>
-    <span class="doccomment">/// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer, LedgerEntryDeserializer};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let key = &quot;hello world&quot;.as_bytes().to_vec();</span>
-    <span class="doccomment">/// let mut store = BTreeMap::new();</span>
-    <span class="doccomment">/// store.insert(key, vec![1, 2, 3]);</span>
-    <span class="doccomment">/// let amount = Amount::from_str(&quot;1&quot;).unwrap();</span>
-    <span class="doccomment">/// let bytecode = vec![1, 2, 3];</span>
-    <span class="doccomment">/// let ledger_entry = LedgerEntry {</span>
-    <span class="doccomment">///    parallel_balance: amount,</span>
-    <span class="doccomment">///    bytecode,</span>
-    <span class="doccomment">///    datastore: store,</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// let serializer = LedgerEntrySerializer::new();</span>
-    <span class="doccomment">/// let deserializer = LedgerEntryDeserializer::new();</span>
-    <span class="doccomment">/// serializer.serialize(&amp;ledger_entry, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// let (rest, ledger_entry_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
-    <span class="doccomment">/// assert!(rest.is_empty());</span>
-    <span class="doccomment">/// assert_eq!(ledger_entry, ledger_entry_deser);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">impl </span>Deserializer&lt;LedgerEntry&gt; <span class="kw">for </span>LedgerEntryDeserializer {
+    <span class="doccomment">/// ```
+    /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
+    /// use std::collections::BTreeMap;
+    /// use std::str::FromStr;
+    /// use massa_models::Amount;
+    /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer, LedgerEntryDeserializer};
+    ///
+    /// let key = &quot;hello world&quot;.as_bytes().to_vec();
+    /// let mut store = BTreeMap::new();
+    /// store.insert(key, vec![1, 2, 3]);
+    /// let amount = Amount::from_str(&quot;1&quot;).unwrap();
+    /// let bytecode = vec![1, 2, 3];
+    /// let ledger_entry = LedgerEntry {
+    ///    parallel_balance: amount,
+    ///    bytecode,
+    ///    datastore: store,
+    /// };
+    /// let mut serialized = Vec::new();
+    /// let serializer = LedgerEntrySerializer::new();
+    /// let deserializer = LedgerEntryDeserializer::new();
+    /// serializer.serialize(&amp;ledger_entry, &amp;mut serialized).unwrap();
+    /// let (rest, ledger_entry_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(ledger_entry, ledger_entry_deser);
+    /// ```
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">LedgerEntry</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">context</span>(
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], LedgerEntry, E&gt; {
+        context(
             <span class="string">&quot;Failed LedgerEntry deserialization&quot;</span>,
-            <span class="ident">tuple</span>((
-                <span class="ident">context</span>(<span class="string">&quot;Failed parallel_balance deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">amount_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+            tuple((
+                context(<span class="string">&quot;Failed parallel_balance deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.amount_deserializer.deserialize(input)
                 }),
-                <span class="ident">context</span>(<span class="string">&quot;Failed bytecode deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">vec_u8_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                context(<span class="string">&quot;Failed bytecode deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.vec_u8_deserializer.deserialize(input)
                 }),
-                <span class="ident">context</span>(<span class="string">&quot;Failed datastore deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">datastore_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                context(<span class="string">&quot;Failed datastore deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.datastore_deserializer.deserialize(input)
                 }),
             )),
         )
-        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">parallel_balance</span>, <span class="ident">bytecode</span>, <span class="ident">datastore</span>)<span class="op">|</span> <span class="ident">LedgerEntry</span> {
-            <span class="ident">parallel_balance</span>,
-            <span class="ident">bytecode</span>,
-            <span class="ident">datastore</span>,
+        .map(|(parallel_balance, bytecode, datastore)| LedgerEntry {
+            parallel_balance,
+            bytecode,
+            datastore,
         })
-        .<span class="ident">parse</span>(<span class="ident">buffer</span>)
+        .parse(buffer)
     }
 }
 
-<span class="doccomment">/// A `LedgerEntryUpdate` can be applied to a `LedgerEntry`</span>
-<span class="kw">impl</span> <span class="ident">Applicable</span><span class="op">&lt;</span><span class="ident">LedgerEntryUpdate</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">LedgerEntry</span> {
-    <span class="kw">fn</span> <span class="ident">apply</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">update</span>: <span class="ident">LedgerEntryUpdate</span>) {
-        <span class="comment">// apply updates to the parallel balance</span>
-        <span class="ident">update</span>.<span class="ident">parallel_balance</span>.<span class="ident">apply_to</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">parallel_balance</span>);
+<span class="doccomment">/// A `LedgerEntryUpdate` can be applied to a `LedgerEntry`
+</span><span class="kw">impl </span>Applicable&lt;LedgerEntryUpdate&gt; <span class="kw">for </span>LedgerEntry {
+    <span class="kw">fn </span>apply(<span class="kw-2">&amp;mut </span><span class="self">self</span>, update: LedgerEntryUpdate) {
+        <span class="comment">// apply updates to the parallel balance
+        </span>update.parallel_balance.apply_to(<span class="kw-2">&amp;mut </span><span class="self">self</span>.parallel_balance);
 
-        <span class="comment">// apply updates to the executable bytecode</span>
-        <span class="ident">update</span>.<span class="ident">bytecode</span>.<span class="ident">apply_to</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">bytecode</span>);
+        <span class="comment">// apply updates to the executable bytecode
+        </span>update.bytecode.apply_to(<span class="kw-2">&amp;mut </span><span class="self">self</span>.bytecode);
 
-        <span class="comment">// iterate over all datastore updates</span>
-        <span class="kw">for</span> (<span class="ident">key</span>, <span class="ident">value_update</span>) <span class="kw">in</span> <span class="ident">update</span>.<span class="ident">datastore</span> {
-            <span class="kw">match</span> <span class="ident">value_update</span> {
-                <span class="comment">// this update sets a new value to a datastore entry</span>
-                <span class="ident">SetOrDelete::Set</span>(<span class="ident">v</span>) =&gt; {
-                    <span class="comment">// insert the new value in the datastore,</span>
-                    <span class="comment">// replacing any existing value</span>
-                    <span class="self">self</span>.<span class="ident">datastore</span>.<span class="ident">insert</span>(<span class="ident">key</span>, <span class="ident">v</span>);
+        <span class="comment">// iterate over all datastore updates
+        </span><span class="kw">for </span>(key, value_update) <span class="kw">in </span>update.datastore {
+            <span class="kw">match </span>value_update {
+                <span class="comment">// this update sets a new value to a datastore entry
+                </span>SetOrDelete::Set(v) =&gt; {
+                    <span class="comment">// insert the new value in the datastore,
+                    // replacing any existing value
+                    </span><span class="self">self</span>.datastore.insert(key, v);
                 }
 
-                <span class="comment">// this update deletes a datastore entry</span>
-                <span class="ident">SetOrDelete::Delete</span> =&gt; {
-                    <span class="comment">// remove that entry from the datastore if it exists</span>
-                    <span class="self">self</span>.<span class="ident">datastore</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">key</span>);
+                <span class="comment">// this update deletes a datastore entry
+                </span>SetOrDelete::Delete =&gt; {
+                    <span class="comment">// remove that entry from the datastore if it exists
+                    </span><span class="self">self</span>.datastore.remove(<span class="kw-2">&amp;</span>key);
                 }
             }
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

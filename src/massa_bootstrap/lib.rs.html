@@ -67,74 +67,74 @@
 <span id="67">67</span>
 <span id="68">68</span>
 <span id="69">69</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-<span class="doccomment">//! Bootstrap crate</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! At start up, if now is after genesis timestamp,</span>
-<span class="doccomment">//! the node will bootstrap from one of the provided bootstrap servers.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! On server side, the server will query consensus for the graph and the ledger,</span>
-<span class="doccomment">//! execution for execution related data and network for the peer list.</span>
-<span class="doccomment">//!</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">map_first_last</span>)]</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</span><span class="doccomment">//! Bootstrap crate
+//!
+//! At start up, if now is after genesis timestamp,
+//! the node will bootstrap from one of the provided bootstrap servers.
+//!
+//! On server side, the server will query consensus for the graph and the ledger,
+//! execution for execution related data and network for the peer list.
+//!
+</span><span class="attribute">#![feature(async_closure)]
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
+#![feature(ip)]
+#![feature(map_first_last)]
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">establisher::types::Establisher</span>;
-<span class="kw">use</span> <span class="ident">massa_final_state::FinalState</span>;
-<span class="kw">use</span> <span class="ident">massa_graph::BootstrapableGraph</span>;
-<span class="kw">use</span> <span class="ident">massa_network_exports::BootstrapPeers</span>;
-<span class="kw">use</span> <span class="ident">massa_proof_of_stake_exports::ExportProofOfStake</span>;
-<span class="kw">use</span> <span class="ident">parking_lot::RwLock</span>;
-<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
+</span><span class="kw">pub use </span>establisher::types::Establisher;
+<span class="kw">use </span>massa_final_state::FinalState;
+<span class="kw">use </span>massa_graph::BootstrapableGraph;
+<span class="kw">use </span>massa_network_exports::BootstrapPeers;
+<span class="kw">use </span>massa_proof_of_stake_exports::ExportProofOfStake;
+<span class="kw">use </span>parking_lot::RwLock;
+<span class="kw">use </span>std::sync::Arc;
 
-<span class="kw">mod</span> <span class="ident">client</span>;
-<span class="kw">mod</span> <span class="ident">client_binder</span>;
-<span class="kw">mod</span> <span class="ident">error</span>;
-<span class="kw">mod</span> <span class="ident">establisher</span>;
-<span class="kw">mod</span> <span class="ident">messages</span>;
-<span class="kw">mod</span> <span class="ident">server</span>;
-<span class="kw">mod</span> <span class="ident">server_binder</span>;
-<span class="kw">mod</span> <span class="ident">settings</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">client::get_state</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">establisher::types</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">server</span>::{<span class="ident">start_bootstrap_server</span>, <span class="ident">BootstrapManager</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">settings::BootstrapSettings</span>;
+<span class="kw">mod </span>client;
+<span class="kw">mod </span>client_binder;
+<span class="kw">mod </span>error;
+<span class="kw">mod </span>establisher;
+<span class="kw">mod </span>messages;
+<span class="kw">mod </span>server;
+<span class="kw">mod </span>server_binder;
+<span class="kw">mod </span>settings;
+<span class="kw">pub use </span>client::get_state;
+<span class="kw">pub use </span>establisher::types;
+<span class="kw">pub use </span>server::{start_bootstrap_server, BootstrapManager};
+<span class="kw">pub use </span>settings::BootstrapSettings;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tests</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">pub mod </span>tests;
 
-<span class="doccomment">/// a collection of the bootstrap state snapshots of all relevant modules</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GlobalBootstrapState</span> {
-    <span class="doccomment">/// state of the proof of stake state (distributions, seeds...)</span>
-    <span class="kw">pub</span> <span class="ident">pos</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ExportProofOfStake</span><span class="op">&gt;</span>,
+<span class="doccomment">/// a collection of the bootstrap state snapshots of all relevant modules
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>GlobalBootstrapState {
+    <span class="doccomment">/// state of the proof of stake state (distributions, seeds...)
+    </span><span class="kw">pub </span>pos: <span class="prelude-ty">Option</span>&lt;ExportProofOfStake&gt;,
 
-    <span class="doccomment">/// state of the consensus graph</span>
-    <span class="kw">pub</span> <span class="ident">graph</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BootstrapableGraph</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// state of the consensus graph
+    </span><span class="kw">pub </span>graph: <span class="prelude-ty">Option</span>&lt;BootstrapableGraph&gt;,
 
-    <span class="doccomment">/// timestamp correction in milliseconds</span>
-    <span class="kw">pub</span> <span class="ident">compensation_millis</span>: <span class="ident">i64</span>,
+    <span class="doccomment">/// timestamp correction in milliseconds
+    </span><span class="kw">pub </span>compensation_millis: i64,
 
-    <span class="doccomment">/// list of network peers</span>
-    <span class="kw">pub</span> <span class="ident">peers</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BootstrapPeers</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// list of network peers
+    </span><span class="kw">pub </span>peers: <span class="prelude-ty">Option</span>&lt;BootstrapPeers&gt;,
 
-    <span class="doccomment">/// state of the final state</span>
-    <span class="kw">pub</span> <span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// state of the final state
+    </span><span class="kw">pub </span>final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">GlobalBootstrapState</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">pos</span>: <span class="prelude-val">None</span>,
-            <span class="ident">graph</span>: <span class="prelude-val">None</span>,
-            <span class="ident">compensation_millis</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">peers</span>: <span class="prelude-val">None</span>,
-            <span class="ident">final_state</span>,
+<span class="kw">impl </span>GlobalBootstrapState {
+    <span class="kw">fn </span>new(final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            pos: <span class="prelude-val">None</span>,
+            graph: <span class="prelude-val">None</span>,
+            compensation_millis: Default::default(),
+            peers: <span class="prelude-val">None</span>,
+            final_state,
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

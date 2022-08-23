@@ -114,121 +114,121 @@
 <span id="114">114</span>
 <span id="115">115</span>
 <span id="116">116</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">peers::PeerType</span>, <span class="ident">ConnectionId</span>};
-<span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
-<span class="kw">use</span> <span class="ident">massa_models::ModelsError</span>;
-<span class="kw">use</span> <span class="ident">massa_serialization::SerializeError</span>;
-<span class="kw">use</span> <span class="ident">std::net::IpAddr</span>;
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+</span><span class="kw">use crate</span>::{peers::PeerType, ConnectionId};
+<span class="kw">use </span>displaydoc::Display;
+<span class="kw">use </span>massa_models::ModelsError;
+<span class="kw">use </span>massa_serialization::SerializeError;
+<span class="kw">use </span>std::net::IpAddr;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="doccomment">/// Network error</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Display</span>, <span class="ident">Error</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NetworkError</span> {
-    <span class="doccomment">/// wrong signature</span>
-    <span class="ident">WrongSignature</span>,
-    <span class="doccomment">/// Protocol err:{0}</span>
-    <span class="ident">GeneralProtocolError</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// An error occurred during channel communication: {0}</span>
-    <span class="ident">ChannelError</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// A tokio task has crashed err:{0}</span>
-    <span class="ident">TokioTaskJoinError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">tokio::task::JoinError</span>),
-    <span class="doccomment">/// error receiving oneshot response : {0}</span>
-    <span class="ident">TokioRecvError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">tokio::sync::oneshot::error::RecvError</span>),
-    <span class="doccomment">/// Error during network connection: {0}</span>
-    <span class="ident">PeerConnectionError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">NetworkConnectionErrorType</span>),
-    <span class="doccomment">/// The ip:`{0}` address is not valid</span>
-    <span class="ident">InvalidIpError</span>(<span class="ident">IpAddr</span>),
-    <span class="doccomment">/// Active connection missing:`{0}`</span>
-    <span class="ident">ActiveConnectionMissing</span>(<span class="ident">ConnectionId</span>),
-    <span class="doccomment">/// IO error : {0}</span>
-    <span class="ident">IOError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">std::io::Error</span>),
-    <span class="doccomment">/// Serde error : {0}</span>
-    <span class="ident">SerdeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">serde_json::Error</span>),
-    <span class="doccomment">/// `MassaHash` error {0}</span>
-    <span class="ident">MassaHashError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_hash::MassaHashError</span>),
-    <span class="doccomment">/// massa_signature error {0}</span>
-    <span class="ident">MassaSignatureError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_signature::MassaSignatureError</span>),
-    <span class="doccomment">/// handshake error:{0:?}</span>
-    <span class="ident">HandshakeError</span>(<span class="ident">HandshakeErrorType</span>),
-    <span class="doccomment">/// the network controller should not drop a node command sender before shutting down the node.</span>
-    <span class="ident">UnexpectedNodeCommandChannelClosure</span>,
-    <span class="doccomment">/// the writer of a node should not drop its event sender before sending a `clean_exit` message.</span>
-    <span class="ident">UnexpectedWriterClosure</span>,
-    <span class="doccomment">/// Time error {0}</span>
-    <span class="ident">TimeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_time::TimeError</span>),
-    <span class="doccomment">/// missing peers</span>
-    <span class="ident">MissingPeersError</span>,
-    <span class="doccomment">/// missing block</span>
-    <span class="ident">MissingBlock</span>,
-    <span class="doccomment">/// missing operation</span>
-    <span class="ident">MissingOperation</span>,
-    <span class="doccomment">/// models error: {0}</span>
-    <span class="ident">ModelsError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ModelsError</span>),
-    <span class="doccomment">/// serialize error: {0}</span>
-    <span class="ident">SerializeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">SerializeError</span>),
-    <span class="doccomment">/// container inconsistency error: {0}</span>
-    <span class="ident">ContainerInconsistencyError</span>(<span class="ident">String</span>),
+<span class="doccomment">/// Network error
+</span><span class="attribute">#[non_exhaustive]
+#[derive(Display, Error, Debug)]
+</span><span class="kw">pub enum </span>NetworkError {
+    <span class="doccomment">/// wrong signature
+    </span>WrongSignature,
+    <span class="doccomment">/// Protocol err:{0}
+    </span>GeneralProtocolError(String),
+    <span class="doccomment">/// An error occurred during channel communication: {0}
+    </span>ChannelError(String),
+    <span class="doccomment">/// A tokio task has crashed err:{0}
+    </span>TokioTaskJoinError(<span class="attribute">#[from] </span>tokio::task::JoinError),
+    <span class="doccomment">/// error receiving oneshot response : {0}
+    </span>TokioRecvError(<span class="attribute">#[from] </span>tokio::sync::oneshot::error::RecvError),
+    <span class="doccomment">/// Error during network connection: {0}
+    </span>PeerConnectionError(<span class="attribute">#[from] </span>NetworkConnectionErrorType),
+    <span class="doccomment">/// The ip:`{0}` address is not valid
+    </span>InvalidIpError(IpAddr),
+    <span class="doccomment">/// Active connection missing:`{0}`
+    </span>ActiveConnectionMissing(ConnectionId),
+    <span class="doccomment">/// IO error : {0}
+    </span>IOError(<span class="attribute">#[from] </span>std::io::Error),
+    <span class="doccomment">/// Serde error : {0}
+    </span>SerdeError(<span class="attribute">#[from] </span>serde_json::Error),
+    <span class="doccomment">/// `MassaHash` error {0}
+    </span>MassaHashError(<span class="attribute">#[from] </span>massa_hash::MassaHashError),
+    <span class="doccomment">/// massa_signature error {0}
+    </span>MassaSignatureError(<span class="attribute">#[from] </span>massa_signature::MassaSignatureError),
+    <span class="doccomment">/// handshake error:{0:?}
+    </span>HandshakeError(HandshakeErrorType),
+    <span class="doccomment">/// the network controller should not drop a node command sender before shutting down the node.
+    </span>UnexpectedNodeCommandChannelClosure,
+    <span class="doccomment">/// the writer of a node should not drop its event sender before sending a `clean_exit` message.
+    </span>UnexpectedWriterClosure,
+    <span class="doccomment">/// Time error {0}
+    </span>TimeError(<span class="attribute">#[from] </span>massa_time::TimeError),
+    <span class="doccomment">/// missing peers
+    </span>MissingPeersError,
+    <span class="doccomment">/// missing block
+    </span>MissingBlock,
+    <span class="doccomment">/// missing operation
+    </span>MissingOperation,
+    <span class="doccomment">/// models error: {0}
+    </span>ModelsError(<span class="attribute">#[from] </span>ModelsError),
+    <span class="doccomment">/// serialize error: {0}
+    </span>SerializeError(<span class="attribute">#[from] </span>SerializeError),
+    <span class="doccomment">/// container inconsistency error: {0}
+    </span>ContainerInconsistencyError(String),
 }
 
-<span class="doccomment">/// Handshake error type</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">HandshakeErrorType</span> {
-    <span class="doccomment">/// Id already exist</span>
-    <span class="ident">HandshakeIdAlreadyExist</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// timeout</span>
-    <span class="ident">HandshakeTimeout</span>,
-    <span class="doccomment">/// Unexpected interruption</span>
-    <span class="ident">HandshakeInterruption</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// wrong handshake message</span>
-    <span class="ident">HandshakeWrongMessage</span>,
-    <span class="doccomment">/// if remote id is the same as ours</span>
-    <span class="ident">HandshakeKey</span>,
-    <span class="doccomment">/// Invalid signature</span>
-    <span class="ident">HandshakeInvalidSignature</span>,
-    <span class="doccomment">/// Incompatible version</span>
-    <span class="ident">IncompatibleVersion</span>,
-    <span class="doccomment">/// Outgoing connection returned a bootstrapable peer list: {0:?}</span>
-    <span class="ident">PeerListReceived</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
+<span class="doccomment">/// Handshake error type
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub enum </span>HandshakeErrorType {
+    <span class="doccomment">/// Id already exist
+    </span>HandshakeIdAlreadyExist(String),
+    <span class="doccomment">/// timeout
+    </span>HandshakeTimeout,
+    <span class="doccomment">/// Unexpected interruption
+    </span>HandshakeInterruption(String),
+    <span class="doccomment">/// wrong handshake message
+    </span>HandshakeWrongMessage,
+    <span class="doccomment">/// if remote id is the same as ours
+    </span>HandshakeKey,
+    <span class="doccomment">/// Invalid signature
+    </span>HandshakeInvalidSignature,
+    <span class="doccomment">/// Incompatible version
+    </span>IncompatibleVersion,
+    <span class="doccomment">/// Outgoing connection returned a bootstrapable peer list: {0:?}
+    </span>PeerListReceived(Vec&lt;IpAddr&gt;),
 }
 
-<span class="doccomment">/// return handshake error</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">throw_handshake_error</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">err</span>:<span class="ident">ident</span>) =&gt; {
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::HandshakeError</span>(<span class="ident">HandshakeErrorType</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">err</span>))
+<span class="doccomment">/// return handshake error
+</span><span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>throw_handshake_error {
+    (<span class="macro-nonterminal">$err</span>:ident) =&gt; {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(NetworkError::HandshakeError(HandshakeErrorType::<span class="macro-nonterminal">$err</span>))
     };
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">err</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>) =&gt; {
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::HandshakeError</span>(<span class="ident">HandshakeErrorType</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">err</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>)))
+    (<span class="macro-nonterminal">$err</span>:ident, <span class="macro-nonterminal">$e</span>:expr) =&gt; {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(NetworkError::HandshakeError(HandshakeErrorType::<span class="macro-nonterminal">$err</span>(<span class="macro-nonterminal">$e</span>)))
     };
 }
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">throw_handshake_error</span>;
+<span class="kw">pub use </span>throw_handshake_error;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Error</span>, <span class="ident">Display</span>)]</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="doccomment">/// Incoming and outgoing connection with other peers error list</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NetworkConnectionErrorType</span> {
-    <span class="doccomment">/// Try to close connection with no connection: {0}</span>
-    <span class="ident">CloseConnectionWithNoConnectionToClose</span>(<span class="ident">IpAddr</span>),
-    <span class="doccomment">/// Peer info not found for address: {0}</span>
-    <span class="ident">PeerInfoNotFoundError</span>(<span class="ident">IpAddr</span>),
-    <span class="doccomment">/// Peer info not found for address: {0}</span>
-    <span class="ident">PeerTypeNotFoundError</span>(<span class="ident">PeerType</span>),
-    <span class="doccomment">/// Too many connection attempt: {0}</span>
-    <span class="ident">TooManyConnectionAttempts</span>(<span class="ident">IpAddr</span>),
-    <span class="doccomment">/// Too many connection failure: {0}</span>
-    <span class="ident">TooManyConnectionFailure</span>(<span class="ident">IpAddr</span>),
-    <span class="doccomment">/// Max connected peers reached: {0}</span>
-    <span class="ident">MaxPeersConnectionReached</span>(<span class="ident">IpAddr</span>),
-    <span class="doccomment">/// Attempt too connect from you own IP</span>
-    <span class="ident">SelfConnection</span>,
-    <span class="doccomment">/// A banned peer is trying to connect: {0}</span>
-    <span class="ident">BannedPeerTryingToConnect</span>(<span class="ident">IpAddr</span>),
-    <span class="doccomment">/// Unexpected error</span>
-    <span class="ident">UnexpectedError</span>,
+<span class="attribute">#[derive(Debug, Error, Display)]
+#[non_exhaustive]
+</span><span class="doccomment">/// Incoming and outgoing connection with other peers error list
+</span><span class="kw">pub enum </span>NetworkConnectionErrorType {
+    <span class="doccomment">/// Try to close connection with no connection: {0}
+    </span>CloseConnectionWithNoConnectionToClose(IpAddr),
+    <span class="doccomment">/// Peer info not found for address: {0}
+    </span>PeerInfoNotFoundError(IpAddr),
+    <span class="doccomment">/// Peer info not found for address: {0}
+    </span>PeerTypeNotFoundError(PeerType),
+    <span class="doccomment">/// Too many connection attempt: {0}
+    </span>TooManyConnectionAttempts(IpAddr),
+    <span class="doccomment">/// Too many connection failure: {0}
+    </span>TooManyConnectionFailure(IpAddr),
+    <span class="doccomment">/// Max connected peers reached: {0}
+    </span>MaxPeersConnectionReached(IpAddr),
+    <span class="doccomment">/// Attempt too connect from you own IP
+    </span>SelfConnection,
+    <span class="doccomment">/// A banned peer is trying to connect: {0}
+    </span>BannedPeerTryingToConnect(IpAddr),
+    <span class="doccomment">/// Unexpected error
+    </span>UnexpectedError,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

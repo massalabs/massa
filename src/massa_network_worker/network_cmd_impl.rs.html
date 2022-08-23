@@ -464,471 +464,471 @@
 <span id="464">464</span>
 <span id="465">465</span>
 <span id="466">466</span>
-</pre><pre class="rust"><code><span class="doccomment">//! On `NetworkWorker` receive a command behaviors implementation</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! All following function take by default a reference to the `NetworkWorker`</span>
-<span class="doccomment">//! that in order to apply required modification.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! All following functions are necessary internals (not public) or called by</span>
-<span class="doccomment">//! the `manage_network_command` in the worker.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```ignore</span>
-<span class="doccomment">//! async fn manage_network_command(&amp;mut self, cmd: NetworkCommand) -&gt; Result&lt;(), NetworkError&gt; {</span>
-<span class="doccomment">//!     use crate::network_cmd_impl::*;</span>
-<span class="doccomment">//!     match cmd {</span>
-<span class="doccomment">//!         NetworkCommand::NodeBanByIps(ips) =&gt; on_node_ban_by_ips_cmd(self, ips).await?,</span>
-<span class="doccomment">//!         NetworkCommand::NodeBanByIds(ids) =&gt; on_node_ban_by_ids_cmd(self, ids).await?,</span>
-<span class="doccomment">//!         NetworkCommand::SendBlockHeader { node, header } =&gt; on_send_block_header_cmd(self, node, header).await?,</span>
-<span class="doccomment">//!         NetworkCommand::AskForBlocks { list } =&gt; on_ask_for_block_cmd(self, list).await,</span>
-<span class="doccomment">//!         NetworkCommand::SendBlock { node, block } =&gt; on_send_block_cmd(self, node, block).await?,</span>
-<span class="doccomment">//!         NetworkCommand::GetPeers(response_tx) =&gt; on_get_peers_cmd(self, response_tx).await,</span>
-<span class="doccomment">//!         NetworkCommand::GetBootstrapPeers(response_tx) =&gt; on_get_bootstrap_peers_cmd(self, response_tx).await,</span>
-<span class="doccomment">//!         ...</span>
-<span class="doccomment">//! ```</span>
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::network_worker::NetworkWorker</span>;
-<span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">stream::FuturesUnordered</span>, <span class="ident">StreamExt</span>};
-<span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
-<span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">composite::PubkeySig</span>,
-    <span class="ident">node::NodeId</span>,
-    <span class="ident">operation</span>::{<span class="ident">OperationIds</span>, <span class="ident">OperationPrefixIds</span>},
-    <span class="ident">stats::NetworkStats</span>,
-    <span class="ident">BlockId</span>, <span class="ident">WrappedEndorsement</span>,
+</pre><pre class="rust"><code><span class="doccomment">//! On `NetworkWorker` receive a command behaviors implementation
+//!
+//! All following function take by default a reference to the `NetworkWorker`
+//! that in order to apply required modification.
+//!
+//! All following functions are necessary internals (not public) or called by
+//! the `manage_network_command` in the worker.
+//!
+//! ```ignore
+//! async fn manage_network_command(&amp;mut self, cmd: NetworkCommand) -&gt; Result&lt;(), NetworkError&gt; {
+//!     use crate::network_cmd_impl::*;
+//!     match cmd {
+//!         NetworkCommand::NodeBanByIps(ips) =&gt; on_node_ban_by_ips_cmd(self, ips).await?,
+//!         NetworkCommand::NodeBanByIds(ids) =&gt; on_node_ban_by_ids_cmd(self, ids).await?,
+//!         NetworkCommand::SendBlockHeader { node, header } =&gt; on_send_block_header_cmd(self, node, header).await?,
+//!         NetworkCommand::AskForBlocks { list } =&gt; on_ask_for_block_cmd(self, list).await,
+//!         NetworkCommand::SendBlock { node, block } =&gt; on_send_block_cmd(self, node, block).await?,
+//!         NetworkCommand::GetPeers(response_tx) =&gt; on_get_peers_cmd(self, response_tx).await,
+//!         NetworkCommand::GetBootstrapPeers(response_tx) =&gt; on_get_bootstrap_peers_cmd(self, response_tx).await,
+//!         ...
+//! ```
+</span><span class="kw">use </span><span class="kw">crate</span>::network_worker::NetworkWorker;
+<span class="kw">use </span>futures::{stream::FuturesUnordered, StreamExt};
+<span class="kw">use </span>massa_hash::Hash;
+<span class="kw">use </span>massa_logging::massa_trace;
+<span class="kw">use </span>massa_models::{
+    composite::PubkeySig,
+    node::NodeId,
+    operation::{OperationIds, OperationPrefixIds},
+    stats::NetworkStats,
+    BlockId, WrappedEndorsement,
 };
-<span class="kw">use</span> <span class="ident">massa_network_exports</span>::{
-    <span class="ident">BootstrapPeers</span>, <span class="ident">ConnectionClosureReason</span>, <span class="ident">ConnectionId</span>, <span class="ident">NetworkError</span>, <span class="ident">NodeCommand</span>, <span class="ident">Peer</span>, <span class="ident">Peers</span>,
+<span class="kw">use </span>massa_network_exports::{
+    BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError, NodeCommand, Peer, Peers,
 };
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>},
-    <span class="ident">net::IpAddr</span>,
+<span class="kw">use </span>std::{
+    collections::{HashMap, HashSet},
+    net::IpAddr,
 };
-<span class="kw">use</span> <span class="ident">tokio::sync::oneshot</span>;
-<span class="kw">use</span> <span class="ident">tracing::warn</span>;
+<span class="kw">use </span>tokio::sync::oneshot;
+<span class="kw">use </span>tracing::warn;
 
-<span class="doccomment">/// Remove the `ids` from the `worker`</span>
-<span class="doccomment">/// - clean `worker.running_handshakes`</span>
-<span class="doccomment">/// - send `NodeCommand::Close` to the active nodes</span>
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">ban_connection_ids</span>(<span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>, <span class="ident">ids</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">ConnectionId</span><span class="op">&gt;</span>) {
-    <span class="kw">for</span> <span class="ident">ban_conn_id</span> <span class="kw">in</span> <span class="ident">ids</span>.<span class="ident">iter</span>() {
-        <span class="comment">// remove the connectionId entry in running_handshakes</span>
-        <span class="ident">worker</span>.<span class="ident">running_handshakes</span>.<span class="ident">remove</span>(<span class="ident">ban_conn_id</span>);
+<span class="doccomment">/// Remove the `ids` from the `worker`
+/// - clean `worker.running_handshakes`
+/// - send `NodeCommand::Close` to the active nodes
+</span><span class="kw">async fn </span>ban_connection_ids(worker: <span class="kw-2">&amp;mut </span>NetworkWorker, ids: HashSet&lt;ConnectionId&gt;) {
+    <span class="kw">for </span>ban_conn_id <span class="kw">in </span>ids.iter() {
+        <span class="comment">// remove the connectionId entry in running_handshakes
+        </span>worker.running_handshakes.remove(ban_conn_id);
     }
-    <span class="kw">for</span> (<span class="ident">conn_id</span>, <span class="ident">node_command_tx</span>) <span class="kw">in</span> <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">values</span>() {
-        <span class="kw">if</span> <span class="ident">ids</span>.<span class="ident">contains</span>(<span class="ident">conn_id</span>) {
-            <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">node_command_tx</span>
-                .<span class="ident">send</span>(<span class="ident">NodeCommand::Close</span>(<span class="ident">ConnectionClosureReason::Banned</span>))
+    <span class="kw">for </span>(conn_id, node_command_tx) <span class="kw">in </span>worker.active_nodes.values() {
+        <span class="kw">if </span>ids.contains(conn_id) {
+            <span class="kw">let </span>res = node_command_tx
+                .send(NodeCommand::Close(ConnectionClosureReason::Banned))
                 .<span class="kw">await</span>;
-            <span class="kw">if</span> <span class="ident">res</span>.<span class="ident">is_err</span>() {
+            <span class="kw">if </span>res.is_err() {
                 <span class="macro">massa_trace!</span>(
-                    <span class="string">&quot;network.network_worker.manage_network_command&quot;</span>, {<span class="string">&quot;err&quot;</span>: <span class="ident">NetworkError::ChannelError</span>(
-                        <span class="string">&quot;close node command send failed&quot;</span>.<span class="ident">into</span>(),
-                    ).<span class="ident">to_string</span>()}
+                    <span class="string">&quot;network.network_worker.manage_network_command&quot;</span>, {<span class="string">&quot;err&quot;</span>: NetworkError::ChannelError(
+                        <span class="string">&quot;close node command send failed&quot;</span>.into(),
+                    ).to_string()}
                 );
             }
         };
     }
 }
 
-<span class="doccomment">/// Ban the connections corresponding to `ips` from the `worker`</span>
-<span class="doccomment">/// See also [ban_connection_ids]</span>
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_ban_by_ips</span>(<span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-    <span class="kw">for</span> <span class="ident">ip</span> <span class="kw">in</span> <span class="ident">ips</span>.<span class="ident">iter</span>() {
-        <span class="ident">worker</span>.<span class="ident">peer_info_db</span>.<span class="ident">peer_banned</span>(<span class="ident">ip</span>)<span class="question-mark">?</span>;
+<span class="doccomment">/// Ban the connections corresponding to `ips` from the `worker`
+/// See also [ban_connection_ids]
+</span><span class="kw">async fn </span>node_ban_by_ips(worker: <span class="kw-2">&amp;mut </span>NetworkWorker, ips: Vec&lt;IpAddr&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+    <span class="kw">for </span>ip <span class="kw">in </span>ips.iter() {
+        worker.peer_info_db.peer_banned(ip)<span class="question-mark">?</span>;
     }
-    <span class="kw">let</span> <span class="ident">connexion_ids</span> <span class="op">=</span> <span class="ident">worker</span>
-        .<span class="ident">active_connections</span>
-        .<span class="ident">iter</span>()
-        .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">conn_id</span>, (<span class="ident">ip</span>, <span class="kw">_</span>))<span class="op">|</span> {
-            <span class="kw">if</span> <span class="ident">ips</span>.<span class="ident">contains</span>(<span class="ident">ip</span>) {
-                <span class="prelude-val">Some</span>(<span class="ident">conn_id</span>)
-            } <span class="kw">else</span> {
-                <span class="prelude-val">None</span>
-            }
+    <span class="kw">let </span>connexion_ids = worker
+        .active_connections
+        .iter()
+        .filter_map(|(conn_id, (ip, <span class="kw">_</span>))| {
+            <span class="kw">if </span>ips.contains(ip) {
+                <span class="prelude-val">Some</span>(conn_id)
+            } <span class="kw">else </span>{
+                <span class="prelude-val">None
+            </span>}
         })
-        .<span class="ident">copied</span>()
-        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
-    <span class="ident">ban_connection_ids</span>(<span class="ident">worker</span>, <span class="ident">connexion_ids</span>).<span class="kw">await</span>;
+        .copied()
+        .collect::&lt;HashSet&lt;<span class="kw">_</span>&gt;&gt;();
+    ban_connection_ids(worker, connexion_ids).<span class="kw">await</span>;
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="doccomment">/// Ban the connections corresponding to node `ids` from the `worker`</span>
-<span class="doccomment">/// See also [ban_connection_ids]</span>
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_ban_by_ids</span>(<span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>, <span class="ident">ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-    <span class="comment">// get all connection IDs to ban</span>
-    <span class="kw">let</span> <span class="ident">connection_ids_to_ban</span> <span class="op">=</span> <span class="ident">ids</span>
-        .<span class="ident">iter</span>()
-        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="ident">get_connection_ids</span>(<span class="ident">worker</span>, <span class="ident">id</span>))
-        .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">res</span><span class="op">|</span> <span class="ident">res</span>.<span class="ident">is_ok</span>())
-        .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">res</span><span class="op">|</span> <span class="ident">res</span>.<span class="ident">unwrap</span>())
-        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+<span class="doccomment">/// Ban the connections corresponding to node `ids` from the `worker`
+/// See also [ban_connection_ids]
+</span><span class="kw">async fn </span>node_ban_by_ids(worker: <span class="kw-2">&amp;mut </span>NetworkWorker, ids: Vec&lt;NodeId&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+    <span class="comment">// get all connection IDs to ban
+    </span><span class="kw">let </span>connection_ids_to_ban = ids
+        .iter()
+        .map(|id| get_connection_ids(worker, id))
+        .filter(|res| res.is_ok())
+        .flat_map(|res| res.unwrap())
+        .collect::&lt;HashSet&lt;<span class="kw">_</span>&gt;&gt;();
 
-    <span class="ident">ban_connection_ids</span>(<span class="ident">worker</span>, <span class="ident">connection_ids_to_ban</span>).<span class="kw">await</span>;
+    ban_connection_ids(worker, connection_ids_to_ban).<span class="kw">await</span>;
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="doccomment">/// For each peer get all node id associated to this peer ip.</span>
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_peers</span>(<span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>, <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Peers</span><span class="op">&gt;</span>) {
-    <span class="kw">let</span> <span class="ident">peers</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">Peer</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">worker</span>
-        .<span class="ident">peer_info_db</span>
-        .<span class="ident">get_peers</span>()
-        .<span class="ident">iter</span>()
-        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">peer_ip_addr</span>, <span class="ident">peer</span>)<span class="op">|</span> {
+<span class="doccomment">/// For each peer get all node id associated to this peer ip.
+</span><span class="kw">async fn </span>get_peers(worker: <span class="kw-2">&amp;mut </span>NetworkWorker, response_tx: oneshot::Sender&lt;Peers&gt;) {
+    <span class="kw">let </span>peers: HashMap&lt;IpAddr, Peer&gt; = worker
+        .peer_info_db
+        .get_peers()
+        .iter()
+        .map(|(peer_ip_addr, peer)| {
             (
-                <span class="kw-2">*</span><span class="ident">peer_ip_addr</span>,
-                <span class="ident">Peer</span> {
-                    <span class="ident">peer_info</span>: <span class="kw-2">*</span><span class="ident">peer</span>,
-                    <span class="ident">active_nodes</span>: <span class="ident">worker</span>
-                        .<span class="ident">active_connections</span>
-                        .<span class="ident">iter</span>()
-                        .<span class="ident">filter</span>(<span class="op">|</span>(<span class="kw">_</span>, (<span class="ident">ip_addr</span>, <span class="kw">_</span>))<span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">peer</span>.<span class="ident">ip</span> <span class="op">==</span> <span class="ident">ip_addr</span>)
-                        .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">out_conn_id</span>, (<span class="kw">_</span>, <span class="ident">out_going</span>))<span class="op">|</span> {
-                            <span class="ident">worker</span>
-                                .<span class="ident">active_nodes</span>
-                                .<span class="ident">iter</span>()
-                                .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">node_id</span>, (<span class="ident">conn_id</span>, <span class="kw">_</span>))<span class="op">|</span> {
-                                    <span class="kw">if</span> <span class="ident">out_conn_id</span> <span class="op">==</span> <span class="ident">conn_id</span> {
-                                        <span class="prelude-val">Some</span>(<span class="ident">node_id</span>)
-                                    } <span class="kw">else</span> {
-                                        <span class="prelude-val">None</span>
-                                    }
+                <span class="kw-2">*</span>peer_ip_addr,
+                Peer {
+                    peer_info: <span class="kw-2">*</span>peer,
+                    active_nodes: worker
+                        .active_connections
+                        .iter()
+                        .filter(|(<span class="kw">_</span>, (ip_addr, <span class="kw">_</span>))| <span class="kw-2">&amp;</span>peer.ip == ip_addr)
+                        .filter_map(|(out_conn_id, (<span class="kw">_</span>, out_going))| {
+                            worker
+                                .active_nodes
+                                .iter()
+                                .filter_map(|(node_id, (conn_id, <span class="kw">_</span>))| {
+                                    <span class="kw">if </span>out_conn_id == conn_id {
+                                        <span class="prelude-val">Some</span>(node_id)
+                                    } <span class="kw">else </span>{
+                                        <span class="prelude-val">None
+                                    </span>}
                                 })
-                                .<span class="ident">next</span>()
-                                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">node_id</span><span class="op">|</span> (<span class="kw-2">*</span><span class="ident">node_id</span>, <span class="kw-2">*</span><span class="ident">out_going</span>))
+                                .next()
+                                .map(|node_id| (<span class="kw-2">*</span>node_id, <span class="kw-2">*</span>out_going))
                         })
-                        .<span class="ident">collect</span>(),
+                        .collect(),
                 },
             )
         })
-        .<span class="ident">collect</span>();
+        .collect();
 
-    <span class="comment">// HashMap&lt;NodeId, (ConnectionId, mpsc::Sender&lt;NodeCommand&gt;)</span>
-    <span class="kw">if</span> <span class="ident">response_tx</span>
-        .<span class="ident">send</span>(<span class="ident">Peers</span> {
-            <span class="ident">peers</span>,
-            <span class="ident">our_node_id</span>: <span class="ident">worker</span>.<span class="ident">self_node_id</span>,
+    <span class="comment">// HashMap&lt;NodeId, (ConnectionId, mpsc::Sender&lt;NodeCommand&gt;)
+    </span><span class="kw">if </span>response_tx
+        .send(Peers {
+            peers,
+            our_node_id: worker.self_node_id,
         })
-        .<span class="ident">is_err</span>()
+        .is_err()
     {
         <span class="macro">warn!</span>(<span class="string">&quot;network: could not send GetPeersChannelError upstream&quot;</span>);
     }
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_node_ban_by_ips_cmd</span>(
-    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
-    <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+<span class="kw">pub async fn </span>on_node_ban_by_ips_cmd(
+    worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
+    ips: Vec&lt;IpAddr&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
     <span class="macro">massa_trace!</span>(
         <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::NodeBanByIps&quot;</span>,
-        { <span class="string">&quot;ips&quot;</span>: <span class="ident">ips</span> }
+        { <span class="string">&quot;ips&quot;</span>: ips }
     );
-    <span class="ident">node_ban_by_ips</span>(<span class="ident">worker</span>, <span class="ident">ips</span>).<span class="kw">await</span>
-}
+    node_ban_by_ips(worker, ips).<span class="kw">await
+</span>}
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_node_ban_by_ids_cmd</span>(
-    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
-    <span class="ident">ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+<span class="kw">pub async fn </span>on_node_ban_by_ids_cmd(
+    worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
+    ids: Vec&lt;NodeId&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
     <span class="macro">massa_trace!</span>(
         <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::NodeBanByIds&quot;</span>,
-        { <span class="string">&quot;ids&quot;</span>: <span class="ident">ids</span> }
+        { <span class="string">&quot;ids&quot;</span>: ids }
     );
-    <span class="ident">node_ban_by_ids</span>(<span class="ident">worker</span>, <span class="ident">ids</span>).<span class="kw">await</span>
-}
+    node_ban_by_ids(worker, ids).<span class="kw">await
+</span>}
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_send_block_header_cmd</span>(
-    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
-    <span class="ident">node</span>: <span class="ident">NodeId</span>,
-    <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-    <span class="macro">massa_trace!</span>(<span class="string">&quot;network_worker.manage_network_command send NodeCommand::SendBlockHeader&quot;</span>, {<span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span>, <span class="string">&quot;node&quot;</span>: <span class="ident">node</span>});
-    <span class="ident">worker</span>
-        .<span class="ident">event</span>
-        .<span class="ident">forward</span>(
-            <span class="ident">node</span>,
-            <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">node</span>),
-            <span class="ident">NodeCommand::SendBlockHeader</span>(<span class="ident">block_id</span>),
+<span class="kw">pub async fn </span>on_send_block_header_cmd(
+    worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
+    node: NodeId,
+    block_id: BlockId,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+    <span class="macro">massa_trace!</span>(<span class="string">&quot;network_worker.manage_network_command send NodeCommand::SendBlockHeader&quot;</span>, {<span class="string">&quot;block_id&quot;</span>: block_id, <span class="string">&quot;node&quot;</span>: node});
+    worker
+        .event
+        .forward(
+            node,
+            worker.active_nodes.get(<span class="kw-2">&amp;</span>node),
+            NodeCommand::SendBlockHeader(block_id),
         )
         .<span class="kw">await</span>;
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_ask_for_block_cmd</span>(<span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>, <span class="ident">map</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
-    <span class="kw">for</span> (<span class="ident">node</span>, <span class="ident">hash_list</span>) <span class="kw">in</span> <span class="ident">map</span>.<span class="ident">into_iter</span>() {
+<span class="kw">pub async fn </span>on_ask_for_block_cmd(worker: <span class="kw-2">&amp;mut </span>NetworkWorker, map: HashMap&lt;NodeId, Vec&lt;BlockId&gt;&gt;) {
+    <span class="kw">for </span>(node, hash_list) <span class="kw">in </span>map.into_iter() {
         <span class="macro">massa_trace!</span>(
             <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::AskForBlocks&quot;</span>,
-            { <span class="string">&quot;hashlist&quot;</span>: <span class="ident">hash_list</span>, <span class="string">&quot;node&quot;</span>: <span class="ident">node</span> }
+            { <span class="string">&quot;hashlist&quot;</span>: hash_list, <span class="string">&quot;node&quot;</span>: node }
         );
-        <span class="ident">worker</span>
-            .<span class="ident">event</span>
-            .<span class="ident">forward</span>(
-                <span class="ident">node</span>,
-                <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">node</span>),
-                <span class="ident">NodeCommand::AskForBlocks</span>(<span class="ident">hash_list</span>.<span class="ident">clone</span>()),
+        worker
+            .event
+            .forward(
+                node,
+                worker.active_nodes.get(<span class="kw-2">&amp;</span>node),
+                NodeCommand::AskForBlocks(hash_list.clone()),
             )
             .<span class="kw">await</span>;
     }
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_send_block_cmd</span>(
-    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
-    <span class="ident">node</span>: <span class="ident">NodeId</span>,
-    <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+<span class="kw">pub async fn </span>on_send_block_cmd(
+    worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
+    node: NodeId,
+    block_id: BlockId,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
     <span class="macro">massa_trace!</span>(
         <span class="string">&quot;network_worker.manage_network_command send NodeCommand::SendBlock&quot;</span>,
-        {<span class="string">&quot;hash&quot;</span>: <span class="ident">block_id</span>, <span class="string">&quot;node&quot;</span>: <span class="ident">node</span>}
+        {<span class="string">&quot;hash&quot;</span>: block_id, <span class="string">&quot;node&quot;</span>: node}
     );
-    <span class="ident">worker</span>
-        .<span class="ident">event</span>
-        .<span class="ident">forward</span>(
-            <span class="ident">node</span>,
-            <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">node</span>),
-            <span class="ident">NodeCommand::SendBlock</span>(<span class="ident">block_id</span>),
+    worker
+        .event
+        .forward(
+            node,
+            worker.active_nodes.get(<span class="kw-2">&amp;</span>node),
+            NodeCommand::SendBlock(block_id),
         )
         .<span class="kw">await</span>;
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_get_peers_cmd</span>(<span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>, <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Peers</span><span class="op">&gt;</span>) {
+<span class="kw">pub async fn </span>on_get_peers_cmd(worker: <span class="kw-2">&amp;mut </span>NetworkWorker, response_tx: oneshot::Sender&lt;Peers&gt;) {
     <span class="macro">massa_trace!</span>(
         <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::GetPeers&quot;</span>,
         {}
     );
-    <span class="ident">get_peers</span>(<span class="ident">worker</span>, <span class="ident">response_tx</span>).<span class="kw">await</span>;
+    get_peers(worker, response_tx).<span class="kw">await</span>;
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_get_bootstrap_peers_cmd</span>(
-    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
-    <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">BootstrapPeers</span><span class="op">&gt;</span>,
+<span class="kw">pub async fn </span>on_get_bootstrap_peers_cmd(
+    worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
+    response_tx: oneshot::Sender&lt;BootstrapPeers&gt;,
 ) {
     <span class="macro">massa_trace!</span>(
         <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::GetBootstrapPeers&quot;</span>,
         {}
     );
-    <span class="kw">let</span> <span class="ident">peer_list</span> <span class="op">=</span> <span class="ident">worker</span>.<span class="ident">peer_info_db</span>.<span class="ident">get_advertisable_peer_ips</span>();
-    <span class="kw">if</span> <span class="ident">response_tx</span>.<span class="ident">send</span>(<span class="ident">BootstrapPeers</span>(<span class="ident">peer_list</span>)).<span class="ident">is_err</span>() {
+    <span class="kw">let </span>peer_list = worker.peer_info_db.get_advertisable_peer_ips();
+    <span class="kw">if </span>response_tx.send(BootstrapPeers(peer_list)).is_err() {
         <span class="macro">warn!</span>(<span class="string">&quot;network: could not send GetBootstrapPeers response upstream&quot;</span>);
     }
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_block_not_found_cmd</span>(<span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>, <span class="ident">node</span>: <span class="ident">NodeId</span>, <span class="ident">block_id</span>: <span class="ident">BlockId</span>) {
+<span class="kw">pub async fn </span>on_block_not_found_cmd(worker: <span class="kw-2">&amp;mut </span>NetworkWorker, node: NodeId, block_id: BlockId) {
     <span class="macro">massa_trace!</span>(
         <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::BlockNotFound&quot;</span>,
-        { <span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span>, <span class="string">&quot;node&quot;</span>: <span class="ident">node</span> }
+        { <span class="string">&quot;block_id&quot;</span>: block_id, <span class="string">&quot;node&quot;</span>: node }
     );
-    <span class="ident">worker</span>
-        .<span class="ident">event</span>
-        .<span class="ident">forward</span>(
-            <span class="ident">node</span>,
-            <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">node</span>),
-            <span class="ident">NodeCommand::BlockNotFound</span>(<span class="ident">block_id</span>),
+    worker
+        .event
+        .forward(
+            node,
+            worker.active_nodes.get(<span class="kw-2">&amp;</span>node),
+            NodeCommand::BlockNotFound(block_id),
         )
         .<span class="kw">await</span>;
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_send_endorsements_cmd</span>(
-    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
-    <span class="ident">node</span>: <span class="ident">NodeId</span>,
-    <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>,
+<span class="kw">pub async fn </span>on_send_endorsements_cmd(
+    worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
+    node: NodeId,
+    endorsements: Vec&lt;WrappedEndorsement&gt;,
 ) {
     <span class="macro">massa_trace!</span>(
         <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::SendEndorsements&quot;</span>,
-        { <span class="string">&quot;node&quot;</span>: <span class="ident">node</span>, <span class="string">&quot;endorsements&quot;</span>: <span class="ident">endorsements</span> }
+        { <span class="string">&quot;node&quot;</span>: node, <span class="string">&quot;endorsements&quot;</span>: endorsements }
     );
-    <span class="ident">worker</span>
-        .<span class="ident">event</span>
-        .<span class="ident">forward</span>(
-            <span class="ident">node</span>,
-            <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">node</span>),
-            <span class="ident">NodeCommand::SendEndorsements</span>(<span class="ident">endorsements</span>),
+    worker
+        .event
+        .forward(
+            node,
+            worker.active_nodes.get(<span class="kw-2">&amp;</span>node),
+            NodeCommand::SendEndorsements(endorsements),
         )
         .<span class="kw">await</span>;
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_node_sign_message_cmd</span>(
-    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
-    <span class="ident">msg</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">PubkeySig</span><span class="op">&gt;</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+<span class="kw">pub async fn </span>on_node_sign_message_cmd(
+    worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
+    msg: Vec&lt;u8&gt;,
+    response_tx: oneshot::Sender&lt;PubkeySig&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
     <span class="macro">massa_trace!</span>(
         <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::NodeSignMessage&quot;</span>,
-        { <span class="string">&quot;mdg&quot;</span>: <span class="ident">msg</span> }
+        { <span class="string">&quot;mdg&quot;</span>: msg }
     );
-    <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">worker</span>.<span class="ident">keypair</span>.<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>))<span class="question-mark">?</span>;
-    <span class="kw">if</span> <span class="ident">response_tx</span>
-        .<span class="ident">send</span>(<span class="ident">PubkeySig</span> {
-            <span class="ident">public_key</span>: <span class="ident">worker</span>.<span class="ident">keypair</span>.<span class="ident">get_public_key</span>(),
-            <span class="ident">signature</span>,
+    <span class="kw">let </span>signature = worker.keypair.sign(<span class="kw-2">&amp;</span>Hash::compute_from(<span class="kw-2">&amp;</span>msg))<span class="question-mark">?</span>;
+    <span class="kw">if </span>response_tx
+        .send(PubkeySig {
+            public_key: worker.keypair.get_public_key(),
+            signature,
         })
-        .<span class="ident">is_err</span>()
+        .is_err()
     {
         <span class="macro">warn!</span>(<span class="string">&quot;network: could not send NodeSignMessage response upstream&quot;</span>);
     }
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_node_unban_by_ids_cmd</span>(
-    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
-    <span class="ident">ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">ips_to_unban</span> <span class="op">=</span> <span class="ident">ids</span>
-        .<span class="ident">iter</span>()
-        .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="ident">get_ip</span>(<span class="ident">worker</span>, <span class="ident">id</span>))
-        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
-    <span class="ident">worker</span>.<span class="ident">peer_info_db</span>.<span class="ident">unban</span>(<span class="ident">ips_to_unban</span>)
+<span class="kw">pub async fn </span>on_node_unban_by_ids_cmd(
+    worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
+    ids: Vec&lt;NodeId&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+    <span class="kw">let </span>ips_to_unban = ids
+        .iter()
+        .flat_map(|id| get_ip(worker, id))
+        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+    worker.peer_info_db.unban(ips_to_unban)
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_node_unban_by_ips_cmd</span>(
-    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
-    <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-    <span class="ident">worker</span>.<span class="ident">peer_info_db</span>.<span class="ident">unban</span>(<span class="ident">ips</span>)
+<span class="kw">pub async fn </span>on_node_unban_by_ips_cmd(
+    worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
+    ips: Vec&lt;IpAddr&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+    worker.peer_info_db.unban(ips)
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_whitelist_cmd</span>(
-    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
-    <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-    <span class="ident">worker</span>.<span class="ident">peer_info_db</span>.<span class="ident">whitelist</span>(<span class="ident">ips</span>).<span class="kw">await</span>
-}
+<span class="kw">pub async fn </span>on_whitelist_cmd(
+    worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
+    ips: Vec&lt;IpAddr&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+    worker.peer_info_db.whitelist(ips).<span class="kw">await
+</span>}
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_remove_from_whitelist_cmd</span>(
-    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
-    <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-    <span class="ident">worker</span>.<span class="ident">peer_info_db</span>.<span class="ident">remove_from_whitelist</span>(<span class="ident">ips</span>).<span class="kw">await</span>
-}
+<span class="kw">pub async fn </span>on_remove_from_whitelist_cmd(
+    worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
+    ips: Vec&lt;IpAddr&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+    worker.peer_info_db.remove_from_whitelist(ips).<span class="kw">await
+</span>}
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_get_stats_cmd</span>(
-    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
-    <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">NetworkStats</span><span class="op">&gt;</span>,
+<span class="kw">pub async fn </span>on_get_stats_cmd(
+    worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
+    response_tx: oneshot::Sender&lt;NetworkStats&gt;,
 ) {
-    <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">NetworkStats</span> {
-        <span class="ident">in_connection_count</span>: <span class="ident">worker</span>.<span class="ident">peer_info_db</span>.<span class="ident">get_in_connection_count</span>() <span class="kw">as</span> <span class="ident">u64</span>,
-        <span class="ident">out_connection_count</span>: <span class="ident">worker</span>.<span class="ident">peer_info_db</span>.<span class="ident">get_out_connection_count</span>() <span class="kw">as</span> <span class="ident">u64</span>,
-        <span class="ident">known_peer_count</span>: <span class="ident">worker</span>.<span class="ident">peer_info_db</span>.<span class="ident">peers</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>,
-        <span class="ident">banned_peer_count</span>: <span class="ident">worker</span>
-            .<span class="ident">peer_info_db</span>
-            .<span class="ident">peers</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">filter</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">p</span>)<span class="op">|</span> <span class="ident">p</span>.<span class="ident">banned</span>)
-            .<span class="ident">fold</span>(<span class="number">0</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="kw">_</span><span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="number">1</span>),
-        <span class="ident">active_node_count</span>: <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>,
+    <span class="kw">let </span>res = NetworkStats {
+        in_connection_count: worker.peer_info_db.get_in_connection_count() <span class="kw">as </span>u64,
+        out_connection_count: worker.peer_info_db.get_out_connection_count() <span class="kw">as </span>u64,
+        known_peer_count: worker.peer_info_db.peers.len() <span class="kw">as </span>u64,
+        banned_peer_count: worker
+            .peer_info_db
+            .peers
+            .iter()
+            .filter(|(<span class="kw">_</span>, p)| p.banned)
+            .fold(<span class="number">0</span>, |acc, <span class="kw">_</span>| acc + <span class="number">1</span>),
+        active_node_count: worker.active_nodes.len() <span class="kw">as </span>u64,
     };
-    <span class="kw">if</span> <span class="ident">response_tx</span>.<span class="ident">send</span>(<span class="ident">res</span>).<span class="ident">is_err</span>() {
+    <span class="kw">if </span>response_tx.send(res).is_err() {
         <span class="macro">warn!</span>(<span class="string">&quot;network: could not send NodeSignMessage response upstream&quot;</span>);
     }
 }
 
-<span class="doccomment">/// Network worker received the command `NetworkCommand::SendOperations` from</span>
-<span class="doccomment">/// the controller. Happen when the program has received a new set of operation</span>
-<span class="doccomment">/// or run a kind of &quot;send operations&quot; loop.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// todo: precise the documentation in followup</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Forward to the node worker to be propagate in the network.</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_send_operations_cmd</span>(
-    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
-    <span class="ident">to_node</span>: <span class="ident">NodeId</span>,
-    <span class="ident">operations</span>: <span class="ident">OperationIds</span>,
+<span class="doccomment">/// Network worker received the command `NetworkCommand::SendOperations` from
+/// the controller. Happen when the program has received a new set of operation
+/// or run a kind of &quot;send operations&quot; loop.
+///
+/// todo: precise the documentation in followup
+///
+/// Forward to the node worker to be propagate in the network.
+</span><span class="kw">pub async fn </span>on_send_operations_cmd(
+    worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
+    to_node: NodeId,
+    operations: OperationIds,
 ) {
     <span class="macro">massa_trace!</span>(
         <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::SendOperations&quot;</span>,
-        { <span class="string">&quot;node&quot;</span>: <span class="ident">to_node</span>, <span class="string">&quot;operations&quot;</span>: <span class="ident">operations</span> }
+        { <span class="string">&quot;node&quot;</span>: to_node, <span class="string">&quot;operations&quot;</span>: operations }
     );
-    <span class="ident">worker</span>
-        .<span class="ident">event</span>
-        .<span class="ident">forward</span>(
-            <span class="ident">to_node</span>,
-            <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">to_node</span>),
-            <span class="ident">NodeCommand::SendOperations</span>(<span class="ident">operations</span>),
+    worker
+        .event
+        .forward(
+            to_node,
+            worker.active_nodes.get(<span class="kw-2">&amp;</span>to_node),
+            NodeCommand::SendOperations(operations),
         )
         .<span class="kw">await</span>;
 }
 
-<span class="doccomment">/// On the command `[massa_network_exports::NetworkCommand::SendOperationAnnouncements]` is called,</span>
-<span class="doccomment">/// Forward (and split) the command to the `NodeWorker` and propagate to the network</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_send_operation_batches_cmd</span>(
-    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
-    <span class="ident">to_node</span>: <span class="ident">NodeId</span>,
-    <span class="ident">batch</span>: <span class="ident">OperationPrefixIds</span>,
+<span class="doccomment">/// On the command `[massa_network_exports::NetworkCommand::SendOperationAnnouncements]` is called,
+/// Forward (and split) the command to the `NodeWorker` and propagate to the network
+</span><span class="kw">pub async fn </span>on_send_operation_batches_cmd(
+    worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
+    to_node: NodeId,
+    batch: OperationPrefixIds,
 ) {
     <span class="macro">massa_trace!</span>(
         <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::SendOperationAnnouncements&quot;</span>,
-        { <span class="string">&quot;batch&quot;</span>: <span class="ident">batch</span> }
+        { <span class="string">&quot;batch&quot;</span>: batch }
     );
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">futs</span> <span class="op">=</span> <span class="ident">FuturesUnordered::new</span>();
-    <span class="kw">let</span> <span class="ident">fut</span> <span class="op">=</span> <span class="ident">worker</span>.<span class="ident">event</span>.<span class="ident">forward</span>(
-        <span class="ident">to_node</span>,
-        <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">to_node</span>),
-        <span class="ident">NodeCommand::SendOperationAnnouncements</span>(<span class="ident">batch</span>),
+    <span class="kw">let </span><span class="kw-2">mut </span>futs = FuturesUnordered::new();
+    <span class="kw">let </span>fut = worker.event.forward(
+        to_node,
+        worker.active_nodes.get(<span class="kw-2">&amp;</span>to_node),
+        NodeCommand::SendOperationAnnouncements(batch),
     );
-    <span class="ident">futs</span>.<span class="ident">push</span>(<span class="ident">fut</span>);
-    <span class="kw">while</span> <span class="ident">futs</span>.<span class="ident">next</span>().<span class="kw">await</span>.<span class="ident">is_some</span>() {}
+    futs.push(fut);
+    <span class="kw">while </span>futs.next().<span class="kw">await</span>.is_some() {}
 }
 
-<span class="doccomment">/// Network worker received the command `NetworkCommand::AskForOperations` from</span>
-<span class="doccomment">/// the controller. Happen when the program run a kind of &quot;ask operations&quot; loop</span>
-<span class="doccomment">/// or received a new batch.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # See also</span>
-<span class="doccomment">/// `[massa_models::operation::OperationBatchItem]`</span>
-<span class="doccomment">/// `[massa_models::operation::OperationBatchBuffer]`</span>
-<span class="doccomment">/// todo: add the link to the function that process the buffer</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # What it does</span>
-<span class="doccomment">/// When the command `[massa_network_exports::NetworkCommand::AskForOperations]` is called,</span>
-<span class="doccomment">/// Forward the command to the `NodeWorker` and propagate to the network</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_ask_for_operations_cmd</span>(
-    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
-    <span class="ident">to_node</span>: <span class="ident">NodeId</span>,
-    <span class="ident">wishlist</span>: <span class="ident">OperationPrefixIds</span>,
+<span class="doccomment">/// Network worker received the command `NetworkCommand::AskForOperations` from
+/// the controller. Happen when the program run a kind of &quot;ask operations&quot; loop
+/// or received a new batch.
+///
+/// # See also
+/// `[massa_models::operation::OperationBatchItem]`
+/// `[massa_models::operation::OperationBatchBuffer]`
+/// todo: add the link to the function that process the buffer
+///
+/// # What it does
+/// When the command `[massa_network_exports::NetworkCommand::AskForOperations]` is called,
+/// Forward the command to the `NodeWorker` and propagate to the network
+</span><span class="kw">pub async fn </span>on_ask_for_operations_cmd(
+    worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
+    to_node: NodeId,
+    wishlist: OperationPrefixIds,
 ) {
     <span class="macro">massa_trace!</span>(
         <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::SendOperationAnnouncements&quot;</span>,
-        { <span class="string">&quot;wishlist&quot;</span>: <span class="ident">wishlist</span> }
+        { <span class="string">&quot;wishlist&quot;</span>: wishlist }
     );
-    <span class="ident">worker</span>
-        .<span class="ident">event</span>
-        .<span class="ident">forward</span>(
-            <span class="ident">to_node</span>,
-            <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">to_node</span>),
-            <span class="ident">NodeCommand::AskForOperations</span>(<span class="ident">wishlist</span>),
+    worker
+        .event
+        .forward(
+            to_node,
+            worker.active_nodes.get(<span class="kw-2">&amp;</span>to_node),
+            NodeCommand::AskForOperations(wishlist),
         )
         .<span class="kw">await</span>;
 }
 
-<span class="kw">fn</span> <span class="ident">get_connection_ids</span>(
-    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
-    <span class="ident">node</span>: <span class="kw-2">&amp;</span><span class="ident">NodeId</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">ConnectionId</span><span class="op">&gt;</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ids</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">ConnectionId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashSet::new</span>();
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">orig_conn_id</span>, <span class="kw">_</span>)) <span class="op">=</span> <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="ident">node</span>) {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">orig_ip</span>, <span class="kw">_</span>)) <span class="op">=</span> <span class="ident">worker</span>.<span class="ident">active_connections</span>.<span class="ident">get</span>(<span class="ident">orig_conn_id</span>) {
-            <span class="ident">worker</span>.<span class="ident">peer_info_db</span>.<span class="ident">peer_banned</span>(<span class="ident">orig_ip</span>)<span class="question-mark">?</span>;
-            <span class="kw">for</span> (<span class="ident">target_conn_id</span>, (<span class="ident">target_ip</span>, <span class="kw">_</span>)) <span class="kw">in</span> <span class="ident">worker</span>.<span class="ident">active_connections</span>.<span class="ident">iter</span>() {
-                <span class="kw">if</span> <span class="ident">target_ip</span> <span class="op">==</span> <span class="ident">orig_ip</span> {
-                    <span class="ident">ids</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">target_conn_id</span>);
+<span class="kw">fn </span>get_connection_ids(
+    worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
+    node: <span class="kw-2">&amp;</span>NodeId,
+) -&gt; <span class="prelude-ty">Result</span>&lt;HashSet&lt;ConnectionId&gt;, NetworkError&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>ids: HashSet&lt;ConnectionId&gt; = HashSet::new();
+    <span class="kw">if let </span><span class="prelude-val">Some</span>((orig_conn_id, <span class="kw">_</span>)) = worker.active_nodes.get(node) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((orig_ip, <span class="kw">_</span>)) = worker.active_connections.get(orig_conn_id) {
+            worker.peer_info_db.peer_banned(orig_ip)<span class="question-mark">?</span>;
+            <span class="kw">for </span>(target_conn_id, (target_ip, <span class="kw">_</span>)) <span class="kw">in </span>worker.active_connections.iter() {
+                <span class="kw">if </span>target_ip == orig_ip {
+                    ids.insert(<span class="kw-2">*</span>target_conn_id);
                 }
             }
         }
     }
 
-    <span class="prelude-val">Ok</span>(<span class="ident">ids</span>)
+    <span class="prelude-val">Ok</span>(ids)
 }
 
-<span class="kw">fn</span> <span class="ident">get_ip</span>(<span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>, <span class="ident">node</span>: <span class="kw-2">&amp;</span><span class="ident">NodeId</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span> {
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">orig_conn_id</span>, <span class="kw">_</span>)) <span class="op">=</span> <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="ident">node</span>) {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">orig_ip</span>, <span class="kw">_</span>)) <span class="op">=</span> <span class="ident">worker</span>.<span class="ident">active_connections</span>.<span class="ident">get</span>(<span class="ident">orig_conn_id</span>) {
-            <span class="kw">for</span> (<span class="kw">_</span>, (<span class="ident">target_ip</span>, <span class="kw">_</span>)) <span class="kw">in</span> <span class="ident">worker</span>.<span class="ident">active_connections</span>.<span class="ident">iter</span>() {
-                <span class="kw">if</span> <span class="ident">target_ip</span> <span class="op">==</span> <span class="ident">orig_ip</span> {
-                    <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="kw-2">*</span><span class="ident">target_ip</span>);
+<span class="kw">fn </span>get_ip(worker: <span class="kw-2">&amp;mut </span>NetworkWorker, node: <span class="kw-2">&amp;</span>NodeId) -&gt; <span class="prelude-ty">Option</span>&lt;IpAddr&gt; {
+    <span class="kw">if let </span><span class="prelude-val">Some</span>((orig_conn_id, <span class="kw">_</span>)) = worker.active_nodes.get(node) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((orig_ip, <span class="kw">_</span>)) = worker.active_connections.get(orig_conn_id) {
+            <span class="kw">for </span>(<span class="kw">_</span>, (target_ip, <span class="kw">_</span>)) <span class="kw">in </span>worker.active_connections.iter() {
+                <span class="kw">if </span>target_ip == orig_ip {
+                    <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="kw-2">*</span>target_ip);
                 }
             }
         }
     }
-    <span class="prelude-val">None</span>
-}
+    <span class="prelude-val">None
+</span>}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

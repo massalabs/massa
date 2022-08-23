@@ -486,493 +486,493 @@
 <span id="486">486</span>
 <span id="487">487</span>
 <span id="488">488</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
-<span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">massa_logging</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings</span>::{<span class="ident">POOL_CONFIG</span>, <span class="ident">SETTINGS</span>};
+</span><span class="attribute">#![feature(ip)]
+#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
+</span><span class="kw">extern crate </span>massa_logging;
+<span class="kw">use </span><span class="kw">crate</span>::settings::{POOL_CONFIG, SETTINGS};
 
-<span class="kw">use</span> <span class="ident">dialoguer::Password</span>;
-<span class="kw">use</span> <span class="ident">massa_api</span>::{<span class="ident">Private</span>, <span class="ident">Public</span>, <span class="ident">RpcServer</span>, <span class="ident">StopHandle</span>, <span class="ident">API</span>};
-<span class="kw">use</span> <span class="ident">massa_async_pool::AsyncPoolConfig</span>;
-<span class="kw">use</span> <span class="ident">massa_bootstrap</span>::{<span class="ident">get_state</span>, <span class="ident">start_bootstrap_server</span>, <span class="ident">BootstrapManager</span>};
-<span class="kw">use</span> <span class="ident">massa_cipher</span>::{<span class="ident">decrypt</span>, <span class="ident">encrypt</span>};
-<span class="kw">use</span> <span class="ident">massa_consensus_exports</span>::{
-    <span class="ident">events::ConsensusEvent</span>, <span class="ident">settings::ConsensusChannels</span>, <span class="ident">ConsensusCommandSender</span>, <span class="ident">ConsensusConfig</span>,
-    <span class="ident">ConsensusEventReceiver</span>, <span class="ident">ConsensusManager</span>,
+<span class="kw">use </span>dialoguer::Password;
+<span class="kw">use </span>massa_api::{Private, Public, RpcServer, StopHandle, API};
+<span class="kw">use </span>massa_async_pool::AsyncPoolConfig;
+<span class="kw">use </span>massa_bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
+<span class="kw">use </span>massa_cipher::{decrypt, encrypt};
+<span class="kw">use </span>massa_consensus_exports::{
+    events::ConsensusEvent, settings::ConsensusChannels, ConsensusCommandSender, ConsensusConfig,
+    ConsensusEventReceiver, ConsensusManager,
 };
-<span class="kw">use</span> <span class="ident">massa_consensus_worker::start_consensus_controller</span>;
-<span class="kw">use</span> <span class="ident">massa_execution_exports</span>::{<span class="ident">ExecutionConfig</span>, <span class="ident">ExecutionManager</span>};
-<span class="kw">use</span> <span class="ident">massa_execution_worker::start_execution_worker</span>;
-<span class="kw">use</span> <span class="ident">massa_final_state</span>::{<span class="ident">FinalState</span>, <span class="ident">FinalStateConfig</span>};
-<span class="kw">use</span> <span class="ident">massa_ledger_exports::LedgerConfig</span>;
-<span class="kw">use</span> <span class="ident">massa_ledger_worker::FinalLedger</span>;
-<span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">constants</span>::{
-        <span class="ident">END_TIMESTAMP</span>, <span class="ident">GENESIS_TIMESTAMP</span>, <span class="ident">MAX_ASYNC_GAS</span>, <span class="ident">MAX_ASYNC_POOL_LENGTH</span>, <span class="ident">MAX_GAS_PER_BLOCK</span>,
-        <span class="ident">OPERATION_VALIDITY_PERIODS</span>, <span class="ident">T0</span>, <span class="ident">THREAD_COUNT</span>, <span class="ident">VERSION</span>,
+<span class="kw">use </span>massa_consensus_worker::start_consensus_controller;
+<span class="kw">use </span>massa_execution_exports::{ExecutionConfig, ExecutionManager};
+<span class="kw">use </span>massa_execution_worker::start_execution_worker;
+<span class="kw">use </span>massa_final_state::{FinalState, FinalStateConfig};
+<span class="kw">use </span>massa_ledger_exports::LedgerConfig;
+<span class="kw">use </span>massa_ledger_worker::FinalLedger;
+<span class="kw">use </span>massa_logging::massa_trace;
+<span class="kw">use </span>massa_models::{
+    constants::{
+        END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_GAS_PER_BLOCK,
+        OPERATION_VALIDITY_PERIODS, T0, THREAD_COUNT, VERSION,
     },
-    <span class="ident">init_serialization_context</span>,
-    <span class="ident">prehash::Map</span>,
-    <span class="ident">Address</span>, <span class="ident">SerializationContext</span>,
+    init_serialization_context,
+    prehash::Map,
+    Address, SerializationContext,
 };
-<span class="kw">use</span> <span class="ident">massa_network_exports</span>::{<span class="ident">Establisher</span>, <span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkManager</span>};
-<span class="kw">use</span> <span class="ident">massa_network_worker::start_network_controller</span>;
-<span class="kw">use</span> <span class="ident">massa_pool</span>::{<span class="ident">start_pool_controller</span>, <span class="ident">PoolCommandSender</span>, <span class="ident">PoolManager</span>};
-<span class="kw">use</span> <span class="ident">massa_protocol_exports::ProtocolManager</span>;
-<span class="kw">use</span> <span class="ident">massa_protocol_worker::start_protocol_controller</span>;
-<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
-<span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
-<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
-<span class="kw">use</span> <span class="ident">parking_lot::RwLock</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">path::Path</span>, <span class="ident">process</span>, <span class="ident">sync::Arc</span>};
-<span class="kw">use</span> <span class="ident">structopt::StructOpt</span>;
-<span class="kw">use</span> <span class="ident">tokio::signal</span>;
-<span class="kw">use</span> <span class="ident">tokio::sync::mpsc</span>;
-<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">error</span>, <span class="ident">info</span>, <span class="ident">warn</span>};
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;instrument&quot;</span>))]</span>
-<span class="kw">use</span> <span class="ident">tracing_subscriber::filter</span>::{<span class="ident">filter_fn</span>, <span class="ident">LevelFilter</span>};
+<span class="kw">use </span>massa_network_exports::{Establisher, NetworkCommandSender, NetworkManager};
+<span class="kw">use </span>massa_network_worker::start_network_controller;
+<span class="kw">use </span>massa_pool::{start_pool_controller, PoolCommandSender, PoolManager};
+<span class="kw">use </span>massa_protocol_exports::ProtocolManager;
+<span class="kw">use </span>massa_protocol_worker::start_protocol_controller;
+<span class="kw">use </span>massa_signature::KeyPair;
+<span class="kw">use </span>massa_storage::Storage;
+<span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>parking_lot::RwLock;
+<span class="kw">use </span>std::{path::Path, process, sync::Arc};
+<span class="kw">use </span>structopt::StructOpt;
+<span class="kw">use </span>tokio::signal;
+<span class="kw">use </span>tokio::sync::mpsc;
+<span class="kw">use </span>tracing::{error, info, warn};
+<span class="attribute">#[cfg(not(feature = <span class="string">&quot;instrument&quot;</span>))]
+</span><span class="kw">use </span>tracing_subscriber::filter::{filter_fn, LevelFilter};
 
-<span class="kw">mod</span> <span class="ident">settings</span>;
+<span class="kw">mod </span>settings;
 
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">launch</span>(
-    <span class="ident">password</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    <span class="ident">staking_keys</span>: <span class="kw-2">&amp;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">KeyPair</span><span class="op">&gt;</span>,
+<span class="kw">async fn </span>launch(
+    password: <span class="kw-2">&amp;</span>str,
+    staking_keys: <span class="kw-2">&amp;</span>Map&lt;Address, KeyPair&gt;,
 ) -&gt; (
-    <span class="ident">PoolCommandSender</span>,
-    <span class="ident">ConsensusEventReceiver</span>,
-    <span class="ident">ConsensusCommandSender</span>,
-    <span class="ident">NetworkCommandSender</span>,
-    <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BootstrapManager</span><span class="op">&gt;</span>,
-    <span class="ident">ConsensusManager</span>,
-    <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionManager</span><span class="op">&gt;</span>,
-    <span class="ident">PoolManager</span>,
-    <span class="ident">ProtocolManager</span>,
-    <span class="ident">NetworkManager</span>,
-    <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
-    <span class="ident">StopHandle</span>,
-    <span class="ident">StopHandle</span>,
+    PoolCommandSender,
+    ConsensusEventReceiver,
+    ConsensusCommandSender,
+    NetworkCommandSender,
+    <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
+    ConsensusManager,
+    Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
+    PoolManager,
+    ProtocolManager,
+    NetworkManager,
+    mpsc::Receiver&lt;()&gt;,
+    StopHandle,
+    StopHandle,
 ) {
-    <span class="macro">info!</span>(<span class="string">&quot;Node version : {}&quot;</span>, <span class="kw-2">*</span><span class="ident">VERSION</span>);
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">end</span>) <span class="op">=</span> <span class="kw-2">*</span><span class="ident">END_TIMESTAMP</span> {
-        <span class="kw">if</span> <span class="ident">MassaTime::now</span>().<span class="ident">expect</span>(<span class="string">&quot;could not get now time&quot;</span>) <span class="op">&gt;</span> <span class="ident">end</span> {
+    <span class="macro">info!</span>(<span class="string">&quot;Node version : {}&quot;</span>, <span class="kw-2">*</span>VERSION);
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = <span class="kw-2">*</span>END_TIMESTAMP {
+        <span class="kw">if </span>MassaTime::now().expect(<span class="string">&quot;could not get now time&quot;</span>) &gt; end {
             <span class="macro">panic!</span>(<span class="string">&quot;This episode has come to an end, please get the latest testnet node version to continue&quot;</span>);
         }
     }
 
-    <span class="comment">// Storage shared by multiple components.</span>
-    <span class="kw">let</span> <span class="ident">shared_storage</span>: <span class="ident">Storage</span> <span class="op">=</span> <span class="ident">Default::default</span>();
+    <span class="comment">// Storage shared by multiple components.
+    </span><span class="kw">let </span>shared_storage: Storage = Default::default();
 
-    <span class="comment">// init final state</span>
-    <span class="kw">let</span> <span class="ident">ledger_config</span> <span class="op">=</span> <span class="ident">LedgerConfig</span> {
-        <span class="ident">initial_sce_ledger_path</span>: <span class="ident">SETTINGS</span>.<span class="ident">ledger</span>.<span class="ident">initial_sce_ledger_path</span>.<span class="ident">clone</span>(),
-        <span class="ident">disk_ledger_path</span>: <span class="ident">SETTINGS</span>.<span class="ident">ledger</span>.<span class="ident">disk_ledger_path</span>.<span class="ident">clone</span>(),
+    <span class="comment">// init final state
+    </span><span class="kw">let </span>ledger_config = LedgerConfig {
+        initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path.clone(),
+        disk_ledger_path: SETTINGS.ledger.disk_ledger_path.clone(),
     };
-    <span class="kw">let</span> <span class="ident">async_pool_config</span> <span class="op">=</span> <span class="ident">AsyncPoolConfig</span> {
-        <span class="ident">max_length</span>: <span class="ident">MAX_ASYNC_POOL_LENGTH</span>,
+    <span class="kw">let </span>async_pool_config = AsyncPoolConfig {
+        max_length: MAX_ASYNC_POOL_LENGTH,
     };
-    <span class="kw">let</span> <span class="ident">final_state_config</span> <span class="op">=</span> <span class="ident">FinalStateConfig</span> {
-        <span class="ident">final_history_length</span>: <span class="ident">SETTINGS</span>.<span class="ident">ledger</span>.<span class="ident">final_history_length</span>,
-        <span class="ident">thread_count</span>: <span class="ident">THREAD_COUNT</span>,
-        <span class="ident">ledger_config</span>: <span class="ident">ledger_config</span>.<span class="ident">clone</span>(),
-        <span class="ident">async_pool_config</span>,
+    <span class="kw">let </span>final_state_config = FinalStateConfig {
+        final_history_length: SETTINGS.ledger.final_history_length,
+        thread_count: THREAD_COUNT,
+        ledger_config: ledger_config.clone(),
+        async_pool_config,
     };
 
-    <span class="comment">// Init the global serialization context</span>
-    <span class="ident">init_serialization_context</span>(<span class="ident">SerializationContext::default</span>());
+    <span class="comment">// Init the global serialization context
+    </span>init_serialization_context(SerializationContext::default());
 
-    <span class="comment">// Remove current disk ledger if there is one</span>
-    <span class="comment">// NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger</span>
-    <span class="kw">if</span> <span class="ident">SETTINGS</span>.<span class="ident">ledger</span>.<span class="ident">disk_ledger_path</span>.<span class="ident">exists</span>() {
-        <span class="ident">std::fs::remove_dir_all</span>(<span class="ident">SETTINGS</span>.<span class="ident">ledger</span>.<span class="ident">disk_ledger_path</span>.<span class="ident">clone</span>())
-            .<span class="ident">expect</span>(<span class="string">&quot;disk ledger delete failed&quot;</span>);
+    <span class="comment">// Remove current disk ledger if there is one
+    // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
+    </span><span class="kw">if </span>SETTINGS.ledger.disk_ledger_path.exists() {
+        std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
+            .expect(<span class="string">&quot;disk ledger delete failed&quot;</span>);
     }
 
-    <span class="comment">// Create final ledger</span>
-    <span class="kw">let</span> <span class="ident">ledger</span> <span class="op">=</span> <span class="ident">FinalLedger::new</span>(<span class="ident">ledger_config</span>.<span class="ident">clone</span>()).<span class="ident">expect</span>(<span class="string">&quot;could not init final ledger&quot;</span>);
+    <span class="comment">// Create final ledger
+    </span><span class="kw">let </span>ledger = FinalLedger::new(ledger_config.clone()).expect(<span class="string">&quot;could not init final ledger&quot;</span>);
 
-    <span class="comment">// Create final state</span>
-    <span class="kw">let</span> <span class="ident">final_state</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(
-        <span class="ident">FinalState::new</span>(<span class="ident">final_state_config</span>, <span class="ident">Box::new</span>(<span class="ident">ledger</span>)).<span class="ident">expect</span>(<span class="string">&quot;could not init final state&quot;</span>),
+    <span class="comment">// Create final state
+    </span><span class="kw">let </span>final_state = Arc::new(RwLock::new(
+        FinalState::new(final_state_config, Box::new(ledger)).expect(<span class="string">&quot;could not init final state&quot;</span>),
     ));
 
-    <span class="comment">// interrupt signal listener</span>
-    <span class="kw">let</span> <span class="ident">stop_signal</span> <span class="op">=</span> <span class="ident">signal::ctrl_c</span>();
-    <span class="macro">tokio::pin!</span>(<span class="ident">stop_signal</span>);
+    <span class="comment">// interrupt signal listener
+    </span><span class="kw">let </span>stop_signal = signal::ctrl_c();
+    <span class="macro">tokio::pin!</span>(stop_signal);
 
-    <span class="comment">// bootstrap</span>
-    <span class="kw">let</span> <span class="ident">bootstrap_state</span> <span class="op">=</span> <span class="macro">tokio::select!</span> {
-        <span class="kw">_</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">stop_signal</span> =&gt; {
+    <span class="comment">// bootstrap
+    </span><span class="kw">let </span>bootstrap_state = <span class="macro">tokio::select! </span>{
+        <span class="kw">_ </span>= <span class="kw-2">&amp;mut </span>stop_signal =&gt; {
             <span class="macro">info!</span>(<span class="string">&quot;interrupt signal received in bootstrap loop&quot;</span>);
-            <span class="ident">process::exit</span>(<span class="number">0</span>);
+            process::exit(<span class="number">0</span>);
         },
-        <span class="ident">res</span> <span class="op">=</span> <span class="ident">get_state</span>(
-            <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">bootstrap</span>,
-            <span class="ident">final_state</span>.<span class="ident">clone</span>(),
-            <span class="ident">massa_bootstrap::types::Establisher::new</span>(),
-            <span class="kw-2">*</span><span class="ident">VERSION</span>,
-            <span class="kw-2">*</span><span class="ident">GENESIS_TIMESTAMP</span>,
-            <span class="kw-2">*</span><span class="ident">END_TIMESTAMP</span>,
-        ) =&gt; <span class="kw">match</span> <span class="ident">res</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">vals</span>) =&gt; <span class="ident">vals</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;critical error detected in the bootstrap process: {}&quot;</span>, <span class="ident">err</span>)
+        res = get_state(
+            <span class="kw-2">&amp;</span>SETTINGS.bootstrap,
+            final_state.clone(),
+            massa_bootstrap::types::Establisher::new(),
+            <span class="kw-2">*</span>VERSION,
+            <span class="kw-2">*</span>GENESIS_TIMESTAMP,
+            <span class="kw-2">*</span>END_TIMESTAMP,
+        ) =&gt; <span class="kw">match </span>res {
+            <span class="prelude-val">Ok</span>(vals) =&gt; vals,
+            <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;critical error detected in the bootstrap process: {}&quot;</span>, err)
         }
     };
 
-    <span class="comment">// launch network controller</span>
-    <span class="kw">let</span> (<span class="ident">network_command_sender</span>, <span class="ident">network_event_receiver</span>, <span class="ident">network_manager</span>, <span class="ident">private_key</span>, <span class="ident">node_id</span>) <span class="op">=</span>
-        <span class="ident">start_network_controller</span>(
-            <span class="ident">SETTINGS</span>.<span class="ident">network</span>.<span class="ident">clone</span>(), <span class="comment">// TODO: get rid of this clone() ... see #1277</span>
-            <span class="ident">Establisher::new</span>(),
-            <span class="ident">bootstrap_state</span>.<span class="ident">compensation_millis</span>,
-            <span class="ident">bootstrap_state</span>.<span class="ident">peers</span>,
-            <span class="ident">shared_storage</span>.<span class="ident">clone</span>(),
-            <span class="kw-2">*</span><span class="ident">VERSION</span>,
+    <span class="comment">// launch network controller
+    </span><span class="kw">let </span>(network_command_sender, network_event_receiver, network_manager, private_key, node_id) =
+        start_network_controller(
+            SETTINGS.network.clone(), <span class="comment">// TODO: get rid of this clone() ... see #1277
+            </span>Establisher::new(),
+            bootstrap_state.compensation_millis,
+            bootstrap_state.peers,
+            shared_storage.clone(),
+            <span class="kw-2">*</span>VERSION,
         )
-        .<span class="kw">await</span>
-        .<span class="ident">expect</span>(<span class="string">&quot;could not start network controller&quot;</span>);
+        .<span class="kw">await
+        </span>.expect(<span class="string">&quot;could not start network controller&quot;</span>);
 
-    <span class="comment">// launch protocol controller</span>
-    <span class="kw">let</span> (
-        <span class="ident">protocol_command_sender</span>,
-        <span class="ident">protocol_event_receiver</span>,
-        <span class="ident">protocol_pool_event_receiver</span>,
-        <span class="ident">protocol_manager</span>,
-    ) <span class="op">=</span> <span class="ident">start_protocol_controller</span>(
-        <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">protocol</span>,
-        <span class="ident">OPERATION_VALIDITY_PERIODS</span>,
-        <span class="ident">MAX_GAS_PER_BLOCK</span>,
-        <span class="ident">network_command_sender</span>.<span class="ident">clone</span>(),
-        <span class="ident">network_event_receiver</span>,
-        <span class="ident">shared_storage</span>.<span class="ident">clone</span>(),
+    <span class="comment">// launch protocol controller
+    </span><span class="kw">let </span>(
+        protocol_command_sender,
+        protocol_event_receiver,
+        protocol_pool_event_receiver,
+        protocol_manager,
+    ) = start_protocol_controller(
+        <span class="kw-2">&amp;</span>SETTINGS.protocol,
+        OPERATION_VALIDITY_PERIODS,
+        MAX_GAS_PER_BLOCK,
+        network_command_sender.clone(),
+        network_event_receiver,
+        shared_storage.clone(),
     )
-    .<span class="kw">await</span>
-    .<span class="ident">expect</span>(<span class="string">&quot;could not start protocol controller&quot;</span>);
+    .<span class="kw">await
+    </span>.expect(<span class="string">&quot;could not start protocol controller&quot;</span>);
 
-    <span class="comment">// launch pool controller</span>
-    <span class="kw">let</span> (<span class="ident">pool_command_sender</span>, <span class="ident">pool_manager</span>) <span class="op">=</span> <span class="ident">start_pool_controller</span>(
-        <span class="kw-2">&amp;</span><span class="ident">POOL_CONFIG</span>,
-        <span class="ident">protocol_command_sender</span>.<span class="ident">clone</span>(),
-        <span class="ident">protocol_pool_event_receiver</span>,
-        <span class="ident">shared_storage</span>.<span class="ident">clone</span>(),
+    <span class="comment">// launch pool controller
+    </span><span class="kw">let </span>(pool_command_sender, pool_manager) = start_pool_controller(
+        <span class="kw-2">&amp;</span>POOL_CONFIG,
+        protocol_command_sender.clone(),
+        protocol_pool_event_receiver,
+        shared_storage.clone(),
     )
-    .<span class="kw">await</span>
-    .<span class="ident">expect</span>(<span class="string">&quot;could not start pool controller&quot;</span>);
+    .<span class="kw">await
+    </span>.expect(<span class="string">&quot;could not start pool controller&quot;</span>);
 
-    <span class="comment">// launch execution module</span>
-    <span class="kw">let</span> <span class="ident">execution_config</span> <span class="op">=</span> <span class="ident">ExecutionConfig</span> {
-        <span class="ident">max_final_events</span>: <span class="ident">SETTINGS</span>.<span class="ident">execution</span>.<span class="ident">max_final_events</span>,
-        <span class="ident">readonly_queue_length</span>: <span class="ident">SETTINGS</span>.<span class="ident">execution</span>.<span class="ident">readonly_queue_length</span>,
-        <span class="ident">cursor_delay</span>: <span class="ident">SETTINGS</span>.<span class="ident">execution</span>.<span class="ident">cursor_delay</span>,
-        <span class="ident">clock_compensation</span>: <span class="ident">bootstrap_state</span>.<span class="ident">compensation_millis</span>,
-        <span class="ident">max_async_gas</span>: <span class="ident">MAX_ASYNC_GAS</span>,
-        <span class="ident">thread_count</span>: <span class="ident">THREAD_COUNT</span>,
-        <span class="ident">t0</span>: <span class="ident">T0</span>,
-        <span class="ident">genesis_timestamp</span>: <span class="kw-2">*</span><span class="ident">GENESIS_TIMESTAMP</span>,
+    <span class="comment">// launch execution module
+    </span><span class="kw">let </span>execution_config = ExecutionConfig {
+        max_final_events: SETTINGS.execution.max_final_events,
+        readonly_queue_length: SETTINGS.execution.readonly_queue_length,
+        cursor_delay: SETTINGS.execution.cursor_delay,
+        clock_compensation: bootstrap_state.compensation_millis,
+        max_async_gas: MAX_ASYNC_GAS,
+        thread_count: THREAD_COUNT,
+        t0: T0,
+        genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
     };
-    <span class="kw">let</span> (<span class="ident">execution_manager</span>, <span class="ident">execution_controller</span>) <span class="op">=</span> <span class="ident">start_execution_worker</span>(
-        <span class="ident">execution_config</span>,
-        <span class="ident">final_state</span>.<span class="ident">clone</span>(),
-        <span class="ident">shared_storage</span>.<span class="ident">clone</span>(),
+    <span class="kw">let </span>(execution_manager, execution_controller) = start_execution_worker(
+        execution_config,
+        final_state.clone(),
+        shared_storage.clone(),
     );
 
-    <span class="comment">// init consensus configuration</span>
-    <span class="kw">let</span> <span class="ident">consensus_config</span> <span class="op">=</span> <span class="ident">ConsensusConfig::from</span>(<span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">consensus</span>);
-    <span class="comment">// launch consensus controller</span>
-    <span class="kw">let</span> (<span class="ident">consensus_command_sender</span>, <span class="ident">consensus_event_receiver</span>, <span class="ident">consensus_manager</span>) <span class="op">=</span>
-        <span class="ident">start_consensus_controller</span>(
-            <span class="ident">consensus_config</span>.<span class="ident">clone</span>(),
-            <span class="ident">ConsensusChannels</span> {
-                <span class="ident">execution_controller</span>: <span class="ident">execution_controller</span>.<span class="ident">clone</span>(),
-                <span class="ident">protocol_command_sender</span>: <span class="ident">protocol_command_sender</span>.<span class="ident">clone</span>(),
-                <span class="ident">protocol_event_receiver</span>,
-                <span class="ident">pool_command_sender</span>: <span class="ident">pool_command_sender</span>.<span class="ident">clone</span>(),
+    <span class="comment">// init consensus configuration
+    </span><span class="kw">let </span>consensus_config = ConsensusConfig::from(<span class="kw-2">&amp;</span>SETTINGS.consensus);
+    <span class="comment">// launch consensus controller
+    </span><span class="kw">let </span>(consensus_command_sender, consensus_event_receiver, consensus_manager) =
+        start_consensus_controller(
+            consensus_config.clone(),
+            ConsensusChannels {
+                execution_controller: execution_controller.clone(),
+                protocol_command_sender: protocol_command_sender.clone(),
+                protocol_event_receiver,
+                pool_command_sender: pool_command_sender.clone(),
             },
-            <span class="ident">bootstrap_state</span>.<span class="ident">pos</span>,
-            <span class="ident">bootstrap_state</span>.<span class="ident">graph</span>,
-            <span class="ident">shared_storage</span>.<span class="ident">clone</span>(),
-            <span class="ident">bootstrap_state</span>.<span class="ident">compensation_millis</span>,
-            <span class="ident">password</span>.<span class="ident">to_string</span>(),
-            <span class="ident">staking_keys</span>.<span class="ident">to_owned</span>(),
+            bootstrap_state.pos,
+            bootstrap_state.graph,
+            shared_storage.clone(),
+            bootstrap_state.compensation_millis,
+            password.to_string(),
+            staking_keys.to_owned(),
         )
-        .<span class="kw">await</span>
-        .<span class="ident">expect</span>(<span class="string">&quot;could not start consensus controller&quot;</span>);
+        .<span class="kw">await
+        </span>.expect(<span class="string">&quot;could not start consensus controller&quot;</span>);
 
-    <span class="comment">// launch bootstrap server</span>
-    <span class="kw">let</span> <span class="ident">bootstrap_manager</span> <span class="op">=</span> <span class="ident">start_bootstrap_server</span>(
-        <span class="ident">consensus_command_sender</span>.<span class="ident">clone</span>(),
-        <span class="ident">network_command_sender</span>.<span class="ident">clone</span>(),
-        <span class="ident">final_state</span>.<span class="ident">clone</span>(),
-        <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">bootstrap</span>,
-        <span class="ident">massa_bootstrap::Establisher::new</span>(),
-        <span class="ident">private_key</span>,
-        <span class="ident">bootstrap_state</span>.<span class="ident">compensation_millis</span>,
-        <span class="kw-2">*</span><span class="ident">VERSION</span>,
+    <span class="comment">// launch bootstrap server
+    </span><span class="kw">let </span>bootstrap_manager = start_bootstrap_server(
+        consensus_command_sender.clone(),
+        network_command_sender.clone(),
+        final_state.clone(),
+        <span class="kw-2">&amp;</span>SETTINGS.bootstrap,
+        massa_bootstrap::Establisher::new(),
+        private_key,
+        bootstrap_state.compensation_millis,
+        <span class="kw-2">*</span>VERSION,
     )
-    .<span class="kw">await</span>
-    .<span class="ident">unwrap</span>();
+    .<span class="kw">await
+    </span>.unwrap();
 
-    <span class="comment">// spawn private API</span>
-    <span class="kw">let</span> (<span class="ident">api_private</span>, <span class="ident">api_private_stop_rx</span>) <span class="op">=</span> <span class="ident">API</span>::<span class="op">&lt;</span><span class="ident">Private</span><span class="op">&gt;</span><span class="ident">::new</span>(
-        <span class="ident">consensus_command_sender</span>.<span class="ident">clone</span>(),
-        <span class="ident">network_command_sender</span>.<span class="ident">clone</span>(),
-        <span class="ident">execution_controller</span>.<span class="ident">clone</span>(),
-        <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">api</span>,
-        <span class="ident">consensus_config</span>.<span class="ident">clone</span>(),
+    <span class="comment">// spawn private API
+    </span><span class="kw">let </span>(api_private, api_private_stop_rx) = API::&lt;Private&gt;::new(
+        consensus_command_sender.clone(),
+        network_command_sender.clone(),
+        execution_controller.clone(),
+        <span class="kw-2">&amp;</span>SETTINGS.api,
+        consensus_config.clone(),
     );
-    <span class="kw">let</span> <span class="ident">api_private_handle</span> <span class="op">=</span> <span class="ident">api_private</span>.<span class="ident">serve</span>(<span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">api</span>.<span class="ident">bind_private</span>);
+    <span class="kw">let </span>api_private_handle = api_private.serve(<span class="kw-2">&amp;</span>SETTINGS.api.bind_private);
 
-    <span class="comment">// spawn public API</span>
-    <span class="kw">let</span> <span class="ident">api_public</span> <span class="op">=</span> <span class="ident">API</span>::<span class="op">&lt;</span><span class="ident">Public</span><span class="op">&gt;</span><span class="ident">::new</span>(
-        <span class="ident">consensus_command_sender</span>.<span class="ident">clone</span>(),
-        <span class="ident">execution_controller</span>.<span class="ident">clone</span>(),
-        <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">api</span>,
-        <span class="ident">consensus_config</span>,
-        <span class="ident">pool_command_sender</span>.<span class="ident">clone</span>(),
-        <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">network</span>,
-        <span class="kw-2">*</span><span class="ident">VERSION</span>,
-        <span class="ident">network_command_sender</span>.<span class="ident">clone</span>(),
-        <span class="ident">bootstrap_state</span>.<span class="ident">compensation_millis</span>,
-        <span class="ident">node_id</span>,
+    <span class="comment">// spawn public API
+    </span><span class="kw">let </span>api_public = API::&lt;Public&gt;::new(
+        consensus_command_sender.clone(),
+        execution_controller.clone(),
+        <span class="kw-2">&amp;</span>SETTINGS.api,
+        consensus_config,
+        pool_command_sender.clone(),
+        <span class="kw-2">&amp;</span>SETTINGS.network,
+        <span class="kw-2">*</span>VERSION,
+        network_command_sender.clone(),
+        bootstrap_state.compensation_millis,
+        node_id,
     );
-    <span class="kw">let</span> <span class="ident">api_public_handle</span> <span class="op">=</span> <span class="ident">api_public</span>.<span class="ident">serve</span>(<span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">api</span>.<span class="ident">bind_public</span>);
+    <span class="kw">let </span>api_public_handle = api_public.serve(<span class="kw-2">&amp;</span>SETTINGS.api.bind_public);
 
     (
-        <span class="ident">pool_command_sender</span>,
-        <span class="ident">consensus_event_receiver</span>,
-        <span class="ident">consensus_command_sender</span>,
-        <span class="ident">network_command_sender</span>,
-        <span class="ident">bootstrap_manager</span>,
-        <span class="ident">consensus_manager</span>,
-        <span class="ident">execution_manager</span>,
-        <span class="ident">pool_manager</span>,
-        <span class="ident">protocol_manager</span>,
-        <span class="ident">network_manager</span>,
-        <span class="ident">api_private_stop_rx</span>,
-        <span class="ident">api_private_handle</span>,
-        <span class="ident">api_public_handle</span>,
+        pool_command_sender,
+        consensus_event_receiver,
+        consensus_command_sender,
+        network_command_sender,
+        bootstrap_manager,
+        consensus_manager,
+        execution_manager,
+        pool_manager,
+        protocol_manager,
+        network_manager,
+        api_private_stop_rx,
+        api_private_handle,
+        api_public_handle,
     )
 }
 
-<span class="kw">struct</span> <span class="ident">Managers</span> {
-    <span class="ident">bootstrap_manager</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BootstrapManager</span><span class="op">&gt;</span>,
-    <span class="ident">consensus_manager</span>: <span class="ident">ConsensusManager</span>,
-    <span class="ident">execution_manager</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionManager</span><span class="op">&gt;</span>,
-    <span class="ident">pool_manager</span>: <span class="ident">PoolManager</span>,
-    <span class="ident">protocol_manager</span>: <span class="ident">ProtocolManager</span>,
-    <span class="ident">network_manager</span>: <span class="ident">NetworkManager</span>,
+<span class="kw">struct </span>Managers {
+    bootstrap_manager: <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
+    consensus_manager: ConsensusManager,
+    execution_manager: Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
+    pool_manager: PoolManager,
+    protocol_manager: ProtocolManager,
+    network_manager: NetworkManager,
 }
 
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">stop</span>(
-    <span class="ident">consensus_event_receiver</span>: <span class="ident">ConsensusEventReceiver</span>,
-    <span class="ident">Managers</span> {
-        <span class="ident">bootstrap_manager</span>,
-        <span class="ident">consensus_manager</span>,
-        <span class="kw-2">mut</span> <span class="ident">execution_manager</span>,
-        <span class="ident">pool_manager</span>,
-        <span class="ident">protocol_manager</span>,
-        <span class="ident">network_manager</span>,
-    }: <span class="ident">Managers</span>,
-    <span class="ident">api_private_handle</span>: <span class="ident">StopHandle</span>,
-    <span class="ident">api_public_handle</span>: <span class="ident">StopHandle</span>,
+<span class="kw">async fn </span>stop(
+    consensus_event_receiver: ConsensusEventReceiver,
+    Managers {
+        bootstrap_manager,
+        consensus_manager,
+        <span class="kw-2">mut </span>execution_manager,
+        pool_manager,
+        protocol_manager,
+        network_manager,
+    }: Managers,
+    api_private_handle: StopHandle,
+    api_public_handle: StopHandle,
 ) {
-    <span class="comment">// stop bootstrap</span>
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">bootstrap_manager</span>) <span class="op">=</span> <span class="ident">bootstrap_manager</span> {
-        <span class="ident">bootstrap_manager</span>
-            .<span class="ident">stop</span>()
-            .<span class="kw">await</span>
-            .<span class="ident">expect</span>(<span class="string">&quot;bootstrap server shutdown failed&quot;</span>)
+    <span class="comment">// stop bootstrap
+    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_manager) = bootstrap_manager {
+        bootstrap_manager
+            .stop()
+            .<span class="kw">await
+            </span>.expect(<span class="string">&quot;bootstrap server shutdown failed&quot;</span>)
     }
 
-    <span class="comment">// stop public API</span>
-    <span class="ident">api_public_handle</span>.<span class="ident">stop</span>();
+    <span class="comment">// stop public API
+    </span>api_public_handle.stop();
 
-    <span class="comment">// stop private API</span>
-    <span class="ident">api_private_handle</span>.<span class="ident">stop</span>();
+    <span class="comment">// stop private API
+    </span>api_private_handle.stop();
 
-    <span class="comment">// stop consensus controller</span>
-    <span class="kw">let</span> <span class="ident">protocol_event_receiver</span> <span class="op">=</span> <span class="ident">consensus_manager</span>
-        .<span class="ident">stop</span>(<span class="ident">consensus_event_receiver</span>)
-        .<span class="kw">await</span>
-        .<span class="ident">expect</span>(<span class="string">&quot;consensus shutdown failed&quot;</span>);
+    <span class="comment">// stop consensus controller
+    </span><span class="kw">let </span>protocol_event_receiver = consensus_manager
+        .stop(consensus_event_receiver)
+        .<span class="kw">await
+        </span>.expect(<span class="string">&quot;consensus shutdown failed&quot;</span>);
 
-    <span class="comment">// Stop execution controller.</span>
-    <span class="ident">execution_manager</span>.<span class="ident">stop</span>();
+    <span class="comment">// Stop execution controller.
+    </span>execution_manager.stop();
 
-    <span class="comment">// stop pool controller</span>
-    <span class="kw">let</span> <span class="ident">protocol_pool_event_receiver</span> <span class="op">=</span> <span class="ident">pool_manager</span>.<span class="ident">stop</span>().<span class="kw">await</span>.<span class="ident">expect</span>(<span class="string">&quot;pool shutdown failed&quot;</span>);
+    <span class="comment">// stop pool controller
+    </span><span class="kw">let </span>protocol_pool_event_receiver = pool_manager.stop().<span class="kw">await</span>.expect(<span class="string">&quot;pool shutdown failed&quot;</span>);
 
-    <span class="comment">// stop protocol controller</span>
-    <span class="kw">let</span> <span class="ident">network_event_receiver</span> <span class="op">=</span> <span class="ident">protocol_manager</span>
-        .<span class="ident">stop</span>(<span class="ident">protocol_event_receiver</span>, <span class="ident">protocol_pool_event_receiver</span>)
-        .<span class="kw">await</span>
-        .<span class="ident">expect</span>(<span class="string">&quot;protocol shutdown failed&quot;</span>);
+    <span class="comment">// stop protocol controller
+    </span><span class="kw">let </span>network_event_receiver = protocol_manager
+        .stop(protocol_event_receiver, protocol_pool_event_receiver)
+        .<span class="kw">await
+        </span>.expect(<span class="string">&quot;protocol shutdown failed&quot;</span>);
 
-    <span class="comment">// stop network controller</span>
-    <span class="ident">network_manager</span>
-        .<span class="ident">stop</span>(<span class="ident">network_event_receiver</span>)
-        .<span class="kw">await</span>
-        .<span class="ident">expect</span>(<span class="string">&quot;network shutdown failed&quot;</span>);
+    <span class="comment">// stop network controller
+    </span>network_manager
+        .stop(network_event_receiver)
+        .<span class="kw">await
+        </span>.expect(<span class="string">&quot;network shutdown failed&quot;</span>);
 
-    <span class="comment">// note that FinalLedger gets destroyed as soon as its Arc count goes to zero</span>
+    <span class="comment">// note that FinalLedger gets destroyed as soon as its Arc count goes to zero
+</span>}
+
+<span class="attribute">#[derive(StructOpt)]
+</span><span class="kw">struct </span>Args {
+    <span class="doccomment">/// Wallet password
+    </span><span class="attribute">#[structopt(short = <span class="string">&quot;p&quot;</span>, long = <span class="string">&quot;pwd&quot;</span>)]
+    </span>password: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">StructOpt</span>)]</span>
-<span class="kw">struct</span> <span class="ident">Args</span> {
-    <span class="doccomment">/// Wallet password</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;p&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;pwd&quot;</span>)]</span>
-    <span class="ident">password</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-}
-
-<span class="doccomment">/// Ask for the staking keys file password and load them</span>
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">load_or_create_staking_keys_file</span>(
-    <span class="ident">password</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="ident">Path</span>,
-) -&gt; <span class="ident">anyhow::Result</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">KeyPair</span><span class="op">&gt;</span>)<span class="op">&gt;</span> {
-    <span class="kw">if</span> <span class="ident">path</span>.<span class="ident">is_file</span>() {
-        <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">password</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="ident">Password::new</span>()
-                .<span class="ident">with_prompt</span>(<span class="string">&quot;Enter staking keys file password&quot;</span>)
-                .<span class="ident">interact</span>()
-                .<span class="ident">expect</span>(<span class="string">&quot;IO error: Password reading failed, staking keys file couldn&#39;t be unlocked&quot;</span>)
+<span class="doccomment">/// Ask for the staking keys file password and load them
+</span><span class="kw">async fn </span>load_or_create_staking_keys_file(
+    password: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    path: <span class="kw-2">&amp;</span>Path,
+) -&gt; anyhow::Result&lt;(String, Map&lt;Address, KeyPair&gt;)&gt; {
+    <span class="kw">if </span>path.is_file() {
+        <span class="kw">let </span>password = password.unwrap_or_else(|| {
+            Password::new()
+                .with_prompt(<span class="string">&quot;Enter staking keys file password&quot;</span>)
+                .interact()
+                .expect(<span class="string">&quot;IO error: Password reading failed, staking keys file couldn&#39;t be unlocked&quot;</span>)
         });
-        <span class="kw">let</span> (<span class="ident">_version</span>, <span class="ident">decrypted_data</span>) <span class="op">=</span> <span class="ident">decrypt</span>(<span class="kw-2">&amp;</span><span class="ident">password</span>, <span class="kw-2">&amp;</span><span class="ident">tokio::fs::read</span>(<span class="ident">path</span>).<span class="kw">await</span><span class="question-mark">?</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">staking_keys</span>: <span class="ident">anyhow::Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">KeyPair</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-val">Ok</span>(<span class="ident">serde_json::from_slice</span>::<span class="op">&lt;</span>
-            <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">KeyPair</span><span class="op">&gt;</span>,
-        <span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">decrypted_data</span>)<span class="question-mark">?</span>);
-        <span class="prelude-val">Ok</span>((<span class="ident">password</span>, <span class="ident">staking_keys</span><span class="question-mark">?</span>))
-    } <span class="kw">else</span> {
-        <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">password</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="ident">Password::new</span>()
-                .<span class="ident">with_prompt</span>(<span class="string">&quot;Enter new password for staking keys file&quot;</span>)
-                .<span class="ident">with_confirmation</span>(<span class="string">&quot;Confirm password&quot;</span>, <span class="string">&quot;Passwords mismatching&quot;</span>)
-                .<span class="ident">interact</span>()
-                .<span class="ident">expect</span>(<span class="string">&quot;IO error: Password reading failed, staking keys file couldn&#39;t be created&quot;</span>)
+        <span class="kw">let </span>(_version, decrypted_data) = decrypt(<span class="kw-2">&amp;</span>password, <span class="kw-2">&amp;</span>tokio::fs::read(path).<span class="kw">await</span><span class="question-mark">?</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>staking_keys: anyhow::Result&lt;Map&lt;Address, KeyPair&gt;&gt; = <span class="prelude-val">Ok</span>(serde_json::from_slice::&lt;
+            Map&lt;Address, KeyPair&gt;,
+        &gt;(<span class="kw-2">&amp;</span>decrypted_data)<span class="question-mark">?</span>);
+        <span class="prelude-val">Ok</span>((password, staking_keys<span class="question-mark">?</span>))
+    } <span class="kw">else </span>{
+        <span class="kw">let </span>password = password.unwrap_or_else(|| {
+            Password::new()
+                .with_prompt(<span class="string">&quot;Enter new password for staking keys file&quot;</span>)
+                .with_confirmation(<span class="string">&quot;Confirm password&quot;</span>, <span class="string">&quot;Passwords mismatching&quot;</span>)
+                .interact()
+                .expect(<span class="string">&quot;IO error: Password reading failed, staking keys file couldn&#39;t be created&quot;</span>)
         });
-        <span class="kw">let</span> <span class="ident">json</span> <span class="op">=</span> <span class="ident">serde_json::to_string_pretty</span>(<span class="kw-2">&amp;</span><span class="ident">Map</span>::<span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">KeyPair</span><span class="op">&gt;</span><span class="ident">::default</span>())<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">encrypted_data</span> <span class="op">=</span> <span class="ident">encrypt</span>(<span class="kw-2">&amp;</span><span class="ident">password</span>, <span class="ident">json</span>.<span class="ident">as_bytes</span>())<span class="question-mark">?</span>;
-        <span class="ident">tokio::fs::write</span>(<span class="ident">path</span>, <span class="ident">encrypted_data</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>((<span class="ident">password</span>, <span class="ident">Map::default</span>()))
+        <span class="kw">let </span>json = serde_json::to_string_pretty(<span class="kw-2">&amp;</span>Map::&lt;Address, KeyPair&gt;::default())<span class="question-mark">?</span>;
+        <span class="kw">let </span>encrypted_data = encrypt(<span class="kw-2">&amp;</span>password, json.as_bytes())<span class="question-mark">?</span>;
+        tokio::fs::write(path, encrypted_data).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>((password, Map::default()))
     }
 }
 
-<span class="doccomment">/// To instrument `massa-node` with `tokio-console` run</span>
-<span class="doccomment">/// ```shell</span>
-<span class="doccomment">/// RUSTFLAGS=&quot;--cfg tokio_unstable&quot; cargo run --bin massa-node --features instrument</span>
-<span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">paw::main</span>]</span>
-<span class="attribute">#[<span class="ident">tokio::main</span>]</span>
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>(<span class="ident">args</span>: <span class="ident">Args</span>) -&gt; <span class="ident">anyhow::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-    <span class="kw">use</span> <span class="ident">tracing_subscriber::prelude</span>::<span class="kw-2">*</span>;
-    <span class="comment">// spawn the console server in the background, returning a `Layer`:</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;instrument&quot;</span>)]</span>
-    <span class="kw">let</span> <span class="ident">tracing_layer</span> <span class="op">=</span> <span class="ident">console_subscriber::spawn</span>();
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;instrument&quot;</span>))]</span>
-    <span class="kw">let</span> <span class="ident">tracing_layer</span> <span class="op">=</span> <span class="ident">tracing_subscriber::fmt::layer</span>()
-        .<span class="ident">with_filter</span>(<span class="kw">match</span> <span class="ident">SETTINGS</span>.<span class="ident">logging</span>.<span class="ident">level</span> {
-            <span class="number">4</span> =&gt; <span class="ident">LevelFilter::TRACE</span>,
-            <span class="number">3</span> =&gt; <span class="ident">LevelFilter::DEBUG</span>,
-            <span class="number">2</span> =&gt; <span class="ident">LevelFilter::INFO</span>,
-            <span class="number">1</span> =&gt; <span class="ident">LevelFilter::WARN</span>,
-            <span class="kw">_</span> =&gt; <span class="ident">LevelFilter::ERROR</span>,
+<span class="doccomment">/// To instrument `massa-node` with `tokio-console` run
+/// ```shell
+/// RUSTFLAGS=&quot;--cfg tokio_unstable&quot; cargo run --bin massa-node --features instrument
+/// ```
+</span><span class="attribute">#[paw::main]
+#[tokio::main]
+</span><span class="kw">async fn </span>main(args: Args) -&gt; anyhow::Result&lt;()&gt; {
+    <span class="kw">use </span>tracing_subscriber::prelude::<span class="kw-2">*</span>;
+    <span class="comment">// spawn the console server in the background, returning a `Layer`:
+    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;instrument&quot;</span>)]
+    </span><span class="kw">let </span>tracing_layer = console_subscriber::spawn();
+    <span class="attribute">#[cfg(not(feature = <span class="string">&quot;instrument&quot;</span>))]
+    </span><span class="kw">let </span>tracing_layer = tracing_subscriber::fmt::layer()
+        .with_filter(<span class="kw">match </span>SETTINGS.logging.level {
+            <span class="number">4 </span>=&gt; LevelFilter::TRACE,
+            <span class="number">3 </span>=&gt; LevelFilter::DEBUG,
+            <span class="number">2 </span>=&gt; LevelFilter::INFO,
+            <span class="number">1 </span>=&gt; LevelFilter::WARN,
+            <span class="kw">_ </span>=&gt; LevelFilter::ERROR,
         })
-        .<span class="ident">with_filter</span>(<span class="ident">filter_fn</span>(<span class="op">|</span><span class="ident">metadata</span><span class="op">|</span> {
-            <span class="ident">metadata</span>.<span class="ident">target</span>().<span class="ident">starts_with</span>(<span class="string">&quot;massa&quot;</span>) <span class="comment">// ignore non-massa logs</span>
-        }));
-    <span class="comment">// build a `Subscriber` by combining layers with a `tracing_subscriber::Registry`:</span>
-    <span class="ident">tracing_subscriber::registry</span>()
-        <span class="comment">// add the console layer to the subscriber or default layers...</span>
-        .<span class="ident">with</span>(<span class="ident">tracing_layer</span>)
-        .<span class="ident">init</span>();
+        .with_filter(filter_fn(|metadata| {
+            metadata.target().starts_with(<span class="string">&quot;massa&quot;</span>) <span class="comment">// ignore non-massa logs
+        </span>}));
+    <span class="comment">// build a `Subscriber` by combining layers with a `tracing_subscriber::Registry`:
+    </span>tracing_subscriber::registry()
+        <span class="comment">// add the console layer to the subscriber or default layers...
+        </span>.with(tracing_layer)
+        .init();
 
-    <span class="comment">// Setup panic handlers,</span>
-    <span class="comment">// and when a panic occurs,</span>
-    <span class="comment">// run default handler,</span>
-    <span class="comment">// and then shutdown.</span>
-    <span class="kw">let</span> <span class="ident">default_panic</span> <span class="op">=</span> <span class="ident">std::panic::take_hook</span>();
-    <span class="ident">std::panic::set_hook</span>(<span class="ident">Box::new</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">info</span><span class="op">|</span> {
-        <span class="ident">default_panic</span>(<span class="ident">info</span>);
-        <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+    <span class="comment">// Setup panic handlers,
+    // and when a panic occurs,
+    // run default handler,
+    // and then shutdown.
+    </span><span class="kw">let </span>default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(<span class="kw">move </span>|info| {
+        default_panic(info);
+        std::process::exit(<span class="number">1</span>);
     }));
 
-    <span class="comment">// run</span>
-    <span class="kw">let</span> (<span class="ident">password</span>, <span class="ident">staking_keys</span>) <span class="op">=</span>
-        <span class="ident">load_or_create_staking_keys_file</span>(<span class="ident">args</span>.<span class="ident">password</span>, <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">consensus</span>.<span class="ident">staking_keys_path</span>)
+    <span class="comment">// run
+    </span><span class="kw">let </span>(password, staking_keys) =
+        load_or_create_staking_keys_file(args.password, <span class="kw-2">&amp;</span>SETTINGS.consensus.staking_keys_path)
             .<span class="kw">await</span><span class="question-mark">?</span>;
-    <span class="kw">loop</span> {
-        <span class="kw">let</span> (
-            <span class="ident">_pool_command_sender</span>,
-            <span class="kw-2">mut</span> <span class="ident">consensus_event_receiver</span>,
-            <span class="ident">_consensus_command_sender</span>,
-            <span class="ident">_network_command_sender</span>,
-            <span class="ident">bootstrap_manager</span>,
-            <span class="ident">consensus_manager</span>,
-            <span class="ident">execution_manager</span>,
-            <span class="ident">pool_manager</span>,
-            <span class="ident">protocol_manager</span>,
-            <span class="ident">network_manager</span>,
-            <span class="kw-2">mut</span> <span class="ident">api_private_stop_rx</span>,
-            <span class="ident">api_private_handle</span>,
-            <span class="ident">api_public_handle</span>,
-        ) <span class="op">=</span> <span class="ident">launch</span>(<span class="kw-2">&amp;</span><span class="ident">password</span>, <span class="kw-2">&amp;</span><span class="ident">staking_keys</span>).<span class="kw">await</span>;
+    <span class="kw">loop </span>{
+        <span class="kw">let </span>(
+            _pool_command_sender,
+            <span class="kw-2">mut </span>consensus_event_receiver,
+            _consensus_command_sender,
+            _network_command_sender,
+            bootstrap_manager,
+            consensus_manager,
+            execution_manager,
+            pool_manager,
+            protocol_manager,
+            network_manager,
+            <span class="kw-2">mut </span>api_private_stop_rx,
+            api_private_handle,
+            api_public_handle,
+        ) = launch(<span class="kw-2">&amp;</span>password, <span class="kw-2">&amp;</span>staking_keys).<span class="kw">await</span>;
 
-        <span class="comment">// interrupt signal listener</span>
-        <span class="kw">let</span> <span class="ident">stop_signal</span> <span class="op">=</span> <span class="ident">signal::ctrl_c</span>();
-        <span class="macro">tokio::pin!</span>(<span class="ident">stop_signal</span>);
-        <span class="comment">// loop over messages</span>
-        <span class="kw">let</span> <span class="ident">restart</span> <span class="op">=</span> <span class="kw">loop</span> {
+        <span class="comment">// interrupt signal listener
+        </span><span class="kw">let </span>stop_signal = signal::ctrl_c();
+        <span class="macro">tokio::pin!</span>(stop_signal);
+        <span class="comment">// loop over messages
+        </span><span class="kw">let </span>restart = <span class="kw">loop </span>{
             <span class="macro">massa_trace!</span>(<span class="string">&quot;massa-node.main.run.select&quot;</span>, {});
-            <span class="macro">tokio::select!</span> {
-                <span class="ident">evt</span> <span class="op">=</span> <span class="ident">consensus_event_receiver</span>.<span class="ident">wait_event</span>() =&gt; {
+            <span class="macro">tokio::select! </span>{
+                evt = consensus_event_receiver.wait_event() =&gt; {
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;massa-node.main.run.select.consensus_event&quot;</span>, {});
-                    <span class="kw">match</span> <span class="ident">evt</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">ConsensusEvent::NeedSync</span>) =&gt; {
+                    <span class="kw">match </span>evt {
+                        <span class="prelude-val">Ok</span>(ConsensusEvent::NeedSync) =&gt; {
                             <span class="macro">warn!</span>(<span class="string">&quot;in response to a desynchronization, the node is going to bootstrap again&quot;</span>);
-                            <span class="kw">break</span> <span class="bool-val">true</span>;
+                            <span class="kw">break </span><span class="bool-val">true</span>;
                         },
-                        <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; {
-                            <span class="macro">error!</span>(<span class="string">&quot;consensus_event_receiver.wait_event error: {}&quot;</span>, <span class="ident">err</span>);
-                            <span class="kw">break</span> <span class="bool-val">false</span>;
+                        <span class="prelude-val">Err</span>(err) =&gt; {
+                            <span class="macro">error!</span>(<span class="string">&quot;consensus_event_receiver.wait_event error: {}&quot;</span>, err);
+                            <span class="kw">break </span><span class="bool-val">false</span>;
                         }
                     }
                 },
 
-                <span class="kw">_</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">stop_signal</span> =&gt; {
+                <span class="kw">_ </span>= <span class="kw-2">&amp;mut </span>stop_signal =&gt; {
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;massa-node.main.run.select.stop&quot;</span>, {});
                     <span class="macro">info!</span>(<span class="string">&quot;interrupt signal received&quot;</span>);
-                    <span class="kw">break</span> <span class="bool-val">false</span>;
+                    <span class="kw">break </span><span class="bool-val">false</span>;
                 }
 
-                <span class="kw">_</span> <span class="op">=</span> <span class="ident">api_private_stop_rx</span>.<span class="ident">recv</span>() =&gt; {
+                <span class="kw">_ </span>= api_private_stop_rx.recv() =&gt; {
                     <span class="macro">info!</span>(<span class="string">&quot;stop command received from private API&quot;</span>);
-                    <span class="kw">break</span> <span class="bool-val">false</span>;
+                    <span class="kw">break </span><span class="bool-val">false</span>;
                 }
             }
         };
-        <span class="ident">stop</span>(
-            <span class="ident">consensus_event_receiver</span>,
-            <span class="ident">Managers</span> {
-                <span class="ident">bootstrap_manager</span>,
-                <span class="ident">consensus_manager</span>,
-                <span class="ident">execution_manager</span>,
-                <span class="ident">pool_manager</span>,
-                <span class="ident">protocol_manager</span>,
-                <span class="ident">network_manager</span>,
+        stop(
+            consensus_event_receiver,
+            Managers {
+                bootstrap_manager,
+                consensus_manager,
+                execution_manager,
+                pool_manager,
+                protocol_manager,
+                network_manager,
             },
-            <span class="ident">api_private_handle</span>,
-            <span class="ident">api_public_handle</span>,
+            api_private_handle,
+            api_public_handle,
         )
         .<span class="kw">await</span>;
 
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">restart</span> {
+        <span class="kw">if </span>!restart {
             <span class="kw">break</span>;
         }
     }
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

@@ -20,27 +20,27 @@
 <span id="20">20</span>
 <span id="21">21</span>
 <span id="22">22</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! MASSA Cipher crate</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! `massa-cipher` uses AES-GCM</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! AES-GCM is a state-of-the-art high-performance Authenticated Encryption with Associated Data (AEAD)</span>
-<span class="doccomment">//! that provides confidentiality and authenticity.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! To hash the password before using it as a cipher key, we use the PBKDF2 key derivation function</span>
-<span class="doccomment">//! as specified in [RFC 2898](https://datatracker.ietf.org/doc/html/rfc2898).</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The AES-GCM crate we use has received one security audit by NCC Group, with no significant findings.</span>
+</span><span class="doccomment">//! MASSA Cipher crate
+//!
+//! `massa-cipher` uses AES-GCM
+//!
+//! AES-GCM is a state-of-the-art high-performance Authenticated Encryption with Associated Data (AEAD)
+//! that provides confidentiality and authenticity.
+//!
+//! To hash the password before using it as a cipher key, we use the PBKDF2 key derivation function
+//! as specified in [RFC 2898](https://datatracker.ietf.org/doc/html/rfc2898).
+//!
+//! The AES-GCM crate we use has received one security audit by NCC Group, with no significant findings.
 
-<span class="kw">mod</span> <span class="ident">constants</span>;
-<span class="kw">mod</span> <span class="ident">decrypt</span>;
-<span class="kw">mod</span> <span class="ident">encrypt</span>;
-<span class="kw">mod</span> <span class="ident">error</span>;
+</span><span class="kw">mod </span>constants;
+<span class="kw">mod </span>decrypt;
+<span class="kw">mod </span>encrypt;
+<span class="kw">mod </span>error;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">decrypt::decrypt</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">encrypt::encrypt</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error::CipherError</span>;
+<span class="kw">pub use </span>decrypt::decrypt;
+<span class="kw">pub use </span>encrypt::encrypt;
+<span class="kw">pub use </span>error::CipherError;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_cipher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_cipher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

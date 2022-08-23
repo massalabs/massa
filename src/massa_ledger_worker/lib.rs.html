@@ -57,64 +57,64 @@
 <span id="57">57</span>
 <span id="58">58</span>
 <span id="59">59</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! # General description</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This crate implements a ledger matching addresses to balances, executable bytecode and data.</span>
-<span class="doccomment">//! It also provides tools to manipulate ledger entries.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! `FinalLedger` is used as part of `FinalState` that represents the latest final state of the node</span>
-<span class="doccomment">//! (see `massa-final-state` crate for more details).</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! `FinalLedger` representing a ledger at a given slot that was executed as final</span>
-<span class="doccomment">//! (see the massa-execution-worker crate for details on execution).</span>
-<span class="doccomment">//! Only the execution worker writes into the final ledger.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # A note on parallel vs sequential balance</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The distinctions between the parallel and the sequential balance of a ledger entry are the following:</span>
-<span class="doccomment">//! * the parallel balance can be credited or spent in any slot</span>
-<span class="doccomment">//! * the sequential balance can be credited in any slot but only spent in slots form the address&#39; thread</span>
-<span class="doccomment">//! * block producers are credited fees from the sequential balance,</span>
-<span class="doccomment">//!   and they can ensure that this balance will be available for their block simply</span>
-<span class="doccomment">//!   by looking for sequential balance spending within the block&#39;s thread.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Architecture</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## `ledger.rs`</span>
-<span class="doccomment">//! Defines the `FinalLedger` that matches an address to a `LedgerEntry` (see `ledger_entry.rs`),</span>
-<span class="doccomment">//! and can be manipulated using `LedgerChanges` (see `ledger_changes.rs`).</span>
-<span class="doccomment">//! The `FinalLedger` is bootstrapped using tooling available in bootstrap.rs</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## `ledger_entry.rs`</span>
-<span class="doccomment">//! Represents an entry in the ledger for a given address.</span>
-<span class="doccomment">//! It contains balances, executable bytecode and an arbitrary datastore.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## `ledger_changes.rs`</span>
-<span class="doccomment">//! Represents a list of changes to ledger entries that</span>
-<span class="doccomment">//! can be modified, combined or applied to the final ledger.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## `bootstrap.rs`</span>
-<span class="doccomment">//! Provides serializable structures and tools for bootstrapping the final ledger.  </span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## Test exports</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.</span>
-<span class="doccomment">//! See `test_exports/mod.rs` for details.</span>
+</span><span class="doccomment">//! # General description
+//!
+//! This crate implements a ledger matching addresses to balances, executable bytecode and data.
+//! It also provides tools to manipulate ledger entries.
+//!
+//! `FinalLedger` is used as part of `FinalState` that represents the latest final state of the node
+//! (see `massa-final-state` crate for more details).
+//!
+//! `FinalLedger` representing a ledger at a given slot that was executed as final
+//! (see the massa-execution-worker crate for details on execution).
+//! Only the execution worker writes into the final ledger.
+//!
+//! # A note on parallel vs sequential balance
+//!
+//! The distinctions between the parallel and the sequential balance of a ledger entry are the following:
+//! * the parallel balance can be credited or spent in any slot
+//! * the sequential balance can be credited in any slot but only spent in slots form the address&#39; thread
+//! * block producers are credited fees from the sequential balance,
+//!   and they can ensure that this balance will be available for their block simply
+//!   by looking for sequential balance spending within the block&#39;s thread.
+//!
+//! # Architecture
+//!
+//! ## `ledger.rs`
+//! Defines the `FinalLedger` that matches an address to a `LedgerEntry` (see `ledger_entry.rs`),
+//! and can be manipulated using `LedgerChanges` (see `ledger_changes.rs`).
+//! The `FinalLedger` is bootstrapped using tooling available in bootstrap.rs
+//!
+//! ## `ledger_entry.rs`
+//! Represents an entry in the ledger for a given address.
+//! It contains balances, executable bytecode and an arbitrary datastore.
+//!
+//! ## `ledger_changes.rs`
+//! Represents a list of changes to ledger entries that
+//! can be modified, combined or applied to the final ledger.
+//!
+//! ## `bootstrap.rs`
+//! Provides serializable structures and tools for bootstrapping the final ledger.  
+//!
+//! ## Test exports
+//!
+//! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
+//! See `test_exports/mod.rs` for details.
 
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
+</span><span class="attribute">#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 
-<span class="kw">mod</span> <span class="ident">ledger</span>;
-<span class="kw">mod</span> <span class="ident">ledger_db</span>;
+</span><span class="kw">mod </span>ledger;
+<span class="kw">mod </span>ledger_db;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ledger::FinalLedger</span>;
+<span class="kw">pub use </span>ledger::FinalLedger;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">test_exports</span>;
+<span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+</span><span class="kw">pub mod </span>test_exports;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

@@ -61,68 +61,68 @@
 <span id="61">61</span>
 <span id="62">62</span>
 <span id="63">63</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-<span class="doccomment">//! proof of stake exports</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">int_roundings</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</span><span class="doccomment">//! proof of stake exports
+</span><span class="attribute">#![feature(int_roundings)]
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 
-<span class="doccomment">/// proof of stake errors</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;
-<span class="kw">mod</span> <span class="ident">export_pos</span>;
-<span class="kw">mod</span> <span class="ident">settings</span>;
+</span><span class="doccomment">/// proof of stake errors
+</span><span class="kw">pub mod </span>error;
+<span class="kw">mod </span>export_pos;
+<span class="kw">mod </span>settings;
 
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">rolls</span>::{<span class="ident">RollUpdate</span>, <span class="ident">RollUpdates</span>},
-    <span class="ident">Address</span>, <span class="ident">OperationType</span>, <span class="ident">WrappedOperation</span>,
+<span class="kw">use </span>massa_models::{
+    rolls::{RollUpdate, RollUpdates},
+    Address, OperationType, WrappedOperation,
 };
 
-<span class="kw">mod</span> <span class="ident">proof_of_stake</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">proof_of_stake</span>::<span class="kw-2">*</span>;
+<span class="kw">mod </span>proof_of_stake;
+<span class="kw">pub use </span>proof_of_stake::<span class="kw-2">*</span>;
 
-<span class="kw">use</span> <span class="ident">error::ProofOfStakeError</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">export_pos</span>::{
-    <span class="ident">ExportProofOfStake</span>, <span class="ident">ExportProofOfStakeDeserializer</span>, <span class="ident">ExportProofOfStakeSerializer</span>,
+<span class="kw">use </span>error::ProofOfStakeError;
+<span class="kw">pub use </span>export_pos::{
+    ExportProofOfStake, ExportProofOfStakeDeserializer, ExportProofOfStakeSerializer,
 };
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">settings::ProofOfStakeConfig</span>;
+<span class="kw">pub use </span>settings::ProofOfStakeConfig;
 
-<span class="kw">mod</span> <span class="ident">thread_cycle_state</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">thread_cycle_state::ThreadCycleState</span>;
+<span class="kw">mod </span>thread_cycle_state;
+<span class="kw">pub use </span>thread_cycle_state::ThreadCycleState;
 
-<span class="doccomment">/// Roll specific method on operation</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">OperationRollInterface</span> {
-    <span class="doccomment">/// get roll related modifications</span>
-    <span class="kw">fn</span> <span class="ident">get_roll_updates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RollUpdates</span>, <span class="ident">ProofOfStakeError</span><span class="op">&gt;</span>;
+<span class="doccomment">/// Roll specific method on operation
+</span><span class="kw">pub trait </span>OperationRollInterface {
+    <span class="doccomment">/// get roll related modifications
+    </span><span class="kw">fn </span>get_roll_updates(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;RollUpdates, ProofOfStakeError&gt;;
 }
 
-<span class="kw">impl</span> <span class="ident">OperationRollInterface</span> <span class="kw">for</span> <span class="ident">WrappedOperation</span> {
-    <span class="kw">fn</span> <span class="ident">get_roll_updates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RollUpdates</span>, <span class="ident">ProofOfStakeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">RollUpdates::default</span>();
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">content</span>.<span class="ident">op</span> {
-            <span class="ident">OperationType::Transaction</span> { .. } =&gt; {}
-            <span class="ident">OperationType::RollBuy</span> { <span class="ident">roll_count</span> } =&gt; {
-                <span class="ident">res</span>.<span class="ident">apply</span>(
-                    <span class="kw-2">&amp;</span><span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">creator_public_key</span>),
-                    <span class="kw-2">&amp;</span><span class="ident">RollUpdate</span> {
-                        <span class="ident">roll_purchases</span>: <span class="ident">roll_count</span>,
-                        <span class="ident">roll_sales</span>: <span class="number">0</span>,
+<span class="kw">impl </span>OperationRollInterface <span class="kw">for </span>WrappedOperation {
+    <span class="kw">fn </span>get_roll_updates(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;RollUpdates, ProofOfStakeError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res = RollUpdates::default();
+        <span class="kw">match </span><span class="self">self</span>.content.op {
+            OperationType::Transaction { .. } =&gt; {}
+            OperationType::RollBuy { roll_count } =&gt; {
+                res.apply(
+                    <span class="kw-2">&amp;</span>Address::from_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>.creator_public_key),
+                    <span class="kw-2">&amp;</span>RollUpdate {
+                        roll_purchases: roll_count,
+                        roll_sales: <span class="number">0</span>,
                     },
                 )<span class="question-mark">?</span>;
             }
-            <span class="ident">OperationType::RollSell</span> { <span class="ident">roll_count</span> } =&gt; {
-                <span class="ident">res</span>.<span class="ident">apply</span>(
-                    <span class="kw-2">&amp;</span><span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">creator_public_key</span>),
-                    <span class="kw-2">&amp;</span><span class="ident">RollUpdate</span> {
-                        <span class="ident">roll_purchases</span>: <span class="number">0</span>,
-                        <span class="ident">roll_sales</span>: <span class="ident">roll_count</span>,
+            OperationType::RollSell { roll_count } =&gt; {
+                res.apply(
+                    <span class="kw-2">&amp;</span>Address::from_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>.creator_public_key),
+                    <span class="kw-2">&amp;</span>RollUpdate {
+                        roll_purchases: <span class="number">0</span>,
+                        roll_sales: roll_count,
                     },
                 )<span class="question-mark">?</span>;
             }
-            <span class="ident">OperationType::ExecuteSC</span> { .. } =&gt; {}
-            <span class="ident">OperationType::CallSC</span> { .. } =&gt; {}
+            OperationType::ExecuteSC { .. } =&gt; {}
+            OperationType::CallSC { .. } =&gt; {}
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+        <span class="prelude-val">Ok</span>(res)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_proof_of_stake_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_proof_of_stake_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

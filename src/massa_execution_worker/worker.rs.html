@@ -617,624 +617,624 @@
 <span id="617">617</span>
 <span id="618">618</span>
 <span id="619">619</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! This module allows launching the execution worker thread, returning objects to communicate with it.</span>
-<span class="doccomment">//! The worker thread processes incoming notifications of blockclique changes,</span>
-<span class="doccomment">//! orders active and final blocks in queues sorted by increasing slot number,</span>
-<span class="doccomment">//! and requests the execution of active and final slots from execution.rs.</span>
+</span><span class="doccomment">//! This module allows launching the execution worker thread, returning objects to communicate with it.
+//! The worker thread processes incoming notifications of blockclique changes,
+//! orders active and final blocks in queues sorted by increasing slot number,
+//! and requests the execution of active and final slots from execution.rs.
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::controller</span>::{<span class="ident">ExecutionControllerImpl</span>, <span class="ident">ExecutionInputData</span>, <span class="ident">ExecutionManagerImpl</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::execution::ExecutionState</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::request_queue::RequestQueue</span>;
-<span class="kw">use</span> <span class="ident">massa_execution_exports</span>::{
-    <span class="ident">ExecutionConfig</span>, <span class="ident">ExecutionController</span>, <span class="ident">ExecutionError</span>, <span class="ident">ExecutionManager</span>, <span class="ident">ExecutionOutput</span>,
-    <span class="ident">ReadOnlyExecutionRequest</span>,
+</span><span class="kw">use </span><span class="kw">crate</span>::controller::{ExecutionControllerImpl, ExecutionInputData, ExecutionManagerImpl};
+<span class="kw">use </span><span class="kw">crate</span>::execution::ExecutionState;
+<span class="kw">use </span><span class="kw">crate</span>::request_queue::RequestQueue;
+<span class="kw">use </span>massa_execution_exports::{
+    ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
+    ReadOnlyExecutionRequest,
 };
-<span class="kw">use</span> <span class="ident">massa_final_state::FinalState</span>;
-<span class="kw">use</span> <span class="ident">massa_models::BlockId</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">timeslots</span>::{<span class="ident">get_block_slot_timestamp</span>, <span class="ident">get_latest_block_slot_at_timestamp</span>},
-    <span class="ident">Slot</span>,
+<span class="kw">use </span>massa_final_state::FinalState;
+<span class="kw">use </span>massa_models::BlockId;
+<span class="kw">use </span>massa_models::{
+    timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
+    Slot,
 };
-<span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
-<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
-<span class="kw">use</span> <span class="ident">parking_lot</span>::{<span class="ident">Condvar</span>, <span class="ident">Mutex</span>, <span class="ident">RwLock</span>};
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashMap</span>, <span class="ident">sync::Arc</span>};
-<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">info</span>, <span class="ident">warn</span>};
+<span class="kw">use </span>massa_storage::Storage;
+<span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>parking_lot::{Condvar, Mutex, RwLock};
+<span class="kw">use </span>std::{collections::HashMap, sync::Arc};
+<span class="kw">use </span>tracing::{info, warn};
 
-<span class="doccomment">/// Structure gathering all elements needed by the execution thread</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ExecutionThread</span> {
-    <span class="comment">// Execution config</span>
-    <span class="ident">config</span>: <span class="ident">ExecutionConfig</span>,
-    <span class="comment">// A copy of the input data allowing access to incoming requests</span>
-    <span class="ident">input_data</span>: <span class="ident">Arc</span><span class="op">&lt;</span>(<span class="ident">Condvar</span>, <span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">ExecutionInputData</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
-    <span class="comment">// Map of final slots not executed yet but ready for execution</span>
-    <span class="comment">// See lib.rs for an explanation on final execution ordering.</span>
-    <span class="ident">ready_final_slots</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="comment">// Highest final slot that is ready to be executed</span>
-    <span class="ident">last_ready_final_slot</span>: <span class="ident">Slot</span>,
-    <span class="comment">// Map of final blocks that are not yet ready to be executed</span>
-    <span class="comment">// See lib.rs for an explanation on final execution ordering.</span>
-    <span class="ident">pending_final_blocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>,
-    <span class="comment">// Current blockclique, indexed by slot number</span>
-    <span class="ident">blockclique</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>,
-    <span class="comment">// Map of all active slots</span>
-    <span class="ident">active_slots</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="comment">// Highest active slot</span>
-    <span class="ident">last_active_slot</span>: <span class="ident">Slot</span>,
-    <span class="comment">// Execution state (see execution.rs) to which execution requests are sent</span>
-    <span class="ident">execution_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">ExecutionState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// queue for read-only requests and response MPSCs to send back their outputs</span>
-    <span class="ident">readonly_requests</span>: <span class="ident">RequestQueue</span><span class="op">&lt;</span><span class="ident">ReadOnlyExecutionRequest</span>, <span class="ident">ExecutionOutput</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Structure gathering all elements needed by the execution thread
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ExecutionThread {
+    <span class="comment">// Execution config
+    </span>config: ExecutionConfig,
+    <span class="comment">// A copy of the input data allowing access to incoming requests
+    </span>input_data: Arc&lt;(Condvar, Mutex&lt;ExecutionInputData&gt;)&gt;,
+    <span class="comment">// Map of final slots not executed yet but ready for execution
+    // See lib.rs for an explanation on final execution ordering.
+    </span>ready_final_slots: HashMap&lt;Slot, <span class="prelude-ty">Option</span>&lt;BlockId&gt;&gt;,
+    <span class="comment">// Highest final slot that is ready to be executed
+    </span>last_ready_final_slot: Slot,
+    <span class="comment">// Map of final blocks that are not yet ready to be executed
+    // See lib.rs for an explanation on final execution ordering.
+    </span>pending_final_blocks: HashMap&lt;Slot, BlockId&gt;,
+    <span class="comment">// Current blockclique, indexed by slot number
+    </span>blockclique: HashMap&lt;Slot, BlockId&gt;,
+    <span class="comment">// Map of all active slots
+    </span>active_slots: HashMap&lt;Slot, <span class="prelude-ty">Option</span>&lt;BlockId&gt;&gt;,
+    <span class="comment">// Highest active slot
+    </span>last_active_slot: Slot,
+    <span class="comment">// Execution state (see execution.rs) to which execution requests are sent
+    </span>execution_state: Arc&lt;RwLock&lt;ExecutionState&gt;&gt;,
+    <span class="doccomment">/// queue for read-only requests and response MPSCs to send back their outputs
+    </span>readonly_requests: RequestQueue&lt;ReadOnlyExecutionRequest, ExecutionOutput&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ExecutionThread</span> {
-    <span class="doccomment">/// Creates the `ExecutionThread` structure to gather all data and references</span>
-    <span class="doccomment">/// needed by the execution worker thread.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `config`: execution configuration</span>
-    <span class="doccomment">/// * `input_data`: a copy of the input data interface to get incoming requests from</span>
-    <span class="doccomment">/// * `execution_state`: an thread-safe shared access to the execution state, which can be bootstrapped or newly created</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">config</span>: <span class="ident">ExecutionConfig</span>,
-        <span class="ident">input_data</span>: <span class="ident">Arc</span><span class="op">&lt;</span>(<span class="ident">Condvar</span>, <span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">ExecutionInputData</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
-        <span class="ident">execution_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">ExecutionState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="comment">// get the latest executed final slot, at the output of which the final ledger is attached</span>
-        <span class="kw">let</span> <span class="ident">final_cursor</span> <span class="op">=</span> <span class="ident">execution_state</span>.<span class="ident">read</span>().<span class="ident">final_cursor</span>;
+<span class="kw">impl </span>ExecutionThread {
+    <span class="doccomment">/// Creates the `ExecutionThread` structure to gather all data and references
+    /// needed by the execution worker thread.
+    ///
+    /// # Arguments
+    /// * `config`: execution configuration
+    /// * `input_data`: a copy of the input data interface to get incoming requests from
+    /// * `execution_state`: an thread-safe shared access to the execution state, which can be bootstrapped or newly created
+    </span><span class="kw">pub fn </span>new(
+        config: ExecutionConfig,
+        input_data: Arc&lt;(Condvar, Mutex&lt;ExecutionInputData&gt;)&gt;,
+        execution_state: Arc&lt;RwLock&lt;ExecutionState&gt;&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="comment">// get the latest executed final slot, at the output of which the final ledger is attached
+        </span><span class="kw">let </span>final_cursor = execution_state.read().final_cursor;
 
-        <span class="comment">// create and return the ExecutionThread</span>
-        <span class="ident">ExecutionThread</span> {
-            <span class="ident">last_active_slot</span>: <span class="ident">final_cursor</span>,
-            <span class="ident">input_data</span>,
-            <span class="ident">last_ready_final_slot</span>: <span class="ident">final_cursor</span>,
-            <span class="ident">ready_final_slots</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">pending_final_blocks</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">blockclique</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">active_slots</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">readonly_requests</span>: <span class="ident">RequestQueue::new</span>(<span class="ident">config</span>.<span class="ident">readonly_queue_length</span>),
-            <span class="ident">config</span>,
-            <span class="ident">execution_state</span>,
+        <span class="comment">// create and return the ExecutionThread
+        </span>ExecutionThread {
+            last_active_slot: final_cursor,
+            input_data,
+            last_ready_final_slot: final_cursor,
+            ready_final_slots: Default::default(),
+            pending_final_blocks: Default::default(),
+            blockclique: Default::default(),
+            active_slots: Default::default(),
+            readonly_requests: RequestQueue::new(config.readonly_queue_length),
+            config,
+            execution_state,
         }
     }
 
-    <span class="doccomment">/// Update the sequence of final slots given newly finalized blocks.</span>
-    <span class="doccomment">/// This method is called from the execution worker&#39;s main loop.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `new_final_blocks`: a map of newly finalized blocks</span>
-    <span class="kw">fn</span> <span class="ident">update_final_slots</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">new_final_blocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>) {
-        <span class="comment">// if there are no new final blocks, exit and do nothing</span>
-        <span class="kw">if</span> <span class="ident">new_final_blocks</span>.<span class="ident">is_empty</span>() {
+    <span class="doccomment">/// Update the sequence of final slots given newly finalized blocks.
+    /// This method is called from the execution worker&#39;s main loop.
+    ///
+    /// # Arguments
+    /// * `new_final_blocks`: a map of newly finalized blocks
+    </span><span class="kw">fn </span>update_final_slots(<span class="kw-2">&amp;mut </span><span class="self">self</span>, new_final_blocks: HashMap&lt;Slot, BlockId&gt;) {
+        <span class="comment">// if there are no new final blocks, exit and do nothing
+        </span><span class="kw">if </span>new_final_blocks.is_empty() {
             <span class="kw">return</span>;
         }
 
-        <span class="comment">// add new_final_blocks to the pending final blocks not ready for execution yet</span>
-        <span class="self">self</span>.<span class="ident">pending_final_blocks</span>.<span class="ident">extend</span>(<span class="ident">new_final_blocks</span>);
+        <span class="comment">// add new_final_blocks to the pending final blocks not ready for execution yet
+        </span><span class="self">self</span>.pending_final_blocks.extend(new_final_blocks);
 
-        <span class="comment">// get maximal final slot</span>
-        <span class="kw">let</span> <span class="ident">max_final_slot</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">pending_final_blocks</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">max_by_key</span>(<span class="op">|</span>(<span class="ident">s</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">s</span>)
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">s</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">s</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;expected pending_final_blocks to be non-empty&quot;</span>);
+        <span class="comment">// get maximal final slot
+        </span><span class="kw">let </span>max_final_slot = <span class="self">self
+            </span>.pending_final_blocks
+            .iter()
+            .max_by_key(|(s, <span class="kw">_</span>)| <span class="kw-2">*</span>s)
+            .map(|(s, <span class="kw">_</span>)| <span class="kw-2">*</span>s)
+            .expect(<span class="string">&quot;expected pending_final_blocks to be non-empty&quot;</span>);
 
-        <span class="comment">// Given pending_final_blocks, detect he final slots that are ready to be executed.</span>
-        <span class="comment">// Those are the ones or which all the previous slots are also executed or ready to be so.</span>
-        <span class="comment">// Iterate over consecutive slots starting from the one just after the previous last final one.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">slot</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">last_ready_final_slot</span>;
-        <span class="kw">while</span> <span class="ident">slot</span> <span class="op">&lt;</span> <span class="ident">max_final_slot</span> {
-            <span class="ident">slot</span> <span class="op">=</span> <span class="ident">slot</span>
-                .<span class="ident">get_next_slot</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">thread_count</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;final slot overflow in VM&quot;</span>);
+        <span class="comment">// Given pending_final_blocks, detect he final slots that are ready to be executed.
+        // Those are the ones or which all the previous slots are also executed or ready to be so.
+        // Iterate over consecutive slots starting from the one just after the previous last final one.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>slot = <span class="self">self</span>.last_ready_final_slot;
+        <span class="kw">while </span>slot &lt; max_final_slot {
+            slot = slot
+                .get_next_slot(<span class="self">self</span>.config.thread_count)
+                .expect(<span class="string">&quot;final slot overflow in VM&quot;</span>);
 
-            <span class="comment">// try to remove that slot out of pending_final_blocks</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block_id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">pending_final_blocks</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">slot</span>) {
-                <span class="comment">// pending final block found at slot:</span>
-                <span class="comment">// add block to the ready_final_slots list of final slots ready for execution</span>
-                <span class="self">self</span>.<span class="ident">ready_final_slots</span>.<span class="ident">insert</span>(<span class="ident">slot</span>, <span class="prelude-val">Some</span>(<span class="ident">block_id</span>));
-                <span class="self">self</span>.<span class="ident">last_ready_final_slot</span> <span class="op">=</span> <span class="ident">slot</span>;
-                <span class="comment">// continue the loop</span>
-                <span class="kw">continue</span>;
+            <span class="comment">// try to remove that slot out of pending_final_blocks
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(block_id) = <span class="self">self</span>.pending_final_blocks.remove(<span class="kw-2">&amp;</span>slot) {
+                <span class="comment">// pending final block found at slot:
+                // add block to the ready_final_slots list of final slots ready for execution
+                </span><span class="self">self</span>.ready_final_slots.insert(slot, <span class="prelude-val">Some</span>(block_id));
+                <span class="self">self</span>.last_ready_final_slot = slot;
+                <span class="comment">// continue the loop
+                </span><span class="kw">continue</span>;
             }
 
-            <span class="comment">// no final block found at this slot: it&#39;s a miss or active block</span>
+            <span class="comment">// no final block found at this slot: it&#39;s a miss or active block
 
-            <span class="comment">// check if the miss is final by searching for final blocks later in the same thread</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">miss_final</span> <span class="op">=</span> <span class="bool-val">false</span>;
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">search_slot</span> <span class="op">=</span> <span class="ident">slot</span>;
-            <span class="kw">while</span> <span class="ident">search_slot</span> <span class="op">&lt;</span> <span class="ident">max_final_slot</span> {
-                <span class="ident">search_slot</span>.<span class="ident">period</span> <span class="op">=</span> <span class="ident">search_slot</span>
-                    .<span class="ident">period</span>
-                    .<span class="ident">checked_add</span>(<span class="number">1</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;final slot overflow in VM&quot;</span>);
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">pending_final_blocks</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">search_slot</span>) {
-                    <span class="comment">// A final block was found later in the same thread.</span>
-                    <span class="comment">// The missed slot is therefore final.</span>
-                    <span class="ident">miss_final</span> <span class="op">=</span> <span class="bool-val">true</span>;
+            // check if the miss is final by searching for final blocks later in the same thread
+            </span><span class="kw">let </span><span class="kw-2">mut </span>miss_final = <span class="bool-val">false</span>;
+            <span class="kw">let </span><span class="kw-2">mut </span>search_slot = slot;
+            <span class="kw">while </span>search_slot &lt; max_final_slot {
+                search_slot.period = search_slot
+                    .period
+                    .checked_add(<span class="number">1</span>)
+                    .expect(<span class="string">&quot;final slot overflow in VM&quot;</span>);
+                <span class="kw">if </span><span class="self">self</span>.pending_final_blocks.contains_key(<span class="kw-2">&amp;</span>search_slot) {
+                    <span class="comment">// A final block was found later in the same thread.
+                    // The missed slot is therefore final.
+                    </span>miss_final = <span class="bool-val">true</span>;
                     <span class="kw">break</span>;
                 }
             }
 
-            <span class="kw">if</span> <span class="ident">miss_final</span> {
-                <span class="comment">// If this slot is a final miss</span>
-                <span class="comment">// Add it to the list of final slots ready for execution</span>
-                <span class="self">self</span>.<span class="ident">ready_final_slots</span>.<span class="ident">insert</span>(<span class="ident">slot</span>, <span class="prelude-val">None</span>);
-                <span class="self">self</span>.<span class="ident">last_ready_final_slot</span> <span class="op">=</span> <span class="ident">slot</span>;
-            } <span class="kw">else</span> {
-                <span class="comment">// This slot is not final:</span>
-                <span class="comment">// we have reached the end of the list of consecutive final slots</span>
-                <span class="comment">// that are ready to be executed</span>
-                <span class="kw">break</span>;
+            <span class="kw">if </span>miss_final {
+                <span class="comment">// If this slot is a final miss
+                // Add it to the list of final slots ready for execution
+                </span><span class="self">self</span>.ready_final_slots.insert(slot, <span class="prelude-val">None</span>);
+                <span class="self">self</span>.last_ready_final_slot = slot;
+            } <span class="kw">else </span>{
+                <span class="comment">// This slot is not final:
+                // we have reached the end of the list of consecutive final slots
+                // that are ready to be executed
+                </span><span class="kw">break</span>;
             }
         }
     }
 
-    <span class="doccomment">/// Returns the latest slot that is at or just before the current timestamp.</span>
-    <span class="doccomment">/// If a non-zero `cursor_delay` configuration is defined, this extra lag is taken into account.</span>
-    <span class="doccomment">/// Such an extra lag can be useful for weaker nodes to perform less speculative executions</span>
-    <span class="doccomment">/// because more recent slots change more often and might require multiple re-executions.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// The latest slot at or before `now() - self.config.cursor_delay` if there is any,</span>
-    <span class="doccomment">/// or None if it falls behind the genesis timestamp.</span>
-    <span class="kw">fn</span> <span class="ident">get_end_active_slot</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">target_time</span> <span class="op">=</span> <span class="ident">MassaTime::compensated_now</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">clock_compensation</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;could not read current time&quot;</span>)
-            .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">cursor_delay</span>);
-        <span class="ident">get_latest_block_slot_at_timestamp</span>(
-            <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">thread_count</span>,
-            <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">t0</span>,
-            <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">genesis_timestamp</span>,
-            <span class="ident">target_time</span>,
+    <span class="doccomment">/// Returns the latest slot that is at or just before the current timestamp.
+    /// If a non-zero `cursor_delay` configuration is defined, this extra lag is taken into account.
+    /// Such an extra lag can be useful for weaker nodes to perform less speculative executions
+    /// because more recent slots change more often and might require multiple re-executions.
+    ///
+    /// # Returns
+    /// The latest slot at or before `now() - self.config.cursor_delay` if there is any,
+    /// or None if it falls behind the genesis timestamp.
+    </span><span class="kw">fn </span>get_end_active_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Slot&gt; {
+        <span class="kw">let </span>target_time = MassaTime::compensated_now(<span class="self">self</span>.config.clock_compensation)
+            .expect(<span class="string">&quot;could not read current time&quot;</span>)
+            .saturating_sub(<span class="self">self</span>.config.cursor_delay);
+        get_latest_block_slot_at_timestamp(
+            <span class="self">self</span>.config.thread_count,
+            <span class="self">self</span>.config.t0,
+            <span class="self">self</span>.config.genesis_timestamp,
+            target_time,
         )
-        .<span class="ident">expect</span>(<span class="string">&quot;could not get current slot&quot;</span>)
+        .expect(<span class="string">&quot;could not get current slot&quot;</span>)
     }
 
-    <span class="doccomment">/// Updates the sequence of active slots.</span>
-    <span class="doccomment">/// If a new blockclique is provided, it is taken into account.</span>
-    <span class="doccomment">/// If no blockclique is provided, this function is still useful to fill</span>
-    <span class="doccomment">/// ready-to-be-executed active slots with misses until the current time.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Arguments:</span>
-    <span class="doccomment">/// * `new_blockclique`: optionally provide a new blockclique</span>
-    <span class="kw">fn</span> <span class="ident">update_active_slots</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">new_blockclique</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
-        <span class="comment">// Update the current blockclique if it has changed</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">blockclique</span>) <span class="op">=</span> <span class="ident">new_blockclique</span> {
-            <span class="self">self</span>.<span class="ident">blockclique</span> <span class="op">=</span> <span class="ident">blockclique</span>;
+    <span class="doccomment">/// Updates the sequence of active slots.
+    /// If a new blockclique is provided, it is taken into account.
+    /// If no blockclique is provided, this function is still useful to fill
+    /// ready-to-be-executed active slots with misses until the current time.
+    ///
+    /// Arguments:
+    /// * `new_blockclique`: optionally provide a new blockclique
+    </span><span class="kw">fn </span>update_active_slots(<span class="kw-2">&amp;mut </span><span class="self">self</span>, new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, BlockId&gt;&gt;) {
+        <span class="comment">// Update the current blockclique if it has changed
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(blockclique) = new_blockclique {
+            <span class="self">self</span>.blockclique = blockclique;
         }
 
-        <span class="comment">// Get the latest slot at the current timestamp, if any</span>
-        <span class="kw">let</span> <span class="ident">end_active_slot</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_end_active_slot</span>();
+        <span class="comment">// Get the latest slot at the current timestamp, if any
+        </span><span class="kw">let </span>end_active_slot = <span class="self">self</span>.get_end_active_slot();
 
-        <span class="comment">// Empty the list of active slots</span>
-        <span class="self">self</span>.<span class="ident">active_slots</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
-        <span class="self">self</span>.<span class="ident">last_active_slot</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">last_ready_final_slot</span>;
+        <span class="comment">// Empty the list of active slots
+        </span><span class="self">self</span>.active_slots = HashMap::new();
+        <span class="self">self</span>.last_active_slot = <span class="self">self</span>.last_ready_final_slot;
 
-        <span class="comment">// If the current timestamp is before genesis time, keep the active_slots empty and return</span>
-        <span class="kw">let</span> <span class="ident">end_active_slot</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">end_active_slot</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
-            <span class="prelude-val">None</span> =&gt; <span class="kw">return</span>,
+        <span class="comment">// If the current timestamp is before genesis time, keep the active_slots empty and return
+        </span><span class="kw">let </span>end_active_slot = <span class="kw">match </span>end_active_slot {
+            <span class="prelude-val">Some</span>(s) =&gt; s,
+            <span class="prelude-val">None </span>=&gt; <span class="kw">return</span>,
         };
 
-        <span class="comment">// Recompute the sequence of active slots</span>
-        <span class="comment">// by iterating over consecutive slots from the one just after last_ready_final_slot until the current timestamp,</span>
-        <span class="comment">// and looking for blocks into pending_final_blocks and the current blockclique</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">slot</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">last_ready_final_slot</span>;
-        <span class="kw">while</span> <span class="ident">slot</span> <span class="op">&lt;</span> <span class="ident">end_active_slot</span> {
-            <span class="ident">slot</span> <span class="op">=</span> <span class="ident">slot</span>
-                .<span class="ident">get_next_slot</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">thread_count</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;active slot overflow in VM&quot;</span>);
-            <span class="comment">// look for a block at that slot among the ones that are final but not ready for final execution yet</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block_id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">pending_final_blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">slot</span>) {
-                <span class="comment">// A block at that slot was found in pending_final_blocks.</span>
-                <span class="comment">// Add it to the sequence of active slots.</span>
-                <span class="self">self</span>.<span class="ident">active_slots</span>.<span class="ident">insert</span>(<span class="ident">slot</span>, <span class="prelude-val">Some</span>(<span class="kw-2">*</span><span class="ident">block_id</span>));
-                <span class="self">self</span>.<span class="ident">last_active_slot</span> <span class="op">=</span> <span class="ident">slot</span>;
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block_id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">blockclique</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">slot</span>) {
-                <span class="comment">// A block at that slot was found in the current blockclique.</span>
-                <span class="comment">// Add it to the sequence of active slots.</span>
-                <span class="self">self</span>.<span class="ident">active_slots</span>.<span class="ident">insert</span>(<span class="ident">slot</span>, <span class="prelude-val">Some</span>(<span class="kw-2">*</span><span class="ident">block_id</span>));
-                <span class="self">self</span>.<span class="ident">last_active_slot</span> <span class="op">=</span> <span class="ident">slot</span>;
-            } <span class="kw">else</span> {
-                <span class="comment">// No block was found at that slot: it&#39;s a miss</span>
-                <span class="comment">// Add the miss to the sequence of active slots</span>
-                <span class="self">self</span>.<span class="ident">active_slots</span>.<span class="ident">insert</span>(<span class="ident">slot</span>, <span class="prelude-val">None</span>);
-                <span class="self">self</span>.<span class="ident">last_active_slot</span> <span class="op">=</span> <span class="ident">slot</span>;
+        <span class="comment">// Recompute the sequence of active slots
+        // by iterating over consecutive slots from the one just after last_ready_final_slot until the current timestamp,
+        // and looking for blocks into pending_final_blocks and the current blockclique
+        </span><span class="kw">let </span><span class="kw-2">mut </span>slot = <span class="self">self</span>.last_ready_final_slot;
+        <span class="kw">while </span>slot &lt; end_active_slot {
+            slot = slot
+                .get_next_slot(<span class="self">self</span>.config.thread_count)
+                .expect(<span class="string">&quot;active slot overflow in VM&quot;</span>);
+            <span class="comment">// look for a block at that slot among the ones that are final but not ready for final execution yet
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(block_id) = <span class="self">self</span>.pending_final_blocks.get(<span class="kw-2">&amp;</span>slot) {
+                <span class="comment">// A block at that slot was found in pending_final_blocks.
+                // Add it to the sequence of active slots.
+                </span><span class="self">self</span>.active_slots.insert(slot, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>block_id));
+                <span class="self">self</span>.last_active_slot = slot;
+            } <span class="kw">else if let </span><span class="prelude-val">Some</span>(block_id) = <span class="self">self</span>.blockclique.get(<span class="kw-2">&amp;</span>slot) {
+                <span class="comment">// A block at that slot was found in the current blockclique.
+                // Add it to the sequence of active slots.
+                </span><span class="self">self</span>.active_slots.insert(slot, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>block_id));
+                <span class="self">self</span>.last_active_slot = slot;
+            } <span class="kw">else </span>{
+                <span class="comment">// No block was found at that slot: it&#39;s a miss
+                // Add the miss to the sequence of active slots
+                </span><span class="self">self</span>.active_slots.insert(slot, <span class="prelude-val">None</span>);
+                <span class="self">self</span>.last_active_slot = slot;
             }
         }
     }
 
-    <span class="doccomment">/// executes one final slot, if any</span>
-    <span class="doccomment">/// returns true if something was executed</span>
-    <span class="kw">fn</span> <span class="ident">execute_one_final_slot</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="comment">// check if there are final slots to execute</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">ready_final_slots</span>.<span class="ident">is_empty</span>() {
-            <span class="kw">return</span> <span class="bool-val">false</span>;
+    <span class="doccomment">/// executes one final slot, if any
+    /// returns true if something was executed
+    </span><span class="kw">fn </span>execute_one_final_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
+        <span class="comment">// check if there are final slots to execute
+        </span><span class="kw">if </span><span class="self">self</span>.ready_final_slots.is_empty() {
+            <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="comment">// w-lock execution state</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">exec_state</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">execution_state</span>.<span class="ident">write</span>();
+        <span class="comment">// w-lock execution state
+        </span><span class="kw">let </span><span class="kw-2">mut </span>exec_state = <span class="self">self</span>.execution_state.write();
 
-        <span class="comment">// get the slot just after the last executed final slot</span>
-        <span class="kw">let</span> <span class="ident">slot</span> <span class="op">=</span> <span class="ident">exec_state</span>
-            .<span class="ident">final_cursor</span>
-            .<span class="ident">get_next_slot</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">thread_count</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;final slot overflow in VM&quot;</span>);
+        <span class="comment">// get the slot just after the last executed final slot
+        </span><span class="kw">let </span>slot = exec_state
+            .final_cursor
+            .get_next_slot(<span class="self">self</span>.config.thread_count)
+            .expect(<span class="string">&quot;final slot overflow in VM&quot;</span>);
 
-        <span class="comment">// take the corresponding element from sce finals</span>
-        <span class="kw">let</span> <span class="ident">exec_target</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">ready_final_slots</span>
-            .<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">slot</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;the SCE final slot list skipped a slot&quot;</span>);
+        <span class="comment">// take the corresponding element from sce finals
+        </span><span class="kw">let </span>exec_target = <span class="self">self
+            </span>.ready_final_slots
+            .remove(<span class="kw-2">&amp;</span>slot)
+            .expect(<span class="string">&quot;the SCE final slot list skipped a slot&quot;</span>);
 
-        <span class="comment">// check if the final slot is cached at the front of the speculative execution history</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">exec_out</span>) <span class="op">=</span> <span class="ident">exec_state</span>.<span class="ident">pop_first_execution_result</span>() {
-            <span class="kw">if</span> <span class="ident">exec_out</span>.<span class="ident">slot</span> <span class="op">==</span> <span class="ident">slot</span> <span class="op">&amp;&amp;</span> <span class="ident">exec_out</span>.<span class="ident">block_id</span> <span class="op">==</span> <span class="ident">exec_target</span> {
-                <span class="comment">// speculative execution front result matches what we want to compute</span>
+        <span class="comment">// check if the final slot is cached at the front of the speculative execution history
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(exec_out) = exec_state.pop_first_execution_result() {
+            <span class="kw">if </span>exec_out.slot == slot &amp;&amp; exec_out.block_id == exec_target {
+                <span class="comment">// speculative execution front result matches what we want to compute
 
-                <span class="comment">// apply the cached output and return</span>
-                <span class="ident">exec_state</span>.<span class="ident">apply_final_execution_output</span>(<span class="ident">exec_out</span>);
-                <span class="kw">return</span> <span class="bool-val">true</span>;
-            } <span class="kw">else</span> {
-                <span class="comment">// speculative cache mismatch</span>
-                <span class="macro">warn!</span>(
+                // apply the cached output and return
+                </span>exec_state.apply_final_execution_output(exec_out);
+                <span class="kw">return </span><span class="bool-val">true</span>;
+            } <span class="kw">else </span>{
+                <span class="comment">// speculative cache mismatch
+                </span><span class="macro">warn!</span>(
                     <span class="string">&quot;speculative execution cache mismatch (final slot={}/block={:?}, front speculative slot={}/block={:?}). Resetting the cache.&quot;</span>,
-                    <span class="ident">slot</span>, <span class="ident">exec_target</span>, <span class="ident">exec_out</span>.<span class="ident">slot</span>, <span class="ident">exec_out</span>.<span class="ident">block_id</span>
+                    slot, exec_target, exec_out.slot, exec_out.block_id
                 );
             }
-        } <span class="kw">else</span> {
-            <span class="comment">// cache entry absent</span>
-            <span class="macro">info!</span>(
+        } <span class="kw">else </span>{
+            <span class="comment">// cache entry absent
+            </span><span class="macro">info!</span>(
                 <span class="string">&quot;speculative execution cache empty, executing final slot={}/block={:?}&quot;</span>,
-                <span class="ident">slot</span>, <span class="ident">exec_target</span>
+                slot, exec_target
             );
         }
 
-        <span class="comment">// clear the speculative execution output cache completely</span>
-        <span class="ident">exec_state</span>.<span class="ident">clear_history</span>();
+        <span class="comment">// clear the speculative execution output cache completely
+        </span>exec_state.clear_history();
 
-        <span class="comment">// execute slot</span>
-        <span class="kw">let</span> <span class="ident">exec_out</span> <span class="op">=</span> <span class="ident">exec_state</span>.<span class="ident">execute_slot</span>(<span class="ident">slot</span>, <span class="ident">exec_target</span>);
+        <span class="comment">// execute slot
+        </span><span class="kw">let </span>exec_out = exec_state.execute_slot(slot, exec_target);
 
-        <span class="comment">// apply execution output to final state</span>
-        <span class="ident">exec_state</span>.<span class="ident">apply_final_execution_output</span>(<span class="ident">exec_out</span>);
+        <span class="comment">// apply execution output to final state
+        </span>exec_state.apply_final_execution_output(exec_out);
 
-        <span class="bool-val">true</span>
+        <span class="bool-val">true
+    </span>}
+
+    <span class="doccomment">/// Check if there are any active slots ready for execution
+    /// This is used to check if the main loop should run an iteration
+    </span><span class="kw">fn </span>are_there_active_slots_ready_for_execution(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">let </span>execution_state = <span class="self">self</span>.execution_state.read();
+
+        <span class="comment">// get the next active slot
+        </span><span class="kw">let </span>slot = execution_state
+            .active_cursor
+            .get_next_slot(<span class="self">self</span>.config.thread_count)
+            .expect(<span class="string">&quot;active slot overflow in VM&quot;</span>);
+
+        <span class="comment">// check if it is in the active slot queue
+        </span><span class="self">self</span>.active_slots.contains_key(<span class="kw-2">&amp;</span>slot)
     }
 
-    <span class="doccomment">/// Check if there are any active slots ready for execution</span>
-    <span class="doccomment">/// This is used to check if the main loop should run an iteration</span>
-    <span class="kw">fn</span> <span class="ident">are_there_active_slots_ready_for_execution</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">let</span> <span class="ident">execution_state</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">execution_state</span>.<span class="ident">read</span>();
+    <span class="doccomment">/// executes one active slot, if any
+    /// returns true if something was executed
+    </span><span class="kw">fn </span>execute_one_active_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
+        <span class="comment">// write-lock the execution state
+        </span><span class="kw">let </span><span class="kw-2">mut </span>exec_state = <span class="self">self</span>.execution_state.write();
 
-        <span class="comment">// get the next active slot</span>
-        <span class="kw">let</span> <span class="ident">slot</span> <span class="op">=</span> <span class="ident">execution_state</span>
-            .<span class="ident">active_cursor</span>
-            .<span class="ident">get_next_slot</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">thread_count</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;active slot overflow in VM&quot;</span>);
+        <span class="comment">// get the next active slot
+        </span><span class="kw">let </span>slot = exec_state
+            .active_cursor
+            .get_next_slot(<span class="self">self</span>.config.thread_count)
+            .expect(<span class="string">&quot;active slot overflow in VM&quot;</span>);
 
-        <span class="comment">// check if it is in the active slot queue</span>
-        <span class="self">self</span>.<span class="ident">active_slots</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">slot</span>)
-    }
-
-    <span class="doccomment">/// executes one active slot, if any</span>
-    <span class="doccomment">/// returns true if something was executed</span>
-    <span class="kw">fn</span> <span class="ident">execute_one_active_slot</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="comment">// write-lock the execution state</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">exec_state</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">execution_state</span>.<span class="ident">write</span>();
-
-        <span class="comment">// get the next active slot</span>
-        <span class="kw">let</span> <span class="ident">slot</span> <span class="op">=</span> <span class="ident">exec_state</span>
-            .<span class="ident">active_cursor</span>
-            .<span class="ident">get_next_slot</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">thread_count</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;active slot overflow in VM&quot;</span>);
-
-        <span class="comment">// choose the execution target</span>
-        <span class="kw">let</span> <span class="ident">exec_target</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">active_slots</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">slot</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">b_id</span>) =&gt; <span class="kw-2">*</span><span class="ident">b_id</span>,
-            <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="bool-val">false</span>,
+        <span class="comment">// choose the execution target
+        </span><span class="kw">let </span>exec_target = <span class="kw">match </span><span class="self">self</span>.active_slots.get(<span class="kw-2">&amp;</span>slot) {
+            <span class="prelude-val">Some</span>(b_id) =&gt; <span class="kw-2">*</span>b_id,
+            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="bool-val">false</span>,
         };
 
-        <span class="comment">// execute the slot</span>
-        <span class="kw">let</span> <span class="ident">exec_out</span> <span class="op">=</span> <span class="ident">exec_state</span>.<span class="ident">execute_slot</span>(<span class="ident">slot</span>, <span class="ident">exec_target</span>);
+        <span class="comment">// execute the slot
+        </span><span class="kw">let </span>exec_out = exec_state.execute_slot(slot, exec_target);
 
-        <span class="comment">// apply execution output to active state</span>
-        <span class="ident">exec_state</span>.<span class="ident">apply_active_execution_output</span>(<span class="ident">exec_out</span>);
+        <span class="comment">// apply execution output to active state
+        </span>exec_state.apply_active_execution_output(exec_out);
 
-        <span class="bool-val">true</span>
-    }
+        <span class="bool-val">true
+    </span>}
 
-    <span class="doccomment">/// Gets the time from `now()` to the slot just after next `last_active_slot`.</span>
-    <span class="doccomment">/// Saturates down to 0 on negative durations.</span>
-    <span class="doccomment">/// Note that `config.cursor_delay` is taken into account.</span>
-    <span class="kw">fn</span> <span class="ident">get_time_until_next_active_slot</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">MassaTime</span> {
-        <span class="comment">// get the timestamp of the slot after the current last active one</span>
-        <span class="kw">let</span> <span class="ident">next_slot</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">last_active_slot</span>
-            .<span class="ident">get_next_slot</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">thread_count</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;active slot overflow in VM&quot;</span>);
-        <span class="kw">let</span> <span class="ident">next_timestamp</span> <span class="op">=</span> <span class="ident">get_block_slot_timestamp</span>(
-            <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">thread_count</span>,
-            <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">t0</span>,
-            <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">genesis_timestamp</span>,
-            <span class="ident">next_slot</span>,
+    <span class="doccomment">/// Gets the time from `now()` to the slot just after next `last_active_slot`.
+    /// Saturates down to 0 on negative durations.
+    /// Note that `config.cursor_delay` is taken into account.
+    </span><span class="kw">fn </span>get_time_until_next_active_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; MassaTime {
+        <span class="comment">// get the timestamp of the slot after the current last active one
+        </span><span class="kw">let </span>next_slot = <span class="self">self
+            </span>.last_active_slot
+            .get_next_slot(<span class="self">self</span>.config.thread_count)
+            .expect(<span class="string">&quot;active slot overflow in VM&quot;</span>);
+        <span class="kw">let </span>next_timestamp = get_block_slot_timestamp(
+            <span class="self">self</span>.config.thread_count,
+            <span class="self">self</span>.config.t0,
+            <span class="self">self</span>.config.genesis_timestamp,
+            next_slot,
         )
-        .<span class="ident">expect</span>(<span class="string">&quot;could not compute block timestamp in VM&quot;</span>);
+        .expect(<span class="string">&quot;could not compute block timestamp in VM&quot;</span>);
 
-        <span class="comment">// get the current timestamp minus the cursor delay</span>
-        <span class="kw">let</span> <span class="ident">end_time</span> <span class="op">=</span> <span class="ident">MassaTime::compensated_now</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">clock_compensation</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;could not get current time in VM&quot;</span>)
-            .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">cursor_delay</span>);
+        <span class="comment">// get the current timestamp minus the cursor delay
+        </span><span class="kw">let </span>end_time = MassaTime::compensated_now(<span class="self">self</span>.config.clock_compensation)
+            .expect(<span class="string">&quot;could not get current time in VM&quot;</span>)
+            .saturating_sub(<span class="self">self</span>.config.cursor_delay);
 
-        <span class="comment">// compute the time difference, saturating down to zero</span>
-        <span class="ident">next_timestamp</span>.<span class="ident">saturating_sub</span>(<span class="ident">end_time</span>)
+        <span class="comment">// compute the time difference, saturating down to zero
+        </span>next_timestamp.saturating_sub(end_time)
     }
 
-    <span class="doccomment">/// Tells the execution state about the new sequence of active slots.</span>
-    <span class="doccomment">/// If some slots already executed in a speculative way changed,</span>
-    <span class="doccomment">/// or if one of their have predecessor slots changed,</span>
-    <span class="doccomment">/// the execution state will truncate the execution output history</span>
-    <span class="doccomment">/// to remove all out-of-date execution outputs.</span>
-    <span class="doccomment">/// Speculative execution will then resume from the point of truncation.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">truncate_execution_history</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="comment">// acquire write access to execution state</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">exec_state</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">execution_state</span>.<span class="ident">write</span>();
+    <span class="doccomment">/// Tells the execution state about the new sequence of active slots.
+    /// If some slots already executed in a speculative way changed,
+    /// or if one of their have predecessor slots changed,
+    /// the execution state will truncate the execution output history
+    /// to remove all out-of-date execution outputs.
+    /// Speculative execution will then resume from the point of truncation.
+    </span><span class="kw">pub fn </span>truncate_execution_history(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="comment">// acquire write access to execution state
+        </span><span class="kw">let </span><span class="kw-2">mut </span>exec_state = <span class="self">self</span>.execution_state.write();
 
-        <span class="comment">// tells the execution state to truncate its execution output history</span>
-        <span class="comment">// given the new list of active slots</span>
-        <span class="ident">exec_state</span>.<span class="ident">truncate_history</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">active_slots</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ready_final_slots</span>);
+        <span class="comment">// tells the execution state to truncate its execution output history
+        // given the new list of active slots
+        </span>exec_state.truncate_history(<span class="kw-2">&amp;</span><span class="self">self</span>.active_slots, <span class="kw-2">&amp;</span><span class="self">self</span>.ready_final_slots);
     }
 
-    <span class="doccomment">/// Append incoming read-only requests to the relevant queue,</span>
-    <span class="doccomment">/// Cancel those that are in excess if there are too many.</span>
-    <span class="kw">fn</span> <span class="ident">update_readonly_requests</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">new_requests</span>: <span class="ident">RequestQueue</span><span class="op">&lt;</span><span class="ident">ReadOnlyExecutionRequest</span>, <span class="ident">ExecutionOutput</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Append incoming read-only requests to the relevant queue,
+    /// Cancel those that are in excess if there are too many.
+    </span><span class="kw">fn </span>update_readonly_requests(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        new_requests: RequestQueue&lt;ReadOnlyExecutionRequest, ExecutionOutput&gt;,
     ) {
-        <span class="comment">// Append incoming readonly requests to our readonly request queue</span>
-        <span class="comment">// Excess requests are cancelled</span>
-        <span class="self">self</span>.<span class="ident">readonly_requests</span>.<span class="ident">extend</span>(<span class="ident">new_requests</span>);
+        <span class="comment">// Append incoming readonly requests to our readonly request queue
+        // Excess requests are cancelled
+        </span><span class="self">self</span>.readonly_requests.extend(new_requests);
     }
 
-    <span class="doccomment">/// Executes a read-only request from the queue, if any.</span>
-    <span class="doccomment">/// The result of the execution is sent asynchronously through the response channel provided with the request.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// true if a request was executed, false otherwise</span>
-    <span class="kw">fn</span> <span class="ident">execute_one_readonly_request</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">req_resp</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">readonly_requests</span>.<span class="ident">pop</span>() {
-            <span class="kw">let</span> (<span class="ident">req</span>, <span class="ident">resp_tx</span>) <span class="op">=</span> <span class="ident">req_resp</span>.<span class="ident">into_request_sender_pair</span>();
+    <span class="doccomment">/// Executes a read-only request from the queue, if any.
+    /// The result of the execution is sent asynchronously through the response channel provided with the request.
+    ///
+    /// # Returns
+    /// true if a request was executed, false otherwise
+    </span><span class="kw">fn </span>execute_one_readonly_request(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(req_resp) = <span class="self">self</span>.readonly_requests.pop() {
+            <span class="kw">let </span>(req, resp_tx) = req_resp.into_request_sender_pair();
 
-            <span class="comment">// Acquire read access to the execution state and execute the read-only request</span>
-            <span class="kw">let</span> <span class="ident">outcome</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">execution_state</span>.<span class="ident">read</span>().<span class="ident">execute_readonly_request</span>(<span class="ident">req</span>);
+            <span class="comment">// Acquire read access to the execution state and execute the read-only request
+            </span><span class="kw">let </span>outcome = <span class="self">self</span>.execution_state.read().execute_readonly_request(req);
 
-            <span class="comment">// Send the execution output through resp_tx.</span>
-            <span class="comment">// Ignore errors because they just mean that the request emitter dropped the received</span>
-            <span class="comment">// because it doesn&#39;t need the response anymore.</span>
-            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">resp_tx</span>.<span class="ident">send</span>(<span class="ident">outcome</span>);
+            <span class="comment">// Send the execution output through resp_tx.
+            // Ignore errors because they just mean that the request emitter dropped the received
+            // because it doesn&#39;t need the response anymore.
+            </span><span class="kw">let _ </span>= resp_tx.send(outcome);
 
-            <span class="kw">return</span> <span class="bool-val">true</span>;
+            <span class="kw">return </span><span class="bool-val">true</span>;
         }
-        <span class="bool-val">false</span>
-    }
+        <span class="bool-val">false
+    </span>}
 
-    <span class="doccomment">/// Internal function tool used in `self.wait_loop_event()`, check in the</span>
-    <span class="doccomment">/// first place the content of `input_data` set by the controller.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// Return if the `wait_loop` has to break, early return, or pass.</span>
-    <span class="doccomment">/// - `None`: pass</span>
-    <span class="doccomment">/// - `Some(true)`: break (will stop the worker)</span>
-    <span class="doccomment">/// - `Some(false)`: early return (will continue to execute the input data)</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Test case</span>
-    <span class="doccomment">/// With the test configuration, the behavior is slightly different and we prefer</span>
-    <span class="doccomment">/// to execute all `readonly_requests`, `new_blockclique`, and</span>
-    <span class="doccomment">/// `finalized_blocks` before he thread join</span>
-    <span class="kw">fn</span> <span class="ident">check_input_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">input_data</span>: <span class="kw-2">&amp;</span><span class="ident">ExecutionInputData</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-        {
-            <span class="kw">if</span> (<span class="op">!</span><span class="ident">input_data</span>.<span class="ident">readonly_requests</span>.<span class="ident">is_empty</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">input_data</span>.<span class="ident">new_blockclique</span>.<span class="ident">is_some</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="ident">input_data</span>.<span class="ident">finalized_blocks</span>.<span class="ident">is_empty</span>())
-                <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">input_data</span>.<span class="ident">stop</span>
+    <span class="doccomment">/// Internal function tool used in `self.wait_loop_event()`, check in the
+    /// first place the content of `input_data` set by the controller.
+    ///
+    /// # Returns
+    /// Return if the `wait_loop` has to break, early return, or pass.
+    /// - `None`: pass
+    /// - `Some(true)`: break (will stop the worker)
+    /// - `Some(false)`: early return (will continue to execute the input data)
+    ///
+    /// # Test case
+    /// With the test configuration, the behavior is slightly different and we prefer
+    /// to execute all `readonly_requests`, `new_blockclique`, and
+    /// `finalized_blocks` before he thread join
+    </span><span class="kw">fn </span>check_input_data(<span class="kw-2">&amp;</span><span class="self">self</span>, input_data: <span class="kw-2">&amp;</span>ExecutionInputData) -&gt; <span class="prelude-ty">Option</span>&lt;bool&gt; {
+        <span class="attribute">#[cfg(test)]
+        </span>{
+            <span class="kw">if </span>(!input_data.readonly_requests.is_empty()
+                || input_data.new_blockclique.is_some()
+                || !input_data.finalized_blocks.is_empty())
+                &amp;&amp; !input_data.stop
             {
-                <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="bool-val">false</span>);
+                <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="bool-val">false</span>);
             }
-            <span class="kw">if</span> <span class="ident">input_data</span>.<span class="ident">stop</span> {
-                <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="bool-val">true</span>);
+            <span class="kw">if </span>input_data.stop {
+                <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="bool-val">true</span>);
             }
         }
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">test</span>))]</span>
-        {
-            <span class="kw">if</span> <span class="ident">input_data</span>.<span class="ident">stop</span> {
-                <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="bool-val">true</span>);
+        <span class="attribute">#[cfg(not(test))]
+        </span>{
+            <span class="kw">if </span>input_data.stop {
+                <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="bool-val">true</span>);
             }
-            <span class="comment">// Check for readonly requests, new blockclique or final slot changes</span>
-            <span class="comment">// The most frequent triggers are checked first.</span>
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">input_data</span>.<span class="ident">readonly_requests</span>.<span class="ident">is_empty</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">input_data</span>.<span class="ident">new_blockclique</span>.<span class="ident">is_some</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="ident">input_data</span>.<span class="ident">finalized_blocks</span>.<span class="ident">is_empty</span>()
+            <span class="comment">// Check for readonly requests, new blockclique or final slot changes
+            // The most frequent triggers are checked first.
+            </span><span class="kw">if </span>!input_data.readonly_requests.is_empty()
+                || input_data.new_blockclique.is_some()
+                || !input_data.finalized_blocks.is_empty()
             {
-                <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="bool-val">false</span>);
+                <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="bool-val">false</span>);
             }
         }
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="doccomment">/// Waits for an event to trigger a new iteration in the execution main loop.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// `Some(ExecutionInputData)` representing the input requests,</span>
-    <span class="doccomment">/// or `None` if the main loop needs to stop.</span>
-    <span class="kw">fn</span> <span class="ident">wait_loop_event</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ExecutionInputData</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cancel_input</span> <span class="op">=</span> <span class="kw">loop</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input_data_lock</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">input_data</span>.<span class="number">1</span>.<span class="ident">lock</span>();
+    <span class="doccomment">/// Waits for an event to trigger a new iteration in the execution main loop.
+    ///
+    /// # Returns
+    /// `Some(ExecutionInputData)` representing the input requests,
+    /// or `None` if the main loop needs to stop.
+    </span><span class="kw">fn </span>wait_loop_event(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;ExecutionInputData&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>cancel_input = <span class="kw">loop </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>input_data_lock = <span class="self">self</span>.input_data.<span class="number">1</span>.lock();
 
-            <span class="comment">// take current input data, resetting it</span>
-            <span class="kw">let</span> <span class="ident">input_data</span>: <span class="ident">ExecutionInputData</span> <span class="op">=</span> <span class="ident">input_data_lock</span>.<span class="ident">take</span>();
+            <span class="comment">// take current input data, resetting it
+            </span><span class="kw">let </span>input_data: ExecutionInputData = input_data_lock.take();
 
-            <span class="comment">// check for stop signal (in testing mode we wait for all</span>
-            <span class="comment">// Check for readonly requests, new blockclique or final slot changes</span>
-            <span class="comment">// The most frequent triggers are checked first.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">should_break</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">check_input_data</span>(<span class="kw-2">&amp;</span><span class="ident">input_data</span>) {
-                <span class="kw">if</span> <span class="ident">should_break</span> {
-                    <span class="kw">break</span> <span class="ident">input_data</span>;
-                } <span class="kw">else</span> {
-                    <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">input_data</span>);
+            <span class="comment">// check for stop signal (in testing mode we wait for all
+            // Check for readonly requests, new blockclique or final slot changes
+            // The most frequent triggers are checked first.
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(should_break) = <span class="self">self</span>.check_input_data(<span class="kw-2">&amp;</span>input_data) {
+                <span class="kw">if </span>should_break {
+                    <span class="kw">break </span>input_data;
+                } <span class="kw">else </span>{
+                    <span class="kw">return </span><span class="prelude-val">Some</span>(input_data);
                 }
             }
 
-            <span class="comment">// Check for slots to execute.</span>
-            <span class="comment">// The most frequent triggers are checked first,</span>
-            <span class="comment">// except for the active slot check which is last because it is more expensive.</span>
-            <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">readonly_requests</span>.<span class="ident">is_empty</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">ready_final_slots</span>.<span class="ident">is_empty</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">are_there_active_slots_ready_for_execution</span>()
+            <span class="comment">// Check for slots to execute.
+            // The most frequent triggers are checked first,
+            // except for the active slot check which is last because it is more expensive.
+            </span><span class="kw">if </span>!<span class="self">self</span>.readonly_requests.is_empty()
+                || !<span class="self">self</span>.ready_final_slots.is_empty()
+                || <span class="self">self</span>.are_there_active_slots_ready_for_execution()
             {
-                <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">input_data</span>);
+                <span class="kw">return </span><span class="prelude-val">Some</span>(input_data);
             }
 
-            <span class="comment">// No input data, and no slots to execute.</span>
+            <span class="comment">// No input data, and no slots to execute.
 
-            <span class="comment">// Compute when the next slot will be</span>
-            <span class="comment">// This is useful to wait for the next speculative miss to append to active slots.</span>
-            <span class="kw">let</span> <span class="ident">time_until_next_slot</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_time_until_next_active_slot</span>();
-            <span class="kw">if</span> <span class="ident">time_until_next_slot</span> <span class="op">==</span> <span class="number">0</span>.<span class="ident">into</span>() {
-                <span class="comment">// next slot is right now: the loop needs to iterate</span>
-                <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">input_data</span>);
+            // Compute when the next slot will be
+            // This is useful to wait for the next speculative miss to append to active slots.
+            </span><span class="kw">let </span>time_until_next_slot = <span class="self">self</span>.get_time_until_next_active_slot();
+            <span class="kw">if </span>time_until_next_slot == <span class="number">0</span>.into() {
+                <span class="comment">// next slot is right now: the loop needs to iterate
+                </span><span class="kw">return </span><span class="prelude-val">Some</span>(input_data);
             }
 
-            <span class="comment">// Wait to be notified of new input, for at most time_until_next_slot</span>
-            <span class="comment">// The return value is ignored because we don&#39;t care what woke up the condition variable.</span>
-            <span class="kw">let</span> <span class="ident">_res</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">input_data</span>
-                .<span class="number">0</span>
-                .<span class="ident">wait_for</span>(<span class="kw-2">&amp;mut</span> <span class="ident">input_data_lock</span>, <span class="ident">time_until_next_slot</span>.<span class="ident">to_duration</span>());
+            <span class="comment">// Wait to be notified of new input, for at most time_until_next_slot
+            // The return value is ignored because we don&#39;t care what woke up the condition variable.
+            </span><span class="kw">let </span>_res = <span class="self">self
+                </span>.input_data
+                .<span class="number">0
+                </span>.wait_for(<span class="kw-2">&amp;mut </span>input_data_lock, time_until_next_slot.to_duration());
         };
 
-        <span class="comment">// The loop needs to quit</span>
+        <span class="comment">// The loop needs to quit
 
-        <span class="comment">// Cancel pending readonly requests</span>
-        <span class="kw">let</span> <span class="ident">cancel_err</span> <span class="op">=</span> <span class="ident">ExecutionError::ChannelError</span>(
-            <span class="string">&quot;readonly execution cancelled because the execution worker is closing&quot;</span>.<span class="ident">into</span>(),
+        // Cancel pending readonly requests
+        </span><span class="kw">let </span>cancel_err = ExecutionError::ChannelError(
+            <span class="string">&quot;readonly execution cancelled because the execution worker is closing&quot;</span>.into(),
         );
-        <span class="ident">cancel_input</span>.<span class="ident">readonly_requests</span>.<span class="ident">cancel</span>(<span class="ident">cancel_err</span>.<span class="ident">clone</span>());
-        <span class="self">self</span>.<span class="ident">input_data</span>
-            .<span class="number">1</span>
-            .<span class="ident">lock</span>()
-            .<span class="ident">take</span>()
-            .<span class="ident">readonly_requests</span>
-            .<span class="ident">cancel</span>(<span class="ident">cancel_err</span>);
+        cancel_input.readonly_requests.cancel(cancel_err.clone());
+        <span class="self">self</span>.input_data
+            .<span class="number">1
+            </span>.lock()
+            .take()
+            .readonly_requests
+            .cancel(cancel_err);
 
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="doccomment">/// Main loop of the execution worker</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">main_loop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="comment">// This loop restarts every time an execution happens for easier tracking.</span>
-        <span class="comment">// It also prioritizes executions in the following order:</span>
-        <span class="comment">// 1 - final executions</span>
-        <span class="comment">// 2 - speculative executions</span>
-        <span class="comment">// 3 - read-only executions</span>
-        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">input_data</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">wait_loop_event</span>() {
-            <span class="comment">// update the sequence of final slots given the newly finalized blocks</span>
-            <span class="self">self</span>.<span class="ident">update_final_slots</span>(<span class="ident">input_data</span>.<span class="ident">finalized_blocks</span>);
+    <span class="doccomment">/// Main loop of the execution worker
+    </span><span class="kw">pub fn </span>main_loop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="comment">// This loop restarts every time an execution happens for easier tracking.
+        // It also prioritizes executions in the following order:
+        // 1 - final executions
+        // 2 - speculative executions
+        // 3 - read-only executions
+        </span><span class="kw">while let </span><span class="prelude-val">Some</span>(input_data) = <span class="self">self</span>.wait_loop_event() {
+            <span class="comment">// update the sequence of final slots given the newly finalized blocks
+            </span><span class="self">self</span>.update_final_slots(input_data.finalized_blocks);
 
-            <span class="comment">// update the sequence of active slots</span>
-            <span class="self">self</span>.<span class="ident">update_active_slots</span>(<span class="ident">input_data</span>.<span class="ident">new_blockclique</span>);
+            <span class="comment">// update the sequence of active slots
+            </span><span class="self">self</span>.update_active_slots(input_data.new_blockclique);
 
-            <span class="comment">// The list of active slots might have seen</span>
-            <span class="comment">// new insertions/deletions of blocks at different slot depths.</span>
-            <span class="comment">// It is therefore important to signal this to the execution state,</span>
-            <span class="comment">// so that it can remove out-of-date speculative execution results from its history.</span>
-            <span class="self">self</span>.<span class="ident">truncate_execution_history</span>();
+            <span class="comment">// The list of active slots might have seen
+            // new insertions/deletions of blocks at different slot depths.
+            // It is therefore important to signal this to the execution state,
+            // so that it can remove out-of-date speculative execution results from its history.
+            </span><span class="self">self</span>.truncate_execution_history();
 
-            <span class="comment">// update the sequence of read-only requests</span>
-            <span class="self">self</span>.<span class="ident">update_readonly_requests</span>(<span class="ident">input_data</span>.<span class="ident">readonly_requests</span>);
+            <span class="comment">// update the sequence of read-only requests
+            </span><span class="self">self</span>.update_readonly_requests(input_data.readonly_requests);
 
-            <span class="comment">// execute one slot as final, if there is one ready for final execution</span>
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">execute_one_final_slot</span>() {
-                <span class="comment">// A slot was executed as final: restart the loop</span>
-                <span class="comment">// This loop continue is useful for monitoring:</span>
-                <span class="comment">// it allows tracking the state of all execution queues</span>
-                <span class="kw">continue</span>;
+            <span class="comment">// execute one slot as final, if there is one ready for final execution
+            </span><span class="kw">if </span><span class="self">self</span>.execute_one_final_slot() {
+                <span class="comment">// A slot was executed as final: restart the loop
+                // This loop continue is useful for monitoring:
+                // it allows tracking the state of all execution queues
+                </span><span class="kw">continue</span>;
             }
 
-            <span class="comment">// now all the slots that were ready for final execution have been executed as final</span>
+            <span class="comment">// now all the slots that were ready for final execution have been executed as final
 
-            <span class="comment">// Execute one active slot in a speculative way, if there is one ready for that</span>
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">execute_one_active_slot</span>() {
-                <span class="comment">// An active slot was executed: restart the loop</span>
-                <span class="kw">continue</span>;
+            // Execute one active slot in a speculative way, if there is one ready for that
+            </span><span class="kw">if </span><span class="self">self</span>.execute_one_active_slot() {
+                <span class="comment">// An active slot was executed: restart the loop
+                </span><span class="kw">continue</span>;
             }
 
-            <span class="comment">// now all the slots that were ready for final and active execution have been executed</span>
+            <span class="comment">// now all the slots that were ready for final and active execution have been executed
 
-            <span class="comment">// Execute a read-only request (note that the queue is of finite length), if there is one ready.</span>
-            <span class="comment">// This must be done in this loop because even though read-only executions do not alter consensus state,</span>
-            <span class="comment">// they still act temporarily on the static shared execution context.</span>
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">execute_one_readonly_request</span>() {
-                <span class="comment">// a read-only request was executed: restart the loop</span>
-                <span class="kw">continue</span>;
+            // Execute a read-only request (note that the queue is of finite length), if there is one ready.
+            // This must be done in this loop because even though read-only executions do not alter consensus state,
+            // they still act temporarily on the static shared execution context.
+            </span><span class="kw">if </span><span class="self">self</span>.execute_one_readonly_request() {
+                <span class="comment">// a read-only request was executed: restart the loop
+                </span><span class="kw">continue</span>;
             }
         }
     }
 }
 
-<span class="doccomment">/// Launches an execution worker thread and returns an `ExecutionManager` to interact with it</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # parameters</span>
-<span class="doccomment">/// * `config`: execution configuration</span>
-<span class="doccomment">/// * `final_state`: a thread-safe shared access to the final state for reading and writing</span>
-<span class="doccomment">/// * `storage`: A shared storage between all modules to have shared data.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Returns</span>
-<span class="doccomment">/// A pair `(execution_manager, execution_controller)` where:</span>
-<span class="doccomment">/// * `execution_manager`: allows to stop the worker</span>
-<span class="doccomment">/// * `execution_controller`: allows sending requests and notifications to the worker</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">start_execution_worker</span>(
-    <span class="ident">config</span>: <span class="ident">ExecutionConfig</span>,
-    <span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">storage</span>: <span class="ident">Storage</span>,
-) -&gt; (<span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionManager</span><span class="op">&gt;</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span>) {
-    <span class="comment">// create an execution state</span>
-    <span class="kw">let</span> <span class="ident">execution_state</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">ExecutionState::new</span>(
-        <span class="ident">config</span>.<span class="ident">clone</span>(),
-        <span class="ident">final_state</span>,
-        <span class="ident">storage</span>,
+<span class="doccomment">/// Launches an execution worker thread and returns an `ExecutionManager` to interact with it
+///
+/// # parameters
+/// * `config`: execution configuration
+/// * `final_state`: a thread-safe shared access to the final state for reading and writing
+/// * `storage`: A shared storage between all modules to have shared data.
+///
+/// # Returns
+/// A pair `(execution_manager, execution_controller)` where:
+/// * `execution_manager`: allows to stop the worker
+/// * `execution_controller`: allows sending requests and notifications to the worker
+</span><span class="kw">pub fn </span>start_execution_worker(
+    config: ExecutionConfig,
+    final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+    storage: Storage,
+) -&gt; (Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;, Box&lt;<span class="kw">dyn </span>ExecutionController&gt;) {
+    <span class="comment">// create an execution state
+    </span><span class="kw">let </span>execution_state = Arc::new(RwLock::new(ExecutionState::new(
+        config.clone(),
+        final_state,
+        storage,
     )));
 
-    <span class="comment">// define the input data interface</span>
-    <span class="kw">let</span> <span class="ident">input_data</span> <span class="op">=</span> <span class="ident">Arc::new</span>((
-        <span class="ident">Condvar::new</span>(),
-        <span class="ident">Mutex::new</span>(<span class="ident">ExecutionInputData::new</span>(<span class="ident">config</span>.<span class="ident">clone</span>())),
+    <span class="comment">// define the input data interface
+    </span><span class="kw">let </span>input_data = Arc::new((
+        Condvar::new(),
+        Mutex::new(ExecutionInputData::new(config.clone())),
     ));
 
-    <span class="comment">// create a controller</span>
-    <span class="kw">let</span> <span class="ident">controller</span> <span class="op">=</span> <span class="ident">ExecutionControllerImpl</span> {
-        <span class="ident">input_data</span>: <span class="ident">input_data</span>.<span class="ident">clone</span>(),
-        <span class="ident">execution_state</span>: <span class="ident">execution_state</span>.<span class="ident">clone</span>(),
+    <span class="comment">// create a controller
+    </span><span class="kw">let </span>controller = ExecutionControllerImpl {
+        input_data: input_data.clone(),
+        execution_state: execution_state.clone(),
     };
 
-    <span class="comment">// launch the execution thread</span>
-    <span class="kw">let</span> <span class="ident">input_data_clone</span> <span class="op">=</span> <span class="ident">input_data</span>.<span class="ident">clone</span>();
-    <span class="kw">let</span> <span class="ident">thread_handle</span> <span class="op">=</span> <span class="ident">std::thread::spawn</span>(<span class="kw">move</span> <span class="op">|</span><span class="op">|</span> {
-        <span class="ident">ExecutionThread::new</span>(<span class="ident">config</span>, <span class="ident">input_data_clone</span>, <span class="ident">execution_state</span>).<span class="ident">main_loop</span>();
+    <span class="comment">// launch the execution thread
+    </span><span class="kw">let </span>input_data_clone = input_data.clone();
+    <span class="kw">let </span>thread_handle = std::thread::spawn(<span class="kw">move </span>|| {
+        ExecutionThread::new(config, input_data_clone, execution_state).main_loop();
     });
 
-    <span class="comment">// create a manager</span>
-    <span class="kw">let</span> <span class="ident">manager</span> <span class="op">=</span> <span class="ident">ExecutionManagerImpl</span> {
-        <span class="ident">input_data</span>,
-        <span class="ident">thread_handle</span>: <span class="prelude-val">Some</span>(<span class="ident">thread_handle</span>),
+    <span class="comment">// create a manager
+    </span><span class="kw">let </span>manager = ExecutionManagerImpl {
+        input_data,
+        thread_handle: <span class="prelude-val">Some</span>(thread_handle),
     };
 
-    <span class="comment">// return the execution manager and controller pair</span>
-    (<span class="ident">Box::new</span>(<span class="ident">manager</span>), <span class="ident">Box::new</span>(<span class="ident">controller</span>))
+    <span class="comment">// return the execution manager and controller pair
+    </span>(Box::new(manager), Box::new(controller))
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

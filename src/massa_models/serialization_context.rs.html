@@ -123,130 +123,130 @@
 <span id="123">123</span>
 <span id="124">124</span>
 <span id="125">125</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::cell::RefCell</span>;
-<span class="kw">use</span> <span class="ident">std::sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>};
+</span><span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::cell::RefCell;
+<span class="kw">use </span>std::sync::{Arc, Mutex};
 
-<span class="comment">// The global context.</span>
-<span class="macro">lazy_static!</span> {
-    <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">SERIALIZATION_CONTEXT</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SerializationContext</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span>
-        <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="prelude-val">None</span>));
+<span class="comment">// The global context.
+</span><span class="macro">lazy_static! </span>{
+    <span class="kw">static </span><span class="kw-2">ref </span>SERIALIZATION_CONTEXT: Arc&lt;Mutex&lt;<span class="prelude-ty">Option</span>&lt;SerializationContext&gt;&gt;&gt; =
+        Arc::new(Mutex::new(<span class="prelude-val">None</span>));
 }
 
-<span class="comment">// The local context, a clone of the global one initialized on first use.</span>
-<span class="macro">thread_local!</span>(<span class="kw">static</span> <span class="ident">TLS_CONTEXT</span>: <span class="ident">RefCell</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SerializationContext</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">RefCell::new</span>(<span class="prelude-val">None</span>));
+<span class="comment">// The local context, a clone of the global one initialized on first use.
+</span><span class="macro">thread_local!</span>(<span class="kw">static </span>TLS_CONTEXT: RefCell&lt;<span class="prelude-ty">Option</span>&lt;SerializationContext&gt;&gt; = RefCell::new(<span class="prelude-val">None</span>));
 
-<span class="doccomment">/// Initialize the global context, should be called once at start up</span>
-<span class="doccomment">/// or used at the beginning of a test.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">init_serialization_context</span>(<span class="ident">context</span>: <span class="ident">SerializationContext</span>) {
-    <span class="kw-2">*</span><span class="ident">SERIALIZATION_CONTEXT</span>
-        .<span class="ident">lock</span>()
-        .<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t acquire mutex on SERIALIZATION_CONTEXT.&quot;</span>) <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">context</span>);
+<span class="doccomment">/// Initialize the global context, should be called once at start up
+/// or used at the beginning of a test.
+</span><span class="kw">pub fn </span>init_serialization_context(context: SerializationContext) {
+    <span class="kw-2">*</span>SERIALIZATION_CONTEXT
+        .lock()
+        .expect(<span class="string">&quot;Couldn&#39;t acquire mutex on SERIALIZATION_CONTEXT.&quot;</span>) = <span class="prelude-val">Some</span>(context);
 }
 
-<span class="doccomment">/// Get a clone of the context. For tests only.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_serialization_context</span>() -&gt; <span class="ident">SerializationContext</span> {
-    <span class="ident">SERIALIZATION_CONTEXT</span>
-        .<span class="ident">lock</span>()
-        .<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t acquire mutex on SERIALIZATION_CONTEXT.&quot;</span>)
-        .<span class="ident">clone</span>()
-        .<span class="ident">expect</span>(<span class="string">&quot;uninitialized SERIALIZATION_CONTEXT.&quot;</span>)
+<span class="doccomment">/// Get a clone of the context. For tests only.
+</span><span class="kw">pub fn </span>get_serialization_context() -&gt; SerializationContext {
+    SERIALIZATION_CONTEXT
+        .lock()
+        .expect(<span class="string">&quot;Couldn&#39;t acquire mutex on SERIALIZATION_CONTEXT.&quot;</span>)
+        .clone()
+        .expect(<span class="string">&quot;uninitialized SERIALIZATION_CONTEXT.&quot;</span>)
 }
 
-<span class="doccomment">/// Use the TLS context, should be called only after initializing the global context.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_serialization_context</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">V</span><span class="op">&gt;</span>(<span class="ident">f</span>: <span class="ident">F</span>) -&gt; <span class="ident">V</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="ident">SerializationContext</span>) -&gt; <span class="ident">V</span>,
+<span class="doccomment">/// Use the TLS context, should be called only after initializing the global context.
+</span><span class="kw">pub fn </span>with_serialization_context&lt;F, V&gt;(f: F) -&gt; V
+<span class="kw">where
+    </span>F: FnOnce(<span class="kw-2">&amp;</span>SerializationContext) -&gt; V,
 {
-    <span class="ident">TLS_CONTEXT</span>.<span class="ident">with</span>(<span class="op">|</span><span class="ident">tls</span><span class="op">|</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">local_context</span> <span class="op">=</span> <span class="ident">tls</span>.<span class="ident">borrow_mut</span>();
+    TLS_CONTEXT.with(|tls| {
+        <span class="kw">let </span><span class="kw-2">mut </span>local_context = tls.borrow_mut();
 
-        <span class="comment">// Init the local context if necessary.</span>
-        <span class="kw">if</span> <span class="ident">local_context</span>.<span class="ident">is_none</span>() {
-            <span class="kw">let</span> <span class="ident">global_context</span> <span class="op">=</span> <span class="ident">SERIALIZATION_CONTEXT</span>
-                .<span class="ident">lock</span>()
-                .<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t acquire mutex on SERIALIZATION_CONTEXT.&quot;</span>)
-                .<span class="ident">clone</span>()
-                .<span class="ident">expect</span>(<span class="string">&quot;uninitialized SERIALIZATION_CONTEXT.&quot;</span>);
-            <span class="kw-2">*</span><span class="ident">local_context</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">global_context</span>);
+        <span class="comment">// Init the local context if necessary.
+        </span><span class="kw">if </span>local_context.is_none() {
+            <span class="kw">let </span>global_context = SERIALIZATION_CONTEXT
+                .lock()
+                .expect(<span class="string">&quot;Couldn&#39;t acquire mutex on SERIALIZATION_CONTEXT.&quot;</span>)
+                .clone()
+                .expect(<span class="string">&quot;uninitialized SERIALIZATION_CONTEXT.&quot;</span>);
+            <span class="kw-2">*</span>local_context = <span class="prelude-val">Some</span>(global_context);
         }
 
-        <span class="ident">f</span>(<span class="ident">local_context</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>())
+        f(local_context.as_ref().unwrap())
     })
 }
 
-<span class="doccomment">/// a context for model serialization/deserialization</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SerializationContext</span> {
-    <span class="doccomment">/// max operations per block</span>
-    <span class="kw">pub</span> <span class="ident">max_operations_per_block</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// target endorsement count</span>
-    <span class="kw">pub</span> <span class="ident">endorsement_count</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// thread count</span>
-    <span class="kw">pub</span> <span class="ident">thread_count</span>: <span class="ident">u8</span>,
-    <span class="doccomment">/// max block size</span>
-    <span class="kw">pub</span> <span class="ident">max_block_size</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// max advertised peers length</span>
-    <span class="kw">pub</span> <span class="ident">max_advertise_length</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// max message size</span>
-    <span class="kw">pub</span> <span class="ident">max_message_size</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// max ask block per message</span>
-    <span class="kw">pub</span> <span class="ident">max_ask_blocks_per_message</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// max operations per message</span>
-    <span class="kw">pub</span> <span class="ident">max_operations_per_message</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// max endorsements per message</span>
-    <span class="kw">pub</span> <span class="ident">max_endorsements_per_message</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// max bootstrapped blocks</span>
-    <span class="kw">pub</span> <span class="ident">max_bootstrap_blocks</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// max bootstrapped cliques</span>
-    <span class="kw">pub</span> <span class="ident">max_bootstrap_cliques</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// max bootstrapped block dependencies</span>
-    <span class="kw">pub</span> <span class="ident">max_bootstrap_deps</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// max bootstrapped block children bootstrapped</span>
-    <span class="kw">pub</span> <span class="ident">max_bootstrap_children</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// max bootstrapped proof of stake cycle</span>
-    <span class="kw">pub</span> <span class="ident">max_bootstrap_pos_cycles</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// max bootstrap proof of stake entries</span>
-    <span class="kw">pub</span> <span class="ident">max_bootstrap_pos_entries</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// max bootstrap message size</span>
-    <span class="kw">pub</span> <span class="ident">max_bootstrap_message_size</span>: <span class="ident">u32</span>,
+<span class="doccomment">/// a context for model serialization/deserialization
+</span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>SerializationContext {
+    <span class="doccomment">/// max operations per block
+    </span><span class="kw">pub </span>max_operations_per_block: u32,
+    <span class="doccomment">/// target endorsement count
+    </span><span class="kw">pub </span>endorsement_count: u32,
+    <span class="doccomment">/// thread count
+    </span><span class="kw">pub </span>thread_count: u8,
+    <span class="doccomment">/// max block size
+    </span><span class="kw">pub </span>max_block_size: u32,
+    <span class="doccomment">/// max advertised peers length
+    </span><span class="kw">pub </span>max_advertise_length: u32,
+    <span class="doccomment">/// max message size
+    </span><span class="kw">pub </span>max_message_size: u32,
+    <span class="doccomment">/// max ask block per message
+    </span><span class="kw">pub </span>max_ask_blocks_per_message: u32,
+    <span class="doccomment">/// max operations per message
+    </span><span class="kw">pub </span>max_operations_per_message: u32,
+    <span class="doccomment">/// max endorsements per message
+    </span><span class="kw">pub </span>max_endorsements_per_message: u32,
+    <span class="doccomment">/// max bootstrapped blocks
+    </span><span class="kw">pub </span>max_bootstrap_blocks: u32,
+    <span class="doccomment">/// max bootstrapped cliques
+    </span><span class="kw">pub </span>max_bootstrap_cliques: u32,
+    <span class="doccomment">/// max bootstrapped block dependencies
+    </span><span class="kw">pub </span>max_bootstrap_deps: u32,
+    <span class="doccomment">/// max bootstrapped block children bootstrapped
+    </span><span class="kw">pub </span>max_bootstrap_children: u32,
+    <span class="doccomment">/// max bootstrapped proof of stake cycle
+    </span><span class="kw">pub </span>max_bootstrap_pos_cycles: u32,
+    <span class="doccomment">/// max bootstrap proof of stake entries
+    </span><span class="kw">pub </span>max_bootstrap_pos_entries: u32,
+    <span class="doccomment">/// max bootstrap message size
+    </span><span class="kw">pub </span>max_bootstrap_message_size: u32,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">SerializationContext</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">SerializationContext::const_default</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>SerializationContext {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        SerializationContext::const_default()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SerializationContext</span> {
-    <span class="doccomment">/// default constants</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">const_default</span>() -&gt; <span class="self">Self</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-        <span class="comment">// Override normal constants on testing</span>
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::default_testing</span>::<span class="kw-2">*</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>))]</span>
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants</span>::<span class="kw-2">*</span>;
-        <span class="self">Self</span> {
-            <span class="ident">max_operations_per_block</span>: <span class="ident">MAX_OPERATIONS_PER_BLOCK</span>,
-            <span class="ident">thread_count</span>: <span class="ident">THREAD_COUNT</span>,
-            <span class="ident">max_block_size</span>: <span class="ident">MAX_BLOCK_SIZE</span>,
-            <span class="ident">endorsement_count</span>: <span class="ident">ENDORSEMENT_COUNT</span>,
-            <span class="ident">max_advertise_length</span>: <span class="ident">MAX_ADVERTISE_LENGTH</span>,
-            <span class="ident">max_message_size</span>: <span class="ident">MAX_MESSAGE_SIZE</span>,
-            <span class="ident">max_bootstrap_blocks</span>: <span class="ident">MAX_BOOTSTRAP_BLOCKS</span>,
-            <span class="ident">max_bootstrap_cliques</span>: <span class="ident">MAX_BOOTSTRAP_CLIQUES</span>,
-            <span class="ident">max_bootstrap_deps</span>: <span class="ident">MAX_BOOTSTRAP_DEPS</span>,
-            <span class="ident">max_bootstrap_children</span>: <span class="ident">MAX_BOOTSTRAP_CHILDREN</span>,
-            <span class="ident">max_ask_blocks_per_message</span>: <span class="ident">MAX_ASK_BLOCKS_PER_MESSAGE</span>,
-            <span class="ident">max_operations_per_message</span>: <span class="ident">MAX_OPERATIONS_PER_MESSAGE</span>,
-            <span class="ident">max_endorsements_per_message</span>: <span class="ident">MAX_ENDORSEMENTS_PER_MESSAGE</span>,
-            <span class="ident">max_bootstrap_message_size</span>: <span class="ident">MAX_BOOTSTRAP_MESSAGE_SIZE</span>,
-            <span class="ident">max_bootstrap_pos_cycles</span>: <span class="ident">MAX_BOOTSTRAP_POS_CYCLES</span>,
-            <span class="ident">max_bootstrap_pos_entries</span>: <span class="ident">MAX_BOOTSTRAP_POS_ENTRIES</span>,
+<span class="kw">impl </span>SerializationContext {
+    <span class="doccomment">/// default constants
+    </span><span class="kw">pub const fn </span>const_default() -&gt; <span class="self">Self </span>{
+        <span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+        </span><span class="comment">// Override normal constants on testing
+        </span><span class="kw">use </span><span class="kw">crate</span>::constants::default_testing::<span class="kw-2">*</span>;
+        <span class="attribute">#[cfg(not(feature = <span class="string">&quot;testing&quot;</span>))]
+        </span><span class="kw">use </span><span class="kw">crate</span>::constants::<span class="kw-2">*</span>;
+        <span class="self">Self </span>{
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            thread_count: THREAD_COUNT,
+            max_block_size: MAX_BLOCK_SIZE,
+            endorsement_count: ENDORSEMENT_COUNT,
+            max_advertise_length: MAX_ADVERTISE_LENGTH,
+            max_message_size: MAX_MESSAGE_SIZE,
+            max_bootstrap_blocks: MAX_BOOTSTRAP_BLOCKS,
+            max_bootstrap_cliques: MAX_BOOTSTRAP_CLIQUES,
+            max_bootstrap_deps: MAX_BOOTSTRAP_DEPS,
+            max_bootstrap_children: MAX_BOOTSTRAP_CHILDREN,
+            max_ask_blocks_per_message: MAX_ASK_BLOCKS_PER_MESSAGE,
+            max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
+            max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
+            max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
+            max_bootstrap_pos_cycles: MAX_BOOTSTRAP_POS_CYCLES,
+            max_bootstrap_pos_entries: MAX_BOOTSTRAP_POS_ENTRIES,
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

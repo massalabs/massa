@@ -159,166 +159,166 @@
 <span id="159">159</span>
 <span id="160">160</span>
 <span id="161">161</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-<span class="doccomment">//! Standalone massa wallet</span>
-<span class="doccomment">//! Keypair management</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</span><span class="doccomment">//! Standalone massa wallet
+//! Keypair management
+</span><span class="attribute">#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error::WalletError</span>;
+</span><span class="kw">pub use </span>error::WalletError;
 
-<span class="kw">use</span> <span class="ident">massa_cipher</span>::{<span class="ident">decrypt</span>, <span class="ident">encrypt</span>};
-<span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
-<span class="kw">use</span> <span class="ident">massa_models::address::Address</span>;
-<span class="kw">use</span> <span class="ident">massa_models::composite::PubkeySig</span>;
-<span class="kw">use</span> <span class="ident">massa_models::operation::OperationSerializer</span>;
-<span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
-<span class="kw">use</span> <span class="ident">massa_models::wrapped::WrappedContent</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Operation</span>, <span class="ident">WrappedOperation</span>};
-<span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">KeyPair</span>, <span class="ident">PublicKey</span>};
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
+<span class="kw">use </span>massa_cipher::{decrypt, encrypt};
+<span class="kw">use </span>massa_hash::Hash;
+<span class="kw">use </span>massa_models::address::Address;
+<span class="kw">use </span>massa_models::composite::PubkeySig;
+<span class="kw">use </span>massa_models::operation::OperationSerializer;
+<span class="kw">use </span>massa_models::prehash::{Map, Set};
+<span class="kw">use </span>massa_models::wrapped::WrappedContent;
+<span class="kw">use </span>massa_models::{Operation, WrappedOperation};
+<span class="kw">use </span>massa_signature::{KeyPair, PublicKey};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::path::PathBuf;
 
-<span class="kw">mod</span> <span class="ident">error</span>;
+<span class="kw">mod </span>error;
 
-<span class="doccomment">/// Contains the keypairs created in the wallet.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Wallet</span> {
-    <span class="doccomment">/// Keypairs and addresses</span>
-    <span class="kw">pub</span> <span class="ident">keys</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">KeyPair</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Path to the file containing the keypairs (encrypted)</span>
-    <span class="kw">pub</span> <span class="ident">wallet_path</span>: <span class="ident">PathBuf</span>,
-    <span class="doccomment">/// Password</span>
-    <span class="kw">pub</span> <span class="ident">password</span>: <span class="ident">String</span>,
+<span class="doccomment">/// Contains the keypairs created in the wallet.
+</span><span class="attribute">#[derive(Clone, Debug, Deserialize, Serialize)]
+</span><span class="kw">pub struct </span>Wallet {
+    <span class="doccomment">/// Keypairs and addresses
+    </span><span class="kw">pub </span>keys: Map&lt;Address, KeyPair&gt;,
+    <span class="doccomment">/// Path to the file containing the keypairs (encrypted)
+    </span><span class="kw">pub </span>wallet_path: PathBuf,
+    <span class="doccomment">/// Password
+    </span><span class="kw">pub </span>password: String,
 }
 
-<span class="kw">impl</span> <span class="ident">Wallet</span> {
-    <span class="doccomment">/// Generates a new wallet initialized with the provided file content</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">path</span>: <span class="ident">PathBuf</span>, <span class="ident">password</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Wallet</span>, <span class="ident">WalletError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">path</span>.<span class="ident">is_file</span>() {
-            <span class="kw">let</span> <span class="ident">content</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">std::fs::read</span>(<span class="kw-2">&amp;</span><span class="ident">path</span>)<span class="question-mark">?</span>[..];
-            <span class="kw">let</span> (<span class="ident">_version</span>, <span class="ident">decrypted_content</span>) <span class="op">=</span> <span class="ident">decrypt</span>(<span class="kw-2">&amp;</span><span class="ident">password</span>, <span class="ident">content</span>)<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">keys</span> <span class="op">=</span> <span class="ident">serde_json::from_slice</span>::<span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">KeyPair</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">decrypted_content</span>[..])<span class="question-mark">?</span>;
-            <span class="prelude-val">Ok</span>(<span class="ident">Wallet</span> {
-                <span class="ident">keys</span>,
-                <span class="ident">wallet_path</span>: <span class="ident">path</span>,
-                <span class="ident">password</span>,
+<span class="kw">impl </span>Wallet {
+    <span class="doccomment">/// Generates a new wallet initialized with the provided file content
+    </span><span class="kw">pub fn </span>new(path: PathBuf, password: String) -&gt; <span class="prelude-ty">Result</span>&lt;Wallet, WalletError&gt; {
+        <span class="kw">if </span>path.is_file() {
+            <span class="kw">let </span>content = <span class="kw-2">&amp;</span>std::fs::read(<span class="kw-2">&amp;</span>path)<span class="question-mark">?</span>[..];
+            <span class="kw">let </span>(_version, decrypted_content) = decrypt(<span class="kw-2">&amp;</span>password, content)<span class="question-mark">?</span>;
+            <span class="kw">let </span>keys = serde_json::from_slice::&lt;Map&lt;Address, KeyPair&gt;&gt;(<span class="kw-2">&amp;</span>decrypted_content[..])<span class="question-mark">?</span>;
+            <span class="prelude-val">Ok</span>(Wallet {
+                keys,
+                wallet_path: path,
+                password,
             })
-        } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet</span> {
-                <span class="ident">keys</span>: <span class="ident">Map::default</span>(),
-                <span class="ident">wallet_path</span>: <span class="ident">path</span>,
-                <span class="ident">password</span>,
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>wallet = Wallet {
+                keys: Map::default(),
+                wallet_path: path,
+                password,
             };
-            <span class="ident">wallet</span>.<span class="ident">save</span>()<span class="question-mark">?</span>;
-            <span class="prelude-val">Ok</span>(<span class="ident">wallet</span>)
+            wallet.save()<span class="question-mark">?</span>;
+            <span class="prelude-val">Ok</span>(wallet)
         }
     }
 
-    <span class="doccomment">/// Sign arbitrary message with the associated keypair</span>
-    <span class="doccomment">/// returns none if the address isn&#39;t in the wallet or if an error occurred during the signature</span>
-    <span class="doccomment">/// else returns the public key that signed the message and the signature</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">address</span>: <span class="ident">Address</span>, <span class="ident">msg</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PubkeySig</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">key</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">keys</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">address</span>) {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">signature</span>) <span class="op">=</span> <span class="ident">key</span>.<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>)) {
-                <span class="prelude-val">Some</span>(<span class="ident">PubkeySig</span> {
-                    <span class="ident">public_key</span>: <span class="ident">key</span>.<span class="ident">get_public_key</span>(),
-                    <span class="ident">signature</span>,
+    <span class="doccomment">/// Sign arbitrary message with the associated keypair
+    /// returns none if the address isn&#39;t in the wallet or if an error occurred during the signature
+    /// else returns the public key that signed the message and the signature
+    </span><span class="kw">pub fn </span>sign_message(<span class="kw-2">&amp;</span><span class="self">self</span>, address: Address, msg: Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;PubkeySig&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(key) = <span class="self">self</span>.keys.get(<span class="kw-2">&amp;</span>address) {
+            <span class="kw">if let </span><span class="prelude-val">Ok</span>(signature) = key.sign(<span class="kw-2">&amp;</span>Hash::compute_from(<span class="kw-2">&amp;</span>msg)) {
+                <span class="prelude-val">Some</span>(PubkeySig {
+                    public_key: key.get_public_key(),
+                    signature,
                 })
-            } <span class="kw">else</span> {
-                <span class="prelude-val">None</span>
-            }
-        } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
-        }
+            } <span class="kw">else </span>{
+                <span class="prelude-val">None
+            </span>}
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
     }
 
-    <span class="doccomment">/// Adds a new keypair to wallet, if it was missing</span>
-    <span class="doccomment">/// returns corresponding address</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_keypair</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">key</span>: <span class="ident">KeyPair</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">WalletError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>
-            .<span class="ident">keys</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">any</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">file_key</span>)<span class="op">|</span> <span class="ident">file_key</span>.<span class="ident">to_bytes</span>() <span class="op">==</span> <span class="ident">key</span>.<span class="ident">to_bytes</span>())
+    <span class="doccomment">/// Adds a new keypair to wallet, if it was missing
+    /// returns corresponding address
+    </span><span class="kw">pub fn </span>add_keypair(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: KeyPair) -&gt; <span class="prelude-ty">Result</span>&lt;Address, WalletError&gt; {
+        <span class="kw">if </span>!<span class="self">self
+            </span>.keys
+            .iter()
+            .any(|(<span class="kw">_</span>, file_key)| file_key.to_bytes() == key.to_bytes())
         {
-            <span class="kw">let</span> <span class="ident">ad</span> <span class="op">=</span> <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">key</span>.<span class="ident">get_public_key</span>());
-            <span class="self">self</span>.<span class="ident">keys</span>.<span class="ident">insert</span>(<span class="ident">ad</span>, <span class="ident">key</span>);
-            <span class="self">self</span>.<span class="ident">save</span>()<span class="question-mark">?</span>;
-            <span class="prelude-val">Ok</span>(<span class="ident">ad</span>)
-        } <span class="kw">else</span> {
-            <span class="comment">// key already in wallet</span>
-            <span class="prelude-val">Ok</span>(<span class="kw-2">*</span><span class="self">self</span>
-                .<span class="ident">keys</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">find</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">file_key</span>)<span class="op">|</span> <span class="ident">file_key</span>.<span class="ident">to_bytes</span>() <span class="op">==</span> <span class="ident">key</span>.<span class="ident">to_bytes</span>())
-                .<span class="ident">unwrap</span>()
+            <span class="kw">let </span>ad = Address::from_public_key(<span class="kw-2">&amp;</span>key.get_public_key());
+            <span class="self">self</span>.keys.insert(ad, key);
+            <span class="self">self</span>.save()<span class="question-mark">?</span>;
+            <span class="prelude-val">Ok</span>(ad)
+        } <span class="kw">else </span>{
+            <span class="comment">// key already in wallet
+            </span><span class="prelude-val">Ok</span>(<span class="kw-2">*</span><span class="self">self
+                </span>.keys
+                .iter()
+                .find(|(<span class="kw">_</span>, file_key)| file_key.to_bytes() == key.to_bytes())
+                .unwrap()
                 .<span class="number">0</span>)
         }
     }
 
-    <span class="doccomment">/// Remove a wallet entry (keys and address) given the address</span>
-    <span class="doccomment">/// The file is overwritten</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_address</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">address</span>: <span class="ident">Address</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">WalletError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">keys</span>
-            .<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">address</span>)
-            .<span class="ident">ok_or</span>(<span class="ident">WalletError::MissingKeyError</span>(<span class="ident">address</span>))<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">save</span>()
+    <span class="doccomment">/// Remove a wallet entry (keys and address) given the address
+    /// The file is overwritten
+    </span><span class="kw">pub fn </span>remove_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, address: Address) -&gt; <span class="prelude-ty">Result</span>&lt;(), WalletError&gt; {
+        <span class="self">self</span>.keys
+            .remove(<span class="kw-2">&amp;</span>address)
+            .ok_or(WalletError::MissingKeyError(address))<span class="question-mark">?</span>;
+        <span class="self">self</span>.save()
     }
 
-    <span class="doccomment">/// Finds the keypair associated with given address</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">find_associated_keypair</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">address</span>: <span class="ident">Address</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">KeyPair</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">keys</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">address</span>)
+    <span class="doccomment">/// Finds the keypair associated with given address
+    </span><span class="kw">pub fn </span>find_associated_keypair(<span class="kw-2">&amp;</span><span class="self">self</span>, address: Address) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPair&gt; {
+        <span class="self">self</span>.keys.get(<span class="kw-2">&amp;</span>address)
     }
 
-    <span class="doccomment">/// Finds the public key associated with given address</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">find_associated_public_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">address</span>: <span class="ident">Address</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PublicKey</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">keys</span>
-            .<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">address</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">keypair</span><span class="op">|</span> <span class="ident">keypair</span>.<span class="ident">get_public_key</span>())
+    <span class="doccomment">/// Finds the public key associated with given address
+    </span><span class="kw">pub fn </span>find_associated_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>, address: Address) -&gt; <span class="prelude-ty">Option</span>&lt;PublicKey&gt; {
+        <span class="self">self</span>.keys
+            .get(<span class="kw-2">&amp;</span>address)
+            .map(|keypair| keypair.get_public_key())
     }
 
-    <span class="doccomment">/// Get all addresses in the wallet</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_wallet_address_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">keys</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>()
+    <span class="doccomment">/// Get all addresses in the wallet
+    </span><span class="kw">pub fn </span>get_wallet_address_list(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Set&lt;Address&gt; {
+        <span class="self">self</span>.keys.keys().copied().collect()
     }
 
-    <span class="doccomment">/// Save the wallet in json format in a file</span>
-    <span class="doccomment">/// Only the keypair is dumped</span>
-    <span class="kw">fn</span> <span class="ident">save</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">WalletError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">ser_keys</span> <span class="op">=</span> <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">keys</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">encrypted_content</span> <span class="op">=</span> <span class="ident">encrypt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">password</span>, <span class="ident">ser_keys</span>.<span class="ident">as_bytes</span>())<span class="question-mark">?</span>;
-        <span class="ident">std::fs::write</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">wallet_path</span>, <span class="ident">encrypted_content</span>)<span class="question-mark">?</span>;
+    <span class="doccomment">/// Save the wallet in json format in a file
+    /// Only the keypair is dumped
+    </span><span class="kw">fn </span>save(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), WalletError&gt; {
+        <span class="kw">let </span>ser_keys = serde_json::to_string(<span class="kw-2">&amp;</span><span class="self">self</span>.keys)<span class="question-mark">?</span>;
+        <span class="kw">let </span>encrypted_content = encrypt(<span class="kw-2">&amp;</span><span class="self">self</span>.password, ser_keys.as_bytes())<span class="question-mark">?</span>;
+        std::fs::write(<span class="kw-2">&amp;</span><span class="self">self</span>.wallet_path, encrypted_content)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Export keys and addresses</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_full_wallet</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">KeyPair</span><span class="op">&gt;</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">keys</span>
+    <span class="doccomment">/// Export keys and addresses
+    </span><span class="kw">pub fn </span>get_full_wallet(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Map&lt;Address, KeyPair&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.keys
     }
 
-    <span class="doccomment">/// Signs an operation with the keypair corresponding to the given address</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_operation</span>(
+    <span class="doccomment">/// Signs an operation with the keypair corresponding to the given address
+    </span><span class="kw">pub fn </span>create_operation(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">content</span>: <span class="ident">Operation</span>,
-        <span class="ident">address</span>: <span class="ident">Address</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">WrappedOperation</span>, <span class="ident">WalletError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">sender_keypair</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">find_associated_keypair</span>(<span class="ident">address</span>)
-            .<span class="ident">ok_or</span>(<span class="ident">WalletError::MissingKeyError</span>(<span class="ident">address</span>))<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">Operation::new_wrapped</span>(<span class="ident">content</span>, <span class="ident">OperationSerializer::new</span>(), <span class="ident">sender_keypair</span>).<span class="ident">unwrap</span>())
+        content: Operation,
+        address: Address,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;WrappedOperation, WalletError&gt; {
+        <span class="kw">let </span>sender_keypair = <span class="self">self
+            </span>.find_associated_keypair(address)
+            .ok_or(WalletError::MissingKeyError(address))<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(Operation::new_wrapped(content, OperationSerializer::new(), sender_keypair).unwrap())
     }
 }
 
-<span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">Wallet</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="macro">writeln!</span>(<span class="ident">f</span>)<span class="question-mark">?</span>;
-        <span class="kw">for</span> (<span class="ident">addr</span>, <span class="ident">keypair</span>) <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">keys</span> {
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Secret key: {}&quot;</span>, <span class="ident">keypair</span>)<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Public key: {}&quot;</span>, <span class="ident">keypair</span>.<span class="ident">get_public_key</span>())<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Address: {}&quot;</span>, <span class="ident">addr</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>Wallet {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
+        <span class="macro">writeln!</span>(f)<span class="question-mark">?</span>;
+        <span class="kw">for </span>(addr, keypair) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.keys {
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;Secret key: {}&quot;</span>, keypair)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;Public key: {}&quot;</span>, keypair.get_public_key())<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;Address: {}&quot;</span>, addr)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_wallet" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_wallet" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

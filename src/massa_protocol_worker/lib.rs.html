@@ -17,24 +17,24 @@
 <span id="17">17</span>
 <span id="18">18</span>
 <span id="19">19</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-<span class="doccomment">//! Protocol component</span>
-<span class="doccomment">//! High level management of communications between nodes</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</span><span class="doccomment">//! Protocol component
+//! High level management of communications between nodes
 
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">drain_filter</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
+</span><span class="attribute">#![feature(async_closure)]
+#![feature(drain_filter)]
+#![feature(ip)]
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 
-<span class="doccomment">/// protocol worker</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">protocol_worker</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">worker_operations_impl</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">protocol_worker::start_protocol_controller</span>;
-<span class="kw">mod</span> <span class="ident">checked_operations</span>;
-<span class="kw">mod</span> <span class="ident">node_info</span>;
+</span><span class="doccomment">/// protocol worker
+</span><span class="kw">pub mod </span>protocol_worker;
+<span class="kw">pub mod </span>worker_operations_impl;
+<span class="kw">pub use </span>protocol_worker::start_protocol_controller;
+<span class="kw">mod </span>checked_operations;
+<span class="kw">mod </span>node_info;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tests</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">pub mod </span>tests;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

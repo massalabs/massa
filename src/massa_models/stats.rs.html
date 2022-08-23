@@ -89,96 +89,96 @@
 <span id="89">89</span>
 <span id="90">90</span>
 <span id="91">91</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::fmt::Formatter</span>;
+</span><span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::fmt::Formatter;
 
-<span class="doccomment">/// stats produced by network module</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NetworkStats</span> {
-    <span class="doccomment">/// in connections count</span>
-    <span class="kw">pub</span> <span class="ident">in_connection_count</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// out connections count</span>
-    <span class="kw">pub</span> <span class="ident">out_connection_count</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// total known peers count</span>
-    <span class="kw">pub</span> <span class="ident">known_peer_count</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// banned node count</span>
-    <span class="kw">pub</span> <span class="ident">banned_peer_count</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// active node count</span>
-    <span class="kw">pub</span> <span class="ident">active_node_count</span>: <span class="ident">u64</span>,
+<span class="doccomment">/// stats produced by network module
+</span><span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>NetworkStats {
+    <span class="doccomment">/// in connections count
+    </span><span class="kw">pub </span>in_connection_count: u64,
+    <span class="doccomment">/// out connections count
+    </span><span class="kw">pub </span>out_connection_count: u64,
+    <span class="doccomment">/// total known peers count
+    </span><span class="kw">pub </span>known_peer_count: u64,
+    <span class="doccomment">/// banned node count
+    </span><span class="kw">pub </span>banned_peer_count: u64,
+    <span class="doccomment">/// active node count
+    </span><span class="kw">pub </span>active_node_count: u64,
 }
 
-<span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">NetworkStats</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Network stats:&quot;</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tIn connections: {}&quot;</span>, <span class="self">self</span>.<span class="ident">in_connection_count</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tOut connections: {}&quot;</span>, <span class="self">self</span>.<span class="ident">out_connection_count</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tKnown peers: {}&quot;</span>, <span class="self">self</span>.<span class="ident">known_peer_count</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tBanned peers: {}&quot;</span>, <span class="self">self</span>.<span class="ident">banned_peer_count</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tActive nodes: {}&quot;</span>, <span class="self">self</span>.<span class="ident">active_node_count</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>NetworkStats {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;Network stats:&quot;</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tIn connections: {}&quot;</span>, <span class="self">self</span>.in_connection_count)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tOut connections: {}&quot;</span>, <span class="self">self</span>.out_connection_count)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tKnown peers: {}&quot;</span>, <span class="self">self</span>.known_peer_count)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tBanned peers: {}&quot;</span>, <span class="self">self</span>.banned_peer_count)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tActive nodes: {}&quot;</span>, <span class="self">self</span>.active_node_count)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// stats produced by consensus module</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusStats</span> {
-    <span class="doccomment">/// start of the time span for stats</span>
-    <span class="kw">pub</span> <span class="ident">start_timespan</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// end of the time span for stats</span>
-    <span class="kw">pub</span> <span class="ident">end_timespan</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// number of final blocks</span>
-    <span class="kw">pub</span> <span class="ident">final_block_count</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// number of final operations</span>
-    <span class="kw">pub</span> <span class="ident">final_operation_count</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// number of stale blocks in memory</span>
-    <span class="kw">pub</span> <span class="ident">stale_block_count</span>: <span class="ident">u64</span>,
-    <span class="doccomment">///  number of actives cliques</span>
-    <span class="kw">pub</span> <span class="ident">clique_count</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// total number of stakers</span>
-    <span class="kw">pub</span> <span class="ident">staker_count</span>: <span class="ident">u64</span>,
+<span class="doccomment">/// stats produced by consensus module
+</span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>ConsensusStats {
+    <span class="doccomment">/// start of the time span for stats
+    </span><span class="kw">pub </span>start_timespan: MassaTime,
+    <span class="doccomment">/// end of the time span for stats
+    </span><span class="kw">pub </span>end_timespan: MassaTime,
+    <span class="doccomment">/// number of final blocks
+    </span><span class="kw">pub </span>final_block_count: u64,
+    <span class="doccomment">/// number of final operations
+    </span><span class="kw">pub </span>final_operation_count: u64,
+    <span class="doccomment">/// number of stale blocks in memory
+    </span><span class="kw">pub </span>stale_block_count: u64,
+    <span class="doccomment">///  number of actives cliques
+    </span><span class="kw">pub </span>clique_count: u64,
+    <span class="doccomment">/// total number of stakers
+    </span><span class="kw">pub </span>staker_count: u64,
 }
 
-<span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">ConsensusStats</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Consensus stats:&quot;</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>ConsensusStats {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;Consensus stats:&quot;</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
-            <span class="ident">f</span>,
+            f,
             <span class="string">&quot;\tStart stats timespan time: {}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">start_timespan</span>.<span class="ident">to_utc_string</span>()
+            <span class="self">self</span>.start_timespan.to_utc_string()
         )<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
-            <span class="ident">f</span>,
+            f,
             <span class="string">&quot;\tEnd stats timespan time: {}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">end_timespan</span>.<span class="ident">to_utc_string</span>()
+            <span class="self">self</span>.end_timespan.to_utc_string()
         )<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tFinal block count: {}&quot;</span>, <span class="self">self</span>.<span class="ident">final_block_count</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tStale block count: {}&quot;</span>, <span class="self">self</span>.<span class="ident">stale_block_count</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tFinal operation count: {}&quot;</span>, <span class="self">self</span>.<span class="ident">final_operation_count</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tClique count: {}&quot;</span>, <span class="self">self</span>.<span class="ident">clique_count</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tStaker count: {}&quot;</span>, <span class="self">self</span>.<span class="ident">staker_count</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tFinal block count: {}&quot;</span>, <span class="self">self</span>.final_block_count)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tStale block count: {}&quot;</span>, <span class="self">self</span>.stale_block_count)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tFinal operation count: {}&quot;</span>, <span class="self">self</span>.final_operation_count)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tClique count: {}&quot;</span>, <span class="self">self</span>.clique_count)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tStaker count: {}&quot;</span>, <span class="self">self</span>.staker_count)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// stats produced by pool module</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PoolStats</span> {
-    <span class="doccomment">/// number of operations in the pool</span>
-    <span class="kw">pub</span> <span class="ident">operation_count</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// number of endorsement in the pool</span>
-    <span class="kw">pub</span> <span class="ident">endorsement_count</span>: <span class="ident">u64</span>,
+<span class="doccomment">/// stats produced by pool module
+</span><span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>PoolStats {
+    <span class="doccomment">/// number of operations in the pool
+    </span><span class="kw">pub </span>operation_count: u64,
+    <span class="doccomment">/// number of endorsement in the pool
+    </span><span class="kw">pub </span>endorsement_count: u64,
 }
 
-<span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">PoolStats</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Pool stats:&quot;</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tOperations: {}&quot;</span>, <span class="self">self</span>.<span class="ident">operation_count</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tEndorsements: {}&quot;</span>, <span class="self">self</span>.<span class="ident">endorsement_count</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>PoolStats {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;Pool stats:&quot;</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tOperations: {}&quot;</span>, <span class="self">self</span>.operation_count)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tEndorsements: {}&quot;</span>, <span class="self">self</span>.endorsement_count)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

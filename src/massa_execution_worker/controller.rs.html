@@ -214,221 +214,221 @@
 <span id="214">214</span>
 <span id="215">215</span>
 <span id="216">216</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! This module implements an execution controller.</span>
-<span class="doccomment">//! See `massa-execution-exports/controller_traits.rs` for functional details.</span>
+</span><span class="doccomment">//! This module implements an execution controller.
+//! See `massa-execution-exports/controller_traits.rs` for functional details.
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::execution::ExecutionState</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::request_queue</span>::{<span class="ident">RequestQueue</span>, <span class="ident">RequestWithResponseSender</span>};
-<span class="kw">use</span> <span class="ident">massa_execution_exports</span>::{
-    <span class="ident">ExecutionConfig</span>, <span class="ident">ExecutionController</span>, <span class="ident">ExecutionError</span>, <span class="ident">ExecutionManager</span>, <span class="ident">ExecutionOutput</span>,
-    <span class="ident">ReadOnlyExecutionRequest</span>,
+</span><span class="kw">use </span><span class="kw">crate</span>::execution::ExecutionState;
+<span class="kw">use </span><span class="kw">crate</span>::request_queue::{RequestQueue, RequestWithResponseSender};
+<span class="kw">use </span>massa_execution_exports::{
+    ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
+    ReadOnlyExecutionRequest,
 };
-<span class="kw">use</span> <span class="ident">massa_models::api::EventFilter</span>;
-<span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">Amount</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">BlockId</span>, <span class="ident">Slot</span>};
-<span class="kw">use</span> <span class="ident">parking_lot</span>::{<span class="ident">Condvar</span>, <span class="ident">Mutex</span>, <span class="ident">RwLock</span>};
-<span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">BTreeSet</span>, <span class="ident">HashMap</span>};
-<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
-<span class="kw">use</span> <span class="ident">tracing::info</span>;
+<span class="kw">use </span>massa_models::api::EventFilter;
+<span class="kw">use </span>massa_models::output_event::SCOutputEvent;
+<span class="kw">use </span>massa_models::{Address, Amount};
+<span class="kw">use </span>massa_models::{BlockId, Slot};
+<span class="kw">use </span>parking_lot::{Condvar, Mutex, RwLock};
+<span class="kw">use </span>std::collections::{BTreeSet, HashMap};
+<span class="kw">use </span>std::sync::Arc;
+<span class="kw">use </span>tracing::info;
 
-<span class="doccomment">/// structure used to communicate with execution thread</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ExecutionInputData</span> {
-    <span class="doccomment">/// set stop to true to stop the thread</span>
-    <span class="kw">pub</span> <span class="ident">stop</span>: <span class="ident">bool</span>,
-    <span class="doccomment">/// list of newly finalized blocks, indexed by slot</span>
-    <span class="kw">pub</span> <span class="ident">finalized_blocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// new blockclique (if there is a new one), blocks indexed by slot</span>
-    <span class="kw">pub</span> <span class="ident">new_blockclique</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// queue for read-only execution requests and response MPSCs to send back their outputs</span>
-    <span class="kw">pub</span> <span class="ident">readonly_requests</span>: <span class="ident">RequestQueue</span><span class="op">&lt;</span><span class="ident">ReadOnlyExecutionRequest</span>, <span class="ident">ExecutionOutput</span><span class="op">&gt;</span>,
+<span class="doccomment">/// structure used to communicate with execution thread
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ExecutionInputData {
+    <span class="doccomment">/// set stop to true to stop the thread
+    </span><span class="kw">pub </span>stop: bool,
+    <span class="doccomment">/// list of newly finalized blocks, indexed by slot
+    </span><span class="kw">pub </span>finalized_blocks: HashMap&lt;Slot, BlockId&gt;,
+    <span class="doccomment">/// new blockclique (if there is a new one), blocks indexed by slot
+    </span><span class="kw">pub </span>new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, BlockId&gt;&gt;,
+    <span class="doccomment">/// queue for read-only execution requests and response MPSCs to send back their outputs
+    </span><span class="kw">pub </span>readonly_requests: RequestQueue&lt;ReadOnlyExecutionRequest, ExecutionOutput&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ExecutionInputData</span> {
-    <span class="doccomment">/// Creates a new empty `ExecutionInputData`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">config</span>: <span class="ident">ExecutionConfig</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">ExecutionInputData</span> {
-            <span class="ident">stop</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">finalized_blocks</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">new_blockclique</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">readonly_requests</span>: <span class="ident">RequestQueue::new</span>(<span class="ident">config</span>.<span class="ident">max_final_events</span>),
+<span class="kw">impl </span>ExecutionInputData {
+    <span class="doccomment">/// Creates a new empty `ExecutionInputData`
+    </span><span class="kw">pub fn </span>new(config: ExecutionConfig) -&gt; <span class="self">Self </span>{
+        ExecutionInputData {
+            stop: Default::default(),
+            finalized_blocks: Default::default(),
+            new_blockclique: Default::default(),
+            readonly_requests: RequestQueue::new(config.max_final_events),
         }
     }
 
-    <span class="doccomment">/// Takes the current input data into a clone that is returned,</span>
-    <span class="doccomment">/// and resets self.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">take</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">ExecutionInputData</span> {
-            <span class="ident">stop</span>: <span class="ident">std::mem::take</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">stop</span>),
-            <span class="ident">finalized_blocks</span>: <span class="ident">std::mem::take</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">finalized_blocks</span>),
-            <span class="ident">new_blockclique</span>: <span class="ident">std::mem::take</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">new_blockclique</span>),
-            <span class="ident">readonly_requests</span>: <span class="self">self</span>.<span class="ident">readonly_requests</span>.<span class="ident">take</span>(),
+    <span class="doccomment">/// Takes the current input data into a clone that is returned,
+    /// and resets self.
+    </span><span class="kw">pub fn </span>take(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+        ExecutionInputData {
+            stop: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.stop),
+            finalized_blocks: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.finalized_blocks),
+            new_blockclique: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.new_blockclique),
+            readonly_requests: <span class="self">self</span>.readonly_requests.take(),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="doccomment">/// implementation of the execution controller</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExecutionControllerImpl</span> {
-    <span class="doccomment">/// input data to process in the VM loop</span>
-    <span class="doccomment">/// with a wake-up condition variable that needs to be triggered when the data changes</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">input_data</span>: <span class="ident">Arc</span><span class="op">&lt;</span>(<span class="ident">Condvar</span>, <span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">ExecutionInputData</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
-    <span class="doccomment">/// current execution state (see execution.rs for details)</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">execution_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">ExecutionState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Clone)]
+</span><span class="doccomment">/// implementation of the execution controller
+</span><span class="kw">pub struct </span>ExecutionControllerImpl {
+    <span class="doccomment">/// input data to process in the VM loop
+    /// with a wake-up condition variable that needs to be triggered when the data changes
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) input_data: Arc&lt;(Condvar, Mutex&lt;ExecutionInputData&gt;)&gt;,
+    <span class="doccomment">/// current execution state (see execution.rs for details)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) execution_state: Arc&lt;RwLock&lt;ExecutionState&gt;&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ExecutionController</span> <span class="kw">for</span> <span class="ident">ExecutionControllerImpl</span> {
-    <span class="doccomment">/// called to signal changes on the current blockclique, also listing newly finalized blocks</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # arguments</span>
-    <span class="doccomment">/// * `finalized_blocks`: list of newly finalized blocks to be appended to the input finalized blocks</span>
-    <span class="doccomment">/// * `blockclique`: new blockclique, replaces the current one in the input</span>
-    <span class="kw">fn</span> <span class="ident">update_blockclique_status</span>(
+<span class="kw">impl </span>ExecutionController <span class="kw">for </span>ExecutionControllerImpl {
+    <span class="doccomment">/// called to signal changes on the current blockclique, also listing newly finalized blocks
+    ///
+    /// # arguments
+    /// * `finalized_blocks`: list of newly finalized blocks to be appended to the input finalized blocks
+    /// * `blockclique`: new blockclique, replaces the current one in the input
+    </span><span class="kw">fn </span>update_blockclique_status(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">finalized_blocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>,
-        <span class="ident">new_blockclique</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>,
+        finalized_blocks: HashMap&lt;Slot, BlockId&gt;,
+        new_blockclique: HashMap&lt;Slot, BlockId&gt;,
     ) {
-        <span class="comment">// update input data</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input_data</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">input_data</span>.<span class="number">1</span>.<span class="ident">lock</span>();
-        <span class="ident">input_data</span>.<span class="ident">new_blockclique</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">new_blockclique</span>); <span class="comment">// replace blockclique</span>
-        <span class="ident">input_data</span>.<span class="ident">finalized_blocks</span>.<span class="ident">extend</span>(<span class="ident">finalized_blocks</span>); <span class="comment">// append finalized blocks</span>
-        <span class="self">self</span>.<span class="ident">input_data</span>.<span class="number">0</span>.<span class="ident">notify_one</span>(); <span class="comment">// wake up VM loop</span>
+        <span class="comment">// update input data
+        </span><span class="kw">let </span><span class="kw-2">mut </span>input_data = <span class="self">self</span>.input_data.<span class="number">1</span>.lock();
+        input_data.new_blockclique = <span class="prelude-val">Some</span>(new_blockclique); <span class="comment">// replace blockclique
+        </span>input_data.finalized_blocks.extend(finalized_blocks); <span class="comment">// append finalized blocks
+        </span><span class="self">self</span>.input_data.<span class="number">0</span>.notify_one(); <span class="comment">// wake up VM loop
+    </span>}
+
+    <span class="doccomment">/// Get the generated execution events, optionally filtered by:
+    /// * start slot
+    /// * end slot
+    /// * emitter address
+    /// * original caller address
+    /// * operation id
+    </span><span class="kw">fn </span>get_filtered_sc_output_event(<span class="kw-2">&amp;</span><span class="self">self</span>, filter: EventFilter) -&gt; Vec&lt;SCOutputEvent&gt; {
+        <span class="self">self</span>.execution_state
+            .read()
+            .get_filtered_sc_output_event(filter)
     }
 
-    <span class="doccomment">/// Get the generated execution events, optionally filtered by:</span>
-    <span class="doccomment">/// * start slot</span>
-    <span class="doccomment">/// * end slot</span>
-    <span class="doccomment">/// * emitter address</span>
-    <span class="doccomment">/// * original caller address</span>
-    <span class="doccomment">/// * operation id</span>
-    <span class="kw">fn</span> <span class="ident">get_filtered_sc_output_event</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">EventFilter</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">execution_state</span>
-            .<span class="ident">read</span>()
-            .<span class="ident">get_filtered_sc_output_event</span>(<span class="ident">filter</span>)
-    }
-
-    <span class="doccomment">/// Get a balance final and active values</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Return value</span>
-    <span class="doccomment">/// * `(final_balance, active_balance)`</span>
-    <span class="kw">fn</span> <span class="ident">get_final_and_active_parallel_balance</span>(
+    <span class="doccomment">/// Get a balance final and active values
+    ///
+    /// # Return value
+    /// * `(final_balance, active_balance)`
+    </span><span class="kw">fn </span>get_final_and_active_parallel_balance(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">addresses</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>)<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">lock</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">execution_state</span>.<span class="ident">read</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">for</span> <span class="ident">addr</span> <span class="kw">in</span> <span class="ident">addresses</span> {
-            <span class="ident">result</span>.<span class="ident">push</span>(<span class="ident">lock</span>.<span class="ident">get_final_and_active_parallel_balance</span>(<span class="kw-2">&amp;</span><span class="ident">addr</span>));
+        addresses: Vec&lt;Address&gt;,
+    ) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Amount&gt;, <span class="prelude-ty">Option</span>&lt;Amount&gt;)&gt; {
+        <span class="kw">let </span>lock = <span class="self">self</span>.execution_state.read();
+        <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::new();
+        <span class="kw">for </span>addr <span class="kw">in </span>addresses {
+            result.push(lock.get_final_and_active_parallel_balance(<span class="kw-2">&amp;</span>addr));
         }
-        <span class="ident">result</span>
+        result
     }
 
-    <span class="doccomment">/// Get a copy of a single datastore entry with its final and active values</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Return value</span>
-    <span class="doccomment">/// * `(final_data_entry, active_data_entry)`</span>
-    <span class="kw">fn</span> <span class="ident">get_final_and_active_data_entry</span>(
+    <span class="doccomment">/// Get a copy of a single datastore entry with its final and active values
+    ///
+    /// # Return value
+    /// * `(final_data_entry, active_data_entry)`
+    </span><span class="kw">fn </span>get_final_and_active_data_entry(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">input</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Address</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>)<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">lock</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">execution_state</span>.<span class="ident">read</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">for</span> (<span class="ident">addr</span>, <span class="ident">key</span>) <span class="kw">in</span> <span class="ident">input</span> {
-            <span class="ident">result</span>.<span class="ident">push</span>(<span class="ident">lock</span>.<span class="ident">get_final_and_active_data_entry</span>(<span class="kw-2">&amp;</span><span class="ident">addr</span>, <span class="kw-2">&amp;</span><span class="ident">key</span>));
+        input: Vec&lt;(Address, Vec&lt;u8&gt;)&gt;,
+    ) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;)&gt; {
+        <span class="kw">let </span>lock = <span class="self">self</span>.execution_state.read();
+        <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::new();
+        <span class="kw">for </span>(addr, key) <span class="kw">in </span>input {
+            result.push(lock.get_final_and_active_data_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>key));
         }
-        <span class="ident">result</span>
+        result
     }
 
-    <span class="doccomment">/// Get every datastore key of the given address.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// A vector containing all the keys</span>
-    <span class="kw">fn</span> <span class="ident">get_final_and_active_datastore_keys</span>(
+    <span class="doccomment">/// Get every datastore key of the given address.
+    ///
+    /// # Returns
+    /// A vector containing all the keys
+    </span><span class="kw">fn </span>get_final_and_active_datastore_keys(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>,
-    ) -&gt; (<span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">execution_state</span>
-            .<span class="ident">read</span>()
-            .<span class="ident">get_final_and_active_datastore_keys</span>(<span class="ident">addr</span>)
+        addr: <span class="kw-2">&amp;</span>Address,
+    ) -&gt; (BTreeSet&lt;Vec&lt;u8&gt;&gt;, BTreeSet&lt;Vec&lt;u8&gt;&gt;) {
+        <span class="self">self</span>.execution_state
+            .read()
+            .get_final_and_active_datastore_keys(addr)
     }
 
-    <span class="doccomment">/// Executes a read-only request</span>
-    <span class="doccomment">/// Read-only requests do not modify consensus state</span>
-    <span class="kw">fn</span> <span class="ident">execute_readonly_request</span>(
+    <span class="doccomment">/// Executes a read-only request
+    /// Read-only requests do not modify consensus state
+    </span><span class="kw">fn </span>execute_readonly_request(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">req</span>: <span class="ident">ReadOnlyExecutionRequest</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ExecutionOutput</span>, <span class="ident">ExecutionError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">resp_rx</span> <span class="op">=</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input_data</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">input_data</span>.<span class="number">1</span>.<span class="ident">lock</span>();
+        req: ReadOnlyExecutionRequest,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionOutput, ExecutionError&gt; {
+        <span class="kw">let </span>resp_rx = {
+            <span class="kw">let </span><span class="kw-2">mut </span>input_data = <span class="self">self</span>.input_data.<span class="number">1</span>.lock();
 
-            <span class="comment">// if the read-only queue is already full, return an error</span>
-            <span class="kw">if</span> <span class="ident">input_data</span>.<span class="ident">readonly_requests</span>.<span class="ident">is_full</span>() {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExecutionError::ChannelError</span>(
-                    <span class="string">&quot;too many queued readonly requests&quot;</span>.<span class="ident">into</span>(),
+            <span class="comment">// if the read-only queue is already full, return an error
+            </span><span class="kw">if </span>input_data.readonly_requests.is_full() {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::ChannelError(
+                    <span class="string">&quot;too many queued readonly requests&quot;</span>.into(),
                 ));
             }
 
-            <span class="comment">// prepare the channel to send back the result of the read-only execution</span>
-            <span class="kw">let</span> (<span class="ident">resp_tx</span>, <span class="ident">resp_rx</span>) <span class="op">=</span>
-                <span class="ident">std::sync::mpsc::channel</span>::<span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ExecutionOutput</span>, <span class="ident">ExecutionError</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+            <span class="comment">// prepare the channel to send back the result of the read-only execution
+            </span><span class="kw">let </span>(resp_tx, resp_rx) =
+                std::sync::mpsc::channel::&lt;<span class="prelude-ty">Result</span>&lt;ExecutionOutput, ExecutionError&gt;&gt;();
 
-            <span class="comment">// append the request to the queue of input read-only requests</span>
-            <span class="ident">input_data</span>
-                .<span class="ident">readonly_requests</span>
-                .<span class="ident">push</span>(<span class="ident">RequestWithResponseSender::new</span>(<span class="ident">req</span>, <span class="ident">resp_tx</span>));
+            <span class="comment">// append the request to the queue of input read-only requests
+            </span>input_data
+                .readonly_requests
+                .push(RequestWithResponseSender::new(req, resp_tx));
 
-            <span class="comment">// wake up the execution main loop</span>
-            <span class="self">self</span>.<span class="ident">input_data</span>.<span class="number">0</span>.<span class="ident">notify_one</span>();
+            <span class="comment">// wake up the execution main loop
+            </span><span class="self">self</span>.input_data.<span class="number">0</span>.notify_one();
 
-            <span class="ident">resp_rx</span>
+            resp_rx
         };
 
-        <span class="comment">// Wait for the result of the execution</span>
-        <span class="kw">match</span> <span class="ident">resp_rx</span>.<span class="ident">recv</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">result</span>) =&gt; <span class="ident">result</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">ExecutionError::ChannelError</span>(<span class="macro">format!</span>(
+        <span class="comment">// Wait for the result of the execution
+        </span><span class="kw">match </span>resp_rx.recv() {
+            <span class="prelude-val">Ok</span>(result) =&gt; result,
+            <span class="prelude-val">Err</span>(err) =&gt; <span class="prelude-val">Err</span>(ExecutionError::ChannelError(<span class="macro">format!</span>(
                 <span class="string">&quot;readonly execution response channel readout failed: {}&quot;</span>,
-                <span class="ident">err</span>
+                err
             ))),
         }
     }
 
-    <span class="doccomment">/// Returns a boxed clone of self.</span>
-    <span class="doccomment">/// Allows cloning `Box&lt;dyn ExecutionController&gt;`,</span>
-    <span class="doccomment">/// see `massa-execution-exports/controller_traits.rs`</span>
-    <span class="kw">fn</span> <span class="ident">clone_box</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(<span class="self">self</span>.<span class="ident">clone</span>())
+    <span class="doccomment">/// Returns a boxed clone of self.
+    /// Allows cloning `Box&lt;dyn ExecutionController&gt;`,
+    /// see `massa-execution-exports/controller_traits.rs`
+    </span><span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>ExecutionController&gt; {
+        Box::new(<span class="self">self</span>.clone())
     }
 }
 
-<span class="doccomment">/// Execution manager</span>
-<span class="doccomment">/// Allows stopping the execution worker</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExecutionManagerImpl</span> {
-    <span class="doccomment">/// input data to process in the VM loop</span>
-    <span class="doccomment">/// with a wake-up condition variable that needs to be triggered when the data changes</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">input_data</span>: <span class="ident">Arc</span><span class="op">&lt;</span>(<span class="ident">Condvar</span>, <span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">ExecutionInputData</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
-    <span class="doccomment">/// handle used to join the worker thread</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">thread_handle</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">std::thread::JoinHandle</span><span class="op">&lt;</span>()<span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Execution manager
+/// Allows stopping the execution worker
+</span><span class="kw">pub struct </span>ExecutionManagerImpl {
+    <span class="doccomment">/// input data to process in the VM loop
+    /// with a wake-up condition variable that needs to be triggered when the data changes
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) input_data: Arc&lt;(Condvar, Mutex&lt;ExecutionInputData&gt;)&gt;,
+    <span class="doccomment">/// handle used to join the worker thread
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) thread_handle: <span class="prelude-ty">Option</span>&lt;std::thread::JoinHandle&lt;()&gt;&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ExecutionManager</span> <span class="kw">for</span> <span class="ident">ExecutionManagerImpl</span> {
-    <span class="doccomment">/// stops the worker</span>
-    <span class="kw">fn</span> <span class="ident">stop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
+<span class="kw">impl </span>ExecutionManager <span class="kw">for </span>ExecutionManagerImpl {
+    <span class="doccomment">/// stops the worker
+    </span><span class="kw">fn </span>stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="macro">info!</span>(<span class="string">&quot;stopping Execution controller...&quot;</span>);
-        <span class="comment">// notify the worker thread to stop</span>
-        {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input_wlock</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">input_data</span>.<span class="number">1</span>.<span class="ident">lock</span>();
-            <span class="ident">input_wlock</span>.<span class="ident">stop</span> <span class="op">=</span> <span class="bool-val">true</span>;
-            <span class="self">self</span>.<span class="ident">input_data</span>.<span class="number">0</span>.<span class="ident">notify_one</span>();
+        <span class="comment">// notify the worker thread to stop
+        </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>input_wlock = <span class="self">self</span>.input_data.<span class="number">1</span>.lock();
+            input_wlock.stop = <span class="bool-val">true</span>;
+            <span class="self">self</span>.input_data.<span class="number">0</span>.notify_one();
         }
-        <span class="comment">// join the execution thread</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">join_handle</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">thread_handle</span>.<span class="ident">take</span>() {
-            <span class="ident">join_handle</span>.<span class="ident">join</span>().<span class="ident">expect</span>(<span class="string">&quot;VM controller thread panicked&quot;</span>);
+        <span class="comment">// join the execution thread
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(join_handle) = <span class="self">self</span>.thread_handle.take() {
+            join_handle.join().expect(<span class="string">&quot;VM controller thread panicked&quot;</span>);
         }
         <span class="macro">info!</span>(<span class="string">&quot;execution controller stopped&quot;</span>);
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

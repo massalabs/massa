@@ -133,140 +133,140 @@
 <span id="133">133</span>
 <span id="134">134</span>
 <span id="135">135</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident">core::usize</span>;
-<span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
+</span><span class="kw">use </span>core::usize;
+<span class="kw">use </span>std::convert::TryInto;
 
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::BLOCK_ID_SIZE_BYTES</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash</span>::{<span class="ident">BuildMap</span>, <span class="ident">Set</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">array_from_slice</span>, <span class="ident">u8_from_slice</span>, <span class="ident">with_serialization_context</span>, <span class="ident">BlockId</span>, <span class="ident">DeserializeCompact</span>,
-    <span class="ident">DeserializeVarInt</span>, <span class="ident">ModelsError</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>,
+<span class="kw">use </span><span class="kw">crate</span>::constants::BLOCK_ID_SIZE_BYTES;
+<span class="kw">use </span><span class="kw">crate</span>::prehash::{BuildMap, Set};
+<span class="kw">use crate</span>::{
+    array_from_slice, u8_from_slice, with_serialization_context, BlockId, DeserializeCompact,
+    DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
 };
 
-<span class="doccomment">/// Mutually compatible blocks in the graph</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Clique</span> {
-    <span class="doccomment">/// the block ids of the blocks in that clique</span>
-    <span class="kw">pub</span> <span class="ident">block_ids</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Fitness used to compute finality</span>
-    <span class="doccomment">/// Depends on descendants and endorsement count</span>
-    <span class="kw">pub</span> <span class="ident">fitness</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// True if it is the clique of higher fitness</span>
-    <span class="kw">pub</span> <span class="ident">is_blockclique</span>: <span class="ident">bool</span>,
+<span class="doccomment">/// Mutually compatible blocks in the graph
+</span><span class="attribute">#[derive(Clone, Debug, Deserialize, Serialize)]
+</span><span class="kw">pub struct </span>Clique {
+    <span class="doccomment">/// the block ids of the blocks in that clique
+    </span><span class="kw">pub </span>block_ids: Set&lt;BlockId&gt;,
+    <span class="doccomment">/// Fitness used to compute finality
+    /// Depends on descendants and endorsement count
+    </span><span class="kw">pub </span>fitness: u64,
+    <span class="doccomment">/// True if it is the clique of higher fitness
+    </span><span class="kw">pub </span>is_blockclique: bool,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Clique</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">Clique</span> {
-            <span class="ident">block_ids</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">fitness</span>: <span class="number">0</span>,
-            <span class="ident">is_blockclique</span>: <span class="bool-val">true</span>,
+<span class="kw">impl </span>Default <span class="kw">for </span>Clique {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        Clique {
+            block_ids: Default::default(),
+            fitness: <span class="number">0</span>,
+            is_blockclique: <span class="bool-val">true</span>,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">Clique</span> {
-    <span class="doccomment">/// ## Example</span>
-    <span class="doccomment">/// ```rust</span>
-    <span class="doccomment">/// use massa_models::clique::Clique;</span>
-    <span class="doccomment">/// # use massa_models::{SerializeCompact, DeserializeCompact, SerializationContext, BlockId};</span>
-    <span class="doccomment">/// # use massa_hash::Hash;</span>
-    <span class="doccomment">/// # use std::str::FromStr;</span>
-    <span class="doccomment">/// # massa_models::init_serialization_context(massa_models::SerializationContext::default());</span>
-    <span class="doccomment">/// # pub fn get_dummy_block_id(s: &amp;str) -&gt; BlockId {</span>
-    <span class="doccomment">/// #     BlockId(Hash::compute_from(s.as_bytes()))</span>
-    <span class="doccomment">/// # }</span>
-    <span class="doccomment">/// let clique = Clique {</span>
-    <span class="doccomment">///         block_ids: vec![get_dummy_block_id(&quot;parent1&quot;), get_dummy_block_id(&quot;parent2&quot;)].into_iter().collect(),</span>
-    <span class="doccomment">///         fitness: 123,</span>
-    <span class="doccomment">///         is_blockclique: true,</span>
-    <span class="doccomment">///     };</span>
-    <span class="doccomment">/// let bytes = clique.clone().to_bytes_compact().unwrap();</span>
-    <span class="doccomment">/// let (res, _) = Clique::from_bytes_compact(&amp;bytes).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(clique.block_ids, res.block_ids);</span>
-    <span class="doccomment">/// assert_eq!(clique.is_blockclique, res.is_blockclique);</span>
-    <span class="doccomment">/// assert_eq!(clique.fitness, res.fitness);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Checks performed:</span>
-    <span class="doccomment">/// - Number of blocks.</span>
-    <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident"><span class="kw">crate</span>::ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+<span class="kw">impl </span>SerializeCompact <span class="kw">for </span>Clique {
+    <span class="doccomment">/// ## Example
+    /// ```rust
+    /// use massa_models::clique::Clique;
+    /// # use massa_models::{SerializeCompact, DeserializeCompact, SerializationContext, BlockId};
+    /// # use massa_hash::Hash;
+    /// # use std::str::FromStr;
+    /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
+    /// # pub fn get_dummy_block_id(s: &amp;str) -&gt; BlockId {
+    /// #     BlockId(Hash::compute_from(s.as_bytes()))
+    /// # }
+    /// let clique = Clique {
+    ///         block_ids: vec![get_dummy_block_id(&quot;parent1&quot;), get_dummy_block_id(&quot;parent2&quot;)].into_iter().collect(),
+    ///         fitness: 123,
+    ///         is_blockclique: true,
+    ///     };
+    /// let bytes = clique.clone().to_bytes_compact().unwrap();
+    /// let (res, _) = Clique::from_bytes_compact(&amp;bytes).unwrap();
+    /// assert_eq!(clique.block_ids, res.block_ids);
+    /// assert_eq!(clique.is_blockclique, res.is_blockclique);
+    /// assert_eq!(clique.fitness, res.fitness);
+    /// ```
+    ///
+    /// Checks performed:
+    /// - Number of blocks.
+    </span><span class="kw">fn </span>to_bytes_compact(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, <span class="kw">crate</span>::ModelsError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;u8&gt; = Vec::new();
 
-        <span class="comment">// block_ids</span>
-        <span class="kw">let</span> <span class="ident">block_ids_count</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_ids</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-            <span class="ident">ModelsError::SerializeError</span>(<span class="macro">format!</span>(<span class="string">&quot;too many blocks in in clique: {}&quot;</span>, <span class="ident">err</span>))
+        <span class="comment">// block_ids
+        </span><span class="kw">let </span>block_ids_count: u32 = <span class="self">self</span>.block_ids.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(<span class="macro">format!</span>(<span class="string">&quot;too many blocks in in clique: {}&quot;</span>, err))
         })<span class="question-mark">?</span>;
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">block_ids_count</span>.<span class="ident">to_varint_bytes</span>());
-        <span class="kw">for</span> <span class="ident">b_id</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">block_ids</span>.<span class="ident">iter</span>() {
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">b_id</span>.<span class="ident">to_bytes</span>());
+        res.extend(<span class="kw-2">&amp;</span>block_ids_count.to_varint_bytes());
+        <span class="kw">for </span>b_id <span class="kw">in </span><span class="self">self</span>.block_ids.iter() {
+            res.extend(b_id.to_bytes());
         }
 
-        <span class="comment">// fitness</span>
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">fitness</span>.<span class="ident">to_varint_bytes</span>());
+        <span class="comment">// fitness
+        </span>res.extend(<span class="kw-2">&amp;</span><span class="self">self</span>.fitness.to_varint_bytes());
 
-        <span class="comment">// is_blockclique</span>
-        <span class="ident">res</span>.<span class="ident">push</span>(<span class="kw">if</span> <span class="self">self</span>.<span class="ident">is_blockclique</span> { <span class="number">1u8</span> } <span class="kw">else</span> { <span class="number">0u8</span> });
+        <span class="comment">// is_blockclique
+        </span>res.push(<span class="kw">if </span><span class="self">self</span>.is_blockclique { <span class="number">1u8 </span>} <span class="kw">else </span>{ <span class="number">0u8 </span>});
 
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+        <span class="prelude-val">Ok</span>(res)
     }
 }
 
-<span class="doccomment">/// Checks performed:</span>
-<span class="doccomment">/// - Number of blocks.</span>
-<span class="doccomment">/// - Validity of block ids.</span>
-<span class="doccomment">/// - Validity of fitness.</span>
-<span class="doccomment">/// - Validity of the `is_blockclique` flag.</span>
-<span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">Clique</span> {
-    <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident"><span class="kw">crate</span>::ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0usize</span>;
-        <span class="kw">let</span> <span class="ident">max_bootstrap_blocks</span> <span class="op">=</span>
-            <span class="ident">with_serialization_context</span>(<span class="op">|</span><span class="ident">context</span><span class="op">|</span> <span class="ident">context</span>.<span class="ident">max_bootstrap_blocks</span>);
+<span class="doccomment">/// Checks performed:
+/// - Number of blocks.
+/// - Validity of block ids.
+/// - Validity of fitness.
+/// - Validity of the `is_blockclique` flag.
+</span><span class="kw">impl </span>DeserializeCompact <span class="kw">for </span>Clique {
+    <span class="kw">fn </span>from_bytes_compact(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), <span class="kw">crate</span>::ModelsError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="number">0usize</span>;
+        <span class="kw">let </span>max_bootstrap_blocks =
+            with_serialization_context(|context| context.max_bootstrap_blocks);
 
-        <span class="kw">let</span> (<span class="ident">block_count</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u32::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">block_count</span> <span class="op">&gt;</span> <span class="ident">max_bootstrap_blocks</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::DeserializeError</span>(
-                <span class="string">&quot;too many blocks in clique for deserialization&quot;</span>.<span class="ident">to_string</span>(),
+        <span class="kw">let </span>(block_count, delta) = u32::from_varint_bytes(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+        <span class="kw">if </span>block_count &gt; max_bootstrap_blocks {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::DeserializeError(
+                <span class="string">&quot;too many blocks in clique for deserialization&quot;</span>.to_string(),
             ));
         }
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_ids</span> <span class="op">=</span>
-            <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::with_capacity_and_hasher</span>(<span class="ident">block_count</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">BuildMap::default</span>());
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">block_count</span> {
-            <span class="kw">let</span> <span class="ident">b_id</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
-            <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>;
-            <span class="ident">block_ids</span>.<span class="ident">insert</span>(<span class="ident">b_id</span>);
+        cursor += delta;
+        <span class="kw">let </span><span class="kw-2">mut </span>block_ids =
+            Set::&lt;BlockId&gt;::with_capacity_and_hasher(block_count <span class="kw">as </span>usize, BuildMap::default());
+        <span class="kw">for _ in </span><span class="number">0</span>..block_count {
+            <span class="kw">let </span>b_id = BlockId::from_bytes(<span class="kw-2">&amp;</span>array_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>);
+            cursor += BLOCK_ID_SIZE_BYTES;
+            block_ids.insert(b_id);
         }
 
-        <span class="comment">// fitness</span>
-        <span class="kw">let</span> (<span class="ident">fitness</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u64::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
+        <span class="comment">// fitness
+        </span><span class="kw">let </span>(fitness, delta) = u64::from_varint_bytes(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+        cursor += delta;
 
-        <span class="comment">// is_blockclique</span>
-        <span class="kw">let</span> <span class="ident">is_blockclique</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">u8_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span> {
-            <span class="number">0u8</span> =&gt; <span class="bool-val">false</span>,
-            <span class="number">1u8</span> =&gt; <span class="bool-val">true</span>,
-            <span class="kw">_</span> =&gt; {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::SerializeError</span>(
-                    <span class="string">&quot;could not deserialize active_block.production_events.has_created&quot;</span>.<span class="ident">into</span>(),
+        <span class="comment">// is_blockclique
+        </span><span class="kw">let </span>is_blockclique = <span class="kw">match </span>u8_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">? </span>{
+            <span class="number">0u8 </span>=&gt; <span class="bool-val">false</span>,
+            <span class="number">1u8 </span>=&gt; <span class="bool-val">true</span>,
+            <span class="kw">_ </span>=&gt; {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::SerializeError(
+                    <span class="string">&quot;could not deserialize active_block.production_events.has_created&quot;</span>.into(),
                 ))
             }
         };
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+        cursor += <span class="number">1</span>;
 
         <span class="prelude-val">Ok</span>((
-            <span class="ident">Clique</span> {
-                <span class="ident">block_ids</span>,
-                <span class="ident">fitness</span>,
-                <span class="ident">is_blockclique</span>,
+            Clique {
+                block_ids,
+                fitness,
+                is_blockclique,
             },
-            <span class="ident">cursor</span>,
+            cursor,
         ))
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

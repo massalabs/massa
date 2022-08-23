@@ -23,30 +23,30 @@
 <span id="23">23</span>
 <span id="24">24</span>
 <span id="25">25</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
-<span class="kw">use</span> <span class="ident">massa_models::Address</span>;
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+</span><span class="kw">use </span>displaydoc::Display;
+<span class="kw">use </span>massa_models::Address;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="doccomment">/// wallet error</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Display</span>, <span class="ident">Error</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">WalletError</span> {
-    <span class="doccomment">/// IO error: {0}</span>
-    <span class="ident">IOError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">std::io::Error</span>),
-    <span class="doccomment">/// JSON error: {0}</span>
-    <span class="ident">JSONError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">serde_json::Error</span>),
-    <span class="doccomment">/// Serde Sq error: {0}</span>
-    <span class="ident">SerdeqsError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">serde_qs::Error</span>),
-    <span class="doccomment">/// Models error: {0}</span>
-    <span class="ident">ModelsError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_models::ModelsError</span>),
-    <span class="doccomment">/// `MassaHash` error: {0}</span>
-    <span class="ident">MassaHashError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_hash::MassaHashError</span>),
-    <span class="doccomment">/// Missing key error: {0}</span>
-    <span class="ident">MissingKeyError</span>(<span class="ident">Address</span>),
-    <span class="doccomment">/// `MassaCipher` error: {0}</span>
-    <span class="ident">MassaCipherError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_cipher::CipherError</span>),
+<span class="doccomment">/// wallet error
+</span><span class="attribute">#[non_exhaustive]
+#[derive(Display, Error, Debug)]
+</span><span class="kw">pub enum </span>WalletError {
+    <span class="doccomment">/// IO error: {0}
+    </span>IOError(<span class="attribute">#[from] </span>std::io::Error),
+    <span class="doccomment">/// JSON error: {0}
+    </span>JSONError(<span class="attribute">#[from] </span>serde_json::Error),
+    <span class="doccomment">/// Serde Sq error: {0}
+    </span>SerdeqsError(<span class="attribute">#[from] </span>serde_qs::Error),
+    <span class="doccomment">/// Models error: {0}
+    </span>ModelsError(<span class="attribute">#[from] </span>massa_models::ModelsError),
+    <span class="doccomment">/// `MassaHash` error: {0}
+    </span>MassaHashError(<span class="attribute">#[from] </span>massa_hash::MassaHashError),
+    <span class="doccomment">/// Missing key error: {0}
+    </span>MissingKeyError(Address),
+    <span class="doccomment">/// `MassaCipher` error: {0}
+    </span>MassaCipherError(<span class="attribute">#[from] </span>massa_cipher::CipherError),
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_wallet" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_wallet" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

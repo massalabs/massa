@@ -368,375 +368,375 @@
 <span id="368">368</span>
 <span id="369">369</span>
 <span id="370">370</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::mock_network_controller::MockNetworkController</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">ProtocolEvent</span>, <span class="ident">ProtocolEventReceiver</span>, <span class="ident">ProtocolPoolEvent</span>, <span class="ident">ProtocolPoolEventReceiver</span>,
-    <span class="ident">ProtocolSettings</span>,
+</span><span class="kw">use </span><span class="kw">super</span>::mock_network_controller::MockNetworkController;
+<span class="kw">use crate</span>::{
+    ProtocolEvent, ProtocolEventReceiver, ProtocolPoolEvent, ProtocolPoolEventReceiver,
+    ProtocolSettings,
 };
-<span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
-<span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
-<span class="kw">use</span> <span class="ident">massa_models::operation::OperationSerializer</span>;
-<span class="kw">use</span> <span class="ident">massa_models::wrapped::WrappedContent</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">BlockSerializer</span>, <span class="ident">Slot</span>, <span class="ident">WrappedBlock</span>,
-    <span class="ident">WrappedEndorsement</span>, <span class="ident">WrappedOperation</span>,
+<span class="kw">use </span>massa_hash::Hash;
+<span class="kw">use </span>massa_models::node::NodeId;
+<span class="kw">use </span>massa_models::operation::OperationSerializer;
+<span class="kw">use </span>massa_models::wrapped::WrappedContent;
+<span class="kw">use </span>massa_models::{
+    Address, Amount, Block, BlockHeader, BlockId, BlockSerializer, Slot, WrappedBlock,
+    WrappedEndorsement, WrappedOperation,
 };
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">BlockHeaderSerializer</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementSerializer</span>, <span class="ident">Operation</span>, <span class="ident">OperationType</span>,
+<span class="kw">use </span>massa_models::{
+    BlockHeaderSerializer, Endorsement, EndorsementSerializer, Operation, OperationType,
 };
-<span class="kw">use</span> <span class="ident">massa_network_exports::NetworkCommand</span>;
-<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
-<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
-<span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
-<span class="kw">use</span> <span class="ident">tokio::time::sleep</span>;
+<span class="kw">use </span>massa_network_exports::NetworkCommand;
+<span class="kw">use </span>massa_signature::KeyPair;
+<span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>std::collections::HashMap;
+<span class="kw">use </span>tokio::time::sleep;
 
-<span class="doccomment">/// test utility structures</span>
-<span class="doccomment">/// keeps keypair and associated node id</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NodeInfo</span> {
-    <span class="doccomment">/// key pair of the node</span>
-    <span class="kw">pub</span> <span class="ident">keypair</span>: <span class="ident">KeyPair</span>,
-    <span class="doccomment">/// node id</span>
-    <span class="kw">pub</span> <span class="ident">id</span>: <span class="ident">NodeId</span>,
+<span class="doccomment">/// test utility structures
+/// keeps keypair and associated node id
+</span><span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>NodeInfo {
+    <span class="doccomment">/// key pair of the node
+    </span><span class="kw">pub </span>keypair: KeyPair,
+    <span class="doccomment">/// node id
+    </span><span class="kw">pub </span>id: NodeId,
 }
 
-<span class="doccomment">/// create node info</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_node</span>() -&gt; <span class="ident">NodeInfo</span> {
-    <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
-    <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">NodeId</span>(<span class="ident">keypair</span>.<span class="ident">get_public_key</span>());
-    <span class="ident">NodeInfo</span> { <span class="ident">keypair</span>, <span class="ident">id</span> }
+<span class="doccomment">/// create node info
+</span><span class="kw">pub fn </span>create_node() -&gt; NodeInfo {
+    <span class="kw">let </span>keypair = KeyPair::generate();
+    <span class="kw">let </span>id = NodeId(keypair.get_public_key());
+    NodeInfo { keypair, id }
 }
 
-<span class="doccomment">/// create number of nodes and connect them with protocol</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">create_and_connect_nodes</span>(
-    <span class="ident">num</span>: <span class="ident">usize</span>,
-    <span class="ident">network_controller</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MockNetworkController</span>,
-) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeInfo</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nodes</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-    <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">num</span> {
-        <span class="comment">// Create a node, and connect it with protocol.</span>
-        <span class="kw">let</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">create_node</span>();
-        <span class="ident">network_controller</span>.<span class="ident">new_connection</span>(<span class="ident">info</span>.<span class="ident">id</span>).<span class="kw">await</span>;
-        <span class="ident">nodes</span>.<span class="ident">push</span>(<span class="ident">info</span>);
+<span class="doccomment">/// create number of nodes and connect them with protocol
+</span><span class="kw">pub async fn </span>create_and_connect_nodes(
+    num: usize,
+    network_controller: <span class="kw-2">&amp;mut </span>MockNetworkController,
+) -&gt; Vec&lt;NodeInfo&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>nodes = <span class="macro">vec!</span>[];
+    <span class="kw">for _ in </span><span class="number">0</span>..num {
+        <span class="comment">// Create a node, and connect it with protocol.
+        </span><span class="kw">let </span>info = create_node();
+        network_controller.new_connection(info.id).<span class="kw">await</span>;
+        nodes.push(info);
     }
-    <span class="ident">nodes</span>
+    nodes
 }
 
-<span class="doccomment">/// Creates a block for use in protocol,</span>
-<span class="doccomment">/// without paying attention to consensus related things</span>
-<span class="doccomment">/// like slot, parents, and merkle root.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_block</span>(<span class="ident">keypair</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPair</span>) -&gt; <span class="ident">WrappedBlock</span> {
-    <span class="kw">let</span> <span class="ident">header</span> <span class="op">=</span> <span class="ident">BlockHeader::new_wrapped</span>(
-        <span class="ident">BlockHeader</span> {
-            <span class="ident">slot</span>: <span class="ident">Slot::new</span>(<span class="number">1</span>, <span class="number">0</span>),
-            <span class="ident">parents</span>: <span class="macro">vec!</span>[
-                <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="string">&quot;Genesis 0&quot;</span>.<span class="ident">as_bytes</span>())),
-                <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="string">&quot;Genesis 1&quot;</span>.<span class="ident">as_bytes</span>())),
+<span class="doccomment">/// Creates a block for use in protocol,
+/// without paying attention to consensus related things
+/// like slot, parents, and merkle root.
+</span><span class="kw">pub fn </span>create_block(keypair: <span class="kw-2">&amp;</span>KeyPair) -&gt; WrappedBlock {
+    <span class="kw">let </span>header = BlockHeader::new_wrapped(
+        BlockHeader {
+            slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
+            parents: <span class="macro">vec!</span>[
+                BlockId(Hash::compute_from(<span class="string">&quot;Genesis 0&quot;</span>.as_bytes())),
+                BlockId(Hash::compute_from(<span class="string">&quot;Genesis 1&quot;</span>.as_bytes())),
             ],
-            <span class="ident">operation_merkle_root</span>: <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">Vec::new</span>()),
-            <span class="ident">endorsements</span>: <span class="ident">Vec::new</span>(),
+            operation_merkle_root: Hash::compute_from(<span class="kw-2">&amp;</span>Vec::new()),
+            endorsements: Vec::new(),
         },
-        <span class="ident">BlockHeaderSerializer::new</span>(),
-        <span class="ident">keypair</span>,
+        BlockHeaderSerializer::new(),
+        keypair,
     )
-    .<span class="ident">unwrap</span>();
+    .unwrap();
 
-    <span class="ident">Block::new_wrapped</span>(
-        <span class="ident">Block</span> {
-            <span class="ident">header</span>,
-            <span class="ident">operations</span>: <span class="ident">Vec::new</span>(),
+    Block::new_wrapped(
+        Block {
+            header,
+            operations: Vec::new(),
         },
-        <span class="ident">BlockSerializer::new</span>(),
-        <span class="ident">keypair</span>,
+        BlockSerializer::new(),
+        keypair,
     )
-    .<span class="ident">unwrap</span>()
+    .unwrap()
 }
 
-<span class="doccomment">/// create a block with no endorsement</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// * `keypair`: key that sign the block</span>
-<span class="doccomment">/// * `slot`</span>
-<span class="doccomment">/// * `operations`</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_block_with_operations</span>(
-    <span class="ident">keypair</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPair</span>,
-    <span class="ident">slot</span>: <span class="ident">Slot</span>,
-    <span class="ident">operations</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedOperation</span><span class="op">&gt;</span>,
-) -&gt; <span class="ident">WrappedBlock</span> {
-    <span class="kw">let</span> <span class="ident">operation_merkle_root</span> <span class="op">=</span> <span class="ident">Hash::compute_from</span>(
-        <span class="kw-2">&amp;</span><span class="ident">operations</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="ident">Vec::new</span>(), <span class="op">|</span><span class="ident">acc</span>, <span class="ident">v</span><span class="op">|</span> {
-            [<span class="ident">acc</span>, <span class="ident">v</span>.<span class="ident">id</span>.<span class="ident">to_bytes</span>().<span class="ident">to_vec</span>()].<span class="ident">concat</span>()
+<span class="doccomment">/// create a block with no endorsement
+///
+/// * `keypair`: key that sign the block
+/// * `slot`
+/// * `operations`
+</span><span class="kw">pub fn </span>create_block_with_operations(
+    keypair: <span class="kw-2">&amp;</span>KeyPair,
+    slot: Slot,
+    operations: Vec&lt;WrappedOperation&gt;,
+) -&gt; WrappedBlock {
+    <span class="kw">let </span>operation_merkle_root = Hash::compute_from(
+        <span class="kw-2">&amp;</span>operations.iter().fold(Vec::new(), |acc, v| {
+            [acc, v.id.to_bytes().to_vec()].concat()
         })[..],
     );
-    <span class="kw">let</span> <span class="ident">header</span> <span class="op">=</span> <span class="ident">BlockHeader::new_wrapped</span>(
-        <span class="ident">BlockHeader</span> {
-            <span class="ident">slot</span>,
-            <span class="ident">parents</span>: <span class="macro">vec!</span>[
-                <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="string">&quot;Genesis 0&quot;</span>.<span class="ident">as_bytes</span>())),
-                <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="string">&quot;Genesis 1&quot;</span>.<span class="ident">as_bytes</span>())),
+    <span class="kw">let </span>header = BlockHeader::new_wrapped(
+        BlockHeader {
+            slot,
+            parents: <span class="macro">vec!</span>[
+                BlockId(Hash::compute_from(<span class="string">&quot;Genesis 0&quot;</span>.as_bytes())),
+                BlockId(Hash::compute_from(<span class="string">&quot;Genesis 1&quot;</span>.as_bytes())),
             ],
-            <span class="ident">operation_merkle_root</span>,
-            <span class="ident">endorsements</span>: <span class="ident">Vec::new</span>(),
+            operation_merkle_root,
+            endorsements: Vec::new(),
         },
-        <span class="ident">BlockHeaderSerializer::new</span>(),
-        <span class="ident">keypair</span>,
+        BlockHeaderSerializer::new(),
+        keypair,
     )
-    .<span class="ident">unwrap</span>();
+    .unwrap();
 
-    <span class="ident">Block::new_wrapped</span>(
-        <span class="ident">Block</span> { <span class="ident">header</span>, <span class="ident">operations</span> },
-        <span class="ident">BlockSerializer::new</span>(),
-        <span class="ident">keypair</span>,
+    Block::new_wrapped(
+        Block { header, operations },
+        BlockSerializer::new(),
+        keypair,
     )
-    .<span class="ident">unwrap</span>()
+    .unwrap()
 }
 
-<span class="doccomment">/// create a block with no operation</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// * `keypair`: key that sign the block</span>
-<span class="doccomment">/// * `slot`</span>
-<span class="doccomment">/// * `endorsements`</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_block_with_endorsements</span>(
-    <span class="ident">keypair</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPair</span>,
-    <span class="ident">slot</span>: <span class="ident">Slot</span>,
-    <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>,
-) -&gt; <span class="ident">WrappedBlock</span> {
-    <span class="kw">let</span> <span class="ident">header</span> <span class="op">=</span> <span class="ident">BlockHeader::new_wrapped</span>(
-        <span class="ident">BlockHeader</span> {
-            <span class="ident">slot</span>,
-            <span class="ident">parents</span>: <span class="macro">vec!</span>[
-                <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="string">&quot;Genesis 0&quot;</span>.<span class="ident">as_bytes</span>())),
-                <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="string">&quot;Genesis 1&quot;</span>.<span class="ident">as_bytes</span>())),
+<span class="doccomment">/// create a block with no operation
+///
+/// * `keypair`: key that sign the block
+/// * `slot`
+/// * `endorsements`
+</span><span class="kw">pub fn </span>create_block_with_endorsements(
+    keypair: <span class="kw-2">&amp;</span>KeyPair,
+    slot: Slot,
+    endorsements: Vec&lt;WrappedEndorsement&gt;,
+) -&gt; WrappedBlock {
+    <span class="kw">let </span>header = BlockHeader::new_wrapped(
+        BlockHeader {
+            slot,
+            parents: <span class="macro">vec!</span>[
+                BlockId(Hash::compute_from(<span class="string">&quot;Genesis 0&quot;</span>.as_bytes())),
+                BlockId(Hash::compute_from(<span class="string">&quot;Genesis 1&quot;</span>.as_bytes())),
             ],
-            <span class="ident">operation_merkle_root</span>: <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">Vec::new</span>()),
-            <span class="ident">endorsements</span>,
+            operation_merkle_root: Hash::compute_from(<span class="kw-2">&amp;</span>Vec::new()),
+            endorsements,
         },
-        <span class="ident">BlockHeaderSerializer::new</span>(),
-        <span class="ident">keypair</span>,
+        BlockHeaderSerializer::new(),
+        keypair,
     )
-    .<span class="ident">unwrap</span>();
+    .unwrap();
 
-    <span class="ident">Block::new_wrapped</span>(
-        <span class="ident">Block</span> {
-            <span class="ident">header</span>,
-            <span class="ident">operations</span>: <span class="ident">Default::default</span>(),
+    Block::new_wrapped(
+        Block {
+            header,
+            operations: Default::default(),
         },
-        <span class="ident">BlockSerializer::new</span>(),
-        <span class="ident">keypair</span>,
+        BlockSerializer::new(),
+        keypair,
     )
-    .<span class="ident">unwrap</span>()
+    .unwrap()
 }
 
-<span class="doccomment">/// send a block and assert it has been propagate (or not)</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_and_propagate_block</span>(
-    <span class="ident">network_controller</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MockNetworkController</span>,
-    <span class="ident">block</span>: <span class="ident">WrappedBlock</span>,
-    <span class="ident">valid</span>: <span class="ident">bool</span>,
-    <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>,
-    <span class="ident">protocol_event_receiver</span>: <span class="kw-2">&amp;mut</span> <span class="ident">ProtocolEventReceiver</span>,
+<span class="doccomment">/// send a block and assert it has been propagate (or not)
+</span><span class="kw">pub async fn </span>send_and_propagate_block(
+    network_controller: <span class="kw-2">&amp;mut </span>MockNetworkController,
+    block: WrappedBlock,
+    valid: bool,
+    source_node_id: NodeId,
+    protocol_event_receiver: <span class="kw-2">&amp;mut </span>ProtocolEventReceiver,
 ) {
-    <span class="kw">let</span> <span class="ident">expected_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">id</span>;
+    <span class="kw">let </span>expected_hash = block.id;
 
-    <span class="comment">// Send block to protocol.</span>
-    <span class="ident">network_controller</span>.<span class="ident">send_block</span>(<span class="ident">source_node_id</span>, <span class="ident">block</span>).<span class="kw">await</span>;
+    <span class="comment">// Send block to protocol.
+    </span>network_controller.send_block(source_node_id, block).<span class="kw">await</span>;
 
-    <span class="comment">// Check protocol sends block to consensus.</span>
-    <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">wait_protocol_event</span>(<span class="ident">protocol_event_receiver</span>, <span class="number">1000</span>.<span class="ident">into</span>(), <span class="op">|</span><span class="ident">evt</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">evt</span> {
-        <span class="ident">evt</span> @ <span class="ident">ProtocolEvent::ReceivedBlock</span> { .. } =&gt; <span class="prelude-val">Some</span>(<span class="ident">evt</span>),
-        <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
+    <span class="comment">// Check protocol sends block to consensus.
+    </span><span class="kw">let </span>hash = <span class="kw">match </span>wait_protocol_event(protocol_event_receiver, <span class="number">1000</span>.into(), |evt| <span class="kw">match </span>evt {
+        evt @ ProtocolEvent::ReceivedBlock { .. } =&gt; <span class="prelude-val">Some</span>(evt),
+        <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
     })
-    .<span class="kw">await</span>
-    {
-        <span class="prelude-val">Some</span>(<span class="ident">ProtocolEvent::ReceivedBlock</span> { <span class="ident">block</span>, .. }) =&gt; <span class="prelude-val">Some</span>(<span class="ident">block</span>.<span class="ident">id</span>),
-        <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
-        <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected or no protocol event.&quot;</span>),
+    .<span class="kw">await
+    </span>{
+        <span class="prelude-val">Some</span>(ProtocolEvent::ReceivedBlock { block, .. }) =&gt; <span class="prelude-val">Some</span>(block.id),
+        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
+        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected or no protocol event.&quot;</span>),
     };
-    <span class="kw">if</span> <span class="ident">valid</span> {
-        <span class="macro">assert_eq!</span>(<span class="ident">expected_hash</span>, <span class="ident">hash</span>.<span class="ident">unwrap</span>());
-    } <span class="kw">else</span> {
-        <span class="macro">assert!</span>(<span class="ident">hash</span>.<span class="ident">is_none</span>(), <span class="string">&quot;unexpected protocol event&quot;</span>)
+    <span class="kw">if </span>valid {
+        <span class="macro">assert_eq!</span>(expected_hash, hash.unwrap());
+    } <span class="kw">else </span>{
+        <span class="macro">assert!</span>(hash.is_none(), <span class="string">&quot;unexpected protocol event&quot;</span>)
     }
 }
 
-<span class="doccomment">/// Creates an endorsement for use in protocol tests,</span>
-<span class="doccomment">/// without paying attention to consensus related things.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_endorsement</span>() -&gt; <span class="ident">WrappedEndorsement</span> {
-    <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
+<span class="doccomment">/// Creates an endorsement for use in protocol tests,
+/// without paying attention to consensus related things.
+</span><span class="kw">pub fn </span>create_endorsement() -&gt; WrappedEndorsement {
+    <span class="kw">let </span>keypair = KeyPair::generate();
 
-    <span class="kw">let</span> <span class="ident">content</span> <span class="op">=</span> <span class="ident">Endorsement</span> {
-        <span class="ident">slot</span>: <span class="ident">Slot::new</span>(<span class="number">10</span>, <span class="number">1</span>),
-        <span class="ident">index</span>: <span class="number">0</span>,
-        <span class="ident">endorsed_block</span>: <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span>[])),
+    <span class="kw">let </span>content = Endorsement {
+        slot: Slot::new(<span class="number">10</span>, <span class="number">1</span>),
+        index: <span class="number">0</span>,
+        endorsed_block: BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[])),
     };
-    <span class="ident">Endorsement::new_wrapped</span>(<span class="ident">content</span>, <span class="ident">EndorsementSerializer::new</span>(), <span class="kw-2">&amp;</span><span class="ident">keypair</span>).<span class="ident">unwrap</span>()
+    Endorsement::new_wrapped(content, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap()
 }
 
-<span class="doccomment">/// Create an operation, from a specific sender, and with a specific expire period.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_operation_with_expire_period</span>(
-    <span class="ident">keypair</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPair</span>,
-    <span class="ident">expire_period</span>: <span class="ident">u64</span>,
-) -&gt; <span class="ident">WrappedOperation</span> {
-    <span class="kw">let</span> <span class="ident">recv_keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
+<span class="doccomment">/// Create an operation, from a specific sender, and with a specific expire period.
+</span><span class="kw">pub fn </span>create_operation_with_expire_period(
+    keypair: <span class="kw-2">&amp;</span>KeyPair,
+    expire_period: u64,
+) -&gt; WrappedOperation {
+    <span class="kw">let </span>recv_keypair = KeyPair::generate();
 
-    <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="ident">OperationType::Transaction</span> {
-        <span class="ident">recipient_address</span>: <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">recv_keypair</span>.<span class="ident">get_public_key</span>()),
-        <span class="ident">amount</span>: <span class="ident">Amount::default</span>(),
+    <span class="kw">let </span>op = OperationType::Transaction {
+        recipient_address: Address::from_public_key(<span class="kw-2">&amp;</span>recv_keypair.get_public_key()),
+        amount: Amount::default(),
     };
-    <span class="kw">let</span> <span class="ident">content</span> <span class="op">=</span> <span class="ident">Operation</span> {
-        <span class="ident">fee</span>: <span class="ident">Amount::default</span>(),
-        <span class="ident">op</span>,
-        <span class="ident">expire_period</span>,
+    <span class="kw">let </span>content = Operation {
+        fee: Amount::default(),
+        op,
+        expire_period,
     };
-    <span class="ident">Operation::new_wrapped</span>(<span class="ident">content</span>, <span class="ident">OperationSerializer::new</span>(), <span class="ident">keypair</span>).<span class="ident">unwrap</span>()
+    Operation::new_wrapped(content, OperationSerializer::new(), keypair).unwrap()
 }
 
-<span class="macro">lazy_static::lazy_static!</span> {
-    <span class="doccomment">/// protocol settings</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PROTOCOL_SETTINGS</span>: <span class="ident">ProtocolSettings</span> <span class="op">=</span> <span class="ident">create_protocol_settings</span>();
+<span class="macro">lazy_static::lazy_static! </span>{
+    <span class="doccomment">/// protocol settings
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>PROTOCOL_SETTINGS: ProtocolSettings = create_protocol_settings();
 }
 
-<span class="doccomment">/// create a `ProtocolConfig` with typical values</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_protocol_settings</span>() -&gt; <span class="ident">ProtocolSettings</span> {
-    <span class="comment">// Init the serialization context with a default,</span>
-    <span class="comment">// can be overwritten with a more specific one in the test.</span>
-    <span class="ident">massa_models::init_serialization_context</span>(<span class="ident">massa_models::SerializationContext</span> {
-        <span class="ident">max_operations_per_block</span>: <span class="number">1024</span>,
-        <span class="ident">thread_count</span>: <span class="number">2</span>,
-        <span class="ident">max_advertise_length</span>: <span class="number">128</span>,
-        <span class="ident">max_message_size</span>: <span class="number">3</span> <span class="op">*</span> <span class="number">1024</span> <span class="op">*</span> <span class="number">1024</span>,
-        <span class="ident">max_block_size</span>: <span class="number">3</span> <span class="op">*</span> <span class="number">1024</span> <span class="op">*</span> <span class="number">1024</span>,
-        <span class="ident">max_bootstrap_blocks</span>: <span class="number">100</span>,
-        <span class="ident">max_bootstrap_cliques</span>: <span class="number">100</span>,
-        <span class="ident">max_bootstrap_deps</span>: <span class="number">100</span>,
-        <span class="ident">max_bootstrap_children</span>: <span class="number">100</span>,
-        <span class="ident">max_ask_blocks_per_message</span>: <span class="number">10</span>,
-        <span class="ident">max_operations_per_message</span>: <span class="number">1024</span>,
-        <span class="ident">max_endorsements_per_message</span>: <span class="number">1024</span>,
-        <span class="ident">max_bootstrap_message_size</span>: <span class="number">100000000</span>,
-        <span class="ident">max_bootstrap_pos_entries</span>: <span class="number">1000</span>,
-        <span class="ident">max_bootstrap_pos_cycles</span>: <span class="number">5</span>,
-        <span class="ident">endorsement_count</span>: <span class="number">8</span>,
+<span class="doccomment">/// create a `ProtocolConfig` with typical values
+</span><span class="kw">pub fn </span>create_protocol_settings() -&gt; ProtocolSettings {
+    <span class="comment">// Init the serialization context with a default,
+    // can be overwritten with a more specific one in the test.
+    </span>massa_models::init_serialization_context(massa_models::SerializationContext {
+        max_operations_per_block: <span class="number">1024</span>,
+        thread_count: <span class="number">2</span>,
+        max_advertise_length: <span class="number">128</span>,
+        max_message_size: <span class="number">3 </span>* <span class="number">1024 </span>* <span class="number">1024</span>,
+        max_block_size: <span class="number">3 </span>* <span class="number">1024 </span>* <span class="number">1024</span>,
+        max_bootstrap_blocks: <span class="number">100</span>,
+        max_bootstrap_cliques: <span class="number">100</span>,
+        max_bootstrap_deps: <span class="number">100</span>,
+        max_bootstrap_children: <span class="number">100</span>,
+        max_ask_blocks_per_message: <span class="number">10</span>,
+        max_operations_per_message: <span class="number">1024</span>,
+        max_endorsements_per_message: <span class="number">1024</span>,
+        max_bootstrap_message_size: <span class="number">100000000</span>,
+        max_bootstrap_pos_entries: <span class="number">1000</span>,
+        max_bootstrap_pos_cycles: <span class="number">5</span>,
+        endorsement_count: <span class="number">8</span>,
     });
 
-    <span class="ident">ProtocolSettings</span> {
-        <span class="ident">ask_block_timeout</span>: <span class="number">500</span>.<span class="ident">into</span>(),
-        <span class="ident">max_known_blocks_size</span>: <span class="number">100</span>,
-        <span class="ident">max_node_known_blocks_size</span>: <span class="number">100</span>,
-        <span class="ident">max_node_wanted_blocks_size</span>: <span class="number">100</span>,
-        <span class="ident">max_simultaneous_ask_blocks_per_node</span>: <span class="number">10</span>,
-        <span class="ident">max_send_wait</span>: <span class="ident">MassaTime::from</span>(<span class="number">100</span>),
-        <span class="ident">max_known_ops_size</span>: <span class="number">1000</span>,
-        <span class="ident">max_node_known_ops_size</span>: <span class="number">1000</span>,
-        <span class="ident">max_known_endorsements_size</span>: <span class="number">1000</span>,
-        <span class="ident">max_node_known_endorsements_size</span>: <span class="number">1000</span>,
-        <span class="ident">operation_batch_buffer_capacity</span>: <span class="number">1000</span>,
-        <span class="ident">operation_batch_proc_period</span>: <span class="number">200</span>.<span class="ident">into</span>(),
-        <span class="ident">asked_operations_pruning_period</span>: <span class="number">500</span>.<span class="ident">into</span>(),
-        <span class="ident">max_operations_per_message</span>: <span class="number">1024</span>,
+    ProtocolSettings {
+        ask_block_timeout: <span class="number">500</span>.into(),
+        max_known_blocks_size: <span class="number">100</span>,
+        max_node_known_blocks_size: <span class="number">100</span>,
+        max_node_wanted_blocks_size: <span class="number">100</span>,
+        max_simultaneous_ask_blocks_per_node: <span class="number">10</span>,
+        max_send_wait: MassaTime::from(<span class="number">100</span>),
+        max_known_ops_size: <span class="number">1000</span>,
+        max_node_known_ops_size: <span class="number">1000</span>,
+        max_known_endorsements_size: <span class="number">1000</span>,
+        max_node_known_endorsements_size: <span class="number">1000</span>,
+        operation_batch_buffer_capacity: <span class="number">1000</span>,
+        operation_batch_proc_period: <span class="number">200</span>.into(),
+        asked_operations_pruning_period: <span class="number">500</span>.into(),
+        max_operations_per_message: <span class="number">1024</span>,
     }
 }
 
-<span class="doccomment">/// wait protocol event</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">wait_protocol_event</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(
-    <span class="ident">protocol_event_receiver</span>: <span class="kw-2">&amp;mut</span> <span class="ident">ProtocolEventReceiver</span>,
-    <span class="ident">timeout</span>: <span class="ident">MassaTime</span>,
-    <span class="ident">filter_map</span>: <span class="ident">F</span>,
-) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ProtocolEvent</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">Fn</span>(<span class="ident">ProtocolEvent</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ProtocolEvent</span><span class="op">&gt;</span>,
+<span class="doccomment">/// wait protocol event
+</span><span class="kw">pub async fn </span>wait_protocol_event&lt;F&gt;(
+    protocol_event_receiver: <span class="kw-2">&amp;mut </span>ProtocolEventReceiver,
+    timeout: MassaTime,
+    filter_map: F,
+) -&gt; <span class="prelude-ty">Option</span>&lt;ProtocolEvent&gt;
+<span class="kw">where
+    </span>F: Fn(ProtocolEvent) -&gt; <span class="prelude-ty">Option</span>&lt;ProtocolEvent&gt;,
 {
-    <span class="kw">let</span> <span class="ident">timer</span> <span class="op">=</span> <span class="ident">sleep</span>(<span class="ident">timeout</span>.<span class="ident">into</span>());
-    <span class="macro">tokio::pin!</span>(<span class="ident">timer</span>);
-    <span class="kw">loop</span> {
-        <span class="macro">tokio::select!</span> {
-            <span class="ident">evt_opt</span> <span class="op">=</span> <span class="ident">protocol_event_receiver</span>.<span class="ident">wait_event</span>() =&gt; <span class="kw">match</span> <span class="ident">evt_opt</span> {
-                <span class="prelude-val">Ok</span>(<span class="ident">orig_evt</span>) =&gt; <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">res_evt</span>) <span class="op">=</span> <span class="ident">filter_map</span>(<span class="ident">orig_evt</span>) { <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">res_evt</span>); },
-                <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="prelude-val">None</span>
-            },
-            <span class="kw">_</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">timer</span> =&gt; <span class="kw">return</span> <span class="prelude-val">None</span>
-        }
+    <span class="kw">let </span>timer = sleep(timeout.into());
+    <span class="macro">tokio::pin!</span>(timer);
+    <span class="kw">loop </span>{
+        <span class="macro">tokio::select! </span>{
+            evt_opt = protocol_event_receiver.wait_event() =&gt; <span class="kw">match </span>evt_opt {
+                <span class="prelude-val">Ok</span>(orig_evt) =&gt; <span class="kw">if let </span><span class="prelude-val">Some</span>(res_evt) = filter_map(orig_evt) { <span class="kw">return </span><span class="prelude-val">Some</span>(res_evt); },
+                <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">None
+            </span>},
+            <span class="kw">_ </span>= <span class="kw-2">&amp;mut </span>timer =&gt; <span class="kw">return </span><span class="prelude-val">None
+        </span>}
     }
 }
 
-<span class="doccomment">/// wait protocol pool event</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">wait_protocol_pool_event</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(
-    <span class="ident">protocol_event_receiver</span>: <span class="kw-2">&amp;mut</span> <span class="ident">ProtocolPoolEventReceiver</span>,
-    <span class="ident">timeout</span>: <span class="ident">MassaTime</span>,
-    <span class="ident">filter_map</span>: <span class="ident">F</span>,
-) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEvent</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">Fn</span>(<span class="ident">ProtocolPoolEvent</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEvent</span><span class="op">&gt;</span>,
+<span class="doccomment">/// wait protocol pool event
+</span><span class="kw">pub async fn </span>wait_protocol_pool_event&lt;F&gt;(
+    protocol_event_receiver: <span class="kw-2">&amp;mut </span>ProtocolPoolEventReceiver,
+    timeout: MassaTime,
+    filter_map: F,
+) -&gt; <span class="prelude-ty">Option</span>&lt;ProtocolPoolEvent&gt;
+<span class="kw">where
+    </span>F: Fn(ProtocolPoolEvent) -&gt; <span class="prelude-ty">Option</span>&lt;ProtocolPoolEvent&gt;,
 {
-    <span class="kw">let</span> <span class="ident">timer</span> <span class="op">=</span> <span class="ident">sleep</span>(<span class="ident">timeout</span>.<span class="ident">into</span>());
-    <span class="macro">tokio::pin!</span>(<span class="ident">timer</span>);
-    <span class="kw">loop</span> {
-        <span class="macro">tokio::select!</span> {
-            <span class="ident">evt_opt</span> <span class="op">=</span> <span class="ident">protocol_event_receiver</span>.<span class="ident">wait_event</span>() =&gt; <span class="kw">match</span> <span class="ident">evt_opt</span> {
-                <span class="prelude-val">Ok</span>(<span class="ident">orig_evt</span>) =&gt; <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">res_evt</span>) <span class="op">=</span> <span class="ident">filter_map</span>(<span class="ident">orig_evt</span>) { <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">res_evt</span>); },
-                <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="prelude-val">None</span>
-            },
-            <span class="kw">_</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">timer</span> =&gt; <span class="kw">return</span> <span class="prelude-val">None</span>
-        }
+    <span class="kw">let </span>timer = sleep(timeout.into());
+    <span class="macro">tokio::pin!</span>(timer);
+    <span class="kw">loop </span>{
+        <span class="macro">tokio::select! </span>{
+            evt_opt = protocol_event_receiver.wait_event() =&gt; <span class="kw">match </span>evt_opt {
+                <span class="prelude-val">Ok</span>(orig_evt) =&gt; <span class="kw">if let </span><span class="prelude-val">Some</span>(res_evt) = filter_map(orig_evt) { <span class="kw">return </span><span class="prelude-val">Some</span>(res_evt); },
+                <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">None
+            </span>},
+            <span class="kw">_ </span>= <span class="kw-2">&amp;mut </span>timer =&gt; <span class="kw">return </span><span class="prelude-val">None
+        </span>}
     }
 }
 
-<span class="doccomment">/// assert block id has been asked to node</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">assert_hash_asked_to_node</span>(
-    <span class="ident">hash_1</span>: <span class="ident">BlockId</span>,
-    <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
-    <span class="ident">network_controller</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MockNetworkController</span>,
+<span class="doccomment">/// assert block id has been asked to node
+</span><span class="kw">pub async fn </span>assert_hash_asked_to_node(
+    hash_1: BlockId,
+    node_id: NodeId,
+    network_controller: <span class="kw-2">&amp;mut </span>MockNetworkController,
 ) {
-    <span class="kw">let</span> <span class="ident">ask_for_block_cmd_filter</span> <span class="op">=</span> <span class="op">|</span><span class="ident">cmd</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">cmd</span> {
-        <span class="ident">NetworkCommand::AskForBlocks</span> { <span class="ident">list</span> } =&gt; <span class="prelude-val">Some</span>(<span class="ident">list</span>),
-        <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
+    <span class="kw">let </span>ask_for_block_cmd_filter = |cmd| <span class="kw">match </span>cmd {
+        NetworkCommand::AskForBlocks { list } =&gt; <span class="prelude-val">Some</span>(list),
+        <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
     };
-    <span class="kw">let</span> <span class="ident">list</span> <span class="op">=</span> <span class="ident">network_controller</span>
-        .<span class="ident">wait_command</span>(<span class="number">1000</span>.<span class="ident">into</span>(), <span class="ident">ask_for_block_cmd_filter</span>)
-        .<span class="kw">await</span>
-        .<span class="ident">expect</span>(<span class="string">&quot;Hash not asked for before timer.&quot;</span>);
+    <span class="kw">let </span>list = network_controller
+        .wait_command(<span class="number">1000</span>.into(), ask_for_block_cmd_filter)
+        .<span class="kw">await
+        </span>.expect(<span class="string">&quot;Hash not asked for before timer.&quot;</span>);
 
-    <span class="macro">assert!</span>(<span class="ident">list</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">node_id</span>).<span class="ident">unwrap</span>().<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">hash_1</span>));
+    <span class="macro">assert!</span>(list.get(<span class="kw-2">&amp;</span>node_id).unwrap().contains(<span class="kw-2">&amp;</span>hash_1));
 }
 
-<span class="doccomment">/// retrieve what blocks where asked to which nodes</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">asked_list</span>(
-    <span class="ident">network_controller</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MockNetworkController</span>,
-) -&gt; <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">ask_for_block_cmd_filter</span> <span class="op">=</span> <span class="op">|</span><span class="ident">cmd</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">cmd</span> {
-        <span class="ident">NetworkCommand::AskForBlocks</span> { <span class="ident">list</span> } =&gt; <span class="prelude-val">Some</span>(<span class="ident">list</span>),
-        <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
+<span class="doccomment">/// retrieve what blocks where asked to which nodes
+</span><span class="kw">pub async fn </span>asked_list(
+    network_controller: <span class="kw-2">&amp;mut </span>MockNetworkController,
+) -&gt; HashMap&lt;NodeId, Vec&lt;BlockId&gt;&gt; {
+    <span class="kw">let </span>ask_for_block_cmd_filter = |cmd| <span class="kw">match </span>cmd {
+        NetworkCommand::AskForBlocks { list } =&gt; <span class="prelude-val">Some</span>(list),
+        <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
     };
-    <span class="ident">network_controller</span>
-        .<span class="ident">wait_command</span>(<span class="number">1000</span>.<span class="ident">into</span>(), <span class="ident">ask_for_block_cmd_filter</span>)
-        .<span class="kw">await</span>
-        .<span class="ident">expect</span>(<span class="string">&quot;Hash not asked for before timer.&quot;</span>)
+    network_controller
+        .wait_command(<span class="number">1000</span>.into(), ask_for_block_cmd_filter)
+        .<span class="kw">await
+        </span>.expect(<span class="string">&quot;Hash not asked for before timer.&quot;</span>)
 }
 
-<span class="doccomment">/// assert a list of node(s) has been banned</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">assert_banned_nodes</span>(
-    <span class="kw-2">mut</span> <span class="ident">nodes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>,
-    <span class="ident">network_controller</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MockNetworkController</span>,
+<span class="doccomment">/// assert a list of node(s) has been banned
+</span><span class="kw">pub async fn </span>assert_banned_nodes(
+    <span class="kw-2">mut </span>nodes: Vec&lt;NodeId&gt;,
+    network_controller: <span class="kw-2">&amp;mut </span>MockNetworkController,
 ) {
-    <span class="kw">let</span> <span class="ident">timer</span> <span class="op">=</span> <span class="ident">sleep</span>(<span class="ident">MassaTime::from</span>(<span class="number">5000</span>).<span class="ident">into</span>());
-    <span class="macro">tokio::pin!</span>(<span class="ident">timer</span>);
-    <span class="kw">loop</span> {
-        <span class="macro">tokio::select!</span> {
-            <span class="ident">msg</span> <span class="op">=</span> <span class="ident">network_controller</span>
-                   .<span class="ident">wait_command</span>(<span class="number">2000</span>.<span class="ident">into</span>(), <span class="op">|</span><span class="ident">cmd</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">cmd</span> {
-                       <span class="ident">NetworkCommand::NodeBanByIds</span>(<span class="ident">node</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">node</span>),
-                       <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
+    <span class="kw">let </span>timer = sleep(MassaTime::from(<span class="number">5000</span>).into());
+    <span class="macro">tokio::pin!</span>(timer);
+    <span class="kw">loop </span>{
+        <span class="macro">tokio::select! </span>{
+            msg = network_controller
+                   .wait_command(<span class="number">2000</span>.into(), |cmd| <span class="kw">match </span>cmd {
+                       NetworkCommand::NodeBanByIds(node) =&gt; <span class="prelude-val">Some</span>(node),
+                       <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
                    })
              =&gt;  {
-                 <span class="kw">let</span> <span class="ident">banned_nodes</span> <span class="op">=</span> <span class="ident">msg</span>.<span class="ident">expect</span>(<span class="string">&quot;Nodes not banned before timeout.&quot;</span>);
-                 <span class="ident">nodes</span>.<span class="ident">drain_filter</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="ident">banned_nodes</span>.<span class="ident">contains</span>(<span class="ident">id</span>));
-                 <span class="kw">if</span> <span class="ident">nodes</span>.<span class="ident">is_empty</span>() {
+                 <span class="kw">let </span>banned_nodes = msg.expect(<span class="string">&quot;Nodes not banned before timeout.&quot;</span>);
+                 nodes.drain_filter(|id| banned_nodes.contains(id));
+                 <span class="kw">if </span>nodes.is_empty() {
                      <span class="kw">break</span>;
                  }
             },
-            <span class="kw">_</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">timer</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Nodes not banned before timeout.&quot;</span>)
+            <span class="kw">_ </span>= <span class="kw-2">&amp;mut </span>timer =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Nodes not banned before timeout.&quot;</span>)
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

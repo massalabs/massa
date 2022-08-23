@@ -60,67 +60,67 @@
 <span id="60">60</span>
 <span id="61">61</span>
 <span id="62">62</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
-<span class="kw">use</span> <span class="ident">massa_consensus_exports::error::ConsensusError</span>;
-<span class="kw">use</span> <span class="ident">massa_execution_exports::ExecutionError</span>;
-<span class="kw">use</span> <span class="ident">massa_hash::MassaHashError</span>;
-<span class="kw">use</span> <span class="ident">massa_models::ModelsError</span>;
-<span class="kw">use</span> <span class="ident">massa_network_exports::NetworkError</span>;
-<span class="kw">use</span> <span class="ident">massa_pool::PoolError</span>;
-<span class="kw">use</span> <span class="ident">massa_time::TimeError</span>;
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+</span><span class="kw">use </span>displaydoc::Display;
+<span class="kw">use </span>massa_consensus_exports::error::ConsensusError;
+<span class="kw">use </span>massa_execution_exports::ExecutionError;
+<span class="kw">use </span>massa_hash::MassaHashError;
+<span class="kw">use </span>massa_models::ModelsError;
+<span class="kw">use </span>massa_network_exports::NetworkError;
+<span class="kw">use </span>massa_pool::PoolError;
+<span class="kw">use </span>massa_time::TimeError;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Display</span>, <span class="ident">Error</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ApiError</span> {
-    <span class="doccomment">/// pool error: {0}</span>
-    <span class="ident">PoolError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">PoolError</span>),
-    <span class="doccomment">/// too many arguments error: {0}</span>
-    <span class="ident">TooManyArguments</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// send channel error: {0}</span>
-    <span class="ident">SendChannelError</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// receive channel error: {0}</span>
-    <span class="ident">ReceiveChannelError</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// `massa_hash` error: {0}</span>
-    <span class="ident">MassaHashError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MassaHashError</span>),
-    <span class="doccomment">/// consensus error: {0}</span>
-    <span class="ident">ConsensusError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">ConsensusError</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// execution error: {0}</span>
-    <span class="ident">ExecutionError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ExecutionError</span>),
-    <span class="doccomment">/// network error: {0}</span>
-    <span class="ident">NetworkError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">NetworkError</span>),
-    <span class="doccomment">/// models error: {0}</span>
-    <span class="ident">ModelsError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ModelsError</span>),
-    <span class="doccomment">/// time error: {0}</span>
-    <span class="ident">TimeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TimeError</span>),
-    <span class="doccomment">/// not found</span>
-    <span class="ident">NotFound</span>,
-    <span class="doccomment">/// inconsistency: {0}</span>
-    <span class="ident">InconsistencyError</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// missing command sender {0}</span>
-    <span class="ident">MissingCommandSender</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// missing configuration {0}</span>
-    <span class="ident">MissingConfig</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// the wrong API (either Public or Private) was called</span>
-    <span class="ident">WrongAPI</span>,
+<span class="attribute">#[non_exhaustive]
+#[derive(Display, Error, Debug)]
+</span><span class="kw">pub enum </span>ApiError {
+    <span class="doccomment">/// pool error: {0}
+    </span>PoolError(<span class="attribute">#[from] </span>PoolError),
+    <span class="doccomment">/// too many arguments error: {0}
+    </span>TooManyArguments(String),
+    <span class="doccomment">/// send channel error: {0}
+    </span>SendChannelError(String),
+    <span class="doccomment">/// receive channel error: {0}
+    </span>ReceiveChannelError(String),
+    <span class="doccomment">/// `massa_hash` error: {0}
+    </span>MassaHashError(<span class="attribute">#[from] </span>MassaHashError),
+    <span class="doccomment">/// consensus error: {0}
+    </span>ConsensusError(<span class="attribute">#[from] </span>Box&lt;ConsensusError&gt;),
+    <span class="doccomment">/// execution error: {0}
+    </span>ExecutionError(<span class="attribute">#[from] </span>ExecutionError),
+    <span class="doccomment">/// network error: {0}
+    </span>NetworkError(<span class="attribute">#[from] </span>NetworkError),
+    <span class="doccomment">/// models error: {0}
+    </span>ModelsError(<span class="attribute">#[from] </span>ModelsError),
+    <span class="doccomment">/// time error: {0}
+    </span>TimeError(<span class="attribute">#[from] </span>TimeError),
+    <span class="doccomment">/// not found
+    </span>NotFound,
+    <span class="doccomment">/// inconsistency: {0}
+    </span>InconsistencyError(String),
+    <span class="doccomment">/// missing command sender {0}
+    </span>MissingCommandSender(String),
+    <span class="doccomment">/// missing configuration {0}
+    </span>MissingConfig(String),
+    <span class="doccomment">/// the wrong API (either Public or Private) was called
+    </span>WrongAPI,
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ApiError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">jsonrpc_core::Error</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">err</span>: <span class="ident">ApiError</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">jsonrpc_core::Error</span> {
-            <span class="ident">code</span>: <span class="ident">jsonrpc_core::ErrorCode::ServerError</span>(<span class="number">500</span>),
-            <span class="ident">message</span>: <span class="ident">err</span>.<span class="ident">to_string</span>(),
-            <span class="ident">data</span>: <span class="prelude-val">None</span>,
+<span class="kw">impl </span>From&lt;ApiError&gt; <span class="kw">for </span>jsonrpc_core::Error {
+    <span class="kw">fn </span>from(err: ApiError) -&gt; <span class="self">Self </span>{
+        jsonrpc_core::Error {
+            code: jsonrpc_core::ErrorCode::ServerError(<span class="number">500</span>),
+            message: err.to_string(),
+            data: <span class="prelude-val">None</span>,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">std::convert::From</span><span class="op">&lt;</span><span class="ident">ConsensusError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ApiError</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">err</span>: <span class="ident">ConsensusError</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">ApiError::ConsensusError</span>(<span class="ident">Box::new</span>(<span class="ident">err</span>))
+<span class="kw">impl </span>std::convert::From&lt;ConsensusError&gt; <span class="kw">for </span>ApiError {
+    <span class="kw">fn </span>from(err: ConsensusError) -&gt; <span class="self">Self </span>{
+        ApiError::ConsensusError(Box::new(err))
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

@@ -17,24 +17,24 @@
 <span id="17">17</span>
 <span id="18">18</span>
 <span id="19">19</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! This file defines a configuration structure containing all settings for final state management</span>
+//! This file defines a configuration structure containing all settings for final state management
 
-<span class="kw">use</span> <span class="ident">massa_async_pool::AsyncPoolConfig</span>;
-<span class="kw">use</span> <span class="ident">massa_ledger_exports::LedgerConfig</span>;
+</span><span class="kw">use </span>massa_async_pool::AsyncPoolConfig;
+<span class="kw">use </span>massa_ledger_exports::LedgerConfig;
 
-<span class="doccomment">/// Ledger configuration</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">FinalStateConfig</span> {
-    <span class="doccomment">/// ledger configuration</span>
-    <span class="kw">pub</span> <span class="ident">ledger_config</span>: <span class="ident">LedgerConfig</span>,
-    <span class="doccomment">/// asynchronous pool configuration</span>
-    <span class="kw">pub</span> <span class="ident">async_pool_config</span>: <span class="ident">AsyncPoolConfig</span>,
-    <span class="doccomment">/// final changes history length</span>
-    <span class="kw">pub</span> <span class="ident">final_history_length</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// thread count</span>
-    <span class="kw">pub</span> <span class="ident">thread_count</span>: <span class="ident">u8</span>,
+<span class="doccomment">/// Ledger configuration
+</span><span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>FinalStateConfig {
+    <span class="doccomment">/// ledger configuration
+    </span><span class="kw">pub </span>ledger_config: LedgerConfig,
+    <span class="doccomment">/// asynchronous pool configuration
+    </span><span class="kw">pub </span>async_pool_config: AsyncPoolConfig,
+    <span class="doccomment">/// final changes history length
+    </span><span class="kw">pub </span>final_history_length: usize,
+    <span class="doccomment">/// thread count
+    </span><span class="kw">pub </span>thread_count: u8,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

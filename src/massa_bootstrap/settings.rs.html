@@ -40,47 +40,47 @@
 <span id="40">40</span>
 <span id="41">41</span>
 <span id="42">42</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident">massa_signature::PublicKey</span>;
-<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
-<span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
-<span class="kw">use</span> <span class="ident">std::net::SocketAddr</span>;
+</span><span class="kw">use </span>massa_signature::PublicKey;
+<span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>serde::Deserialize;
+<span class="kw">use </span>std::net::SocketAddr;
 
-<span class="doccomment">/// Bootstrap settings.</span>
-<span class="doccomment">/// Both bootstrapping at start-up and bootstrap server settings</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BootstrapSettings</span> {
-    <span class="doccomment">/// Ip address of our bootstrap nodes and their public key.</span>
-    <span class="kw">pub</span> <span class="ident">bootstrap_list</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">SocketAddr</span>, <span class="ident">PublicKey</span>)<span class="op">&gt;</span>,
-    <span class="doccomment">/// Port to listen if we choose to allow other nodes to use us as bootstrap node.</span>
-    <span class="kw">pub</span> <span class="ident">bind</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// connection timeout</span>
-    <span class="kw">pub</span> <span class="ident">connect_timeout</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// readout timeout</span>
-    <span class="kw">pub</span> <span class="ident">read_timeout</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// write timeout</span>
-    <span class="kw">pub</span> <span class="ident">write_timeout</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// readout error timeout</span>
-    <span class="kw">pub</span> <span class="ident">read_error_timeout</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// write error timeout</span>
-    <span class="kw">pub</span> <span class="ident">write_error_timeout</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// Time we wait before retrying a bootstrap</span>
-    <span class="kw">pub</span> <span class="ident">retry_delay</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// Max ping delay.</span>
-    <span class="kw">pub</span> <span class="ident">max_ping</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// Enable clock synchronization</span>
-    <span class="kw">pub</span> <span class="ident">enable_clock_synchronization</span>: <span class="ident">bool</span>,
-    <span class="doccomment">/// Cache duration</span>
-    <span class="kw">pub</span> <span class="ident">cache_duration</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// Max simultaneous bootstraps</span>
-    <span class="kw">pub</span> <span class="ident">max_simultaneous_bootstraps</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// Minimum interval between two bootstrap attempts from a given IP</span>
-    <span class="kw">pub</span> <span class="ident">per_ip_min_interval</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// Max size of the IP list</span>
-    <span class="kw">pub</span> <span class="ident">ip_list_max_size</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Read-Write limitation for a connection in bytes per seconds</span>
-    <span class="kw">pub</span> <span class="ident">max_bytes_read_write</span>: <span class="ident">f64</span>,
+<span class="doccomment">/// Bootstrap settings.
+/// Both bootstrapping at start-up and bootstrap server settings
+</span><span class="attribute">#[derive(Debug, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>BootstrapSettings {
+    <span class="doccomment">/// Ip address of our bootstrap nodes and their public key.
+    </span><span class="kw">pub </span>bootstrap_list: Vec&lt;(SocketAddr, PublicKey)&gt;,
+    <span class="doccomment">/// Port to listen if we choose to allow other nodes to use us as bootstrap node.
+    </span><span class="kw">pub </span>bind: <span class="prelude-ty">Option</span>&lt;SocketAddr&gt;,
+    <span class="doccomment">/// connection timeout
+    </span><span class="kw">pub </span>connect_timeout: MassaTime,
+    <span class="doccomment">/// readout timeout
+    </span><span class="kw">pub </span>read_timeout: MassaTime,
+    <span class="doccomment">/// write timeout
+    </span><span class="kw">pub </span>write_timeout: MassaTime,
+    <span class="doccomment">/// readout error timeout
+    </span><span class="kw">pub </span>read_error_timeout: MassaTime,
+    <span class="doccomment">/// write error timeout
+    </span><span class="kw">pub </span>write_error_timeout: MassaTime,
+    <span class="doccomment">/// Time we wait before retrying a bootstrap
+    </span><span class="kw">pub </span>retry_delay: MassaTime,
+    <span class="doccomment">/// Max ping delay.
+    </span><span class="kw">pub </span>max_ping: MassaTime,
+    <span class="doccomment">/// Enable clock synchronization
+    </span><span class="kw">pub </span>enable_clock_synchronization: bool,
+    <span class="doccomment">/// Cache duration
+    </span><span class="kw">pub </span>cache_duration: MassaTime,
+    <span class="doccomment">/// Max simultaneous bootstraps
+    </span><span class="kw">pub </span>max_simultaneous_bootstraps: u32,
+    <span class="doccomment">/// Minimum interval between two bootstrap attempts from a given IP
+    </span><span class="kw">pub </span>per_ip_min_interval: MassaTime,
+    <span class="doccomment">/// Max size of the IP list
+    </span><span class="kw">pub </span>ip_list_max_size: usize,
+    <span class="doccomment">/// Read-Write limitation for a connection in bytes per seconds
+    </span><span class="kw">pub </span>max_bytes_read_write: f64,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

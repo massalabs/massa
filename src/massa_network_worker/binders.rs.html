@@ -172,179 +172,179 @@
 <span id="172">172</span>
 <span id="173">173</span>
 <span id="174">174</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! `Flexbuffer` layer between raw data and our objects.</span>
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::messages::Message</span>;
-<span class="kw">use</span> <span class="ident">async_speed_limit</span>::{<span class="ident">clock::StandardClock</span>, <span class="ident">Limiter</span>, <span class="ident">Resource</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">with_serialization_context</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeMinBEInt</span>, <span class="ident">SerializeMinBEInt</span>,
+</span><span class="doccomment">//! `Flexbuffer` layer between raw data and our objects.
+</span><span class="kw">use </span><span class="kw">super</span>::messages::Message;
+<span class="kw">use </span>async_speed_limit::{clock::StandardClock, Limiter, Resource};
+<span class="kw">use </span>massa_models::{
+    with_serialization_context, DeserializeCompact, DeserializeMinBEInt, SerializeMinBEInt,
 };
-<span class="kw">use</span> <span class="ident">massa_network_exports</span>::{<span class="ident">NetworkError</span>, <span class="ident">ReadHalf</span>, <span class="ident">WriteHalf</span>};
-<span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
-<span class="kw">use</span> <span class="ident">tokio::io</span>::{<span class="ident">AsyncReadExt</span>, <span class="ident">AsyncWriteExt</span>};
+<span class="kw">use </span>massa_network_exports::{NetworkError, ReadHalf, WriteHalf};
+<span class="kw">use </span>std::convert::TryInto;
+<span class="kw">use </span>tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-<span class="doccomment">/// Used to serialize and send data.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WriteBinder</span> {
-    <span class="ident">write_half</span>: <span class="ident">Resource</span><span class="op">&lt;</span><span class="ident">WriteHalf</span>, <span class="ident">StandardClock</span><span class="op">&gt;</span>,
-    <span class="ident">message_index</span>: <span class="ident">u64</span>,
+<span class="doccomment">/// Used to serialize and send data.
+</span><span class="kw">pub struct </span>WriteBinder {
+    write_half: Resource&lt;WriteHalf, StandardClock&gt;,
+    message_index: u64,
 }
 
-<span class="kw">impl</span> <span class="ident">WriteBinder</span> {
-    <span class="doccomment">/// Creates a new `WriteBinder` with a bandwidth `limit` in bytes per second.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Argument</span>
-    <span class="doccomment">/// * `write_half`: writer half.</span>
-    <span class="doccomment">/// * `limit`: limit max bytes per second write</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">write_half</span>: <span class="ident">WriteHalf</span>, <span class="ident">limit</span>: <span class="ident">f64</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">WriteBinder</span> {
-            <span class="ident">write_half</span>: <span class="op">&lt;</span><span class="ident">Limiter</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">limit</span>).<span class="ident">limit</span>(<span class="ident">write_half</span>),
-            <span class="ident">message_index</span>: <span class="number">0</span>,
+<span class="kw">impl </span>WriteBinder {
+    <span class="doccomment">/// Creates a new `WriteBinder` with a bandwidth `limit` in bytes per second.
+    ///
+    /// # Argument
+    /// * `write_half`: writer half.
+    /// * `limit`: limit max bytes per second write
+    </span><span class="kw">pub fn </span>new(write_half: WriteHalf, limit: f64) -&gt; <span class="self">Self </span>{
+        WriteBinder {
+            write_half: &lt;Limiter&gt;::new(limit).limit(write_half),
+            message_index: <span class="number">0</span>,
         }
     }
 
-    <span class="doccomment">/// Sends a serialized message.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Argument</span>
-    <span class="doccomment">/// * `buf`: data to transmit.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="comment">//        massa_trace!(&quot;binder.send&quot;, { &quot;msg&quot;: msg });</span>
-        <span class="kw">let</span> <span class="ident">msg_size</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">buf</span>
-            .<span class="ident">len</span>()
-            .<span class="ident">try_into</span>()
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::GeneralProtocolError</span>(<span class="string">&quot;message too long&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
+    <span class="doccomment">/// Sends a serialized message.
+    ///
+    /// # Argument
+    /// * `buf`: data to transmit.
+    </span><span class="kw">pub async fn </span>send(<span class="kw-2">&amp;mut </span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;u64, NetworkError&gt; {
+        <span class="comment">//        massa_trace!(&quot;binder.send&quot;, { &quot;msg&quot;: msg });
+        </span><span class="kw">let </span>msg_size: u32 = buf
+            .len()
+            .try_into()
+            .map_err(|<span class="kw">_</span>| NetworkError::GeneralProtocolError(<span class="string">&quot;message too long&quot;</span>.into()))<span class="question-mark">?</span>;
 
-        <span class="comment">// send length</span>
-        <span class="kw">let</span> <span class="ident">max_message_size</span> <span class="op">=</span> <span class="ident">with_serialization_context</span>(<span class="op">|</span><span class="ident">context</span><span class="op">|</span> <span class="ident">context</span>.<span class="ident">max_message_size</span>);
+        <span class="comment">// send length
+        </span><span class="kw">let </span>max_message_size = with_serialization_context(|context| context.max_message_size);
 
-        <span class="self">self</span>.<span class="ident">write_half</span>
-            .<span class="ident">write_all</span>(<span class="kw-2">&amp;</span><span class="ident">msg_size</span>.<span class="ident">to_be_bytes_min</span>(<span class="ident">max_message_size</span>)<span class="question-mark">?</span>[..])
+        <span class="self">self</span>.write_half
+            .write_all(<span class="kw-2">&amp;</span>msg_size.to_be_bytes_min(max_message_size)<span class="question-mark">?</span>[..])
             .<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="comment">// send message</span>
-        <span class="self">self</span>.<span class="ident">write_half</span>.<span class="ident">write_all</span>(<span class="ident">buf</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="comment">// send message
+        </span><span class="self">self</span>.write_half.write_all(buf).<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">res_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">message_index</span>;
-        <span class="self">self</span>.<span class="ident">message_index</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="comment">//        massa_trace!(&quot;binder.send end&quot;, { &quot;index&quot;: res_index });</span>
-        <span class="prelude-val">Ok</span>(<span class="ident">res_index</span>)
+        <span class="kw">let </span>res_index = <span class="self">self</span>.message_index;
+        <span class="self">self</span>.message_index += <span class="number">1</span>;
+        <span class="comment">//        massa_trace!(&quot;binder.send end&quot;, { &quot;index&quot;: res_index });
+        </span><span class="prelude-val">Ok</span>(res_index)
     }
 }
 
-<span class="doccomment">/// Used to receive and deserialize data.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReadBinder</span> {
-    <span class="ident">read_half</span>: <span class="ident">Resource</span><span class="op">&lt;</span><span class="ident">ReadHalf</span>, <span class="ident">StandardClock</span><span class="op">&gt;</span>,
-    <span class="ident">message_index</span>: <span class="ident">u64</span>,
-    <span class="ident">buf</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="ident">cursor</span>: <span class="ident">usize</span>,
-    <span class="ident">msg_size</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Used to receive and deserialize data.
+</span><span class="kw">pub struct </span>ReadBinder {
+    read_half: Resource&lt;ReadHalf, StandardClock&gt;,
+    message_index: u64,
+    buf: Vec&lt;u8&gt;,
+    cursor: usize,
+    msg_size: <span class="prelude-ty">Option</span>&lt;u32&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ReadBinder</span> {
-    <span class="doccomment">/// Creates a new `ReadBinder` with a bandwidth `limit` in bytes per second.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Argument</span>
-    <span class="doccomment">/// * `read_half`: reader half.</span>
-    <span class="doccomment">/// * `limit`: limit max bytes per second read.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">read_half</span>: <span class="ident">ReadHalf</span>, <span class="ident">limit</span>: <span class="ident">f64</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">ReadBinder</span> {
-            <span class="ident">read_half</span>: <span class="op">&lt;</span><span class="ident">Limiter</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">limit</span>).<span class="ident">limit</span>(<span class="ident">read_half</span>),
-            <span class="ident">message_index</span>: <span class="number">0</span>,
-            <span class="ident">buf</span>: <span class="ident">Vec::new</span>(),
-            <span class="ident">cursor</span>: <span class="number">0</span>,
-            <span class="ident">msg_size</span>: <span class="prelude-val">None</span>,
+<span class="kw">impl </span>ReadBinder {
+    <span class="doccomment">/// Creates a new `ReadBinder` with a bandwidth `limit` in bytes per second.
+    ///
+    /// # Argument
+    /// * `read_half`: reader half.
+    /// * `limit`: limit max bytes per second read.
+    </span><span class="kw">pub fn </span>new(read_half: ReadHalf, limit: f64) -&gt; <span class="self">Self </span>{
+        ReadBinder {
+            read_half: &lt;Limiter&gt;::new(limit).limit(read_half),
+            message_index: <span class="number">0</span>,
+            buf: Vec::new(),
+            cursor: <span class="number">0</span>,
+            msg_size: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="doccomment">/// Awaits the next incoming message and deserializes it. Asynchronous cancel-safe.</span>
-    <span class="doccomment">/// Returns the message, as well as the serialized object in the case of a block.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This function must be asynchronous cancel-safe.</span>
-    <span class="doccomment">/// This means that the function can restart from the beginning at any &quot;await&quot; point and we need to avoid losing any data,</span>
-    <span class="doccomment">/// and we can only use the cancel-safe read() function</span>
-    <span class="doccomment">/// `https://doc.rust-lang.org/std/io/trait.Read.html#tymethod.read`</span>
-    <span class="doccomment">/// that returns an arbitrary number of bytes that were received that is `&gt; 0 and &lt;= buffer.len()`,</span>
-    <span class="doccomment">/// or = 0 if there is no more data.</span>
-    <span class="doccomment">/// We can&#39;t use `read_exact` and similar because they are not cancel-safe:</span>
-    <span class="doccomment">/// `https://docs.rs/tokio/latest/tokio/io/trait.AsyncReadExt.html#cancel-safety-2`</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">next</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">Message</span>)<span class="op">&gt;</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">max_message_size</span> <span class="op">=</span> <span class="ident">with_serialization_context</span>(<span class="op">|</span><span class="ident">context</span><span class="op">|</span> <span class="ident">context</span>.<span class="ident">max_message_size</span>);
+    <span class="doccomment">/// Awaits the next incoming message and deserializes it. Asynchronous cancel-safe.
+    /// Returns the message, as well as the serialized object in the case of a block.
+    ///
+    /// This function must be asynchronous cancel-safe.
+    /// This means that the function can restart from the beginning at any &quot;await&quot; point and we need to avoid losing any data,
+    /// and we can only use the cancel-safe read() function
+    /// `https://doc.rust-lang.org/std/io/trait.Read.html#tymethod.read`
+    /// that returns an arbitrary number of bytes that were received that is `&gt; 0 and &lt;= buffer.len()`,
+    /// or = 0 if there is no more data.
+    /// We can&#39;t use `read_exact` and similar because they are not cancel-safe:
+    /// `https://docs.rs/tokio/latest/tokio/io/trait.AsyncReadExt.html#cancel-safety-2`
+    </span><span class="kw">pub async fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;(u64, Message)&gt;, NetworkError&gt; {
+        <span class="kw">let </span>max_message_size = with_serialization_context(|context| context.max_message_size);
 
-        <span class="comment">// check if we are in the process of reading the message length</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">msg_size</span>.<span class="ident">is_none</span>() {
-            <span class="comment">// pre-allocate the buffer to fit the encoded message size if the buffer is not already allocated</span>
-            <span class="kw">let</span> <span class="ident">size_field_len</span> <span class="op">=</span> <span class="ident">u32::be_bytes_min_length</span>(<span class="ident">max_message_size</span>);
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">buf</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">size_field_len</span> {
-                <span class="self">self</span>.<span class="ident">buf</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="ident">size_field_len</span>];
+        <span class="comment">// check if we are in the process of reading the message length
+        </span><span class="kw">if </span><span class="self">self</span>.msg_size.is_none() {
+            <span class="comment">// pre-allocate the buffer to fit the encoded message size if the buffer is not already allocated
+            </span><span class="kw">let </span>size_field_len = u32::be_bytes_min_length(max_message_size);
+            <span class="kw">if </span><span class="self">self</span>.buf.len() != size_field_len {
+                <span class="self">self</span>.buf = <span class="macro">vec!</span>[<span class="number">0u8</span>; size_field_len];
             }
 
-            <span class="comment">// Try to read the full message size field</span>
-            <span class="comment">// The self.cursor variable indicates how many bytes of the &quot;message size&quot; field we have received so far.</span>
-            <span class="comment">// We need to keep all states (buffer and cursor) to ensure that if the function restarts at the read&#39;s await,</span>
-            <span class="comment">// the state will remain consistent and resume the readout smoothly.</span>
-            <span class="kw">while</span> <span class="self">self</span>.<span class="ident">cursor</span> <span class="op">&lt;</span> <span class="ident">size_field_len</span> {
-                <span class="kw">match</span> <span class="self">self</span>.<span class="ident">read_half</span>.<span class="ident">read</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">buf</span>[<span class="self">self</span>.<span class="ident">cursor</span>..]).<span class="kw">await</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">nr</span>) =&gt; {
-                        <span class="kw">if</span> <span class="ident">nr</span> <span class="op">==</span> <span class="number">0</span> {
-                            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
+            <span class="comment">// Try to read the full message size field
+            // The self.cursor variable indicates how many bytes of the &quot;message size&quot; field we have received so far.
+            // We need to keep all states (buffer and cursor) to ensure that if the function restarts at the read&#39;s await,
+            // the state will remain consistent and resume the readout smoothly.
+            </span><span class="kw">while </span><span class="self">self</span>.cursor &lt; size_field_len {
+                <span class="kw">match </span><span class="self">self</span>.read_half.read(<span class="kw-2">&amp;mut </span><span class="self">self</span>.buf[<span class="self">self</span>.cursor..]).<span class="kw">await </span>{
+                    <span class="prelude-val">Ok</span>(nr) =&gt; {
+                        <span class="kw">if </span>nr == <span class="number">0 </span>{
+                            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
                         }
-                        <span class="self">self</span>.<span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">nr</span>;
+                        <span class="self">self</span>.cursor += nr;
                     }
-                    <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; {
-                        <span class="kw">if</span> <span class="ident">err</span>.<span class="ident">kind</span>() <span class="op">==</span> <span class="ident">std::io::ErrorKind::UnexpectedEof</span> {
-                            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
-                        } <span class="kw">else</span> {
-                            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>.<span class="ident">into</span>());
+                    <span class="prelude-val">Err</span>(err) =&gt; {
+                        <span class="kw">if </span>err.kind() == std::io::ErrorKind::UnexpectedEof {
+                            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
+                        } <span class="kw">else </span>{
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(err.into());
                         }
                     }
                 }
             }
 
-            <span class="comment">// once we have all the message size bytes, deserialize it</span>
-            <span class="kw">let</span> <span class="ident">res_size</span> <span class="op">=</span> <span class="ident">u32::from_be_bytes_min</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">buf</span>, <span class="ident">max_message_size</span>)<span class="question-mark">?</span>.<span class="number">0</span>;
-            <span class="comment">// set self.msg_size to indicate that we are now in the process of reading the message contents (and not the size anymore).</span>
-            <span class="self">self</span>.<span class="ident">msg_size</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">res_size</span>);
-            <span class="comment">// allocate the buffer to match the message length</span>
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">buf</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> (<span class="ident">res_size</span> <span class="kw">as</span> <span class="ident">usize</span>) {
-                <span class="self">self</span>.<span class="ident">buf</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="ident">res_size</span> <span class="kw">as</span> <span class="ident">usize</span>];
+            <span class="comment">// once we have all the message size bytes, deserialize it
+            </span><span class="kw">let </span>res_size = u32::from_be_bytes_min(<span class="kw-2">&amp;</span><span class="self">self</span>.buf, max_message_size)<span class="question-mark">?</span>.<span class="number">0</span>;
+            <span class="comment">// set self.msg_size to indicate that we are now in the process of reading the message contents (and not the size anymore).
+            </span><span class="self">self</span>.msg_size = <span class="prelude-val">Some</span>(res_size);
+            <span class="comment">// allocate the buffer to match the message length
+            </span><span class="kw">if </span><span class="self">self</span>.buf.len() != (res_size <span class="kw">as </span>usize) {
+                <span class="self">self</span>.buf = <span class="macro">vec!</span>[<span class="number">0u8</span>; res_size <span class="kw">as </span>usize];
             }
-            <span class="comment">// reset the cursor so that it now represents how many content bytes have been read so far</span>
-            <span class="self">self</span>.<span class="ident">cursor</span> <span class="op">=</span> <span class="number">0</span>;
+            <span class="comment">// reset the cursor so that it now represents how many content bytes have been read so far
+            </span><span class="self">self</span>.cursor = <span class="number">0</span>;
         }
 
-        <span class="comment">// read message in the same cancel-safe way as msg_size above</span>
-        <span class="kw">while</span> <span class="self">self</span>.<span class="ident">cursor</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">msg_size</span>.<span class="ident">unwrap</span>() <span class="kw">as</span> <span class="ident">usize</span> {
-            <span class="comment">// does not panic</span>
-            <span class="kw">match</span> <span class="self">self</span>.<span class="ident">read_half</span>.<span class="ident">read</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">buf</span>[<span class="self">self</span>.<span class="ident">cursor</span>..]).<span class="kw">await</span> {
-                <span class="prelude-val">Ok</span>(<span class="ident">nr</span>) =&gt; {
-                    <span class="kw">if</span> <span class="ident">nr</span> <span class="op">==</span> <span class="number">0</span> {
-                        <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
+        <span class="comment">// read message in the same cancel-safe way as msg_size above
+        </span><span class="kw">while </span><span class="self">self</span>.cursor &lt; <span class="self">self</span>.msg_size.unwrap() <span class="kw">as </span>usize {
+            <span class="comment">// does not panic
+            </span><span class="kw">match </span><span class="self">self</span>.read_half.read(<span class="kw-2">&amp;mut </span><span class="self">self</span>.buf[<span class="self">self</span>.cursor..]).<span class="kw">await </span>{
+                <span class="prelude-val">Ok</span>(nr) =&gt; {
+                    <span class="kw">if </span>nr == <span class="number">0 </span>{
+                        <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
                     }
-                    <span class="self">self</span>.<span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">nr</span>;
+                    <span class="self">self</span>.cursor += nr;
                 }
-                <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; {
-                    <span class="kw">if</span> <span class="ident">err</span>.<span class="ident">kind</span>() <span class="op">==</span> <span class="ident">std::io::ErrorKind::UnexpectedEof</span> {
-                        <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
-                    } <span class="kw">else</span> {
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>.<span class="ident">into</span>());
+                <span class="prelude-val">Err</span>(err) =&gt; {
+                    <span class="kw">if </span>err.kind() == std::io::ErrorKind::UnexpectedEof {
+                        <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
+                    } <span class="kw">else </span>{
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(err.into());
                     }
                 }
             }
         }
-        <span class="kw">let</span> (<span class="ident">res_msg</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">Message::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">buf</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(res_msg, <span class="kw">_</span>) = Message::from_bytes_compact(<span class="kw-2">&amp;</span><span class="self">self</span>.buf)<span class="question-mark">?</span>;
 
-        <span class="comment">// now the message readout is over, we reset the state to start reading the next message&#39;s size field again at the next run</span>
-        <span class="self">self</span>.<span class="ident">cursor</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="self">self</span>.<span class="ident">msg_size</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+        <span class="comment">// now the message readout is over, we reset the state to start reading the next message&#39;s size field again at the next run
+        </span><span class="self">self</span>.cursor = <span class="number">0</span>;
+        <span class="self">self</span>.msg_size = <span class="prelude-val">None</span>;
 
-        <span class="comment">// clear the buffer to not leave dangling data around (note that clear() doesn&#39;t deallocate)</span>
-        <span class="self">self</span>.<span class="ident">buf</span>.<span class="ident">clear</span>();
+        <span class="comment">// clear the buffer to not leave dangling data around (note that clear() doesn&#39;t deallocate)
+        </span><span class="self">self</span>.buf.clear();
 
-        <span class="comment">// update sequence numbers and return the deserialized message</span>
-        <span class="kw">let</span> <span class="ident">res_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">message_index</span>;
-        <span class="self">self</span>.<span class="ident">message_index</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((<span class="ident">res_index</span>, <span class="ident">res_msg</span>)))
+        <span class="comment">// update sequence numbers and return the deserialized message
+        </span><span class="kw">let </span>res_index = <span class="self">self</span>.message_index;
+        <span class="self">self</span>.message_index += <span class="number">1</span>;
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((res_index, res_msg)))
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

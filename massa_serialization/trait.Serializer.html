@@ -3,33 +3,33 @@
 }</code></pre></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>This trait must be implemented to serializes all data in Massa.</p>
 <p>Example:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">std::ops::Bound</span>;
-<span class="kw">use</span> <span class="ident">unsigned_varint::nom</span> <span class="kw">as</span> <span class="ident">varint_nom</span>;
-<span class="kw">use</span> <span class="ident">nom::IResult</span>;
-<span class="kw">use</span> <span class="ident">massa_serialization::Serializer</span>;
-<span class="kw">use</span> <span class="ident">std::ops::RangeBounds</span>;
-<span class="kw">use</span> <span class="ident">unsigned_varint::encode::u64_buffer</span>;
-<span class="kw">use</span> <span class="ident">unsigned_varint::encode::u64</span>;
-<span class="kw">use</span> <span class="ident">massa_serialization::SerializeError</span>;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>std::ops::Bound;
+<span class="kw">use </span>unsigned_varint::nom <span class="kw">as </span>varint_nom;
+<span class="kw">use </span>nom::IResult;
+<span class="kw">use </span>massa_serialization::Serializer;
+<span class="kw">use </span>std::ops::RangeBounds;
+<span class="kw">use </span>unsigned_varint::encode::u64_buffer;
+<span class="kw">use </span>unsigned_varint::encode::u64;
+<span class="kw">use </span>massa_serialization::SerializeError;
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">U64VarIntSerializer</span> {
-    <span class="ident">range</span>: (<span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>, <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>)
+<span class="kw">pub struct </span>U64VarIntSerializer {
+    range: (Bound&lt;u64&gt;, Bound&lt;u64&gt;)
 }
 
-<span class="kw">impl</span> <span class="ident">U64VarIntSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">min</span>: <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>, <span class="ident">max</span>: <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">range</span>: (<span class="ident">min</span>, <span class="ident">max</span>)
+<span class="kw">impl </span>U64VarIntSerializer {
+    <span class="kw">fn </span>new(min: Bound&lt;u64&gt;, max: Bound&lt;u64&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            range: (min, max)
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">U64VarIntSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">u64</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">range</span>.<span class="ident">contains</span>(<span class="ident">value</span>) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SerializeError::NumberTooBig</span>(<span class="macro">format!</span>(<span class="string">&quot;Value {:#?} is not in range {:#?}&quot;</span>, <span class="ident">value</span>, <span class="self">self</span>.<span class="ident">range</span>)));
+<span class="kw">impl </span>Serializer&lt;u64&gt; <span class="kw">for </span>U64VarIntSerializer {
+    <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>u64, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="kw">if </span>!<span class="self">self</span>.range.contains(value) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(SerializeError::NumberTooBig(<span class="macro">format!</span>(<span class="string">&quot;Value {:#?} is not in range {:#?}&quot;</span>, value, <span class="self">self</span>.range)));
         }
-        <span class="ident">buffer</span>.<span class="ident">extend_from_slice</span>(<span class="ident">u64</span>(<span class="kw-2">*</span><span class="ident">value</span>, <span class="kw-2">&amp;mut</span> <span class="ident">u64_buffer</span>()));
+        buffer.extend_from_slice(u64(<span class="kw-2">*</span>value, <span class="kw-2">&amp;mut </span>u64_buffer()));
         <span class="prelude-val">Ok</span>(())
     }
 }</code></pre></div>
@@ -40,4 +40,4 @@
 </ul>
 <h6 id="returns"><a href="#returns">Returns</a></h6>
 <p>A Result with the serialized data.</p>
-</div></details></div><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor"></a></h2><div class="item-list" id="implementors-list"><section id="impl-Serializer%3Cu16%3E-for-U16VarIntSerializer" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_serialization/lib.rs.html#248-252">source</a></span><a href="#impl-Serializer%3Cu16%3E-for-U16VarIntSerializer" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.Serializer.html" title="trait massa_serialization::Serializer">Serializer</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u16.html">u16</a>&gt; for <a class="struct" href="struct.U16VarIntSerializer.html" title="struct massa_serialization::U16VarIntSerializer">U16VarIntSerializer</a></h3></section><section id="impl-Serializer%3Cu32%3E-for-U32VarIntSerializer" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_serialization/lib.rs.html#248-252">source</a></span><a href="#impl-Serializer%3Cu32%3E-for-U32VarIntSerializer" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.Serializer.html" title="trait massa_serialization::Serializer">Serializer</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>&gt; for <a class="struct" href="struct.U32VarIntSerializer.html" title="struct massa_serialization::U32VarIntSerializer">U32VarIntSerializer</a></h3></section><section id="impl-Serializer%3Cu64%3E-for-U64VarIntSerializer" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_serialization/lib.rs.html#248-252">source</a></span><a href="#impl-Serializer%3Cu64%3E-for-U64VarIntSerializer" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.Serializer.html" title="trait massa_serialization::Serializer">Serializer</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u64.html">u64</a>&gt; for <a class="struct" href="struct.U64VarIntSerializer.html" title="struct massa_serialization::U64VarIntSerializer">U64VarIntSerializer</a></h3></section></div><script type="text/javascript" src="../implementors/massa_serialization/trait.Serializer.js" data-ignore-extern-crates="" async></script></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="massa_serialization" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</div></details></div><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor"></a></h2><div class="item-list" id="implementors-list"><section id="impl-Serializer%3Cu16%3E-for-U16VarIntSerializer" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_serialization/lib.rs.html#248-252">source</a></span><a href="#impl-Serializer%3Cu16%3E-for-U16VarIntSerializer" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.Serializer.html" title="trait massa_serialization::Serializer">Serializer</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u16.html">u16</a>&gt; for <a class="struct" href="struct.U16VarIntSerializer.html" title="struct massa_serialization::U16VarIntSerializer">U16VarIntSerializer</a></h3></section><section id="impl-Serializer%3Cu32%3E-for-U32VarIntSerializer" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_serialization/lib.rs.html#248-252">source</a></span><a href="#impl-Serializer%3Cu32%3E-for-U32VarIntSerializer" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.Serializer.html" title="trait massa_serialization::Serializer">Serializer</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>&gt; for <a class="struct" href="struct.U32VarIntSerializer.html" title="struct massa_serialization::U32VarIntSerializer">U32VarIntSerializer</a></h3></section><section id="impl-Serializer%3Cu64%3E-for-U64VarIntSerializer" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_serialization/lib.rs.html#248-252">source</a></span><a href="#impl-Serializer%3Cu64%3E-for-U64VarIntSerializer" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.Serializer.html" title="trait massa_serialization::Serializer">Serializer</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u64.html">u64</a>&gt; for <a class="struct" href="struct.U64VarIntSerializer.html" title="struct massa_serialization::U64VarIntSerializer">U64VarIntSerializer</a></h3></section></div><script type="text/javascript" src="../implementors/massa_serialization/trait.Serializer.js" data-ignore-extern-crates="" async></script></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="massa_serialization" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

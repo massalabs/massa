@@ -122,129 +122,129 @@
 <span id="122">122</span>
 <span id="123">123</span>
 <span id="124">124</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! Contains definitions of commands used by the controller</span>
-<span class="kw">use</span> <span class="ident">massa_graph::ledger::ConsensusLedgerSubset</span>;
-<span class="kw">use</span> <span class="ident">massa_graph</span>::{<span class="ident">BlockGraphExport</span>, <span class="ident">BootstrapableGraph</span>, <span class="ident">ExportBlockStatus</span>, <span class="ident">Status</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">address::AddressState</span>, <span class="ident">api::EndorsementInfo</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">clique::Clique</span>, <span class="ident">stats::ConsensusStats</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">Slot</span>, <span class="ident">StakersCycleProductionStats</span>, <span class="ident">WrappedEndorsement</span>,
+</span><span class="doccomment">//! Contains definitions of commands used by the controller
+</span><span class="kw">use </span>massa_graph::ledger::ConsensusLedgerSubset;
+<span class="kw">use </span>massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Status};
+<span class="kw">use </span>massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
+<span class="kw">use </span>massa_models::{clique::Clique, stats::ConsensusStats};
+<span class="kw">use </span>massa_models::{
+    Address, BlockId, OperationSearchResult, Slot, StakersCycleProductionStats, WrappedEndorsement,
 };
 
-<span class="kw">use</span> <span class="ident">massa_proof_of_stake_exports::ExportProofOfStake</span>;
-<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
+<span class="kw">use </span>massa_proof_of_stake_exports::ExportProofOfStake;
+<span class="kw">use </span>massa_signature::KeyPair;
 
-<span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
-<span class="kw">use</span> <span class="ident">tokio::sync::oneshot</span>;
+<span class="kw">use </span>massa_models::prehash::{Map, Set};
+<span class="kw">use </span>tokio::sync::oneshot;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">error::ConsensusResult</span> <span class="kw">as</span> <span class="prelude-ty">Result</span>, <span class="ident">ConsensusError</span>, <span class="ident">SelectionDraws</span>};
+<span class="kw">use crate</span>::{error::ConsensusResult <span class="kw">as </span><span class="prelude-ty">Result</span>, ConsensusError, SelectionDraws};
 
-<span class="doccomment">/// Commands that can be processed by consensus.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ConsensusCommand</span> {
-    <span class="doccomment">/// Returns through a channel current blockgraph without block operations.</span>
-    <span class="ident">GetBlockGraphStatus</span> {
-        <span class="doccomment">/// optional start slot</span>
-        <span class="ident">slot_start</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
-        <span class="doccomment">/// optional end slot</span>
-        <span class="ident">slot_end</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
-        <span class="doccomment">/// response channel</span>
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">BlockGraphExport</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Commands that can be processed by consensus.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub enum </span>ConsensusCommand {
+    <span class="doccomment">/// Returns through a channel current blockgraph without block operations.
+    </span>GetBlockGraphStatus {
+        <span class="doccomment">/// optional start slot
+        </span>slot_start: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
+        <span class="doccomment">/// optional end slot
+        </span>slot_end: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
+        <span class="doccomment">/// response channel
+        </span>response_tx: oneshot::Sender&lt;BlockGraphExport&gt;,
     },
-    <span class="doccomment">/// Returns through a channel full block and status with specified hash.</span>
-    <span class="ident">GetBlockStatus</span> {
-        <span class="doccomment">/// wanted block id</span>
-        <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
-        <span class="doccomment">/// response channel</span>
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ExportBlockStatus</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Returns through a channel full block and status with specified hash.
+    </span>GetBlockStatus {
+        <span class="doccomment">/// wanted block id
+        </span>block_id: BlockId,
+        <span class="doccomment">/// response channel
+        </span>response_tx: oneshot::Sender&lt;<span class="prelude-ty">Option</span>&lt;ExportBlockStatus&gt;&gt;,
     },
-    <span class="doccomment">/// Returns through a channel the list of slots with the address of the selected staker.</span>
-    <span class="ident">GetSelectionDraws</span> {
-        <span class="doccomment">/// start slot</span>
-        <span class="ident">start</span>: <span class="ident">Slot</span>,
-        <span class="doccomment">/// end slot</span>
-        <span class="ident">end</span>: <span class="ident">Slot</span>,
-        <span class="doccomment">/// response channel</span>
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SelectionDraws</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Returns through a channel the list of slots with the address of the selected staker.
+    </span>GetSelectionDraws {
+        <span class="doccomment">/// start slot
+        </span>start: Slot,
+        <span class="doccomment">/// end slot
+        </span>end: Slot,
+        <span class="doccomment">/// response channel
+        </span>response_tx: oneshot::Sender&lt;<span class="prelude-ty">Result</span>&lt;SelectionDraws, ConsensusError&gt;&gt;,
     },
-    <span class="doccomment">/// Returns the bootstrap state</span>
-    <span class="ident">GetBootstrapState</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span>(<span class="ident">ExportProofOfStake</span>, <span class="ident">BootstrapableGraph</span>)<span class="op">&gt;</span>),
-    <span class="doccomment">/// Returns a part of the ledger</span>
-    <span class="ident">GetLedgerPart</span> {
-        <span class="doccomment">/// Start address</span>
-        <span class="ident">start_address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-        <span class="doccomment">/// Size of the part of the ledger</span>
-        <span class="ident">batch_size</span>: <span class="ident">usize</span>,
-        <span class="doccomment">/// response channel</span>
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">ConsensusLedgerSubset</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Returns the bootstrap state
+    </span>GetBootstrapState(oneshot::Sender&lt;(ExportProofOfStake, BootstrapableGraph)&gt;),
+    <span class="doccomment">/// Returns a part of the ledger
+    </span>GetLedgerPart {
+        <span class="doccomment">/// Start address
+        </span>start_address: <span class="prelude-ty">Option</span>&lt;Address&gt;,
+        <span class="doccomment">/// Size of the part of the ledger
+        </span>batch_size: usize,
+        <span class="doccomment">/// response channel
+        </span>response_tx: oneshot::Sender&lt;ConsensusLedgerSubset&gt;,
     },
-    <span class="doccomment">/// Returns info for a set of addresses (rolls and balance)</span>
-    <span class="ident">GetAddressesInfo</span> {
-        <span class="doccomment">/// wanted addresses</span>
-        <span class="ident">addresses</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-        <span class="doccomment">/// response channel</span>
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">AddressState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Returns info for a set of addresses (rolls and balance)
+    </span>GetAddressesInfo {
+        <span class="doccomment">/// wanted addresses
+        </span>addresses: Set&lt;Address&gt;,
+        <span class="doccomment">/// response channel
+        </span>response_tx: oneshot::Sender&lt;Map&lt;Address, AddressState&gt;&gt;,
     },
-    <span class="doccomment">/// Get some information on operation by involved addresses</span>
-    <span class="ident">GetRecentOperations</span> {
-        <span class="doccomment">/// wanted address</span>
-        <span class="ident">address</span>: <span class="ident">Address</span>,
-        <span class="doccomment">/// response channel</span>
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Get some information on operation by involved addresses
+    </span>GetRecentOperations {
+        <span class="doccomment">/// wanted address
+        </span>address: Address,
+        <span class="doccomment">/// response channel
+        </span>response_tx: oneshot::Sender&lt;Map&lt;OperationId, OperationSearchResult&gt;&gt;,
     },
-    <span class="doccomment">/// Get some information on operations by operation ids</span>
-    <span class="ident">GetOperations</span> {
-        <span class="doccomment">/// wanted ids</span>
-        <span class="ident">operation_ids</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
-        <span class="doccomment">/// response channel</span>
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Get some information on operations by operation ids
+    </span>GetOperations {
+        <span class="doccomment">/// wanted ids
+        </span>operation_ids: Set&lt;OperationId&gt;,
+        <span class="doccomment">/// response channel
+        </span>response_tx: oneshot::Sender&lt;Map&lt;OperationId, OperationSearchResult&gt;&gt;,
     },
-    <span class="doccomment">/// get current stats on consensus</span>
-    <span class="ident">GetStats</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">ConsensusStats</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Get all stakers</span>
-    <span class="ident">GetActiveStakers</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Add keys to use them for staking</span>
-    <span class="ident">RegisterStakingKeys</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">KeyPair</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Remove associated staking keys</span>
-    <span class="ident">RemoveStakingAddresses</span>(<span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Get staking addresses</span>
-    <span class="ident">GetStakingAddresses</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Get production stats for addresses</span>
-    <span class="ident">GetStakersProductionStats</span> {
-        <span class="doccomment">/// wanted addresses</span>
-        <span class="ident">addrs</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-        <span class="doccomment">/// response channel</span>
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">StakersCycleProductionStats</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// get current stats on consensus
+    </span>GetStats(oneshot::Sender&lt;ConsensusStats&gt;),
+    <span class="doccomment">/// Get all stakers
+    </span>GetActiveStakers(oneshot::Sender&lt;Map&lt;Address, u64&gt;&gt;),
+    <span class="doccomment">/// Add keys to use them for staking
+    </span>RegisterStakingKeys(Vec&lt;KeyPair&gt;),
+    <span class="doccomment">/// Remove associated staking keys
+    </span>RemoveStakingAddresses(Set&lt;Address&gt;),
+    <span class="doccomment">/// Get staking addresses
+    </span>GetStakingAddresses(oneshot::Sender&lt;Set&lt;Address&gt;&gt;),
+    <span class="doccomment">/// Get production stats for addresses
+    </span>GetStakersProductionStats {
+        <span class="doccomment">/// wanted addresses
+        </span>addrs: Set&lt;Address&gt;,
+        <span class="doccomment">/// response channel
+        </span>response_tx: oneshot::Sender&lt;Vec&lt;StakersCycleProductionStats&gt;&gt;,
     },
-    <span class="doccomment">/// Get block id and status by block creator address</span>
-    <span class="ident">GetBlockIdsByCreator</span> {
-        <span class="doccomment">/// wanted address</span>
-        <span class="ident">address</span>: <span class="ident">Address</span>,
-        <span class="doccomment">/// response channel</span>
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Status</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Get block id and status by block creator address
+    </span>GetBlockIdsByCreator {
+        <span class="doccomment">/// wanted address
+        </span>address: Address,
+        <span class="doccomment">/// response channel
+        </span>response_tx: oneshot::Sender&lt;Map&lt;BlockId, Status&gt;&gt;,
     },
-    <span class="doccomment">/// Get Endorsements by involved addresses</span>
-    <span class="ident">GetEndorsementsByAddress</span> {
-        <span class="doccomment">/// wanted address</span>
-        <span class="ident">address</span>: <span class="ident">Address</span>,
-        <span class="doccomment">/// response channel</span>
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">WrappedEndorsement</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Get Endorsements by involved addresses
+    </span>GetEndorsementsByAddress {
+        <span class="doccomment">/// wanted address
+        </span>address: Address,
+        <span class="doccomment">/// response channel
+        </span>response_tx: oneshot::Sender&lt;Map&lt;EndorsementId, WrappedEndorsement&gt;&gt;,
     },
-    <span class="doccomment">/// get endorsements by id</span>
-    <span class="ident">GetEndorsementsById</span> {
-        <span class="doccomment">/// Wanted endorsement ids</span>
-        <span class="ident">endorsements</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
-        <span class="doccomment">/// response channel</span>
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">EndorsementInfo</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// get endorsements by id
+    </span>GetEndorsementsById {
+        <span class="doccomment">/// Wanted endorsement ids
+        </span>endorsements: Set&lt;EndorsementId&gt;,
+        <span class="doccomment">/// response channel
+        </span>response_tx: oneshot::Sender&lt;Map&lt;EndorsementId, EndorsementInfo&gt;&gt;,
     },
-    <span class="doccomment">/// Get cliques</span>
-    <span class="ident">GetCliques</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Clique</span><span class="op">&gt;</span><span class="op">&gt;</span>),
+    <span class="doccomment">/// Get cliques
+    </span>GetCliques(oneshot::Sender&lt;Vec&lt;Clique&gt;&gt;),
 }
 
-<span class="doccomment">/// Events that are emitted by consensus.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ConsensusManagementCommand</span> {}
+<span class="doccomment">/// Events that are emitted by consensus.
+</span><span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub enum </span>ConsensusManagementCommand {}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

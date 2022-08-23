@@ -647,654 +647,654 @@
 <span id="647">647</span>
 <span id="648">648</span>
 <span id="649">649</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ModelsError</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::Amount</span>;
-<span class="kw">use</span> <span class="ident">integer_encoding::VarInt</span>;
-<span class="kw">use</span> <span class="ident">massa_serialization</span>::{
-    <span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>, <span class="ident">U64VarIntDeserializer</span>, <span class="ident">U64VarIntSerializer</span>,
+</span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
+<span class="kw">use </span><span class="kw">crate</span>::Amount;
+<span class="kw">use </span>integer_encoding::VarInt;
+<span class="kw">use </span>massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
-<span class="kw">use</span> <span class="ident">nom::bytes::complete::take</span>;
-<span class="kw">use</span> <span class="ident">nom::multi::length_data</span>;
-<span class="kw">use</span> <span class="ident">nom::sequence::preceded</span>;
-<span class="kw">use</span> <span class="ident">nom</span>::{
-    <span class="ident">error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ParseError</span>},
-    <span class="ident">IResult</span>,
+<span class="kw">use </span>nom::bytes::complete::take;
+<span class="kw">use </span>nom::multi::length_data;
+<span class="kw">use </span>nom::sequence::preceded;
+<span class="kw">use </span>nom::{
+    error::{context, ContextError, ParseError},
+    IResult,
 };
-<span class="kw">use</span> <span class="ident">nom</span>::{<span class="ident">Parser</span>, <span class="ident">ToUsize</span>};
-<span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
-<span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">Ipv4Addr</span>, <span class="ident">Ipv6Addr</span>};
-<span class="kw">use</span> <span class="ident">std::ops::Bound</span>;
+<span class="kw">use </span>nom::{Parser, ToUsize};
+<span class="kw">use </span>std::convert::TryInto;
+<span class="kw">use </span>std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+<span class="kw">use </span>std::ops::Bound;
 
-<span class="doccomment">/// varint serialization</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">SerializeVarInt</span> {
-    <span class="doccomment">/// Serialize as varint bytes</span>
-    <span class="kw">fn</span> <span class="ident">to_varint_bytes</span>(<span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>;
+<span class="doccomment">/// varint serialization
+</span><span class="kw">pub trait </span>SerializeVarInt {
+    <span class="doccomment">/// Serialize as varint bytes
+    </span><span class="kw">fn </span>to_varint_bytes(<span class="self">self</span>) -&gt; Vec&lt;u8&gt;;
 }
 
-<span class="kw">impl</span> <span class="ident">SerializeVarInt</span> <span class="kw">for</span> <span class="ident">u16</span> {
-    <span class="kw">fn</span> <span class="ident">to_varint_bytes</span>(<span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">encode_var_vec</span>()
+<span class="kw">impl </span>SerializeVarInt <span class="kw">for </span>u16 {
+    <span class="kw">fn </span>to_varint_bytes(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
+        <span class="self">self</span>.encode_var_vec()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SerializeVarInt</span> <span class="kw">for</span> <span class="ident">u32</span> {
-    <span class="kw">fn</span> <span class="ident">to_varint_bytes</span>(<span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">encode_var_vec</span>()
+<span class="kw">impl </span>SerializeVarInt <span class="kw">for </span>u32 {
+    <span class="kw">fn </span>to_varint_bytes(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
+        <span class="self">self</span>.encode_var_vec()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SerializeVarInt</span> <span class="kw">for</span> <span class="ident">u64</span> {
-    <span class="kw">fn</span> <span class="ident">to_varint_bytes</span>(<span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">encode_var_vec</span>()
+<span class="kw">impl </span>SerializeVarInt <span class="kw">for </span>u64 {
+    <span class="kw">fn </span>to_varint_bytes(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
+        <span class="self">self</span>.encode_var_vec()
     }
 }
 
-<span class="doccomment">/// var int deserialization</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">DeserializeVarInt</span>: <span class="ident">Sized</span> {
-    <span class="doccomment">/// Deserialize variable size integer to Self from the provided buffer.</span>
-    <span class="doccomment">/// The data to deserialize starts at the beginning of the buffer but the buffer can be larger than needed.</span>
-    <span class="doccomment">/// In case of success, return the deserialized data and the number of bytes read</span>
-    <span class="kw">fn</span> <span class="ident">from_varint_bytes</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span>;
+<span class="doccomment">/// var int deserialization
+</span><span class="kw">pub trait </span>DeserializeVarInt: Sized {
+    <span class="doccomment">/// Deserialize variable size integer to Self from the provided buffer.
+    /// The data to deserialize starts at the beginning of the buffer but the buffer can be larger than needed.
+    /// In case of success, return the deserialized data and the number of bytes read
+    </span><span class="kw">fn </span>from_varint_bytes(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt;;
 
-    <span class="doccomment">/// Deserialize variable size integer to Self from the provided buffer and checks that its value is within given bounds.</span>
-    <span class="doccomment">/// The data to deserialize starts at the beginning of the buffer but the buffer can be larger than needed.</span>
-    <span class="doccomment">/// In case of success, return the deserialized data and the number of bytes read</span>
-    <span class="kw">fn</span> <span class="ident">from_varint_bytes_bounded</span>(
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-        <span class="ident">max_value</span>: <span class="self">Self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Deserialize variable size integer to Self from the provided buffer and checks that its value is within given bounds.
+    /// The data to deserialize starts at the beginning of the buffer but the buffer can be larger than needed.
+    /// In case of success, return the deserialized data and the number of bytes read
+    </span><span class="kw">fn </span>from_varint_bytes_bounded(
+        buffer: <span class="kw-2">&amp;</span>[u8],
+        max_value: <span class="self">Self</span>,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt;;
 }
 
-<span class="kw">impl</span> <span class="ident">DeserializeVarInt</span> <span class="kw">for</span> <span class="ident">u16</span> {
-    <span class="kw">fn</span> <span class="ident">from_varint_bytes</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="ident">u16::decode_var</span>(<span class="ident">buffer</span>)
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">ModelsError::DeserializeError</span>(<span class="string">&quot;could not deserialize varint&quot;</span>.<span class="ident">into</span>()))
+<span class="kw">impl </span>DeserializeVarInt <span class="kw">for </span>u16 {
+    <span class="kw">fn </span>from_varint_bytes(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
+        u16::decode_var(buffer)
+            .ok_or_else(|| ModelsError::DeserializeError(<span class="string">&quot;could not deserialize varint&quot;</span>.into()))
     }
 
-    <span class="kw">fn</span> <span class="ident">from_varint_bytes_bounded</span>(
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-        <span class="ident">max_value</span>: <span class="self">Self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">res</span>, <span class="ident">res_size</span>) <span class="op">=</span> <span class="ident"><span class="self">Self</span>::from_varint_bytes</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">res</span> <span class="op">&gt;</span> <span class="ident">max_value</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::DeserializeError</span>(
-                <span class="string">&quot;deserialized varint u16 out of bounds&quot;</span>.<span class="ident">into</span>(),
+    <span class="kw">fn </span>from_varint_bytes_bounded(
+        buffer: <span class="kw-2">&amp;</span>[u8],
+        max_value: <span class="self">Self</span>,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
+        <span class="kw">let </span>(res, res_size) = <span class="self">Self</span>::from_varint_bytes(buffer)<span class="question-mark">?</span>;
+        <span class="kw">if </span>res &gt; max_value {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::DeserializeError(
+                <span class="string">&quot;deserialized varint u16 out of bounds&quot;</span>.into(),
             ));
         }
-        <span class="prelude-val">Ok</span>((<span class="ident">res</span>, <span class="ident">res_size</span>))
+        <span class="prelude-val">Ok</span>((res, res_size))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">DeserializeVarInt</span> <span class="kw">for</span> <span class="ident">u32</span> {
-    <span class="kw">fn</span> <span class="ident">from_varint_bytes</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="ident">u32::decode_var</span>(<span class="ident">buffer</span>)
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">ModelsError::DeserializeError</span>(<span class="string">&quot;could not deserialize varint&quot;</span>.<span class="ident">into</span>()))
+<span class="kw">impl </span>DeserializeVarInt <span class="kw">for </span>u32 {
+    <span class="kw">fn </span>from_varint_bytes(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
+        u32::decode_var(buffer)
+            .ok_or_else(|| ModelsError::DeserializeError(<span class="string">&quot;could not deserialize varint&quot;</span>.into()))
     }
 
-    <span class="kw">fn</span> <span class="ident">from_varint_bytes_bounded</span>(
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-        <span class="ident">max_value</span>: <span class="self">Self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">res</span>, <span class="ident">res_size</span>) <span class="op">=</span> <span class="ident"><span class="self">Self</span>::from_varint_bytes</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">res</span> <span class="op">&gt;</span> <span class="ident">max_value</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::DeserializeError</span>(
-                <span class="string">&quot;deserialized varint u32 out of bounds&quot;</span>.<span class="ident">into</span>(),
+    <span class="kw">fn </span>from_varint_bytes_bounded(
+        buffer: <span class="kw-2">&amp;</span>[u8],
+        max_value: <span class="self">Self</span>,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
+        <span class="kw">let </span>(res, res_size) = <span class="self">Self</span>::from_varint_bytes(buffer)<span class="question-mark">?</span>;
+        <span class="kw">if </span>res &gt; max_value {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::DeserializeError(
+                <span class="string">&quot;deserialized varint u32 out of bounds&quot;</span>.into(),
             ));
         }
-        <span class="prelude-val">Ok</span>((<span class="ident">res</span>, <span class="ident">res_size</span>))
+        <span class="prelude-val">Ok</span>((res, res_size))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">DeserializeVarInt</span> <span class="kw">for</span> <span class="ident">u64</span> {
-    <span class="kw">fn</span> <span class="ident">from_varint_bytes</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="ident">u64::decode_var</span>(<span class="ident">buffer</span>)
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">ModelsError::DeserializeError</span>(<span class="string">&quot;could not deserialize varint&quot;</span>.<span class="ident">into</span>()))
+<span class="kw">impl </span>DeserializeVarInt <span class="kw">for </span>u64 {
+    <span class="kw">fn </span>from_varint_bytes(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
+        u64::decode_var(buffer)
+            .ok_or_else(|| ModelsError::DeserializeError(<span class="string">&quot;could not deserialize varint&quot;</span>.into()))
     }
 
-    <span class="kw">fn</span> <span class="ident">from_varint_bytes_bounded</span>(
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-        <span class="ident">max_value</span>: <span class="self">Self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">res</span>, <span class="ident">res_size</span>) <span class="op">=</span> <span class="ident"><span class="self">Self</span>::from_varint_bytes</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">res</span> <span class="op">&gt;</span> <span class="ident">max_value</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::DeserializeError</span>(
-                <span class="string">&quot;deserialized varint u64 out of bounds&quot;</span>.<span class="ident">into</span>(),
+    <span class="kw">fn </span>from_varint_bytes_bounded(
+        buffer: <span class="kw-2">&amp;</span>[u8],
+        max_value: <span class="self">Self</span>,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
+        <span class="kw">let </span>(res, res_size) = <span class="self">Self</span>::from_varint_bytes(buffer)<span class="question-mark">?</span>;
+        <span class="kw">if </span>res &gt; max_value {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::DeserializeError(
+                <span class="string">&quot;deserialized varint u64 out of bounds&quot;</span>.into(),
             ));
         }
-        <span class="prelude-val">Ok</span>((<span class="ident">res</span>, <span class="ident">res_size</span>))
+        <span class="prelude-val">Ok</span>((res, res_size))
     }
 }
 
-<span class="doccomment">/// Serialize min big endian integer</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">SerializeMinBEInt</span> {
-    <span class="doccomment">/// serializes with the minimal amount of big endian bytes</span>
-    <span class="kw">fn</span> <span class="ident">to_be_bytes_min</span>(<span class="self">self</span>, <span class="ident">max_value</span>: <span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span>;
+<span class="doccomment">/// Serialize min big endian integer
+</span><span class="kw">pub trait </span>SerializeMinBEInt {
+    <span class="doccomment">/// serializes with the minimal amount of big endian bytes
+    </span><span class="kw">fn </span>to_be_bytes_min(<span class="self">self</span>, max_value: <span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt;;
 }
 
-<span class="kw">impl</span> <span class="ident">SerializeMinBEInt</span> <span class="kw">for</span> <span class="ident">u32</span> {
-    <span class="kw">fn</span> <span class="ident">to_be_bytes_min</span>(<span class="self">self</span>, <span class="ident">max_value</span>: <span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span> <span class="op">&gt;</span> <span class="ident">max_value</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::SerializeError</span>(<span class="string">&quot;integer out of bounds&quot;</span>.<span class="ident">into</span>()));
+<span class="kw">impl </span>SerializeMinBEInt <span class="kw">for </span>u32 {
+    <span class="kw">fn </span>to_be_bytes_min(<span class="self">self</span>, max_value: <span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt; {
+        <span class="kw">if </span><span class="self">self </span>&gt; max_value {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::SerializeError(<span class="string">&quot;integer out of bounds&quot;</span>.into()));
         }
-        <span class="kw">let</span> <span class="ident">skip_bytes</span> <span class="op">=</span> (<span class="ident">max_value</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>) <span class="op">/</span> <span class="number">8</span>;
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">to_be_bytes</span>()[<span class="ident">skip_bytes</span>..].<span class="ident">to_vec</span>())
+        <span class="kw">let </span>skip_bytes = (max_value.leading_zeros() <span class="kw">as </span>usize) / <span class="number">8</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.to_be_bytes()[skip_bytes..].to_vec())
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SerializeMinBEInt</span> <span class="kw">for</span> <span class="ident">u64</span> {
-    <span class="kw">fn</span> <span class="ident">to_be_bytes_min</span>(<span class="self">self</span>, <span class="ident">max_value</span>: <span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span> <span class="op">&gt;</span> <span class="ident">max_value</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::SerializeError</span>(<span class="string">&quot;integer out of bounds&quot;</span>.<span class="ident">into</span>()));
+<span class="kw">impl </span>SerializeMinBEInt <span class="kw">for </span>u64 {
+    <span class="kw">fn </span>to_be_bytes_min(<span class="self">self</span>, max_value: <span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt; {
+        <span class="kw">if </span><span class="self">self </span>&gt; max_value {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::SerializeError(<span class="string">&quot;integer out of bounds&quot;</span>.into()));
         }
-        <span class="kw">let</span> <span class="ident">skip_bytes</span> <span class="op">=</span> (<span class="ident">max_value</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>) <span class="op">/</span> <span class="number">8</span>;
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">to_be_bytes</span>()[<span class="ident">skip_bytes</span>..].<span class="ident">to_vec</span>())
+        <span class="kw">let </span>skip_bytes = (max_value.leading_zeros() <span class="kw">as </span>usize) / <span class="number">8</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.to_be_bytes()[skip_bytes..].to_vec())
     }
 }
 
-<span class="doccomment">/// Deserialize min big endian</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">DeserializeMinBEInt</span>: <span class="ident">Sized</span> {
-    <span class="doccomment">/// min big endian integer base size</span>
-    <span class="kw">const</span> <span class="ident">MIN_BE_INT_BASE_SIZE</span>: <span class="ident">usize</span>;
+<span class="doccomment">/// Deserialize min big endian
+</span><span class="kw">pub trait </span>DeserializeMinBEInt: Sized {
+    <span class="doccomment">/// min big endian integer base size
+    </span><span class="kw">const </span>MIN_BE_INT_BASE_SIZE: usize;
 
-    <span class="doccomment">/// Compute the minimal big endian deserialization size</span>
-    <span class="kw">fn</span> <span class="ident">be_bytes_min_length</span>(<span class="ident">max_value</span>: <span class="self">Self</span>) -&gt; <span class="ident">usize</span>;
+    <span class="doccomment">/// Compute the minimal big endian deserialization size
+    </span><span class="kw">fn </span>be_bytes_min_length(max_value: <span class="self">Self</span>) -&gt; usize;
 
-    <span class="doccomment">/// Deserializes a minimally sized big endian integer to Self from the provided buffer and checks that its value is within given bounds.</span>
-    <span class="doccomment">/// In case of success, return the deserialized data and the number of bytes read</span>
-    <span class="kw">fn</span> <span class="ident">from_be_bytes_min</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">max_value</span>: <span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Deserializes a minimally sized big endian integer to Self from the provided buffer and checks that its value is within given bounds.
+    /// In case of success, return the deserialized data and the number of bytes read
+    </span><span class="kw">fn </span>from_be_bytes_min(buffer: <span class="kw-2">&amp;</span>[u8], max_value: <span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt;;
 }
 
-<span class="kw">impl</span> <span class="ident">DeserializeMinBEInt</span> <span class="kw">for</span> <span class="ident">u32</span> {
-    <span class="kw">const</span> <span class="ident">MIN_BE_INT_BASE_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4</span>;
+<span class="kw">impl </span>DeserializeMinBEInt <span class="kw">for </span>u32 {
+    <span class="kw">const </span>MIN_BE_INT_BASE_SIZE: usize = <span class="number">4</span>;
 
-    <span class="kw">fn</span> <span class="ident">be_bytes_min_length</span>(<span class="ident">max_value</span>: <span class="self">Self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="ident"><span class="self">Self</span>::MIN_BE_INT_BASE_SIZE</span> <span class="op">-</span> (<span class="ident">max_value</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>) <span class="op">/</span> <span class="number">8</span>
-    }
+    <span class="kw">fn </span>be_bytes_min_length(max_value: <span class="self">Self</span>) -&gt; usize {
+        <span class="self">Self</span>::MIN_BE_INT_BASE_SIZE - (max_value.leading_zeros() <span class="kw">as </span>usize) / <span class="number">8
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">from_be_bytes_min</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">max_value</span>: <span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">read_bytes</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::be_bytes_min_length</span>(<span class="ident">max_value</span>);
-        <span class="kw">let</span> <span class="ident">skip_bytes</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::MIN_BE_INT_BASE_SIZE</span> <span class="op">-</span> <span class="ident">read_bytes</span>;
-        <span class="kw">if</span> <span class="ident">buffer</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="ident">read_bytes</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::SerializeError</span>(<span class="string">&quot;unexpected buffer end&quot;</span>.<span class="ident">into</span>()));
+    <span class="kw">fn </span>from_be_bytes_min(buffer: <span class="kw-2">&amp;</span>[u8], max_value: <span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
+        <span class="kw">let </span>read_bytes = <span class="self">Self</span>::be_bytes_min_length(max_value);
+        <span class="kw">let </span>skip_bytes = <span class="self">Self</span>::MIN_BE_INT_BASE_SIZE - read_bytes;
+        <span class="kw">if </span>buffer.len() &lt; read_bytes {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::SerializeError(<span class="string">&quot;unexpected buffer end&quot;</span>.into()));
         }
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="ident"><span class="self">Self</span>::MIN_BE_INT_BASE_SIZE</span>];
-        <span class="ident">buf</span>[<span class="ident">skip_bytes</span>..].<span class="ident">clone_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[..<span class="ident">read_bytes</span>]);
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">u32::from_be_bytes</span>(<span class="ident">buf</span>);
-        <span class="kw">if</span> <span class="ident">res</span> <span class="op">&gt;</span> <span class="ident">max_value</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::SerializeError</span>(
-                <span class="string">&quot;integer outside of bounds&quot;</span>.<span class="ident">into</span>(),
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0u8</span>; <span class="self">Self</span>::MIN_BE_INT_BASE_SIZE];
+        buf[skip_bytes..].clone_from_slice(<span class="kw-2">&amp;</span>buffer[..read_bytes]);
+        <span class="kw">let </span>res = u32::from_be_bytes(buf);
+        <span class="kw">if </span>res &gt; max_value {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::SerializeError(
+                <span class="string">&quot;integer outside of bounds&quot;</span>.into(),
             ));
         }
-        <span class="prelude-val">Ok</span>((<span class="ident">res</span>, <span class="ident">read_bytes</span>))
+        <span class="prelude-val">Ok</span>((res, read_bytes))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">DeserializeMinBEInt</span> <span class="kw">for</span> <span class="ident">u64</span> {
-    <span class="kw">const</span> <span class="ident">MIN_BE_INT_BASE_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">8</span>;
+<span class="kw">impl </span>DeserializeMinBEInt <span class="kw">for </span>u64 {
+    <span class="kw">const </span>MIN_BE_INT_BASE_SIZE: usize = <span class="number">8</span>;
 
-    <span class="kw">fn</span> <span class="ident">be_bytes_min_length</span>(<span class="ident">max_value</span>: <span class="self">Self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="ident"><span class="self">Self</span>::MIN_BE_INT_BASE_SIZE</span> <span class="op">-</span> (<span class="ident">max_value</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>) <span class="op">/</span> <span class="number">8</span>
-    }
+    <span class="kw">fn </span>be_bytes_min_length(max_value: <span class="self">Self</span>) -&gt; usize {
+        <span class="self">Self</span>::MIN_BE_INT_BASE_SIZE - (max_value.leading_zeros() <span class="kw">as </span>usize) / <span class="number">8
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">from_be_bytes_min</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">max_value</span>: <span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">read_bytes</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::be_bytes_min_length</span>(<span class="ident">max_value</span>);
-        <span class="kw">let</span> <span class="ident">skip_bytes</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::MIN_BE_INT_BASE_SIZE</span> <span class="op">-</span> <span class="ident">read_bytes</span>;
-        <span class="kw">if</span> <span class="ident">buffer</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="ident">read_bytes</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::SerializeError</span>(<span class="string">&quot;unexpected buffer end&quot;</span>.<span class="ident">into</span>()));
+    <span class="kw">fn </span>from_be_bytes_min(buffer: <span class="kw-2">&amp;</span>[u8], max_value: <span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
+        <span class="kw">let </span>read_bytes = <span class="self">Self</span>::be_bytes_min_length(max_value);
+        <span class="kw">let </span>skip_bytes = <span class="self">Self</span>::MIN_BE_INT_BASE_SIZE - read_bytes;
+        <span class="kw">if </span>buffer.len() &lt; read_bytes {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::SerializeError(<span class="string">&quot;unexpected buffer end&quot;</span>.into()));
         }
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="ident"><span class="self">Self</span>::MIN_BE_INT_BASE_SIZE</span>];
-        <span class="ident">buf</span>[<span class="ident">skip_bytes</span>..].<span class="ident">clone_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[..<span class="ident">read_bytes</span>]);
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">u64::from_be_bytes</span>(<span class="ident">buf</span>);
-        <span class="kw">if</span> <span class="ident">res</span> <span class="op">&gt;</span> <span class="ident">max_value</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::SerializeError</span>(
-                <span class="string">&quot;integer outside of bounds&quot;</span>.<span class="ident">into</span>(),
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0u8</span>; <span class="self">Self</span>::MIN_BE_INT_BASE_SIZE];
+        buf[skip_bytes..].clone_from_slice(<span class="kw-2">&amp;</span>buffer[..read_bytes]);
+        <span class="kw">let </span>res = u64::from_be_bytes(buf);
+        <span class="kw">if </span>res &gt; max_value {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::SerializeError(
+                <span class="string">&quot;integer outside of bounds&quot;</span>.into(),
             ));
         }
-        <span class="prelude-val">Ok</span>((<span class="ident">res</span>, <span class="ident">read_bytes</span>))
+        <span class="prelude-val">Ok</span>((res, read_bytes))
     }
 }
 
-<span class="doccomment">/// array from slice</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">array_from_slice</span><span class="op">&lt;</span><span class="kw">const</span> <span class="ident">ARRAY_SIZE</span>: <span class="ident">usize</span><span class="op">&gt;</span>(
-    <span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="ident">ARRAY_SIZE</span>], <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-    <span class="kw">if</span> <span class="ident">buffer</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="ident">ARRAY_SIZE</span> {
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::BufferError</span>(
-            <span class="string">&quot;slice too small to extract array&quot;</span>.<span class="ident">into</span>(),
+<span class="doccomment">/// array from slice
+</span><span class="kw">pub fn </span>array_from_slice&lt;<span class="kw">const </span>ARRAY_SIZE: usize&gt;(
+    buffer: <span class="kw-2">&amp;</span>[u8],
+) -&gt; <span class="prelude-ty">Result</span>&lt;[u8; ARRAY_SIZE], ModelsError&gt; {
+    <span class="kw">if </span>buffer.len() &lt; ARRAY_SIZE {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::BufferError(
+            <span class="string">&quot;slice too small to extract array&quot;</span>.into(),
         ));
     }
-    <span class="ident">buffer</span>[..<span class="ident">ARRAY_SIZE</span>].<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-        <span class="ident">ModelsError::BufferError</span>(<span class="macro">format!</span>(<span class="string">&quot;could not extract array from slice: {}&quot;</span>, <span class="ident">err</span>))
+    buffer[..ARRAY_SIZE].try_into().map_err(|err| {
+        ModelsError::BufferError(<span class="macro">format!</span>(<span class="string">&quot;could not extract array from slice: {}&quot;</span>, err))
     })
 }
 
-<span class="doccomment">/// `u8` from slice</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">u8_from_slice</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u8</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-    <span class="kw">if</span> <span class="ident">buffer</span>.<span class="ident">is_empty</span>() {
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::BufferError</span>(
-            <span class="string">&quot;could not read u8 from empty buffer&quot;</span>.<span class="ident">into</span>(),
+<span class="doccomment">/// `u8` from slice
+</span><span class="kw">pub fn </span>u8_from_slice(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;u8, ModelsError&gt; {
+    <span class="kw">if </span>buffer.is_empty() {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::BufferError(
+            <span class="string">&quot;could not read u8 from empty buffer&quot;</span>.into(),
         ));
     }
-    <span class="prelude-val">Ok</span>(<span class="ident">buffer</span>[<span class="number">0</span>])
+    <span class="prelude-val">Ok</span>(buffer[<span class="number">0</span>])
 }
 
-<span class="doccomment">/// custom serialization trait</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">SerializeCompact</span> {
-    <span class="doccomment">/// serialization</span>
-    <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span>;
+<span class="doccomment">/// custom serialization trait
+</span><span class="kw">pub trait </span>SerializeCompact {
+    <span class="doccomment">/// serialization
+    </span><span class="kw">fn </span>to_bytes_compact(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt;;
 }
 
-<span class="doccomment">/// custom deserialization trait</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">DeserializeCompact</span>: <span class="ident">Sized</span> {
-    <span class="doccomment">/// deserialization</span>
-    <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span>;
+<span class="doccomment">/// custom deserialization trait
+</span><span class="kw">pub trait </span>DeserializeCompact: Sized {
+    <span class="doccomment">/// deserialization
+    </span><span class="kw">fn </span>from_bytes_compact(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt;;
 }
 
-<span class="doccomment">/// Serializer for `IpAddr`</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IpAddrSerializer</span>;
+<span class="doccomment">/// Serializer for `IpAddr`
+</span><span class="attribute">#[derive(Default)]
+</span><span class="kw">pub struct </span>IpAddrSerializer;
 
-<span class="kw">impl</span> <span class="ident">IpAddrSerializer</span> {
-    <span class="doccomment">/// Creates a `IpAddrSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span>
-    }
+<span class="kw">impl </span>IpAddrSerializer {
+    <span class="doccomment">/// Creates a `IpAddrSerializer`
+    </span><span class="kw">pub const fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self
+    </span>}
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">IpAddrSerializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use massa_models::{Address, Amount, Slot, IpAddrSerializer};</span>
-    <span class="doccomment">/// use massa_serialization::Serializer;</span>
-    <span class="doccomment">/// use std::str::FromStr;</span>
-    <span class="doccomment">/// use std::net::{IpAddr, Ipv4Addr};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));</span>
-    <span class="doccomment">/// let ip_serializer = IpAddrSerializer::new();</span>
-    <span class="doccomment">/// let mut buffer = Vec::new();</span>
-    <span class="doccomment">/// ip_serializer.serialize(&amp;ip, &amp;mut buffer).unwrap();</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">IpAddr</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">value</span> {
-            <span class="ident">IpAddr::V4</span>(<span class="ident">ip_v4</span>) =&gt; {
-                <span class="ident">buffer</span>.<span class="ident">push</span>(<span class="number">4u8</span>);
-                <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">ip_v4</span>.<span class="ident">octets</span>());
+<span class="kw">impl </span>Serializer&lt;IpAddr&gt; <span class="kw">for </span>IpAddrSerializer {
+    <span class="doccomment">/// ```
+    /// use massa_models::{Address, Amount, Slot, IpAddrSerializer};
+    /// use massa_serialization::Serializer;
+    /// use std::str::FromStr;
+    /// use std::net::{IpAddr, Ipv4Addr};
+    ///
+    /// let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+    /// let ip_serializer = IpAddrSerializer::new();
+    /// let mut buffer = Vec::new();
+    /// ip_serializer.serialize(&amp;ip, &amp;mut buffer).unwrap();
+    /// ```
+    </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>IpAddr, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="kw">match </span>value {
+            IpAddr::V4(ip_v4) =&gt; {
+                buffer.push(<span class="number">4u8</span>);
+                buffer.extend(<span class="kw-2">&amp;</span>ip_v4.octets());
             }
-            <span class="ident">IpAddr::V6</span>(<span class="ident">ip_v6</span>) =&gt; {
-                <span class="ident">buffer</span>.<span class="ident">push</span>(<span class="number">6u8</span>);
-                <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">ip_v6</span>.<span class="ident">octets</span>());
+            IpAddr::V6(ip_v6) =&gt; {
+                buffer.push(<span class="number">6u8</span>);
+                buffer.extend(<span class="kw-2">&amp;</span>ip_v6.octets());
             }
         };
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// Deserializer for `IpAddr`</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IpAddrDeserializer</span>;
+<span class="doccomment">/// Deserializer for `IpAddr`
+</span><span class="attribute">#[derive(Default)]
+</span><span class="kw">pub struct </span>IpAddrDeserializer;
 
-<span class="kw">impl</span> <span class="ident">IpAddrDeserializer</span> {
-    <span class="doccomment">/// Creates a `IpAddrDeserializer`</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span>
-    }
+<span class="kw">impl </span>IpAddrDeserializer {
+    <span class="doccomment">/// Creates a `IpAddrDeserializer`
+    </span><span class="kw">pub const fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self
+    </span>}
 }
 
-<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">IpAddrDeserializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use massa_models::{Address, Amount, Slot, IpAddrSerializer, IpAddrDeserializer};</span>
-    <span class="doccomment">/// use massa_serialization::{Serializer, Deserializer, DeserializeError};</span>
-    <span class="doccomment">/// use std::str::FromStr;</span>
-    <span class="doccomment">/// use std::net::{IpAddr, Ipv4Addr};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));</span>
-    <span class="doccomment">/// let ip_serializer = IpAddrSerializer::new();</span>
-    <span class="doccomment">/// let ip_deserializer = IpAddrDeserializer::new();</span>
-    <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// ip_serializer.serialize(&amp;ip, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// let (rest, ip_deser) = ip_deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
-    <span class="doccomment">/// assert!(rest.is_empty());</span>
-    <span class="doccomment">/// assert_eq!(ip, ip_deser);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">impl </span>Deserializer&lt;IpAddr&gt; <span class="kw">for </span>IpAddrDeserializer {
+    <span class="doccomment">/// ```
+    /// use massa_models::{Address, Amount, Slot, IpAddrSerializer, IpAddrDeserializer};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    /// use std::net::{IpAddr, Ipv4Addr};
+    ///
+    /// let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+    /// let ip_serializer = IpAddrSerializer::new();
+    /// let ip_deserializer = IpAddrDeserializer::new();
+    /// let mut serialized = Vec::new();
+    /// ip_serializer.serialize(&amp;ip, &amp;mut serialized).unwrap();
+    /// let (rest, ip_deser) = ip_deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(ip, ip_deser);
+    /// ```
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">IpAddr</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">nom::branch::alt</span>((
-            <span class="ident">preceded</span>(
-                <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="ident">nom::bytes::complete::tag</span>([<span class="number">4u8</span>])(<span class="ident">input</span>),
-                <span class="op">|</span><span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">|</span> {
-                    <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">addr</span>) <span class="op">=</span> <span class="ident">take</span>(<span class="number">4usize</span>)(<span class="ident">input</span>)<span class="question-mark">?</span>;
-                    <span class="kw">let</span> <span class="ident">addr</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> <span class="ident">addr</span>.<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
-                    <span class="prelude-val">Ok</span>((<span class="ident">rest</span>, <span class="ident">IpAddr::V4</span>(<span class="ident">Ipv4Addr::from</span>(<span class="ident">addr</span>))))
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], IpAddr, E&gt; {
+        nom::branch::alt((
+            preceded(
+                |input| nom::bytes::complete::tag([<span class="number">4u8</span>])(input),
+                |input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
+                    <span class="kw">let </span>(rest, addr) = take(<span class="number">4usize</span>)(input)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>addr: [u8; <span class="number">4</span>] = addr.try_into().unwrap();
+                    <span class="prelude-val">Ok</span>((rest, IpAddr::V4(Ipv4Addr::from(addr))))
                 },
             ),
-            <span class="ident">preceded</span>(
-                <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="ident">nom::bytes::complete::tag</span>([<span class="number">6u8</span>])(<span class="ident">input</span>),
-                <span class="op">|</span><span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">|</span> {
-                    <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">addr</span>) <span class="op">=</span> <span class="ident">take</span>(<span class="number">16usize</span>)(<span class="ident">input</span>)<span class="question-mark">?</span>;
-                    <span class="comment">// Safe because take would fail just above if less then 16</span>
-                    <span class="kw">let</span> <span class="ident">addr</span>: [<span class="ident">u8</span>; <span class="number">16</span>] <span class="op">=</span> <span class="ident">addr</span>.<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
-                    <span class="prelude-val">Ok</span>((<span class="ident">rest</span>, <span class="ident">IpAddr::V6</span>(<span class="ident">Ipv6Addr::from</span>(<span class="ident">addr</span>))))
+            preceded(
+                |input| nom::bytes::complete::tag([<span class="number">6u8</span>])(input),
+                |input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
+                    <span class="kw">let </span>(rest, addr) = take(<span class="number">16usize</span>)(input)<span class="question-mark">?</span>;
+                    <span class="comment">// Safe because take would fail just above if less then 16
+                    </span><span class="kw">let </span>addr: [u8; <span class="number">16</span>] = addr.try_into().unwrap();
+                    <span class="prelude-val">Ok</span>((rest, IpAddr::V6(Ipv6Addr::from(addr))))
                 },
             ),
-        ))(<span class="ident">buffer</span>)
+        ))(buffer)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">Amount</span> {
-    <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">to_raw</span>().<span class="ident">to_varint_bytes</span>())
+<span class="kw">impl </span>SerializeCompact <span class="kw">for </span>Amount {
+    <span class="kw">fn </span>to_bytes_compact(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt; {
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.to_raw().to_varint_bytes())
     }
 }
 
-<span class="doccomment">/// Checks performed:</span>
-<span class="doccomment">/// - Buffer contains a valid `u8`.</span>
-<span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">Amount</span> {
-    <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">res_u64</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u64::from_varint_bytes</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>((<span class="ident">Amount::from_raw</span>(<span class="ident">res_u64</span>), <span class="ident">delta</span>))
+<span class="doccomment">/// Checks performed:
+/// - Buffer contains a valid `u8`.
+</span><span class="kw">impl </span>DeserializeCompact <span class="kw">for </span>Amount {
+    <span class="kw">fn </span>from_bytes_compact(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
+        <span class="kw">let </span>(res_u64, delta) = u64::from_varint_bytes(buffer)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>((Amount::from_raw(res_u64), delta))
     }
 }
 
-<span class="doccomment">/// Basic `Vec&lt;u8&gt;` serializer</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">VecU8Serializer</span> {
-    <span class="ident">len_serializer</span>: <span class="ident">U64VarIntSerializer</span>,
+<span class="doccomment">/// Basic `Vec&lt;u8&gt;` serializer
+</span><span class="kw">pub struct </span>VecU8Serializer {
+    len_serializer: U64VarIntSerializer,
 }
 
-<span class="kw">impl</span> <span class="ident">VecU8Serializer</span> {
-    <span class="doccomment">/// Creates a new `VecU8Serializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">len_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(),
+<span class="kw">impl </span>VecU8Serializer {
+    <span class="doccomment">/// Creates a new `VecU8Serializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            len_serializer: U64VarIntSerializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">VecU8Serializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>VecU8Serializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">VecU8Serializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use std::ops::Bound::Included;</span>
-    <span class="doccomment">/// use massa_serialization::Serializer;</span>
-    <span class="doccomment">/// use massa_models::VecU8Serializer;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let vec = vec![1, 2, 3];</span>
-    <span class="doccomment">/// let mut buffer = Vec::new();</span>
-    <span class="doccomment">/// let serializer = VecU8Serializer::new();</span>
-    <span class="doccomment">/// serializer.serialize(&amp;vec, &amp;mut buffer).unwrap();</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">len</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-            <span class="ident">SerializeError::NumberTooBig</span>(<span class="macro">format!</span>(<span class="string">&quot;too many entries data in VecU8: {}&quot;</span>, <span class="ident">err</span>))
+<span class="kw">impl </span>Serializer&lt;Vec&lt;u8&gt;&gt; <span class="kw">for </span>VecU8Serializer {
+    <span class="doccomment">/// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::Serializer;
+    /// use massa_models::VecU8Serializer;
+    ///
+    /// let vec = vec![1, 2, 3];
+    /// let mut buffer = Vec::new();
+    /// let serializer = VecU8Serializer::new();
+    /// serializer.serialize(&amp;vec, &amp;mut buffer).unwrap();
+    /// ```
+    </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>Vec&lt;u8&gt;, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="kw">let </span>len: u64 = value.len().try_into().map_err(|err| {
+            SerializeError::NumberTooBig(<span class="macro">format!</span>(<span class="string">&quot;too many entries data in VecU8: {}&quot;</span>, err))
         })<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">len_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">len</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="ident">value</span>);
+        <span class="self">self</span>.len_serializer.serialize(<span class="kw-2">&amp;</span>len, buffer)<span class="question-mark">?</span>;
+        buffer.extend(value);
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// Basic `Vec&lt;u8&gt;` deserializer</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">VecU8Deserializer</span> {
-    <span class="ident">varint_u64_deserializer</span>: <span class="ident">U64VarIntDeserializer</span>,
+<span class="doccomment">/// Basic `Vec&lt;u8&gt;` deserializer
+</span><span class="kw">pub struct </span>VecU8Deserializer {
+    varint_u64_deserializer: U64VarIntDeserializer,
 }
 
-<span class="kw">impl</span> <span class="ident">VecU8Deserializer</span> {
-    <span class="doccomment">/// Creates a new `VecU8Deserializer`</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">min_length</span>: <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>, <span class="ident">max_length</span>: <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">varint_u64_deserializer</span>: <span class="ident">U64VarIntDeserializer::new</span>(<span class="ident">min_length</span>, <span class="ident">max_length</span>),
+<span class="kw">impl </span>VecU8Deserializer {
+    <span class="doccomment">/// Creates a new `VecU8Deserializer`
+    </span><span class="kw">pub const fn </span>new(min_length: Bound&lt;u64&gt;, max_length: Bound&lt;u64&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            varint_u64_deserializer: U64VarIntDeserializer::new(min_length, max_length),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">VecU8Deserializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use std::ops::Bound::Included;</span>
-    <span class="doccomment">/// use massa_serialization::{Serializer, Deserializer, DeserializeError};</span>
-    <span class="doccomment">/// use massa_models::{VecU8Serializer, VecU8Deserializer};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let vec = vec![1, 2, 3];</span>
-    <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// let serializer = VecU8Serializer::new();</span>
-    <span class="doccomment">/// let deserializer = VecU8Deserializer::new(Included(0), Included(1000000));</span>
-    <span class="doccomment">/// serializer.serialize(&amp;vec, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// let (rest, vec_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
-    <span class="doccomment">/// assert!(rest.is_empty());</span>
-    <span class="doccomment">/// assert_eq!(vec, vec_deser);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">impl </span>Deserializer&lt;Vec&lt;u8&gt;&gt; <span class="kw">for </span>VecU8Deserializer {
+    <span class="doccomment">/// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use massa_models::{VecU8Serializer, VecU8Deserializer};
+    ///
+    /// let vec = vec![1, 2, 3];
+    /// let mut serialized = Vec::new();
+    /// let serializer = VecU8Serializer::new();
+    /// let deserializer = VecU8Deserializer::new(Included(0), Included(1000000));
+    /// serializer.serialize(&amp;vec, &amp;mut serialized).unwrap();
+    /// let (rest, vec_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(vec, vec_deser);
+    /// ```
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">context</span>(<span class="string">&quot;Failed Vec&lt;u8&gt; deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-            <span class="ident">length_data</span>(<span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">varint_u64_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>))(<span class="ident">input</span>)
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Vec&lt;u8&gt;, E&gt; {
+        context(<span class="string">&quot;Failed Vec&lt;u8&gt; deserialization&quot;</span>, |input| {
+            length_data(|input| <span class="self">self</span>.varint_u64_deserializer.deserialize(input))(input)
         })
-        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">res</span><span class="op">|</span> <span class="ident">res</span>.<span class="ident">to_vec</span>())
-        .<span class="ident">parse</span>(<span class="ident">buffer</span>)
+        .map(|res| res.to_vec())
+        .parse(buffer)
     }
 }
 
-<span class="doccomment">/// Serializer for `String` with generic serializer for the size of the string</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StringSerializer</span><span class="op">&lt;</span><span class="ident">SL</span>, <span class="ident">L</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">SL</span>: <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>,
-    <span class="ident">L</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Serializer for `String` with generic serializer for the size of the string
+</span><span class="kw">pub struct </span>StringSerializer&lt;SL, L&gt;
+<span class="kw">where
+    </span>SL: Serializer&lt;L&gt;,
+    L: TryFrom&lt;usize&gt;,
 {
-    <span class="ident">length_serializer</span>: <span class="ident">SL</span>,
-    <span class="ident">marker_l</span>: <span class="ident">std::marker::PhantomData</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>,
+    length_serializer: SL,
+    marker_l: std::marker::PhantomData&lt;L&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">SL</span>, <span class="ident">L</span><span class="op">&gt;</span> <span class="ident">StringSerializer</span><span class="op">&lt;</span><span class="ident">SL</span>, <span class="ident">L</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">SL</span>: <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>,
-    <span class="ident">L</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;SL, L&gt; StringSerializer&lt;SL, L&gt;
+<span class="kw">where
+    </span>SL: Serializer&lt;L&gt;,
+    L: TryFrom&lt;usize&gt;,
 {
-    <span class="doccomment">/// Creates a `StringSerializer`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments:</span>
-    <span class="doccomment">/// - `length_serializer`: Serializer for the length of the string (should be one of `UXXVarIntSerializer`)</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">length_serializer</span>: <span class="ident">SL</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">length_serializer</span>,
-            <span class="ident">marker_l</span>: <span class="ident">std::marker::PhantomData</span>,
+    <span class="doccomment">/// Creates a `StringSerializer`.
+    ///
+    /// # Arguments:
+    /// - `length_serializer`: Serializer for the length of the string (should be one of `UXXVarIntSerializer`)
+    </span><span class="kw">pub fn </span>new(length_serializer: SL) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            length_serializer,
+            marker_l: std::marker::PhantomData,
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">SL</span>, <span class="ident">L</span><span class="op">&gt;</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">StringSerializer</span><span class="op">&lt;</span><span class="ident">SL</span>, <span class="ident">L</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">SL</span>: <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>,
-    <span class="ident">L</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;SL, L&gt; Serializer&lt;String&gt; <span class="kw">for </span>StringSerializer&lt;SL, L&gt;
+<span class="kw">where
+    </span>SL: Serializer&lt;L&gt;,
+    L: TryFrom&lt;usize&gt;,
 {
-    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">length_serializer</span>.<span class="ident">serialize</span>(
-            <span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">SerializeError::StringTooBig</span>(<span class="string">&quot;The string is too big to be serialized&quot;</span>.<span class="ident">to_string</span>())
+    <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>String, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="self">self</span>.length_serializer.serialize(
+            <span class="kw-2">&amp;</span>value.len().try_into().map_err(|<span class="kw">_</span>| {
+                SerializeError::StringTooBig(<span class="string">&quot;The string is too big to be serialized&quot;</span>.to_string())
             })<span class="question-mark">?</span>,
-            <span class="ident">buffer</span>,
+            buffer,
         )<span class="question-mark">?</span>;
-        <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="ident">value</span>.<span class="ident">as_bytes</span>());
+        buffer.extend(value.as_bytes());
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// Deserializer for `String` with generic deserializer for the size of the string</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StringDeserializer</span><span class="op">&lt;</span><span class="ident">DL</span>, <span class="ident">L</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">DL</span>: <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>,
-    <span class="ident">L</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ToUsize</span>,
+<span class="doccomment">/// Deserializer for `String` with generic deserializer for the size of the string
+</span><span class="kw">pub struct </span>StringDeserializer&lt;DL, L&gt;
+<span class="kw">where
+    </span>DL: Deserializer&lt;L&gt;,
+    L: TryFrom&lt;usize&gt; + ToUsize,
 {
-    <span class="ident">length_deserializer</span>: <span class="ident">DL</span>,
-    <span class="ident">marker_l</span>: <span class="ident">std::marker::PhantomData</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>,
+    length_deserializer: DL,
+    marker_l: std::marker::PhantomData&lt;L&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">DL</span>, <span class="ident">L</span><span class="op">&gt;</span> <span class="ident">StringDeserializer</span><span class="op">&lt;</span><span class="ident">DL</span>, <span class="ident">L</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">DL</span>: <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>,
-    <span class="ident">L</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ToUsize</span>,
+<span class="kw">impl</span>&lt;DL, L&gt; StringDeserializer&lt;DL, L&gt;
+<span class="kw">where
+    </span>DL: Deserializer&lt;L&gt;,
+    L: TryFrom&lt;usize&gt; + ToUsize,
 {
-    <span class="doccomment">/// Creates a `StringDeserializer`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments:</span>
-    <span class="doccomment">/// - `length_deserializer`: Serializer for the length of the string (should be one of `UXXVarIntSerializer`)</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">length_deserializer</span>: <span class="ident">DL</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">length_deserializer</span>,
-            <span class="ident">marker_l</span>: <span class="ident">std::marker::PhantomData</span>,
+    <span class="doccomment">/// Creates a `StringDeserializer`.
+    ///
+    /// # Arguments:
+    /// - `length_deserializer`: Serializer for the length of the string (should be one of `UXXVarIntSerializer`)
+    </span><span class="kw">pub const fn </span>new(length_deserializer: DL) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            length_deserializer,
+            marker_l: std::marker::PhantomData,
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">DL</span>, <span class="ident">L</span><span class="op">&gt;</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">StringDeserializer</span><span class="op">&lt;</span><span class="ident">DL</span>, <span class="ident">L</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">DL</span>: <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>,
-    <span class="ident">L</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ToUsize</span>,
+<span class="kw">impl</span>&lt;DL, L&gt; Deserializer&lt;String&gt; <span class="kw">for </span>StringDeserializer&lt;DL, L&gt;
+<span class="kw">where
+    </span>DL: Deserializer&lt;L&gt;,
+    L: TryFrom&lt;usize&gt; + ToUsize,
 {
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">String</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">res</span>) <span class="op">=</span> <span class="ident">length_data</span>(<span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">length_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>))
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">data</span><span class="op">|</span> {
-                <span class="ident">String::from_utf8</span>(<span class="ident">data</span>.<span class="ident">to_vec</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                    <span class="ident">nom::Err::Error</span>(<span class="ident">ParseError::from_error_kind</span>(
-                        <span class="ident">data</span>,
-                        <span class="ident">nom::error::ErrorKind::Verify</span>,
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], String, E&gt; {
+        <span class="kw">let </span>(rest, res) = length_data(|input| <span class="self">self</span>.length_deserializer.deserialize(input))
+            .map(|data| {
+                String::from_utf8(data.to_vec()).map_err(|<span class="kw">_</span>| {
+                    nom::Err::Error(ParseError::from_error_kind(
+                        data,
+                        nom::error::ErrorKind::Verify,
                     ))
                 })
             })
-            .<span class="ident">parse</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>((<span class="ident">rest</span>, <span class="ident">res</span><span class="question-mark">?</span>))
+            .parse(buffer)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>((rest, res<span class="question-mark">?</span>))
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">massa_serialization::DeserializeError</span>;
-    <span class="kw">use</span> <span class="ident">serial_test::serial</span>;
-    <span class="kw">use</span> <span class="ident">std::ops::Bound::Included</span>;
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="attribute">#[<span class="ident">serial</span>]</span>
-    <span class="kw">fn</span> <span class="ident">vec_u8</span>() {
-        <span class="kw">let</span> <span class="ident">vec</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">9</span>, <span class="number">8</span>, <span class="number">7</span>];
-        <span class="kw">let</span> <span class="ident">vec_u8_serializer</span> <span class="op">=</span> <span class="ident">VecU8Serializer::new</span>();
-        <span class="kw">let</span> <span class="ident">vec_u8_deserializer</span> <span class="op">=</span> <span class="ident">VecU8Deserializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>));
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="ident">vec_u8_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">vec</span>, <span class="kw-2">&amp;mut</span> <span class="ident">serialized</span>).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">new_vec</span>) <span class="op">=</span> <span class="ident">vec_u8_deserializer</span>
-            .<span class="ident">deserialize</span>::<span class="op">&lt;</span><span class="ident">DeserializeError</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">serialized</span>)
-            .<span class="ident">unwrap</span>();
-        <span class="macro">assert!</span>(<span class="ident">rest</span>.<span class="ident">is_empty</span>());
-        <span class="macro">assert_eq!</span>(<span class="ident">vec</span>, <span class="ident">new_vec</span>);
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>massa_serialization::DeserializeError;
+    <span class="kw">use </span>serial_test::serial;
+    <span class="kw">use </span>std::ops::Bound::Included;
+    <span class="attribute">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>vec_u8() {
+        <span class="kw">let </span>vec: Vec&lt;u8&gt; = <span class="macro">vec!</span>[<span class="number">9</span>, <span class="number">8</span>, <span class="number">7</span>];
+        <span class="kw">let </span>vec_u8_serializer = VecU8Serializer::new();
+        <span class="kw">let </span>vec_u8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
+        <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
+        vec_u8_serializer.serialize(<span class="kw-2">&amp;</span>vec, <span class="kw-2">&amp;mut </span>serialized).unwrap();
+        <span class="kw">let </span>(rest, new_vec) = vec_u8_deserializer
+            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized)
+            .unwrap();
+        <span class="macro">assert!</span>(rest.is_empty());
+        <span class="macro">assert_eq!</span>(vec, new_vec);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="attribute">#[<span class="ident">serial</span>]</span>
-    <span class="kw">fn</span> <span class="ident">vec_u8_big_length</span>() {
-        <span class="kw">let</span> <span class="ident">vec</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">9</span>, <span class="number">8</span>, <span class="number">7</span>];
-        <span class="kw">let</span> <span class="ident">len</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="ident">U64VarIntSerializer::new</span>()
-            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">len</span>, <span class="kw-2">&amp;mut</span> <span class="ident">serialized</span>)
-            .<span class="ident">unwrap</span>();
-        <span class="ident">serialized</span>.<span class="ident">extend</span>(<span class="ident">vec</span>);
-        <span class="kw">let</span> <span class="ident">vec_u8_deserializer</span> <span class="op">=</span> <span class="ident">VecU8Deserializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>));
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">vec_u8_deserializer</span>
-            .<span class="ident">deserialize</span>::<span class="op">&lt;</span><span class="ident">DeserializeError</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">serialized</span>)
-            .<span class="ident">expect_err</span>(<span class="string">&quot;Should fail too long size&quot;</span>);
+    <span class="attribute">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>vec_u8_big_length() {
+        <span class="kw">let </span>vec: Vec&lt;u8&gt; = <span class="macro">vec!</span>[<span class="number">9</span>, <span class="number">8</span>, <span class="number">7</span>];
+        <span class="kw">let </span>len: u64 = <span class="number">10</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
+        U64VarIntSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>len, <span class="kw-2">&amp;mut </span>serialized)
+            .unwrap();
+        serialized.extend(vec);
+        <span class="kw">let </span>vec_u8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
+        <span class="kw">let _ </span>= vec_u8_deserializer
+            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized)
+            .expect_err(<span class="string">&quot;Should fail too long size&quot;</span>);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="attribute">#[<span class="ident">serial</span>]</span>
-    <span class="kw">fn</span> <span class="ident">vec_u8_min_length</span>() {
-        <span class="kw">let</span> <span class="ident">vec</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">9</span>, <span class="number">8</span>, <span class="number">7</span>];
-        <span class="kw">let</span> <span class="ident">len</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="ident">U64VarIntSerializer::new</span>()
-            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">len</span>, <span class="kw-2">&amp;mut</span> <span class="ident">serialized</span>)
-            .<span class="ident">unwrap</span>();
-        <span class="ident">serialized</span>.<span class="ident">extend</span>(<span class="ident">vec</span>);
-        <span class="kw">let</span> <span class="ident">vec_u8_deserializer</span> <span class="op">=</span> <span class="ident">VecU8Deserializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>));
-        <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">res</span>) <span class="op">=</span> <span class="ident">vec_u8_deserializer</span>
-            .<span class="ident">deserialize</span>::<span class="op">&lt;</span><span class="ident">DeserializeError</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">serialized</span>)
-            .<span class="ident">unwrap</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">rest</span>, <span class="kw-2">&amp;</span>[<span class="number">8</span>, <span class="number">7</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">res</span>, <span class="kw-2">&amp;</span>[<span class="number">9</span>])
+    <span class="attribute">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>vec_u8_min_length() {
+        <span class="kw">let </span>vec: Vec&lt;u8&gt; = <span class="macro">vec!</span>[<span class="number">9</span>, <span class="number">8</span>, <span class="number">7</span>];
+        <span class="kw">let </span>len: u64 = <span class="number">1</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
+        U64VarIntSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>len, <span class="kw-2">&amp;mut </span>serialized)
+            .unwrap();
+        serialized.extend(vec);
+        <span class="kw">let </span>vec_u8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
+        <span class="kw">let </span>(rest, res) = vec_u8_deserializer
+            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized)
+            .unwrap();
+        <span class="macro">assert_eq!</span>(rest, <span class="kw-2">&amp;</span>[<span class="number">8</span>, <span class="number">7</span>]);
+        <span class="macro">assert_eq!</span>(res, <span class="kw-2">&amp;</span>[<span class="number">9</span>])
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="attribute">#[<span class="ident">serial</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_varint</span>() {
-        <span class="kw">let</span> <span class="ident">x32</span> <span class="op">=</span> <span class="number">70_000u32</span>;
-        <span class="kw">let</span> <span class="ident">x64</span> <span class="op">=</span> <span class="number">10_000_000_000u64</span>;
+    <span class="attribute">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_varint() {
+        <span class="kw">let </span>x32 = <span class="number">70_000u32</span>;
+        <span class="kw">let </span>x64 = <span class="number">10_000_000_000u64</span>;
 
-        <span class="comment">// serialize</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">x32</span>.<span class="ident">to_varint_bytes</span>());
-        <span class="macro">assert_eq!</span>(<span class="ident">res</span>.<span class="ident">len</span>(), <span class="number">3</span>);
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">x64</span>.<span class="ident">to_varint_bytes</span>());
-        <span class="macro">assert_eq!</span>(<span class="ident">res</span>.<span class="ident">len</span>(), <span class="number">3</span> <span class="op">+</span> <span class="number">5</span>);
+        <span class="comment">// serialize
+        </span><span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;u8&gt; = Vec::new();
+        res.extend(x32.to_varint_bytes());
+        <span class="macro">assert_eq!</span>(res.len(), <span class="number">3</span>);
+        res.extend(x64.to_varint_bytes());
+        <span class="macro">assert_eq!</span>(res.len(), <span class="number">3 </span>+ <span class="number">5</span>);
 
-        <span class="comment">// deserialize</span>
-        <span class="kw">let</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">res</span>.<span class="ident">as_slice</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">let</span> (<span class="ident">out_x32</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u32::from_varint_bytes_bounded</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="ident">cursor</span>..], <span class="number">80_000</span>).<span class="ident">unwrap</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">out_x32</span>, <span class="ident">x32</span>);
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-        <span class="kw">let</span> (<span class="ident">out_x64</span>, <span class="ident">delta</span>) <span class="op">=</span>
-            <span class="ident">u64::from_varint_bytes_bounded</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="ident">cursor</span>..], <span class="number">20_000_000_000</span>).<span class="ident">unwrap</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">out_x64</span>, <span class="ident">x64</span>);
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-        <span class="macro">assert_eq!</span>(<span class="ident">cursor</span>, <span class="ident">buf</span>.<span class="ident">len</span>());
+        <span class="comment">// deserialize
+        </span><span class="kw">let </span>buf = res.as_slice();
+        <span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="number">0</span>;
+        <span class="kw">let </span>(out_x32, delta) = u32::from_varint_bytes_bounded(<span class="kw-2">&amp;</span>buf[cursor..], <span class="number">80_000</span>).unwrap();
+        <span class="macro">assert_eq!</span>(out_x32, x32);
+        cursor += delta;
+        <span class="kw">let </span>(out_x64, delta) =
+            u64::from_varint_bytes_bounded(<span class="kw-2">&amp;</span>buf[cursor..], <span class="number">20_000_000_000</span>).unwrap();
+        <span class="macro">assert_eq!</span>(out_x64, x64);
+        cursor += delta;
+        <span class="macro">assert_eq!</span>(cursor, buf.len());
 
-        <span class="comment">// deserialize fail bounds</span>
-        <span class="macro">assert!</span>(<span class="ident">u32::from_varint_bytes_bounded</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="number">0</span>..], <span class="number">69_999</span>).<span class="ident">is_err</span>());
-        <span class="macro">assert!</span>(<span class="ident">u64::from_varint_bytes_bounded</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="number">3</span>..], <span class="number">9_999_999_999</span>).<span class="ident">is_err</span>());
+        <span class="comment">// deserialize fail bounds
+        </span><span class="macro">assert!</span>(u32::from_varint_bytes_bounded(<span class="kw-2">&amp;</span>buf[<span class="number">0</span>..], <span class="number">69_999</span>).is_err());
+        <span class="macro">assert!</span>(u64::from_varint_bytes_bounded(<span class="kw-2">&amp;</span>buf[<span class="number">3</span>..], <span class="number">9_999_999_999</span>).is_err());
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="attribute">#[<span class="ident">serial</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_be_min</span>() {
-        <span class="kw">let</span> <span class="ident">x32</span> <span class="op">=</span> <span class="number">70_000u32</span>;
-        <span class="kw">let</span> <span class="ident">x64</span> <span class="op">=</span> <span class="number">10_000_000_000u64</span>;
+    <span class="attribute">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_be_min() {
+        <span class="kw">let </span>x32 = <span class="number">70_000u32</span>;
+        <span class="kw">let </span>x64 = <span class="number">10_000_000_000u64</span>;
 
-        <span class="comment">// serialize</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">x32</span>.<span class="ident">to_be_bytes_min</span>(<span class="number">70_001</span>).<span class="ident">unwrap</span>());
-        <span class="macro">assert_eq!</span>(<span class="ident">res</span>.<span class="ident">len</span>(), <span class="number">3</span>);
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">x64</span>.<span class="ident">to_be_bytes_min</span>(<span class="number">10_000_000_001</span>).<span class="ident">unwrap</span>());
-        <span class="macro">assert_eq!</span>(<span class="ident">res</span>.<span class="ident">len</span>(), <span class="number">3</span> <span class="op">+</span> <span class="number">5</span>);
+        <span class="comment">// serialize
+        </span><span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;u8&gt; = Vec::new();
+        res.extend(x32.to_be_bytes_min(<span class="number">70_001</span>).unwrap());
+        <span class="macro">assert_eq!</span>(res.len(), <span class="number">3</span>);
+        res.extend(x64.to_be_bytes_min(<span class="number">10_000_000_001</span>).unwrap());
+        <span class="macro">assert_eq!</span>(res.len(), <span class="number">3 </span>+ <span class="number">5</span>);
 
-        <span class="comment">// serialize fail bounds</span>
-        <span class="macro">assert!</span>(<span class="ident">x32</span>.<span class="ident">to_be_bytes_min</span>(<span class="number">69_999</span>).<span class="ident">is_err</span>());
-        <span class="macro">assert!</span>(<span class="ident">x64</span>.<span class="ident">to_be_bytes_min</span>(<span class="number">9_999_999_999</span>).<span class="ident">is_err</span>());
+        <span class="comment">// serialize fail bounds
+        </span><span class="macro">assert!</span>(x32.to_be_bytes_min(<span class="number">69_999</span>).is_err());
+        <span class="macro">assert!</span>(x64.to_be_bytes_min(<span class="number">9_999_999_999</span>).is_err());
 
-        <span class="comment">// deserialize</span>
-        <span class="kw">let</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">res</span>.<span class="ident">as_slice</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">let</span> (<span class="ident">out_x32</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u32::from_be_bytes_min</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="ident">cursor</span>..], <span class="number">70_001</span>).<span class="ident">unwrap</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">out_x32</span>, <span class="ident">x32</span>);
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-        <span class="kw">let</span> (<span class="ident">out_x64</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u64::from_be_bytes_min</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="ident">cursor</span>..], <span class="number">10_000_000_001</span>).<span class="ident">unwrap</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">out_x64</span>, <span class="ident">x64</span>);
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-        <span class="macro">assert_eq!</span>(<span class="ident">cursor</span>, <span class="ident">buf</span>.<span class="ident">len</span>());
+        <span class="comment">// deserialize
+        </span><span class="kw">let </span>buf = res.as_slice();
+        <span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="number">0</span>;
+        <span class="kw">let </span>(out_x32, delta) = u32::from_be_bytes_min(<span class="kw-2">&amp;</span>buf[cursor..], <span class="number">70_001</span>).unwrap();
+        <span class="macro">assert_eq!</span>(out_x32, x32);
+        cursor += delta;
+        <span class="kw">let </span>(out_x64, delta) = u64::from_be_bytes_min(<span class="kw-2">&amp;</span>buf[cursor..], <span class="number">10_000_000_001</span>).unwrap();
+        <span class="macro">assert_eq!</span>(out_x64, x64);
+        cursor += delta;
+        <span class="macro">assert_eq!</span>(cursor, buf.len());
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="attribute">#[<span class="ident">serial</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_array_from_slice_with_zero_u64</span>() {
-        <span class="kw">let</span> <span class="ident">zero</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">zero</span>.<span class="ident">to_be_bytes</span>()).<span class="ident">unwrap</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">zero</span>, <span class="ident">u64::from_be_bytes</span>(<span class="ident">res</span>));
+    <span class="attribute">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_array_from_slice_with_zero_u64() {
+        <span class="kw">let </span>zero: u64 = <span class="number">0</span>;
+        <span class="kw">let </span>res = array_from_slice(<span class="kw-2">&amp;</span>zero.to_be_bytes()).unwrap();
+        <span class="macro">assert_eq!</span>(zero, u64::from_be_bytes(res));
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

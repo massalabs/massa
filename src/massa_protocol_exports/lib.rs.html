@@ -18,25 +18,25 @@
 <span id="18">18</span>
 <span id="19">19</span>
 <span id="20">20</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-<span class="doccomment">//! protocol component exports</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">drain_filter</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
-<span class="kw">mod</span> <span class="ident">error</span>;
-<span class="kw">mod</span> <span class="ident">protocol_controller</span>;
-<span class="kw">mod</span> <span class="ident">settings</span>;
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</span><span class="doccomment">//! protocol component exports
+</span><span class="attribute">#![feature(async_closure)]
+#![feature(drain_filter)]
+#![feature(ip)]
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
+</span><span class="kw">mod </span>error;
+<span class="kw">mod </span>protocol_controller;
+<span class="kw">mod </span>settings;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error::ProtocolError</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">protocol_controller</span>::{
-    <span class="ident">BlocksResults</span>, <span class="ident">ProtocolCommand</span>, <span class="ident">ProtocolCommandSender</span>, <span class="ident">ProtocolEvent</span>, <span class="ident">ProtocolEventReceiver</span>,
-    <span class="ident">ProtocolManagementCommand</span>, <span class="ident">ProtocolManager</span>, <span class="ident">ProtocolPoolEvent</span>, <span class="ident">ProtocolPoolEventReceiver</span>,
+<span class="kw">pub use </span>error::ProtocolError;
+<span class="kw">pub use </span>protocol_controller::{
+    BlocksResults, ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
+    ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">settings::ProtocolSettings</span>;
+<span class="kw">pub use </span>settings::ProtocolSettings;
 
-<span class="doccomment">/// TODO: Add only if test. Removed the configuration test because don&#39;t work if running cargo test on an other sub-crate.</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tests</span>;
+<span class="doccomment">/// TODO: Add only if test. Removed the configuration test because don&#39;t work if running cargo test on an other sub-crate.
+</span><span class="kw">pub mod </span>tests;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

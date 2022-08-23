@@ -325,77 +325,77 @@
 <span id="325">325</span>
 <span id="326">326</span>
 <span id="327">327</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::cmds</span>::{<span class="ident">Command</span>, <span class="ident">ExtendedWallet</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::SETTINGS</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils::longest_common_prefix</span>;
-<span class="kw">use</span> <span class="ident">console::style</span>;
-<span class="kw">use</span> <span class="ident">dialoguer</span>::{<span class="ident">theme::ColorfulTheme</span>, <span class="ident">Completion</span>, <span class="ident">History</span>, <span class="ident">Input</span>};
-<span class="kw">use</span> <span class="ident">erased_serde</span>::{<span class="ident">Serialize</span>, <span class="ident">Serializer</span>};
-<span class="kw">use</span> <span class="ident">glob::glob</span>;
-<span class="kw">use</span> <span class="ident">massa_models::api</span>::{
-    <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">DatastoreEntryOutput</span>, <span class="ident">EndorsementInfo</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>,
+</span><span class="kw">use </span><span class="kw">crate</span>::cmds::{Command, ExtendedWallet};
+<span class="kw">use </span><span class="kw">crate</span>::settings::SETTINGS;
+<span class="kw">use </span><span class="kw">crate</span>::utils::longest_common_prefix;
+<span class="kw">use </span>console::style;
+<span class="kw">use </span>dialoguer::{theme::ColorfulTheme, Completion, History, Input};
+<span class="kw">use </span>erased_serde::{Serialize, Serializer};
+<span class="kw">use </span>glob::glob;
+<span class="kw">use </span>massa_models::api::{
+    AddressInfo, BlockInfo, DatastoreEntryOutput, EndorsementInfo, NodeStatus, OperationInfo,
 };
-<span class="kw">use</span> <span class="ident">massa_models::composite::PubkeySig</span>;
-<span class="kw">use</span> <span class="ident">massa_models::execution::ExecuteReadOnlyResponse</span>;
-<span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
-<span class="kw">use</span> <span class="ident">massa_models::prehash::Set</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">OperationId</span>};
-<span class="kw">use</span> <span class="ident">massa_sdk::Client</span>;
-<span class="kw">use</span> <span class="ident">massa_wallet::Wallet</span>;
-<span class="kw">use</span> <span class="ident">rev_lines::RevLines</span>;
-<span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
-<span class="kw">use</span> <span class="ident">std::io::Error</span>;
-<span class="kw">use</span> <span class="ident">std::str</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">fs::File</span>,
-    <span class="ident">fs::OpenOptions</span>,
-    <span class="ident">io</span>::{<span class="ident">BufReader</span>, <span class="ident">Write</span>},
+<span class="kw">use </span>massa_models::composite::PubkeySig;
+<span class="kw">use </span>massa_models::execution::ExecuteReadOnlyResponse;
+<span class="kw">use </span>massa_models::output_event::SCOutputEvent;
+<span class="kw">use </span>massa_models::prehash::Set;
+<span class="kw">use </span>massa_models::{Address, OperationId};
+<span class="kw">use </span>massa_sdk::Client;
+<span class="kw">use </span>massa_wallet::Wallet;
+<span class="kw">use </span>rev_lines::RevLines;
+<span class="kw">use </span>std::collections::VecDeque;
+<span class="kw">use </span>std::io::Error;
+<span class="kw">use </span>std::str;
+<span class="kw">use </span>std::{
+    fs::File,
+    fs::OpenOptions,
+    io::{BufReader, Write},
 };
-<span class="kw">use</span> <span class="ident">strum::IntoEnumIterator</span>;
-<span class="kw">use</span> <span class="ident">strum::ParseError</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">windows</span>))]</span>
-<span class="kw">use</span> <span class="ident">tilde_expand::tilde_expand</span>;
+<span class="kw">use </span>strum::IntoEnumIterator;
+<span class="kw">use </span>strum::ParseError;
+<span class="attribute">#[cfg(not(windows))]
+</span><span class="kw">use </span>tilde_expand::tilde_expand;
 
-<span class="macro">macro_rules!</span> <span class="ident">massa_fancy_ascii_art_logo</span> {
+<span class="macro">macro_rules! </span>massa_fancy_ascii_art_logo {
     () =&gt; {
         <span class="macro">println!</span>(
             <span class="string">&quot;{}\n{}\n{}\n{}\n{}\n&quot;</span>,
-            <span class="ident">style</span>(<span class="string">&quot;███    ███  █████  ███████ ███████  █████ &quot;</span>).<span class="ident">color256</span>(<span class="number">160</span>),
-            <span class="ident">style</span>(<span class="string">&quot;████  ████ ██   ██ ██      ██      ██   ██&quot;</span>).<span class="ident">color256</span>(<span class="number">161</span>),
-            <span class="ident">style</span>(<span class="string">&quot;██ ████ ██ ███████ ███████ ███████ ███████&quot;</span>).<span class="ident">color256</span>(<span class="number">162</span>),
-            <span class="ident">style</span>(<span class="string">&quot;██  ██  ██ ██   ██      ██      ██ ██   ██&quot;</span>).<span class="ident">color256</span>(<span class="number">163</span>),
-            <span class="ident">style</span>(<span class="string">&quot;██      ██ ██   ██ ███████ ███████ ██   ██&quot;</span>).<span class="ident">color256</span>(<span class="number">164</span>)
+            style(<span class="string">&quot;███    ███  █████  ███████ ███████  █████ &quot;</span>).color256(<span class="number">160</span>),
+            style(<span class="string">&quot;████  ████ ██   ██ ██      ██      ██   ██&quot;</span>).color256(<span class="number">161</span>),
+            style(<span class="string">&quot;██ ████ ██ ███████ ███████ ███████ ███████&quot;</span>).color256(<span class="number">162</span>),
+            style(<span class="string">&quot;██  ██  ██ ██   ██      ██      ██ ██   ██&quot;</span>).color256(<span class="number">163</span>),
+            style(<span class="string">&quot;██      ██ ██   ██ ███████ ███████ ██   ██&quot;</span>).color256(<span class="number">164</span>)
         );
     };
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(<span class="ident">client</span>: <span class="kw-2">&amp;</span><span class="ident">Client</span>, <span class="ident">wallet</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Wallet</span>) {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>run(client: <span class="kw-2">&amp;</span>Client, wallet: <span class="kw-2">&amp;mut </span>Wallet) {
     <span class="macro">massa_fancy_ascii_art_logo!</span>();
     <span class="macro">println!</span>(<span class="string">&quot;Use &#39;exit&#39; to quit the prompt&quot;</span>);
     <span class="macro">println!</span>(<span class="string">&quot;Use the Up/Down arrows to scroll through history&quot;</span>);
     <span class="macro">println!</span>(<span class="string">&quot;Use the Right arrow or Tab to complete your command&quot;</span>);
     <span class="macro">println!</span>(<span class="string">&quot;Use the Enter key to execute your command&quot;</span>);
-    <span class="ident"><span class="kw">crate</span>::cmds::help</span>();
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">history</span> <span class="op">=</span> <span class="ident">CommandHistory::default</span>();
-    <span class="kw">let</span> <span class="ident">completion</span> <span class="op">=</span> <span class="ident">CommandCompletion::default</span>();
-    <span class="kw">loop</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">input</span>) <span class="op">=</span> <span class="ident">Input</span>::<span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="ident">::with_theme</span>(<span class="kw-2">&amp;</span><span class="ident">ColorfulTheme::default</span>())
-            .<span class="ident">with_prompt</span>(<span class="string">&quot;command&quot;</span>)
-            .<span class="ident">history_with</span>(<span class="kw-2">&amp;mut</span> <span class="ident">history</span>)
-            .<span class="ident">completion_with</span>(<span class="kw-2">&amp;</span><span class="ident">completion</span>)
-            .<span class="ident">interact_text</span>()
+    <span class="kw">crate</span>::cmds::help();
+    <span class="kw">let </span><span class="kw-2">mut </span>history = CommandHistory::default();
+    <span class="kw">let </span>completion = CommandCompletion::default();
+    <span class="kw">loop </span>{
+        <span class="kw">if let </span><span class="prelude-val">Ok</span>(input) = Input::&lt;String&gt;::with_theme(<span class="kw-2">&amp;</span>ColorfulTheme::default())
+            .with_prompt(<span class="string">&quot;command&quot;</span>)
+            .history_with(<span class="kw-2">&amp;mut </span>history)
+            .completion_with(<span class="kw-2">&amp;</span>completion)
+            .interact_text()
         {
-            <span class="comment">// User input parsing</span>
-            <span class="kw">let</span> <span class="ident">input</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">input</span>.<span class="ident">split_whitespace</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">to_string</span>()).<span class="ident">collect</span>();
-            <span class="kw">let</span> <span class="ident">cmd</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Command</span>, <span class="ident">ParseError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">input</span>[<span class="number">0</span>].<span class="ident">parse</span>();
-            <span class="kw">let</span> <span class="ident">parameters</span> <span class="op">=</span> <span class="ident">input</span>[<span class="number">1</span>..].<span class="ident">to_vec</span>();
-            <span class="comment">// Print result of evaluated command</span>
-            <span class="kw">match</span> <span class="ident">cmd</span> {
-                <span class="prelude-val">Ok</span>(<span class="ident">command</span>) =&gt; <span class="kw">match</span> <span class="ident">command</span>.<span class="ident">run</span>(<span class="ident">client</span>, <span class="ident">wallet</span>, <span class="kw-2">&amp;</span><span class="ident">parameters</span>, <span class="bool-val">false</span>).<span class="kw">await</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">output</span>) =&gt; <span class="ident">output</span>.<span class="ident">pretty_print</span>(),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">style</span>(<span class="macro">format!</span>(<span class="string">&quot;Error: {}&quot;</span>, <span class="ident">e</span>)).<span class="ident">red</span>()),
+            <span class="comment">// User input parsing
+            </span><span class="kw">let </span>input: Vec&lt;String&gt; = input.split_whitespace().map(|x| x.to_string()).collect();
+            <span class="kw">let </span>cmd: <span class="prelude-ty">Result</span>&lt;Command, ParseError&gt; = input[<span class="number">0</span>].parse();
+            <span class="kw">let </span>parameters = input[<span class="number">1</span>..].to_vec();
+            <span class="comment">// Print result of evaluated command
+            </span><span class="kw">match </span>cmd {
+                <span class="prelude-val">Ok</span>(command) =&gt; <span class="kw">match </span>command.run(client, wallet, <span class="kw-2">&amp;</span>parameters, <span class="bool-val">false</span>).<span class="kw">await </span>{
+                    <span class="prelude-val">Ok</span>(output) =&gt; output.pretty_print(),
+                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, style(<span class="macro">format!</span>(<span class="string">&quot;Error: {}&quot;</span>, e)).red()),
                 },
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Command not found!\ntype \&quot;help\&quot; to get the list of commands&quot;</span>),
             }
@@ -403,254 +403,254 @@
     }
 }
 
-<span class="kw">struct</span> <span class="ident">CommandHistory</span> {
-    <span class="ident">max</span>: <span class="ident">usize</span>,
-    <span class="ident">history</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="kw">struct </span>CommandHistory {
+    max: usize,
+    history: VecDeque&lt;String&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">CommandHistory</span> {
-    <span class="kw">fn</span> <span class="ident">get_saved_history</span>() -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">file</span>) <span class="op">=</span> <span class="ident">File::open</span>(<span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">history_file_path</span>) {
-            <span class="kw">let</span> <span class="ident">lines</span> <span class="op">=</span> <span class="ident">RevLines::new</span>(<span class="ident">BufReader::new</span>(<span class="ident">file</span>))<span class="question-mark">?</span>;
-            <span class="prelude-val">Ok</span>(<span class="ident">lines</span>.<span class="ident">collect</span>())
-        } <span class="kw">else</span> {
-            <span class="ident">File::create</span>(<span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">history_file_path</span>)<span class="question-mark">?</span>;
-            <span class="prelude-val">Ok</span>(<span class="ident">VecDeque::new</span>())
+<span class="kw">impl </span>CommandHistory {
+    <span class="kw">fn </span>get_saved_history() -&gt; <span class="prelude-ty">Result</span>&lt;VecDeque&lt;String&gt;, Error&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Ok</span>(file) = File::open(<span class="kw-2">&amp;</span>SETTINGS.history_file_path) {
+            <span class="kw">let </span>lines = RevLines::new(BufReader::new(file))<span class="question-mark">?</span>;
+            <span class="prelude-val">Ok</span>(lines.collect())
+        } <span class="kw">else </span>{
+            File::create(<span class="kw-2">&amp;</span>SETTINGS.history_file_path)<span class="question-mark">?</span>;
+            <span class="prelude-val">Ok</span>(VecDeque::new())
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">write_to_saved_history</span>(<span class="ident">command</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="kw-2">mut</span> <span class="ident">file</span>) <span class="op">=</span> <span class="ident">OpenOptions::new</span>()
-            .<span class="ident">write</span>(<span class="bool-val">true</span>)
-            .<span class="ident">append</span>(<span class="bool-val">true</span>)
-            .<span class="ident">open</span>(<span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">history_file_path</span>)
+    <span class="kw">fn </span>write_to_saved_history(command: <span class="kw-2">&amp;</span>str) {
+        <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>file) = OpenOptions::new()
+            .write(<span class="bool-val">true</span>)
+            .append(<span class="bool-val">true</span>)
+            .open(<span class="kw-2">&amp;</span>SETTINGS.history_file_path)
         {
-            <span class="macro">writeln!</span>(<span class="ident">file</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">command</span>).<span class="ident">ok</span>();
+            <span class="macro">writeln!</span>(file, <span class="string">&quot;{}&quot;</span>, command).ok();
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">CommandHistory</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">CommandHistory</span> {
-            <span class="ident">max</span>: <span class="ident">SETTINGS</span>.<span class="ident">history</span>,
-            <span class="ident">history</span>: <span class="ident">CommandHistory::get_saved_history</span>().<span class="ident">unwrap_or_default</span>(),
+<span class="kw">impl </span>Default <span class="kw">for </span>CommandHistory {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        CommandHistory {
+            max: SETTINGS.history,
+            history: CommandHistory::get_saved_history().unwrap_or_default(),
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">ToString</span><span class="op">&gt;</span> <span class="ident">History</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CommandHistory</span> {
-    <span class="kw">fn</span> <span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pos</span>: <span class="ident">usize</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">history</span>.<span class="ident">get</span>(<span class="ident">pos</span>).<span class="ident">cloned</span>()
+<span class="kw">impl</span>&lt;T: ToString&gt; History&lt;T&gt; <span class="kw">for </span>CommandHistory {
+    <span class="kw">fn </span>read(<span class="kw-2">&amp;</span><span class="self">self</span>, pos: usize) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+        <span class="self">self</span>.history.get(pos).cloned()
     }
 
-    <span class="kw">fn</span> <span class="ident">write</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">val</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>) {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">history</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="self">self</span>.<span class="ident">max</span> {
-            <span class="self">self</span>.<span class="ident">history</span>.<span class="ident">pop_back</span>();
+    <span class="kw">fn </span>write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, val: <span class="kw-2">&amp;</span>T) {
+        <span class="kw">if </span><span class="self">self</span>.history.len() == <span class="self">self</span>.max {
+            <span class="self">self</span>.history.pop_back();
         }
-        <span class="kw">let</span> <span class="ident">string_value</span> <span class="op">=</span> <span class="ident">val</span>.<span class="ident">to_string</span>();
-        <span class="ident">CommandHistory::write_to_saved_history</span>(<span class="kw-2">&amp;</span><span class="ident">string_value</span>);
-        <span class="self">self</span>.<span class="ident">history</span>.<span class="ident">push_front</span>(<span class="ident">string_value</span>);
+        <span class="kw">let </span>string_value = val.to_string();
+        CommandHistory::write_to_saved_history(<span class="kw-2">&amp;</span>string_value);
+        <span class="self">self</span>.history.push_front(string_value);
     }
 }
 
-<span class="kw">struct</span> <span class="ident">CommandCompletion</span> {
-    <span class="ident">options</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="kw">struct </span>CommandCompletion {
+    options: Vec&lt;String&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">CommandCompletion</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">CommandCompletion</span> {
-            <span class="ident">options</span>: <span class="ident">Command::iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">to_string</span>()).<span class="ident">collect</span>(),
+<span class="kw">impl </span>Default <span class="kw">for </span>CommandCompletion {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        CommandCompletion {
+            options: Command::iter().map(|x| x.to_string()).collect(),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">windows</span>))]</span>
-<span class="kw">fn</span> <span class="ident">expand_path</span>(<span class="ident">partial_path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-    <span class="ident">tilde_expand</span>(<span class="ident">partial_path</span>.<span class="ident">as_bytes</span>())
+<span class="attribute">#[cfg(not(windows))]
+</span><span class="kw">fn </span>expand_path(partial_path: <span class="kw-2">&amp;</span>str) -&gt; Vec&lt;u8&gt; {
+    tilde_expand(partial_path.as_bytes())
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">windows</span>)]</span>
-<span class="kw">fn</span> <span class="ident">expand_path</span>(<span class="ident">partial_path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-    <span class="ident">partial_path</span>.<span class="ident">as_bytes</span>().<span class="ident">to_vec</span>()
+<span class="attribute">#[cfg(windows)]
+</span><span class="kw">fn </span>expand_path(partial_path: <span class="kw-2">&amp;</span>str) -&gt; Vec&lt;u8&gt; {
+    partial_path.as_bytes().to_vec()
 }
 
-<span class="kw">impl</span> <span class="ident">Completion</span> <span class="kw">for</span> <span class="ident">CommandCompletion</span> {
-    <span class="doccomment">/// Simple completion implementation based on sub-string</span>
-    <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">input</span> <span class="op">=</span> <span class="ident">input</span>.<span class="ident">to_string</span>();
-        <span class="kw">if</span> <span class="ident">input</span>.<span class="ident">contains</span>(<span class="string">&#39; &#39;</span>) {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">input</span>.<span class="ident">split</span>(<span class="string">&#39; &#39;</span>).<span class="ident">collect</span>();
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">default_path</span> <span class="op">=</span> <span class="string">&quot;./&quot;</span>;
-            <span class="kw">let</span> <span class="ident">path_to_complete</span> <span class="op">=</span> <span class="ident">args</span>.<span class="ident">last_mut</span>().<span class="ident">unwrap_or</span>(<span class="kw-2">&amp;mut</span> <span class="ident">default_path</span>);
-            <span class="kw">let</span> <span class="ident">expanded_path</span> <span class="op">=</span> <span class="ident">expand_path</span>(<span class="ident">path_to_complete</span>);
-            <span class="kw-2">*</span><span class="ident">path_to_complete</span> <span class="op">=</span> <span class="ident">str::from_utf8</span>(<span class="kw-2">&amp;</span><span class="ident">expanded_path</span>).<span class="ident">unwrap_or</span>(<span class="ident">path_to_complete</span>);
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">paths</span>) <span class="op">=</span> <span class="ident">glob</span>(<span class="kw-2">&amp;</span>(<span class="ident">path_to_complete</span>.<span class="ident">to_owned</span>() <span class="op">+</span> <span class="string">&quot;*&quot;</span>)) {
-                <span class="kw">let</span> <span class="ident">suggestions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">paths</span>
-                    .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">path</span><span class="op">|</span> <span class="ident">path</span>.<span class="ident">display</span>().<span class="ident">to_string</span>()).<span class="ident">ok</span>())
-                    .<span class="ident">collect</span>();
-                <span class="kw">if</span> <span class="op">!</span><span class="ident">suggestions</span>.<span class="ident">is_empty</span>() {
+<span class="kw">impl </span>Completion <span class="kw">for </span>CommandCompletion {
+    <span class="doccomment">/// Simple completion implementation based on sub-string
+    </span><span class="kw">fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+        <span class="kw">let </span>input = input.to_string();
+        <span class="kw">if </span>input.contains(<span class="string">&#39; &#39;</span>) {
+            <span class="kw">let </span><span class="kw-2">mut </span>args: Vec&lt;<span class="kw-2">&amp;</span>str&gt; = input.split(<span class="string">&#39; &#39;</span>).collect();
+            <span class="kw">let </span><span class="kw-2">mut </span>default_path = <span class="string">&quot;./&quot;</span>;
+            <span class="kw">let </span>path_to_complete = args.last_mut().unwrap_or(<span class="kw-2">&amp;mut </span>default_path);
+            <span class="kw">let </span>expanded_path = expand_path(path_to_complete);
+            <span class="kw-2">*</span>path_to_complete = str::from_utf8(<span class="kw-2">&amp;</span>expanded_path).unwrap_or(path_to_complete);
+            <span class="kw">if let </span><span class="prelude-val">Ok</span>(paths) = glob(<span class="kw-2">&amp;</span>(path_to_complete.to_owned() + <span class="string">&quot;*&quot;</span>)) {
+                <span class="kw">let </span>suggestions: Vec&lt;String&gt; = paths
+                    .filter_map(|x| x.map(|path| path.display().to_string()).ok())
+                    .collect();
+                <span class="kw">if </span>!suggestions.is_empty() {
                     <span class="macro">println!</span>();
-                    <span class="kw">for</span> <span class="ident">path</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">suggestions</span> {
-                        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">style</span>(<span class="ident">path</span>).<span class="ident">dim</span>())
+                    <span class="kw">for </span>path <span class="kw">in </span><span class="kw-2">&amp;</span>suggestions {
+                        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, style(path).dim())
                     }
-                    <span class="kw-2">*</span><span class="ident">path_to_complete</span> <span class="op">=</span>
-                        <span class="ident">longest_common_prefix</span>(<span class="ident">suggestions</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">s</span>[..]).<span class="ident">collect</span>());
+                    <span class="kw-2">*</span>path_to_complete =
+                        longest_common_prefix(suggestions.iter().map(|s| <span class="kw-2">&amp;</span>s[..]).collect());
                 }
-                <span class="prelude-val">Some</span>(<span class="ident">args</span>.<span class="ident">join</span>(<span class="string">&quot; &quot;</span>))
-            } <span class="kw">else</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">args</span>.<span class="ident">join</span>(<span class="string">&quot; &quot;</span>))
+                <span class="prelude-val">Some</span>(args.join(<span class="string">&quot; &quot;</span>))
+            } <span class="kw">else </span>{
+                <span class="prelude-val">Some</span>(args.join(<span class="string">&quot; &quot;</span>))
             }
-        } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">suggestions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">options</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">len</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="ident">input</span>.<span class="ident">len</span>() <span class="op">&amp;&amp;</span> <span class="ident">input</span> <span class="op">==</span> <span class="ident">s</span>[..<span class="ident">input</span>.<span class="ident">len</span>()])
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">s</span>[..])
-                .<span class="ident">collect</span>();
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">suggestions</span>.<span class="ident">is_empty</span>() {
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>suggestions: Vec&lt;<span class="kw-2">&amp;</span>str&gt; = <span class="self">self
+                </span>.options
+                .iter()
+                .filter(|s| s.len() &gt;= input.len() &amp;&amp; input == s[..input.len()])
+                .map(|s| <span class="kw-2">&amp;</span>s[..])
+                .collect();
+            <span class="kw">if </span>!suggestions.is_empty() {
                 <span class="macro">println!</span>();
-                <span class="kw">for</span> <span class="ident">suggestion</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">suggestions</span> {
-                    <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">style</span>(<span class="ident">suggestion</span>).<span class="ident">dim</span>());
+                <span class="kw">for </span>suggestion <span class="kw">in </span><span class="kw-2">&amp;</span>suggestions {
+                    <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, style(suggestion).dim());
                 }
-                <span class="prelude-val">Some</span>(<span class="ident">String::from</span>(<span class="ident">longest_common_prefix</span>(<span class="ident">suggestions</span>)))
-            } <span class="kw">else</span> {
-                <span class="prelude-val">None</span>
-            }
+                <span class="prelude-val">Some</span>(String::from(longest_common_prefix(suggestions)))
+            } <span class="kw">else </span>{
+                <span class="prelude-val">None
+            </span>}
         }
     }
 }
 
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Output</span>: <span class="ident">Serialize</span> {
-    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>);
+<span class="kw">pub trait </span>Output: Serialize {
+    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>);
 }
 
-<span class="kw">impl</span> <span class="kw">dyn</span> <span class="ident">Output</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">stdout_json</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">anyhow::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">json</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">serde_json::Serializer::new</span>(<span class="ident">std::io::stdout</span>());
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">format</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Serializer</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Box::new</span>(<span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Serializer</span><span class="op">&gt;</span><span class="ident">::erase</span>(<span class="ident">json</span>));
-        <span class="self">self</span>.<span class="ident">erased_serialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">format</span>)<span class="question-mark">?</span>;
+<span class="kw">impl dyn </span>Output {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>stdout_json(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; anyhow::Result&lt;()&gt; {
+        <span class="kw">let </span>json = <span class="kw-2">&amp;mut </span>serde_json::Serializer::new(std::io::stdout());
+        <span class="kw">let </span><span class="kw-2">mut </span>format: Box&lt;<span class="kw">dyn </span>Serializer&gt; = Box::new(&lt;<span class="kw">dyn </span>Serializer&gt;::erase(json));
+        <span class="self">self</span>.erased_serialize(<span class="kw-2">&amp;mut </span>format)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Output</span> <span class="kw">for</span> <span class="ident">Wallet</span> {
-    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+<span class="kw">impl </span>Output <span class="kw">for </span>Wallet {
+    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>);
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Output</span> <span class="kw">for</span> <span class="ident">ExtendedWallet</span> {
-    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+<span class="kw">impl </span>Output <span class="kw">for </span>ExtendedWallet {
+    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>);
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Output</span> <span class="kw">for</span> () {
-    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {}
+<span class="kw">impl </span>Output <span class="kw">for </span>() {
+    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {}
 }
 
-<span class="kw">impl</span> <span class="ident">Output</span> <span class="kw">for</span> <span class="ident">String</span> {
-    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+<span class="kw">impl </span>Output <span class="kw">for </span>String {
+    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>);
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Output</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">str</span> {
-    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+<span class="kw">impl </span>Output <span class="kw">for </span><span class="kw-2">&amp;</span>str {
+    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Output</span> <span class="kw">for</span> <span class="ident">NodeStatus</span> {
-    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+<span class="kw">impl </span>Output <span class="kw">for </span>NodeStatus {
+    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>);
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Output</span> <span class="kw">for</span> <span class="ident">BlockInfo</span> {
-    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+<span class="kw">impl </span>Output <span class="kw">for </span>BlockInfo {
+    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>);
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Output</span> <span class="kw">for</span> <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+<span class="kw">impl </span>Output <span class="kw">for </span>Set&lt;Address&gt; {
+    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="macro">println!</span>(
             <span class="string">&quot;{}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">iter</span>()
-                .<span class="ident">fold</span>(<span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>(), <span class="op">|</span><span class="ident">acc</span>, <span class="ident">a</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;{}{}\n&quot;</span>, <span class="ident">acc</span>, <span class="ident">a</span>))
+            <span class="self">self</span>.iter()
+                .fold(<span class="string">&quot;&quot;</span>.to_string(), |acc, a| <span class="macro">format!</span>(<span class="string">&quot;{}{}\n&quot;</span>, acc, a))
         )
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Output</span> <span class="kw">for</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AddressInfo</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">for</span> <span class="ident">address_info</span> <span class="kw">in</span> <span class="self">self</span> {
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">address_info</span>);
+<span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;AddressInfo&gt; {
+    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">for </span>address_info <span class="kw">in </span><span class="self">self </span>{
+            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, address_info);
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Output</span> <span class="kw">for</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DatastoreEntryOutput</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">for</span> <span class="ident">data_entry</span> <span class="kw">in</span> <span class="self">self</span> {
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">data_entry</span>);
+<span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;DatastoreEntryOutput&gt; {
+    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">for </span>data_entry <span class="kw">in </span><span class="self">self </span>{
+            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, data_entry);
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Output</span> <span class="kw">for</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementInfo</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">for</span> <span class="ident">endorsement_info</span> <span class="kw">in</span> <span class="self">self</span> {
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">endorsement_info</span>);
+<span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;EndorsementInfo&gt; {
+    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">for </span>endorsement_info <span class="kw">in </span><span class="self">self </span>{
+            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, endorsement_info);
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Output</span> <span class="kw">for</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationInfo</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">for</span> <span class="ident">operation_info</span> <span class="kw">in</span> <span class="self">self</span> {
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">operation_info</span>);
+<span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;OperationInfo&gt; {
+    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">for </span>operation_info <span class="kw">in </span><span class="self">self </span>{
+            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, operation_info);
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Output</span> <span class="kw">for</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">for</span> <span class="ident">operation_id</span> <span class="kw">in</span> <span class="self">self</span> {
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">operation_id</span>);
+<span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;OperationId&gt; {
+    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">for </span>operation_id <span class="kw">in </span><span class="self">self </span>{
+            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, operation_id);
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Output</span> <span class="kw">for</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">for</span> <span class="ident">addr</span> <span class="kw">in</span> <span class="self">self</span> {
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">addr</span>);
+<span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;Address&gt; {
+    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">for </span>addr <span class="kw">in </span><span class="self">self </span>{
+            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, addr);
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Output</span> <span class="kw">for</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">for</span> <span class="ident">addr</span> <span class="kw">in</span> <span class="self">self</span> {
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">addr</span>);
+<span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;SCOutputEvent&gt; {
+    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">for </span>addr <span class="kw">in </span><span class="self">self </span>{
+            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, addr);
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Output</span> <span class="kw">for</span> <span class="ident">PubkeySig</span> {
-    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+<span class="kw">impl </span>Output <span class="kw">for </span>PubkeySig {
+    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>);
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Output</span> <span class="kw">for</span> <span class="ident">ExecuteReadOnlyResponse</span> {
-    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+<span class="kw">impl </span>Output <span class="kw">for </span>ExecuteReadOnlyResponse {
+    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>);
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

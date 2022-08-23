@@ -87,94 +87,94 @@
 <span id="87">87</span>
 <span id="88">88</span>
 <span id="89">89</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::Amount</span>;
-<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::fmt::Display</span>;
+</pre><pre class="rust"><code><span class="kw">use super</span>::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::Amount;
+<span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::fmt::Display;
 
-<span class="doccomment">/// Compact representation of key values of consensus algorithm used in API</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CompactConfig</span> {
-    <span class="doccomment">/// Time in milliseconds when the blockclique started.</span>
-    <span class="kw">pub</span> <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// TESTNET: time when the blockclique is ended.</span>
-    <span class="kw">pub</span> <span class="ident">end_timestamp</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Number of threads</span>
-    <span class="kw">pub</span> <span class="ident">thread_count</span>: <span class="ident">u8</span>,
-    <span class="doccomment">/// Time between the periods in the same thread.</span>
-    <span class="kw">pub</span> <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// Threshold for fitness.</span>
-    <span class="kw">pub</span> <span class="ident">delta_f0</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// Maximum operation validity period count</span>
-    <span class="kw">pub</span> <span class="ident">operation_validity_periods</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// cycle duration in periods</span>
-    <span class="kw">pub</span> <span class="ident">periods_per_cycle</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle N - `pos_look` `back_cycles` - 1</span>
-    <span class="kw">pub</span> <span class="ident">pos_lookback_cycles</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`</span>
-    <span class="kw">pub</span> <span class="ident">pos_lock_cycles</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// Reward amount for a block creation</span>
-    <span class="kw">pub</span> <span class="ident">block_reward</span>: <span class="ident">Amount</span>,
-    <span class="doccomment">/// Price of a roll on the network</span>
-    <span class="kw">pub</span> <span class="ident">roll_price</span>: <span class="ident">Amount</span>,
-    <span class="doccomment">/// Max total size of a block</span>
-    <span class="kw">pub</span> <span class="ident">max_block_size</span>: <span class="ident">u32</span>,
+<span class="doccomment">/// Compact representation of key values of consensus algorithm used in API
+</span><span class="attribute">#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
+</span><span class="kw">pub struct </span>CompactConfig {
+    <span class="doccomment">/// Time in milliseconds when the blockclique started.
+    </span><span class="kw">pub </span>genesis_timestamp: MassaTime,
+    <span class="doccomment">/// TESTNET: time when the blockclique is ended.
+    </span><span class="kw">pub </span>end_timestamp: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
+    <span class="doccomment">/// Number of threads
+    </span><span class="kw">pub </span>thread_count: u8,
+    <span class="doccomment">/// Time between the periods in the same thread.
+    </span><span class="kw">pub </span>t0: MassaTime,
+    <span class="doccomment">/// Threshold for fitness.
+    </span><span class="kw">pub </span>delta_f0: u64,
+    <span class="doccomment">/// Maximum operation validity period count
+    </span><span class="kw">pub </span>operation_validity_periods: u64,
+    <span class="doccomment">/// cycle duration in periods
+    </span><span class="kw">pub </span>periods_per_cycle: u64,
+    <span class="doccomment">/// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle N - `pos_look` `back_cycles` - 1
+    </span><span class="kw">pub </span>pos_lookback_cycles: u64,
+    <span class="doccomment">/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`
+    </span><span class="kw">pub </span>pos_lock_cycles: u64,
+    <span class="doccomment">/// Reward amount for a block creation
+    </span><span class="kw">pub </span>block_reward: Amount,
+    <span class="doccomment">/// Price of a roll on the network
+    </span><span class="kw">pub </span>roll_price: Amount,
+    <span class="doccomment">/// Max total size of a block
+    </span><span class="kw">pub </span>max_block_size: u32,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">CompactConfig</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">genesis_timestamp</span>: <span class="kw-2">*</span><span class="ident">GENESIS_TIMESTAMP</span>,
-            <span class="ident">end_timestamp</span>: <span class="kw-2">*</span><span class="ident">END_TIMESTAMP</span>,
-            <span class="ident">thread_count</span>: <span class="ident">THREAD_COUNT</span>,
-            <span class="ident">t0</span>: <span class="ident">T0</span>,
-            <span class="ident">delta_f0</span>: <span class="ident">DELTA_F0</span>,
-            <span class="ident">operation_validity_periods</span>: <span class="ident">OPERATION_VALIDITY_PERIODS</span>,
-            <span class="ident">periods_per_cycle</span>: <span class="ident">PERIODS_PER_CYCLE</span>,
-            <span class="ident">pos_lookback_cycles</span>: <span class="ident">POS_LOOKBACK_CYCLES</span>,
-            <span class="ident">pos_lock_cycles</span>: <span class="ident">POS_LOCK_CYCLES</span>,
-            <span class="ident">block_reward</span>: <span class="ident">BLOCK_REWARD</span>,
-            <span class="ident">roll_price</span>: <span class="ident">ROLL_PRICE</span>,
-            <span class="ident">max_block_size</span>: <span class="ident">MAX_BLOCK_SIZE</span>,
+<span class="kw">impl </span>Default <span class="kw">for </span>CompactConfig {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
+            end_timestamp: <span class="kw-2">*</span>END_TIMESTAMP,
+            thread_count: THREAD_COUNT,
+            t0: T0,
+            delta_f0: DELTA_F0,
+            operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+            periods_per_cycle: PERIODS_PER_CYCLE,
+            pos_lookback_cycles: POS_LOOKBACK_CYCLES,
+            pos_lock_cycles: POS_LOCK_CYCLES,
+            block_reward: BLOCK_REWARD,
+            roll_price: ROLL_PRICE,
+            max_block_size: MAX_BLOCK_SIZE,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">CompactConfig</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
+<span class="kw">impl </span>Display <span class="kw">for </span>CompactConfig {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
         <span class="macro">writeln!</span>(
-            <span class="ident">f</span>,
+            f,
             <span class="string">&quot;    Genesis timestamp: {}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">genesis_timestamp</span>.<span class="ident">to_utc_string</span>()
+            <span class="self">self</span>.genesis_timestamp.to_utc_string()
         )<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">end</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">end_timestamp</span> {
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;    End timestamp: {}&quot;</span>, <span class="ident">end</span>.<span class="ident">to_utc_string</span>())<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = <span class="self">self</span>.end_timestamp {
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;    End timestamp: {}&quot;</span>, end.to_utc_string())<span class="question-mark">?</span>;
         }
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;    Thread count: {}&quot;</span>, <span class="self">self</span>.<span class="ident">thread_count</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;    t0: {}&quot;</span>, <span class="self">self</span>.<span class="ident">t0</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;    delta_f0: {}&quot;</span>, <span class="self">self</span>.<span class="ident">delta_f0</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;    Thread count: {}&quot;</span>, <span class="self">self</span>.thread_count)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;    t0: {}&quot;</span>, <span class="self">self</span>.t0)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;    delta_f0: {}&quot;</span>, <span class="self">self</span>.delta_f0)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
-            <span class="ident">f</span>,
+            f,
             <span class="string">&quot;    Operation validity periods: {}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">operation_validity_periods</span>
+            <span class="self">self</span>.operation_validity_periods
         )<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;    Periods per cycle: {}&quot;</span>, <span class="self">self</span>.<span class="ident">periods_per_cycle</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;    Periods per cycle: {}&quot;</span>, <span class="self">self</span>.periods_per_cycle)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
-            <span class="ident">f</span>,
+            f,
             <span class="string">&quot;    Proof of stake look back cycles: {}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">pos_lookback_cycles</span>
+            <span class="self">self</span>.pos_lookback_cycles
         )<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
-            <span class="ident">f</span>,
+            f,
             <span class="string">&quot;    Proof of stake lock cycles: {}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">pos_lock_cycles</span>
+            <span class="self">self</span>.pos_lock_cycles
         )<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;    Block reward: {}&quot;</span>, <span class="self">self</span>.<span class="ident">block_reward</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;    Periods per cycle: {}&quot;</span>, <span class="self">self</span>.<span class="ident">periods_per_cycle</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;    Max block size (in bytes): {}&quot;</span>, <span class="self">self</span>.<span class="ident">max_block_size</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;    Block reward: {}&quot;</span>, <span class="self">self</span>.block_reward)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;    Periods per cycle: {}&quot;</span>, <span class="self">self</span>.periods_per_cycle)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;    Max block size (in bytes): {}&quot;</span>, <span class="self">self</span>.max_block_size)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

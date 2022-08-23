@@ -155,162 +155,162 @@
 <span id="155">155</span>
 <span id="156">156</span>
 <span id="157">157</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! This file defines a generic finite-size execution request queue with an MPSC-based result sender.</span>
+</span><span class="doccomment">//! This file defines a generic finite-size execution request queue with an MPSC-based result sender.
 
-<span class="kw">use</span> <span class="ident">massa_execution_exports::ExecutionError</span>;
-<span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
-<span class="kw">use</span> <span class="ident">std::sync::mpsc::Sender</span>;
+</span><span class="kw">use </span>massa_execution_exports::ExecutionError;
+<span class="kw">use </span>std::collections::VecDeque;
+<span class="kw">use </span>std::sync::mpsc::Sender;
 
-<span class="doccomment">/// Represents an execution request T coupled with an MPSC sender for a result of type R</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">RequestWithResponseSender</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">R</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// The underlying execution request</span>
-    <span class="ident">request</span>: <span class="ident">T</span>,
-    <span class="doccomment">/// An std::mpsc::Sender to later send the execution output R (or an error)</span>
-    <span class="ident">response_tx</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">R</span>, <span class="ident">ExecutionError</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Represents an execution request T coupled with an MPSC sender for a result of type R
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>RequestWithResponseSender&lt;T, R&gt; {
+    <span class="doccomment">/// The underlying execution request
+    </span>request: T,
+    <span class="doccomment">/// An std::mpsc::Sender to later send the execution output R (or an error)
+    </span>response_tx: Sender&lt;<span class="prelude-ty">Result</span>&lt;R, ExecutionError&gt;&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">R</span><span class="op">&gt;</span> <span class="ident">RequestWithResponseSender</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">R</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Create a new request with response sender</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `request`: the underlying request of type T</span>
-    <span class="doccomment">/// * `response_tx`: an `std::mpsc::Sender` to later send the execution output R (or an error)</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">request</span>: <span class="ident">T</span>, <span class="ident">response_tx</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">R</span>, <span class="ident">ExecutionError</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">RequestWithResponseSender</span> {
-            <span class="ident">request</span>,
-            <span class="ident">response_tx</span>,
+<span class="kw">impl</span>&lt;T, R&gt; RequestWithResponseSender&lt;T, R&gt; {
+    <span class="doccomment">/// Create a new request with response sender
+    ///
+    /// # Arguments
+    /// * `request`: the underlying request of type T
+    /// * `response_tx`: an `std::mpsc::Sender` to later send the execution output R (or an error)
+    </span><span class="kw">pub fn </span>new(request: T, response_tx: Sender&lt;<span class="prelude-ty">Result</span>&lt;R, ExecutionError&gt;&gt;) -&gt; <span class="self">Self </span>{
+        RequestWithResponseSender {
+            request,
+            response_tx,
         }
     }
 
-    <span class="doccomment">/// Cancel the request by consuming the object and sending an error through the response channel.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * err: the error to send through the response channel</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cancel</span>(<span class="self">self</span>, <span class="ident">err</span>: <span class="ident">ExecutionError</span>) {
-        <span class="comment">// Send a message to the request&#39;s sender to signal the cancellation.</span>
-        <span class="comment">// Ignore errors because they just mean that the emitter of the request</span>
-        <span class="comment">// has dropped the receiver and does not need the response anymore.</span>
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">response_tx</span>.<span class="ident">send</span>(<span class="prelude-val">Err</span>(<span class="ident">err</span>));
+    <span class="doccomment">/// Cancel the request by consuming the object and sending an error through the response channel.
+    ///
+    /// # Arguments
+    /// * err: the error to send through the response channel
+    </span><span class="kw">pub fn </span>cancel(<span class="self">self</span>, err: ExecutionError) {
+        <span class="comment">// Send a message to the request&#39;s sender to signal the cancellation.
+        // Ignore errors because they just mean that the emitter of the request
+        // has dropped the receiver and does not need the response anymore.
+        </span><span class="kw">let _ </span>= <span class="self">self</span>.response_tx.send(<span class="prelude-val">Err</span>(err));
     }
 
-    <span class="doccomment">/// Destructure self into a (request, response sender) pair</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_request_sender_pair</span>(<span class="self">self</span>) -&gt; (<span class="ident">T</span>, <span class="ident">Sender</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">R</span>, <span class="ident">ExecutionError</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
-        (<span class="self">self</span>.<span class="ident">request</span>, <span class="self">self</span>.<span class="ident">response_tx</span>)
+    <span class="doccomment">/// Destructure self into a (request, response sender) pair
+    </span><span class="kw">pub fn </span>into_request_sender_pair(<span class="self">self</span>) -&gt; (T, Sender&lt;<span class="prelude-ty">Result</span>&lt;R, ExecutionError&gt;&gt;) {
+        (<span class="self">self</span>.request, <span class="self">self</span>.response_tx)
     }
 }
 
-<span class="doccomment">/// Structure representing an execution request queue with maximal length.</span>
-<span class="doccomment">/// Each request is a `RequestWithResponseSender` that comes with an MPSC sender</span>
-<span class="doccomment">/// to return the execution result when the execution is over (or an error).</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">RequestQueue</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">R</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Max number of item in the queue.</span>
-    <span class="doccomment">/// When the queue is full, extra new items are cancelled and dropped.</span>
-    <span class="ident">max_items</span>: <span class="ident">usize</span>,
+<span class="doccomment">/// Structure representing an execution request queue with maximal length.
+/// Each request is a `RequestWithResponseSender` that comes with an MPSC sender
+/// to return the execution result when the execution is over (or an error).
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>RequestQueue&lt;T, R&gt; {
+    <span class="doccomment">/// Max number of item in the queue.
+    /// When the queue is full, extra new items are cancelled and dropped.
+    </span>max_items: usize,
 
-    <span class="doccomment">/// The actual underlying queue</span>
-    <span class="ident">queue</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">RequestWithResponseSender</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">R</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// The actual underlying queue
+    </span>queue: VecDeque&lt;RequestWithResponseSender&lt;T, R&gt;&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">R</span><span class="op">&gt;</span> <span class="ident">RequestQueue</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">R</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Create a new request queue</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `max_items`: the maximal number of items in the queue. When full, extra new elements are cancelled and dropped.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">max_items</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">RequestQueue</span> {
-            <span class="ident">max_items</span>,
-            <span class="ident">queue</span>: <span class="ident">VecDeque::with_capacity</span>(<span class="ident">max_items</span>),
+<span class="kw">impl</span>&lt;T, R&gt; RequestQueue&lt;T, R&gt; {
+    <span class="doccomment">/// Create a new request queue
+    ///
+    /// # Arguments
+    /// * `max_items`: the maximal number of items in the queue. When full, extra new elements are cancelled and dropped.
+    </span><span class="kw">pub fn </span>new(max_items: usize) -&gt; <span class="self">Self </span>{
+        RequestQueue {
+            max_items,
+            queue: VecDeque::with_capacity(max_items),
         }
     }
 
-    <span class="doccomment">/// Extends Self with the contents of another `RequestQueue`.</span>
-    <span class="doccomment">/// The contents of the incoming queue are appended last.</span>
-    <span class="doccomment">/// Excess items with respect to `self.max_items` are canceled and dropped.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extend</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">other</span>: <span class="ident">RequestQueue</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">R</span><span class="op">&gt;</span>) {
-        <span class="comment">// compute the number of available item slots</span>
-        <span class="kw">let</span> <span class="ident">free_slots</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">max_items</span>.<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">queue</span>.<span class="ident">len</span>());
+    <span class="doccomment">/// Extends Self with the contents of another `RequestQueue`.
+    /// The contents of the incoming queue are appended last.
+    /// Excess items with respect to `self.max_items` are canceled and dropped.
+    </span><span class="kw">pub fn </span>extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>other: RequestQueue&lt;T, R&gt;) {
+        <span class="comment">// compute the number of available item slots
+        </span><span class="kw">let </span>free_slots = <span class="self">self</span>.max_items.saturating_sub(<span class="self">self</span>.queue.len());
 
-        <span class="comment">// if there are no available slots remaining, do nothing</span>
-        <span class="kw">if</span> <span class="ident">free_slots</span> <span class="op">==</span> <span class="number">0</span> {
+        <span class="comment">// if there are no available slots remaining, do nothing
+        </span><span class="kw">if </span>free_slots == <span class="number">0 </span>{
             <span class="kw">return</span>;
         }
 
-        <span class="comment">// if there are not enough available slots to fit the entire incoming queue</span>
-        <span class="kw">if</span> <span class="ident">free_slots</span> <span class="op">&lt;</span> <span class="ident">other</span>.<span class="ident">queue</span>.<span class="ident">len</span>() {
-            <span class="comment">// truncate the incoming queue to the size that fits, cancelling excess items</span>
-            <span class="ident">other</span>.<span class="ident">queue</span>.<span class="ident">drain</span>(<span class="ident">free_slots</span>..).<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">req</span><span class="op">|</span> {
-                <span class="ident">req</span>.<span class="ident">cancel</span>(<span class="ident">ExecutionError::ChannelError</span>(
-                    <span class="string">&quot;maximal request queue capacity reached&quot;</span>.<span class="ident">into</span>(),
+        <span class="comment">// if there are not enough available slots to fit the entire incoming queue
+        </span><span class="kw">if </span>free_slots &lt; other.queue.len() {
+            <span class="comment">// truncate the incoming queue to the size that fits, cancelling excess items
+            </span>other.queue.drain(free_slots..).for_each(|req| {
+                req.cancel(ExecutionError::ChannelError(
+                    <span class="string">&quot;maximal request queue capacity reached&quot;</span>.into(),
                 ))
             });
         }
 
-        <span class="comment">// append the kept part of the incoming queue</span>
-        <span class="self">self</span>.<span class="ident">queue</span>.<span class="ident">extend</span>(<span class="ident">other</span>.<span class="ident">queue</span>);
+        <span class="comment">// append the kept part of the incoming queue
+        </span><span class="self">self</span>.queue.extend(other.queue);
     }
 
-    <span class="doccomment">/// Cancel all queued items.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * err: the error to send through the response channel of cancelled items</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cancel</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">err</span>: <span class="ident">ExecutionError</span>) {
-        <span class="kw">for</span> <span class="ident">req</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">queue</span>.<span class="ident">drain</span>(..) {
-            <span class="ident">req</span>.<span class="ident">cancel</span>(<span class="ident">err</span>.<span class="ident">clone</span>());
+    <span class="doccomment">/// Cancel all queued items.
+    ///
+    /// # Arguments
+    /// * err: the error to send through the response channel of cancelled items
+    </span><span class="kw">pub fn </span>cancel(<span class="kw-2">&amp;mut </span><span class="self">self</span>, err: ExecutionError) {
+        <span class="kw">for </span>req <span class="kw">in </span><span class="self">self</span>.queue.drain(..) {
+            req.cancel(err.clone());
         }
     }
 
-    <span class="doccomment">/// Pop out the oldest element of the queue</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// The oldest element of the queue, or None if the queue is empty</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RequestWithResponseSender</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">R</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">queue</span>.<span class="ident">pop_front</span>()
+    <span class="doccomment">/// Pop out the oldest element of the queue
+    ///
+    /// # Returns
+    /// The oldest element of the queue, or None if the queue is empty
+    </span><span class="kw">pub fn </span>pop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;RequestWithResponseSender&lt;T, R&gt;&gt; {
+        <span class="self">self</span>.queue.pop_front()
     }
 
-    <span class="doccomment">/// Push a new element at the end of the queue.</span>
-    <span class="doccomment">/// May fail if maximum capacity is reached,</span>
-    <span class="doccomment">/// in which case the request is canceled and dropped.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// The oldest element of the queue, or None if the queue is empty</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">req</span>: <span class="ident">RequestWithResponseSender</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">R</span><span class="op">&gt;</span>) {
-        <span class="comment">// If the queue is already full, cancel the incoming request and return.</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">queue</span>.<span class="ident">len</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">max_items</span> {
-            <span class="ident">req</span>.<span class="ident">cancel</span>(<span class="ident">ExecutionError::ChannelError</span>(
-                <span class="string">&quot;maximal request queue capacity reached&quot;</span>.<span class="ident">into</span>(),
+    <span class="doccomment">/// Push a new element at the end of the queue.
+    /// May fail if maximum capacity is reached,
+    /// in which case the request is canceled and dropped.
+    ///
+    /// # Returns
+    /// The oldest element of the queue, or None if the queue is empty
+    </span><span class="kw">pub fn </span>push(<span class="kw-2">&amp;mut </span><span class="self">self</span>, req: RequestWithResponseSender&lt;T, R&gt;) {
+        <span class="comment">// If the queue is already full, cancel the incoming request and return.
+        </span><span class="kw">if </span><span class="self">self</span>.queue.len() &gt;= <span class="self">self</span>.max_items {
+            req.cancel(ExecutionError::ChannelError(
+                <span class="string">&quot;maximal request queue capacity reached&quot;</span>.into(),
             ));
             <span class="kw">return</span>;
         }
 
-        <span class="comment">// Append the incoming request to the end of the queue.</span>
-        <span class="self">self</span>.<span class="ident">queue</span>.<span class="ident">push_back</span>(<span class="ident">req</span>);
+        <span class="comment">// Append the incoming request to the end of the queue.
+        </span><span class="self">self</span>.queue.push_back(req);
     }
 
-    <span class="doccomment">/// Take all the elements into a new queue and reset the current queue</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">take</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">RequestQueue</span> {
-            <span class="ident">max_items</span>: <span class="self">self</span>.<span class="ident">max_items</span>,
-            <span class="ident">queue</span>: <span class="ident">std::mem::take</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">queue</span>),
+    <span class="doccomment">/// Take all the elements into a new queue and reset the current queue
+    </span><span class="kw">pub fn </span>take(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+        RequestQueue {
+            max_items: <span class="self">self</span>.max_items,
+            queue: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.queue),
         }
     }
 
-    <span class="doccomment">/// Checks whether the queue is full</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// true if the queue is full, false otherwise</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_full</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">queue</span>.<span class="ident">len</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">max_items</span>
+    <span class="doccomment">/// Checks whether the queue is full
+    ///
+    /// # Returns
+    /// true if the queue is full, false otherwise
+    </span><span class="kw">pub fn </span>is_full(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.queue.len() &gt;= <span class="self">self</span>.max_items
     }
 
-    <span class="doccomment">/// Checks whether the queue is empty</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// true if the queue is empty, false otherwise</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_empty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">queue</span>.<span class="ident">is_empty</span>()
+    <span class="doccomment">/// Checks whether the queue is empty
+    ///
+    /// # Returns
+    /// true if the queue is empty, false otherwise
+    </span><span class="kw">pub fn </span>is_empty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.queue.is_empty()
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

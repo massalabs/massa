@@ -178,185 +178,185 @@
 <span id="178">178</span>
 <span id="179">179</span>
 <span id="180">180</span>
-</pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Default hard-coded</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Each crates may contains a `settings.rs` or a `config.rs` the `Default`</span>
-<span class="doccomment">//! implementation of each object take the default Values from the following</span>
-<span class="doccomment">//! file.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! These values are the hard-coded values that make sens to never be modified</span>
-<span class="doccomment">//! by a user. Generally, this values are passed with dependency injection in a `cfg`</span>
-<span class="doccomment">//! parameter for each worker, that is convenient for unit tests.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! A parallel file with the same constant definitions exist for the testing case.</span>
-<span class="doccomment">//! (`default_testing.rs`) But as for the current file you shouldn&#39;t modify it.</span>
-<span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
+</pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
+//!
+//!
+//! # Default hard-coded
+//!
+//! Each crates may contains a `settings.rs` or a `config.rs` the `Default`
+//! implementation of each object take the default Values from the following
+//! file.
+//!
+//! These values are the hard-coded values that make sens to never be modified
+//! by a user. Generally, this values are passed with dependency injection in a `cfg`
+//! parameter for each worker, that is convenient for unit tests.
+//!
+//! A parallel file with the same constant definitions exist for the testing case.
+//! (`default_testing.rs`) But as for the current file you shouldn&#39;t modify it.
+</span><span class="kw">use </span>std::str::FromStr;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Amount</span>, <span class="ident">Version</span>};
-<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
-<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
-<span class="kw">use</span> <span class="ident">num::rational::Ratio</span>;
+<span class="kw">use crate</span>::{Amount, Version};
+<span class="kw">use </span>massa_signature::KeyPair;
+<span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>num::rational::Ratio;
 
-<span class="doccomment">/// Limit on the number of peers we advertise to others.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ADVERTISE_LENGTH</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">10000</span>;
-<span class="doccomment">/// Maximum message length in bytes</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_MESSAGE_SIZE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1048576000</span>;
-<span class="doccomment">/// Max number of hash in the message `AskForBlocks`</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ASK_BLOCKS_PER_MESSAGE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">128</span>;
-<span class="doccomment">/// Max number of operations per message</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_OPERATIONS_PER_MESSAGE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1024</span>;
-<span class="doccomment">/// Length of the handshake random signature</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">HANDSHAKE_RANDOMNESS_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">32</span>;
+<span class="doccomment">/// Limit on the number of peers we advertise to others.
+</span><span class="kw">pub const </span>MAX_ADVERTISE_LENGTH: u32 = <span class="number">10000</span>;
+<span class="doccomment">/// Maximum message length in bytes
+</span><span class="kw">pub const </span>MAX_MESSAGE_SIZE: u32 = <span class="number">1048576000</span>;
+<span class="doccomment">/// Max number of hash in the message `AskForBlocks`
+</span><span class="kw">pub const </span>MAX_ASK_BLOCKS_PER_MESSAGE: u32 = <span class="number">128</span>;
+<span class="doccomment">/// Max number of operations per message
+</span><span class="kw">pub const </span>MAX_OPERATIONS_PER_MESSAGE: u32 = <span class="number">1024</span>;
+<span class="doccomment">/// Length of the handshake random signature
+</span><span class="kw">pub const </span>HANDSHAKE_RANDOMNESS_SIZE_BYTES: usize = <span class="number">32</span>;
 
-<span class="doccomment">/// Consensus static parameters (defined by protocol used)</span>
-<span class="doccomment">/// Changing one of the following values is considered as a breaking change</span>
-<span class="doccomment">/// Values differ in `test` flavor building for faster CI and simpler scenarios</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CHANNEL_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1024</span>;
+<span class="doccomment">/// Consensus static parameters (defined by protocol used)
+/// Changing one of the following values is considered as a breaking change
+/// Values differ in `test` flavor building for faster CI and simpler scenarios
+</span><span class="kw">pub const </span>CHANNEL_SIZE: usize = <span class="number">1024</span>;
 
-<span class="macro">lazy_static::lazy_static!</span> {
-    <span class="doccomment">/// Time in milliseconds when the blockclique started.</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_TIMESTAMP</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>) {
-        <span class="ident">std::env::var</span>(<span class="string">&quot;GENESIS_TIMESTAMP&quot;</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">timestamp</span><span class="op">|</span> <span class="ident">timestamp</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>().<span class="ident">into</span>()).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span>
-            <span class="ident">MassaTime::now</span>()
-                .<span class="ident">unwrap</span>()
-                .<span class="ident">saturating_add</span>(<span class="ident">MassaTime::from</span>(<span class="number">1000</span> <span class="op">*</span> <span class="number">10</span>))
+<span class="macro">lazy_static::lazy_static! </span>{
+    <span class="doccomment">/// Time in milliseconds when the blockclique started.
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>GENESIS_TIMESTAMP: MassaTime = <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;sandbox&quot;</span>) {
+        std::env::var(<span class="string">&quot;GENESIS_TIMESTAMP&quot;</span>).map(|timestamp| timestamp.parse::&lt;u64&gt;().unwrap().into()).unwrap_or_else(|<span class="kw">_</span>|
+            MassaTime::now()
+                .unwrap()
+                .saturating_add(MassaTime::from(<span class="number">1000 </span>* <span class="number">10</span>))
         )
-    } <span class="kw">else</span> {
-        <span class="number">1659434400000</span>.<span class="ident">into</span>()  <span class="comment">// Tuesday, August 2, 2022 10:00:00 UTC</span>
-    };
+    } <span class="kw">else </span>{
+        <span class="number">1659434400000</span>.into()  <span class="comment">// Tuesday, August 2, 2022 10:00:00 UTC
+    </span>};
 
-    <span class="doccomment">/// TESTNET: time when the blockclique is ended.</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">END_TIMESTAMP</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>) {
-        <span class="prelude-val">None</span>
-    } <span class="kw">else</span> {
-        <span class="prelude-val">Some</span>(<span class="number">1661853600000</span>.<span class="ident">into</span>())  <span class="comment">// Tuesday, August 30, 2022 10:00:00 UTC</span>
-    };
-    <span class="doccomment">/// `KeyPair` to sign genesis blocks.</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_KEY</span>: <span class="ident">KeyPair</span> <span class="op">=</span> <span class="ident">KeyPair::from_str</span>(<span class="string">&quot;S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8&quot;</span>)
-        .<span class="ident">unwrap</span>();
-    <span class="doccomment">/// number of cycle misses (strictly) above which stakers are deactivated</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">POS_MISS_RATE_DEACTIVATION_THRESHOLD</span>: <span class="ident">Ratio</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Ratio::new</span>(<span class="number">7</span>, <span class="number">10</span>);
-    <span class="doccomment">/// node version</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">VERSION</span>: <span class="ident">Version</span> <span class="op">=</span> {
-        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>) {
-            <span class="string">&quot;SAND.0.0&quot;</span>
-        } <span class="kw">else</span> {
-            <span class="string">&quot;TEST.13.0&quot;</span>
-        }
-        .<span class="ident">parse</span>()
-        .<span class="ident">unwrap</span>()
+    <span class="doccomment">/// TESTNET: time when the blockclique is ended.
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>END_TIMESTAMP: <span class="prelude-ty">Option</span>&lt;MassaTime&gt; = <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;sandbox&quot;</span>) {
+        <span class="prelude-val">None
+    </span>} <span class="kw">else </span>{
+        <span class="prelude-val">Some</span>(<span class="number">1661853600000</span>.into())  <span class="comment">// Tuesday, August 30, 2022 10:00:00 UTC
+    </span>};
+    <span class="doccomment">/// `KeyPair` to sign genesis blocks.
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>GENESIS_KEY: KeyPair = KeyPair::from_str(<span class="string">&quot;S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8&quot;</span>)
+        .unwrap();
+    <span class="doccomment">/// number of cycle misses (strictly) above which stakers are deactivated
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio&lt;u64&gt; = Ratio::new(<span class="number">7</span>, <span class="number">10</span>);
+    <span class="doccomment">/// node version
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>VERSION: Version = {
+        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;sandbox&quot;</span>) {
+            <span class="string">&quot;SAND.0.0&quot;
+        </span>} <span class="kw">else </span>{
+            <span class="string">&quot;TEST.13.0&quot;
+        </span>}
+        .parse()
+        .unwrap()
     };
 }
 
-<span class="doccomment">/// Price of a roll in the network</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ROLL_PRICE</span>: <span class="ident">Amount</span> <span class="op">=</span> <span class="ident">Amount::from_mantissa_scale</span>(<span class="number">100</span>, <span class="number">0</span>);
-<span class="doccomment">/// Block reward is given for each block creation</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BLOCK_REWARD</span>: <span class="ident">Amount</span> <span class="op">=</span> <span class="ident">Amount::from_mantissa_scale</span>(<span class="number">3</span>, <span class="number">1</span>);
-<span class="doccomment">/// Time between the periods in the same thread.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">T0</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="ident">MassaTime::from</span>(<span class="number">16000</span>);
-<span class="doccomment">/// Proof of stake seed for the initial draw</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">INITIAL_DRAW_SEED</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;massa_genesis_seed&quot;</span>;
-<span class="doccomment">/// Number of threads</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">THREAD_COUNT</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">32</span>;
-<span class="doccomment">/// Number of endorsement</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ENDORSEMENT_COUNT</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">9</span>;
-<span class="doccomment">/// Threshold for fitness.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DELTA_F0</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">640</span>;
-<span class="doccomment">/// Maximum number of operations per block</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_OPERATIONS_PER_BLOCK</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">409600</span>;
-<span class="doccomment">/// Maximum block size in bytes</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BLOCK_SIZE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">409600</span>;
-<span class="doccomment">/// Maximum capacity of the asynchronous messages pool</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ASYNC_POOL_LENGTH</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10_000</span>;
-<span class="doccomment">/// Maximum operation validity period count</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OPERATION_VALIDITY_PERIODS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
-<span class="doccomment">/// cycle duration in periods</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PERIODS_PER_CYCLE</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">128</span>;
-<span class="doccomment">/// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle N - `pos_look` `back_cycles` - 1</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">POS_LOOKBACK_CYCLES</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">2</span>;
-<span class="doccomment">/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">POS_LOCK_CYCLES</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1</span>;
-<span class="doccomment">/// Maximum size batch of data in a part of the ledger</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">LEDGER_PART_SIZE_MESSAGE_BYTES</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1000000</span>;
-<span class="doccomment">/// Maximum async messages in a batch of the bootstrap of the async pool</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ASYNC_POOL_PART_SIZE_MESSAGE_BYTES</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1000000</span>;
-<span class="doccomment">/// Maximum length of a datastore key</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_DATASTORE_KEY_LENGTH</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">255</span>;
+<span class="doccomment">/// Price of a roll in the network
+</span><span class="kw">pub const </span>ROLL_PRICE: Amount = Amount::from_mantissa_scale(<span class="number">100</span>, <span class="number">0</span>);
+<span class="doccomment">/// Block reward is given for each block creation
+</span><span class="kw">pub const </span>BLOCK_REWARD: Amount = Amount::from_mantissa_scale(<span class="number">3</span>, <span class="number">1</span>);
+<span class="doccomment">/// Time between the periods in the same thread.
+</span><span class="kw">pub const </span>T0: MassaTime = MassaTime::from(<span class="number">16000</span>);
+<span class="doccomment">/// Proof of stake seed for the initial draw
+</span><span class="kw">pub const </span>INITIAL_DRAW_SEED: <span class="kw-2">&amp;</span>str = <span class="string">&quot;massa_genesis_seed&quot;</span>;
+<span class="doccomment">/// Number of threads
+</span><span class="kw">pub const </span>THREAD_COUNT: u8 = <span class="number">32</span>;
+<span class="doccomment">/// Number of endorsement
+</span><span class="kw">pub const </span>ENDORSEMENT_COUNT: u32 = <span class="number">9</span>;
+<span class="doccomment">/// Threshold for fitness.
+</span><span class="kw">pub const </span>DELTA_F0: u64 = <span class="number">640</span>;
+<span class="doccomment">/// Maximum number of operations per block
+</span><span class="kw">pub const </span>MAX_OPERATIONS_PER_BLOCK: u32 = <span class="number">409600</span>;
+<span class="doccomment">/// Maximum block size in bytes
+</span><span class="kw">pub const </span>MAX_BLOCK_SIZE: u32 = <span class="number">409600</span>;
+<span class="doccomment">/// Maximum capacity of the asynchronous messages pool
+</span><span class="kw">pub const </span>MAX_ASYNC_POOL_LENGTH: u64 = <span class="number">10_000</span>;
+<span class="doccomment">/// Maximum operation validity period count
+</span><span class="kw">pub const </span>OPERATION_VALIDITY_PERIODS: u64 = <span class="number">10</span>;
+<span class="doccomment">/// cycle duration in periods
+</span><span class="kw">pub const </span>PERIODS_PER_CYCLE: u64 = <span class="number">128</span>;
+<span class="doccomment">/// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle N - `pos_look` `back_cycles` - 1
+</span><span class="kw">pub const </span>POS_LOOKBACK_CYCLES: u64 = <span class="number">2</span>;
+<span class="doccomment">/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`
+</span><span class="kw">pub const </span>POS_LOCK_CYCLES: u64 = <span class="number">1</span>;
+<span class="doccomment">/// Maximum size batch of data in a part of the ledger
+</span><span class="kw">pub const </span>LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = <span class="number">1000000</span>;
+<span class="doccomment">/// Maximum async messages in a batch of the bootstrap of the async pool
+</span><span class="kw">pub const </span>ASYNC_POOL_PART_SIZE_MESSAGE_BYTES: u64 = <span class="number">1000000</span>;
+<span class="doccomment">/// Maximum length of a datastore key
+</span><span class="kw">pub const </span>MAX_DATASTORE_KEY_LENGTH: u8 = <span class="number">255</span>;
 
-<span class="comment">// ***********************</span>
-<span class="comment">// Bootstrap constants</span>
-<span class="comment">//</span>
+<span class="comment">// ***********************
+// Bootstrap constants
+//
 
-<span class="doccomment">/// Max message size for bootstrap</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_MESSAGE_SIZE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1048576000</span>;
-<span class="doccomment">/// Max number of blocks we provide/ take into account while bootstrapping</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_BLOCKS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1000000</span>;
-<span class="doccomment">/// max bootstrapped cliques</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_CLIQUES</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1000</span>;
-<span class="doccomment">/// max bootstrapped dependencies</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_DEPS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1000</span>;
-<span class="doccomment">/// Max number of child nodes</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_CHILDREN</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1000</span>;
-<span class="doccomment">/// Max number of cycles in PoS bootstrap</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_POS_CYCLES</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">5</span>;
-<span class="doccomment">/// Max number of address and random entries for PoS bootstrap</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_POS_ENTRIES</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1000000000</span>;
-<span class="doccomment">/// Max size of the IP list</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IP_LIST_MAX_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10000</span>;
-<span class="doccomment">/// Size of the random bytes array used for the bootstrap, safe to import</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BOOTSTRAP_RANDOMNESS_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">32</span>;
+</span><span class="doccomment">/// Max message size for bootstrap
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_MESSAGE_SIZE: u32 = <span class="number">1048576000</span>;
+<span class="doccomment">/// Max number of blocks we provide/ take into account while bootstrapping
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_BLOCKS: u32 = <span class="number">1000000</span>;
+<span class="doccomment">/// max bootstrapped cliques
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_CLIQUES: u32 = <span class="number">1000</span>;
+<span class="doccomment">/// max bootstrapped dependencies
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_DEPS: u32 = <span class="number">1000</span>;
+<span class="doccomment">/// Max number of child nodes
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_CHILDREN: u32 = <span class="number">1000</span>;
+<span class="doccomment">/// Max number of cycles in PoS bootstrap
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_POS_CYCLES: u32 = <span class="number">5</span>;
+<span class="doccomment">/// Max number of address and random entries for PoS bootstrap
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_POS_ENTRIES: u32 = <span class="number">1000000000</span>;
+<span class="doccomment">/// Max size of the IP list
+</span><span class="kw">pub const </span>IP_LIST_MAX_SIZE: usize = <span class="number">10000</span>;
+<span class="doccomment">/// Size of the random bytes array used for the bootstrap, safe to import
+</span><span class="kw">pub const </span>BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = <span class="number">32</span>;
 
-<span class="comment">// ***********************</span>
-<span class="comment">// Constants used for execution module (injected from ConsensusConfig)</span>
-<span class="comment">//</span>
+<span class="comment">// ***********************
+// Constants used for execution module (injected from ConsensusConfig)
+//
 
-<span class="doccomment">/// Maximum of GAS allowed for a block</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_GAS_PER_BLOCK</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1_000_000_000</span>;
-<span class="doccomment">/// Maximum of GAS allowed for asynchronous messages execution on one slot</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ASYNC_GAS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1_000_000_000</span>;
+</span><span class="doccomment">/// Maximum of GAS allowed for a block
+</span><span class="kw">pub const </span>MAX_GAS_PER_BLOCK: u64 = <span class="number">1_000_000_000</span>;
+<span class="doccomment">/// Maximum of GAS allowed for asynchronous messages execution on one slot
+</span><span class="kw">pub const </span>MAX_ASYNC_GAS: u64 = <span class="number">1_000_000_000</span>;
 
-<span class="comment">//</span>
-<span class="comment">// Constants used in network</span>
-<span class="comment">//</span>
+<span class="comment">//
+// Constants used in network
+//
 
-<span class="doccomment">/// Max number of endorsements per message</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ENDORSEMENTS_PER_MESSAGE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1024</span>;
-<span class="doccomment">/// node send channel size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">NODE_SEND_CHANNEL_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1024</span>;
-<span class="doccomment">/// max duplex buffer size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_DUPLEX_BUFFER_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1024</span>;
+</span><span class="doccomment">/// Max number of endorsements per message
+</span><span class="kw">pub const </span>MAX_ENDORSEMENTS_PER_MESSAGE: u32 = <span class="number">1024</span>;
+<span class="doccomment">/// node send channel size
+</span><span class="kw">pub const </span>NODE_SEND_CHANNEL_SIZE: usize = <span class="number">1024</span>;
+<span class="doccomment">/// max duplex buffer size
+</span><span class="kw">pub const </span>MAX_DUPLEX_BUFFER_SIZE: usize = <span class="number">1024</span>;
 
-<span class="comment">//</span>
-<span class="comment">// Divers constants</span>
-<span class="comment">//</span>
+<span class="comment">//
+// Divers constants
+//
 
-<span class="doccomment">/// address size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ADDRESS_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">massa_hash::HASH_SIZE_BYTES</span>;
-<span class="doccomment">/// Safe to import, amount decimal factor</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">AMOUNT_DECIMAL_FACTOR</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1_000_000_000</span>;
-<span class="doccomment">/// block id size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">massa_hash::HASH_SIZE_BYTES</span>;
-<span class="doccomment">/// endorsement id size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ENDORSEMENT_ID_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">massa_hash::HASH_SIZE_BYTES</span>;
-<span class="doccomment">/// operation id size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OPERATION_ID_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">massa_hash::HASH_SIZE_BYTES</span>;
-<span class="doccomment">/// operation id prefix size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OPERATION_ID_PREFIX_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">17</span>;
-<span class="doccomment">/// slot as a key size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SLOT_KEY_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">9</span>;
+</span><span class="doccomment">/// address size
+</span><span class="kw">pub const </span>ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+<span class="doccomment">/// Safe to import, amount decimal factor
+</span><span class="kw">pub const </span>AMOUNT_DECIMAL_FACTOR: u64 = <span class="number">1_000_000_000</span>;
+<span class="doccomment">/// block id size
+</span><span class="kw">pub const </span>BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+<span class="doccomment">/// endorsement id size
+</span><span class="kw">pub const </span>ENDORSEMENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+<span class="doccomment">/// operation id size
+</span><span class="kw">pub const </span>OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+<span class="doccomment">/// operation id prefix size
+</span><span class="kw">pub const </span>OPERATION_ID_PREFIX_SIZE_BYTES: usize = <span class="number">17</span>;
+<span class="doccomment">/// slot as a key size
+</span><span class="kw">pub const </span>SLOT_KEY_SIZE: usize = <span class="number">9</span>;
 
-<span class="doccomment">/// Size of the event id hash used in execution module, safe to import</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">EVENT_ID_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">massa_hash::HASH_SIZE_BYTES</span>;
+<span class="doccomment">/// Size of the event id hash used in execution module, safe to import
+</span><span class="kw">pub const </span>EVENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
-<span class="comment">// Some checks at compile time that should not be ignored!</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::assertions_on_constants</span>)]</span>
-<span class="kw">const</span> <span class="kw">_</span>: () <span class="op">=</span> {
-    <span class="macro">assert!</span>(<span class="ident">THREAD_COUNT</span> <span class="op">&gt;</span> <span class="number">1</span>);
-    <span class="macro">assert!</span>((<span class="ident">T0</span>).<span class="ident">to_millis</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="number">1</span>);
-    <span class="macro">assert!</span>((<span class="ident">T0</span>).<span class="ident">to_millis</span>() <span class="op">%</span> (<span class="ident">THREAD_COUNT</span> <span class="kw">as</span> <span class="ident">u64</span>) <span class="op">==</span> <span class="number">0</span>);
+<span class="comment">// Some checks at compile time that should not be ignored!
+</span><span class="attribute">#[allow(clippy::assertions_on_constants)]
+</span><span class="kw">const _</span>: () = {
+    <span class="macro">assert!</span>(THREAD_COUNT &gt; <span class="number">1</span>);
+    <span class="macro">assert!</span>((T0).to_millis() &gt;= <span class="number">1</span>);
+    <span class="macro">assert!</span>((T0).to_millis() % (THREAD_COUNT <span class="kw">as </span>u64) == <span class="number">0</span>);
 };
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

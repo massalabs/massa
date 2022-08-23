@@ -48,55 +48,55 @@
 <span id="48">48</span>
 <span id="49">49</span>
 <span id="50">50</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages</span>::{<span class="ident">BootstrapClientMessage</span>, <span class="ident">BootstrapServerMessage</span>};
-<span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
-<span class="kw">use</span> <span class="ident">massa_consensus_exports::error::ConsensusError</span>;
-<span class="kw">use</span> <span class="ident">massa_final_state::FinalStateError</span>;
-<span class="kw">use</span> <span class="ident">massa_hash::MassaHashError</span>;
-<span class="kw">use</span> <span class="ident">massa_network_exports::NetworkError</span>;
-<span class="kw">use</span> <span class="ident">massa_serialization::SerializeError</span>;
-<span class="kw">use</span> <span class="ident">massa_time::TimeError</span>;
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+</span><span class="kw">use </span><span class="kw">crate</span>::messages::{BootstrapClientMessage, BootstrapServerMessage};
+<span class="kw">use </span>displaydoc::Display;
+<span class="kw">use </span>massa_consensus_exports::error::ConsensusError;
+<span class="kw">use </span>massa_final_state::FinalStateError;
+<span class="kw">use </span>massa_hash::MassaHashError;
+<span class="kw">use </span>massa_network_exports::NetworkError;
+<span class="kw">use </span>massa_serialization::SerializeError;
+<span class="kw">use </span>massa_time::TimeError;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Display</span>, <span class="ident">Error</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">BootstrapError</span> {
-    <span class="doccomment">/// io error: {0}</span>
-    <span class="ident">IoError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">std::io::Error</span>),
-    <span class="doccomment">/// general bootstrap error: {0}</span>
-    <span class="ident">GeneralError</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// models error: {0}</span>
-    <span class="ident">ModelsError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_models::ModelsError</span>),
-    <span class="doccomment">/// serialize error: {0}</span>
-    <span class="ident">SerializeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">SerializeError</span>),
-    <span class="doccomment">/// unexpected message received from server: {0:?}</span>
-    <span class="ident">UnexpectedServerMessage</span>(<span class="ident">BootstrapServerMessage</span>),
-    <span class="doccomment">/// unexpected message received from client: {0:?}</span>
-    <span class="ident">UnexpectedClientMessage</span>(<span class="ident">BootstrapClientMessage</span>),
-    <span class="doccomment">/// connection with bootstrap node dropped</span>
-    <span class="ident">UnexpectedConnectionDrop</span>,
-    <span class="doccomment">/// `massa_hash` error: {0}</span>
-    <span class="ident">MassaHashError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MassaHashError</span>),
-    <span class="doccomment">/// massa_signature error {0}</span>
-    <span class="ident">MassaSignatureError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_signature::MassaSignatureError</span>),
-    <span class="doccomment">/// time error: {0}</span>
-    <span class="ident">TimeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TimeError</span>),
-    <span class="doccomment">/// consensus error: {0}</span>
-    <span class="ident">ConsensusError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ConsensusError</span>),
-    <span class="doccomment">/// network error: {0}</span>
-    <span class="ident">NetworkError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">NetworkError</span>),
-    <span class="doccomment">/// final state error: {0}</span>
-    <span class="ident">FinalStateError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">FinalStateError</span>),
-    <span class="doccomment">/// join error: {0}</span>
-    <span class="ident">JoinError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">tokio::task::JoinError</span>),
-    <span class="doccomment">/// missing keypair file</span>
-    <span class="ident">MissingKeyError</span>,
-    <span class="doccomment">/// incompatible version: {0}</span>
-    <span class="ident">IncompatibleVersionError</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// Received error: {0}</span>
-    <span class="ident">ReceivedError</span>(<span class="ident">String</span>),
+<span class="attribute">#[non_exhaustive]
+#[derive(Display, Error, Debug)]
+</span><span class="kw">pub enum </span>BootstrapError {
+    <span class="doccomment">/// io error: {0}
+    </span>IoError(<span class="attribute">#[from] </span>std::io::Error),
+    <span class="doccomment">/// general bootstrap error: {0}
+    </span>GeneralError(String),
+    <span class="doccomment">/// models error: {0}
+    </span>ModelsError(<span class="attribute">#[from] </span>massa_models::ModelsError),
+    <span class="doccomment">/// serialize error: {0}
+    </span>SerializeError(<span class="attribute">#[from] </span>SerializeError),
+    <span class="doccomment">/// unexpected message received from server: {0:?}
+    </span>UnexpectedServerMessage(BootstrapServerMessage),
+    <span class="doccomment">/// unexpected message received from client: {0:?}
+    </span>UnexpectedClientMessage(BootstrapClientMessage),
+    <span class="doccomment">/// connection with bootstrap node dropped
+    </span>UnexpectedConnectionDrop,
+    <span class="doccomment">/// `massa_hash` error: {0}
+    </span>MassaHashError(<span class="attribute">#[from] </span>MassaHashError),
+    <span class="doccomment">/// massa_signature error {0}
+    </span>MassaSignatureError(<span class="attribute">#[from] </span>massa_signature::MassaSignatureError),
+    <span class="doccomment">/// time error: {0}
+    </span>TimeError(<span class="attribute">#[from] </span>TimeError),
+    <span class="doccomment">/// consensus error: {0}
+    </span>ConsensusError(<span class="attribute">#[from] </span>ConsensusError),
+    <span class="doccomment">/// network error: {0}
+    </span>NetworkError(<span class="attribute">#[from] </span>NetworkError),
+    <span class="doccomment">/// final state error: {0}
+    </span>FinalStateError(<span class="attribute">#[from] </span>FinalStateError),
+    <span class="doccomment">/// join error: {0}
+    </span>JoinError(<span class="attribute">#[from] </span>tokio::task::JoinError),
+    <span class="doccomment">/// missing keypair file
+    </span>MissingKeyError,
+    <span class="doccomment">/// incompatible version: {0}
+    </span>IncompatibleVersionError(String),
+    <span class="doccomment">/// Received error: {0}
+    </span>ReceivedError(String),
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

@@ -184,106 +184,106 @@
 <span id="184">184</span>
 <span id="185">185</span>
 <span id="186">186</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">address::AddressDeserializer</span>,
-    <span class="ident">constants</span>::{<span class="ident">default::MAX_DATASTORE_KEY_LENGTH</span>, <span class="ident">ADDRESS_SIZE_BYTES</span>},
-    <span class="ident">Address</span>, <span class="ident">VecU8Deserializer</span>, <span class="ident">VecU8Serializer</span>,
+</pre><pre class="rust"><code><span class="kw">use </span>massa_models::{
+    address::AddressDeserializer,
+    constants::{default::MAX_DATASTORE_KEY_LENGTH, ADDRESS_SIZE_BYTES},
+    Address, VecU8Deserializer, VecU8Serializer,
 };
-<span class="kw">use</span> <span class="ident">massa_serialization</span>::{<span class="ident">DeserializeError</span>, <span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>};
-<span class="kw">use</span> <span class="ident">nom::error</span>::{<span class="ident">ContextError</span>, <span class="ident">ParseError</span>};
-<span class="kw">use</span> <span class="ident">std::ops::Bound::Included</span>;
+<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
+<span class="kw">use </span>nom::error::{ContextError, ParseError};
+<span class="kw">use </span>std::ops::Bound::Included;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BALANCE_IDENT</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">0u8</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BYTECODE_IDENT</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">1u8</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DATASTORE_IDENT</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">2u8</span>;
+<span class="kw">pub const </span>BALANCE_IDENT: u8 = <span class="number">0u8</span>;
+<span class="kw">pub const </span>BYTECODE_IDENT: u8 = <span class="number">1u8</span>;
+<span class="kw">pub const </span>DATASTORE_IDENT: u8 = <span class="number">2u8</span>;
 
-<span class="doccomment">/// Balance key formatting macro</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">balance_key</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">addr</span>:<span class="ident">expr</span>) =&gt; {
-        [<span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">addr</span>.<span class="ident">to_bytes</span>()[..], <span class="kw-2">&amp;</span>[<span class="ident">BALANCE_IDENT</span>]].<span class="ident">concat</span>()
+<span class="doccomment">/// Balance key formatting macro
+</span><span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>balance_key {
+    (<span class="macro-nonterminal">$addr</span>:expr) =&gt; {
+        [<span class="kw-2">&amp;</span><span class="macro-nonterminal">$addr</span>.to_bytes()[..], <span class="kw-2">&amp;</span>[BALANCE_IDENT]].concat()
     };
 }
 
-<span class="doccomment">/// Bytecode key formatting macro</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// NOTE: still handle separate bytecode for now to avoid too many refactoring at once</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">bytecode_key</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">addr</span>:<span class="ident">expr</span>) =&gt; {
-        [<span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">addr</span>.<span class="ident">to_bytes</span>()[..], <span class="kw-2">&amp;</span>[<span class="ident">BYTECODE_IDENT</span>]].<span class="ident">concat</span>()
+<span class="doccomment">/// Bytecode key formatting macro
+///
+/// NOTE: still handle separate bytecode for now to avoid too many refactoring at once
+</span><span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>bytecode_key {
+    (<span class="macro-nonterminal">$addr</span>:expr) =&gt; {
+        [<span class="kw-2">&amp;</span><span class="macro-nonterminal">$addr</span>.to_bytes()[..], <span class="kw-2">&amp;</span>[BYTECODE_IDENT]].concat()
     };
 }
 
-<span class="doccomment">/// Datastore entry key formatting macro</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// TODO: add a separator identifier if the need comes to have multiple datastores</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">data_key</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">addr</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">key</span>:<span class="ident">expr</span>) =&gt; {
-        [<span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">addr</span>.<span class="ident">to_bytes</span>()[..], <span class="kw-2">&amp;</span>[<span class="ident">DATASTORE_IDENT</span>], <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">key</span>].<span class="ident">concat</span>()
+<span class="doccomment">/// Datastore entry key formatting macro
+///
+/// TODO: add a separator identifier if the need comes to have multiple datastores
+</span><span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>data_key {
+    (<span class="macro-nonterminal">$addr</span>:expr, <span class="macro-nonterminal">$key</span>:expr) =&gt; {
+        [<span class="kw-2">&amp;</span><span class="macro-nonterminal">$addr</span>.to_bytes()[..], <span class="kw-2">&amp;</span>[DATASTORE_IDENT], <span class="kw-2">&amp;</span><span class="macro-nonterminal">$key</span>].concat()
     };
 }
 
-<span class="doccomment">/// Datastore entry prefix formatting macro</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">data_prefix</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">addr</span>:<span class="ident">expr</span>) =&gt; {
-        <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">addr</span>.<span class="ident">to_bytes</span>()[..], <span class="kw-2">&amp;</span>[<span class="ident">DATASTORE_IDENT</span>]].<span class="ident">concat</span>()
+<span class="doccomment">/// Datastore entry prefix formatting macro
+</span><span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>data_prefix {
+    (<span class="macro-nonterminal">$addr</span>:expr) =&gt; {
+        <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="macro-nonterminal">$addr</span>.to_bytes()[..], <span class="kw-2">&amp;</span>[DATASTORE_IDENT]].concat()
     };
 }
 
-<span class="doccomment">/// Extract an address from a key</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_address_from_key</span>(<span class="ident">key</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">address_deserializer</span> <span class="op">=</span> <span class="ident">AddressDeserializer::new</span>();
-    <span class="ident">address_deserializer</span>
-        .<span class="ident">deserialize</span>::<span class="op">&lt;</span><span class="ident">DeserializeError</span><span class="op">&gt;</span>(<span class="ident">key</span>)
-        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">res</span><span class="op">|</span> <span class="ident">res</span>.<span class="number">1</span>)
-        .<span class="ident">ok</span>()
+<span class="doccomment">/// Extract an address from a key
+</span><span class="kw">pub fn </span>get_address_from_key(key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Option</span>&lt;Address&gt; {
+    <span class="kw">let </span>address_deserializer = AddressDeserializer::new();
+    address_deserializer
+        .deserialize::&lt;DeserializeError&gt;(key)
+        .map(|res| res.<span class="number">1</span>)
+        .ok()
 }
 
-<span class="doccomment">/// Basic key serializer</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">KeySerializer</span> {
-    <span class="ident">vec_u8_serializer</span>: <span class="ident">VecU8Serializer</span>,
+<span class="doccomment">/// Basic key serializer
+</span><span class="attribute">#[derive(Default)]
+</span><span class="kw">pub struct </span>KeySerializer {
+    vec_u8_serializer: VecU8Serializer,
 }
 
-<span class="kw">impl</span> <span class="ident">KeySerializer</span> {
-    <span class="doccomment">/// Creates a new `KeySerializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">vec_u8_serializer</span>: <span class="ident">VecU8Serializer::new</span>(),
+<span class="kw">impl </span>KeySerializer {
+    <span class="doccomment">/// Creates a new `KeySerializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            vec_u8_serializer: VecU8Serializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">KeySerializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use massa_models::address::Address;</span>
-    <span class="doccomment">/// use massa_ledger_exports::{KeySerializer, DATASTORE_IDENT};</span>
-    <span class="doccomment">/// use massa_serialization::Serializer;</span>
-    <span class="doccomment">/// use massa_hash::Hash;</span>
-    <span class="doccomment">/// use std::str::FromStr;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// let address = Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap();</span>
-    <span class="doccomment">/// let store_key = Hash::compute_from(b&quot;test&quot;);</span>
-    <span class="doccomment">/// let mut key = Vec::new();</span>
-    <span class="doccomment">/// key.extend(address.to_bytes());</span>
-    <span class="doccomment">/// key.push(DATASTORE_IDENT);</span>
-    <span class="doccomment">/// key.extend(store_key.to_bytes());</span>
-    <span class="doccomment">/// KeySerializer::new().serialize(&amp;key, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">limit</span> <span class="op">=</span> <span class="ident">ADDRESS_SIZE_BYTES</span> <span class="op">+</span> <span class="number">1</span>;
-        <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>[..<span class="ident">limit</span>]);
-        <span class="kw">if</span> <span class="ident">value</span>[<span class="ident">ADDRESS_SIZE_BYTES</span>] <span class="op">==</span> <span class="ident">DATASTORE_IDENT</span> {
-            <span class="kw">if</span> <span class="ident">value</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">limit</span> {
-                <span class="self">self</span>.<span class="ident">vec_u8_serializer</span>
-                    .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>[<span class="ident">limit</span>..].<span class="ident">to_vec</span>(), <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-            } <span class="kw">else</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SerializeError::GeneralError</span>(
-                    <span class="string">&quot;datastore keys can not be empty&quot;</span>.<span class="ident">to_string</span>(),
+<span class="kw">impl </span>Serializer&lt;Vec&lt;u8&gt;&gt; <span class="kw">for </span>KeySerializer {
+    <span class="doccomment">/// ```
+    /// use massa_models::address::Address;
+    /// use massa_ledger_exports::{KeySerializer, DATASTORE_IDENT};
+    /// use massa_serialization::Serializer;
+    /// use massa_hash::Hash;
+    /// use std::str::FromStr;
+    ///
+    /// let mut serialized = Vec::new();
+    /// let address = Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap();
+    /// let store_key = Hash::compute_from(b&quot;test&quot;);
+    /// let mut key = Vec::new();
+    /// key.extend(address.to_bytes());
+    /// key.push(DATASTORE_IDENT);
+    /// key.extend(store_key.to_bytes());
+    /// KeySerializer::new().serialize(&amp;key, &amp;mut serialized).unwrap();
+    /// ```
+    </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>Vec&lt;u8&gt;, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="kw">let </span>limit = ADDRESS_SIZE_BYTES + <span class="number">1</span>;
+        buffer.extend(<span class="kw-2">&amp;</span>value[..limit]);
+        <span class="kw">if </span>value[ADDRESS_SIZE_BYTES] == DATASTORE_IDENT {
+            <span class="kw">if </span>value.len() &gt; limit {
+                <span class="self">self</span>.vec_u8_serializer
+                    .serialize(<span class="kw-2">&amp;</span>value[limit..].to_vec(), buffer)<span class="question-mark">?</span>;
+            } <span class="kw">else </span>{
+                <span class="kw">return </span><span class="prelude-val">Err</span>(SerializeError::GeneralError(
+                    <span class="string">&quot;datastore keys can not be empty&quot;</span>.to_string(),
                 ));
             }
         }
@@ -291,84 +291,84 @@
     }
 }
 
-<span class="doccomment">/// Basic key deserializer</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">KeyDeserializer</span> {
-    <span class="ident">address_deserializer</span>: <span class="ident">AddressDeserializer</span>,
-    <span class="ident">vec_u8_deserializer</span>: <span class="ident">VecU8Deserializer</span>,
+<span class="doccomment">/// Basic key deserializer
+</span><span class="kw">pub struct </span>KeyDeserializer {
+    address_deserializer: AddressDeserializer,
+    vec_u8_deserializer: VecU8Deserializer,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">KeyDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>KeyDeserializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">KeyDeserializer</span> {
-    <span class="doccomment">/// Creates a new `KeyDeserializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">address_deserializer</span>: <span class="ident">AddressDeserializer::new</span>(),
-            <span class="ident">vec_u8_deserializer</span>: <span class="ident">VecU8Deserializer::new</span>(
-                <span class="ident">Included</span>(<span class="ident">u64::MIN</span>),
-                <span class="ident">Included</span>(<span class="ident">MAX_DATASTORE_KEY_LENGTH</span> <span class="kw">as</span> <span class="ident">u64</span>),
+<span class="kw">impl </span>KeyDeserializer {
+    <span class="doccomment">/// Creates a new `KeyDeserializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            address_deserializer: AddressDeserializer::new(),
+            vec_u8_deserializer: VecU8Deserializer::new(
+                Included(u64::MIN),
+                Included(MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>u64),
             ),
         }
     }
 }
 
-<span class="comment">// TODO: deserialize keys into a rust type</span>
-<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">KeyDeserializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use massa_models::address::Address;</span>
-    <span class="doccomment">/// use massa_ledger_exports::{KeyDeserializer, KeySerializer, DATASTORE_IDENT, BALANCE_IDENT};</span>
-    <span class="doccomment">/// use massa_serialization::{Deserializer, Serializer, DeserializeError};</span>
-    <span class="doccomment">/// use massa_hash::Hash;</span>
-    <span class="doccomment">/// use std::str::FromStr;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let address = Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap();</span>
-    <span class="doccomment">/// let store_key = Hash::compute_from(b&quot;test&quot;);</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let mut key = Vec::new();</span>
-    <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// key.extend(address.to_bytes());</span>
-    <span class="doccomment">/// key.push(DATASTORE_IDENT);</span>
-    <span class="doccomment">/// key.extend(store_key.to_bytes());</span>
-    <span class="doccomment">/// KeySerializer::new().serialize(&amp;key, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// let (rest, key_deser) = KeyDeserializer::new().deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
-    <span class="doccomment">/// assert!(rest.is_empty());</span>
-    <span class="doccomment">/// assert_eq!(key_deser, key);</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let mut key = Vec::new();</span>
-    <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// key.extend(address.to_bytes());</span>
-    <span class="doccomment">/// key.push(BALANCE_IDENT);</span>
-    <span class="doccomment">/// KeySerializer::new().serialize(&amp;key, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// let (rest, key_deser) = KeyDeserializer::new().deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
-    <span class="doccomment">/// assert!(rest.is_empty());</span>
-    <span class="doccomment">/// assert_eq!(key_deser, key);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="comment">// TODO: deserialize keys into a rust type
+</span><span class="kw">impl </span>Deserializer&lt;Vec&lt;u8&gt;&gt; <span class="kw">for </span>KeyDeserializer {
+    <span class="doccomment">/// ```
+    /// use massa_models::address::Address;
+    /// use massa_ledger_exports::{KeyDeserializer, KeySerializer, DATASTORE_IDENT, BALANCE_IDENT};
+    /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
+    /// use massa_hash::Hash;
+    /// use std::str::FromStr;
+    ///
+    /// let address = Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap();
+    /// let store_key = Hash::compute_from(b&quot;test&quot;);
+    ///
+    /// let mut key = Vec::new();
+    /// let mut serialized = Vec::new();
+    /// key.extend(address.to_bytes());
+    /// key.push(DATASTORE_IDENT);
+    /// key.extend(store_key.to_bytes());
+    /// KeySerializer::new().serialize(&amp;key, &amp;mut serialized).unwrap();
+    /// let (rest, key_deser) = KeyDeserializer::new().deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(key_deser, key);
+    ///
+    /// let mut key = Vec::new();
+    /// let mut serialized = Vec::new();
+    /// key.extend(address.to_bytes());
+    /// key.push(BALANCE_IDENT);
+    /// KeySerializer::new().serialize(&amp;key, &amp;mut serialized).unwrap();
+    /// let (rest, key_deser) = KeyDeserializer::new().deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(key_deser, key);
+    /// ```
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">nom::IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">address</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">address_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident">nom::Err::Error</span>(<span class="ident">ParseError::from_error_kind</span>(
-            <span class="ident">buffer</span>,
-            <span class="ident">nom::error::ErrorKind::Fail</span>,
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; nom::IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Vec&lt;u8&gt;, E&gt; {
+        <span class="kw">let </span>(rest, address) = <span class="self">self</span>.address_deserializer.deserialize(buffer)<span class="question-mark">?</span>;
+        <span class="kw">let </span>error = nom::Err::Error(ParseError::from_error_kind(
+            buffer,
+            nom::error::ErrorKind::Fail,
         ));
-        <span class="kw">match</span> <span class="ident">rest</span>.<span class="ident">first</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">ident</span>) =&gt; <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">ident</span> {
-                <span class="ident">BALANCE_IDENT</span> =&gt; <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span><span class="ident">rest</span>[<span class="number">1</span>..], <span class="macro">balance_key!</span>(<span class="ident">address</span>))),
-                <span class="ident">BYTECODE_IDENT</span> =&gt; <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span><span class="ident">rest</span>[<span class="number">1</span>..], <span class="macro">bytecode_key!</span>(<span class="ident">address</span>))),
-                <span class="ident">DATASTORE_IDENT</span> =&gt; {
-                    <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">hash</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">vec_u8_deserializer</span>.<span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">rest</span>[<span class="number">1</span>..])<span class="question-mark">?</span>;
-                    <span class="prelude-val">Ok</span>((<span class="ident">rest</span>, <span class="macro">data_key!</span>(<span class="ident">address</span>, <span class="ident">hash</span>)))
+        <span class="kw">match </span>rest.first() {
+            <span class="prelude-val">Some</span>(ident) =&gt; <span class="kw">match </span><span class="kw-2">*</span>ident {
+                BALANCE_IDENT =&gt; <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..], <span class="macro">balance_key!</span>(address))),
+                BYTECODE_IDENT =&gt; <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..], <span class="macro">bytecode_key!</span>(address))),
+                DATASTORE_IDENT =&gt; {
+                    <span class="kw">let </span>(rest, hash) = <span class="self">self</span>.vec_u8_deserializer.deserialize(<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..])<span class="question-mark">?</span>;
+                    <span class="prelude-val">Ok</span>((rest, <span class="macro">data_key!</span>(address, hash)))
                 }
-                <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">error</span>),
+                <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(error),
             },
-            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">error</span>),
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(error),
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

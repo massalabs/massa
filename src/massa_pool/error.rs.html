@@ -28,35 +28,35 @@
 <span id="28">28</span>
 <span id="29">29</span>
 <span id="30">30</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
-<span class="kw">use</span> <span class="ident">massa_models::ModelsError</span>;
-<span class="kw">use</span> <span class="ident">massa_protocol_exports::ProtocolError</span>;
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+</span><span class="kw">use </span>displaydoc::Display;
+<span class="kw">use </span>massa_models::ModelsError;
+<span class="kw">use </span>massa_protocol_exports::ProtocolError;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="doccomment">/// pool error</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Display</span>, <span class="ident">Error</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PoolError</span> {
-    <span class="doccomment">/// there was an inconsistency between containers</span>
-    <span class="ident">ContainerInconsistency</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// Protocol error {0}</span>
-    <span class="ident">ProtocolError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">ProtocolError</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// channel error : {0}</span>
-    <span class="ident">ChannelError</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// Join error {0}</span>
-    <span class="ident">JoinError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">tokio::task::JoinError</span>),
-    <span class="doccomment">/// models error: {0}</span>
-    <span class="ident">ModelsError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ModelsError</span>),
-    <span class="doccomment">/// missing operation error: {0}</span>
-    <span class="ident">MissingOperation</span>(<span class="ident">String</span>),
+<span class="doccomment">/// pool error
+</span><span class="attribute">#[non_exhaustive]
+#[derive(Display, Error, Debug)]
+</span><span class="kw">pub enum </span>PoolError {
+    <span class="doccomment">/// there was an inconsistency between containers
+    </span>ContainerInconsistency(String),
+    <span class="doccomment">/// Protocol error {0}
+    </span>ProtocolError(<span class="attribute">#[from] </span>Box&lt;ProtocolError&gt;),
+    <span class="doccomment">/// channel error : {0}
+    </span>ChannelError(String),
+    <span class="doccomment">/// Join error {0}
+    </span>JoinError(<span class="attribute">#[from] </span>tokio::task::JoinError),
+    <span class="doccomment">/// models error: {0}
+    </span>ModelsError(<span class="attribute">#[from] </span>ModelsError),
+    <span class="doccomment">/// missing operation error: {0}
+    </span>MissingOperation(String),
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ProtocolError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">PoolError</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">protocol_error</span>: <span class="ident">ProtocolError</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">PoolError::ProtocolError</span>(<span class="ident">Box::new</span>(<span class="ident">protocol_error</span>))
+<span class="kw">impl </span>From&lt;ProtocolError&gt; <span class="kw">for </span>PoolError {
+    <span class="kw">fn </span>from(protocol_error: ProtocolError) -&gt; <span class="self">Self </span>{
+        PoolError::ProtocolError(Box::new(protocol_error))
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

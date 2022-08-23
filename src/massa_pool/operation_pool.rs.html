@@ -388,395 +388,395 @@
 <span id="388">388</span>
 <span id="389">389</span>
 <span id="390">390</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">settings::PoolConfig</span>, <span class="ident">PoolError</span>};
-<span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">Address</span>, <span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">OperationSearchResultStatus</span>, <span class="ident">Slot</span>,
-    <span class="ident">WrappedOperation</span>,
+</span><span class="kw">use crate</span>::{settings::PoolConfig, PoolError};
+<span class="kw">use </span>massa_models::prehash::{Map, Set};
+<span class="kw">use </span>massa_models::{
+    Address, OperationId, OperationSearchResult, OperationSearchResultStatus, Slot,
+    WrappedOperation,
 };
-<span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
-<span class="kw">use</span> <span class="ident">num::rational::Ratio</span>;
-<span class="kw">use</span> <span class="ident">std::ops::RangeInclusive</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::BTreeSet</span>, <span class="ident">usize</span>};
+<span class="kw">use </span>massa_storage::Storage;
+<span class="kw">use </span>num::rational::Ratio;
+<span class="kw">use </span>std::ops::RangeInclusive;
+<span class="kw">use </span>std::{collections::BTreeSet, usize};
 
-<span class="kw">struct</span> <span class="ident">OperationIndex</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span>);
+<span class="kw">struct </span>OperationIndex(Map&lt;Address, Set&lt;OperationId&gt;&gt;);
 
-<span class="kw">impl</span> <span class="ident">OperationIndex</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="ident">OperationIndex</span> {
-        <span class="ident">OperationIndex</span>(<span class="ident">Map::default</span>())
+<span class="kw">impl </span>OperationIndex {
+    <span class="kw">fn </span>new() -&gt; OperationIndex {
+        OperationIndex(Map::default())
     }
-    <span class="kw">fn</span> <span class="ident">insert_op</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addr</span>: <span class="ident">Address</span>, <span class="ident">op_id</span>: <span class="ident">OperationId</span>) {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">entry</span>(<span class="ident">addr</span>)
-            .<span class="ident">or_insert_with</span>(<span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="ident">::default</span>)
-            .<span class="ident">insert</span>(<span class="ident">op_id</span>);
-    }
-
-    <span class="kw">fn</span> <span class="ident">get_ops_for_address</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">get</span>(<span class="ident">address</span>)
+    <span class="kw">fn </span>insert_op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: Address, op_id: OperationId) {
+        <span class="self">self</span>.<span class="number">0
+            </span>.entry(addr)
+            .or_insert_with(Set::&lt;OperationId&gt;::default)
+            .insert(op_id);
     }
 
-    <span class="kw">fn</span> <span class="ident">remove_op_for_address</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>, <span class="ident">op_id</span>: <span class="kw-2">&amp;</span><span class="ident">OperationId</span>) {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">old</span>) <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">get_mut</span>(<span class="ident">address</span>) {
-            <span class="ident">old</span>.<span class="ident">remove</span>(<span class="ident">op_id</span>);
-            <span class="kw">if</span> <span class="ident">old</span>.<span class="ident">is_empty</span>() {
-                <span class="self">self</span>.<span class="number">0</span>.<span class="ident">remove</span>(<span class="ident">address</span>);
+    <span class="kw">fn </span>get_ops_for_address(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Set&lt;OperationId&gt;&gt; {
+        <span class="self">self</span>.<span class="number">0</span>.get(address)
+    }
+
+    <span class="kw">fn </span>remove_op_for_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address, op_id: <span class="kw-2">&amp;</span>OperationId) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(old) = <span class="self">self</span>.<span class="number">0</span>.get_mut(address) {
+            old.remove(op_id);
+            <span class="kw">if </span>old.is_empty() {
+                <span class="self">self</span>.<span class="number">0</span>.remove(address);
             }
         }
     }
 }
 
-<span class="kw">struct</span> <span class="ident">OperationMetadata</span> {
-    <span class="ident">byte_count</span>: <span class="ident">u64</span>,
-    <span class="ident">thread</span>: <span class="ident">u8</span>,
-    <span class="doccomment">/// After `expire_period` slot the operation won&#39;t be included in a block.</span>
-    <span class="ident">expire_period</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// The addresses that are involved in this operation from a ledger point of view.</span>
-    <span class="ident">ledger_involved_addresses</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// The priority of the operation based on how much it profits the block producer</span>
-    <span class="doccomment">/// vs how much space it takes in the block</span>
-    <span class="ident">fee_density</span>: <span class="ident">Ratio</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// The range of periods during which an operation is valid.</span>
-    <span class="ident">validity_range</span>: <span class="ident">RangeInclusive</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
+<span class="kw">struct </span>OperationMetadata {
+    byte_count: u64,
+    thread: u8,
+    <span class="doccomment">/// After `expire_period` slot the operation won&#39;t be included in a block.
+    </span>expire_period: u64,
+    <span class="doccomment">/// The addresses that are involved in this operation from a ledger point of view.
+    </span>ledger_involved_addresses: Set&lt;Address&gt;,
+    <span class="doccomment">/// The priority of the operation based on how much it profits the block producer
+    /// vs how much space it takes in the block
+    </span>fee_density: Ratio&lt;u64&gt;,
+    <span class="doccomment">/// The range of periods during which an operation is valid.
+    </span>validity_range: RangeInclusive&lt;u64&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">OperationMetadata</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">operation</span>: <span class="kw-2">&amp;</span><span class="ident">WrappedOperation</span>, <span class="ident">byte_count</span>: <span class="ident">u64</span>, <span class="ident">operation_validity_periods</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
-        <span class="comment">// Fee density</span>
-        <span class="comment">// add inclusion fee and gas fees</span>
-        <span class="kw">let</span> <span class="ident">total_return</span> <span class="op">=</span> <span class="ident">operation</span>
-            .<span class="ident">content</span>
-            .<span class="ident">fee</span>
-            .<span class="ident">saturating_add</span>(<span class="ident">operation</span>.<span class="ident">get_gas_coins</span>());
-        <span class="comment">// return ratio with size</span>
-        <span class="kw">let</span> <span class="ident">fee_density</span> <span class="op">=</span> <span class="ident">Ratio::new</span>(<span class="ident">total_return</span>.<span class="ident">to_raw</span>(), <span class="ident">byte_count</span>);
-        <span class="kw">let</span> <span class="ident">thread</span> <span class="op">=</span> <span class="ident">operation</span>.<span class="ident">thread</span>;
-        <span class="kw">let</span> <span class="ident">ledger_involved_addresses</span> <span class="op">=</span> <span class="ident">operation</span>.<span class="ident">get_ledger_involved_addresses</span>();
-        <span class="kw">let</span> <span class="ident">validity_range</span> <span class="op">=</span> <span class="ident">operation</span>.<span class="ident">get_validity_range</span>(<span class="ident">operation_validity_periods</span>);
-        <span class="ident">OperationMetadata</span> {
-            <span class="ident">byte_count</span>,
-            <span class="ident">thread</span>,
-            <span class="ident">expire_period</span>: <span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">expire_period</span>,
-            <span class="ident">ledger_involved_addresses</span>,
-            <span class="ident">fee_density</span>,
-            <span class="ident">validity_range</span>,
+<span class="kw">impl </span>OperationMetadata {
+    <span class="kw">fn </span>new(operation: <span class="kw-2">&amp;</span>WrappedOperation, byte_count: u64, operation_validity_periods: u64) -&gt; <span class="self">Self </span>{
+        <span class="comment">// Fee density
+        // add inclusion fee and gas fees
+        </span><span class="kw">let </span>total_return = operation
+            .content
+            .fee
+            .saturating_add(operation.get_gas_coins());
+        <span class="comment">// return ratio with size
+        </span><span class="kw">let </span>fee_density = Ratio::new(total_return.to_raw(), byte_count);
+        <span class="kw">let </span>thread = operation.thread;
+        <span class="kw">let </span>ledger_involved_addresses = operation.get_ledger_involved_addresses();
+        <span class="kw">let </span>validity_range = operation.get_validity_range(operation_validity_periods);
+        OperationMetadata {
+            byte_count,
+            thread,
+            expire_period: operation.content.expire_period,
+            ledger_involved_addresses,
+            fee_density,
+            validity_range,
         }
     }
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OperationPool</span> {
-    <span class="ident">ops</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">OperationMetadata</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// one vector per thread</span>
-    <span class="ident">ops_by_thread_and_interest</span>:
-        <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span>(<span class="ident">std::cmp::Reverse</span><span class="op">&lt;</span><span class="ident">num::rational::Ratio</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationId</span>)<span class="op">&gt;</span><span class="op">&gt;</span>, <span class="comment">// [thread][order by: (rev rentability, OperationId)]</span>
-    <span class="doccomment">/// Maps Address -&gt; Op id</span>
-    <span class="ident">ops_by_address</span>: <span class="ident">OperationIndex</span>,
-    <span class="doccomment">/// latest final blocks periods</span>
-    <span class="ident">last_final_periods</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// current slot</span>
-    <span class="ident">current_slot</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// configuration</span>
-    <span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">PoolConfig</span>,
-    <span class="doccomment">/// ids of operations that are final with expire period and thread</span>
-    <span class="ident">final_operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">u64</span>, <span class="ident">u8</span>)<span class="op">&gt;</span>,
-    <span class="doccomment">/// Shared storage.</span>
-    <span class="ident">storage</span>: <span class="ident">Storage</span>,
+<span class="kw">pub struct </span>OperationPool {
+    ops: Map&lt;OperationId, OperationMetadata&gt;,
+    <span class="doccomment">/// one vector per thread
+    </span>ops_by_thread_and_interest:
+        Vec&lt;BTreeSet&lt;(std::cmp::Reverse&lt;num::rational::Ratio&lt;u64&gt;&gt;, OperationId)&gt;&gt;, <span class="comment">// [thread][order by: (rev rentability, OperationId)]
+    </span><span class="doccomment">/// Maps Address -&gt; Op id
+    </span>ops_by_address: OperationIndex,
+    <span class="doccomment">/// latest final blocks periods
+    </span>last_final_periods: Vec&lt;u64&gt;,
+    <span class="doccomment">/// current slot
+    </span>current_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
+    <span class="doccomment">/// configuration
+    </span>cfg: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>PoolConfig,
+    <span class="doccomment">/// ids of operations that are final with expire period and thread
+    </span>final_operations: Map&lt;OperationId, (u64, u8)&gt;,
+    <span class="doccomment">/// Shared storage.
+    </span>storage: Storage,
 }
 
-<span class="kw">impl</span> <span class="ident">OperationPool</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">PoolConfig</span>, <span class="ident">storage</span>: <span class="ident">Storage</span>) -&gt; <span class="ident">OperationPool</span> {
-        <span class="ident">OperationPool</span> {
-            <span class="ident">ops</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">ops_by_thread_and_interest</span>: <span class="macro">vec!</span>[<span class="ident">BTreeSet::new</span>(); <span class="ident">cfg</span>.<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">usize</span>],
-            <span class="ident">current_slot</span>: <span class="prelude-val">None</span>,
-            <span class="ident">last_final_periods</span>: <span class="macro">vec!</span>[<span class="number">0</span>; <span class="ident">cfg</span>.<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">usize</span>],
-            <span class="ident">cfg</span>,
-            <span class="ident">final_operations</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">ops_by_address</span>: <span class="ident">OperationIndex::new</span>(),
-            <span class="ident">storage</span>,
+<span class="kw">impl </span>OperationPool {
+    <span class="kw">pub fn </span>new(cfg: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>PoolConfig, storage: Storage) -&gt; OperationPool {
+        OperationPool {
+            ops: Default::default(),
+            ops_by_thread_and_interest: <span class="macro">vec!</span>[BTreeSet::new(); cfg.thread_count <span class="kw">as </span>usize],
+            current_slot: <span class="prelude-val">None</span>,
+            last_final_periods: <span class="macro">vec!</span>[<span class="number">0</span>; cfg.thread_count <span class="kw">as </span>usize],
+            cfg,
+            final_operations: Default::default(),
+            ops_by_address: OperationIndex::new(),
+            storage,
         }
     }
 
-    <span class="doccomment">/// Process incoming operations.</span>
-    <span class="doccomment">/// Returns newly added.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">process_operations</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="kw-2">mut</span> <span class="ident">operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">WrappedOperation</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">removed</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="ident">::default</span>();
-        <span class="kw">for</span> (<span class="ident">op_id</span>, <span class="ident">op</span>) <span class="kw">in</span> <span class="ident">operations</span>.<span class="ident">iter</span>() {
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;pool add_operations op&quot;</span>, { <span class="string">&quot;op_id&quot;</span>: <span class="ident">op_id</span> });
+    <span class="doccomment">/// Process incoming operations.
+    /// Returns newly added.
+    </span><span class="kw">pub fn </span>process_operations(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        <span class="kw-2">mut </span>operations: Map&lt;OperationId, WrappedOperation&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Set&lt;OperationId&gt;, PoolError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>removed = Set::&lt;OperationId&gt;::default();
+        <span class="kw">for </span>(op_id, op) <span class="kw">in </span>operations.iter() {
+            <span class="macro">massa_trace!</span>(<span class="string">&quot;pool add_operations op&quot;</span>, { <span class="string">&quot;op_id&quot;</span>: op_id });
 
-            <span class="comment">// Already present</span>
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">ops</span>.<span class="ident">contains_key</span>(<span class="ident">op_id</span>) {
+            <span class="comment">// Already present
+            </span><span class="kw">if </span><span class="self">self</span>.ops.contains_key(op_id) {
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;pool add_operations op already present&quot;</span>, {});
-                <span class="ident">removed</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">op_id</span>);
+                removed.insert(<span class="kw-2">*</span>op_id);
                 <span class="kw">continue</span>;
             }
 
-            <span class="comment">// already final</span>
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">final_operations</span>.<span class="ident">contains_key</span>(<span class="ident">op_id</span>) {
+            <span class="comment">// already final
+            </span><span class="kw">if </span><span class="self">self</span>.final_operations.contains_key(op_id) {
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;pool add_operations op already final&quot;</span>, {});
-                <span class="ident">removed</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">op_id</span>);
+                removed.insert(<span class="kw-2">*</span>op_id);
                 <span class="kw">continue</span>;
             }
 
-            <span class="comment">// wrap</span>
-            <span class="kw">let</span> <span class="ident">operation_validity_periods</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">operation_validity_periods</span>;
-            <span class="kw">let</span> (<span class="ident">wrapped_op</span>, <span class="ident">validity_start_period</span>) <span class="op">=</span> {
-                <span class="kw">let</span> <span class="ident">byte_count</span> <span class="op">=</span> <span class="ident">op</span>.<span class="ident">serialized_data</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>;
-                <span class="kw">let</span> <span class="ident">wrapped</span> <span class="op">=</span> <span class="ident">OperationMetadata::new</span>(<span class="ident">op</span>, <span class="ident">byte_count</span>, <span class="ident">operation_validity_periods</span>);
-                <span class="kw">let</span> <span class="ident">validity_range</span> <span class="op">=</span> <span class="ident">op</span>.<span class="ident">get_validity_range</span>(<span class="ident">operation_validity_periods</span>);
-                <span class="kw">let</span> <span class="ident">validity_start_period</span> <span class="op">=</span> <span class="ident">validity_range</span>.<span class="ident">start</span>();
-                (<span class="ident">wrapped</span>, <span class="kw-2">*</span><span class="ident">validity_start_period</span>)
+            <span class="comment">// wrap
+            </span><span class="kw">let </span>operation_validity_periods = <span class="self">self</span>.cfg.operation_validity_periods;
+            <span class="kw">let </span>(wrapped_op, validity_start_period) = {
+                <span class="kw">let </span>byte_count = op.serialized_data.len() <span class="kw">as </span>u64;
+                <span class="kw">let </span>wrapped = OperationMetadata::new(op, byte_count, operation_validity_periods);
+                <span class="kw">let </span>validity_range = op.get_validity_range(operation_validity_periods);
+                <span class="kw">let </span>validity_start_period = validity_range.start();
+                (wrapped, <span class="kw-2">*</span>validity_start_period)
             };
 
-            <span class="comment">// check if too much in the future</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cur_slot</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">current_slot</span> {
-                <span class="kw">let</span> <span class="ident">cur_period_in_thread</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">cur_slot</span>.<span class="ident">thread</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">wrapped_op</span>.<span class="ident">thread</span> {
-                    <span class="ident">cur_slot</span>.<span class="ident">period</span>
-                } <span class="kw">else</span> {
-                    <span class="ident">cur_slot</span>.<span class="ident">period</span>.<span class="ident">saturating_sub</span>(<span class="number">1</span>)
+            <span class="comment">// check if too much in the future
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(cur_slot) = <span class="self">self</span>.current_slot {
+                <span class="kw">let </span>cur_period_in_thread = <span class="kw">if </span>cur_slot.thread &gt;= wrapped_op.thread {
+                    cur_slot.period
+                } <span class="kw">else </span>{
+                    cur_slot.period.saturating_sub(<span class="number">1</span>)
                 };
 
-                <span class="kw">if</span> <span class="ident">validity_start_period</span>.<span class="ident">saturating_sub</span>(<span class="ident">cur_period_in_thread</span>)
-                    <span class="op">&gt;</span> <span class="self">self</span>
-                        .<span class="ident">cfg</span>
-                        .<span class="ident">settings</span>
-                        .<span class="ident">max_operation_future_validity_start_periods</span>
+                <span class="kw">if </span>validity_start_period.saturating_sub(cur_period_in_thread)
+                    &gt; <span class="self">self
+                        </span>.cfg
+                        .settings
+                        .max_operation_future_validity_start_periods
                 {
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;pool add_operations validity_start_period &gt;  self.cfg.max_operation_future_validity_start_periods&quot;</span>, {
-                        <span class="string">&quot;range&quot;</span>: <span class="ident">validity_start_period</span>.<span class="ident">saturating_sub</span>(<span class="ident">cur_period_in_thread</span>),
-                        <span class="string">&quot;max_operation_future_validity_start_periods&quot;</span>: <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">settings</span>.<span class="ident">max_operation_future_validity_start_periods</span>
+                        <span class="string">&quot;range&quot;</span>: validity_start_period.saturating_sub(cur_period_in_thread),
+                        <span class="string">&quot;max_operation_future_validity_start_periods&quot;</span>: <span class="self">self</span>.cfg.settings.max_operation_future_validity_start_periods
                     });
-                    <span class="ident">removed</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">op_id</span>);
+                    removed.insert(<span class="kw-2">*</span>op_id);
                     <span class="kw">continue</span>;
                 }
             }
 
-            <span class="comment">// check if expired</span>
-            <span class="kw">if</span> <span class="ident">wrapped_op</span>.<span class="ident">expire_period</span> <span class="op">&lt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">last_final_periods</span>[<span class="ident">wrapped_op</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>] {
+            <span class="comment">// check if expired
+            </span><span class="kw">if </span>wrapped_op.expire_period &lt;= <span class="self">self</span>.last_final_periods[wrapped_op.thread <span class="kw">as </span>usize] {
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;pool add_operations wrapped_op.expire_period &lt;= self.last_final_periods[wrapped_op.thread as usize]&quot;</span>, {
-                    <span class="string">&quot;expire_period&quot;</span>: <span class="ident">wrapped_op</span>.<span class="ident">expire_period</span>,
-                    <span class="string">&quot;self.last_final_periods[wrapped_op.thread as usize]&quot;</span>: <span class="self">self</span>.<span class="ident">last_final_periods</span>[<span class="ident">wrapped_op</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>]
+                    <span class="string">&quot;expire_period&quot;</span>: wrapped_op.expire_period,
+                    <span class="string">&quot;self.last_final_periods[wrapped_op.thread as usize]&quot;</span>: <span class="self">self</span>.last_final_periods[wrapped_op.thread <span class="kw">as </span>usize]
                 });
-                <span class="ident">removed</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">op_id</span>);
+                removed.insert(<span class="kw-2">*</span>op_id);
                 <span class="kw">continue</span>;
             }
 
-            <span class="comment">// insert</span>
-            <span class="kw">let</span> <span class="ident">interest</span> <span class="op">=</span> (<span class="ident">std::cmp::Reverse</span>(<span class="ident">wrapped_op</span>.<span class="ident">fee_density</span>), <span class="kw-2">*</span><span class="ident">op_id</span>);
+            <span class="comment">// insert
+            </span><span class="kw">let </span>interest = (std::cmp::Reverse(wrapped_op.fee_density), <span class="kw-2">*</span>op_id);
 
-            <span class="self">self</span>.<span class="ident">ops_by_thread_and_interest</span>[<span class="ident">wrapped_op</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>].<span class="ident">insert</span>(<span class="ident">interest</span>);
-            <span class="ident">wrapped_op</span>
-                .<span class="ident">ledger_involved_addresses</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">addr</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">ops_by_address</span>.<span class="ident">insert_op</span>(<span class="kw-2">*</span><span class="ident">addr</span>, <span class="kw-2">*</span><span class="ident">op_id</span>);
+            <span class="self">self</span>.ops_by_thread_and_interest[wrapped_op.thread <span class="kw">as </span>usize].insert(interest);
+            wrapped_op
+                .ledger_involved_addresses
+                .iter()
+                .for_each(|addr| {
+                    <span class="self">self</span>.ops_by_address.insert_op(<span class="kw-2">*</span>addr, <span class="kw-2">*</span>op_id);
                 });
-            <span class="self">self</span>.<span class="ident">ops</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">op_id</span>, <span class="ident">wrapped_op</span>);
-            <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">store_operation</span>(<span class="ident">op</span>.<span class="ident">clone</span>());
+            <span class="self">self</span>.ops.insert(<span class="kw-2">*</span>op_id, wrapped_op);
+            <span class="self">self</span>.storage.store_operation(op.clone());
         }
 
-        <span class="comment">// remove excess operations if pool is full</span>
-        <span class="kw">for</span> <span class="ident">thread</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span> {
-            <span class="kw">while</span> <span class="self">self</span>.<span class="ident">ops_by_thread_and_interest</span>[<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>].<span class="ident">len</span>()
-                <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">settings</span>.<span class="ident">max_pool_size_per_thread</span> <span class="kw">as</span> <span class="ident">usize</span>
+        <span class="comment">// remove excess operations if pool is full
+        </span><span class="kw">for </span>thread <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.cfg.thread_count {
+            <span class="kw">while </span><span class="self">self</span>.ops_by_thread_and_interest[thread <span class="kw">as </span>usize].len()
+                &gt; <span class="self">self</span>.cfg.settings.max_pool_size_per_thread <span class="kw">as </span>usize
             {
-                <span class="kw">let</span> (<span class="ident">_removed_rentability</span>, <span class="ident">removed_id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">ops_by_thread_and_interest</span>
-                    [<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>]
-                    .<span class="ident">pop_last</span>()
-                    .<span class="ident">unwrap</span>(); <span class="comment">// will not panic because of the while condition. complexity = log or better</span>
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">removed_op</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">ops</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">removed_id</span>) {
-                    <span class="comment">// complexity: const</span>
-                    <span class="kw">for</span> <span class="ident">addr</span> <span class="kw">in</span> <span class="ident">removed_op</span>.<span class="ident">ledger_involved_addresses</span> {
-                        <span class="self">self</span>.<span class="ident">ops_by_address</span>
-                            .<span class="ident">remove_op_for_address</span>(<span class="kw-2">&amp;</span><span class="ident">addr</span>, <span class="kw-2">&amp;</span><span class="ident">removed_id</span>);
+                <span class="kw">let </span>(_removed_rentability, removed_id) = <span class="self">self</span>.ops_by_thread_and_interest
+                    [thread <span class="kw">as </span>usize]
+                    .pop_last()
+                    .unwrap(); <span class="comment">// will not panic because of the while condition. complexity = log or better
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(removed_op) = <span class="self">self</span>.ops.remove(<span class="kw-2">&amp;</span>removed_id) {
+                    <span class="comment">// complexity: const
+                    </span><span class="kw">for </span>addr <span class="kw">in </span>removed_op.ledger_involved_addresses {
+                        <span class="self">self</span>.ops_by_address
+                            .remove_op_for_address(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>removed_id);
                     }
-                    <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">remove_operations</span>(<span class="macro">vec!</span>[<span class="ident">removed_id</span>].<span class="ident">as_slice</span>());
+                    <span class="self">self</span>.storage.remove_operations(<span class="macro">vec!</span>[removed_id].as_slice());
                 }
-                <span class="ident">operations</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">removed_id</span>);
+                operations.remove(<span class="kw-2">&amp;</span>removed_id);
             }
         }
 
-        <span class="kw">let</span> <span class="ident">newly_added_ids</span> <span class="op">=</span> <span class="ident">operations</span>
-            .<span class="ident">keys</span>()
-            .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="op">!</span><span class="ident">removed</span>.<span class="ident">contains</span>(<span class="ident">id</span>))
-            .<span class="ident">copied</span>()
-            .<span class="ident">collect</span>();
+        <span class="kw">let </span>newly_added_ids = operations
+            .keys()
+            .filter(|id| !removed.contains(id))
+            .copied()
+            .collect();
 
-        <span class="prelude-val">Ok</span>(<span class="ident">newly_added_ids</span>)
+        <span class="prelude-val">Ok</span>(newly_added_ids)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_final_operations</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">ops</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">u64</span>, <span class="ident">u8</span>)<span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">PoolError</span><span class="op">&gt;</span> {
-        <span class="kw">for</span> (<span class="ident">id</span>, <span class="kw">_</span>) <span class="kw">in</span> <span class="ident">ops</span>.<span class="ident">iter</span>() {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">wrapped</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">ops</span>.<span class="ident">remove</span>(<span class="ident">id</span>) {
-                <span class="self">self</span>.<span class="ident">ops_by_thread_and_interest</span>[<span class="ident">wrapped</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>]
-                    .<span class="ident">remove</span>(<span class="kw-2">&amp;</span>(<span class="ident">std::cmp::Reverse</span>(<span class="ident">wrapped</span>.<span class="ident">fee_density</span>), <span class="kw-2">*</span><span class="ident">id</span>));
-                <span class="kw">for</span> <span class="ident">addr</span> <span class="kw">in</span> <span class="ident">wrapped</span>.<span class="ident">ledger_involved_addresses</span> {
-                    <span class="self">self</span>.<span class="ident">ops_by_address</span>.<span class="ident">remove_op_for_address</span>(<span class="kw-2">&amp;</span><span class="ident">addr</span>, <span class="ident">id</span>);
+    <span class="kw">pub fn </span>new_final_operations(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        ops: Map&lt;OperationId, (u64, u8)&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), PoolError&gt; {
+        <span class="kw">for </span>(id, <span class="kw">_</span>) <span class="kw">in </span>ops.iter() {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(wrapped) = <span class="self">self</span>.ops.remove(id) {
+                <span class="self">self</span>.ops_by_thread_and_interest[wrapped.thread <span class="kw">as </span>usize]
+                    .remove(<span class="kw-2">&amp;</span>(std::cmp::Reverse(wrapped.fee_density), <span class="kw-2">*</span>id));
+                <span class="kw">for </span>addr <span class="kw">in </span>wrapped.ledger_involved_addresses {
+                    <span class="self">self</span>.ops_by_address.remove_op_for_address(<span class="kw-2">&amp;</span>addr, id);
                 }
-            } <span class="comment">// else final op wasn&#39;t in pool.</span>
-        }
-        <span class="self">self</span>.<span class="ident">storage</span>
-            .<span class="ident">remove_operations</span>(<span class="ident">ops</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span>().<span class="ident">as_slice</span>());
-        <span class="self">self</span>.<span class="ident">final_operations</span>.<span class="ident">extend</span>(<span class="ident">ops</span>);
+            } <span class="comment">// else final op wasn&#39;t in pool.
+        </span>}
+        <span class="self">self</span>.storage
+            .remove_operations(ops.keys().cloned().collect::&lt;Vec&lt;OperationId&gt;&gt;().as_slice());
+        <span class="self">self</span>.final_operations.extend(ops);
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_current_slot</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>) {
-        <span class="self">self</span>.<span class="ident">current_slot</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">slot</span>);
+    <span class="kw">pub fn </span>update_current_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot) {
+        <span class="self">self</span>.current_slot = <span class="prelude-val">Some</span>(slot);
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">ops</span>.<span class="ident">len</span>()
+    <span class="kw">pub fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.ops.len()
     }
 
-    <span class="kw">fn</span> <span class="ident">prune</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">PoolError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">ids</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">ops</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">filter</span>(<span class="op">|</span>(<span class="ident">_id</span>, <span class="ident">w_op</span>)<span class="op">|</span> {
-                <span class="ident">w_op</span>.<span class="ident">expire_period</span> <span class="op">&lt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">last_final_periods</span>[<span class="ident">w_op</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>]
+    <span class="kw">fn </span>prune(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), PoolError&gt; {
+        <span class="kw">let </span>ids = <span class="self">self
+            </span>.ops
+            .iter()
+            .filter(|(_id, w_op)| {
+                w_op.expire_period &lt;= <span class="self">self</span>.last_final_periods[w_op.thread <span class="kw">as </span>usize]
             })
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">id</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">id</span>)
-            .<span class="ident">collect</span>();
+            .map(|(id, <span class="kw">_</span>)| <span class="kw-2">*</span>id)
+            .collect();
 
-        <span class="self">self</span>.<span class="ident">remove_ops</span>(<span class="ident">ids</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.remove_ops(ids)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">ids</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">final_operations</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">filter</span>(<span class="op">|</span>(<span class="kw">_</span>, (<span class="ident">exp</span>, <span class="ident">thread</span>))<span class="op">|</span> <span class="kw-2">*</span><span class="ident">exp</span> <span class="op">&lt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">last_final_periods</span>[<span class="kw-2">*</span><span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>])
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">id</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">id</span>);
+        <span class="kw">let </span>ids = <span class="self">self
+            </span>.final_operations
+            .iter()
+            .filter(|(<span class="kw">_</span>, (exp, thread))| <span class="kw-2">*</span>exp &lt;= <span class="self">self</span>.last_final_periods[<span class="kw-2">*</span>thread <span class="kw">as </span>usize])
+            .map(|(id, <span class="kw">_</span>)| <span class="kw-2">*</span>id);
 
-        <span class="kw">for</span> <span class="ident">id</span> <span class="kw">in</span> <span class="ident">ids</span>.<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>() {
-            <span class="self">self</span>.<span class="ident">final_operations</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>);
+        <span class="kw">for </span>id <span class="kw">in </span>ids.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;() {
+            <span class="self">self</span>.final_operations.remove(<span class="kw-2">&amp;</span>id);
         }
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_latest_final_periods</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">periods</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">PoolError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">last_final_periods</span> <span class="op">=</span> <span class="ident">periods</span>;
-        <span class="self">self</span>.<span class="ident">prune</span>()
+    <span class="kw">pub fn </span>update_latest_final_periods(<span class="kw-2">&amp;mut </span><span class="self">self</span>, periods: Vec&lt;u64&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), PoolError&gt; {
+        <span class="self">self</span>.last_final_periods = periods;
+        <span class="self">self</span>.prune()
     }
 
-    <span class="comment">// Removes a list of operations from the pool.</span>
-    <span class="kw">fn</span> <span class="ident">remove_ops</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">op_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">PoolError</span><span class="op">&gt;</span> {
-        <span class="comment">// Remove from shared storage.</span>
-        <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">remove_operations</span>(<span class="kw-2">&amp;</span><span class="ident">op_ids</span>);
+    <span class="comment">// Removes a list of operations from the pool.
+    </span><span class="kw">fn </span>remove_ops(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op_ids: Vec&lt;OperationId&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), PoolError&gt; {
+        <span class="comment">// Remove from shared storage.
+        </span><span class="self">self</span>.storage.remove_operations(<span class="kw-2">&amp;</span>op_ids);
 
-        <span class="comment">// Remove from internal structures.</span>
-        <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">op_id</span> <span class="kw">in</span> <span class="ident">op_ids</span>.<span class="ident">iter</span>() {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">wrapped_op</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">ops</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">op_id</span>) {
-                <span class="comment">// complexity: const</span>
-                <span class="kw">let</span> <span class="ident">interest</span> <span class="op">=</span> (<span class="ident">std::cmp::Reverse</span>(<span class="ident">wrapped_op</span>.<span class="ident">fee_density</span>), <span class="ident">op_id</span>);
-                <span class="self">self</span>.<span class="ident">ops_by_thread_and_interest</span>[<span class="ident">wrapped_op</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>].<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">interest</span>);
-                <span class="comment">// complexity: log</span>
+        <span class="comment">// Remove from internal structures.
+        </span><span class="kw">for </span><span class="kw-2">&amp;</span>op_id <span class="kw">in </span>op_ids.iter() {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(wrapped_op) = <span class="self">self</span>.ops.remove(<span class="kw-2">&amp;</span>op_id) {
+                <span class="comment">// complexity: const
+                </span><span class="kw">let </span>interest = (std::cmp::Reverse(wrapped_op.fee_density), op_id);
+                <span class="self">self</span>.ops_by_thread_and_interest[wrapped_op.thread <span class="kw">as </span>usize].remove(<span class="kw-2">&amp;</span>interest);
+                <span class="comment">// complexity: log
 
-                <span class="kw">for</span> <span class="ident">addr</span> <span class="kw">in</span> <span class="ident">wrapped_op</span>.<span class="ident">ledger_involved_addresses</span> {
-                    <span class="self">self</span>.<span class="ident">ops_by_address</span>.<span class="ident">remove_op_for_address</span>(<span class="kw-2">&amp;</span><span class="ident">addr</span>, <span class="kw-2">&amp;</span><span class="ident">op_id</span>);
+                </span><span class="kw">for </span>addr <span class="kw">in </span>wrapped_op.ledger_involved_addresses {
+                    <span class="self">self</span>.ops_by_address.remove_op_for_address(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>op_id);
                 }
             }
         }
-        <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">remove_operations</span>(<span class="kw-2">&amp;</span><span class="ident">op_ids</span>);
+        <span class="self">self</span>.storage.remove_operations(<span class="kw-2">&amp;</span>op_ids);
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Get `max_count` operation for thread `block_slot.thread`</span>
-    <span class="doccomment">/// if vector is not full that means that there is no more interesting transactions left</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_operation_batch</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">block_slot</span>: <span class="ident">Slot</span>,
-        <span class="ident">exclude</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
-        <span class="ident">batch_size</span>: <span class="ident">usize</span>,
-        <span class="ident">max_size</span>: <span class="ident">u64</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">WrappedOperation</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">ops_by_thread_and_interest</span>[<span class="ident">block_slot</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>]
-            .<span class="ident">iter</span>()
-            .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">_rentability</span>, <span class="ident">id</span>)<span class="op">|</span> {
-                <span class="kw">if</span> <span class="ident">exclude</span>.<span class="ident">contains</span>(<span class="ident">id</span>) {
-                    <span class="kw">return</span> <span class="prelude-val">None</span>;
+    <span class="doccomment">/// Get `max_count` operation for thread `block_slot.thread`
+    /// if vector is not full that means that there is no more interesting transactions left
+    </span><span class="kw">pub fn </span>get_operation_batch(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        block_slot: Slot,
+        exclude: Set&lt;OperationId&gt;,
+        batch_size: usize,
+        max_size: u64,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(WrappedOperation, u64)&gt;, PoolError&gt; {
+        <span class="self">self</span>.ops_by_thread_and_interest[block_slot.thread <span class="kw">as </span>usize]
+            .iter()
+            .filter_map(|(_rentability, id)| {
+                <span class="kw">if </span>exclude.contains(id) {
+                    <span class="kw">return </span><span class="prelude-val">None</span>;
                 }
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">w_op</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">ops</span>.<span class="ident">get</span>(<span class="ident">id</span>) {
-                    <span class="kw">if</span> <span class="op">!</span><span class="ident">w_op</span>.<span class="ident">validity_range</span>
-                        .<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">block_slot</span>.<span class="ident">period</span>) <span class="op">|</span><span class="op">|</span> <span class="ident">w_op</span>.<span class="ident">byte_count</span> <span class="op">&gt;</span> <span class="ident">max_size</span> {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(w_op) = <span class="self">self</span>.ops.get(id) {
+                    <span class="kw">if </span>!w_op.validity_range
+                        .contains(<span class="kw-2">&amp;</span>block_slot.period) || w_op.byte_count &gt; max_size {
                             <span class="macro">massa_trace!</span>(<span class="string">&quot;pool get_operation_batch not added to batch w_op.op.content.get_validity_range incorrect not added&quot;</span>, {
-                                <span class="string">&quot;range&quot;</span>: <span class="ident">w_op</span>.<span class="ident">validity_range</span>,
-                                <span class="string">&quot;block_slot.period&quot;</span>: <span class="ident">block_slot</span>.<span class="ident">period</span>,
-                                <span class="string">&quot;operation_id&quot;</span>: <span class="ident">id</span>,
-                                <span class="string">&quot;max_size_overflow&quot;</span>: <span class="ident">w_op</span>.<span class="ident">byte_count</span> <span class="op">&gt;</span> <span class="ident">max_size</span>,
-                                <span class="string">&quot;byte_count&quot;</span>: <span class="ident">w_op</span>.<span class="ident">byte_count</span>,
+                                <span class="string">&quot;range&quot;</span>: w_op.validity_range,
+                                <span class="string">&quot;block_slot.period&quot;</span>: block_slot.period,
+                                <span class="string">&quot;operation_id&quot;</span>: id,
+                                <span class="string">&quot;max_size_overflow&quot;</span>: w_op.byte_count &gt; max_size,
+                                <span class="string">&quot;byte_count&quot;</span>: w_op.byte_count,
                             });
-                        <span class="kw">return</span> <span class="prelude-val">None</span>;
+                        <span class="kw">return </span><span class="prelude-val">None</span>;
                     }
-                    <span class="kw">let</span> <span class="ident">stored_operation</span> <span class="op">=</span> <span class="self">self</span>
-                        .<span class="ident">storage</span>
-                        .<span class="ident">retrieve_operation</span>(<span class="ident">id</span>)<span class="question-mark">?</span>;
-                    <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>((<span class="ident">stored_operation</span>, <span class="ident">w_op</span>.<span class="ident">byte_count</span>)))
-                } <span class="kw">else</span> {
-                    <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(<span class="ident">PoolError::ContainerInconsistency</span>(
-                        <span class="macro">format!</span>(<span class="string">&quot;operation pool get_ops inconsistency: op_id={} is in ops_by_thread_and_interest but not in ops&quot;</span>, <span class="ident">id</span>)
+                    <span class="kw">let </span>stored_operation = <span class="self">self
+                        </span>.storage
+                        .retrieve_operation(id)<span class="question-mark">?</span>;
+                    <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>((stored_operation, w_op.byte_count)))
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(PoolError::ContainerInconsistency(
+                        <span class="macro">format!</span>(<span class="string">&quot;operation pool get_ops inconsistency: op_id={} is in ops_by_thread_and_interest but not in ops&quot;</span>, id)
                     )))
                 }
             })
-            .<span class="ident">take</span>(<span class="ident">batch_size</span>)
-            .<span class="ident">collect</span>()
+            .take(batch_size)
+            .collect()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_operations</span>(
+    <span class="kw">pub fn </span>get_operations(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">operation_ids</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">WrappedOperation</span><span class="op">&gt;</span> {
-        <span class="ident">operation_ids</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">op_id</span><span class="op">|</span> {
-                <span class="self">self</span>.<span class="ident">storage</span>
-                    .<span class="ident">retrieve_operation</span>(<span class="ident">op_id</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">stored</span><span class="op">|</span> (<span class="kw-2">*</span><span class="ident">op_id</span>, <span class="ident">stored</span>))
+        operation_ids: <span class="kw-2">&amp;</span>Set&lt;OperationId&gt;,
+    ) -&gt; Map&lt;OperationId, WrappedOperation&gt; {
+        operation_ids
+            .iter()
+            .filter_map(|op_id| {
+                <span class="self">self</span>.storage
+                    .retrieve_operation(op_id)
+                    .map(|stored| (<span class="kw-2">*</span>op_id, stored))
             })
-            .<span class="ident">collect</span>()
+            .collect()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_operations_involving_address</span>(
+    <span class="kw">pub fn </span>get_operations_involving_address(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span><span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">ids</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">ops_by_address</span>.<span class="ident">get_ops_for_address</span>(<span class="ident">address</span>) {
-            <span class="ident">ids</span>.<span class="ident">iter</span>()
-                .<span class="ident">take</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">settings</span>.<span class="ident">max_item_return_count</span>)
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">op_id</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">storage</span>
-                        .<span class="ident">retrieve_operation</span>(<span class="ident">op_id</span>)
-                        .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                            <span class="ident">PoolError::ContainerInconsistency</span>(
-                                <span class="string">&quot;op in ops by address is not in ops&quot;</span>.<span class="ident">to_string</span>(),
+        address: <span class="kw-2">&amp;</span>Address,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Map&lt;OperationId, OperationSearchResult&gt;, PoolError&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(ids) = <span class="self">self</span>.ops_by_address.get_ops_for_address(address) {
+            ids.iter()
+                .take(<span class="self">self</span>.cfg.settings.max_item_return_count)
+                .map(|op_id| {
+                    <span class="self">self</span>.storage
+                        .retrieve_operation(op_id)
+                        .ok_or_else(|| {
+                            PoolError::ContainerInconsistency(
+                                <span class="string">&quot;op in ops by address is not in ops&quot;</span>.to_string(),
                             )
                         })
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">op</span><span class="op">|</span> {
+                        .map(|op| {
                             (
-                                <span class="kw-2">*</span><span class="ident">op_id</span>,
-                                <span class="ident">OperationSearchResult</span> {
-                                    <span class="ident">op</span>,
-                                    <span class="ident">in_pool</span>: <span class="bool-val">true</span>,
-                                    <span class="ident">in_blocks</span>: <span class="ident">Map::default</span>(),
-                                    <span class="ident">status</span>: <span class="ident">OperationSearchResultStatus::Pending</span>,
+                                <span class="kw-2">*</span>op_id,
+                                OperationSearchResult {
+                                    op,
+                                    in_pool: <span class="bool-val">true</span>,
+                                    in_blocks: Map::default(),
+                                    status: OperationSearchResultStatus::Pending,
                                 },
                             )
                         })
                 })
-                .<span class="ident">collect</span>()
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">Map::default</span>())
+                .collect()
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Ok</span>(Map::default())
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

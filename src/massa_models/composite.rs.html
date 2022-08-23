@@ -81,88 +81,88 @@
 <span id="81">81</span>
 <span id="82">82</span>
 <span id="83">83</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash::Map</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">WrappedOperation</span>};
-<span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">PublicKey</span>, <span class="ident">Signature</span>};
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::fmt::Display</span>;
+</span><span class="kw">use </span><span class="kw">crate</span>::prehash::Map;
+<span class="kw">use crate</span>::{Address, BlockId, WrappedOperation};
+<span class="kw">use </span>massa_signature::{PublicKey, Signature};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::fmt::Display;
 
-<span class="doccomment">/// Status in which an operation can be (derived from the block status)</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">OperationSearchResultBlockStatus</span> {
-    <span class="doccomment">/// the block hasn&#39;t been processed by consensus yet</span>
-    <span class="ident">Incoming</span>,
-    <span class="doccomment">/// the block waits for it&#39;s slot for further processing</span>
-    <span class="ident">WaitingForSlot</span>,
-    <span class="doccomment">/// the block waits for dependencies for further processing</span>
-    <span class="ident">WaitingForDependencies</span>,
-    <span class="doccomment">/// the block has been processed and is valid</span>
-    <span class="ident">Active</span>,
-    <span class="doccomment">/// the block is discarded</span>
-    <span class="ident">Discarded</span>,
+<span class="doccomment">/// Status in which an operation can be (derived from the block status)
+</span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub enum </span>OperationSearchResultBlockStatus {
+    <span class="doccomment">/// the block hasn&#39;t been processed by consensus yet
+    </span>Incoming,
+    <span class="doccomment">/// the block waits for it&#39;s slot for further processing
+    </span>WaitingForSlot,
+    <span class="doccomment">/// the block waits for dependencies for further processing
+    </span>WaitingForDependencies,
+    <span class="doccomment">/// the block has been processed and is valid
+    </span>Active,
+    <span class="doccomment">/// the block is discarded
+    </span>Discarded,
 }
 
-<span class="doccomment">/// Status in which an operation can be</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">OperationSearchResultStatus</span> {
-    <span class="doccomment">/// in pool</span>
-    <span class="ident">Pending</span>,
-    <span class="doccomment">/// in a block, the block being in `[OperationSearchResultBlockStatus]`</span>
-    <span class="ident">InBlock</span>(<span class="ident">OperationSearchResultBlockStatus</span>),
-    <span class="doccomment">/// discarded</span>
-    <span class="ident">Discarded</span>,
+<span class="doccomment">/// Status in which an operation can be
+</span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub enum </span>OperationSearchResultStatus {
+    <span class="doccomment">/// in pool
+    </span>Pending,
+    <span class="doccomment">/// in a block, the block being in `[OperationSearchResultBlockStatus]`
+    </span>InBlock(OperationSearchResultBlockStatus),
+    <span class="doccomment">/// discarded
+    </span>Discarded,
 }
 
-<span class="doccomment">/// operation info</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OperationSearchResult</span> {
-    <span class="doccomment">/// the operation</span>
-    <span class="kw">pub</span> <span class="ident">op</span>: <span class="ident">WrappedOperation</span>,
-    <span class="doccomment">/// true if in pool</span>
-    <span class="kw">pub</span> <span class="ident">in_pool</span>: <span class="ident">bool</span>,
-    <span class="doccomment">/// maps block id to index on the operation in the block and if it&#39;s final</span>
-    <span class="kw">pub</span> <span class="ident">in_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, (<span class="ident">usize</span>, <span class="ident">bool</span>)<span class="op">&gt;</span>,
-    <span class="doccomment">/// operation status</span>
-    <span class="kw">pub</span> <span class="ident">status</span>: <span class="ident">OperationSearchResultStatus</span>,
+<span class="doccomment">/// operation info
+</span><span class="attribute">#[derive(Clone, Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>OperationSearchResult {
+    <span class="doccomment">/// the operation
+    </span><span class="kw">pub </span>op: WrappedOperation,
+    <span class="doccomment">/// true if in pool
+    </span><span class="kw">pub </span>in_pool: bool,
+    <span class="doccomment">/// maps block id to index on the operation in the block and if it&#39;s final
+    </span><span class="kw">pub </span>in_blocks: Map&lt;BlockId, (usize, bool)&gt;,
+    <span class="doccomment">/// operation status
+    </span><span class="kw">pub </span>status: OperationSearchResultStatus,
 }
 
-<span class="kw">impl</span> <span class="ident">OperationSearchResult</span> {
-    <span class="doccomment">/// combine two operation search result</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extend</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">OperationSearchResult</span>) {
-        <span class="self">self</span>.<span class="ident">in_pool</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">in_pool</span> <span class="op">|</span><span class="op">|</span> <span class="ident">other</span>.<span class="ident">in_pool</span>;
-        <span class="self">self</span>.<span class="ident">in_blocks</span>.<span class="ident">extend</span>(<span class="ident">other</span>.<span class="ident">in_blocks</span>.<span class="ident">iter</span>());
+<span class="kw">impl </span>OperationSearchResult {
+    <span class="doccomment">/// combine two operation search result
+    </span><span class="kw">pub fn </span>extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>OperationSearchResult) {
+        <span class="self">self</span>.in_pool = <span class="self">self</span>.in_pool || other.in_pool;
+        <span class="self">self</span>.in_blocks.extend(other.in_blocks.iter());
     }
 }
 
-<span class="doccomment">/// all the production stats for every known staker</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StakersCycleProductionStats</span> {
-    <span class="doccomment">/// cycle number</span>
-    <span class="kw">pub</span> <span class="ident">cycle</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// if that cycle is final</span>
-    <span class="kw">pub</span> <span class="ident">is_final</span>: <span class="ident">bool</span>,
-    <span class="doccomment">/// map address to produced valid block count and not valid but expected block count</span>
-    <span class="doccomment">/// really a re arranged `[crate::address::AddressCycleProductionStats]`</span>
-    <span class="kw">pub</span> <span class="ident">ok_nok_counts</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, (<span class="ident">u64</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
+<span class="doccomment">/// all the production stats for every known staker
+</span><span class="attribute">#[derive(Clone, Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>StakersCycleProductionStats {
+    <span class="doccomment">/// cycle number
+    </span><span class="kw">pub </span>cycle: u64,
+    <span class="doccomment">/// if that cycle is final
+    </span><span class="kw">pub </span>is_final: bool,
+    <span class="doccomment">/// map address to produced valid block count and not valid but expected block count
+    /// really a re arranged `[crate::address::AddressCycleProductionStats]`
+    </span><span class="kw">pub </span>ok_nok_counts: Map&lt;Address, (u64, u64)&gt;,
 }
 
-<span class="doccomment">/// just a public key and a signature it has produced</span>
-<span class="doccomment">/// used for serialization/deserialization purpose</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PubkeySig</span> {
-    <span class="doccomment">/// public key</span>
-    <span class="kw">pub</span> <span class="ident">public_key</span>: <span class="ident">PublicKey</span>,
-    <span class="doccomment">/// signature</span>
-    <span class="kw">pub</span> <span class="ident">signature</span>: <span class="ident">Signature</span>,
+<span class="doccomment">/// just a public key and a signature it has produced
+/// used for serialization/deserialization purpose
+</span><span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>PubkeySig {
+    <span class="doccomment">/// public key
+    </span><span class="kw">pub </span>public_key: PublicKey,
+    <span class="doccomment">/// signature
+    </span><span class="kw">pub </span>signature: Signature,
 }
 
-<span class="kw">impl</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">PubkeySig</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Public key: {}&quot;</span>, <span class="self">self</span>.<span class="ident">public_key</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Signature: {}&quot;</span>, <span class="self">self</span>.<span class="ident">signature</span>)
+<span class="kw">impl </span>Display <span class="kw">for </span>PubkeySig {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;Public key: {}&quot;</span>, <span class="self">self</span>.public_key)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;Signature: {}&quot;</span>, <span class="self">self</span>.signature)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

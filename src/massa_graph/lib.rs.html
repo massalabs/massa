@@ -28,35 +28,35 @@
 <span id="28">28</span>
 <span id="29">29</span>
 <span id="30">30</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-<span class="doccomment">//! graph management</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">hash_drain_filter</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">map_first_last</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">int_roundings</span>)]</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</span><span class="doccomment">//! graph management
+</span><span class="attribute">#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
+#![feature(async_closure)]
+#![feature(hash_drain_filter)]
+#![feature(map_first_last)]
+#![feature(int_roundings)]
 
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">massa_logging</span>;
+</span><span class="kw">extern crate </span>massa_logging;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">settings::LedgerConfig</span>;
+<span class="kw">pub use </span>settings::LedgerConfig;
 
-<span class="doccomment">/// useful structures</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">export_active_block</span>;
+<span class="doccomment">/// useful structures
+</span><span class="kw">pub mod </span>export_active_block;
 
-<span class="kw">mod</span> <span class="ident">bootstrapable_graph</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">bootstrapable_graph::BootstrapableGraph</span>;
+<span class="kw">mod </span>bootstrapable_graph;
+<span class="kw">pub use </span>bootstrapable_graph::BootstrapableGraph;
 
-<span class="kw">mod</span> <span class="ident">block_graph</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">block_graph</span>::<span class="kw-2">*</span>;
+<span class="kw">mod </span>block_graph;
+<span class="kw">pub use </span>block_graph::<span class="kw-2">*</span>;
 
-<span class="doccomment">/// parallel ledger (TODO remove after unification)</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">ledger</span>;
+<span class="doccomment">/// parallel ledger (TODO remove after unification)
+</span><span class="kw">pub mod </span>ledger;
 
-<span class="doccomment">/// graph errors</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;
+<span class="doccomment">/// graph errors
+</span><span class="kw">pub mod </span>error;
 
-<span class="doccomment">/// graph settings</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">settings</span>;
+<span class="doccomment">/// graph settings
+</span><span class="kw">pub mod </span>settings;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

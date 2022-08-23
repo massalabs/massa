@@ -31,38 +31,38 @@
 <span id="31">31</span>
 <span id="32">32</span>
 <span id="33">33</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Manages a connection with a node</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Manages a connection with a node
 
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
+</span><span class="attribute">#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
+#![feature(ip)]
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">commands</span>::{
-    <span class="ident">NetworkCommand</span>, <span class="ident">NetworkEvent</span>, <span class="ident">NetworkManagementCommand</span>, <span class="ident">NodeCommand</span>, <span class="ident">NodeEvent</span>, <span class="ident">NodeEventType</span>,
+</span><span class="kw">pub use </span>commands::{
+    NetworkCommand, NetworkEvent, NetworkManagementCommand, NodeCommand, NodeEvent, NodeEventType,
 };
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">common</span>::{<span class="ident">ConnectionClosureReason</span>, <span class="ident">ConnectionId</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error</span>::{<span class="ident">HandshakeErrorType</span>, <span class="ident">NetworkConnectionErrorType</span>, <span class="ident">NetworkError</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">establisher</span>::{<span class="ident">Establisher</span>, <span class="ident">Listener</span>, <span class="ident">ReadHalf</span>, <span class="ident">WriteHalf</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">network_controller</span>::{<span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkEventReceiver</span>, <span class="ident">NetworkManager</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">peers</span>::{
-    <span class="ident">BootstrapPeers</span>, <span class="ident">BootstrapPeersDeserializer</span>, <span class="ident">BootstrapPeersSerializer</span>, <span class="ident">ConnectionCount</span>, <span class="ident">Peer</span>,
-    <span class="ident">PeerInfo</span>, <span class="ident">PeerType</span>, <span class="ident">Peers</span>,
+<span class="kw">pub use </span>common::{ConnectionClosureReason, ConnectionId};
+<span class="kw">pub use </span>error::{HandshakeErrorType, NetworkConnectionErrorType, NetworkError};
+<span class="kw">pub use </span>establisher::{Establisher, Listener, ReadHalf, WriteHalf};
+<span class="kw">pub use </span>network_controller::{NetworkCommandSender, NetworkEventReceiver, NetworkManager};
+<span class="kw">pub use </span>peers::{
+    BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer, ConnectionCount, Peer,
+    PeerInfo, PeerType, Peers,
 };
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">settings::NetworkSettings</span>;
+<span class="kw">pub use </span>settings::NetworkSettings;
 
-<span class="kw">mod</span> <span class="ident">commands</span>;
-<span class="kw">mod</span> <span class="ident">common</span>;
-<span class="kw">mod</span> <span class="ident">error</span>;
-<span class="kw">mod</span> <span class="ident">establisher</span>;
-<span class="kw">mod</span> <span class="ident">network_controller</span>;
-<span class="kw">mod</span> <span class="ident">peers</span>;
+<span class="kw">mod </span>commands;
+<span class="kw">mod </span>common;
+<span class="kw">mod </span>error;
+<span class="kw">mod </span>establisher;
+<span class="kw">mod </span>network_controller;
+<span class="kw">mod </span>peers;
 
-<span class="doccomment">/// network settings</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">settings</span>;
+<span class="doccomment">/// network settings
+</span><span class="kw">pub mod </span>settings;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-<span class="doccomment">/// test exports</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">test_exports</span>;
+<span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+</span><span class="doccomment">/// test exports
+</span><span class="kw">pub mod </span>test_exports;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

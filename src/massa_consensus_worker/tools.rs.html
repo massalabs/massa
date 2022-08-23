@@ -115,122 +115,122 @@
 <span id="115">115</span>
 <span id="116">116</span>
 <span id="117">117</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">massa_consensus_exports::settings::ConsensusConfig</span>;
-<span class="kw">use</span> <span class="ident">massa_consensus_exports</span>::{
-    <span class="ident">commands</span>::{<span class="ident">ConsensusCommand</span>, <span class="ident">ConsensusManagementCommand</span>},
-    <span class="ident">error</span>::{<span class="ident">ConsensusError</span>, <span class="ident">ConsensusResult</span> <span class="kw">as</span> <span class="prelude-ty">Result</span>},
-    <span class="ident">events::ConsensusEvent</span>,
-    <span class="ident">settings</span>::{<span class="ident">ConsensusChannels</span>, <span class="ident">ConsensusWorkerChannels</span>},
-    <span class="ident">ConsensusCommandSender</span>, <span class="ident">ConsensusEventReceiver</span>, <span class="ident">ConsensusManager</span>,
+</pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::settings::ConsensusConfig;
+<span class="kw">use </span>massa_consensus_exports::{
+    commands::{ConsensusCommand, ConsensusManagementCommand},
+    error::{ConsensusError, ConsensusResult <span class="kw">as </span><span class="prelude-ty">Result</span>},
+    events::ConsensusEvent,
+    settings::{ConsensusChannels, ConsensusWorkerChannels},
+    ConsensusCommandSender, ConsensusEventReceiver, ConsensusManager,
 };
-<span class="kw">use</span> <span class="ident">massa_graph</span>::{<span class="ident">settings::GraphConfig</span>, <span class="ident">BlockGraph</span>, <span class="ident">BootstrapableGraph</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">constants::CHANNEL_SIZE</span>, <span class="ident">prehash::Map</span>, <span class="ident">Address</span>};
-<span class="kw">use</span> <span class="ident">massa_proof_of_stake_exports</span>::{<span class="ident">ExportProofOfStake</span>, <span class="ident">ProofOfStake</span>, <span class="ident">ProofOfStakeConfig</span>};
-<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
-<span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
-<span class="kw">use</span> <span class="ident">tokio::sync::mpsc</span>;
-<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">debug</span>, <span class="ident">error</span>, <span class="ident">info</span>};
+<span class="kw">use </span>massa_graph::{settings::GraphConfig, BlockGraph, BootstrapableGraph};
+<span class="kw">use </span>massa_models::{constants::CHANNEL_SIZE, prehash::Map, Address};
+<span class="kw">use </span>massa_proof_of_stake_exports::{ExportProofOfStake, ProofOfStake, ProofOfStakeConfig};
+<span class="kw">use </span>massa_signature::KeyPair;
+<span class="kw">use </span>massa_storage::Storage;
+<span class="kw">use </span>tokio::sync::mpsc;
+<span class="kw">use </span>tracing::{debug, error, info};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::consensus_worker::ConsensusWorker</span>;
+<span class="kw">use </span><span class="kw">crate</span>::consensus_worker::ConsensusWorker;
 
-<span class="doccomment">/// Creates a new consensus controller.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Arguments</span>
-<span class="doccomment">/// * `cfg`: consensus configuration</span>
-<span class="doccomment">/// * `protocol_command_sender`: a `ProtocolCommandSender` instance to send commands to Protocol.</span>
-<span class="doccomment">/// * `protocol_event_receiver`: a `ProtocolEventReceiver` instance to receive events from Protocol.</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">start_consensus_controller</span>(
-    <span class="ident">cfg</span>: <span class="ident">ConsensusConfig</span>,
-    <span class="ident">channels</span>: <span class="ident">ConsensusChannels</span>,
-    <span class="ident">boot_pos</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ExportProofOfStake</span><span class="op">&gt;</span>,
-    <span class="ident">boot_graph</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BootstrapableGraph</span><span class="op">&gt;</span>,
-    <span class="ident">storage</span>: <span class="ident">Storage</span>,
-    <span class="ident">clock_compensation</span>: <span class="ident">i64</span>,
-    <span class="ident">password</span>: <span class="ident">String</span>,
-    <span class="ident">staking_keys</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">KeyPair</span><span class="op">&gt;</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(
-    <span class="ident">ConsensusCommandSender</span>,
-    <span class="ident">ConsensusEventReceiver</span>,
-    <span class="ident">ConsensusManager</span>,
-)<span class="op">&gt;</span> {
+<span class="doccomment">/// Creates a new consensus controller.
+///
+/// # Arguments
+/// * `cfg`: consensus configuration
+/// * `protocol_command_sender`: a `ProtocolCommandSender` instance to send commands to Protocol.
+/// * `protocol_event_receiver`: a `ProtocolEventReceiver` instance to receive events from Protocol.
+</span><span class="attribute">#[allow(clippy::too_many_arguments)]
+</span><span class="kw">pub async fn </span>start_consensus_controller(
+    cfg: ConsensusConfig,
+    channels: ConsensusChannels,
+    boot_pos: <span class="prelude-ty">Option</span>&lt;ExportProofOfStake&gt;,
+    boot_graph: <span class="prelude-ty">Option</span>&lt;BootstrapableGraph&gt;,
+    storage: Storage,
+    clock_compensation: i64,
+    password: String,
+    staking_keys: Map&lt;Address, KeyPair&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(
+    ConsensusCommandSender,
+    ConsensusEventReceiver,
+    ConsensusManager,
+)&gt; {
     <span class="macro">debug!</span>(<span class="string">&quot;starting consensus controller&quot;</span>);
     <span class="macro">massa_trace!</span>(
         <span class="string">&quot;consensus.consensus_controller.start_consensus_controller&quot;</span>,
         {}
     );
 
-    <span class="comment">// todo that is checked when loading the config, should be removed</span>
-    <span class="comment">// ensure that the parameters are sane</span>
-    <span class="kw">if</span> <span class="ident">cfg</span>.<span class="ident">thread_count</span> <span class="op">==</span> <span class="number">0</span> {
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ConsensusError::ConfigError</span>(
-            <span class="string">&quot;thread_count should be strictly more than 0&quot;</span>.<span class="ident">to_string</span>(),
+    <span class="comment">// todo that is checked when loading the config, should be removed
+    // ensure that the parameters are sane
+    </span><span class="kw">if </span>cfg.thread_count == <span class="number">0 </span>{
+        <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ConfigError(
+            <span class="string">&quot;thread_count should be strictly more than 0&quot;</span>.to_string(),
         ));
     }
-    <span class="kw">if</span> <span class="ident">cfg</span>.<span class="ident">t0</span> <span class="op">==</span> <span class="number">0</span>.<span class="ident">into</span>() {
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ConsensusError::ConfigError</span>(
-            <span class="string">&quot;t0 should be strictly more than 0&quot;</span>.<span class="ident">to_string</span>(),
+    <span class="kw">if </span>cfg.t0 == <span class="number">0</span>.into() {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ConfigError(
+            <span class="string">&quot;t0 should be strictly more than 0&quot;</span>.to_string(),
         ));
     }
-    <span class="kw">if</span> <span class="ident">cfg</span>.<span class="ident">t0</span>.<span class="ident">checked_rem_u64</span>(<span class="ident">cfg</span>.<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">u64</span>)<span class="question-mark">?</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span>.<span class="ident">into</span>() {
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ConsensusError::ConfigError</span>(
-            <span class="string">&quot;thread_count should divide t0&quot;</span>.<span class="ident">to_string</span>(),
+    <span class="kw">if </span>cfg.t0.checked_rem_u64(cfg.thread_count <span class="kw">as </span>u64)<span class="question-mark">? </span>!= <span class="number">0</span>.into() {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ConfigError(
+            <span class="string">&quot;thread_count should divide t0&quot;</span>.to_string(),
         ));
     }
 
-    <span class="comment">// start worker</span>
-    <span class="kw">let</span> <span class="ident">block_db</span> <span class="op">=</span> <span class="ident">BlockGraph::new</span>(<span class="ident">GraphConfig::from</span>(<span class="kw-2">&amp;</span><span class="ident">cfg</span>), <span class="ident">boot_graph</span>, <span class="ident">storage</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pos</span> <span class="op">=</span> <span class="ident">ProofOfStake::new</span>(
-        <span class="ident">ProofOfStakeConfig::from</span>(<span class="kw-2">&amp;</span><span class="ident">cfg</span>),
-        <span class="ident">block_db</span>.<span class="ident">get_genesis_block_ids</span>(),
-        <span class="ident">boot_pos</span>,
+    <span class="comment">// start worker
+    </span><span class="kw">let </span>block_db = BlockGraph::new(GraphConfig::from(<span class="kw-2">&amp;</span>cfg), boot_graph, storage).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>pos = ProofOfStake::new(
+        ProofOfStakeConfig::from(<span class="kw-2">&amp;</span>cfg),
+        block_db.get_genesis_block_ids(),
+        boot_pos,
     )
     .<span class="kw">await</span><span class="question-mark">?</span>;
-    <span class="ident">pos</span>.<span class="ident">set_watched_addresses</span>(<span class="ident">staking_keys</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>());
-    <span class="kw">let</span> (<span class="ident">command_tx</span>, <span class="ident">command_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">ConsensusCommand</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
-    <span class="kw">let</span> (<span class="ident">event_tx</span>, <span class="ident">event_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">ConsensusEvent</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
-    <span class="kw">let</span> (<span class="ident">manager_tx</span>, <span class="ident">manager_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">ConsensusManagementCommand</span><span class="op">&gt;</span>(<span class="number">1</span>);
-    <span class="kw">let</span> <span class="ident">cfg_copy</span> <span class="op">=</span> <span class="ident">cfg</span>.<span class="ident">clone</span>();
-    <span class="kw">let</span> <span class="ident">join_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">ConsensusWorker::new</span>(
-            <span class="ident">cfg_copy</span>,
-            <span class="ident">ConsensusWorkerChannels</span> {
-                <span class="ident">protocol_command_sender</span>: <span class="ident">channels</span>.<span class="ident">protocol_command_sender</span>,
-                <span class="ident">protocol_event_receiver</span>: <span class="ident">channels</span>.<span class="ident">protocol_event_receiver</span>,
-                <span class="ident">execution_controller</span>: <span class="ident">channels</span>.<span class="ident">execution_controller</span>,
-                <span class="ident">pool_command_sender</span>: <span class="ident">channels</span>.<span class="ident">pool_command_sender</span>,
-                <span class="ident">controller_command_rx</span>: <span class="ident">command_rx</span>,
-                <span class="ident">controller_event_tx</span>: <span class="ident">event_tx</span>,
-                <span class="ident">controller_manager_rx</span>: <span class="ident">manager_rx</span>,
+    pos.set_watched_addresses(staking_keys.keys().copied().collect());
+    <span class="kw">let </span>(command_tx, command_rx) = mpsc::channel::&lt;ConsensusCommand&gt;(CHANNEL_SIZE);
+    <span class="kw">let </span>(event_tx, event_rx) = mpsc::channel::&lt;ConsensusEvent&gt;(CHANNEL_SIZE);
+    <span class="kw">let </span>(manager_tx, manager_rx) = mpsc::channel::&lt;ConsensusManagementCommand&gt;(<span class="number">1</span>);
+    <span class="kw">let </span>cfg_copy = cfg.clone();
+    <span class="kw">let </span>join_handle = tokio::spawn(<span class="kw">async move </span>{
+        <span class="kw">let </span>res = ConsensusWorker::new(
+            cfg_copy,
+            ConsensusWorkerChannels {
+                protocol_command_sender: channels.protocol_command_sender,
+                protocol_event_receiver: channels.protocol_event_receiver,
+                execution_controller: channels.execution_controller,
+                pool_command_sender: channels.pool_command_sender,
+                controller_command_rx: command_rx,
+                controller_event_tx: event_tx,
+                controller_manager_rx: manager_rx,
             },
-            <span class="ident">block_db</span>,
-            <span class="ident">pos</span>,
-            <span class="ident">clock_compensation</span>,
-            <span class="ident">staking_keys</span>,
-            <span class="ident">password</span>,
+            block_db,
+            pos,
+            clock_compensation,
+            staking_keys,
+            password,
         )
-        .<span class="kw">await</span><span class="question-mark">?</span>
-        .<span class="ident">run_loop</span>()
+        .<span class="kw">await</span><span class="question-mark">?
+        </span>.run_loop()
         .<span class="kw">await</span>;
-        <span class="kw">match</span> <span class="ident">res</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; {
-                <span class="macro">error!</span>(<span class="string">&quot;consensus worker crashed: {}&quot;</span>, <span class="ident">err</span>);
-                <span class="prelude-val">Err</span>(<span class="ident">err</span>)
+        <span class="kw">match </span>res {
+            <span class="prelude-val">Err</span>(err) =&gt; {
+                <span class="macro">error!</span>(<span class="string">&quot;consensus worker crashed: {}&quot;</span>, err);
+                <span class="prelude-val">Err</span>(err)
             }
-            <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; {
+            <span class="prelude-val">Ok</span>(v) =&gt; {
                 <span class="macro">info!</span>(<span class="string">&quot;consensus worker finished cleanly&quot;</span>);
-                <span class="prelude-val">Ok</span>(<span class="ident">v</span>)
+                <span class="prelude-val">Ok</span>(v)
             }
         }
     });
     <span class="prelude-val">Ok</span>((
-        <span class="ident">ConsensusCommandSender</span>(<span class="ident">command_tx</span>),
-        <span class="ident">ConsensusEventReceiver</span>(<span class="ident">event_rx</span>),
-        <span class="ident">ConsensusManager</span> {
-            <span class="ident">manager_tx</span>,
-            <span class="ident">join_handle</span>,
+        ConsensusCommandSender(command_tx),
+        ConsensusEventReceiver(event_rx),
+        ConsensusManager {
+            manager_tx,
+            join_handle,
         },
     ))
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

@@ -16,23 +16,23 @@
 <span id="16">16</span>
 <span id="17">17</span>
 <span id="18">18</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident">jsonrpc_core::serde::Deserialize</span>;
-<span class="kw">use</span> <span class="ident">std::net::SocketAddr</span>;
+</span><span class="kw">use </span>jsonrpc_core::serde::Deserialize;
+<span class="kw">use </span>std::net::SocketAddr;
 
-<span class="doccomment">/// API settings.</span>
-<span class="doccomment">/// the API settings</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">APISettings</span> {
-    <span class="doccomment">/// when looking for next draw we want to look at max `draw_lookahead_period_count`</span>
-    <span class="kw">pub</span> <span class="ident">draw_lookahead_period_count</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// bind for the private API</span>
-    <span class="kw">pub</span> <span class="ident">bind_private</span>: <span class="ident">SocketAddr</span>,
-    <span class="doccomment">/// bind for the public API</span>
-    <span class="kw">pub</span> <span class="ident">bind_public</span>: <span class="ident">SocketAddr</span>,
-    <span class="doccomment">/// max argument count</span>
-    <span class="kw">pub</span> <span class="ident">max_arguments</span>: <span class="ident">u64</span>,
+<span class="doccomment">/// API settings.
+/// the API settings
+</span><span class="attribute">#[derive(Debug, Deserialize, Clone, Copy)]
+</span><span class="kw">pub struct </span>APISettings {
+    <span class="doccomment">/// when looking for next draw we want to look at max `draw_lookahead_period_count`
+    </span><span class="kw">pub </span>draw_lookahead_period_count: u64,
+    <span class="doccomment">/// bind for the private API
+    </span><span class="kw">pub </span>bind_private: SocketAddr,
+    <span class="doccomment">/// bind for the public API
+    </span><span class="kw">pub </span>bind_public: SocketAddr,
+    <span class="doccomment">/// max argument count
+    </span><span class="kw">pub </span>max_arguments: u64,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

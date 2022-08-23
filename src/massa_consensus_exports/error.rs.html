@@ -71,78 +71,78 @@
 <span id="71">71</span>
 <span id="72">72</span>
 <span id="73">73</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-<span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
-<span class="kw">use</span> <span class="ident">massa_execution_exports::ExecutionError</span>;
-<span class="kw">use</span> <span class="ident">massa_graph::error::GraphError</span>;
-<span class="kw">use</span> <span class="ident">massa_models::ModelsError</span>;
-<span class="kw">use</span> <span class="ident">massa_proof_of_stake_exports::error::ProofOfStakeError</span>;
-<span class="kw">use</span> <span class="ident">massa_protocol_exports::ProtocolError</span>;
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</span><span class="kw">use </span>displaydoc::Display;
+<span class="kw">use </span>massa_execution_exports::ExecutionError;
+<span class="kw">use </span>massa_graph::error::GraphError;
+<span class="kw">use </span>massa_models::ModelsError;
+<span class="kw">use </span>massa_proof_of_stake_exports::error::ProofOfStakeError;
+<span class="kw">use </span>massa_protocol_exports::ProtocolError;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::events::ConsensusEvent</span>;
+<span class="kw">use </span><span class="kw">crate</span>::events::ConsensusEvent;
 
-<span class="doccomment">/// Consensus</span>
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">ConsensusResult</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">E</span> <span class="op">=</span> <span class="ident">ConsensusError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">core::result::Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">E</span><span class="op">&gt;</span>;
+<span class="doccomment">/// Consensus
+</span><span class="kw">pub type </span>ConsensusResult&lt;T, E = ConsensusError&gt; = core::result::Result&lt;T, E&gt;;
 
-<span class="doccomment">/// Internal error</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Display</span>, <span class="ident">Error</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">InternalError</span> {
-    <span class="doccomment">/// transaction error {0}</span>
-    <span class="ident">TransactionError</span>(<span class="ident">String</span>),
+<span class="doccomment">/// Internal error
+</span><span class="attribute">#[non_exhaustive]
+#[derive(Display, Error, Debug)]
+</span><span class="kw">pub enum </span>InternalError {
+    <span class="doccomment">/// transaction error {0}
+    </span>TransactionError(String),
 }
 
-<span class="doccomment">/// Consensus errors</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Display</span>, <span class="ident">Error</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ConsensusError</span> {
-    <span class="doccomment">/// execution error: {0}</span>
-    <span class="ident">ExecutionError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ExecutionError</span>),
-    <span class="doccomment">/// models error: {0}</span>
-    <span class="ident">ModelsError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ModelsError</span>),
-    <span class="doccomment">/// configuration error: {0}</span>
-    <span class="ident">ConfigError</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// Protocol error {0}</span>
-    <span class="ident">ProtocolError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">ProtocolError</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// failed retrieving consensus controller event</span>
-    <span class="ident">ControllerEventError</span>,
-    <span class="doccomment">/// Join error {0}</span>
-    <span class="ident">JoinError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">tokio::task::JoinError</span>),
-    <span class="doccomment">/// Time error {0}</span>
-    <span class="ident">TimeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_time::TimeError</span>),
-    <span class="doccomment">/// there was an inconsistency between containers {0}</span>
-    <span class="ident">ContainerInconsistency</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// Send  channel error : {0}</span>
-    <span class="ident">SendChannelError</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// Receive  channel error : {0}</span>
-    <span class="ident">ReceiveChannelError</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// pool error : {0}</span>
-    <span class="ident">PoolError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_pool::PoolError</span>),
-    <span class="doccomment">/// io error {0}</span>
-    <span class="ident">IOError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">std::io::Error</span>),
-    <span class="doccomment">/// serde error</span>
-    <span class="ident">SerdeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">serde_json::Error</span>),
-    <span class="doccomment">/// block creation error {0}</span>
-    <span class="ident">BlockCreationError</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// error sending consensus event: {0}</span>
-    <span class="ident">TokioSendError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">tokio::sync::mpsc::error::SendError</span><span class="op">&lt;</span><span class="ident">ConsensusEvent</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// channel error: {0}</span>
-    <span class="ident">ChannelError</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// Graph error: {0}</span>
-    <span class="ident">GraphError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">GraphError</span>),
-    <span class="doccomment">/// Proof of stake error: {0}</span>
-    <span class="ident">ProofOfStakeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ProofOfStakeError</span>),
-    <span class="doccomment">/// slot overflow</span>
-    <span class="ident">SlotOverflowError</span>,
-    <span class="doccomment">/// `MassaCipher` error: {0}</span>
-    <span class="ident">MassaCipherError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_cipher::CipherError</span>),
+<span class="doccomment">/// Consensus errors
+</span><span class="attribute">#[non_exhaustive]
+#[derive(Display, Error, Debug)]
+</span><span class="kw">pub enum </span>ConsensusError {
+    <span class="doccomment">/// execution error: {0}
+    </span>ExecutionError(<span class="attribute">#[from] </span>ExecutionError),
+    <span class="doccomment">/// models error: {0}
+    </span>ModelsError(<span class="attribute">#[from] </span>ModelsError),
+    <span class="doccomment">/// configuration error: {0}
+    </span>ConfigError(String),
+    <span class="doccomment">/// Protocol error {0}
+    </span>ProtocolError(<span class="attribute">#[from] </span>Box&lt;ProtocolError&gt;),
+    <span class="doccomment">/// failed retrieving consensus controller event
+    </span>ControllerEventError,
+    <span class="doccomment">/// Join error {0}
+    </span>JoinError(<span class="attribute">#[from] </span>tokio::task::JoinError),
+    <span class="doccomment">/// Time error {0}
+    </span>TimeError(<span class="attribute">#[from] </span>massa_time::TimeError),
+    <span class="doccomment">/// there was an inconsistency between containers {0}
+    </span>ContainerInconsistency(String),
+    <span class="doccomment">/// Send  channel error : {0}
+    </span>SendChannelError(String),
+    <span class="doccomment">/// Receive  channel error : {0}
+    </span>ReceiveChannelError(String),
+    <span class="doccomment">/// pool error : {0}
+    </span>PoolError(<span class="attribute">#[from] </span>massa_pool::PoolError),
+    <span class="doccomment">/// io error {0}
+    </span>IOError(<span class="attribute">#[from] </span>std::io::Error),
+    <span class="doccomment">/// serde error
+    </span>SerdeError(<span class="attribute">#[from] </span>serde_json::Error),
+    <span class="doccomment">/// block creation error {0}
+    </span>BlockCreationError(String),
+    <span class="doccomment">/// error sending consensus event: {0}
+    </span>TokioSendError(<span class="attribute">#[from] </span>tokio::sync::mpsc::error::SendError&lt;ConsensusEvent&gt;),
+    <span class="doccomment">/// channel error: {0}
+    </span>ChannelError(String),
+    <span class="doccomment">/// Graph error: {0}
+    </span>GraphError(<span class="attribute">#[from] </span>GraphError),
+    <span class="doccomment">/// Proof of stake error: {0}
+    </span>ProofOfStakeError(<span class="attribute">#[from] </span>ProofOfStakeError),
+    <span class="doccomment">/// slot overflow
+    </span>SlotOverflowError,
+    <span class="doccomment">/// `MassaCipher` error: {0}
+    </span>MassaCipherError(<span class="attribute">#[from] </span>massa_cipher::CipherError),
 }
 
-<span class="kw">impl</span> <span class="ident">std::convert::From</span><span class="op">&lt;</span><span class="ident">massa_protocol_exports::ProtocolError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ConsensusError</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">err</span>: <span class="ident">massa_protocol_exports::ProtocolError</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">ConsensusError::ProtocolError</span>(<span class="ident">Box::new</span>(<span class="ident">err</span>))
+<span class="kw">impl </span>std::convert::From&lt;massa_protocol_exports::ProtocolError&gt; <span class="kw">for </span>ConsensusError {
+    <span class="kw">fn </span>from(err: massa_protocol_exports::ProtocolError) -&gt; <span class="self">Self </span>{
+        ConsensusError::ProtocolError(Box::new(err))
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

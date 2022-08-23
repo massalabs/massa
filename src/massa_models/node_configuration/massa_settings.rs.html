@@ -77,84 +77,84 @@
 <span id="77">77</span>
 <span id="78">78</span>
 <span id="79">79</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Build a settings for an object that implement `massa_settings`</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ---</span>
-<span class="doccomment">//! The massa node configuration is composed from 2 parts, one part is the</span>
-<span class="doccomment">//! file configuration often named `config.toml` located in the project</span>
-<span class="doccomment">//! directory.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The First thing that the node will try is to read the configuration located</span>
-<span class="doccomment">//! in the `path` described in the environment variable `MASSA_CONFIG_PATH`.</span>
-<span class="doccomment">//! If no path found in the environment variable, the relative path</span>
-<span class="doccomment">//! `base_config/config.toml` is used as default. The default path should exist</span>
-<span class="doccomment">//! because it&#39;s a configuration file pushed in the repository.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The next step will try to read the file at the given path. It will `panic`</span>
-<span class="doccomment">//! if no file found.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Whatever configuration you used (the one from the environment variable or the</span>
-<span class="doccomment">//! default one) You always have a next possibility. Using the default path of</span>
-<span class="doccomment">//! configuration for the massa-project. The default configuration directories</span>
-<span class="doccomment">//! is set on Setting creation. All the configuration in this file will be merged</span>
-<span class="doccomment">//! with the previous step (override if duplicated)</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The last step is to merge the environment variable prefixed with</span>
-<span class="doccomment">//! `MASSA_CLIENT`, override if duplicated</span>
-<span class="doccomment">//!</span>
-<span class="kw">use</span> <span class="ident">directories::ProjectDirs</span>;
-<span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
-<span class="kw">use</span> <span class="ident">std::path::Path</span>;
+</pre><pre class="rust"><code><span class="doccomment">//! Build a settings for an object that implement `massa_settings`
+//!
+//! ---
+//! The massa node configuration is composed from 2 parts, one part is the
+//! file configuration often named `config.toml` located in the project
+//! directory.
+//!
+//! The First thing that the node will try is to read the configuration located
+//! in the `path` described in the environment variable `MASSA_CONFIG_PATH`.
+//! If no path found in the environment variable, the relative path
+//! `base_config/config.toml` is used as default. The default path should exist
+//! because it&#39;s a configuration file pushed in the repository.
+//!
+//! The next step will try to read the file at the given path. It will `panic`
+//! if no file found.
+//!
+//! Whatever configuration you used (the one from the environment variable or the
+//! default one) You always have a next possibility. Using the default path of
+//! configuration for the massa-project. The default configuration directories
+//! is set on Setting creation. All the configuration in this file will be merged
+//! with the previous step (override if duplicated)
+//!
+//! The last step is to merge the environment variable prefixed with
+//! `MASSA_CLIENT`, override if duplicated
+//!
+</span><span class="kw">use </span>directories::ProjectDirs;
+<span class="kw">use </span>serde::Deserialize;
+<span class="kw">use </span>std::path::Path;
 
-<span class="doccomment">/// Merge the settings</span>
-<span class="doccomment">/// 1. default</span>
-<span class="doccomment">/// 2. in path specified in `MASSA_CONFIG_PATH` environment variable (`base_config/config.toml` by default)</span>
-<span class="doccomment">/// 3. in path specified in `MASSA_CONFIG_OVERRIDE_PATH` environment variable (`config/config.toml` by default)</span>
-<span class="attribute">#[<span class="ident">inline</span>]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build_massa_settings</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">app_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">env_prefix</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">T</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">settings</span> <span class="op">=</span> <span class="ident">config::Config::default</span>();
-    <span class="kw">let</span> <span class="ident">config_path</span> <span class="op">=</span> <span class="ident">std::env::var</span>(<span class="string">&quot;MASSA_CONFIG_PATH&quot;</span>)
-        .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="string">&quot;base_config/config.toml&quot;</span>.<span class="ident">to_string</span>());
-    <span class="ident">settings</span>
-        .<span class="ident">merge</span>(<span class="ident">config::File::with_name</span>(<span class="kw-2">&amp;</span><span class="ident">config_path</span>))
-        .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">error</span><span class="op">|</span> {
+<span class="doccomment">/// Merge the settings
+/// 1. default
+/// 2. in path specified in `MASSA_CONFIG_PATH` environment variable (`base_config/config.toml` by default)
+/// 3. in path specified in `MASSA_CONFIG_OVERRIDE_PATH` environment variable (`config/config.toml` by default)
+</span><span class="attribute">#[inline]
+</span><span class="kw">pub fn </span>build_massa_settings&lt;T: Deserialize&lt;<span class="lifetime">&#39;static</span>&gt;&gt;(app_name: <span class="kw-2">&amp;</span>str, env_prefix: <span class="kw-2">&amp;</span>str) -&gt; T {
+    <span class="kw">let </span><span class="kw-2">mut </span>settings = config::Config::default();
+    <span class="kw">let </span>config_path = std::env::var(<span class="string">&quot;MASSA_CONFIG_PATH&quot;</span>)
+        .unwrap_or_else(|<span class="kw">_</span>| <span class="string">&quot;base_config/config.toml&quot;</span>.to_string());
+    settings
+        .merge(config::File::with_name(<span class="kw-2">&amp;</span>config_path))
+        .unwrap_or_else(|error| {
             <span class="macro">panic!</span>(
                 <span class="string">&quot;failed to read {} config {}: {}&quot;</span>,
-                <span class="ident">config_path</span>,
-                <span class="ident">std::env::current_dir</span>().<span class="ident">unwrap</span>().<span class="ident">as_path</span>().<span class="ident">to_str</span>().<span class="ident">unwrap</span>(),
-                <span class="ident">error</span>
+                config_path,
+                std::env::current_dir().unwrap().as_path().to_str().unwrap(),
+                error
             )
         });
-    <span class="kw">let</span> <span class="ident">config_override_path</span> <span class="op">=</span> <span class="ident">std::env::var</span>(<span class="string">&quot;MASSA_CONFIG_OVERRIDE_PATH&quot;</span>)
-        .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="string">&quot;config/config.toml&quot;</span>.<span class="ident">to_string</span>());
-    <span class="kw">if</span> <span class="ident">Path::new</span>(<span class="kw-2">&amp;</span><span class="ident">config_override_path</span>).<span class="ident">is_file</span>() {
-        <span class="ident">settings</span>
-            .<span class="ident">merge</span>(<span class="ident">config::File::with_name</span>(<span class="kw-2">&amp;</span><span class="ident">config_override_path</span>))
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">error</span><span class="op">|</span> {
+    <span class="kw">let </span>config_override_path = std::env::var(<span class="string">&quot;MASSA_CONFIG_OVERRIDE_PATH&quot;</span>)
+        .unwrap_or_else(|<span class="kw">_</span>| <span class="string">&quot;config/config.toml&quot;</span>.to_string());
+    <span class="kw">if </span>Path::new(<span class="kw-2">&amp;</span>config_override_path).is_file() {
+        settings
+            .merge(config::File::with_name(<span class="kw-2">&amp;</span>config_override_path))
+            .unwrap_or_else(|error| {
                 <span class="macro">panic!</span>(
                     <span class="string">&quot;failed to read {} override config {}: {}&quot;</span>,
-                    <span class="ident">config_override_path</span>,
-                    <span class="ident">std::env::current_dir</span>().<span class="ident">unwrap</span>().<span class="ident">as_path</span>().<span class="ident">to_str</span>().<span class="ident">unwrap</span>(),
-                    <span class="ident">error</span>
+                    config_override_path,
+                    std::env::current_dir().unwrap().as_path().to_str().unwrap(),
+                    error
                 )
             });
     }
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">proj_dirs</span>) <span class="op">=</span> <span class="ident">ProjectDirs::from</span>(<span class="string">&quot;com&quot;</span>, <span class="string">&quot;MassaLabs&quot;</span>, <span class="ident">app_name</span>) {
-        <span class="comment">// Portable user config loading</span>
-        <span class="kw">let</span> <span class="ident">user_config_path</span> <span class="op">=</span> <span class="ident">proj_dirs</span>.<span class="ident">config_dir</span>();
-        <span class="kw">if</span> <span class="ident">user_config_path</span>.<span class="ident">exists</span>() {
-            <span class="kw">let</span> <span class="ident">path_str</span> <span class="op">=</span> <span class="ident">user_config_path</span>.<span class="ident">to_str</span>().<span class="ident">unwrap</span>();
-            <span class="ident">settings</span>
-                .<span class="ident">merge</span>(<span class="ident">config::File::with_name</span>(<span class="ident">path_str</span>))
-                .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">error</span><span class="op">|</span> {
-                    <span class="macro">panic!</span>(<span class="string">&quot;failed to read {} user config: {}&quot;</span>, <span class="ident">path_str</span>, <span class="ident">error</span>)
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(proj_dirs) = ProjectDirs::from(<span class="string">&quot;com&quot;</span>, <span class="string">&quot;MassaLabs&quot;</span>, app_name) {
+        <span class="comment">// Portable user config loading
+        </span><span class="kw">let </span>user_config_path = proj_dirs.config_dir();
+        <span class="kw">if </span>user_config_path.exists() {
+            <span class="kw">let </span>path_str = user_config_path.to_str().unwrap();
+            settings
+                .merge(config::File::with_name(path_str))
+                .unwrap_or_else(|error| {
+                    <span class="macro">panic!</span>(<span class="string">&quot;failed to read {} user config: {}&quot;</span>, path_str, error)
                 });
         }
     }
-    <span class="ident">settings</span>
-        .<span class="ident">merge</span>(<span class="ident">config::Environment::with_prefix</span>(<span class="ident">env_prefix</span>))
-        .<span class="ident">unwrap</span>();
-    <span class="ident">settings</span>.<span class="ident">try_into</span>().<span class="ident">unwrap</span>()
+    settings
+        .merge(config::Environment::with_prefix(env_prefix))
+        .unwrap();
+    settings.try_into().unwrap()
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

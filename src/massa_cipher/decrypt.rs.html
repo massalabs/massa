@@ -68,75 +68,75 @@
 <span id="68">68</span>
 <span id="69">69</span>
 <span id="70">70</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! massa-cipher decryption module.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Read `lib.rs` module documentation for more information.</span>
+</span><span class="doccomment">//! massa-cipher decryption module.
+//!
+//! Read `lib.rs` module documentation for more information.
 
-<span class="kw">use</span> <span class="ident">aes_gcm::aead</span>::{<span class="ident">Aead</span>, <span class="ident">NewAead</span>};
-<span class="kw">use</span> <span class="ident">aes_gcm</span>::{<span class="ident">Aes256Gcm</span>, <span class="ident">Key</span>, <span class="ident">Nonce</span>};
-<span class="kw">use</span> <span class="ident">massa_models::DeserializeVarInt</span>;
-<span class="kw">use</span> <span class="ident">pbkdf2</span>::{
-    <span class="ident">password_hash</span>::{<span class="ident">PasswordHasher</span>, <span class="ident">SaltString</span>},
-    <span class="ident">Pbkdf2</span>,
+</span><span class="kw">use </span>aes_gcm::aead::{Aead, NewAead};
+<span class="kw">use </span>aes_gcm::{Aes256Gcm, Key, Nonce};
+<span class="kw">use </span>massa_models::DeserializeVarInt;
+<span class="kw">use </span>pbkdf2::{
+    password_hash::{PasswordHasher, SaltString},
+    Pbkdf2,
 };
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants</span>::{<span class="ident">HASH_PARAMS</span>, <span class="ident">NONCE_SIZE</span>, <span class="ident">SALT_SIZE</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::CipherError</span>;
+<span class="kw">use </span><span class="kw">crate</span>::constants::{HASH_PARAMS, NONCE_SIZE, SALT_SIZE};
+<span class="kw">use </span><span class="kw">crate</span>::error::CipherError;
 
-<span class="doccomment">/// Decryption function using AES-GCM cipher.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Read `lib.rs` module documentation for more information.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">decrypt</span>(<span class="ident">password</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">data</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">u32</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>), <span class="ident">CipherError</span><span class="op">&gt;</span> {
-    <span class="comment">// parse cipher version</span>
-    <span class="kw">let</span> (<span class="ident">version</span>, <span class="ident">index</span>): (<span class="ident">u32</span>, <span class="ident">usize</span>) <span class="op">=</span>
-        <span class="ident">DeserializeVarInt::from_varint_bytes</span>(<span class="ident">data</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-            <span class="ident">CipherError::DecryptionError</span>(
-                <span class="string">&quot;wallet file truncated: version missing or incomplete&quot;</span>.<span class="ident">to_string</span>(),
+<span class="doccomment">/// Decryption function using AES-GCM cipher.
+///
+/// Read `lib.rs` module documentation for more information.
+</span><span class="kw">pub fn </span>decrypt(password: <span class="kw-2">&amp;</span>str, data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(u32, Vec&lt;u8&gt;), CipherError&gt; {
+    <span class="comment">// parse cipher version
+    </span><span class="kw">let </span>(version, index): (u32, usize) =
+        DeserializeVarInt::from_varint_bytes(data).map_err(|<span class="kw">_</span>| {
+            CipherError::DecryptionError(
+                <span class="string">&quot;wallet file truncated: version missing or incomplete&quot;</span>.to_string(),
             )
         })<span class="question-mark">?</span>;
 
-    <span class="comment">// parse PBKDF2 salt</span>
-    <span class="kw">let</span> <span class="ident">salt_end_index</span> <span class="op">=</span> <span class="ident">index</span> <span class="op">+</span> <span class="ident">SALT_SIZE</span>;
-    <span class="kw">let</span> <span class="ident">salt_data</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">get</span>(<span class="ident">index</span>..<span class="ident">salt_end_index</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-        <span class="ident">CipherError::DecryptionError</span>(
-            <span class="string">&quot;wallet file truncated: salt missing or incomplete&quot;</span>.<span class="ident">to_string</span>(),
+    <span class="comment">// parse PBKDF2 salt
+    </span><span class="kw">let </span>salt_end_index = index + SALT_SIZE;
+    <span class="kw">let </span>salt_data = data.get(index..salt_end_index).ok_or_else(|| {
+        CipherError::DecryptionError(
+            <span class="string">&quot;wallet file truncated: salt missing or incomplete&quot;</span>.to_string(),
         )
     })<span class="question-mark">?</span>;
-    <span class="kw">let</span> <span class="ident">salt</span> <span class="op">=</span> <span class="ident">SaltString::new</span>(<span class="ident">std::str::from_utf8</span>(<span class="ident">salt_data</span>)<span class="question-mark">?</span>)
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">CipherError::DecryptionError</span>(<span class="ident">e</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>;
+    <span class="kw">let </span>salt = SaltString::new(std::str::from_utf8(salt_data)<span class="question-mark">?</span>)
+        .map_err(|e| CipherError::DecryptionError(e.to_string()))<span class="question-mark">?</span>;
 
-    <span class="comment">// compute PBKDF2 password hash</span>
-    <span class="kw">let</span> <span class="ident">password_hash</span> <span class="op">=</span> <span class="ident">Pbkdf2</span>
-        .<span class="ident">hash_password_customized</span>(<span class="ident">password</span>.<span class="ident">as_bytes</span>(), <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="ident">HASH_PARAMS</span>, <span class="kw-2">&amp;</span><span class="ident">salt</span>)
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">CipherError::DecryptionError</span>(<span class="ident">e</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>
-        .<span class="ident">hash</span>
-        .<span class="ident">expect</span>(<span class="string">&quot;content is missing after a successful hash&quot;</span>);
+    <span class="comment">// compute PBKDF2 password hash
+    </span><span class="kw">let </span>password_hash = Pbkdf2
+        .hash_password_customized(password.as_bytes(), <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, HASH_PARAMS, <span class="kw-2">&amp;</span>salt)
+        .map_err(|e| CipherError::DecryptionError(e.to_string()))<span class="question-mark">?
+        </span>.hash
+        .expect(<span class="string">&quot;content is missing after a successful hash&quot;</span>);
 
-    <span class="comment">// parse AES-GCM nonce</span>
-    <span class="kw">let</span> <span class="ident">nonce_end_index</span> <span class="op">=</span> <span class="ident">salt_end_index</span> <span class="op">+</span> <span class="ident">NONCE_SIZE</span>;
-    <span class="kw">let</span> <span class="ident">nonce</span> <span class="op">=</span> <span class="ident">Nonce::from_slice</span>(<span class="ident">data</span>.<span class="ident">get</span>(<span class="ident">salt_end_index</span>..<span class="ident">nonce_end_index</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-        <span class="ident">CipherError::DecryptionError</span>(
-            <span class="string">&quot;wallet file truncated: nonce missing or incomplete&quot;</span>.<span class="ident">to_string</span>(),
+    <span class="comment">// parse AES-GCM nonce
+    </span><span class="kw">let </span>nonce_end_index = salt_end_index + NONCE_SIZE;
+    <span class="kw">let </span>nonce = Nonce::from_slice(data.get(salt_end_index..nonce_end_index).ok_or_else(|| {
+        CipherError::DecryptionError(
+            <span class="string">&quot;wallet file truncated: nonce missing or incomplete&quot;</span>.to_string(),
         )
     })<span class="question-mark">?</span>);
 
-    <span class="comment">// decrypt the data</span>
-    <span class="kw">let</span> <span class="ident">cipher</span> <span class="op">=</span> <span class="ident">Aes256Gcm::new</span>(<span class="ident">Key::from_slice</span>(<span class="ident">password_hash</span>.<span class="ident">as_bytes</span>()));
-    <span class="kw">let</span> <span class="ident">decrypted_bytes</span> <span class="op">=</span> <span class="ident">cipher</span>
-        .<span class="ident">decrypt</span>(
-            <span class="ident">nonce</span>,
-            <span class="ident">data</span>.<span class="ident">get</span>(<span class="ident">nonce_end_index</span>..).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">CipherError::DecryptionError</span>(
-                    <span class="string">&quot;wallet file truncated: encrypted data missing or incomplete&quot;</span>.<span class="ident">to_string</span>(),
+    <span class="comment">// decrypt the data
+    </span><span class="kw">let </span>cipher = Aes256Gcm::new(Key::from_slice(password_hash.as_bytes()));
+    <span class="kw">let </span>decrypted_bytes = cipher
+        .decrypt(
+            nonce,
+            data.get(nonce_end_index..).ok_or_else(|| {
+                CipherError::DecryptionError(
+                    <span class="string">&quot;wallet file truncated: encrypted data missing or incomplete&quot;</span>.to_string(),
                 )
             })<span class="question-mark">?</span>,
         )
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-            <span class="ident">CipherError::DecryptionError</span>(<span class="string">&quot;wrong password or corrupted data&quot;</span>.<span class="ident">to_string</span>())
+        .map_err(|<span class="kw">_</span>| {
+            CipherError::DecryptionError(<span class="string">&quot;wrong password or corrupted data&quot;</span>.to_string())
         })<span class="question-mark">?</span>;
-    <span class="prelude-val">Ok</span>((<span class="ident">version</span>, <span class="ident">decrypted_bytes</span>))
+    <span class="prelude-val">Ok</span>((version, decrypted_bytes))
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_cipher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_cipher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

@@ -400,407 +400,407 @@
 <span id="400">400</span>
 <span id="401">401</span>
 <span id="402">402</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">array_from_slice</span>,
-    <span class="ident">constants</span>::{<span class="ident">BLOCK_ID_SIZE_BYTES</span>, <span class="ident">HANDSHAKE_RANDOMNESS_SIZE_BYTES</span>},
-    <span class="ident">error::ModelsResult</span>,
-    <span class="ident">operation::OperationPrefixIds</span>,
-    <span class="ident">operation</span>::{
-        <span class="ident">OperationPrefixIdsDeserializer</span>, <span class="ident">OperationPrefixIdsSerializer</span>, <span class="ident">Operations</span>,
-        <span class="ident">OperationsDeserializer</span>, <span class="ident">OperationsSerializer</span>,
+</span><span class="kw">use </span>massa_models::{
+    array_from_slice,
+    constants::{BLOCK_ID_SIZE_BYTES, HANDSHAKE_RANDOMNESS_SIZE_BYTES},
+    error::ModelsResult,
+    operation::OperationPrefixIds,
+    operation::{
+        OperationPrefixIdsDeserializer, OperationPrefixIdsSerializer, Operations,
+        OperationsDeserializer, OperationsSerializer,
     },
-    <span class="ident">with_serialization_context</span>,
-    <span class="ident">wrapped</span>::{<span class="ident">WrappedDeserializer</span>, <span class="ident">WrappedSerializer</span>},
-    <span class="ident">Block</span>, <span class="ident">BlockDeserializer</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockHeaderDeserializer</span>, <span class="ident">BlockId</span>, <span class="ident">DeserializeCompact</span>,
-    <span class="ident">DeserializeVarInt</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementDeserializer</span>, <span class="ident">IpAddrDeserializer</span>, <span class="ident">IpAddrSerializer</span>,
-    <span class="ident">ModelsError</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>, <span class="ident">Version</span>, <span class="ident">VersionDeserializer</span>,
-    <span class="ident">VersionSerializer</span>, <span class="ident">WrappedBlock</span>, <span class="ident">WrappedEndorsement</span>, <span class="ident">WrappedHeader</span>,
+    with_serialization_context,
+    wrapped::{WrappedDeserializer, WrappedSerializer},
+    Block, BlockDeserializer, BlockHeader, BlockHeaderDeserializer, BlockId, DeserializeCompact,
+    DeserializeVarInt, Endorsement, EndorsementDeserializer, IpAddrDeserializer, IpAddrSerializer,
+    ModelsError, SerializeCompact, SerializeVarInt, Version, VersionDeserializer,
+    VersionSerializer, WrappedBlock, WrappedEndorsement, WrappedHeader,
 };
-<span class="kw">use</span> <span class="ident">massa_serialization</span>::{<span class="ident">DeserializeError</span>, <span class="ident">Deserializer</span>, <span class="ident">Serializer</span>};
-<span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">PublicKey</span>, <span class="ident">Signature</span>, <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>, <span class="ident">SIGNATURE_SIZE_BYTES</span>};
-<span class="kw">use</span> <span class="ident">num_enum</span>::{<span class="ident">IntoPrimitive</span>, <span class="ident">TryFromPrimitive</span>};
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">convert::TryInto</span>, <span class="ident">net::IpAddr</span>};
+<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
+<span class="kw">use </span>massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
+<span class="kw">use </span>num_enum::{IntoPrimitive, TryFromPrimitive};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::{convert::TryInto, net::IpAddr};
 
-<span class="kw">static</span> <span class="ident">IP_SERIALIZER</span>: <span class="ident">IpAddrSerializer</span> <span class="op">=</span> <span class="ident">IpAddrSerializer::new</span>();
+<span class="kw">static </span>IP_SERIALIZER: IpAddrSerializer = IpAddrSerializer::new();
 
-<span class="kw">static</span> <span class="ident">IP_DESERIALIZER</span>: <span class="ident">IpAddrDeserializer</span> <span class="op">=</span> <span class="ident">IpAddrDeserializer::new</span>();
+<span class="kw">static </span>IP_DESERIALIZER: IpAddrDeserializer = IpAddrDeserializer::new();
 
-<span class="kw">static</span> <span class="ident">OPERATION_PREFIX_ID_DESERIALIZER</span>: <span class="ident">OperationPrefixIdsDeserializer</span> <span class="op">=</span>
-    <span class="ident">OperationPrefixIdsDeserializer::new</span>();
+<span class="kw">static </span>OPERATION_PREFIX_ID_DESERIALIZER: OperationPrefixIdsDeserializer =
+    OperationPrefixIdsDeserializer::new();
 
-<span class="kw">static</span> <span class="ident">OPERATION_PREFIX_ID_SERIALIZER</span>: <span class="ident">OperationPrefixIdsSerializer</span> <span class="op">=</span>
-    <span class="ident">OperationPrefixIdsSerializer::new</span>();
+<span class="kw">static </span>OPERATION_PREFIX_ID_SERIALIZER: OperationPrefixIdsSerializer =
+    OperationPrefixIdsSerializer::new();
 
-<span class="kw">static</span> <span class="ident">OPERATIONS_DESERIALIZER</span>: <span class="ident">OperationsDeserializer</span> <span class="op">=</span> <span class="ident">OperationsDeserializer::new</span>();
+<span class="kw">static </span>OPERATIONS_DESERIALIZER: OperationsDeserializer = OperationsDeserializer::new();
 
-<span class="kw">static</span> <span class="ident">OPERATIONS_SERIALIZER</span>: <span class="ident">OperationsSerializer</span> <span class="op">=</span> <span class="ident">OperationsSerializer::new</span>();
+<span class="kw">static </span>OPERATIONS_SERIALIZER: OperationsSerializer = OperationsSerializer::new();
 
-<span class="kw">static</span> <span class="ident">VERSION_DESERIALIZER</span>: <span class="ident">VersionDeserializer</span> <span class="op">=</span> <span class="ident">VersionDeserializer::new</span>();
+<span class="kw">static </span>VERSION_DESERIALIZER: VersionDeserializer = VersionDeserializer::new();
 
-<span class="kw">static</span> <span class="ident">VERSION_SERIALIZER</span>: <span class="ident">VersionSerializer</span> <span class="op">=</span> <span class="ident">VersionSerializer::new</span>();
+<span class="kw">static </span>VERSION_SERIALIZER: VersionSerializer = VersionSerializer::new();
 
-<span class="kw">static</span> <span class="ident">WRAPPED_BLOCK_DESERIALIZER</span>: <span class="ident">WrappedDeserializer</span><span class="op">&lt;</span><span class="ident">Block</span>, <span class="ident">BlockDeserializer</span><span class="op">&gt;</span> <span class="op">=</span>
-    <span class="ident">WrappedDeserializer::new</span>(<span class="ident">BlockDeserializer::new</span>());
+<span class="kw">static </span>WRAPPED_BLOCK_DESERIALIZER: WrappedDeserializer&lt;Block, BlockDeserializer&gt; =
+    WrappedDeserializer::new(BlockDeserializer::new());
 
-<span class="kw">static</span> <span class="ident">WRAPPED_BLOCK_HEADER_DESERIALIZER</span>: <span class="ident">WrappedDeserializer</span><span class="op">&lt;</span>
-    <span class="ident">BlockHeader</span>,
-    <span class="ident">BlockHeaderDeserializer</span>,
-<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">WrappedDeserializer::new</span>(<span class="ident">BlockHeaderDeserializer::new</span>());
+<span class="kw">static </span>WRAPPED_BLOCK_HEADER_DESERIALIZER: WrappedDeserializer&lt;
+    BlockHeader,
+    BlockHeaderDeserializer,
+&gt; = WrappedDeserializer::new(BlockHeaderDeserializer::new());
 
-<span class="kw">static</span> <span class="ident">WRAPPED_SERIALIZER</span>: <span class="ident">WrappedSerializer</span> <span class="op">=</span> <span class="ident">WrappedSerializer::new</span>();
+<span class="kw">static </span>WRAPPED_SERIALIZER: WrappedSerializer = WrappedSerializer::new();
 
-<span class="doccomment">/// All messages that can be sent or received.</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::large_enum_variant</span>)]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Message</span> {
-    <span class="doccomment">/// Initiates handshake.</span>
-    <span class="ident">HandshakeInitiation</span> {
-        <span class="doccomment">/// Our `public_key`, so the peer can decode our reply.</span>
-        <span class="ident">public_key</span>: <span class="ident">PublicKey</span>,
-        <span class="doccomment">/// Random data we expect the peer to sign with its `keypair`.</span>
-        <span class="doccomment">/// They should send us their handshake initiation message to</span>
-        <span class="doccomment">/// let us know their public key.</span>
-        <span class="ident">random_bytes</span>: [<span class="ident">u8</span>; <span class="ident">HANDSHAKE_RANDOMNESS_SIZE_BYTES</span>],
-        <span class="ident">version</span>: <span class="ident">Version</span>,
+<span class="doccomment">/// All messages that can be sent or received.
+</span><span class="attribute">#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub enum </span>Message {
+    <span class="doccomment">/// Initiates handshake.
+    </span>HandshakeInitiation {
+        <span class="doccomment">/// Our `public_key`, so the peer can decode our reply.
+        </span>public_key: PublicKey,
+        <span class="doccomment">/// Random data we expect the peer to sign with its `keypair`.
+        /// They should send us their handshake initiation message to
+        /// let us know their public key.
+        </span>random_bytes: [u8; HANDSHAKE_RANDOMNESS_SIZE_BYTES],
+        version: Version,
     },
-    <span class="doccomment">/// Reply to a handshake initiation message.</span>
-    <span class="ident">HandshakeReply</span> {
-        <span class="doccomment">/// Signature of the received random bytes with our `keypair`.</span>
-        <span class="ident">signature</span>: <span class="ident">Signature</span>,
+    <span class="doccomment">/// Reply to a handshake initiation message.
+    </span>HandshakeReply {
+        <span class="doccomment">/// Signature of the received random bytes with our `keypair`.
+        </span>signature: Signature,
     },
-    <span class="doccomment">/// Whole block structure.</span>
-    <span class="ident">Block</span>(<span class="ident">WrappedBlock</span>),
-    <span class="doccomment">/// Block header</span>
-    <span class="ident">BlockHeader</span>(<span class="ident">WrappedHeader</span>),
-    <span class="doccomment">/// Message asking the peer for a block.</span>
-    <span class="ident">AskForBlocks</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Message asking the peer for its advertisable peers list.</span>
-    <span class="ident">AskPeerList</span>,
-    <span class="doccomment">/// Reply to a `AskPeerList` message</span>
-    <span class="doccomment">/// Peers are ordered from most to less reliable.</span>
-    <span class="doccomment">/// If the ip of the node that sent that message is routable,</span>
-    <span class="doccomment">/// it is the first ip of the list.</span>
-    <span class="ident">PeerList</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Block not found</span>
-    <span class="ident">BlockNotFound</span>(<span class="ident">BlockId</span>),
-    <span class="doccomment">/// Batch of operation ids</span>
-    <span class="ident">OperationsAnnouncement</span>(<span class="ident">OperationPrefixIds</span>),
-    <span class="doccomment">/// Someone ask for operations.</span>
-    <span class="ident">AskForOperations</span>(<span class="ident">OperationPrefixIds</span>),
-    <span class="doccomment">/// A list of operations</span>
-    <span class="ident">Operations</span>(<span class="ident">Operations</span>),
-    <span class="doccomment">/// Endorsements</span>
-    <span class="ident">Endorsements</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>),
+    <span class="doccomment">/// Whole block structure.
+    </span>Block(WrappedBlock),
+    <span class="doccomment">/// Block header
+    </span>BlockHeader(WrappedHeader),
+    <span class="doccomment">/// Message asking the peer for a block.
+    </span>AskForBlocks(Vec&lt;BlockId&gt;),
+    <span class="doccomment">/// Message asking the peer for its advertisable peers list.
+    </span>AskPeerList,
+    <span class="doccomment">/// Reply to a `AskPeerList` message
+    /// Peers are ordered from most to less reliable.
+    /// If the ip of the node that sent that message is routable,
+    /// it is the first ip of the list.
+    </span>PeerList(Vec&lt;IpAddr&gt;),
+    <span class="doccomment">/// Block not found
+    </span>BlockNotFound(BlockId),
+    <span class="doccomment">/// Batch of operation ids
+    </span>OperationsAnnouncement(OperationPrefixIds),
+    <span class="doccomment">/// Someone ask for operations.
+    </span>AskForOperations(OperationPrefixIds),
+    <span class="doccomment">/// A list of operations
+    </span>Operations(Operations),
+    <span class="doccomment">/// Endorsements
+    </span>Endorsements(Vec&lt;WrappedEndorsement&gt;),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">IntoPrimitive</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">TryFromPrimitive</span>)]</span>
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u32</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">MessageTypeId</span> {
-    <span class="ident">HandshakeInitiation</span> <span class="op">=</span> <span class="number">0u32</span>,
-    <span class="ident">HandshakeReply</span> <span class="op">=</span> <span class="number">1</span>,
-    <span class="ident">Block</span> <span class="op">=</span> <span class="number">2</span>,
-    <span class="ident">BlockHeader</span> <span class="op">=</span> <span class="number">3</span>,
-    <span class="ident">AskForBlocks</span> <span class="op">=</span> <span class="number">4</span>,
-    <span class="ident">AskPeerList</span> <span class="op">=</span> <span class="number">5</span>,
-    <span class="ident">PeerList</span> <span class="op">=</span> <span class="number">6</span>,
-    <span class="ident">BlockNotFound</span> <span class="op">=</span> <span class="number">7</span>,
-    <span class="ident">Operations</span> <span class="op">=</span> <span class="number">8</span>,
-    <span class="ident">Endorsements</span> <span class="op">=</span> <span class="number">9</span>,
-    <span class="ident">AskForOperations</span> <span class="op">=</span> <span class="number">10</span>,
-    <span class="ident">OperationsAnnouncement</span> <span class="op">=</span> <span class="number">11</span>,
+<span class="attribute">#[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u32)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>MessageTypeId {
+    HandshakeInitiation = <span class="number">0u32</span>,
+    HandshakeReply = <span class="number">1</span>,
+    Block = <span class="number">2</span>,
+    BlockHeader = <span class="number">3</span>,
+    AskForBlocks = <span class="number">4</span>,
+    AskPeerList = <span class="number">5</span>,
+    PeerList = <span class="number">6</span>,
+    BlockNotFound = <span class="number">7</span>,
+    Operations = <span class="number">8</span>,
+    Endorsements = <span class="number">9</span>,
+    AskForOperations = <span class="number">10</span>,
+    OperationsAnnouncement = <span class="number">11</span>,
 }
 
-<span class="doccomment">/// For more details on how incoming objects are checked for validity at this stage,</span>
-<span class="doccomment">/// see their implementation of `to_bytes_compact` in `models`.</span>
-<span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">Message</span> {
-    <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Message::HandshakeInitiation</span> {
-                <span class="ident">public_key</span>,
-                <span class="ident">random_bytes</span>,
-                <span class="ident">version</span>,
+<span class="doccomment">/// For more details on how incoming objects are checked for validity at this stage,
+/// see their implementation of `to_bytes_compact` in `models`.
+</span><span class="kw">impl </span>SerializeCompact <span class="kw">for </span>Message {
+    <span class="kw">fn </span>to_bytes_compact(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;u8&gt; = Vec::new();
+        <span class="kw">match </span><span class="self">self </span>{
+            Message::HandshakeInitiation {
+                public_key,
+                random_bytes,
+                version,
             } =&gt; {
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::HandshakeInitiation</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">public_key</span>.<span class="ident">to_bytes</span>());
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">random_bytes</span>);
-                <span class="ident">VERSION_SERIALIZER</span>.<span class="ident">serialize</span>(<span class="ident">version</span>, <span class="kw-2">&amp;mut</span> <span class="ident">res</span>)<span class="question-mark">?</span>;
+                res.extend(u32::from(MessageTypeId::HandshakeInitiation).to_varint_bytes());
+                res.extend(public_key.to_bytes());
+                res.extend(random_bytes);
+                VERSION_SERIALIZER.serialize(version, <span class="kw-2">&amp;mut </span>res)<span class="question-mark">?</span>;
             }
-            <span class="ident">Message::HandshakeReply</span> { <span class="ident">signature</span> } =&gt; {
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::HandshakeReply</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">signature</span>.<span class="ident">to_bytes</span>());
+            Message::HandshakeReply { signature } =&gt; {
+                res.extend(u32::from(MessageTypeId::HandshakeReply).to_varint_bytes());
+                res.extend(signature.to_bytes());
             }
-            <span class="ident">Message::Block</span>(<span class="ident">block</span>) =&gt; {
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::Block</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="ident">WRAPPED_SERIALIZER</span>.<span class="ident">serialize</span>(<span class="ident">block</span>, <span class="kw-2">&amp;mut</span> <span class="ident">res</span>)<span class="question-mark">?</span>;
+            Message::Block(block) =&gt; {
+                res.extend(u32::from(MessageTypeId::Block).to_varint_bytes());
+                WRAPPED_SERIALIZER.serialize(block, <span class="kw-2">&amp;mut </span>res)<span class="question-mark">?</span>;
             }
-            <span class="ident">Message::BlockHeader</span>(<span class="ident">header</span>) =&gt; {
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::BlockHeader</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="ident">WRAPPED_SERIALIZER</span>.<span class="ident">serialize</span>(<span class="ident">header</span>, <span class="kw-2">&amp;mut</span> <span class="ident">res</span>)<span class="question-mark">?</span>;
+            Message::BlockHeader(header) =&gt; {
+                res.extend(u32::from(MessageTypeId::BlockHeader).to_varint_bytes());
+                WRAPPED_SERIALIZER.serialize(header, <span class="kw-2">&amp;mut </span>res)<span class="question-mark">?</span>;
             }
-            <span class="ident">Message::AskForBlocks</span>(<span class="ident">list</span>) =&gt; {
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::AskForBlocks</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="kw">let</span> <span class="ident">list_len</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">list</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                    <span class="ident">ModelsError::SerializeError</span>(
-                        <span class="string">&quot;could not encode AskForBlocks list length as u32&quot;</span>.<span class="ident">into</span>(),
+            Message::AskForBlocks(list) =&gt; {
+                res.extend(u32::from(MessageTypeId::AskForBlocks).to_varint_bytes());
+                <span class="kw">let </span>list_len: u32 = list.len().try_into().map_err(|<span class="kw">_</span>| {
+                    ModelsError::SerializeError(
+                        <span class="string">&quot;could not encode AskForBlocks list length as u32&quot;</span>.into(),
                     )
                 })<span class="question-mark">?</span>;
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">list_len</span>.<span class="ident">to_varint_bytes</span>());
-                <span class="kw">for</span> <span class="ident">hash</span> <span class="kw">in</span> <span class="ident">list</span> {
-                    <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">hash</span>.<span class="ident">to_bytes</span>());
+                res.extend(list_len.to_varint_bytes());
+                <span class="kw">for </span>hash <span class="kw">in </span>list {
+                    res.extend(hash.to_bytes());
                 }
             }
-            <span class="ident">Message::AskPeerList</span> =&gt; {
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::AskPeerList</span>).<span class="ident">to_varint_bytes</span>());
+            Message::AskPeerList =&gt; {
+                res.extend(u32::from(MessageTypeId::AskPeerList).to_varint_bytes());
             }
-            <span class="ident">Message::PeerList</span>(<span class="ident">ip_vec</span>) =&gt; {
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::PeerList</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="ident">res</span>.<span class="ident">extend</span>((<span class="ident">ip_vec</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="kw">for</span> <span class="ident">ip</span> <span class="kw">in</span> <span class="ident">ip_vec</span> {
-                    <span class="ident">IP_SERIALIZER</span>.<span class="ident">serialize</span>(<span class="ident">ip</span>, <span class="kw-2">&amp;mut</span> <span class="ident">res</span>)<span class="question-mark">?</span>
-                }
+            Message::PeerList(ip_vec) =&gt; {
+                res.extend(u32::from(MessageTypeId::PeerList).to_varint_bytes());
+                res.extend((ip_vec.len() <span class="kw">as </span>u64).to_varint_bytes());
+                <span class="kw">for </span>ip <span class="kw">in </span>ip_vec {
+                    IP_SERIALIZER.serialize(ip, <span class="kw-2">&amp;mut </span>res)<span class="question-mark">?
+                </span>}
             }
-            <span class="ident">Message::BlockNotFound</span>(<span class="ident">hash</span>) =&gt; {
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::BlockNotFound</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">hash</span>.<span class="ident">to_bytes</span>());
+            Message::BlockNotFound(hash) =&gt; {
+                res.extend(u32::from(MessageTypeId::BlockNotFound).to_varint_bytes());
+                res.extend(hash.to_bytes());
             }
-            <span class="ident">Message::AskForOperations</span>(<span class="ident">operation_ids</span>) =&gt; {
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::AskForOperations</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="ident">OPERATION_PREFIX_ID_SERIALIZER</span>.<span class="ident">serialize</span>(<span class="ident">operation_ids</span>, <span class="kw-2">&amp;mut</span> <span class="ident">res</span>)<span class="question-mark">?</span>;
+            Message::AskForOperations(operation_ids) =&gt; {
+                res.extend(u32::from(MessageTypeId::AskForOperations).to_varint_bytes());
+                OPERATION_PREFIX_ID_SERIALIZER.serialize(operation_ids, <span class="kw-2">&amp;mut </span>res)<span class="question-mark">?</span>;
             }
-            <span class="ident">Message::OperationsAnnouncement</span>(<span class="ident">operation_ids</span>) =&gt; {
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::OperationsAnnouncement</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="ident">OPERATION_PREFIX_ID_SERIALIZER</span>.<span class="ident">serialize</span>(<span class="ident">operation_ids</span>, <span class="kw-2">&amp;mut</span> <span class="ident">res</span>)<span class="question-mark">?</span>;
+            Message::OperationsAnnouncement(operation_ids) =&gt; {
+                res.extend(u32::from(MessageTypeId::OperationsAnnouncement).to_varint_bytes());
+                OPERATION_PREFIX_ID_SERIALIZER.serialize(operation_ids, <span class="kw-2">&amp;mut </span>res)<span class="question-mark">?</span>;
             }
-            <span class="ident">Message::Operations</span>(<span class="ident">operations</span>) =&gt; {
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::Operations</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="ident">OPERATIONS_SERIALIZER</span>.<span class="ident">serialize</span>(<span class="ident">operations</span>, <span class="kw-2">&amp;mut</span> <span class="ident">res</span>)<span class="question-mark">?</span>;
+            Message::Operations(operations) =&gt; {
+                res.extend(u32::from(MessageTypeId::Operations).to_varint_bytes());
+                OPERATIONS_SERIALIZER.serialize(operations, <span class="kw-2">&amp;mut </span>res)<span class="question-mark">?</span>;
             }
-            <span class="ident">Message::Endorsements</span>(<span class="ident">endorsements</span>) =&gt; {
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::Endorsements</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="ident">res</span>.<span class="ident">extend</span>((<span class="ident">endorsements</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="kw">for</span> <span class="ident">endorsement</span> <span class="kw">in</span> <span class="ident">endorsements</span>.<span class="ident">iter</span>() {
-                    <span class="ident">WRAPPED_SERIALIZER</span>.<span class="ident">serialize</span>(<span class="ident">endorsement</span>, <span class="kw-2">&amp;mut</span> <span class="ident">res</span>)<span class="question-mark">?</span>;
+            Message::Endorsements(endorsements) =&gt; {
+                res.extend(u32::from(MessageTypeId::Endorsements).to_varint_bytes());
+                res.extend((endorsements.len() <span class="kw">as </span>u32).to_varint_bytes());
+                <span class="kw">for </span>endorsement <span class="kw">in </span>endorsements.iter() {
+                    WRAPPED_SERIALIZER.serialize(endorsement, <span class="kw-2">&amp;mut </span>res)<span class="question-mark">?</span>;
                 }
             }
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+        <span class="prelude-val">Ok</span>(res)
     }
 }
 
-<span class="doccomment">/// For more details on how incoming objects are checked for validity at this stage,</span>
-<span class="doccomment">/// see their implementation of `from_bytes_compact` in `models`.</span>
-<span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">Message</span> {
-    <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="ident">ModelsResult</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>)<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0usize</span>;
+<span class="doccomment">/// For more details on how incoming objects are checked for validity at this stage,
+/// see their implementation of `from_bytes_compact` in `models`.
+</span><span class="kw">impl </span>DeserializeCompact <span class="kw">for </span>Message {
+    <span class="kw">fn </span>from_bytes_compact(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; ModelsResult&lt;(<span class="self">Self</span>, usize)&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="number">0usize</span>;
 
-        <span class="kw">let</span> (<span class="ident">max_ask_blocks_per_message</span>, <span class="ident">max_peer_list_length</span>, <span class="ident">max_endorsements_per_message</span>) <span class="op">=</span>
-            <span class="ident">with_serialization_context</span>(<span class="op">|</span><span class="ident">context</span><span class="op">|</span> {
+        <span class="kw">let </span>(max_ask_blocks_per_message, max_peer_list_length, max_endorsements_per_message) =
+            with_serialization_context(|context| {
                 (
-                    <span class="ident">context</span>.<span class="ident">max_ask_blocks_per_message</span>,
-                    <span class="ident">context</span>.<span class="ident">max_advertise_length</span>,
-                    <span class="ident">context</span>.<span class="ident">max_endorsements_per_message</span>,
+                    context.max_ask_blocks_per_message,
+                    context.max_advertise_length,
+                    context.max_endorsements_per_message,
                 )
             });
 
-        <span class="kw">let</span> (<span class="ident">type_id_raw</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u32::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
+        <span class="kw">let </span>(type_id_raw, delta) = u32::from_varint_bytes(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+        cursor += delta;
 
-        <span class="kw">let</span> <span class="ident">type_id</span>: <span class="ident">MessageTypeId</span> <span class="op">=</span> <span class="ident">type_id_raw</span>
-            .<span class="ident">try_into</span>()
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ModelsError::DeserializeError</span>(<span class="string">&quot;invalid message type ID&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
+        <span class="kw">let </span>type_id: MessageTypeId = type_id_raw
+            .try_into()
+            .map_err(|<span class="kw">_</span>| ModelsError::DeserializeError(<span class="string">&quot;invalid message type ID&quot;</span>.into()))<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">type_id</span> {
-            <span class="ident">MessageTypeId::HandshakeInitiation</span> =&gt; {
-                <span class="comment">// public key</span>
-                <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">PublicKey::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>;
-                <span class="comment">// random bytes</span>
-                <span class="kw">let</span> <span class="ident">random_bytes</span>: [<span class="ident">u8</span>; <span class="ident">HANDSHAKE_RANDOMNESS_SIZE_BYTES</span>] <span class="op">=</span>
-                    <span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">HANDSHAKE_RANDOMNESS_SIZE_BYTES</span>;
+        <span class="kw">let </span>res = <span class="kw">match </span>type_id {
+            MessageTypeId::HandshakeInitiation =&gt; {
+                <span class="comment">// public key
+                </span><span class="kw">let </span>public_key = PublicKey::from_bytes(<span class="kw-2">&amp;</span>array_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+                cursor += PUBLIC_KEY_SIZE_BYTES;
+                <span class="comment">// random bytes
+                </span><span class="kw">let </span>random_bytes: [u8; HANDSHAKE_RANDOMNESS_SIZE_BYTES] =
+                    array_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+                cursor += HANDSHAKE_RANDOMNESS_SIZE_BYTES;
 
-                <span class="comment">// version</span>
-                <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">version</span>) <span class="op">=</span> <span class="ident">VERSION_DESERIALIZER</span>.<span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">buffer</span>[<span class="ident">cursor</span>..].<span class="ident">len</span>() <span class="op">-</span> <span class="ident">rest</span>.<span class="ident">len</span>();
+                <span class="comment">// version
+                </span><span class="kw">let </span>(rest, version) = VERSION_DESERIALIZER.deserialize(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+                cursor += buffer[cursor..].len() - rest.len();
 
-                <span class="comment">// return message</span>
-                <span class="ident">Message::HandshakeInitiation</span> {
-                    <span class="ident">public_key</span>,
-                    <span class="ident">random_bytes</span>,
-                    <span class="ident">version</span>,
+                <span class="comment">// return message
+                </span>Message::HandshakeInitiation {
+                    public_key,
+                    random_bytes,
+                    version,
                 }
             }
-            <span class="ident">MessageTypeId::HandshakeReply</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">Signature::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">SIGNATURE_SIZE_BYTES</span>;
-                <span class="ident">Message::HandshakeReply</span> { <span class="ident">signature</span> }
+            MessageTypeId::HandshakeReply =&gt; {
+                <span class="kw">let </span>signature = Signature::from_bytes(<span class="kw-2">&amp;</span>array_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+                cursor += SIGNATURE_SIZE_BYTES;
+                Message::HandshakeReply { signature }
             }
-            <span class="ident">MessageTypeId::Block</span> =&gt; {
-                <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">block</span>): (<span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">WrappedBlock</span>) <span class="op">=</span>
-                    <span class="ident">WRAPPED_BLOCK_DESERIALIZER</span>.<span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">buffer</span>[<span class="ident">cursor</span>..].<span class="ident">len</span>() <span class="op">-</span> <span class="ident">rest</span>.<span class="ident">len</span>();
-                <span class="ident">Message::Block</span>(<span class="ident">block</span>)
+            MessageTypeId::Block =&gt; {
+                <span class="kw">let </span>(rest, block): (<span class="kw-2">&amp;</span>[u8], WrappedBlock) =
+                    WRAPPED_BLOCK_DESERIALIZER.deserialize(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+                cursor += buffer[cursor..].len() - rest.len();
+                Message::Block(block)
             }
-            <span class="ident">MessageTypeId::BlockHeader</span> =&gt; {
-                <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">header</span>): (<span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">WrappedHeader</span>) <span class="op">=</span>
-                    <span class="ident">WRAPPED_BLOCK_HEADER_DESERIALIZER</span>.<span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">buffer</span>[<span class="ident">cursor</span>..].<span class="ident">len</span>() <span class="op">-</span> <span class="ident">rest</span>.<span class="ident">len</span>();
-                <span class="ident">Message::BlockHeader</span>(<span class="ident">header</span>)
+            MessageTypeId::BlockHeader =&gt; {
+                <span class="kw">let </span>(rest, header): (<span class="kw-2">&amp;</span>[u8], WrappedHeader) =
+                    WRAPPED_BLOCK_HEADER_DESERIALIZER.deserialize(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+                cursor += buffer[cursor..].len() - rest.len();
+                Message::BlockHeader(header)
             }
-            <span class="ident">MessageTypeId::AskForBlocks</span> =&gt; {
-                <span class="kw">let</span> (<span class="ident">length</span>, <span class="ident">delta</span>) <span class="op">=</span>
-                    <span class="ident">u32::from_varint_bytes_bounded</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..], <span class="ident">max_ask_blocks_per_message</span>)<span class="question-mark">?</span>;
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-                <span class="comment">// hash list</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">list</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">length</span> <span class="kw">as</span> <span class="ident">usize</span>);
-                <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">length</span> {
-                    <span class="kw">let</span> <span class="ident">b_id</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
-                    <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>;
-                    <span class="ident">list</span>.<span class="ident">push</span>(<span class="ident">b_id</span>);
+            MessageTypeId::AskForBlocks =&gt; {
+                <span class="kw">let </span>(length, delta) =
+                    u32::from_varint_bytes_bounded(<span class="kw-2">&amp;</span>buffer[cursor..], max_ask_blocks_per_message)<span class="question-mark">?</span>;
+                cursor += delta;
+                <span class="comment">// hash list
+                </span><span class="kw">let </span><span class="kw-2">mut </span>list: Vec&lt;BlockId&gt; = Vec::with_capacity(length <span class="kw">as </span>usize);
+                <span class="kw">for _ in </span><span class="number">0</span>..length {
+                    <span class="kw">let </span>b_id = BlockId::from_bytes(<span class="kw-2">&amp;</span>array_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>);
+                    cursor += BLOCK_ID_SIZE_BYTES;
+                    list.push(b_id);
                 }
-                <span class="ident">Message::AskForBlocks</span>(<span class="ident">list</span>)
+                Message::AskForBlocks(list)
             }
-            <span class="ident">MessageTypeId::AskPeerList</span> =&gt; <span class="ident">Message::AskPeerList</span>,
-            <span class="ident">MessageTypeId::PeerList</span> =&gt; {
-                <span class="comment">// length</span>
-                <span class="kw">let</span> (<span class="ident">length</span>, <span class="ident">delta</span>) <span class="op">=</span>
-                    <span class="ident">u32::from_varint_bytes_bounded</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..], <span class="ident">max_peer_list_length</span>)<span class="question-mark">?</span>;
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-                <span class="comment">// peer list</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peers</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">length</span> <span class="kw">as</span> <span class="ident">usize</span>);
-                <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">length</span> {
-                    <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">ip</span>) <span class="op">=</span> <span class="ident">IP_DESERIALIZER</span>
-                        .<span class="ident">deserialize</span>::<span class="op">&lt;</span><span class="ident">DeserializeError</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])
-                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                            <span class="ident">ModelsError::DeserializeError</span>(
-                                <span class="string">&quot;Failed to deserialize IpAddr&quot;</span>.<span class="ident">to_string</span>(),
+            MessageTypeId::AskPeerList =&gt; Message::AskPeerList,
+            MessageTypeId::PeerList =&gt; {
+                <span class="comment">// length
+                </span><span class="kw">let </span>(length, delta) =
+                    u32::from_varint_bytes_bounded(<span class="kw-2">&amp;</span>buffer[cursor..], max_peer_list_length)<span class="question-mark">?</span>;
+                cursor += delta;
+                <span class="comment">// peer list
+                </span><span class="kw">let </span><span class="kw-2">mut </span>peers: Vec&lt;IpAddr&gt; = Vec::with_capacity(length <span class="kw">as </span>usize);
+                <span class="kw">for _ in </span><span class="number">0</span>..length {
+                    <span class="kw">let </span>(rest, ip) = IP_DESERIALIZER
+                        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer[cursor..])
+                        .map_err(|<span class="kw">_</span>| {
+                            ModelsError::DeserializeError(
+                                <span class="string">&quot;Failed to deserialize IpAddr&quot;</span>.to_string(),
                             )
                         })<span class="question-mark">?</span>;
-                    <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">buffer</span>[<span class="ident">cursor</span>..].<span class="ident">len</span>() <span class="op">-</span> <span class="ident">rest</span>.<span class="ident">len</span>();
-                    <span class="ident">peers</span>.<span class="ident">push</span>(<span class="ident">ip</span>);
+                    cursor += buffer[cursor..].len() - rest.len();
+                    peers.push(ip);
                 }
-                <span class="ident">Message::PeerList</span>(<span class="ident">peers</span>)
+                Message::PeerList(peers)
             }
-            <span class="ident">MessageTypeId::BlockNotFound</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">b_id</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>;
-                <span class="ident">Message::BlockNotFound</span>(<span class="ident">b_id</span>)
+            MessageTypeId::BlockNotFound =&gt; {
+                <span class="kw">let </span>b_id = BlockId::from_bytes(<span class="kw-2">&amp;</span>array_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>);
+                cursor += BLOCK_ID_SIZE_BYTES;
+                Message::BlockNotFound(b_id)
             }
-            <span class="ident">MessageTypeId::Operations</span> =&gt; {
-                <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">operations</span>) <span class="op">=</span> <span class="ident">OPERATIONS_DESERIALIZER</span>.<span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">buffer</span>[<span class="ident">cursor</span>..].<span class="ident">len</span>() <span class="op">-</span> <span class="ident">rest</span>.<span class="ident">len</span>();
-                <span class="ident">Message::Operations</span>(<span class="ident">operations</span>)
+            MessageTypeId::Operations =&gt; {
+                <span class="kw">let </span>(rest, operations) = OPERATIONS_DESERIALIZER.deserialize(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+                cursor += buffer[cursor..].len() - rest.len();
+                Message::Operations(operations)
             }
-            <span class="ident">MessageTypeId::AskForOperations</span> =&gt; {
-                <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">operation_prefix_ids</span>) <span class="op">=</span>
-                    <span class="ident">OPERATION_PREFIX_ID_DESERIALIZER</span>.<span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">buffer</span>[<span class="ident">cursor</span>..].<span class="ident">len</span>() <span class="op">-</span> <span class="ident">rest</span>.<span class="ident">len</span>();
-                <span class="ident">Message::AskForOperations</span>(<span class="ident">operation_prefix_ids</span>)
+            MessageTypeId::AskForOperations =&gt; {
+                <span class="kw">let </span>(rest, operation_prefix_ids) =
+                    OPERATION_PREFIX_ID_DESERIALIZER.deserialize(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+                cursor += buffer[cursor..].len() - rest.len();
+                Message::AskForOperations(operation_prefix_ids)
             }
-            <span class="ident">MessageTypeId::OperationsAnnouncement</span> =&gt; {
-                <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">operation_prefix_ids</span>) <span class="op">=</span>
-                    <span class="ident">OPERATION_PREFIX_ID_DESERIALIZER</span>.<span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">buffer</span>[<span class="ident">cursor</span>..].<span class="ident">len</span>() <span class="op">-</span> <span class="ident">rest</span>.<span class="ident">len</span>();
-                <span class="ident">Message::OperationsAnnouncement</span>(<span class="ident">operation_prefix_ids</span>)
+            MessageTypeId::OperationsAnnouncement =&gt; {
+                <span class="kw">let </span>(rest, operation_prefix_ids) =
+                    OPERATION_PREFIX_ID_DESERIALIZER.deserialize(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+                cursor += buffer[cursor..].len() - rest.len();
+                Message::OperationsAnnouncement(operation_prefix_ids)
             }
-            <span class="ident">MessageTypeId::Endorsements</span> =&gt; {
-                <span class="comment">// length</span>
-                <span class="kw">let</span> (<span class="ident">length</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u32::from_varint_bytes_bounded</span>(
-                    <span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..],
-                    <span class="ident">max_endorsements_per_message</span>,
+            MessageTypeId::Endorsements =&gt; {
+                <span class="comment">// length
+                </span><span class="kw">let </span>(length, delta) = u32::from_varint_bytes_bounded(
+                    <span class="kw-2">&amp;</span>buffer[cursor..],
+                    max_endorsements_per_message,
                 )<span class="question-mark">?</span>;
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-                <span class="comment">// operations</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">endorsements</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">length</span> <span class="kw">as</span> <span class="ident">usize</span>);
-                <span class="kw">let</span> <span class="ident">endorsement_deserializer</span> <span class="op">=</span> <span class="macro">maybe_static::maybe_static!</span>(
-                    <span class="prelude-val">Some</span>(<span class="ident">max_endorsements_per_message</span>),
-                    <span class="ident">WrappedDeserializer</span><span class="op">&lt;</span><span class="ident">Endorsement</span>, <span class="ident">EndorsementDeserializer</span><span class="op">&gt;</span>,
-                    <span class="op">|</span><span class="ident">max</span>: <span class="ident">u32</span><span class="op">|</span> <span class="ident">WrappedDeserializer::new</span>(<span class="ident">EndorsementDeserializer::new</span>(<span class="ident">max</span>))
+                cursor += delta;
+                <span class="comment">// operations
+                </span><span class="kw">let </span><span class="kw-2">mut </span>endorsements = Vec::with_capacity(length <span class="kw">as </span>usize);
+                <span class="kw">let </span>endorsement_deserializer = <span class="macro">maybe_static::maybe_static!</span>(
+                    <span class="prelude-val">Some</span>(max_endorsements_per_message),
+                    WrappedDeserializer&lt;Endorsement, EndorsementDeserializer&gt;,
+                    |max: u32| WrappedDeserializer::new(EndorsementDeserializer::new(max))
                 )<span class="question-mark">?</span>;
-                <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">length</span> {
-                    <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">endorsement</span>) <span class="op">=</span>
-                        <span class="ident">endorsement_deserializer</span>.<span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-                    <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">buffer</span>[<span class="ident">cursor</span>..].<span class="ident">len</span>() <span class="op">-</span> <span class="ident">rest</span>.<span class="ident">len</span>();
-                    <span class="ident">endorsements</span>.<span class="ident">push</span>(<span class="ident">endorsement</span>);
+                <span class="kw">for _ in </span><span class="number">0</span>..length {
+                    <span class="kw">let </span>(rest, endorsement) =
+                        endorsement_deserializer.deserialize(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+                    cursor += buffer[cursor..].len() - rest.len();
+                    endorsements.push(endorsement);
                 }
-                <span class="ident">Message::Endorsements</span>(<span class="ident">endorsements</span>)
+                Message::Endorsements(endorsements)
             }
         };
-        <span class="prelude-val">Ok</span>((<span class="ident">res</span>, <span class="ident">cursor</span>))
+        <span class="prelude-val">Ok</span>((res, cursor))
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
-    <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">prelude::StdRng</span>, <span class="ident">RngCore</span>, <span class="ident">SeedableRng</span>};
-    <span class="kw">use</span> <span class="ident">serial_test::serial</span>;
-    <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>massa_signature::KeyPair;
+    <span class="kw">use </span>rand::{prelude::StdRng, RngCore, SeedableRng};
+    <span class="kw">use </span>serial_test::serial;
+    <span class="kw">use </span>std::str::FromStr;
 
-    <span class="kw">fn</span> <span class="ident">initialize_context</span>() -&gt; <span class="ident">massa_models::SerializationContext</span> {
-        <span class="comment">// Init the serialization context with a default,</span>
-        <span class="comment">// can be overwritten with a more specific one in the test.</span>
-        <span class="kw">let</span> <span class="ident">ctx</span> <span class="op">=</span> <span class="ident">massa_models::SerializationContext</span> {
-            <span class="ident">max_operations_per_block</span>: <span class="number">1024</span>,
-            <span class="ident">thread_count</span>: <span class="number">2</span>,
-            <span class="ident">max_advertise_length</span>: <span class="number">128</span>,
-            <span class="ident">max_message_size</span>: <span class="number">3</span> <span class="op">*</span> <span class="number">1024</span> <span class="op">*</span> <span class="number">1024</span>,
-            <span class="ident">max_block_size</span>: <span class="number">3</span> <span class="op">*</span> <span class="number">1024</span> <span class="op">*</span> <span class="number">1024</span>,
-            <span class="ident">max_bootstrap_blocks</span>: <span class="number">100</span>,
-            <span class="ident">max_bootstrap_cliques</span>: <span class="number">100</span>,
-            <span class="ident">max_bootstrap_deps</span>: <span class="number">100</span>,
-            <span class="ident">max_bootstrap_children</span>: <span class="number">100</span>,
-            <span class="ident">max_ask_blocks_per_message</span>: <span class="number">10</span>,
-            <span class="ident">max_operations_per_message</span>: <span class="number">1024</span>,
-            <span class="ident">max_endorsements_per_message</span>: <span class="number">1024</span>,
-            <span class="ident">max_bootstrap_message_size</span>: <span class="number">100000000</span>,
-            <span class="ident">max_bootstrap_pos_entries</span>: <span class="number">1000</span>,
-            <span class="ident">max_bootstrap_pos_cycles</span>: <span class="number">5</span>,
-            <span class="ident">endorsement_count</span>: <span class="number">8</span>,
+    <span class="kw">fn </span>initialize_context() -&gt; massa_models::SerializationContext {
+        <span class="comment">// Init the serialization context with a default,
+        // can be overwritten with a more specific one in the test.
+        </span><span class="kw">let </span>ctx = massa_models::SerializationContext {
+            max_operations_per_block: <span class="number">1024</span>,
+            thread_count: <span class="number">2</span>,
+            max_advertise_length: <span class="number">128</span>,
+            max_message_size: <span class="number">3 </span>* <span class="number">1024 </span>* <span class="number">1024</span>,
+            max_block_size: <span class="number">3 </span>* <span class="number">1024 </span>* <span class="number">1024</span>,
+            max_bootstrap_blocks: <span class="number">100</span>,
+            max_bootstrap_cliques: <span class="number">100</span>,
+            max_bootstrap_deps: <span class="number">100</span>,
+            max_bootstrap_children: <span class="number">100</span>,
+            max_ask_blocks_per_message: <span class="number">10</span>,
+            max_operations_per_message: <span class="number">1024</span>,
+            max_endorsements_per_message: <span class="number">1024</span>,
+            max_bootstrap_message_size: <span class="number">100000000</span>,
+            max_bootstrap_pos_entries: <span class="number">1000</span>,
+            max_bootstrap_pos_cycles: <span class="number">5</span>,
+            endorsement_count: <span class="number">8</span>,
         };
-        <span class="ident">massa_models::init_serialization_context</span>(<span class="ident">ctx</span>.<span class="ident">clone</span>());
-        <span class="ident">ctx</span>
+        massa_models::init_serialization_context(ctx.clone());
+        ctx
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="attribute">#[<span class="ident">serial</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_ser_deser</span>() {
-        <span class="ident">initialize_context</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">random_bytes</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="number">32</span>];
-        <span class="ident">StdRng::from_entropy</span>().<span class="ident">fill_bytes</span>(<span class="kw-2">&amp;mut</span> <span class="ident">random_bytes</span>);
-        <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
-        <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="ident">Message::HandshakeInitiation</span> {
-            <span class="ident">public_key</span>: <span class="ident">keypair</span>.<span class="ident">get_public_key</span>(),
-            <span class="ident">random_bytes</span>,
-            <span class="ident">version</span>: <span class="ident">Version::from_str</span>(<span class="string">&quot;TEST.1.2&quot;</span>).<span class="ident">unwrap</span>(),
+    <span class="attribute">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_ser_deser() {
+        initialize_context();
+        <span class="kw">let </span><span class="kw-2">mut </span>random_bytes = [<span class="number">0u8</span>; <span class="number">32</span>];
+        StdRng::from_entropy().fill_bytes(<span class="kw-2">&amp;mut </span>random_bytes);
+        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>msg = Message::HandshakeInitiation {
+            public_key: keypair.get_public_key(),
+            random_bytes,
+            version: Version::from_str(<span class="string">&quot;TEST.1.2&quot;</span>).unwrap(),
         };
-        <span class="kw">let</span> <span class="ident">ser</span> <span class="op">=</span> <span class="ident">msg</span>.<span class="ident">to_bytes_compact</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> (<span class="ident">deser</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">Message::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">ser</span>).<span class="ident">unwrap</span>();
-        <span class="kw">match</span> (<span class="ident">msg</span>, <span class="ident">deser</span>) {
+        <span class="kw">let </span>ser = msg.to_bytes_compact().unwrap();
+        <span class="kw">let </span>(deser, <span class="kw">_</span>) = Message::from_bytes_compact(<span class="kw-2">&amp;</span>ser).unwrap();
+        <span class="kw">match </span>(msg, deser) {
             (
-                <span class="ident">Message::HandshakeInitiation</span> {
-                    <span class="ident">public_key</span>: <span class="ident">pk1</span>,
-                    <span class="ident">random_bytes</span>: <span class="ident">rb1</span>,
-                    <span class="ident">version</span>: <span class="ident">v1</span>,
+                Message::HandshakeInitiation {
+                    public_key: pk1,
+                    random_bytes: rb1,
+                    version: v1,
                 },
-                <span class="ident">Message::HandshakeInitiation</span> {
-                    <span class="ident">public_key</span>,
-                    <span class="ident">random_bytes</span>,
-                    <span class="ident">version</span>,
+                Message::HandshakeInitiation {
+                    public_key,
+                    random_bytes,
+                    version,
                 },
             ) =&gt; {
-                <span class="macro">assert_eq!</span>(<span class="ident">pk1</span>, <span class="ident">public_key</span>);
-                <span class="macro">assert_eq!</span>(<span class="ident">rb1</span>, <span class="ident">random_bytes</span>);
-                <span class="macro">assert_eq!</span>(<span class="ident">v1</span>, <span class="ident">version</span>);
+                <span class="macro">assert_eq!</span>(pk1, public_key);
+                <span class="macro">assert_eq!</span>(rb1, random_bytes);
+                <span class="macro">assert_eq!</span>(v1, version);
             }
-            <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected message&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected message&quot;</span>),
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

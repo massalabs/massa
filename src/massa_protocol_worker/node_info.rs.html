@@ -196,203 +196,203 @@
 <span id="196">196</span>
 <span id="197">197</span>
 <span id="198">198</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Only public for the protocol worker.</span>
-<span class="doccomment">//! Contains all what we know for each node we are connected or we used to</span>
-<span class="doccomment">//! know in the network.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Operations</span>
-<span class="doccomment">//! Same as for wanted/known blocks, we remember here in cache which node asked</span>
-<span class="doccomment">//! for operations and which operations he seem to already know.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Only public for the protocol worker.
+//! Contains all what we know for each node we are connected or we used to
+//! know in the network.
+//!
+//! # Operations
+//! Same as for wanted/known blocks, we remember here in cache which node asked
+//! for operations and which operations he seem to already know.
 
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">operation::OperationIds</span>,
-    <span class="ident">prehash</span>::{<span class="ident">BuildMap</span>, <span class="ident">Map</span>, <span class="ident">Set</span>},
+</span><span class="kw">use </span>massa_models::{
+    operation::OperationIds,
+    prehash::{BuildMap, Map, Set},
 };
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>};
-<span class="kw">use</span> <span class="ident">massa_protocol_exports::ProtocolSettings</span>;
-<span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
-<span class="kw">use</span> <span class="ident">tokio::time::Instant</span>;
+<span class="kw">use </span>massa_models::{BlockId, EndorsementId, OperationId};
+<span class="kw">use </span>massa_protocol_exports::ProtocolSettings;
+<span class="kw">use </span>std::collections::VecDeque;
+<span class="kw">use </span>tokio::time::Instant;
 
-<span class="doccomment">/// Information about a node we are connected to,</span>
-<span class="doccomment">/// essentially our view of its state.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">NodeInfo</span> {
-    <span class="doccomment">/// The blocks the node &quot;knows about&quot;,</span>
-    <span class="doccomment">/// defined as the one the node propagated headers to us for.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">known_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, (<span class="ident">bool</span>, <span class="ident">Instant</span>)<span class="op">&gt;</span>,
-    <span class="doccomment">/// The blocks the node asked for.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">wanted_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Instant</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Blocks we asked that node for</span>
-    <span class="kw">pub</span> <span class="ident">asked_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Instant</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Instant when the node was added</span>
-    <span class="kw">pub</span> <span class="ident">connection_instant</span>: <span class="ident">Instant</span>,
-    <span class="doccomment">/// all known operations</span>
-    <span class="ident">known_operations</span>: <span class="ident">OperationIds</span>,
-    <span class="doccomment">/// Same as `known_operations` but sorted for a premature optimization :-)</span>
-    <span class="ident">known_operations_queue</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// all known endorsements</span>
-    <span class="ident">known_endorsements</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Same as `known_endorsements` but sorted for a premature optimization :-)</span>
-    <span class="ident">known_endorsements_queue</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Information about a node we are connected to,
+/// essentially our view of its state.
+</span><span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>NodeInfo {
+    <span class="doccomment">/// The blocks the node &quot;knows about&quot;,
+    /// defined as the one the node propagated headers to us for.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) known_blocks: Map&lt;BlockId, (bool, Instant)&gt;,
+    <span class="doccomment">/// The blocks the node asked for.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) wanted_blocks: Map&lt;BlockId, Instant&gt;,
+    <span class="doccomment">/// Blocks we asked that node for
+    </span><span class="kw">pub </span>asked_blocks: Map&lt;BlockId, Instant&gt;,
+    <span class="doccomment">/// Instant when the node was added
+    </span><span class="kw">pub </span>connection_instant: Instant,
+    <span class="doccomment">/// all known operations
+    </span>known_operations: OperationIds,
+    <span class="doccomment">/// Same as `known_operations` but sorted for a premature optimization :-)
+    </span>known_operations_queue: VecDeque&lt;OperationId&gt;,
+    <span class="doccomment">/// all known endorsements
+    </span>known_endorsements: Set&lt;EndorsementId&gt;,
+    <span class="doccomment">/// Same as `known_endorsements` but sorted for a premature optimization :-)
+    </span>known_endorsements_queue: VecDeque&lt;EndorsementId&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">NodeInfo</span> {
-    <span class="doccomment">/// Creates empty node info</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">pool_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ProtocolSettings</span>) -&gt; <span class="ident">NodeInfo</span> {
-        <span class="ident">NodeInfo</span> {
-            <span class="ident">known_blocks</span>: <span class="ident">Map::with_capacity_and_hasher</span>(
-                <span class="ident">pool_settings</span>.<span class="ident">max_node_known_blocks_size</span>,
-                <span class="ident">BuildMap::default</span>(),
+<span class="kw">impl </span>NodeInfo {
+    <span class="doccomment">/// Creates empty node info
+    </span><span class="kw">pub fn </span>new(pool_settings: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ProtocolSettings) -&gt; NodeInfo {
+        NodeInfo {
+            known_blocks: Map::with_capacity_and_hasher(
+                pool_settings.max_node_known_blocks_size,
+                BuildMap::default(),
             ),
-            <span class="ident">wanted_blocks</span>: <span class="ident">Map::with_capacity_and_hasher</span>(
-                <span class="ident">pool_settings</span>.<span class="ident">max_node_wanted_blocks_size</span>,
-                <span class="ident">BuildMap::default</span>(),
+            wanted_blocks: Map::with_capacity_and_hasher(
+                pool_settings.max_node_wanted_blocks_size,
+                BuildMap::default(),
             ),
-            <span class="ident">asked_blocks</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">connection_instant</span>: <span class="ident">Instant::now</span>(),
-            <span class="ident">known_operations</span>: <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="ident">::with_capacity_and_hasher</span>(
-                <span class="ident">pool_settings</span>.<span class="ident">max_node_known_ops_size</span>.<span class="ident">saturating_add</span>(<span class="number">1</span>),
-                <span class="ident">BuildMap::default</span>(),
+            asked_blocks: Default::default(),
+            connection_instant: Instant::now(),
+            known_operations: Set::&lt;OperationId&gt;::with_capacity_and_hasher(
+                pool_settings.max_node_known_ops_size.saturating_add(<span class="number">1</span>),
+                BuildMap::default(),
             ),
-            <span class="ident">known_operations_queue</span>: <span class="ident">VecDeque::with_capacity</span>(
-                <span class="ident">pool_settings</span>.<span class="ident">max_node_known_ops_size</span>.<span class="ident">saturating_add</span>(<span class="number">1</span>),
+            known_operations_queue: VecDeque::with_capacity(
+                pool_settings.max_node_known_ops_size.saturating_add(<span class="number">1</span>),
             ),
-            <span class="ident">known_endorsements</span>: <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="ident">::with_capacity_and_hasher</span>(
-                <span class="ident">pool_settings</span>.<span class="ident">max_node_known_endorsements_size</span>,
-                <span class="ident">BuildMap::default</span>(),
+            known_endorsements: Set::&lt;EndorsementId&gt;::with_capacity_and_hasher(
+                pool_settings.max_node_known_endorsements_size,
+                BuildMap::default(),
             ),
-            <span class="ident">known_endorsements_queue</span>: <span class="ident">VecDeque::with_capacity</span>(
-                <span class="ident">pool_settings</span>.<span class="ident">max_node_known_endorsements_size</span>,
+            known_endorsements_queue: VecDeque::with_capacity(
+                pool_settings.max_node_known_endorsements_size,
             ),
         }
     }
 
-    <span class="doccomment">/// Get boolean if block knows about the block and when this information was got</span>
-    <span class="doccomment">/// in a option if we don&#39;t know if that node knows that block or not</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_known_block</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">block_id</span>: <span class="kw-2">&amp;</span><span class="ident">BlockId</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>(<span class="ident">bool</span>, <span class="ident">Instant</span>)<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">known_blocks</span>.<span class="ident">get</span>(<span class="ident">block_id</span>)
+    <span class="doccomment">/// Get boolean if block knows about the block and when this information was got
+    /// in a option if we don&#39;t know if that node knows that block or not
+    </span><span class="kw">pub fn </span>get_known_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(bool, Instant)&gt; {
+        <span class="self">self</span>.known_blocks.get(block_id)
     }
 
-    <span class="doccomment">/// Remove the oldest items from `known_blocks`</span>
-    <span class="doccomment">/// to ensure it contains at most `max_node_known_blocks_size` items.</span>
-    <span class="doccomment">/// This algorithm is optimized for cases where there are no more than a couple excess items, ideally just one.</span>
-    <span class="kw">fn</span> <span class="ident">remove_excess_known_blocks</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">max_node_known_blocks_size</span>: <span class="ident">usize</span>) {
-        <span class="kw">while</span> <span class="self">self</span>.<span class="ident">known_blocks</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">max_node_known_blocks_size</span> {
-            <span class="comment">// remove oldest item</span>
-            <span class="kw">let</span> (<span class="kw-2">&amp;</span><span class="ident">h</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">known_blocks</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">min_by_key</span>(<span class="op">|</span>(<span class="ident">h</span>, (<span class="kw">_</span>, <span class="ident">t</span>))<span class="op">|</span> (<span class="kw-2">*</span><span class="ident">t</span>, <span class="kw-2">*</span><span class="ident">h</span>))
-                .<span class="ident">unwrap</span>(); <span class="comment">// never None because is the collection is empty, while loop isn&#39;t executed.</span>
-            <span class="self">self</span>.<span class="ident">known_blocks</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">h</span>);
+    <span class="doccomment">/// Remove the oldest items from `known_blocks`
+    /// to ensure it contains at most `max_node_known_blocks_size` items.
+    /// This algorithm is optimized for cases where there are no more than a couple excess items, ideally just one.
+    </span><span class="kw">fn </span>remove_excess_known_blocks(<span class="kw-2">&amp;mut </span><span class="self">self</span>, max_node_known_blocks_size: usize) {
+        <span class="kw">while </span><span class="self">self</span>.known_blocks.len() &gt; max_node_known_blocks_size {
+            <span class="comment">// remove oldest item
+            </span><span class="kw">let </span>(<span class="kw-2">&amp;</span>h, <span class="kw">_</span>) = <span class="self">self
+                </span>.known_blocks
+                .iter()
+                .min_by_key(|(h, (<span class="kw">_</span>, t))| (<span class="kw-2">*</span>t, <span class="kw-2">*</span>h))
+                .unwrap(); <span class="comment">// never None because is the collection is empty, while loop isn&#39;t executed.
+            </span><span class="self">self</span>.known_blocks.remove(<span class="kw-2">&amp;</span>h);
         }
     }
 
-    <span class="doccomment">/// Insert knowledge of a list of blocks in `NodeInfo`</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ## Arguments</span>
-    <span class="doccomment">/// * `self`: node info</span>
-    <span class="doccomment">/// * `block_ids`: list of blocks</span>
-    <span class="doccomment">/// * `val`: if that node knows that block</span>
-    <span class="doccomment">/// * `instant`: when that information was created</span>
-    <span class="doccomment">/// * `max_node_known_blocks_size`: max size of the knowledge of an other node we want to keep</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert_known_blocks</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">block_ids</span>: <span class="kw-2">&amp;</span>[<span class="ident">BlockId</span>],
-        <span class="ident">val</span>: <span class="ident">bool</span>,
-        <span class="ident">instant</span>: <span class="ident">Instant</span>,
-        <span class="ident">max_node_known_blocks_size</span>: <span class="ident">usize</span>,
+    <span class="doccomment">/// Insert knowledge of a list of blocks in `NodeInfo`
+    ///
+    /// ## Arguments
+    /// * `self`: node info
+    /// * `block_ids`: list of blocks
+    /// * `val`: if that node knows that block
+    /// * `instant`: when that information was created
+    /// * `max_node_known_blocks_size`: max size of the knowledge of an other node we want to keep
+    </span><span class="kw">pub fn </span>insert_known_blocks(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        block_ids: <span class="kw-2">&amp;</span>[BlockId],
+        val: bool,
+        instant: Instant,
+        max_node_known_blocks_size: usize,
     ) {
-        <span class="kw">for</span> <span class="ident">block_id</span> <span class="kw">in</span> <span class="ident">block_ids</span> {
-            <span class="self">self</span>.<span class="ident">known_blocks</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">block_id</span>, (<span class="ident">val</span>, <span class="ident">instant</span>));
+        <span class="kw">for </span>block_id <span class="kw">in </span>block_ids {
+            <span class="self">self</span>.known_blocks.insert(<span class="kw-2">*</span>block_id, (val, instant));
         }
-        <span class="self">self</span>.<span class="ident">remove_excess_known_blocks</span>(<span class="ident">max_node_known_blocks_size</span>);
+        <span class="self">self</span>.remove_excess_known_blocks(max_node_known_blocks_size);
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert_known_endorsements</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
-        <span class="ident">max_endorsements_nb</span>: <span class="ident">usize</span>,
+    <span class="kw">pub fn </span>insert_known_endorsements(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        endorsements: Vec&lt;EndorsementId&gt;,
+        max_endorsements_nb: usize,
     ) {
-        <span class="kw">for</span> <span class="ident">endorsement_id</span> <span class="kw">in</span> <span class="ident">endorsements</span>.<span class="ident">into_iter</span>() {
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">known_endorsements</span>.<span class="ident">insert</span>(<span class="ident">endorsement_id</span>) {
-                <span class="self">self</span>.<span class="ident">known_endorsements_queue</span>.<span class="ident">push_front</span>(<span class="ident">endorsement_id</span>);
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">known_endorsements_queue</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">max_endorsements_nb</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">r</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">known_endorsements_queue</span>.<span class="ident">pop_back</span>() {
-                        <span class="self">self</span>.<span class="ident">known_endorsements</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">r</span>);
+        <span class="kw">for </span>endorsement_id <span class="kw">in </span>endorsements.into_iter() {
+            <span class="kw">if </span><span class="self">self</span>.known_endorsements.insert(endorsement_id) {
+                <span class="self">self</span>.known_endorsements_queue.push_front(endorsement_id);
+                <span class="kw">if </span><span class="self">self</span>.known_endorsements_queue.len() &gt; max_endorsements_nb {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(r) = <span class="self">self</span>.known_endorsements_queue.pop_back() {
+                        <span class="self">self</span>.known_endorsements.remove(<span class="kw-2">&amp;</span>r);
                     }
                 }
             }
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">knows_endorsement</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">endorsement_id</span>: <span class="kw-2">&amp;</span><span class="ident">EndorsementId</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">known_endorsements</span>.<span class="ident">contains</span>(<span class="ident">endorsement_id</span>)
+    <span class="kw">pub fn </span>knows_endorsement(<span class="kw-2">&amp;</span><span class="self">self</span>, endorsement_id: <span class="kw-2">&amp;</span>EndorsementId) -&gt; bool {
+        <span class="self">self</span>.known_endorsements.contains(endorsement_id)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert_known_ops</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ops</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>, <span class="ident">max_ops_nb</span>: <span class="ident">usize</span>) {
-        <span class="kw">for</span> <span class="ident">operation_id</span> <span class="kw">in</span> <span class="ident">ops</span>.<span class="ident">into_iter</span>() {
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">known_operations</span>.<span class="ident">insert</span>(<span class="ident">operation_id</span>) {
-                <span class="self">self</span>.<span class="ident">known_operations_queue</span>.<span class="ident">push_back</span>(<span class="ident">operation_id</span>);
-                <span class="kw">while</span> <span class="self">self</span>.<span class="ident">known_operations_queue</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">max_ops_nb</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">op_id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">known_operations_queue</span>.<span class="ident">pop_front</span>() {
-                        <span class="self">self</span>.<span class="ident">known_operations</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">op_id</span>);
+    <span class="kw">pub fn </span>insert_known_ops(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ops: Set&lt;OperationId&gt;, max_ops_nb: usize) {
+        <span class="kw">for </span>operation_id <span class="kw">in </span>ops.into_iter() {
+            <span class="kw">if </span><span class="self">self</span>.known_operations.insert(operation_id) {
+                <span class="self">self</span>.known_operations_queue.push_back(operation_id);
+                <span class="kw">while </span><span class="self">self</span>.known_operations_queue.len() &gt; max_ops_nb {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(op_id) = <span class="self">self</span>.known_operations_queue.pop_front() {
+                        <span class="self">self</span>.known_operations.remove(<span class="kw-2">&amp;</span>op_id);
                     }
                 }
             }
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">knows_op</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">op</span>: <span class="kw-2">&amp;</span><span class="ident">OperationId</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">known_operations</span>.<span class="ident">contains</span>(<span class="ident">op</span>)
+    <span class="kw">pub fn </span>knows_op(<span class="kw-2">&amp;</span><span class="self">self</span>, op: <span class="kw-2">&amp;</span>OperationId) -&gt; bool {
+        <span class="self">self</span>.known_operations.contains(op)
     }
 
-    <span class="doccomment">/// Remove the oldest items from `wanted_blocks`</span>
-    <span class="doccomment">/// to ensure it contains at most `max_node_wanted_blocks_size` items.</span>
-    <span class="doccomment">/// This algorithm is optimized for cases where there are no more than a couple excess items, ideally just one.</span>
-    <span class="kw">fn</span> <span class="ident">remove_excess_wanted_blocks</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">max_node_wanted_blocks_size</span>: <span class="ident">usize</span>) {
-        <span class="kw">while</span> <span class="self">self</span>.<span class="ident">wanted_blocks</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">max_node_wanted_blocks_size</span> {
-            <span class="comment">// remove oldest item</span>
-            <span class="kw">let</span> (<span class="kw-2">&amp;</span><span class="ident">h</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">wanted_blocks</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">min_by_key</span>(<span class="op">|</span>(<span class="ident">h</span>, <span class="ident">t</span>)<span class="op">|</span> (<span class="kw-2">*</span><span class="ident">t</span>, <span class="kw-2">*</span><span class="ident">h</span>))
-                .<span class="ident">unwrap</span>(); <span class="comment">// never None because is the collection is empty, while loop isn&#39;t executed.</span>
-            <span class="self">self</span>.<span class="ident">wanted_blocks</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">h</span>);
+    <span class="doccomment">/// Remove the oldest items from `wanted_blocks`
+    /// to ensure it contains at most `max_node_wanted_blocks_size` items.
+    /// This algorithm is optimized for cases where there are no more than a couple excess items, ideally just one.
+    </span><span class="kw">fn </span>remove_excess_wanted_blocks(<span class="kw-2">&amp;mut </span><span class="self">self</span>, max_node_wanted_blocks_size: usize) {
+        <span class="kw">while </span><span class="self">self</span>.wanted_blocks.len() &gt; max_node_wanted_blocks_size {
+            <span class="comment">// remove oldest item
+            </span><span class="kw">let </span>(<span class="kw-2">&amp;</span>h, <span class="kw">_</span>) = <span class="self">self
+                </span>.wanted_blocks
+                .iter()
+                .min_by_key(|(h, t)| (<span class="kw-2">*</span>t, <span class="kw-2">*</span>h))
+                .unwrap(); <span class="comment">// never None because is the collection is empty, while loop isn&#39;t executed.
+            </span><span class="self">self</span>.wanted_blocks.remove(<span class="kw-2">&amp;</span>h);
         }
     }
 
-    <span class="doccomment">/// Insert a block in the wanted list of a node.</span>
-    <span class="doccomment">/// Also lists the block as not known by the node</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert_wanted_block</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
-        <span class="ident">max_node_wanted_blocks_size</span>: <span class="ident">usize</span>,
-        <span class="ident">max_node_known_blocks_size</span>: <span class="ident">usize</span>,
+    <span class="doccomment">/// Insert a block in the wanted list of a node.
+    /// Also lists the block as not known by the node
+    </span><span class="kw">pub fn </span>insert_wanted_block(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        block_id: BlockId,
+        max_node_wanted_blocks_size: usize,
+        max_node_known_blocks_size: usize,
     ) {
-        <span class="comment">// Insert into known_blocks</span>
-        <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
-        <span class="self">self</span>.<span class="ident">wanted_blocks</span>.<span class="ident">insert</span>(<span class="ident">block_id</span>, <span class="ident">now</span>);
-        <span class="self">self</span>.<span class="ident">remove_excess_wanted_blocks</span>(<span class="ident">max_node_wanted_blocks_size</span>);
+        <span class="comment">// Insert into known_blocks
+        </span><span class="kw">let </span>now = Instant::now();
+        <span class="self">self</span>.wanted_blocks.insert(block_id, now);
+        <span class="self">self</span>.remove_excess_wanted_blocks(max_node_wanted_blocks_size);
 
-        <span class="comment">// If the node wants a block, it means that it doesn&#39;t have it.</span>
-        <span class="comment">// To avoid asking the node for this block in the meantime,</span>
-        <span class="comment">// mark the node as not knowing the block.</span>
-        <span class="self">self</span>.<span class="ident">insert_known_blocks</span>(<span class="kw-2">&amp;</span>[<span class="ident">block_id</span>], <span class="bool-val">false</span>, <span class="ident">now</span>, <span class="ident">max_node_known_blocks_size</span>);
+        <span class="comment">// If the node wants a block, it means that it doesn&#39;t have it.
+        // To avoid asking the node for this block in the meantime,
+        // mark the node as not knowing the block.
+        </span><span class="self">self</span>.insert_known_blocks(<span class="kw-2">&amp;</span>[block_id], <span class="bool-val">false</span>, now, max_node_known_blocks_size);
     }
 
-    <span class="doccomment">/// returns whether a node wants a block, and if so, updates the timestamp of that info to now()</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">contains_wanted_block_update_timestamp</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">block_id</span>: <span class="kw-2">&amp;</span><span class="ident">BlockId</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">wanted_blocks</span>
-            .<span class="ident">get_mut</span>(<span class="ident">block_id</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">instant</span><span class="op">|</span> <span class="kw-2">*</span><span class="ident">instant</span> <span class="op">=</span> <span class="ident">Instant::now</span>())
-            .<span class="ident">is_some</span>()
+    <span class="doccomment">/// returns whether a node wants a block, and if so, updates the timestamp of that info to now()
+    </span><span class="kw">pub fn </span>contains_wanted_block_update_timestamp(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId) -&gt; bool {
+        <span class="self">self</span>.wanted_blocks
+            .get_mut(block_id)
+            .map(|instant| <span class="kw-2">*</span>instant = Instant::now())
+            .is_some()
     }
 
-    <span class="doccomment">/// Removes given block from wanted block for that node</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_wanted_block</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">block_id</span>: <span class="kw-2">&amp;</span><span class="ident">BlockId</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">wanted_blocks</span>.<span class="ident">remove</span>(<span class="ident">block_id</span>).<span class="ident">is_some</span>()
+    <span class="doccomment">/// Removes given block from wanted block for that node
+    </span><span class="kw">pub fn </span>remove_wanted_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId) -&gt; bool {
+        <span class="self">self</span>.wanted_blocks.remove(block_id).is_some()
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

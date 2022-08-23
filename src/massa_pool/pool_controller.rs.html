@@ -349,356 +349,356 @@
 <span id="349">349</span>
 <span id="350">350</span>
 <span id="351">351</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::PoolConfig</span>;
+</span><span class="kw">use </span><span class="kw">crate</span>::settings::PoolConfig;
 
-<span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">error::PoolError</span>,
-    <span class="ident">pool_worker</span>::{<span class="ident">PoolCommand</span>, <span class="ident">PoolManagementCommand</span>, <span class="ident">PoolWorker</span>},
+<span class="kw">use super</span>::{
+    error::PoolError,
+    pool_worker::{PoolCommand, PoolManagementCommand, PoolWorker},
 };
-<span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">constants::CHANNEL_SIZE</span>,
-    <span class="ident">prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>},
-    <span class="ident">stats::PoolStats</span>,
-    <span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">Slot</span>, <span class="ident">WrappedEndorsement</span>,
-    <span class="ident">WrappedOperation</span>,
+<span class="kw">use </span>massa_logging::massa_trace;
+<span class="kw">use </span>massa_models::{
+    constants::CHANNEL_SIZE,
+    prehash::{Map, Set},
+    stats::PoolStats,
+    Address, BlockId, EndorsementId, OperationId, OperationSearchResult, Slot, WrappedEndorsement,
+    WrappedOperation,
 };
-<span class="kw">use</span> <span class="ident">massa_protocol_exports</span>::{<span class="ident">ProtocolCommandSender</span>, <span class="ident">ProtocolPoolEventReceiver</span>};
-<span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
-<span class="kw">use</span> <span class="ident">tokio</span>::{
-    <span class="ident">sync</span>::{<span class="ident">mpsc</span>, <span class="ident">oneshot</span>},
-    <span class="ident">task::JoinHandle</span>,
+<span class="kw">use </span>massa_protocol_exports::{ProtocolCommandSender, ProtocolPoolEventReceiver};
+<span class="kw">use </span>massa_storage::Storage;
+<span class="kw">use </span>tokio::{
+    sync::{mpsc, oneshot},
+    task::JoinHandle,
 };
-<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">debug</span>, <span class="ident">error</span>, <span class="ident">info</span>};
+<span class="kw">use </span>tracing::{debug, error, info};
 
-<span class="doccomment">/// Creates a new pool controller.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Arguments</span>
-<span class="doccomment">/// * `pool_settings`: pool configuration</span>
-<span class="doccomment">/// * `protocol_command_sender`: a `ProtocolCommandSender` instance to send commands to Protocol.</span>
-<span class="doccomment">/// * `protocol_pool_event_receiver`: a `ProtocolPoolEventReceiver` instance to receive pool events from `Protocol`.</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">start_pool_controller</span>(
-    <span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">PoolConfig</span>,
-    <span class="ident">protocol_command_sender</span>: <span class="ident">ProtocolCommandSender</span>,
-    <span class="ident">protocol_pool_event_receiver</span>: <span class="ident">ProtocolPoolEventReceiver</span>,
-    <span class="ident">storage</span>: <span class="ident">Storage</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">PoolCommandSender</span>, <span class="ident">PoolManager</span>), <span class="ident">PoolError</span><span class="op">&gt;</span> {
+<span class="doccomment">/// Creates a new pool controller.
+///
+/// # Arguments
+/// * `pool_settings`: pool configuration
+/// * `protocol_command_sender`: a `ProtocolCommandSender` instance to send commands to Protocol.
+/// * `protocol_pool_event_receiver`: a `ProtocolPoolEventReceiver` instance to receive pool events from `Protocol`.
+</span><span class="kw">pub async fn </span>start_pool_controller(
+    cfg: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>PoolConfig,
+    protocol_command_sender: ProtocolCommandSender,
+    protocol_pool_event_receiver: ProtocolPoolEventReceiver,
+    storage: Storage,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(PoolCommandSender, PoolManager), PoolError&gt; {
     <span class="macro">debug!</span>(<span class="string">&quot;starting pool controller&quot;</span>);
     <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.pool_controller.start_pool_controller&quot;</span>, {});
 
-    <span class="comment">// start worker</span>
-    <span class="kw">let</span> (<span class="ident">command_tx</span>, <span class="ident">command_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">PoolCommand</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
-    <span class="kw">let</span> (<span class="ident">manager_tx</span>, <span class="ident">manager_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">PoolManagementCommand</span><span class="op">&gt;</span>(<span class="number">1</span>);
-    <span class="kw">let</span> <span class="ident">join_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">PoolWorker::new</span>(
-            <span class="ident">cfg</span>,
-            <span class="ident">protocol_command_sender</span>,
-            <span class="ident">protocol_pool_event_receiver</span>,
-            <span class="ident">command_rx</span>,
-            <span class="ident">manager_rx</span>,
-            <span class="ident">storage</span>,
-        )<span class="question-mark">?</span>
-        .<span class="ident">run_loop</span>()
+    <span class="comment">// start worker
+    </span><span class="kw">let </span>(command_tx, command_rx) = mpsc::channel::&lt;PoolCommand&gt;(CHANNEL_SIZE);
+    <span class="kw">let </span>(manager_tx, manager_rx) = mpsc::channel::&lt;PoolManagementCommand&gt;(<span class="number">1</span>);
+    <span class="kw">let </span>join_handle = tokio::spawn(<span class="kw">async move </span>{
+        <span class="kw">let </span>res = PoolWorker::new(
+            cfg,
+            protocol_command_sender,
+            protocol_pool_event_receiver,
+            command_rx,
+            manager_rx,
+            storage,
+        )<span class="question-mark">?
+        </span>.run_loop()
         .<span class="kw">await</span>;
-        <span class="kw">match</span> <span class="ident">res</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; {
-                <span class="macro">error!</span>(<span class="string">&quot;pool worker crashed: {}&quot;</span>, <span class="ident">err</span>);
-                <span class="prelude-val">Err</span>(<span class="ident">err</span>)
+        <span class="kw">match </span>res {
+            <span class="prelude-val">Err</span>(err) =&gt; {
+                <span class="macro">error!</span>(<span class="string">&quot;pool worker crashed: {}&quot;</span>, err);
+                <span class="prelude-val">Err</span>(err)
             }
-            <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; {
+            <span class="prelude-val">Ok</span>(v) =&gt; {
                 <span class="macro">info!</span>(<span class="string">&quot;pool worker finished cleanly&quot;</span>);
-                <span class="prelude-val">Ok</span>(<span class="ident">v</span>)
+                <span class="prelude-val">Ok</span>(v)
             }
         }
     });
     <span class="prelude-val">Ok</span>((
-        <span class="ident">PoolCommandSender</span>(<span class="ident">command_tx</span>),
-        <span class="ident">PoolManager</span> {
-            <span class="ident">join_handle</span>,
-            <span class="ident">manager_tx</span>,
+        PoolCommandSender(command_tx),
+        PoolManager {
+            join_handle,
+            manager_tx,
         },
     ))
 }
 
-<span class="doccomment">/// Pool command sender</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PoolCommandSender</span>(<span class="kw">pub</span> <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">PoolCommand</span><span class="op">&gt;</span>);
+<span class="doccomment">/// Pool command sender
+</span><span class="attribute">#[derive(Clone)]
+</span><span class="kw">pub struct </span>PoolCommandSender(<span class="kw">pub </span>mpsc::Sender&lt;PoolCommand&gt;);
 
-<span class="kw">impl</span> <span class="ident">PoolCommandSender</span> {
-    <span class="doccomment">/// add operations to pool</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_operations</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">WrappedOperation</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">PoolError</span><span class="op">&gt;</span> {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.add_operations&quot;</span>, { <span class="string">&quot;ops&quot;</span>: <span class="ident">operations</span> });
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">PoolCommand::AddOperations</span>(<span class="ident">operations</span>))
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PoolError::ChannelError</span>(<span class="string">&quot;add_operations command send error&quot;</span>.<span class="ident">into</span>()))
+<span class="kw">impl </span>PoolCommandSender {
+    <span class="doccomment">/// add operations to pool
+    </span><span class="kw">pub async fn </span>add_operations(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        operations: Map&lt;OperationId, WrappedOperation&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), PoolError&gt; {
+        <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.add_operations&quot;</span>, { <span class="string">&quot;ops&quot;</span>: operations });
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(PoolCommand::AddOperations(operations))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| PoolError::ChannelError(<span class="string">&quot;add_operations command send error&quot;</span>.into()))
     }
 
-    <span class="doccomment">/// update current slots</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">update_current_slot</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">PoolError</span><span class="op">&gt;</span> {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.update_current_slot&quot;</span>, { <span class="string">&quot;slot&quot;</span>: <span class="ident">slot</span> });
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">PoolCommand::UpdateCurrentSlot</span>(<span class="ident">slot</span>))
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PoolError::ChannelError</span>(<span class="string">&quot;update_current_slot command send error&quot;</span>.<span class="ident">into</span>()))
+    <span class="doccomment">/// update current slots
+    </span><span class="kw">pub async fn </span>update_current_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot) -&gt; <span class="prelude-ty">Result</span>&lt;(), PoolError&gt; {
+        <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.update_current_slot&quot;</span>, { <span class="string">&quot;slot&quot;</span>: slot });
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(PoolCommand::UpdateCurrentSlot(slot))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| PoolError::ChannelError(<span class="string">&quot;update_current_slot command send error&quot;</span>.into()))
     }
 
-    <span class="doccomment">/// get pool stats</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_pool_stats</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PoolStats</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// get pool stats
+    </span><span class="kw">pub async fn </span>get_pool_stats(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;PoolStats, PoolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.get_pool_stats&quot;</span>, {});
-        <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
+        <span class="kw">let </span>(response_tx, response_rx) = oneshot::channel();
 
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">PoolCommand::GetStats</span>(<span class="ident">response_tx</span>))
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PoolError::ChannelError</span>(<span class="string">&quot;get_pool_stats command send error&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
-        <span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="ident">PoolError::ChannelError</span>(<span class="macro">format!</span>(
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(PoolCommand::GetStats(response_tx))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| PoolError::ChannelError(<span class="string">&quot;get_pool_stats command send error&quot;</span>.into()))<span class="question-mark">?</span>;
+        response_rx.<span class="kw">await</span>.map_err(|e| {
+            PoolError::ChannelError(<span class="macro">format!</span>(
                 <span class="string">&quot;pool command response read error in get_pool_stats {}&quot;</span>,
-                <span class="ident">e</span>
+                e
             ))
         })
     }
 
-    <span class="doccomment">/// mark operations as final</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">final_operations</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">ops</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">u64</span>, <span class="ident">u8</span>)<span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">PoolError</span><span class="op">&gt;</span> {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.final_operations&quot;</span>, { <span class="string">&quot;ops&quot;</span>: <span class="ident">ops</span> });
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">PoolCommand::FinalOperations</span>(<span class="ident">ops</span>))
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PoolError::ChannelError</span>(<span class="string">&quot;final_operations command send error&quot;</span>.<span class="ident">into</span>()))
+    <span class="doccomment">/// mark operations as final
+    </span><span class="kw">pub async fn </span>final_operations(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        ops: Map&lt;OperationId, (u64, u8)&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), PoolError&gt; {
+        <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.final_operations&quot;</span>, { <span class="string">&quot;ops&quot;</span>: ops });
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(PoolCommand::FinalOperations(ops))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| PoolError::ChannelError(<span class="string">&quot;final_operations command send error&quot;</span>.into()))
     }
 
-    <span class="doccomment">/// update latest final periods</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">update_latest_final_periods</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">periods</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">PoolError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// update latest final periods
+    </span><span class="kw">pub async fn </span>update_latest_final_periods(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        periods: Vec&lt;u64&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), PoolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.update_latest_final_periods&quot;</span>, {
-            <span class="string">&quot;periods&quot;</span>: <span class="ident">periods</span>
+            <span class="string">&quot;periods&quot;</span>: periods
         });
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">PoolCommand::UpdateLatestFinalPeriods</span>(<span class="ident">periods</span>))
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">PoolError::ChannelError</span>(<span class="string">&quot;update_latest_final_periods command send error&quot;</span>.<span class="ident">into</span>())
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(PoolCommand::UpdateLatestFinalPeriods(periods))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
+                PoolError::ChannelError(<span class="string">&quot;update_latest_final_periods command send error&quot;</span>.into())
             })
     }
 
-    <span class="doccomment">/// Returns a batch of operations ordered from highest to lowest rentability</span>
-    <span class="doccomment">/// Return value: vector of `(Operation, operation_size: u64)`</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_get_operations_announcement</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">target_slot</span>: <span class="ident">Slot</span>,
-        <span class="ident">exclude</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
-        <span class="ident">batch_size</span>: <span class="ident">usize</span>,
-        <span class="ident">max_size</span>: <span class="ident">u64</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">WrappedOperation</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// Returns a batch of operations ordered from highest to lowest rentability
+    /// Return value: vector of `(Operation, operation_size: u64)`
+    </span><span class="kw">pub async fn </span>send_get_operations_announcement(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        target_slot: Slot,
+        exclude: Set&lt;OperationId&gt;,
+        batch_size: usize,
+        max_size: u64,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(WrappedOperation, u64)&gt;, PoolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.get_operation_batch&quot;</span>, {
-            <span class="string">&quot;target_slot&quot;</span>: <span class="ident">target_slot</span>
+            <span class="string">&quot;target_slot&quot;</span>: target_slot
         });
 
-        <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">PoolCommand::GetOperationBatch</span> {
-                <span class="ident">target_slot</span>,
-                <span class="ident">exclude</span>,
-                <span class="ident">batch_size</span>,
-                <span class="ident">max_size</span>,
-                <span class="ident">response_tx</span>,
+        <span class="kw">let </span>(response_tx, response_rx) = oneshot::channel();
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(PoolCommand::GetOperationBatch {
+                target_slot,
+                exclude,
+                batch_size,
+                max_size,
+                response_tx,
             })
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">PoolError::ChannelError</span>(<span class="string">&quot;get_operation_batch command send error&quot;</span>.<span class="ident">into</span>())
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
+                PoolError::ChannelError(<span class="string">&quot;get_operation_batch command send error&quot;</span>.into())
             })<span class="question-mark">?</span>;
 
-        <span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="ident">PoolError::ChannelError</span>(<span class="macro">format!</span>(
+        response_rx.<span class="kw">await</span>.map_err(|e| {
+            PoolError::ChannelError(<span class="macro">format!</span>(
                 <span class="string">&quot;pool command response read error in get_operation_batch {}&quot;</span>,
-                <span class="ident">e</span>
+                e
             ))
         })
     }
 
-    <span class="doccomment">/// get endorsements for block creation</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_endorsements</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">target_slot</span>: <span class="ident">Slot</span>,
-        <span class="ident">parent</span>: <span class="ident">BlockId</span>,
-        <span class="ident">creators</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// get endorsements for block creation
+    </span><span class="kw">pub async fn </span>get_endorsements(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        target_slot: Slot,
+        parent: BlockId,
+        creators: Vec&lt;Address&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;WrappedEndorsement&gt;, PoolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.get_endorsements&quot;</span>, {
-            <span class="string">&quot;target_slot&quot;</span>: <span class="ident">target_slot</span>
+            <span class="string">&quot;target_slot&quot;</span>: target_slot
         });
 
-        <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">PoolCommand::GetEndorsements</span> {
-                <span class="ident">target_slot</span>,
-                <span class="ident">response_tx</span>,
-                <span class="ident">parent</span>,
-                <span class="ident">creators</span>,
+        <span class="kw">let </span>(response_tx, response_rx) = oneshot::channel();
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(PoolCommand::GetEndorsements {
+                target_slot,
+                response_tx,
+                parent,
+                creators,
             })
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PoolError::ChannelError</span>(<span class="string">&quot;get_endorsements command send error&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| PoolError::ChannelError(<span class="string">&quot;get_endorsements command send error&quot;</span>.into()))<span class="question-mark">?</span>;
 
-        <span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="ident">PoolError::ChannelError</span>(<span class="macro">format!</span>(
+        response_rx.<span class="kw">await</span>.map_err(|e| {
+            PoolError::ChannelError(<span class="macro">format!</span>(
                 <span class="string">&quot;pool command response read error in get_endorsements {}&quot;</span>,
-                <span class="ident">e</span>
+                e
             ))
         })
     }
 
-    <span class="doccomment">/// get operations by ids</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_operations</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">operation_ids</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">WrappedOperation</span><span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// get operations by ids
+    </span><span class="kw">pub async fn </span>get_operations(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        operation_ids: Set&lt;OperationId&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Map&lt;OperationId, WrappedOperation&gt;, PoolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.get_operations&quot;</span>, {
-            <span class="string">&quot;operation_ids&quot;</span>: <span class="ident">operation_ids</span>
+            <span class="string">&quot;operation_ids&quot;</span>: operation_ids
         });
 
-        <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">PoolCommand::GetOperations</span> {
-                <span class="ident">operation_ids</span>,
-                <span class="ident">response_tx</span>,
+        <span class="kw">let </span>(response_tx, response_rx) = oneshot::channel();
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(PoolCommand::GetOperations {
+                operation_ids,
+                response_tx,
             })
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PoolError::ChannelError</span>(<span class="string">&quot;get_operation command send error&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| PoolError::ChannelError(<span class="string">&quot;get_operation command send error&quot;</span>.into()))<span class="question-mark">?</span>;
 
-        <span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="ident">PoolError::ChannelError</span>(<span class="macro">format!</span>(
+        response_rx.<span class="kw">await</span>.map_err(|e| {
+            PoolError::ChannelError(<span class="macro">format!</span>(
                 <span class="string">&quot;pool command response read error in get_operations {}&quot;</span>,
-                <span class="ident">e</span>
+                e
             ))
         })
     }
 
-    <span class="doccomment">/// get operation by involved addresses</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_operations_involving_address</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">address</span>: <span class="ident">Address</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span><span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// get operation by involved addresses
+    </span><span class="kw">pub async fn </span>get_operations_involving_address(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        address: Address,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Map&lt;OperationId, OperationSearchResult&gt;, PoolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.get_operations_involving_address&quot;</span>, {
-            <span class="string">&quot;address&quot;</span>: <span class="ident">address</span>
+            <span class="string">&quot;address&quot;</span>: address
         });
 
-        <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">PoolCommand::GetRecentOperations</span> {
-                <span class="ident">address</span>,
-                <span class="ident">response_tx</span>,
+        <span class="kw">let </span>(response_tx, response_rx) = oneshot::channel();
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(PoolCommand::GetRecentOperations {
+                address,
+                response_tx,
             })
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">PoolError::ChannelError</span>(
-                    <span class="string">&quot;get_operations_involving_address command send error&quot;</span>.<span class="ident">into</span>(),
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
+                PoolError::ChannelError(
+                    <span class="string">&quot;get_operations_involving_address command send error&quot;</span>.into(),
                 )
             })<span class="question-mark">?</span>;
 
-        <span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="ident">PoolError::ChannelError</span>(<span class="macro">format!</span>(
+        response_rx.<span class="kw">await</span>.map_err(|e| {
+            PoolError::ChannelError(<span class="macro">format!</span>(
                 <span class="string">&quot;pool command response read error in get_operations_involving_address {}&quot;</span>,
-                <span class="ident">e</span>
+                e
             ))
         })
     }
 
-    <span class="doccomment">/// add endorsements to pool</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_endorsements</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">PoolError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// add endorsements to pool
+    </span><span class="kw">pub async fn </span>add_endorsements(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        endorsements: Map&lt;EndorsementId, WrappedEndorsement&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), PoolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.add_endorsements&quot;</span>, {
-            <span class="string">&quot;endorsements&quot;</span>: <span class="ident">endorsements</span>
+            <span class="string">&quot;endorsements&quot;</span>: endorsements
         });
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">PoolCommand::AddEndorsements</span>(<span class="ident">endorsements</span>))
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PoolError::ChannelError</span>(<span class="string">&quot;add_endorsements command send error&quot;</span>.<span class="ident">into</span>()))
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(PoolCommand::AddEndorsements(endorsements))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| PoolError::ChannelError(<span class="string">&quot;add_endorsements command send error&quot;</span>.into()))
     }
 
-    <span class="doccomment">/// get endorsements by address</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_endorsements_by_address</span>(
+    <span class="doccomment">/// get endorsements by address
+    </span><span class="kw">pub async fn </span>get_endorsements_by_address(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">address</span>: <span class="ident">Address</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
+        address: Address,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Map&lt;EndorsementId, WrappedEndorsement&gt;, PoolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.get_endorsements_by_address&quot;</span>, {
-            <span class="string">&quot;address&quot;</span>: <span class="ident">address</span>
+            <span class="string">&quot;address&quot;</span>: address
         });
 
-        <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">PoolCommand::GetEndorsementsByAddress</span> {
-                <span class="ident">address</span>,
-                <span class="ident">response_tx</span>,
+        <span class="kw">let </span>(response_tx, response_rx) = oneshot::channel();
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(PoolCommand::GetEndorsementsByAddress {
+                address,
+                response_tx,
             })
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">PoolError::ChannelError</span>(<span class="string">&quot;get_endorsements_by_address command send error&quot;</span>.<span class="ident">into</span>())
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
+                PoolError::ChannelError(<span class="string">&quot;get_endorsements_by_address command send error&quot;</span>.into())
             })<span class="question-mark">?</span>;
 
-        <span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="ident">PoolError::ChannelError</span>(<span class="macro">format!</span>(
+        response_rx.<span class="kw">await</span>.map_err(|e| {
+            PoolError::ChannelError(<span class="macro">format!</span>(
                 <span class="string">&quot;pool command response read error in get_endorsements_by_address {:?}&quot;</span>,
-                <span class="ident">e</span>
+                e
             ))
         })
     }
 
-    <span class="doccomment">/// get endorsements by id</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_endorsements_by_id</span>(
+    <span class="doccomment">/// get endorsements by id
+    </span><span class="kw">pub async fn </span>get_endorsements_by_id(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">endorsements</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
+        endorsements: Set&lt;EndorsementId&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Map&lt;EndorsementId, WrappedEndorsement&gt;, PoolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.get_endorsements_by_id&quot;</span>, {
-            <span class="string">&quot;endorsements&quot;</span>: <span class="ident">endorsements</span>
+            <span class="string">&quot;endorsements&quot;</span>: endorsements
         });
 
-        <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">PoolCommand::GetEndorsementsById</span> {
-                <span class="ident">endorsements</span>,
-                <span class="ident">response_tx</span>,
+        <span class="kw">let </span>(response_tx, response_rx) = oneshot::channel();
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(PoolCommand::GetEndorsementsById {
+                endorsements,
+                response_tx,
             })
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">PoolError::ChannelError</span>(<span class="string">&quot;get_endorsements_by_id command send error&quot;</span>.<span class="ident">into</span>())
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
+                PoolError::ChannelError(<span class="string">&quot;get_endorsements_by_id command send error&quot;</span>.into())
             })<span class="question-mark">?</span>;
 
-        <span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="ident">PoolError::ChannelError</span>(<span class="macro">format!</span>(
+        response_rx.<span class="kw">await</span>.map_err(|e| {
+            PoolError::ChannelError(<span class="macro">format!</span>(
                 <span class="string">&quot;pool command response read error in get_endorsements_by_id {:?}&quot;</span>,
-                <span class="ident">e</span>
+                e
             ))
         })
     }
 }
 
-<span class="doccomment">/// pool management handle</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PoolManager</span> {
-    <span class="ident">join_handle</span>: <span class="ident">JoinHandle</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEventReceiver</span>, <span class="ident">PoolError</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">manager_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">PoolManagementCommand</span><span class="op">&gt;</span>,
+<span class="doccomment">/// pool management handle
+</span><span class="kw">pub struct </span>PoolManager {
+    join_handle: JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;ProtocolPoolEventReceiver, PoolError&gt;&gt;,
+    manager_tx: mpsc::Sender&lt;PoolManagementCommand&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">PoolManager</span> {
-    <span class="doccomment">/// stop pool</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">stop</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEventReceiver</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
+<span class="kw">impl </span>PoolManager {
+    <span class="doccomment">/// stop pool
+    </span><span class="kw">pub async fn </span>stop(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;ProtocolPoolEventReceiver, PoolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.pool_controller.stop&quot;</span>, {});
-        <span class="ident">drop</span>(<span class="self">self</span>.<span class="ident">manager_tx</span>);
-        <span class="kw">let</span> <span class="ident">protocol_pool_event_receiver</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">join_handle</span>.<span class="kw">await</span><span class="question-mark">?</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">protocol_pool_event_receiver</span>)
+        drop(<span class="self">self</span>.manager_tx);
+        <span class="kw">let </span>protocol_pool_event_receiver = <span class="self">self</span>.join_handle.<span class="kw">await</span><span class="question-mark">??</span>;
+        <span class="prelude-val">Ok</span>(protocol_pool_event_receiver)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

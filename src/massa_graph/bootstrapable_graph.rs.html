@@ -217,224 +217,224 @@
 <span id="217">217</span>
 <span id="218">218</span>
 <span id="219">219</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">array_from_slice</span>,
-    <span class="ident">clique::Clique</span>,
-    <span class="ident">constants::BLOCK_ID_SIZE_BYTES</span>,
-    <span class="ident">prehash</span>::{<span class="ident">BuildMap</span>, <span class="ident">Map</span>, <span class="ident">Set</span>},
-    <span class="ident">with_serialization_context</span>, <span class="ident">BlockId</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">ModelsError</span>,
-    <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>,
+</pre><pre class="rust"><code><span class="kw">use </span>massa_models::{
+    array_from_slice,
+    clique::Clique,
+    constants::BLOCK_ID_SIZE_BYTES,
+    prehash::{BuildMap, Map, Set},
+    with_serialization_context, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError,
+    SerializeCompact, SerializeVarInt,
 };
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">export_active_block::ExportActiveBlock</span>, <span class="ident">ledger::ConsensusLedgerSubset</span>};
+<span class="kw">use crate</span>::{export_active_block::ExportActiveBlock, ledger::ConsensusLedgerSubset};
 
-<span class="doccomment">/// Bootstrap graph</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BootstrapableGraph</span> {
-    <span class="doccomment">/// Map of active blocks, were blocks are in their exported version.</span>
-    <span class="kw">pub</span> <span class="ident">active_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">ExportActiveBlock</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Best parents hashes in each thread.</span>
-    <span class="kw">pub</span> <span class="ident">best_parents</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
-    <span class="doccomment">/// Latest final period and block hash in each thread.</span>
-    <span class="kw">pub</span> <span class="ident">latest_final_blocks_periods</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
-    <span class="doccomment">/// Head of the incompatibility graph.</span>
-    <span class="kw">pub</span> <span class="ident">gi_head</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// List of maximal cliques of compatible blocks.</span>
-    <span class="kw">pub</span> <span class="ident">max_cliques</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Clique</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Ledger at last final blocks</span>
-    <span class="kw">pub</span> <span class="ident">ledger</span>: <span class="ident">ConsensusLedgerSubset</span>,
+<span class="doccomment">/// Bootstrap graph
+</span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>BootstrapableGraph {
+    <span class="doccomment">/// Map of active blocks, were blocks are in their exported version.
+    </span><span class="kw">pub </span>active_blocks: Map&lt;BlockId, ExportActiveBlock&gt;,
+    <span class="doccomment">/// Best parents hashes in each thread.
+    </span><span class="kw">pub </span>best_parents: Vec&lt;(BlockId, u64)&gt;,
+    <span class="doccomment">/// Latest final period and block hash in each thread.
+    </span><span class="kw">pub </span>latest_final_blocks_periods: Vec&lt;(BlockId, u64)&gt;,
+    <span class="doccomment">/// Head of the incompatibility graph.
+    </span><span class="kw">pub </span>gi_head: Map&lt;BlockId, Set&lt;BlockId&gt;&gt;,
+    <span class="doccomment">/// List of maximal cliques of compatible blocks.
+    </span><span class="kw">pub </span>max_cliques: Vec&lt;Clique&gt;,
+    <span class="doccomment">/// Ledger at last final blocks
+    </span><span class="kw">pub </span>ledger: ConsensusLedgerSubset,
 }
 
-<span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">BootstrapableGraph</span> {
-    <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">massa_models::ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">let</span> (<span class="ident">max_bootstrap_blocks</span>, <span class="ident">max_bootstrap_cliques</span>) <span class="op">=</span> <span class="ident">with_serialization_context</span>(<span class="op">|</span><span class="ident">context</span><span class="op">|</span> {
-            (<span class="ident">context</span>.<span class="ident">max_bootstrap_blocks</span>, <span class="ident">context</span>.<span class="ident">max_bootstrap_cliques</span>)
+<span class="kw">impl </span>SerializeCompact <span class="kw">for </span>BootstrapableGraph {
+    <span class="kw">fn </span>to_bytes_compact(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, massa_models::ModelsError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;u8&gt; = Vec::new();
+        <span class="kw">let </span>(max_bootstrap_blocks, max_bootstrap_cliques) = with_serialization_context(|context| {
+            (context.max_bootstrap_blocks, context.max_bootstrap_cliques)
         });
 
-        <span class="comment">// active_blocks</span>
-        <span class="kw">let</span> <span class="ident">blocks_count</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">active_blocks</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-            <span class="ident">ModelsError::SerializeError</span>(<span class="macro">format!</span>(
+        <span class="comment">// active_blocks
+        </span><span class="kw">let </span>blocks_count: u32 = <span class="self">self</span>.active_blocks.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(<span class="macro">format!</span>(
                 <span class="string">&quot;too many active blocks in BootstrapableGraph: {}&quot;</span>,
-                <span class="ident">err</span>
+                err
             ))
         })<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">blocks_count</span> <span class="op">&gt;</span> <span class="ident">max_bootstrap_blocks</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::SerializeError</span>(<span class="macro">format!</span>(<span class="string">&quot;too many blocks in active_blocks for serialization context in BootstrapableGraph: {}&quot;</span>, <span class="ident">blocks_count</span>)));
+        <span class="kw">if </span>blocks_count &gt; max_bootstrap_blocks {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::SerializeError(<span class="macro">format!</span>(<span class="string">&quot;too many blocks in active_blocks for serialization context in BootstrapableGraph: {}&quot;</span>, blocks_count)));
         }
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">blocks_count</span>.<span class="ident">to_varint_bytes</span>());
-        <span class="kw">for</span> (<span class="ident">hash</span>, <span class="ident">block</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">active_blocks</span>.<span class="ident">iter</span>() {
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">hash</span>.<span class="ident">to_bytes</span>());
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">block</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
-        }
-
-        <span class="comment">// best_parents</span>
-        <span class="kw">for</span> (<span class="ident">parent_h</span>, <span class="ident">parent_period</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">best_parents</span>.<span class="ident">iter</span>() {
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">parent_h</span>.<span class="ident">to_bytes</span>());
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">parent_period</span>.<span class="ident">to_varint_bytes</span>());
+        res.extend(blocks_count.to_varint_bytes());
+        <span class="kw">for </span>(hash, block) <span class="kw">in </span><span class="self">self</span>.active_blocks.iter() {
+            res.extend(hash.to_bytes());
+            res.extend(block.to_bytes_compact()<span class="question-mark">?</span>);
         }
 
-        <span class="comment">// latest_final_blocks_periods</span>
-        <span class="kw">for</span> (<span class="ident">hash</span>, <span class="ident">period</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">latest_final_blocks_periods</span>.<span class="ident">iter</span>() {
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">hash</span>.<span class="ident">to_bytes</span>());
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">period</span>.<span class="ident">to_varint_bytes</span>());
+        <span class="comment">// best_parents
+        </span><span class="kw">for </span>(parent_h, parent_period) <span class="kw">in </span><span class="self">self</span>.best_parents.iter() {
+            res.extend(parent_h.to_bytes());
+            res.extend(<span class="kw-2">&amp;</span>parent_period.to_varint_bytes());
         }
 
-        <span class="comment">// gi_head</span>
-        <span class="kw">let</span> <span class="ident">gi_head_count</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">gi_head</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-            <span class="ident">ModelsError::SerializeError</span>(<span class="macro">format!</span>(<span class="string">&quot;too many gi_head in BootstrapableGraph: {}&quot;</span>, <span class="ident">err</span>))
+        <span class="comment">// latest_final_blocks_periods
+        </span><span class="kw">for </span>(hash, period) <span class="kw">in </span><span class="self">self</span>.latest_final_blocks_periods.iter() {
+            res.extend(hash.to_bytes());
+            res.extend(period.to_varint_bytes());
+        }
+
+        <span class="comment">// gi_head
+        </span><span class="kw">let </span>gi_head_count: u32 = <span class="self">self</span>.gi_head.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(<span class="macro">format!</span>(<span class="string">&quot;too many gi_head in BootstrapableGraph: {}&quot;</span>, err))
         })<span class="question-mark">?</span>;
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">gi_head_count</span>.<span class="ident">to_varint_bytes</span>());
-        <span class="kw">for</span> (<span class="ident">gihash</span>, <span class="ident">set</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">gi_head</span>.<span class="ident">iter</span>() {
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">gihash</span>.<span class="ident">to_bytes</span>());
-            <span class="kw">let</span> <span class="ident">set_count</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">set</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                <span class="ident">ModelsError::SerializeError</span>(<span class="macro">format!</span>(
+        res.extend(gi_head_count.to_varint_bytes());
+        <span class="kw">for </span>(gihash, set) <span class="kw">in </span><span class="self">self</span>.gi_head.iter() {
+            res.extend(gihash.to_bytes());
+            <span class="kw">let </span>set_count: u32 = set.len().try_into().map_err(|err| {
+                ModelsError::SerializeError(<span class="macro">format!</span>(
                     <span class="string">&quot;too many entry in gi_head set in BootstrapableGraph: {}&quot;</span>,
-                    <span class="ident">err</span>
+                    err
                 ))
             })<span class="question-mark">?</span>;
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">set_count</span>.<span class="ident">to_varint_bytes</span>());
-            <span class="kw">for</span> <span class="ident">hash</span> <span class="kw">in</span> <span class="ident">set</span> {
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">hash</span>.<span class="ident">to_bytes</span>());
+            res.extend(set_count.to_varint_bytes());
+            <span class="kw">for </span>hash <span class="kw">in </span>set {
+                res.extend(hash.to_bytes());
             }
         }
 
-        <span class="comment">// max_cliques</span>
-        <span class="kw">let</span> <span class="ident">max_cliques_count</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">max_cliques</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-            <span class="ident">ModelsError::SerializeError</span>(<span class="macro">format!</span>(
+        <span class="comment">// max_cliques
+        </span><span class="kw">let </span>max_cliques_count: u32 = <span class="self">self</span>.max_cliques.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(<span class="macro">format!</span>(
                 <span class="string">&quot;too many max_cliques in BootstrapableGraph (format): {}&quot;</span>,
-                <span class="ident">err</span>
+                err
             ))
         })<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">max_cliques_count</span> <span class="op">&gt;</span> <span class="ident">max_bootstrap_cliques</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::SerializeError</span>(<span class="macro">format!</span>(
+        <span class="kw">if </span>max_cliques_count &gt; max_bootstrap_cliques {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::SerializeError(<span class="macro">format!</span>(
                 <span class="string">&quot;too many max_cliques for serialization context in BootstrapableGraph: {}&quot;</span>,
-                <span class="ident">max_cliques_count</span>
+                max_cliques_count
             )));
         }
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">max_cliques_count</span>.<span class="ident">to_varint_bytes</span>());
-        <span class="kw">for</span> <span class="ident">e_clique</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">max_cliques</span>.<span class="ident">iter</span>() {
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">e_clique</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
+        res.extend(max_cliques_count.to_varint_bytes());
+        <span class="kw">for </span>e_clique <span class="kw">in </span><span class="self">self</span>.max_cliques.iter() {
+            res.extend(e_clique.to_bytes_compact()<span class="question-mark">?</span>);
         }
 
-        <span class="comment">// ledger</span>
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">ledger</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
+        <span class="comment">// ledger
+        </span>res.extend(<span class="self">self</span>.ledger.to_bytes_compact()<span class="question-mark">?</span>);
 
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+        <span class="prelude-val">Ok</span>(res)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">BootstrapableGraph</span> {
-    <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">massa_models::ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0usize</span>;
-        <span class="kw">let</span> (<span class="ident">max_bootstrap_blocks</span>, <span class="ident">parent_count</span>, <span class="ident">max_bootstrap_cliques</span>) <span class="op">=</span>
-            <span class="ident">with_serialization_context</span>(<span class="op">|</span><span class="ident">context</span><span class="op">|</span> {
+<span class="kw">impl </span>DeserializeCompact <span class="kw">for </span>BootstrapableGraph {
+    <span class="kw">fn </span>from_bytes_compact(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), massa_models::ModelsError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="number">0usize</span>;
+        <span class="kw">let </span>(max_bootstrap_blocks, parent_count, max_bootstrap_cliques) =
+            with_serialization_context(|context| {
                 (
-                    <span class="ident">context</span>.<span class="ident">max_bootstrap_blocks</span>,
-                    <span class="ident">context</span>.<span class="ident">thread_count</span>,
-                    <span class="ident">context</span>.<span class="ident">max_bootstrap_cliques</span>,
+                    context.max_bootstrap_blocks,
+                    context.thread_count,
+                    context.max_bootstrap_cliques,
                 )
             });
 
-        <span class="comment">// active_blocks</span>
-        <span class="kw">let</span> (<span class="ident">active_blocks_count</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u32::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">active_blocks_count</span> <span class="op">&gt;</span> <span class="ident">max_bootstrap_blocks</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::DeserializeError</span>(<span class="macro">format!</span>(<span class="string">&quot;too many blocks in active_blocks for deserialization context in BootstrapableGraph: {}&quot;</span>, <span class="ident">active_blocks_count</span>)));
+        <span class="comment">// active_blocks
+        </span><span class="kw">let </span>(active_blocks_count, delta) = u32::from_varint_bytes(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+        <span class="kw">if </span>active_blocks_count &gt; max_bootstrap_blocks {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::DeserializeError(<span class="macro">format!</span>(<span class="string">&quot;too many blocks in active_blocks for deserialization context in BootstrapableGraph: {}&quot;</span>, active_blocks_count)));
         }
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">active_blocks</span> <span class="op">=</span>
-            <span class="ident">Map::with_capacity_and_hasher</span>(<span class="ident">active_blocks_count</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">BuildMap::default</span>());
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">active_blocks_count</span> <span class="kw">as</span> <span class="ident">usize</span>) {
-            <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
-            <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>;
-            <span class="kw">let</span> (<span class="ident">block</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">ExportActiveBlock::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-            <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-            <span class="ident">active_blocks</span>.<span class="ident">insert</span>(<span class="ident">hash</span>, <span class="ident">block</span>);
-        }
-
-        <span class="comment">// best_parents</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">best_parents</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">parent_count</span> <span class="kw">as</span> <span class="ident">usize</span>);
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">parent_count</span> {
-            <span class="kw">let</span> <span class="ident">parent_h</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
-            <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>;
-            <span class="kw">let</span> (<span class="ident">parent_period</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u64::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-            <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-            <span class="ident">best_parents</span>.<span class="ident">push</span>((<span class="ident">parent_h</span>, <span class="ident">parent_period</span>));
+        cursor += delta;
+        <span class="kw">let </span><span class="kw-2">mut </span>active_blocks =
+            Map::with_capacity_and_hasher(active_blocks_count <span class="kw">as </span>usize, BuildMap::default());
+        <span class="kw">for _ in </span><span class="number">0</span>..(active_blocks_count <span class="kw">as </span>usize) {
+            <span class="kw">let </span>hash = BlockId::from_bytes(<span class="kw-2">&amp;</span>array_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>);
+            cursor += BLOCK_ID_SIZE_BYTES;
+            <span class="kw">let </span>(block, delta) = ExportActiveBlock::from_bytes_compact(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+            cursor += delta;
+            active_blocks.insert(hash, block);
         }
 
-        <span class="comment">// latest_final_blocks_periods</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">latest_final_blocks_periods</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span> <span class="op">=</span>
-            <span class="ident">Vec::with_capacity</span>(<span class="ident">parent_count</span> <span class="kw">as</span> <span class="ident">usize</span>);
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">parent_count</span> {
-            <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
-            <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>;
-            <span class="kw">let</span> (<span class="ident">period</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u64::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-            <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-            <span class="ident">latest_final_blocks_periods</span>.<span class="ident">push</span>((<span class="ident">hash</span>, <span class="ident">period</span>));
+        <span class="comment">// best_parents
+        </span><span class="kw">let </span><span class="kw-2">mut </span>best_parents: Vec&lt;(BlockId, u64)&gt; = Vec::with_capacity(parent_count <span class="kw">as </span>usize);
+        <span class="kw">for _ in </span><span class="number">0</span>..parent_count {
+            <span class="kw">let </span>parent_h = BlockId::from_bytes(<span class="kw-2">&amp;</span>array_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>);
+            cursor += BLOCK_ID_SIZE_BYTES;
+            <span class="kw">let </span>(parent_period, delta) = u64::from_varint_bytes(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+            cursor += delta;
+            best_parents.push((parent_h, parent_period));
         }
 
-        <span class="comment">// gi_head</span>
-        <span class="kw">let</span> (<span class="ident">gi_head_count</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u32::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">gi_head_count</span> <span class="op">&gt;</span> <span class="ident">max_bootstrap_blocks</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::DeserializeError</span>(<span class="macro">format!</span>(
+        <span class="comment">// latest_final_blocks_periods
+        </span><span class="kw">let </span><span class="kw-2">mut </span>latest_final_blocks_periods: Vec&lt;(BlockId, u64)&gt; =
+            Vec::with_capacity(parent_count <span class="kw">as </span>usize);
+        <span class="kw">for _ in </span><span class="number">0</span>..parent_count {
+            <span class="kw">let </span>hash = BlockId::from_bytes(<span class="kw-2">&amp;</span>array_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>);
+            cursor += BLOCK_ID_SIZE_BYTES;
+            <span class="kw">let </span>(period, delta) = u64::from_varint_bytes(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+            cursor += delta;
+            latest_final_blocks_periods.push((hash, period));
+        }
+
+        <span class="comment">// gi_head
+        </span><span class="kw">let </span>(gi_head_count, delta) = u32::from_varint_bytes(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+        <span class="kw">if </span>gi_head_count &gt; max_bootstrap_blocks {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::DeserializeError(<span class="macro">format!</span>(
                 <span class="string">&quot;too many blocks in gi_head for deserialization context in BootstrapableGraph: {}&quot;</span>,
-                <span class="ident">gi_head_count</span>
+                gi_head_count
             )));
         }
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gi_head</span> <span class="op">=</span>
-            <span class="ident">Map::with_capacity_and_hasher</span>(<span class="ident">gi_head_count</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">BuildMap::default</span>());
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">gi_head_count</span> <span class="kw">as</span> <span class="ident">usize</span>) {
-            <span class="kw">let</span> <span class="ident">gihash</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
-            <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>;
-            <span class="kw">let</span> (<span class="ident">set_count</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u32::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-            <span class="kw">if</span> <span class="ident">set_count</span> <span class="op">&gt;</span> <span class="ident">max_bootstrap_blocks</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::DeserializeError</span>(<span class="macro">format!</span>(<span class="string">&quot;too many blocks in a set in gi_head for deserialization context in BootstrapableGraph: {}&quot;</span>, <span class="ident">set_count</span>)));
+        cursor += delta;
+        <span class="kw">let </span><span class="kw-2">mut </span>gi_head =
+            Map::with_capacity_and_hasher(gi_head_count <span class="kw">as </span>usize, BuildMap::default());
+        <span class="kw">for _ in </span><span class="number">0</span>..(gi_head_count <span class="kw">as </span>usize) {
+            <span class="kw">let </span>gihash = BlockId::from_bytes(<span class="kw-2">&amp;</span>array_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>);
+            cursor += BLOCK_ID_SIZE_BYTES;
+            <span class="kw">let </span>(set_count, delta) = u32::from_varint_bytes(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+            <span class="kw">if </span>set_count &gt; max_bootstrap_blocks {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::DeserializeError(<span class="macro">format!</span>(<span class="string">&quot;too many blocks in a set in gi_head for deserialization context in BootstrapableGraph: {}&quot;</span>, set_count)));
             }
-            <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">set</span> <span class="op">=</span>
-                <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::with_capacity_and_hasher</span>(<span class="ident">set_count</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">BuildMap::default</span>());
-            <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">set_count</span> <span class="kw">as</span> <span class="ident">usize</span>) {
-                <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>;
-                <span class="ident">set</span>.<span class="ident">insert</span>(<span class="ident">hash</span>);
+            cursor += delta;
+            <span class="kw">let </span><span class="kw-2">mut </span>set =
+                Set::&lt;BlockId&gt;::with_capacity_and_hasher(set_count <span class="kw">as </span>usize, BuildMap::default());
+            <span class="kw">for _ in </span><span class="number">0</span>..(set_count <span class="kw">as </span>usize) {
+                <span class="kw">let </span>hash = BlockId::from_bytes(<span class="kw-2">&amp;</span>array_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>);
+                cursor += BLOCK_ID_SIZE_BYTES;
+                set.insert(hash);
             }
-            <span class="ident">gi_head</span>.<span class="ident">insert</span>(<span class="ident">gihash</span>, <span class="ident">set</span>);
+            gi_head.insert(gihash, set);
         }
 
-        <span class="comment">// max_cliques</span>
-        <span class="kw">let</span> (<span class="ident">max_cliques_count</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u32::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">max_cliques_count</span> <span class="op">&gt;</span> <span class="ident">max_bootstrap_cliques</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::DeserializeError</span>(<span class="macro">format!</span>(
+        <span class="comment">// max_cliques
+        </span><span class="kw">let </span>(max_cliques_count, delta) = u32::from_varint_bytes(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+        <span class="kw">if </span>max_cliques_count &gt; max_bootstrap_cliques {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::DeserializeError(<span class="macro">format!</span>(
                 <span class="string">&quot;too many for deserialization context in BootstrapableGraph: {}&quot;</span>,
-                <span class="ident">max_cliques_count</span>
+                max_cliques_count
             )));
         }
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">max_cliques</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Clique</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">max_cliques_count</span> <span class="kw">as</span> <span class="ident">usize</span>);
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">max_cliques_count</span> {
-            <span class="kw">let</span> (<span class="ident">c</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">Clique::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-            <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-            <span class="ident">max_cliques</span>.<span class="ident">push</span>(<span class="ident">c</span>);
+        cursor += delta;
+        <span class="kw">let </span><span class="kw-2">mut </span>max_cliques: Vec&lt;Clique&gt; = Vec::with_capacity(max_cliques_count <span class="kw">as </span>usize);
+        <span class="kw">for _ in </span><span class="number">0</span>..max_cliques_count {
+            <span class="kw">let </span>(c, delta) = Clique::from_bytes_compact(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+            cursor += delta;
+            max_cliques.push(c);
         }
 
-        <span class="comment">// ledger</span>
-        <span class="kw">let</span> (<span class="ident">ledger</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">ConsensusLedgerSubset::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
+        <span class="comment">// ledger
+        </span><span class="kw">let </span>(ledger, delta) = ConsensusLedgerSubset::from_bytes_compact(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+        cursor += delta;
 
         <span class="prelude-val">Ok</span>((
-            <span class="ident">BootstrapableGraph</span> {
-                <span class="ident">active_blocks</span>,
-                <span class="ident">best_parents</span>,
-                <span class="ident">latest_final_blocks_periods</span>,
-                <span class="ident">gi_head</span>,
-                <span class="ident">max_cliques</span>,
-                <span class="ident">ledger</span>,
+            BootstrapableGraph {
+                active_blocks,
+                best_parents,
+                latest_final_blocks_periods,
+                gi_head,
+                max_cliques,
+                ledger,
             },
-            <span class="ident">cursor</span>,
+            cursor,
         ))
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

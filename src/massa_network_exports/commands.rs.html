@@ -295,302 +295,302 @@
 <span id="295">295</span>
 <span id="296">296</span>
 <span id="297">297</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Declaration of the public and internal Events and Commands used by</span>
-<span class="doccomment">//! `massa-network` that allow external communication with other nodes.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Operations work flow</span>
-<span class="doccomment">//! An operation batch can be send or received by the massa node. Which</span>
-<span class="doccomment">//! operation is asked is managed by the `NetworkWorker`.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Other modules has the access to all commands but the usage if they want to</span>
-<span class="doccomment">//! send operation that they just noticed, they should use the command</span>
-<span class="doccomment">//! `[NetworkCommand::SendOperationAnnouncements]`.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```txt</span>
-<span class="doccomment">//! OurNode      ProtocolWorker      Network &amp; NodeWorker</span>
-<span class="doccomment">//!    |               |                |</span>
-<span class="doccomment">//!    +------------------------------------------- Creation of some operations</span>
-<span class="doccomment">//!    #               |                |           Extends the pool and</span>
-<span class="doccomment">//!    #               |                |</span>
-<span class="doccomment">//!    +--------------&gt;|                |           Forward to Protocol</span>
-<span class="doccomment">//!    |               +---------------&gt;|           Forward to Network, then Node</span>
-<span class="doccomment">//!    |               |                #</span>
-<span class="doccomment">//!    |               |                #           Propagate the batch of OperationIds through the network</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! When receiving an operation batch from the network, the `NodeWorker` will</span>
-<span class="doccomment">//! inform the `ProtocolWorker` that some potentials new operations are in</span>
-<span class="doccomment">//! transit and can be requested.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The network will inform the node that new operations can transit with</span>
-<span class="doccomment">//! the propagation method `SendOperationAnnouncements` that we defined just before.</span>
-<span class="doccomment">//! Then, the node will manage if he ask or not the operations inside the</span>
-<span class="doccomment">//! `ProtocolWorker` on node-worker event `ReceivedOperationAnnouncements`</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```txt</span>
-<span class="doccomment">//! Asking for operations</span>
-<span class="doccomment">//! ---</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! NodeWorker      NetworkWorker          ProtocolWorker</span>
-<span class="doccomment">//!    |               |                         |</span>
-<span class="doccomment">//!    +------------------------------------------------------- Receive a batch of annoucemnt</span>
-<span class="doccomment">//!    .               |                         |</span>
-<span class="doccomment">//!    +--------------&gt;|                         |              NetworkWorker react on previous event. Forward to protocol.</span>
-<span class="doccomment">//!    |               +------------------------&gt;#              - Check in the protocol if we already have operations</span>
-<span class="doccomment">//!    |               |                         #              or not. Build the vector of requirement.</span>
-<span class="doccomment">//!    |               |                         #              - Update the `NodeInfo` of the sender.</span>
-<span class="doccomment">//!    |               |                         #              - Use the propagation algorithm</span>
-<span class="doccomment">//!    |               |&lt;------------------------+</span>
-<span class="doccomment">//!    |&lt;--------------+                         |</span>
-<span class="doccomment">//!    |               |                         |</span>
-<span class="doccomment">//!    |               |                         |</span>
-<span class="doccomment">//!    |               |                         |              &gt; Ask to the node that sent the batch a list of operations</span>
-<span class="doccomment">//!    |               |                         |              &gt; that we don&#39;t already know with `NodeCommand::AskForOperations`.</span>
-<span class="doccomment">//!    |               |                         |</span>
-<span class="doccomment">//!    +--------------&gt;|                         |</span>
-<span class="doccomment">//!    |               +------------------------&gt;#</span>
-<span class="doccomment">//!    |               |                         #</span>
-<span class="doccomment">//!    |               |                         #              &gt; Receive the full operations inside the structure</span>
-<span class="doccomment">//!    |               |                         #              &gt; `AskedOperation`.</span>
-<span class="doccomment">//!    |               |                         #</span>
-<span class="doccomment">//!    |               |                         #              Update local state and the `NodeInfo` of the sender if required.</span>
-<span class="doccomment">//!    |               |                         |</span>
-<span class="doccomment">//!    |               |&lt;------------------------+              Once we received and store the operation, we can propagate it.</span>
-<span class="doccomment">//!    |&lt;--------------+                         |</span>
-<span class="doccomment">//!    |               |                         |</span>
-<span class="doccomment">//!    |               |                         |              &gt; Propagate the batch through the network (send to nodes</span>
-<span class="doccomment">//!    |               |                         |              &gt; that don&#39;t already know the local operations (we suppose that</span>
-<span class="doccomment">//!    |               |                         |              &gt; from previous discussions with distant node)</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Look at `massa-protocol-worker/src/node-info.rs` to look further how we</span>
-<span class="doccomment">//! remember which node know what.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Declaration of the public and internal Events and Commands used by
+//! `massa-network` that allow external communication with other nodes.
+//!
+//! # Operations work flow
+//! An operation batch can be send or received by the massa node. Which
+//! operation is asked is managed by the `NetworkWorker`.
+//!
+//! Other modules has the access to all commands but the usage if they want to
+//! send operation that they just noticed, they should use the command
+//! `[NetworkCommand::SendOperationAnnouncements]`.
+//!
+//! ```txt
+//! OurNode      ProtocolWorker      Network &amp; NodeWorker
+//!    |               |                |
+//!    +------------------------------------------- Creation of some operations
+//!    #               |                |           Extends the pool and
+//!    #               |                |
+//!    +--------------&gt;|                |           Forward to Protocol
+//!    |               +---------------&gt;|           Forward to Network, then Node
+//!    |               |                #
+//!    |               |                #           Propagate the batch of OperationIds through the network
+//! ```
+//!
+//! When receiving an operation batch from the network, the `NodeWorker` will
+//! inform the `ProtocolWorker` that some potentials new operations are in
+//! transit and can be requested.
+//!
+//! The network will inform the node that new operations can transit with
+//! the propagation method `SendOperationAnnouncements` that we defined just before.
+//! Then, the node will manage if he ask or not the operations inside the
+//! `ProtocolWorker` on node-worker event `ReceivedOperationAnnouncements`
+//!
+//! ```txt
+//! Asking for operations
+//! ---
+//!
+//! NodeWorker      NetworkWorker          ProtocolWorker
+//!    |               |                         |
+//!    +------------------------------------------------------- Receive a batch of annoucemnt
+//!    .               |                         |
+//!    +--------------&gt;|                         |              NetworkWorker react on previous event. Forward to protocol.
+//!    |               +------------------------&gt;#              - Check in the protocol if we already have operations
+//!    |               |                         #              or not. Build the vector of requirement.
+//!    |               |                         #              - Update the `NodeInfo` of the sender.
+//!    |               |                         #              - Use the propagation algorithm
+//!    |               |&lt;------------------------+
+//!    |&lt;--------------+                         |
+//!    |               |                         |
+//!    |               |                         |
+//!    |               |                         |              &gt; Ask to the node that sent the batch a list of operations
+//!    |               |                         |              &gt; that we don&#39;t already know with `NodeCommand::AskForOperations`.
+//!    |               |                         |
+//!    +--------------&gt;|                         |
+//!    |               +------------------------&gt;#
+//!    |               |                         #
+//!    |               |                         #              &gt; Receive the full operations inside the structure
+//!    |               |                         #              &gt; `AskedOperation`.
+//!    |               |                         #
+//!    |               |                         #              Update local state and the `NodeInfo` of the sender if required.
+//!    |               |                         |
+//!    |               |&lt;------------------------+              Once we received and store the operation, we can propagate it.
+//!    |&lt;--------------+                         |
+//!    |               |                         |
+//!    |               |                         |              &gt; Propagate the batch through the network (send to nodes
+//!    |               |                         |              &gt; that don&#39;t already know the local operations (we suppose that
+//!    |               |                         |              &gt; from previous discussions with distant node)
+//! ```
+//!
+//! Look at `massa-protocol-worker/src/node-info.rs` to look further how we
+//! remember which node know what.
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">BootstrapPeers</span>, <span class="ident">ConnectionClosureReason</span>, <span class="ident">Peers</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">composite::PubkeySig</span>,
-    <span class="ident">node::NodeId</span>,
-    <span class="ident">operation</span>::{<span class="ident">OperationIds</span>, <span class="ident">OperationPrefixIds</span>, <span class="ident">Operations</span>},
-    <span class="ident">stats::NetworkStats</span>,
-    <span class="ident">BlockId</span>, <span class="ident">WrappedBlock</span>, <span class="ident">WrappedEndorsement</span>, <span class="ident">WrappedHeader</span>,
+</span><span class="kw">use crate</span>::{BootstrapPeers, ConnectionClosureReason, Peers};
+<span class="kw">use </span>massa_models::{
+    composite::PubkeySig,
+    node::NodeId,
+    operation::{OperationIds, OperationPrefixIds, Operations},
+    stats::NetworkStats,
+    BlockId, WrappedBlock, WrappedEndorsement, WrappedHeader,
 };
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashMap</span>, <span class="ident">net::IpAddr</span>};
-<span class="kw">use</span> <span class="ident">tokio::sync::oneshot</span>;
+<span class="kw">use </span>std::{collections::HashMap, net::IpAddr};
+<span class="kw">use </span>tokio::sync::oneshot;
 
-<span class="doccomment">/// network command</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NodeCommand</span> {
-    <span class="doccomment">/// Send given peer list to node.</span>
-    <span class="ident">SendPeerList</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Send that block to node.</span>
-    <span class="ident">SendBlock</span>(<span class="ident">BlockId</span>),
-    <span class="doccomment">/// Send the header of a block to a node.</span>
-    <span class="ident">SendBlockHeader</span>(<span class="ident">BlockId</span>),
-    <span class="doccomment">/// Ask for a block from that node.</span>
-    <span class="ident">AskForBlocks</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Close the node worker.</span>
-    <span class="ident">Close</span>(<span class="ident">ConnectionClosureReason</span>),
-    <span class="doccomment">/// Block not found</span>
-    <span class="ident">BlockNotFound</span>(<span class="ident">BlockId</span>),
-    <span class="doccomment">/// Send full Operations (send to a node that previously asked for)</span>
-    <span class="ident">SendOperations</span>(<span class="ident">OperationIds</span>),
-    <span class="doccomment">/// Send a batch of operation ids</span>
-    <span class="ident">SendOperationAnnouncements</span>(<span class="ident">OperationPrefixIds</span>),
-    <span class="doccomment">/// Ask for a set of operations</span>
-    <span class="ident">AskForOperations</span>(<span class="ident">OperationPrefixIds</span>),
-    <span class="doccomment">/// Endorsements</span>
-    <span class="ident">SendEndorsements</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>),
+<span class="doccomment">/// network command
+</span><span class="attribute">#[derive(Clone, Debug)]
+</span><span class="kw">pub enum </span>NodeCommand {
+    <span class="doccomment">/// Send given peer list to node.
+    </span>SendPeerList(Vec&lt;IpAddr&gt;),
+    <span class="doccomment">/// Send that block to node.
+    </span>SendBlock(BlockId),
+    <span class="doccomment">/// Send the header of a block to a node.
+    </span>SendBlockHeader(BlockId),
+    <span class="doccomment">/// Ask for a block from that node.
+    </span>AskForBlocks(Vec&lt;BlockId&gt;),
+    <span class="doccomment">/// Close the node worker.
+    </span>Close(ConnectionClosureReason),
+    <span class="doccomment">/// Block not found
+    </span>BlockNotFound(BlockId),
+    <span class="doccomment">/// Send full Operations (send to a node that previously asked for)
+    </span>SendOperations(OperationIds),
+    <span class="doccomment">/// Send a batch of operation ids
+    </span>SendOperationAnnouncements(OperationPrefixIds),
+    <span class="doccomment">/// Ask for a set of operations
+    </span>AskForOperations(OperationPrefixIds),
+    <span class="doccomment">/// Endorsements
+    </span>SendEndorsements(Vec&lt;WrappedEndorsement&gt;),
 }
 
-<span class="doccomment">/// Event types that node worker can emit</span>
-<span class="doccomment">/// Append on receive something from inside and outside.</span>
-<span class="doccomment">/// Outside initialization with `Received` prefix.</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::large_enum_variant</span>)]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NodeEventType</span> {
-    <span class="doccomment">/// Node we are connected to asked for advertised peers</span>
-    <span class="ident">AskedPeerList</span>,
-    <span class="doccomment">/// Node we are connected to sent peer list</span>
-    <span class="ident">ReceivedPeerList</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Node we are connected to sent block</span>
-    <span class="ident">ReceivedBlock</span>(<span class="ident">WrappedBlock</span>),
-    <span class="doccomment">/// Node we are connected to sent block header</span>
-    <span class="ident">ReceivedBlockHeader</span>(<span class="ident">WrappedHeader</span>),
-    <span class="doccomment">/// Node we are connected to asks for a block.</span>
-    <span class="ident">ReceivedAskForBlocks</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Didn&#39;t found given block,</span>
-    <span class="ident">BlockNotFound</span>(<span class="ident">BlockId</span>),
-    <span class="doccomment">/// Received full operations.</span>
-    <span class="ident">ReceivedOperations</span>(<span class="ident">Operations</span>),
-    <span class="doccomment">/// Received an operation id batch announcing new operations</span>
-    <span class="ident">ReceivedOperationAnnouncements</span>(<span class="ident">OperationPrefixIds</span>),
-    <span class="doccomment">/// Receive a list of wanted operations</span>
-    <span class="ident">ReceivedAskForOperations</span>(<span class="ident">OperationPrefixIds</span>),
-    <span class="doccomment">/// Receive a set of endorsement</span>
-    <span class="ident">ReceivedEndorsements</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>),
+<span class="doccomment">/// Event types that node worker can emit
+/// Append on receive something from inside and outside.
+/// Outside initialization with `Received` prefix.
+</span><span class="attribute">#[allow(clippy::large_enum_variant)]
+#[derive(Clone, Debug)]
+</span><span class="kw">pub enum </span>NodeEventType {
+    <span class="doccomment">/// Node we are connected to asked for advertised peers
+    </span>AskedPeerList,
+    <span class="doccomment">/// Node we are connected to sent peer list
+    </span>ReceivedPeerList(Vec&lt;IpAddr&gt;),
+    <span class="doccomment">/// Node we are connected to sent block
+    </span>ReceivedBlock(WrappedBlock),
+    <span class="doccomment">/// Node we are connected to sent block header
+    </span>ReceivedBlockHeader(WrappedHeader),
+    <span class="doccomment">/// Node we are connected to asks for a block.
+    </span>ReceivedAskForBlocks(Vec&lt;BlockId&gt;),
+    <span class="doccomment">/// Didn&#39;t found given block,
+    </span>BlockNotFound(BlockId),
+    <span class="doccomment">/// Received full operations.
+    </span>ReceivedOperations(Operations),
+    <span class="doccomment">/// Received an operation id batch announcing new operations
+    </span>ReceivedOperationAnnouncements(OperationPrefixIds),
+    <span class="doccomment">/// Receive a list of wanted operations
+    </span>ReceivedAskForOperations(OperationPrefixIds),
+    <span class="doccomment">/// Receive a set of endorsement
+    </span>ReceivedEndorsements(Vec&lt;WrappedEndorsement&gt;),
 }
 
-<span class="doccomment">/// Events node worker can emit.</span>
-<span class="doccomment">/// Events are a tuple linking a node id to an event type</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NodeEvent</span>(<span class="kw">pub</span> <span class="ident">NodeId</span>, <span class="kw">pub</span> <span class="ident">NodeEventType</span>);
+<span class="doccomment">/// Events node worker can emit.
+/// Events are a tuple linking a node id to an event type
+</span><span class="attribute">#[derive(Clone, Debug)]
+</span><span class="kw">pub struct </span>NodeEvent(<span class="kw">pub </span>NodeId, <span class="kw">pub </span>NodeEventType);
 
-<span class="doccomment">/// Commands that the worker can execute</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NetworkCommand</span> {
-    <span class="doccomment">/// Ask for a block to a node.</span>
-    <span class="ident">AskForBlocks</span> {
-        <span class="doccomment">/// node to block ids</span>
-        <span class="ident">list</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Commands that the worker can execute
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub enum </span>NetworkCommand {
+    <span class="doccomment">/// Ask for a block to a node.
+    </span>AskForBlocks {
+        <span class="doccomment">/// node to block ids
+        </span>list: HashMap&lt;NodeId, Vec&lt;BlockId&gt;&gt;,
     },
-    <span class="doccomment">/// Send that block to node.</span>
-    <span class="ident">SendBlock</span> {
-        <span class="doccomment">/// to node id</span>
-        <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="doccomment">/// block id</span>
-        <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
+    <span class="doccomment">/// Send that block to node.
+    </span>SendBlock {
+        <span class="doccomment">/// to node id
+        </span>node: NodeId,
+        <span class="doccomment">/// block id
+        </span>block_id: BlockId,
     },
-    <span class="doccomment">/// Send a header to a node.</span>
-    <span class="ident">SendBlockHeader</span> {
-        <span class="doccomment">/// to node id</span>
-        <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="doccomment">/// block id</span>
-        <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
+    <span class="doccomment">/// Send a header to a node.
+    </span>SendBlockHeader {
+        <span class="doccomment">/// to node id
+        </span>node: NodeId,
+        <span class="doccomment">/// block id
+        </span>block_id: BlockId,
     },
-    <span class="doccomment">/// `(PeerInfo, Vec &lt;(NodeId, bool)&gt;) peer info + list` of associated Id nodes in connection out (true)</span>
-    <span class="ident">GetPeers</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Peers</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// get peers for bootstrap server</span>
-    <span class="ident">GetBootstrapPeers</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">BootstrapPeers</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Ban a list of peer by their node id</span>
-    <span class="ident">NodeBanByIds</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Ban a list of peer by their ip address</span>
-    <span class="ident">NodeBanByIps</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Unban a list of peer by their node id</span>
-    <span class="ident">NodeUnbanByIds</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Unban a list of peer by their ip address</span>
-    <span class="ident">NodeUnbanByIps</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Send a message that a block is not found to a node</span>
-    <span class="ident">BlockNotFound</span> {
-        <span class="doccomment">/// to node id</span>
-        <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="doccomment">/// block id</span>
-        <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
+    <span class="doccomment">/// `(PeerInfo, Vec &lt;(NodeId, bool)&gt;) peer info + list` of associated Id nodes in connection out (true)
+    </span>GetPeers(oneshot::Sender&lt;Peers&gt;),
+    <span class="doccomment">/// get peers for bootstrap server
+    </span>GetBootstrapPeers(oneshot::Sender&lt;BootstrapPeers&gt;),
+    <span class="doccomment">/// Ban a list of peer by their node id
+    </span>NodeBanByIds(Vec&lt;NodeId&gt;),
+    <span class="doccomment">/// Ban a list of peer by their ip address
+    </span>NodeBanByIps(Vec&lt;IpAddr&gt;),
+    <span class="doccomment">/// Unban a list of peer by their node id
+    </span>NodeUnbanByIds(Vec&lt;NodeId&gt;),
+    <span class="doccomment">/// Unban a list of peer by their ip address
+    </span>NodeUnbanByIps(Vec&lt;IpAddr&gt;),
+    <span class="doccomment">/// Send a message that a block is not found to a node
+    </span>BlockNotFound {
+        <span class="doccomment">/// to node id
+        </span>node: NodeId,
+        <span class="doccomment">/// block id
+        </span>block_id: BlockId,
     },
-    <span class="doccomment">/// Send endorsements to a node</span>
-    <span class="ident">SendEndorsements</span> {
-        <span class="doccomment">/// to node id</span>
-        <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="doccomment">/// endorsements</span>
-        <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Send endorsements to a node
+    </span>SendEndorsements {
+        <span class="doccomment">/// to node id
+        </span>node: NodeId,
+        <span class="doccomment">/// endorsements
+        </span>endorsements: Vec&lt;WrappedEndorsement&gt;,
     },
-    <span class="doccomment">/// sign message with our node keypair (associated to node id)</span>
-    <span class="doccomment">/// != staking key</span>
-    <span class="ident">NodeSignMessage</span> {
-        <span class="doccomment">/// arbitrary message</span>
-        <span class="ident">msg</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-        <span class="doccomment">/// response channels</span>
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">PubkeySig</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// sign message with our node keypair (associated to node id)
+    /// != staking key
+    </span>NodeSignMessage {
+        <span class="doccomment">/// arbitrary message
+        </span>msg: Vec&lt;u8&gt;,
+        <span class="doccomment">/// response channels
+        </span>response_tx: oneshot::Sender&lt;PubkeySig&gt;,
     },
-    <span class="doccomment">/// gets network stats</span>
-    <span class="ident">GetStats</span> {
-        <span class="doccomment">/// response channels</span>
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">NetworkStats</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// gets network stats
+    </span>GetStats {
+        <span class="doccomment">/// response channels
+        </span>response_tx: oneshot::Sender&lt;NetworkStats&gt;,
     },
-    <span class="doccomment">/// Send a batch of full operations</span>
-    <span class="ident">SendOperations</span> {
-        <span class="doccomment">/// to node id</span>
-        <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="doccomment">/// operations</span>
-        <span class="ident">operations</span>: <span class="ident">OperationIds</span>,
+    <span class="doccomment">/// Send a batch of full operations
+    </span>SendOperations {
+        <span class="doccomment">/// to node id
+        </span>node: NodeId,
+        <span class="doccomment">/// operations
+        </span>operations: OperationIds,
     },
-    <span class="doccomment">/// Send operation ids batch to a node</span>
-    <span class="ident">SendOperationAnnouncements</span> {
-        <span class="doccomment">/// to node id</span>
-        <span class="ident">to_node</span>: <span class="ident">NodeId</span>,
-        <span class="doccomment">/// batch of operation ids</span>
-        <span class="ident">batch</span>: <span class="ident">OperationPrefixIds</span>,
+    <span class="doccomment">/// Send operation ids batch to a node
+    </span>SendOperationAnnouncements {
+        <span class="doccomment">/// to node id
+        </span>to_node: NodeId,
+        <span class="doccomment">/// batch of operation ids
+        </span>batch: OperationPrefixIds,
     },
-    <span class="doccomment">/// Ask for operation</span>
-    <span class="ident">AskForOperations</span> {
-        <span class="doccomment">/// to node id</span>
-        <span class="ident">to_node</span>: <span class="ident">NodeId</span>,
-        <span class="doccomment">/// operation ids in the wish list</span>
-        <span class="ident">wishlist</span>: <span class="ident">OperationPrefixIds</span>,
+    <span class="doccomment">/// Ask for operation
+    </span>AskForOperations {
+        <span class="doccomment">/// to node id
+        </span>to_node: NodeId,
+        <span class="doccomment">/// operation ids in the wish list
+        </span>wishlist: OperationPrefixIds,
     },
-    <span class="doccomment">/// Whitelist a list of `IpAddr`</span>
-    <span class="ident">Whitelist</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Remove from whitelist a list of `IpAddr`</span>
-    <span class="ident">RemoveFromWhitelist</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
+    <span class="doccomment">/// Whitelist a list of `IpAddr`
+    </span>Whitelist(Vec&lt;IpAddr&gt;),
+    <span class="doccomment">/// Remove from whitelist a list of `IpAddr`
+    </span>RemoveFromWhitelist(Vec&lt;IpAddr&gt;),
 }
 
-<span class="doccomment">/// network event</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::large_enum_variant</span>)]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NetworkEvent</span> {
-    <span class="doccomment">/// new connection from node</span>
-    <span class="ident">NewConnection</span>(<span class="ident">NodeId</span>),
-    <span class="doccomment">/// connection to node was closed</span>
-    <span class="ident">ConnectionClosed</span>(<span class="ident">NodeId</span>),
-    <span class="doccomment">/// A block was received</span>
-    <span class="ident">ReceivedBlock</span> {
-        <span class="doccomment">/// from node id</span>
-        <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="doccomment">/// block</span>
-        <span class="ident">block</span>: <span class="ident">WrappedBlock</span>,
+<span class="doccomment">/// network event
+</span><span class="attribute">#[allow(clippy::large_enum_variant)]
+#[derive(Debug)]
+</span><span class="kw">pub enum </span>NetworkEvent {
+    <span class="doccomment">/// new connection from node
+    </span>NewConnection(NodeId),
+    <span class="doccomment">/// connection to node was closed
+    </span>ConnectionClosed(NodeId),
+    <span class="doccomment">/// A block was received
+    </span>ReceivedBlock {
+        <span class="doccomment">/// from node id
+        </span>node: NodeId,
+        <span class="doccomment">/// block
+        </span>block: WrappedBlock,
     },
-    <span class="doccomment">/// A block header was received</span>
-    <span class="ident">ReceivedBlockHeader</span> {
-        <span class="doccomment">/// from node id</span>
-        <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>,
-        <span class="doccomment">/// header</span>
-        <span class="ident">header</span>: <span class="ident">WrappedHeader</span>,
+    <span class="doccomment">/// A block header was received
+    </span>ReceivedBlockHeader {
+        <span class="doccomment">/// from node id
+        </span>source_node_id: NodeId,
+        <span class="doccomment">/// header
+        </span>header: WrappedHeader,
     },
-    <span class="doccomment">/// Someone ask for block with given header hash.</span>
-    <span class="ident">AskedForBlocks</span> {
-        <span class="doccomment">/// node id</span>
-        <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="doccomment">/// asked blocks</span>
-        <span class="ident">list</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Someone ask for block with given header hash.
+    </span>AskedForBlocks {
+        <span class="doccomment">/// node id
+        </span>node: NodeId,
+        <span class="doccomment">/// asked blocks
+        </span>list: Vec&lt;BlockId&gt;,
     },
-    <span class="doccomment">/// That node does not have this block</span>
-    <span class="ident">BlockNotFound</span> {
-        <span class="doccomment">/// node id</span>
-        <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="doccomment">/// block id</span>
-        <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
+    <span class="doccomment">/// That node does not have this block
+    </span>BlockNotFound {
+        <span class="doccomment">/// node id
+        </span>node: NodeId,
+        <span class="doccomment">/// block id
+        </span>block_id: BlockId,
     },
-    <span class="doccomment">/// Receive previously asked Operation</span>
-    <span class="ident">ReceivedOperations</span> {
-        <span class="doccomment">/// node id</span>
-        <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="doccomment">/// operations</span>
-        <span class="ident">operations</span>: <span class="ident">Operations</span>,
+    <span class="doccomment">/// Receive previously asked Operation
+    </span>ReceivedOperations {
+        <span class="doccomment">/// node id
+        </span>node: NodeId,
+        <span class="doccomment">/// operations
+        </span>operations: Operations,
     },
-    <span class="doccomment">/// Receive a list of `OperationId`</span>
-    <span class="ident">ReceivedOperationAnnouncements</span> {
-        <span class="doccomment">/// from node id</span>
-        <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="doccomment">/// operation prefix ids</span>
-        <span class="ident">operation_prefix_ids</span>: <span class="ident">OperationPrefixIds</span>,
+    <span class="doccomment">/// Receive a list of `OperationId`
+    </span>ReceivedOperationAnnouncements {
+        <span class="doccomment">/// from node id
+        </span>node: NodeId,
+        <span class="doccomment">/// operation prefix ids
+        </span>operation_prefix_ids: OperationPrefixIds,
     },
-    <span class="doccomment">/// Receive a list of asked operations from `node`</span>
-    <span class="ident">ReceiveAskForOperations</span> {
-        <span class="doccomment">/// from node id</span>
-        <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="doccomment">/// operation prefix ids</span>
-        <span class="ident">operation_prefix_ids</span>: <span class="ident">OperationPrefixIds</span>,
+    <span class="doccomment">/// Receive a list of asked operations from `node`
+    </span>ReceiveAskForOperations {
+        <span class="doccomment">/// from node id
+        </span>node: NodeId,
+        <span class="doccomment">/// operation prefix ids
+        </span>operation_prefix_ids: OperationPrefixIds,
     },
-    <span class="doccomment">/// received endorsements from node</span>
-    <span class="ident">ReceivedEndorsements</span> {
-        <span class="doccomment">/// node id</span>
-        <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="doccomment">/// Endorsements</span>
-        <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// received endorsements from node
+    </span>ReceivedEndorsements {
+        <span class="doccomment">/// node id
+        </span>node: NodeId,
+        <span class="doccomment">/// Endorsements
+        </span>endorsements: Vec&lt;WrappedEndorsement&gt;,
     },
 }
 
-<span class="doccomment">/// Network management command</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NetworkManagementCommand</span> {}
+<span class="doccomment">/// Network management command
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub enum </span>NetworkManagementCommand {}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

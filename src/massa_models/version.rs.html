@@ -240,247 +240,247 @@
 <span id="240">240</span>
 <span id="241">241</span>
 <span id="242">242</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ModelsError</span>;
-<span class="kw">use</span> <span class="ident">massa_serialization</span>::{<span class="ident">Deserializer</span>, <span class="ident">Serializer</span>, <span class="ident">U32VarIntDeserializer</span>, <span class="ident">U32VarIntSerializer</span>};
-<span class="kw">use</span> <span class="ident">nom::bytes::complete::take</span>;
-<span class="kw">use</span> <span class="ident">nom::error::context</span>;
-<span class="kw">use</span> <span class="ident">nom::sequence::tuple</span>;
-<span class="kw">use</span> <span class="ident">nom::Parser</span>;
-<span class="kw">use</span> <span class="ident">nom</span>::{
-    <span class="ident">error</span>::{<span class="ident">ContextError</span>, <span class="ident">ParseError</span>},
-    <span class="ident">IResult</span>,
+</span><span class="kw">use </span><span class="kw">crate</span>::ModelsError;
+<span class="kw">use </span>massa_serialization::{Deserializer, Serializer, U32VarIntDeserializer, U32VarIntSerializer};
+<span class="kw">use </span>nom::bytes::complete::take;
+<span class="kw">use </span>nom::error::context;
+<span class="kw">use </span>nom::sequence::tuple;
+<span class="kw">use </span>nom::Parser;
+<span class="kw">use </span>nom::{
+    error::{ContextError, ParseError},
+    IResult,
 };
-<span class="kw">use</span> <span class="ident">serde::de::Unexpected</span>;
-<span class="kw">use</span> <span class="ident">std::ops::Bound::Included</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">convert::TryInto</span>, <span class="ident">fmt</span>, <span class="ident">str::FromStr</span>};
+<span class="kw">use </span>serde::de::Unexpected;
+<span class="kw">use </span>std::ops::Bound::Included;
+<span class="kw">use </span>std::{convert::TryInto, fmt, str::FromStr};
 
-<span class="kw">const</span> <span class="ident">INSTANCE_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4</span>;
+<span class="kw">const </span>INSTANCE_LEN: usize = <span class="number">4</span>;
 
-<span class="doccomment">/// Application version, checked during handshakes</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Version</span> {
-    <span class="doccomment">/// ASCII uppercase alpha</span>
-    <span class="ident">instance</span>: [<span class="ident">char</span>; <span class="ident">INSTANCE_LEN</span>],
-    <span class="ident">major</span>: <span class="ident">u32</span>,
-    <span class="ident">minor</span>: <span class="ident">u32</span>,
+<span class="doccomment">/// Application version, checked during handshakes
+</span><span class="attribute">#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+</span><span class="kw">pub struct </span>Version {
+    <span class="doccomment">/// ASCII uppercase alpha
+    </span>instance: [char; INSTANCE_LEN],
+    major: u32,
+    minor: u32,
 }
 
-<span class="kw">struct</span> <span class="ident">VersionVisitor</span>;
+<span class="kw">struct </span>VersionVisitor;
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">serde::de::Visitor</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">VersionVisitor</span> {
-    <span class="kw">type</span> <span class="ident">Value</span> <span class="op">=</span> <span class="ident">Version</span>;
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; serde::de::Visitor&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>VersionVisitor {
+    <span class="kw">type </span>Value = Version;
 
-    <span class="kw">fn</span> <span class="ident">visit_str</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Version</span>, <span class="ident">E</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">E</span>: <span class="ident">serde::de::Error</span>,
+    <span class="kw">fn </span>visit_str&lt;E&gt;(<span class="self">self</span>, value: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Version, E&gt;
+    <span class="kw">where
+        </span>E: serde::de::Error,
     {
-        <span class="ident">Version::from_str</span>(<span class="ident">value</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">E::invalid_value</span>(<span class="ident">Unexpected::Str</span>(<span class="ident">value</span>), <span class="kw-2">&amp;</span><span class="self">self</span>))
+        Version::from_str(value).map_err(|<span class="kw">_</span>| E::invalid_value(Unexpected::Str(value), <span class="kw-2">&amp;</span><span class="self">self</span>))
     }
 
-    <span class="kw">fn</span> <span class="ident">expecting</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">formatter</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span>) -&gt; <span class="ident">fmt::Result</span> {
+    <span class="kw">fn </span>expecting(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
         <span class="macro">write!</span>(
-            <span class="ident">formatter</span>,
-            <span class="string">&quot;an Version type representing a version identifier&quot;</span>
-        )
+            formatter,
+            <span class="string">&quot;an Version type representing a version identifier&quot;
+        </span>)
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">serde::Deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Version</span> {
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(<span class="ident">deserializer</span>: <span class="ident">D</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Version</span>, <span class="ident">D::Error</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">serde::de::Deserializer</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; serde::Deserialize&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>Version {
+    <span class="kw">fn </span>deserialize&lt;D&gt;(deserializer: D) -&gt; <span class="prelude-ty">Result</span>&lt;Version, D::Error&gt;
+    <span class="kw">where
+        </span>D: serde::de::Deserializer&lt;<span class="lifetime">&#39;de</span>&gt;,
     {
-        <span class="ident">deserializer</span>.<span class="ident">deserialize_str</span>(<span class="ident">VersionVisitor</span>)
+        deserializer.deserialize_str(VersionVisitor)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">serde::Serialize</span> <span class="kw">for</span> <span class="ident">Version</span> {
-    <span class="kw">fn</span> <span class="ident">serialize</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">serializer</span>: <span class="ident">S</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">S::Ok</span>, <span class="ident">S::Error</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">S</span>: <span class="ident">serde::Serializer</span>,
+<span class="kw">impl </span>serde::Serialize <span class="kw">for </span>Version {
+    <span class="kw">fn </span>serialize&lt;S&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, serializer: S) -&gt; <span class="prelude-ty">Result</span>&lt;S::Ok, S::Error&gt;
+    <span class="kw">where
+        </span>S: serde::Serializer,
     {
-        <span class="ident">serializer</span>.<span class="ident">serialize_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_string</span>())
+        serializer.serialize_str(<span class="kw-2">&amp;</span><span class="self">self</span>.to_string())
     }
 }
 
-<span class="doccomment">/// Serializer for `Version`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">VersionSerializer</span> {
-    <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer</span>,
+<span class="doccomment">/// Serializer for `Version`
+</span><span class="kw">pub struct </span>VersionSerializer {
+    u32_serializer: U32VarIntSerializer,
 }
 
-<span class="kw">impl</span> <span class="ident">VersionSerializer</span> {
-    <span class="doccomment">/// Creates a `VersionSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer::new</span>(),
+<span class="kw">impl </span>VersionSerializer {
+    <span class="doccomment">/// Creates a `VersionSerializer`
+    </span><span class="kw">pub const fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u32_serializer: U32VarIntSerializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">VersionSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>VersionSerializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">Version</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">VersionSerializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use std::ops::Bound::Included;</span>
-    <span class="doccomment">/// use std::str::FromStr;</span>
-    <span class="doccomment">/// use massa_serialization::Serializer;</span>
-    <span class="doccomment">/// use massa_models::{Version, VersionSerializer};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let version: Version = Version::from_str(&quot;TEST.1.0&quot;).unwrap();</span>
-    <span class="doccomment">/// let serializer = VersionSerializer::new();</span>
-    <span class="doccomment">/// let mut buffer = Vec::new();</span>
-    <span class="doccomment">/// serializer.serialize(&amp;version, &amp;mut buffer).unwrap();</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">serialize</span>(
+<span class="kw">impl </span>Serializer&lt;Version&gt; <span class="kw">for </span>VersionSerializer {
+    <span class="doccomment">/// ```
+    /// use std::ops::Bound::Included;
+    /// use std::str::FromStr;
+    /// use massa_serialization::Serializer;
+    /// use massa_models::{Version, VersionSerializer};
+    ///
+    /// let version: Version = Version::from_str(&quot;TEST.1.0&quot;).unwrap();
+    /// let serializer = VersionSerializer::new();
+    /// let mut buffer = Vec::new();
+    /// serializer.serialize(&amp;version, &amp;mut buffer).unwrap();
+    /// ```
+    </span><span class="kw">fn </span>serialize(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Version</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">massa_serialization::SerializeError</span><span class="op">&gt;</span> {
-        <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="ident">value</span>.<span class="ident">instance</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span> <span class="kw">as</span> <span class="ident">u8</span>));
-        <span class="self">self</span>.<span class="ident">u32_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">major</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">u32_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">minor</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        value: <span class="kw-2">&amp;</span>Version,
+        buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), massa_serialization::SerializeError&gt; {
+        buffer.extend(value.instance.iter().map(|<span class="kw-2">&amp;</span>c| c <span class="kw">as </span>u8));
+        <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>value.major, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>value.minor, buffer)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// Serializer for `Version`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">VersionDeserializer</span> {
-    <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer</span>,
+<span class="doccomment">/// Serializer for `Version`
+</span><span class="kw">pub struct </span>VersionDeserializer {
+    u32_deserializer: U32VarIntDeserializer,
 }
 
-<span class="kw">impl</span> <span class="ident">VersionDeserializer</span> {
-    <span class="doccomment">/// Creates a `VersionSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="number">1000</span>)),
+<span class="kw">impl </span>VersionDeserializer {
+    <span class="doccomment">/// Creates a `VersionSerializer`
+    </span><span class="kw">pub const fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u32_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(<span class="number">1000</span>)),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">VersionDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>VersionDeserializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">Version</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">VersionDeserializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use std::ops::Bound::Included;</span>
-    <span class="doccomment">/// use std::str::FromStr;</span>
-    <span class="doccomment">/// use massa_serialization::{Serializer, Deserializer, DeserializeError};</span>
-    <span class="doccomment">/// use massa_models::{Version, VersionSerializer, VersionDeserializer};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let version: Version = Version::from_str(&quot;TEST.1.3&quot;).unwrap();</span>
-    <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// let serializer = VersionSerializer::new();</span>
-    <span class="doccomment">/// let deserializer = VersionDeserializer::new();</span>
-    <span class="doccomment">/// serializer.serialize(&amp;version, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// let (rest, version_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(rest.len(), 0);</span>
-    <span class="doccomment">/// assert_eq!(version, version_deser);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">impl </span>Deserializer&lt;Version&gt; <span class="kw">for </span>VersionDeserializer {
+    <span class="doccomment">/// ```
+    /// use std::ops::Bound::Included;
+    /// use std::str::FromStr;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use massa_models::{Version, VersionSerializer, VersionDeserializer};
+    ///
+    /// let version: Version = Version::from_str(&quot;TEST.1.3&quot;).unwrap();
+    /// let mut serialized = Vec::new();
+    /// let serializer = VersionSerializer::new();
+    /// let deserializer = VersionDeserializer::new();
+    /// serializer.serialize(&amp;version, &amp;mut serialized).unwrap();
+    /// let (rest, version_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(version, version_deser);
+    /// ```
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">Version</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">context</span>(
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Version, E&gt; {
+        context(
             <span class="string">&quot;Failed Version deserialization&quot;</span>,
-            <span class="ident">tuple</span>((
-                <span class="ident">context</span>(<span class="string">&quot;Failed instance deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">|</span> {
-                    <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">instance</span>) <span class="op">=</span> <span class="ident">take</span>(<span class="ident">INSTANCE_LEN</span>)(<span class="ident">input</span>)<span class="question-mark">?</span>;
-                    <span class="kw">if</span> <span class="ident">instance</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> {
-                        <span class="op">!</span><span class="ident">c</span>.<span class="ident">is_ascii</span>() <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="ident">c</span>.<span class="ident">is_ascii_alphabetic</span>() <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="ident">c</span>.<span class="ident">is_ascii_uppercase</span>()
+            tuple((
+                context(<span class="string">&quot;Failed instance deserialization&quot;</span>, |input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
+                    <span class="kw">let </span>(rest, instance) = take(INSTANCE_LEN)(input)<span class="question-mark">?</span>;
+                    <span class="kw">if </span>instance.iter().any(|c| {
+                        !c.is_ascii() || !c.is_ascii_alphabetic() || !c.is_ascii_uppercase()
                     }) {
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">nom::Err::Error</span>(<span class="ident">ParseError::from_error_kind</span>(
-                            <span class="ident">input</span>,
-                            <span class="ident">nom::error::ErrorKind::Char</span>,
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
+                            input,
+                            nom::error::ErrorKind::Char,
                         )));
                     }
-                    <span class="comment">// Safe: because `take` fail if there is not enough data</span>
-                    <span class="kw">let</span> <span class="ident">instance</span>: [<span class="ident">char</span>; <span class="ident">INSTANCE_LEN</span>] <span class="op">=</span> <span class="ident">instance</span>
-                        .<span class="ident">iter</span>()
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">c</span><span class="op">|</span> <span class="ident">char::from</span>(<span class="ident">c</span>))
-                        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">char</span><span class="op">&gt;</span><span class="op">&gt;</span>()
-                        .<span class="ident">try_into</span>()
-                        .<span class="ident">unwrap</span>();
-                    <span class="prelude-val">Ok</span>((<span class="ident">rest</span>, <span class="ident">instance</span>))
+                    <span class="comment">// Safe: because `take` fail if there is not enough data
+                    </span><span class="kw">let </span>instance: [char; INSTANCE_LEN] = instance
+                        .iter()
+                        .map(|<span class="kw-2">&amp;</span>c| char::from(c))
+                        .collect::&lt;Vec&lt;char&gt;&gt;()
+                        .try_into()
+                        .unwrap();
+                    <span class="prelude-val">Ok</span>((rest, instance))
                 }),
-                <span class="ident">context</span>(<span class="string">&quot;Failed major deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">u32_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                context(<span class="string">&quot;Failed major deserialization&quot;</span>, |input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
+                    <span class="self">self</span>.u32_deserializer.deserialize(input)
                 }),
-                <span class="ident">context</span>(<span class="string">&quot;Failed minor deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">u32_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                context(<span class="string">&quot;Failed minor deserialization&quot;</span>, |input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
+                    <span class="self">self</span>.u32_deserializer.deserialize(input)
                 }),
             )),
         )
-        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">instance</span>, <span class="ident">major</span>, <span class="ident">minor</span>)<span class="op">|</span> <span class="ident">Version</span> {
-            <span class="ident">instance</span>,
-            <span class="ident">major</span>,
-            <span class="ident">minor</span>,
+        .map(|(instance, major, minor)| Version {
+            instance,
+            major,
+            minor,
         })
-        .<span class="ident">parse</span>(<span class="ident">buffer</span>)
+        .parse(buffer)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Version</span> {
-    <span class="doccomment">/// true if instance and major are the same</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_compatible</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">Version</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">instance</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">instance</span> <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">major</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">major</span>
+<span class="kw">impl </span>Version {
+    <span class="doccomment">/// true if instance and major are the same
+    </span><span class="kw">pub fn </span>is_compatible(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>Version) -&gt; bool {
+        <span class="self">self</span>.instance == other.instance &amp;&amp; <span class="self">self</span>.major == other.major
     }
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">Version</span> {
-    <span class="doccomment">/// ```rust</span>
-    <span class="doccomment">/// # use massa_models::*;</span>
-    <span class="doccomment">/// # use std::str::FromStr;</span>
-    <span class="doccomment">/// let v: Version = Version::from_str(&quot;TEST.1.2&quot;).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(v.to_string(), &quot;TEST.1.2&quot;);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">let</span> <span class="ident">network_str</span>: <span class="ident">String</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">instance</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>();
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}.{}.{}&quot;</span>, <span class="ident">network_str</span>, <span class="self">self</span>.<span class="ident">major</span>, <span class="self">self</span>.<span class="ident">minor</span>)
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>Version {
+    <span class="doccomment">/// ```rust
+    /// # use massa_models::*;
+    /// # use std::str::FromStr;
+    /// let v: Version = Version::from_str(&quot;TEST.1.2&quot;).unwrap();
+    /// assert_eq!(v.to_string(), &quot;TEST.1.2&quot;);
+    /// ```
+    </span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="kw">let </span>network_str: String = <span class="self">self</span>.instance.iter().cloned().collect();
+        <span class="macro">write!</span>(f, <span class="string">&quot;{}.{}.{}&quot;</span>, network_str, <span class="self">self</span>.major, <span class="self">self</span>.minor)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">FromStr</span> <span class="kw">for</span> <span class="ident">Version</span> {
-    <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident">ModelsError</span>;
+<span class="kw">impl </span>FromStr <span class="kw">for </span>Version {
+    <span class="kw">type </span><span class="prelude-val">Err </span>= ModelsError;
 
-    <span class="kw">fn</span> <span class="ident">from_str</span>(<span class="ident">str_version</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">parts</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">str_version</span>.<span class="ident">split</span>(<span class="string">&#39;.&#39;</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">to_string</span>()).<span class="ident">collect</span>();
-        <span class="kw">if</span> <span class="ident">parts</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="number">3</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::InvalidVersionError</span>(
-                <span class="string">&quot;version identifier is not in 3 parts separates by a dot&quot;</span>.<span class="ident">into</span>(),
+    <span class="kw">fn </span>from_str(str_version: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
+        <span class="kw">let </span>parts: Vec&lt;String&gt; = str_version.split(<span class="string">&#39;.&#39;</span>).map(|v| v.to_string()).collect();
+        <span class="kw">if </span>parts.len() != <span class="number">3 </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::InvalidVersionError(
+                <span class="string">&quot;version identifier is not in 3 parts separates by a dot&quot;</span>.into(),
             ));
         }
-        <span class="kw">if</span> <span class="ident">parts</span>[<span class="number">0</span>].<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="number">4</span>
-            <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="ident">parts</span>[<span class="number">0</span>].<span class="ident">is_ascii</span>()
-            <span class="op">|</span><span class="op">|</span> <span class="ident">parts</span>[<span class="number">0</span>]
-                .<span class="ident">chars</span>()
-                .<span class="ident">any</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="op">!</span><span class="ident">c</span>.<span class="ident">is_ascii_alphabetic</span>() <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="ident">c</span>.<span class="ident">is_ascii_uppercase</span>())
+        <span class="kw">if </span>parts[<span class="number">0</span>].len() != <span class="number">4
+            </span>|| !parts[<span class="number">0</span>].is_ascii()
+            || parts[<span class="number">0</span>]
+                .chars()
+                .any(|c| !c.is_ascii_alphabetic() || !c.is_ascii_uppercase())
         {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::InvalidVersionError</span>(
-                <span class="string">&quot;version identifier instance part is not 4-char uppercase alphabetic ASCII&quot;</span>.<span class="ident">into</span>(),
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::InvalidVersionError(
+                <span class="string">&quot;version identifier instance part is not 4-char uppercase alphabetic ASCII&quot;</span>.into(),
             ));
         }
-        <span class="kw">let</span> <span class="ident">instance</span>: [<span class="ident">char</span>; <span class="number">4</span>] <span class="op">=</span> <span class="ident">parts</span>[<span class="number">0</span>].<span class="ident">chars</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">char</span><span class="op">&gt;</span><span class="op">&gt;</span>().<span class="ident">try_into</span>().<span class="ident">unwrap</span>(); <span class="comment">// will not panic as the length and type were checked above</span>
-        <span class="kw">let</span> <span class="ident">major</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">u32::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">parts</span>[<span class="number">1</span>]).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-            <span class="ident">ModelsError::InvalidVersionError</span>(<span class="string">&quot;version identifier major number invalid&quot;</span>.<span class="ident">into</span>())
+        <span class="kw">let </span>instance: [char; <span class="number">4</span>] = parts[<span class="number">0</span>].chars().collect::&lt;Vec&lt;char&gt;&gt;().try_into().unwrap(); <span class="comment">// will not panic as the length and type were checked above
+        </span><span class="kw">let </span>major: u32 = u32::from_str(<span class="kw-2">&amp;</span>parts[<span class="number">1</span>]).map_err(|<span class="kw">_</span>| {
+            ModelsError::InvalidVersionError(<span class="string">&quot;version identifier major number invalid&quot;</span>.into())
         })<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">minor</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">u32::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">parts</span>[<span class="number">2</span>]).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-            <span class="ident">ModelsError::InvalidVersionError</span>(<span class="string">&quot;version identifier minor number invalid&quot;</span>.<span class="ident">into</span>())
+        <span class="kw">let </span>minor: u32 = u32::from_str(<span class="kw-2">&amp;</span>parts[<span class="number">2</span>]).map_err(|<span class="kw">_</span>| {
+            ModelsError::InvalidVersionError(<span class="string">&quot;version identifier minor number invalid&quot;</span>.into())
         })<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">Version</span> {
-            <span class="ident">instance</span>,
-            <span class="ident">major</span>,
-            <span class="ident">minor</span>,
+        <span class="prelude-val">Ok</span>(Version {
+            instance,
+            major,
+            minor,
         })
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

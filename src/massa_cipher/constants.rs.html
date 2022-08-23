@@ -23,30 +23,30 @@
 <span id="23">23</span>
 <span id="24">24</span>
 <span id="25">25</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! massa-cipher constant values.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Read `lib.rs` module documentation for more information.</span>
+</span><span class="doccomment">//! massa-cipher constant values.
+//!
+//! Read `lib.rs` module documentation for more information.
 
-<span class="kw">use</span> <span class="ident">pbkdf2::Params</span>;
+</span><span class="kw">use </span>pbkdf2::Params;
 
-<span class="doccomment">/// Cipher version</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">VERSION</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0</span>;
+<span class="doccomment">/// Cipher version
+</span><span class="kw">pub const </span>VERSION: u32 = <span class="number">0</span>;
 
-<span class="doccomment">/// AES-GCM-SIV nonce size.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// A nonce is a single-use value which enables securely encrypting multiple messages under the same key.</span>
-<span class="doccomment">/// Nonces need not be random: a counter can be used so long as the values are never repeated under the same key.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">NONCE_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">12</span>;
+<span class="doccomment">/// AES-GCM-SIV nonce size.
+///
+/// A nonce is a single-use value which enables securely encrypting multiple messages under the same key.
+/// Nonces need not be random: a counter can be used so long as the values are never repeated under the same key.
+</span><span class="kw">pub const </span>NONCE_SIZE: usize = <span class="number">12</span>;
 
-<span class="doccomment">/// PBKDF2 salt size.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SALT_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">12</span>;
+<span class="doccomment">/// PBKDF2 salt size.
+</span><span class="kw">pub const </span>SALT_SIZE: usize = <span class="number">12</span>;
 
-<span class="doccomment">/// PBKDF2 hash parameters.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">HASH_PARAMS</span>: <span class="ident">Params</span> <span class="op">=</span> <span class="ident">Params</span> {
-    <span class="ident">rounds</span>: <span class="number">10_000</span>,
-    <span class="ident">output_length</span>: <span class="number">32</span>,
+<span class="doccomment">/// PBKDF2 hash parameters.
+</span><span class="kw">pub const </span>HASH_PARAMS: Params = Params {
+    rounds: <span class="number">10_000</span>,
+    output_length: <span class="number">32</span>,
 };
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_cipher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_cipher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

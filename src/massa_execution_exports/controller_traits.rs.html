@@ -97,104 +97,104 @@
 <span id="97">97</span>
 <span id="98">98</span>
 <span id="99">99</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! This module exports generic traits representing interfaces for interacting with the Execution worker</span>
+</span><span class="doccomment">//! This module exports generic traits representing interfaces for interacting with the Execution worker
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::types::ExecutionOutput</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::types::ReadOnlyExecutionRequest</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ExecutionError</span>;
-<span class="kw">use</span> <span class="ident">massa_models::api::EventFilter</span>;
-<span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
-<span class="kw">use</span> <span class="ident">massa_models::Address</span>;
-<span class="kw">use</span> <span class="ident">massa_models::Amount</span>;
-<span class="kw">use</span> <span class="ident">massa_models::BlockId</span>;
-<span class="kw">use</span> <span class="ident">massa_models::Slot</span>;
-<span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span>;
-<span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
+</span><span class="kw">use </span><span class="kw">crate</span>::types::ExecutionOutput;
+<span class="kw">use </span><span class="kw">crate</span>::types::ReadOnlyExecutionRequest;
+<span class="kw">use </span><span class="kw">crate</span>::ExecutionError;
+<span class="kw">use </span>massa_models::api::EventFilter;
+<span class="kw">use </span>massa_models::output_event::SCOutputEvent;
+<span class="kw">use </span>massa_models::Address;
+<span class="kw">use </span>massa_models::Amount;
+<span class="kw">use </span>massa_models::BlockId;
+<span class="kw">use </span>massa_models::Slot;
+<span class="kw">use </span>std::collections::BTreeSet;
+<span class="kw">use </span>std::collections::HashMap;
 
-<span class="doccomment">/// interface that communicates with the execution worker thread</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">ExecutionController</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> {
-    <span class="doccomment">/// Updates blockclique status by signaling newly finalized blocks and the latest blockclique.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `finalized_blocks`: newly finalized blocks</span>
-    <span class="doccomment">/// * `blockclique`: new blockclique</span>
-    <span class="kw">fn</span> <span class="ident">update_blockclique_status</span>(
+<span class="doccomment">/// interface that communicates with the execution worker thread
+</span><span class="kw">pub trait </span>ExecutionController: Send + Sync {
+    <span class="doccomment">/// Updates blockclique status by signaling newly finalized blocks and the latest blockclique.
+    ///
+    /// # Arguments
+    /// * `finalized_blocks`: newly finalized blocks
+    /// * `blockclique`: new blockclique
+    </span><span class="kw">fn </span>update_blockclique_status(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">finalized_blocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>,
-        <span class="ident">blockclique</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>,
+        finalized_blocks: HashMap&lt;Slot, BlockId&gt;,
+        blockclique: HashMap&lt;Slot, BlockId&gt;,
     );
 
-    <span class="doccomment">/// Get execution events optionally filtered by:</span>
-    <span class="doccomment">/// * start slot</span>
-    <span class="doccomment">/// * end slot</span>
-    <span class="doccomment">/// * emitter address</span>
-    <span class="doccomment">/// * original caller address</span>
-    <span class="doccomment">/// * operation id</span>
-    <span class="kw">fn</span> <span class="ident">get_filtered_sc_output_event</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">EventFilter</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Get execution events optionally filtered by:
+    /// * start slot
+    /// * end slot
+    /// * emitter address
+    /// * original caller address
+    /// * operation id
+    </span><span class="kw">fn </span>get_filtered_sc_output_event(<span class="kw-2">&amp;</span><span class="self">self</span>, filter: EventFilter) -&gt; Vec&lt;SCOutputEvent&gt;;
 
-    <span class="doccomment">/// Get a balance final and active values</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Return value</span>
-    <span class="doccomment">/// * `(final_balance, active_balance)`</span>
-    <span class="kw">fn</span> <span class="ident">get_final_and_active_parallel_balance</span>(
+    <span class="doccomment">/// Get a balance final and active values
+    ///
+    /// # Return value
+    /// * `(final_balance, active_balance)`
+    </span><span class="kw">fn </span>get_final_and_active_parallel_balance(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">addresses</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>)<span class="op">&gt;</span>;
+        addresses: Vec&lt;Address&gt;,
+    ) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Amount&gt;, <span class="prelude-ty">Option</span>&lt;Amount&gt;)&gt;;
 
-    <span class="doccomment">/// Get a copy of a single datastore entry with its final and active values</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Return value</span>
-    <span class="doccomment">/// * `(final_data_entry, active_data_entry)`</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::type_complexity</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">get_final_and_active_data_entry</span>(
+    <span class="doccomment">/// Get a copy of a single datastore entry with its final and active values
+    ///
+    /// # Return value
+    /// * `(final_data_entry, active_data_entry)`
+    </span><span class="attribute">#[allow(clippy::type_complexity)]
+    </span><span class="kw">fn </span>get_final_and_active_data_entry(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">input</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Address</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>)<span class="op">&gt;</span>;
+        input: Vec&lt;(Address, Vec&lt;u8&gt;)&gt;,
+    ) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;)&gt;;
 
-    <span class="doccomment">/// Get every datastore key of the given address.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// A vector containing all the keys</span>
-    <span class="kw">fn</span> <span class="ident">get_final_and_active_datastore_keys</span>(
+    <span class="doccomment">/// Get every datastore key of the given address.
+    ///
+    /// # Returns
+    /// A vector containing all the keys
+    </span><span class="kw">fn </span>get_final_and_active_datastore_keys(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>,
-    ) -&gt; (<span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>);
+        addr: <span class="kw-2">&amp;</span>Address,
+    ) -&gt; (BTreeSet&lt;Vec&lt;u8&gt;&gt;, BTreeSet&lt;Vec&lt;u8&gt;&gt;);
 
-    <span class="doccomment">/// Execute read-only SC function call without causing modifications to the consensus state</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # arguments</span>
-    <span class="doccomment">/// * `req`: an instance of `ReadOnlyCallRequest` describing the parameters of the execution</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # returns</span>
-    <span class="doccomment">/// An instance of `ExecutionOutput` containing a summary of the effects of the execution,</span>
-    <span class="doccomment">/// or an error if the execution failed.</span>
-    <span class="kw">fn</span> <span class="ident">execute_readonly_request</span>(
+    <span class="doccomment">/// Execute read-only SC function call without causing modifications to the consensus state
+    ///
+    /// # arguments
+    /// * `req`: an instance of `ReadOnlyCallRequest` describing the parameters of the execution
+    ///
+    /// # returns
+    /// An instance of `ExecutionOutput` containing a summary of the effects of the execution,
+    /// or an error if the execution failed.
+    </span><span class="kw">fn </span>execute_readonly_request(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">req</span>: <span class="ident">ReadOnlyExecutionRequest</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ExecutionOutput</span>, <span class="ident">ExecutionError</span><span class="op">&gt;</span>;
+        req: ReadOnlyExecutionRequest,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionOutput, ExecutionError&gt;;
 
-    <span class="doccomment">/// Returns a boxed clone of self.</span>
-    <span class="doccomment">/// Useful to allow cloning `Box&lt;dyn ExecutionController&gt;`.</span>
-    <span class="kw">fn</span> <span class="ident">clone_box</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Returns a boxed clone of self.
+    /// Useful to allow cloning `Box&lt;dyn ExecutionController&gt;`.
+    </span><span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>ExecutionController&gt;;
 }
 
-<span class="doccomment">/// Allow cloning `Box&lt;dyn ExecutionController&gt;`</span>
-<span class="doccomment">/// Uses `ExecutionController::clone_box` internally</span>
-<span class="kw">impl</span> <span class="ident">Clone</span> <span class="kw">for</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">clone_box</span>()
+<span class="doccomment">/// Allow cloning `Box&lt;dyn ExecutionController&gt;`
+/// Uses `ExecutionController::clone_box` internally
+</span><span class="kw">impl </span>Clone <span class="kw">for </span>Box&lt;<span class="kw">dyn </span>ExecutionController&gt; {
+    <span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>ExecutionController&gt; {
+        <span class="self">self</span>.clone_box()
     }
 }
 
-<span class="doccomment">/// Execution manager used to stop the execution thread</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">ExecutionManager</span> {
-    <span class="doccomment">/// Stop the execution thread</span>
-    <span class="doccomment">/// Note that we do not take self by value to consume it</span>
-    <span class="doccomment">/// because it is not allowed to move out of Box&lt;dyn ExecutionManager&gt;</span>
-    <span class="doccomment">/// This will improve if the `unsized_fn_params` feature stabilizes enough to be safely usable.</span>
-    <span class="kw">fn</span> <span class="ident">stop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>);
+<span class="doccomment">/// Execution manager used to stop the execution thread
+</span><span class="kw">pub trait </span>ExecutionManager {
+    <span class="doccomment">/// Stop the execution thread
+    /// Note that we do not take self by value to consume it
+    /// because it is not allowed to move out of Box&lt;dyn ExecutionManager&gt;
+    /// This will improve if the `unsized_fn_params` feature stabilizes enough to be safely usable.
+    </span><span class="kw">fn </span>stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

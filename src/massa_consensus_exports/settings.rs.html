@@ -668,675 +668,675 @@
 <span id="668">668</span>
 <span id="669">669</span>
 <span id="670">670</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::assertions_on_constants</span>)]</span>
-<span class="doccomment">//! Definition &amp; Implementation of the consensus settings</span>
-<span class="doccomment">//! -----------------------------------------------------</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Configurations</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! * `setting`: read from user settings file</span>
-<span class="doccomment">//! * `config`: merge of settings and hard-coded configuration that shouldn&#39;t be</span>
-<span class="doccomment">//!           modified by user.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This file is allowed to use a lot of constants from `massa-models` as all</span>
-<span class="doccomment">//! other files named `settings.rs` or `config.rs`.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The `ConsensusSettings` is the most basic and complete configuration in the</span>
-<span class="doccomment">//! node. You can get almost every configuration from that one.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! `From&lt;ConsensusSettings&gt; impl *`:</span>
-<span class="doccomment">//! - `ConsensusConfig`: Create a configuration merging user settings and hard-coded values</span>
-<span class="doccomment">//!                      (see `/massa-models/node_configuration/*`)</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! `From&lt;&amp;ConsensusConfig&gt; impl *`:</span>
-<span class="doccomment">//! - `GraphConfig`</span>
-<span class="doccomment">//! - `LedgerConfig`</span>
-<span class="doccomment">//! - `ProofOfStakeConfig`</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! &gt; Development note: We clone the values on getting a configuration from another.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Usage of constants</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The default configuration is loaded from the `massa-models` crate. You shouldn&#39;t</span>
-<span class="doccomment">//! write an hard-coded value in the following file but create a new value in</span>
-<span class="doccomment">//! `default.rs` and the testing default equivalent value in `default_testing.rs`. See</span>
-<span class="doccomment">//! `/node_configuration/mod.rs` documentation in `massa-models` sources for more</span>
-<span class="doccomment">//! information.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Channels</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The following file contains the definition of the Channels structures used in</span>
-<span class="doccomment">//! the current module.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Testing feature</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! In unit test your allowed to use the `testing` feature flag that will</span>
-<span class="doccomment">//! use the default values from `/node_configuration/default_testing.rs` in the</span>
-<span class="doccomment">//! `massa-models` crate sources.</span>
-<span class="kw">use</span> <span class="ident">massa_execution_exports::ExecutionController</span>;
-<span class="kw">use</span> <span class="ident">massa_graph</span>::{<span class="ident">settings::GraphConfig</span>, <span class="ident">LedgerConfig</span>};
-<span class="kw">use</span> <span class="ident">massa_models::Amount</span>;
-<span class="kw">use</span> <span class="ident">massa_pool::PoolCommandSender</span>;
-<span class="kw">use</span> <span class="ident">massa_proof_of_stake_exports::ProofOfStakeConfig</span>;
-<span class="kw">use</span> <span class="ident">massa_protocol_exports</span>::{<span class="ident">ProtocolCommandSender</span>, <span class="ident">ProtocolEventReceiver</span>};
-<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
-<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
-<span class="kw">use</span> <span class="ident">num::rational::Ratio</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">default::Default</span>, <span class="ident">path::PathBuf</span>, <span class="ident">usize</span>};
-<span class="kw">use</span> <span class="ident">tokio::sync::mpsc</span>;
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</span><span class="attribute">#![allow(clippy::assertions_on_constants)]
+</span><span class="doccomment">//! Definition &amp; Implementation of the consensus settings
+//! -----------------------------------------------------
+//!
+//! # Configurations
+//!
+//! * `setting`: read from user settings file
+//! * `config`: merge of settings and hard-coded configuration that shouldn&#39;t be
+//!           modified by user.
+//!
+//! This file is allowed to use a lot of constants from `massa-models` as all
+//! other files named `settings.rs` or `config.rs`.
+//!
+//! The `ConsensusSettings` is the most basic and complete configuration in the
+//! node. You can get almost every configuration from that one.
+//!
+//! `From&lt;ConsensusSettings&gt; impl *`:
+//! - `ConsensusConfig`: Create a configuration merging user settings and hard-coded values
+//!                      (see `/massa-models/node_configuration/*`)
+//!
+//! `From&lt;&amp;ConsensusConfig&gt; impl *`:
+//! - `GraphConfig`
+//! - `LedgerConfig`
+//! - `ProofOfStakeConfig`
+//!
+//! &gt; Development note: We clone the values on getting a configuration from another.
+//!
+//! # Usage of constants
+//!
+//! The default configuration is loaded from the `massa-models` crate. You shouldn&#39;t
+//! write an hard-coded value in the following file but create a new value in
+//! `default.rs` and the testing default equivalent value in `default_testing.rs`. See
+//! `/node_configuration/mod.rs` documentation in `massa-models` sources for more
+//! information.
+//!
+//! # Channels
+//!
+//! The following file contains the definition of the Channels structures used in
+//! the current module.
+//!
+//! # Testing feature
+//!
+//! In unit test your allowed to use the `testing` feature flag that will
+//! use the default values from `/node_configuration/default_testing.rs` in the
+//! `massa-models` crate sources.
+</span><span class="kw">use </span>massa_execution_exports::ExecutionController;
+<span class="kw">use </span>massa_graph::{settings::GraphConfig, LedgerConfig};
+<span class="kw">use </span>massa_models::Amount;
+<span class="kw">use </span>massa_pool::PoolCommandSender;
+<span class="kw">use </span>massa_proof_of_stake_exports::ProofOfStakeConfig;
+<span class="kw">use </span>massa_protocol_exports::{ProtocolCommandSender, ProtocolEventReceiver};
+<span class="kw">use </span>massa_signature::KeyPair;
+<span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>num::rational::Ratio;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::{default::Default, path::PathBuf, usize};
+<span class="kw">use </span>tokio::sync::mpsc;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">commands</span>::{<span class="ident">ConsensusCommand</span>, <span class="ident">ConsensusManagementCommand</span>},
-    <span class="ident">events::ConsensusEvent</span>,
+<span class="kw">use crate</span>::{
+    commands::{ConsensusCommand, ConsensusManagementCommand},
+    events::ConsensusEvent,
 };
 
-<span class="doccomment">/// Consensus configuration</span>
-<span class="doccomment">/// Assumes `thread_count &gt;= 1, t0_millis &gt;= 1, t0_millis % thread_count == 0`</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusSettings</span> {
-    <span class="doccomment">/// Staking keys</span>
-    <span class="kw">pub</span> <span class="ident">staking_keys_path</span>: <span class="ident">PathBuf</span>,
-    <span class="doccomment">/// Maximum number of blocks allowed in discarded blocks.</span>
-    <span class="kw">pub</span> <span class="ident">max_discarded_blocks</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// If a block is `future_block_processing_max_periods` periods in the future, it is just discarded.</span>
-    <span class="kw">pub</span> <span class="ident">future_block_processing_max_periods</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// Maximum number of blocks allowed in `FutureIncomingBlocks`.</span>
-    <span class="kw">pub</span> <span class="ident">max_future_processing_blocks</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Maximum number of blocks allowed in `DependencyWaitingBlocks`.</span>
-    <span class="kw">pub</span> <span class="ident">max_dependency_blocks</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Maximum tries to fill a block with operations</span>
-    <span class="kw">pub</span> <span class="ident">max_operations_fill_attempts</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// number of cached draw cycles for PoS</span>
-    <span class="kw">pub</span> <span class="ident">pos_draw_cached_cycles</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// path to ledger db</span>
-    <span class="kw">pub</span> <span class="ident">ledger_path</span>: <span class="ident">PathBuf</span>,
-    <span class="doccomment">/// Cache capacity allowed to the ledger</span>
-    <span class="kw">pub</span> <span class="ident">ledger_cache_capacity</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// the ledger is flushed to the disk every `ledger_flush_interval`</span>
-    <span class="kw">pub</span> <span class="ident">ledger_flush_interval</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// if ledger need a reset at start up</span>
-    <span class="kw">pub</span> <span class="ident">ledger_reset_at_startup</span>: <span class="ident">bool</span>,
-    <span class="doccomment">/// Initial file path that describe the ledger to merge in `ledger_path` after starting</span>
-    <span class="kw">pub</span> <span class="ident">initial_ledger_path</span>: <span class="ident">PathBuf</span>,
-    <span class="doccomment">/// size of an operation batch when creating a block</span>
-    <span class="kw">pub</span> <span class="ident">operation_batch_size</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// path to the initial rolls</span>
-    <span class="kw">pub</span> <span class="ident">initial_rolls_path</span>: <span class="ident">PathBuf</span>,
-    <span class="doccomment">/// stats time span</span>
-    <span class="kw">pub</span> <span class="ident">stats_timespan</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// max event send wait</span>
-    <span class="kw">pub</span> <span class="ident">max_send_wait</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// force keep at least this number of final periods in RAM for each thread</span>
-    <span class="kw">pub</span> <span class="ident">force_keep_final_periods</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// old blocks are pruned every `block_db_prune_interval`</span>
-    <span class="kw">pub</span> <span class="ident">block_db_prune_interval</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// max number of items returned while querying</span>
-    <span class="kw">pub</span> <span class="ident">max_item_return_count</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// If we want to generate blocks.</span>
-    <span class="doccomment">/// Parameter that shouldn&#39;t be defined in prod.</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>, <span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;Default::default&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">disable_block_creation</span>: <span class="ident">bool</span>,
+<span class="doccomment">/// Consensus configuration
+/// Assumes `thread_count &gt;= 1, t0_millis &gt;= 1, t0_millis % thread_count == 0`
+</span><span class="attribute">#[derive(Debug, Deserialize, Serialize, Clone)]
+</span><span class="kw">pub struct </span>ConsensusSettings {
+    <span class="doccomment">/// Staking keys
+    </span><span class="kw">pub </span>staking_keys_path: PathBuf,
+    <span class="doccomment">/// Maximum number of blocks allowed in discarded blocks.
+    </span><span class="kw">pub </span>max_discarded_blocks: usize,
+    <span class="doccomment">/// If a block is `future_block_processing_max_periods` periods in the future, it is just discarded.
+    </span><span class="kw">pub </span>future_block_processing_max_periods: u64,
+    <span class="doccomment">/// Maximum number of blocks allowed in `FutureIncomingBlocks`.
+    </span><span class="kw">pub </span>max_future_processing_blocks: usize,
+    <span class="doccomment">/// Maximum number of blocks allowed in `DependencyWaitingBlocks`.
+    </span><span class="kw">pub </span>max_dependency_blocks: usize,
+    <span class="doccomment">/// Maximum tries to fill a block with operations
+    </span><span class="kw">pub </span>max_operations_fill_attempts: u32,
+    <span class="doccomment">/// number of cached draw cycles for PoS
+    </span><span class="kw">pub </span>pos_draw_cached_cycles: usize,
+    <span class="doccomment">/// path to ledger db
+    </span><span class="kw">pub </span>ledger_path: PathBuf,
+    <span class="doccomment">/// Cache capacity allowed to the ledger
+    </span><span class="kw">pub </span>ledger_cache_capacity: u64,
+    <span class="doccomment">/// the ledger is flushed to the disk every `ledger_flush_interval`
+    </span><span class="kw">pub </span>ledger_flush_interval: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
+    <span class="doccomment">/// if ledger need a reset at start up
+    </span><span class="kw">pub </span>ledger_reset_at_startup: bool,
+    <span class="doccomment">/// Initial file path that describe the ledger to merge in `ledger_path` after starting
+    </span><span class="kw">pub </span>initial_ledger_path: PathBuf,
+    <span class="doccomment">/// size of an operation batch when creating a block
+    </span><span class="kw">pub </span>operation_batch_size: usize,
+    <span class="doccomment">/// path to the initial rolls
+    </span><span class="kw">pub </span>initial_rolls_path: PathBuf,
+    <span class="doccomment">/// stats time span
+    </span><span class="kw">pub </span>stats_timespan: MassaTime,
+    <span class="doccomment">/// max event send wait
+    </span><span class="kw">pub </span>max_send_wait: MassaTime,
+    <span class="doccomment">/// force keep at least this number of final periods in RAM for each thread
+    </span><span class="kw">pub </span>force_keep_final_periods: u64,
+    <span class="doccomment">/// old blocks are pruned every `block_db_prune_interval`
+    </span><span class="kw">pub </span>block_db_prune_interval: MassaTime,
+    <span class="doccomment">/// max number of items returned while querying
+    </span><span class="kw">pub </span>max_item_return_count: usize,
+    <span class="doccomment">/// If we want to generate blocks.
+    /// Parameter that shouldn&#39;t be defined in prod.
+    </span><span class="attribute">#[serde(skip, default = <span class="string">&quot;Default::default&quot;</span>)]
+    </span><span class="kw">pub </span>disable_block_creation: bool,
 }
 
-<span class="doccomment">/// Consensus full configuration (static + user defined)</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusConfig</span> {
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-    <span class="doccomment">/// temps files</span>
-    <span class="kw">pub</span> <span class="ident">temp_files</span>: <span class="ident">TempFiles</span>,
-    <span class="doccomment">/// Time in milliseconds when the blockclique started.</span>
-    <span class="kw">pub</span> <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// TESTNET: time when the blockclique is ended.</span>
-    <span class="kw">pub</span> <span class="ident">end_timestamp</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Number of threads</span>
-    <span class="kw">pub</span> <span class="ident">thread_count</span>: <span class="ident">u8</span>,
-    <span class="doccomment">/// Time between the periods in the same thread.</span>
-    <span class="kw">pub</span> <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// `KeyPair` to sign genesis blocks.</span>
-    <span class="kw">pub</span> <span class="ident">genesis_key</span>: <span class="ident">KeyPair</span>,
-    <span class="doccomment">/// Staking keys</span>
-    <span class="kw">pub</span> <span class="ident">staking_keys_path</span>: <span class="ident">PathBuf</span>,
-    <span class="doccomment">/// Maximum number of blocks allowed in discarded blocks.</span>
-    <span class="kw">pub</span> <span class="ident">max_discarded_blocks</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// If a block is `future_block_processing_max_periods` periods in the future, it is just discarded.</span>
-    <span class="kw">pub</span> <span class="ident">future_block_processing_max_periods</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// Maximum number of blocks allowed in `FutureIncomingBlocks`.</span>
-    <span class="kw">pub</span> <span class="ident">max_future_processing_blocks</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Maximum number of blocks allowed in `DependencyWaitingBlocks`.</span>
-    <span class="kw">pub</span> <span class="ident">max_dependency_blocks</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Threshold for fitness.</span>
-    <span class="kw">pub</span> <span class="ident">delta_f0</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// Maximum number of operations per block</span>
-    <span class="kw">pub</span> <span class="ident">max_operations_per_block</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// Maximum tries to fill a block with operations</span>
-    <span class="kw">pub</span> <span class="ident">max_operations_fill_attempts</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// Maximum block size in bytes</span>
-    <span class="kw">pub</span> <span class="ident">max_block_size</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// Maximum operation validity period count</span>
-    <span class="kw">pub</span> <span class="ident">operation_validity_periods</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// cycle duration in periods</span>
-    <span class="kw">pub</span> <span class="ident">periods_per_cycle</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle `N - pos_lookback_cycles - 1`</span>
-    <span class="kw">pub</span> <span class="ident">pos_lookback_cycles</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`</span>
-    <span class="kw">pub</span> <span class="ident">pos_lock_cycles</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// number of cached draw cycles for PoS</span>
-    <span class="kw">pub</span> <span class="ident">pos_draw_cached_cycles</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// number of cycle misses (strictly) above which stakers are deactivated</span>
-    <span class="kw">pub</span> <span class="ident">pos_miss_rate_deactivation_threshold</span>: <span class="ident">Ratio</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// path to ledger db after initialization (merge with `initial_ledger_path` on node start)</span>
-    <span class="kw">pub</span> <span class="ident">ledger_path</span>: <span class="ident">PathBuf</span>,
-    <span class="doccomment">/// Cache capacity allowed to the ledger</span>
-    <span class="kw">pub</span> <span class="ident">ledger_cache_capacity</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// the ledger is flushed to the disk every `ledger_flush_interval`</span>
-    <span class="kw">pub</span> <span class="ident">ledger_flush_interval</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// if ledger need a reset at start up</span>
-    <span class="kw">pub</span> <span class="ident">ledger_reset_at_startup</span>: <span class="ident">bool</span>,
-    <span class="doccomment">/// Initial file path that describe the ledger to merge in `ledger_path` after starting</span>
-    <span class="kw">pub</span> <span class="ident">initial_ledger_path</span>: <span class="ident">PathBuf</span>,
-    <span class="doccomment">/// Reward for the creation of a block</span>
-    <span class="kw">pub</span> <span class="ident">block_reward</span>: <span class="ident">Amount</span>,
-    <span class="doccomment">/// size of an operation batch when creating a block</span>
-    <span class="kw">pub</span> <span class="ident">operation_batch_size</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// path to the initial rolls</span>
-    <span class="kw">pub</span> <span class="ident">initial_rolls_path</span>: <span class="ident">PathBuf</span>,
-    <span class="doccomment">/// initial seed</span>
-    <span class="kw">pub</span> <span class="ident">initial_draw_seed</span>: <span class="ident">String</span>,
-    <span class="doccomment">/// Price of a roll inside the network</span>
-    <span class="kw">pub</span> <span class="ident">roll_price</span>: <span class="ident">Amount</span>,
-    <span class="doccomment">/// stats time span</span>
-    <span class="kw">pub</span> <span class="ident">stats_timespan</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// max event send wait</span>
-    <span class="kw">pub</span> <span class="ident">max_send_wait</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// force keep at least this number of final periods in RAM for each thread</span>
-    <span class="kw">pub</span> <span class="ident">force_keep_final_periods</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// target number of endorsement per block</span>
-    <span class="kw">pub</span> <span class="ident">endorsement_count</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// old blocks are pruned every `block_db_prune_interval`</span>
-    <span class="kw">pub</span> <span class="ident">block_db_prune_interval</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// max number of items returned while querying</span>
-    <span class="kw">pub</span> <span class="ident">max_item_return_count</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// If we want to generate blocks.</span>
-    <span class="doccomment">/// Parameter that shouldn&#39;t be defined in prod.</span>
-    <span class="kw">pub</span> <span class="ident">disable_block_creation</span>: <span class="ident">bool</span>,
-    <span class="doccomment">/// Max gas per block for the execution configuration</span>
-    <span class="kw">pub</span> <span class="ident">max_gas_per_block</span>: <span class="ident">u64</span>,
+<span class="doccomment">/// Consensus full configuration (static + user defined)
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>ConsensusConfig {
+    <span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+    </span><span class="doccomment">/// temps files
+    </span><span class="kw">pub </span>temp_files: TempFiles,
+    <span class="doccomment">/// Time in milliseconds when the blockclique started.
+    </span><span class="kw">pub </span>genesis_timestamp: MassaTime,
+    <span class="doccomment">/// TESTNET: time when the blockclique is ended.
+    </span><span class="kw">pub </span>end_timestamp: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
+    <span class="doccomment">/// Number of threads
+    </span><span class="kw">pub </span>thread_count: u8,
+    <span class="doccomment">/// Time between the periods in the same thread.
+    </span><span class="kw">pub </span>t0: MassaTime,
+    <span class="doccomment">/// `KeyPair` to sign genesis blocks.
+    </span><span class="kw">pub </span>genesis_key: KeyPair,
+    <span class="doccomment">/// Staking keys
+    </span><span class="kw">pub </span>staking_keys_path: PathBuf,
+    <span class="doccomment">/// Maximum number of blocks allowed in discarded blocks.
+    </span><span class="kw">pub </span>max_discarded_blocks: usize,
+    <span class="doccomment">/// If a block is `future_block_processing_max_periods` periods in the future, it is just discarded.
+    </span><span class="kw">pub </span>future_block_processing_max_periods: u64,
+    <span class="doccomment">/// Maximum number of blocks allowed in `FutureIncomingBlocks`.
+    </span><span class="kw">pub </span>max_future_processing_blocks: usize,
+    <span class="doccomment">/// Maximum number of blocks allowed in `DependencyWaitingBlocks`.
+    </span><span class="kw">pub </span>max_dependency_blocks: usize,
+    <span class="doccomment">/// Threshold for fitness.
+    </span><span class="kw">pub </span>delta_f0: u64,
+    <span class="doccomment">/// Maximum number of operations per block
+    </span><span class="kw">pub </span>max_operations_per_block: u32,
+    <span class="doccomment">/// Maximum tries to fill a block with operations
+    </span><span class="kw">pub </span>max_operations_fill_attempts: u32,
+    <span class="doccomment">/// Maximum block size in bytes
+    </span><span class="kw">pub </span>max_block_size: u32,
+    <span class="doccomment">/// Maximum operation validity period count
+    </span><span class="kw">pub </span>operation_validity_periods: u64,
+    <span class="doccomment">/// cycle duration in periods
+    </span><span class="kw">pub </span>periods_per_cycle: u64,
+    <span class="doccomment">/// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle `N - pos_lookback_cycles - 1`
+    </span><span class="kw">pub </span>pos_lookback_cycles: u64,
+    <span class="doccomment">/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`
+    </span><span class="kw">pub </span>pos_lock_cycles: u64,
+    <span class="doccomment">/// number of cached draw cycles for PoS
+    </span><span class="kw">pub </span>pos_draw_cached_cycles: usize,
+    <span class="doccomment">/// number of cycle misses (strictly) above which stakers are deactivated
+    </span><span class="kw">pub </span>pos_miss_rate_deactivation_threshold: Ratio&lt;u64&gt;,
+    <span class="doccomment">/// path to ledger db after initialization (merge with `initial_ledger_path` on node start)
+    </span><span class="kw">pub </span>ledger_path: PathBuf,
+    <span class="doccomment">/// Cache capacity allowed to the ledger
+    </span><span class="kw">pub </span>ledger_cache_capacity: u64,
+    <span class="doccomment">/// the ledger is flushed to the disk every `ledger_flush_interval`
+    </span><span class="kw">pub </span>ledger_flush_interval: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
+    <span class="doccomment">/// if ledger need a reset at start up
+    </span><span class="kw">pub </span>ledger_reset_at_startup: bool,
+    <span class="doccomment">/// Initial file path that describe the ledger to merge in `ledger_path` after starting
+    </span><span class="kw">pub </span>initial_ledger_path: PathBuf,
+    <span class="doccomment">/// Reward for the creation of a block
+    </span><span class="kw">pub </span>block_reward: Amount,
+    <span class="doccomment">/// size of an operation batch when creating a block
+    </span><span class="kw">pub </span>operation_batch_size: usize,
+    <span class="doccomment">/// path to the initial rolls
+    </span><span class="kw">pub </span>initial_rolls_path: PathBuf,
+    <span class="doccomment">/// initial seed
+    </span><span class="kw">pub </span>initial_draw_seed: String,
+    <span class="doccomment">/// Price of a roll inside the network
+    </span><span class="kw">pub </span>roll_price: Amount,
+    <span class="doccomment">/// stats time span
+    </span><span class="kw">pub </span>stats_timespan: MassaTime,
+    <span class="doccomment">/// max event send wait
+    </span><span class="kw">pub </span>max_send_wait: MassaTime,
+    <span class="doccomment">/// force keep at least this number of final periods in RAM for each thread
+    </span><span class="kw">pub </span>force_keep_final_periods: u64,
+    <span class="doccomment">/// target number of endorsement per block
+    </span><span class="kw">pub </span>endorsement_count: u32,
+    <span class="doccomment">/// old blocks are pruned every `block_db_prune_interval`
+    </span><span class="kw">pub </span>block_db_prune_interval: MassaTime,
+    <span class="doccomment">/// max number of items returned while querying
+    </span><span class="kw">pub </span>max_item_return_count: usize,
+    <span class="doccomment">/// If we want to generate blocks.
+    /// Parameter that shouldn&#39;t be defined in prod.
+    </span><span class="kw">pub </span>disable_block_creation: bool,
+    <span class="doccomment">/// Max gas per block for the execution configuration
+    </span><span class="kw">pub </span>max_gas_per_block: u64,
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>)]</span>
-<span class="doccomment">/// In testing mode if you create a configuration with temporary files</span>
-<span class="doccomment">/// we need to keep inside this structure the `TempDir` and</span>
-<span class="doccomment">/// `NamedTempFile` here since the end of the test.</span>
-<span class="doccomment">/// We don&#39;t need to move or clone, only the main configuration need that and</span>
-<span class="doccomment">/// the var is never used.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TempFiles</span> {
-    <span class="doccomment">/// Doesn&#39;t drop temporary file on testing</span>
-    <span class="kw">pub</span> <span class="ident">temp_files</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">tempfile::NamedTempFile</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Doesn&#39;t drop temporary directory on testing</span>
-    <span class="kw">pub</span> <span class="ident">temp_dir</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">tempfile::TempDir</span><span class="op">&gt;</span>,
+<span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+#[derive(Default, Debug)]
+</span><span class="doccomment">/// In testing mode if you create a configuration with temporary files
+/// we need to keep inside this structure the `TempDir` and
+/// `NamedTempFile` here since the end of the test.
+/// We don&#39;t need to move or clone, only the main configuration need that and
+/// the var is never used.
+</span><span class="kw">pub struct </span>TempFiles {
+    <span class="doccomment">/// Doesn&#39;t drop temporary file on testing
+    </span><span class="kw">pub </span>temp_files: Vec&lt;tempfile::NamedTempFile&gt;,
+    <span class="doccomment">/// Doesn&#39;t drop temporary directory on testing
+    </span><span class="kw">pub </span>temp_dir: Vec&lt;tempfile::TempDir&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">Clone</span> <span class="kw">for</span> <span class="ident">ConsensusConfig</span> {
-    <span class="kw">fn</span> <span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-            <span class="ident">temp_files</span>: <span class="ident">TempFiles::default</span>(),
-            <span class="ident">genesis_timestamp</span>: <span class="self">self</span>.<span class="ident">genesis_timestamp</span>,
-            <span class="ident">end_timestamp</span>: <span class="self">self</span>.<span class="ident">end_timestamp</span>,
-            <span class="ident">thread_count</span>: <span class="self">self</span>.<span class="ident">thread_count</span>,
-            <span class="ident">t0</span>: <span class="self">self</span>.<span class="ident">t0</span>,
-            <span class="ident">genesis_key</span>: <span class="self">self</span>.<span class="ident">genesis_key</span>.<span class="ident">clone</span>(),
-            <span class="ident">staking_keys_path</span>: <span class="self">self</span>.<span class="ident">staking_keys_path</span>.<span class="ident">clone</span>(),
-            <span class="ident">max_discarded_blocks</span>: <span class="self">self</span>.<span class="ident">max_discarded_blocks</span>,
-            <span class="ident">future_block_processing_max_periods</span>: <span class="self">self</span>.<span class="ident">future_block_processing_max_periods</span>,
-            <span class="ident">max_future_processing_blocks</span>: <span class="self">self</span>.<span class="ident">max_future_processing_blocks</span>,
-            <span class="ident">max_dependency_blocks</span>: <span class="self">self</span>.<span class="ident">max_dependency_blocks</span>,
-            <span class="ident">delta_f0</span>: <span class="self">self</span>.<span class="ident">delta_f0</span>,
-            <span class="ident">max_operations_per_block</span>: <span class="self">self</span>.<span class="ident">max_operations_per_block</span>,
-            <span class="ident">max_operations_fill_attempts</span>: <span class="self">self</span>.<span class="ident">max_operations_fill_attempts</span>,
-            <span class="ident">max_block_size</span>: <span class="self">self</span>.<span class="ident">max_block_size</span>,
-            <span class="ident">operation_validity_periods</span>: <span class="self">self</span>.<span class="ident">operation_validity_periods</span>,
-            <span class="ident">periods_per_cycle</span>: <span class="self">self</span>.<span class="ident">periods_per_cycle</span>,
-            <span class="ident">pos_lookback_cycles</span>: <span class="self">self</span>.<span class="ident">pos_lookback_cycles</span>,
-            <span class="ident">pos_lock_cycles</span>: <span class="self">self</span>.<span class="ident">pos_lock_cycles</span>,
-            <span class="ident">pos_draw_cached_cycles</span>: <span class="self">self</span>.<span class="ident">pos_draw_cached_cycles</span>,
-            <span class="ident">pos_miss_rate_deactivation_threshold</span>: <span class="self">self</span>.<span class="ident">pos_miss_rate_deactivation_threshold</span>,
-            <span class="ident">ledger_path</span>: <span class="self">self</span>.<span class="ident">ledger_path</span>.<span class="ident">clone</span>(),
-            <span class="ident">ledger_cache_capacity</span>: <span class="self">self</span>.<span class="ident">ledger_cache_capacity</span>,
-            <span class="ident">ledger_flush_interval</span>: <span class="self">self</span>.<span class="ident">ledger_flush_interval</span>,
-            <span class="ident">ledger_reset_at_startup</span>: <span class="self">self</span>.<span class="ident">ledger_reset_at_startup</span>,
-            <span class="ident">initial_ledger_path</span>: <span class="self">self</span>.<span class="ident">initial_ledger_path</span>.<span class="ident">clone</span>(),
-            <span class="ident">block_reward</span>: <span class="self">self</span>.<span class="ident">block_reward</span>,
-            <span class="ident">operation_batch_size</span>: <span class="self">self</span>.<span class="ident">operation_batch_size</span>,
-            <span class="ident">initial_rolls_path</span>: <span class="self">self</span>.<span class="ident">initial_rolls_path</span>.<span class="ident">clone</span>(),
-            <span class="ident">initial_draw_seed</span>: <span class="self">self</span>.<span class="ident">initial_draw_seed</span>.<span class="ident">clone</span>(),
-            <span class="ident">roll_price</span>: <span class="self">self</span>.<span class="ident">roll_price</span>,
-            <span class="ident">stats_timespan</span>: <span class="self">self</span>.<span class="ident">stats_timespan</span>,
-            <span class="ident">max_send_wait</span>: <span class="self">self</span>.<span class="ident">max_send_wait</span>,
-            <span class="ident">force_keep_final_periods</span>: <span class="self">self</span>.<span class="ident">force_keep_final_periods</span>,
-            <span class="ident">endorsement_count</span>: <span class="self">self</span>.<span class="ident">endorsement_count</span>,
-            <span class="ident">block_db_prune_interval</span>: <span class="self">self</span>.<span class="ident">block_db_prune_interval</span>,
-            <span class="ident">max_item_return_count</span>: <span class="self">self</span>.<span class="ident">max_item_return_count</span>,
-            <span class="ident">disable_block_creation</span>: <span class="self">self</span>.<span class="ident">disable_block_creation</span>,
-            <span class="ident">max_gas_per_block</span>: <span class="self">self</span>.<span class="ident">max_gas_per_block</span>,
+<span class="kw">impl </span>Clone <span class="kw">for </span>ConsensusConfig {
+    <span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            <span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+            </span>temp_files: TempFiles::default(),
+            genesis_timestamp: <span class="self">self</span>.genesis_timestamp,
+            end_timestamp: <span class="self">self</span>.end_timestamp,
+            thread_count: <span class="self">self</span>.thread_count,
+            t0: <span class="self">self</span>.t0,
+            genesis_key: <span class="self">self</span>.genesis_key.clone(),
+            staking_keys_path: <span class="self">self</span>.staking_keys_path.clone(),
+            max_discarded_blocks: <span class="self">self</span>.max_discarded_blocks,
+            future_block_processing_max_periods: <span class="self">self</span>.future_block_processing_max_periods,
+            max_future_processing_blocks: <span class="self">self</span>.max_future_processing_blocks,
+            max_dependency_blocks: <span class="self">self</span>.max_dependency_blocks,
+            delta_f0: <span class="self">self</span>.delta_f0,
+            max_operations_per_block: <span class="self">self</span>.max_operations_per_block,
+            max_operations_fill_attempts: <span class="self">self</span>.max_operations_fill_attempts,
+            max_block_size: <span class="self">self</span>.max_block_size,
+            operation_validity_periods: <span class="self">self</span>.operation_validity_periods,
+            periods_per_cycle: <span class="self">self</span>.periods_per_cycle,
+            pos_lookback_cycles: <span class="self">self</span>.pos_lookback_cycles,
+            pos_lock_cycles: <span class="self">self</span>.pos_lock_cycles,
+            pos_draw_cached_cycles: <span class="self">self</span>.pos_draw_cached_cycles,
+            pos_miss_rate_deactivation_threshold: <span class="self">self</span>.pos_miss_rate_deactivation_threshold,
+            ledger_path: <span class="self">self</span>.ledger_path.clone(),
+            ledger_cache_capacity: <span class="self">self</span>.ledger_cache_capacity,
+            ledger_flush_interval: <span class="self">self</span>.ledger_flush_interval,
+            ledger_reset_at_startup: <span class="self">self</span>.ledger_reset_at_startup,
+            initial_ledger_path: <span class="self">self</span>.initial_ledger_path.clone(),
+            block_reward: <span class="self">self</span>.block_reward,
+            operation_batch_size: <span class="self">self</span>.operation_batch_size,
+            initial_rolls_path: <span class="self">self</span>.initial_rolls_path.clone(),
+            initial_draw_seed: <span class="self">self</span>.initial_draw_seed.clone(),
+            roll_price: <span class="self">self</span>.roll_price,
+            stats_timespan: <span class="self">self</span>.stats_timespan,
+            max_send_wait: <span class="self">self</span>.max_send_wait,
+            force_keep_final_periods: <span class="self">self</span>.force_keep_final_periods,
+            endorsement_count: <span class="self">self</span>.endorsement_count,
+            block_db_prune_interval: <span class="self">self</span>.block_db_prune_interval,
+            max_item_return_count: <span class="self">self</span>.max_item_return_count,
+            disable_block_creation: <span class="self">self</span>.disable_block_creation,
+            max_gas_per_block: <span class="self">self</span>.max_gas_per_block,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ConsensusConfig</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">GraphConfig</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="ident">ConsensusConfig</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">GraphConfig</span> {
-            <span class="ident">thread_count</span>: <span class="ident">cfg</span>.<span class="ident">thread_count</span>,
-            <span class="ident">genesis_key</span>: <span class="ident">cfg</span>.<span class="ident">genesis_key</span>.<span class="ident">clone</span>(),
-            <span class="ident">max_discarded_blocks</span>: <span class="ident">cfg</span>.<span class="ident">max_discarded_blocks</span>,
-            <span class="ident">future_block_processing_max_periods</span>: <span class="ident">cfg</span>.<span class="ident">future_block_processing_max_periods</span>,
-            <span class="ident">max_future_processing_blocks</span>: <span class="ident">cfg</span>.<span class="ident">max_future_processing_blocks</span>,
-            <span class="ident">max_dependency_blocks</span>: <span class="ident">cfg</span>.<span class="ident">max_dependency_blocks</span>,
-            <span class="ident">delta_f0</span>: <span class="ident">cfg</span>.<span class="ident">delta_f0</span>,
-            <span class="ident">operation_validity_periods</span>: <span class="ident">cfg</span>.<span class="ident">operation_validity_periods</span>,
-            <span class="ident">periods_per_cycle</span>: <span class="ident">cfg</span>.<span class="ident">periods_per_cycle</span>,
-            <span class="ident">initial_ledger_path</span>: <span class="ident">cfg</span>.<span class="ident">initial_ledger_path</span>.<span class="ident">clone</span>(),
-            <span class="ident">block_reward</span>: <span class="ident">cfg</span>.<span class="ident">block_reward</span>,
-            <span class="ident">roll_price</span>: <span class="ident">cfg</span>.<span class="ident">roll_price</span>,
-            <span class="ident">force_keep_final_periods</span>: <span class="ident">cfg</span>.<span class="ident">force_keep_final_periods</span>,
-            <span class="ident">endorsement_count</span>: <span class="ident">cfg</span>.<span class="ident">endorsement_count</span>,
-            <span class="ident">max_item_return_count</span>: <span class="ident">cfg</span>.<span class="ident">max_item_return_count</span>,
-            <span class="ident">ledger_path</span>: <span class="ident">cfg</span>.<span class="ident">ledger_path</span>.<span class="ident">clone</span>(),
-            <span class="ident">ledger_cache_capacity</span>: <span class="ident">cfg</span>.<span class="ident">ledger_cache_capacity</span>,
-            <span class="ident">ledger_flush_interval</span>: <span class="ident">cfg</span>.<span class="ident">ledger_flush_interval</span>,
+<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>ConsensusConfig&gt; <span class="kw">for </span>GraphConfig {
+    <span class="kw">fn </span>from(cfg: <span class="kw-2">&amp;</span>ConsensusConfig) -&gt; <span class="self">Self </span>{
+        GraphConfig {
+            thread_count: cfg.thread_count,
+            genesis_key: cfg.genesis_key.clone(),
+            max_discarded_blocks: cfg.max_discarded_blocks,
+            future_block_processing_max_periods: cfg.future_block_processing_max_periods,
+            max_future_processing_blocks: cfg.max_future_processing_blocks,
+            max_dependency_blocks: cfg.max_dependency_blocks,
+            delta_f0: cfg.delta_f0,
+            operation_validity_periods: cfg.operation_validity_periods,
+            periods_per_cycle: cfg.periods_per_cycle,
+            initial_ledger_path: cfg.initial_ledger_path.clone(),
+            block_reward: cfg.block_reward,
+            roll_price: cfg.roll_price,
+            force_keep_final_periods: cfg.force_keep_final_periods,
+            endorsement_count: cfg.endorsement_count,
+            max_item_return_count: cfg.max_item_return_count,
+            ledger_path: cfg.ledger_path.clone(),
+            ledger_cache_capacity: cfg.ledger_cache_capacity,
+            ledger_flush_interval: cfg.ledger_flush_interval,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ConsensusConfig</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ProofOfStakeConfig</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="ident">ConsensusConfig</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">ProofOfStakeConfig</span> {
-            <span class="ident">thread_count</span>: <span class="ident">cfg</span>.<span class="ident">thread_count</span>,
-            <span class="ident">genesis_key</span>: <span class="ident">cfg</span>.<span class="ident">genesis_key</span>.<span class="ident">clone</span>(),
-            <span class="ident">periods_per_cycle</span>: <span class="ident">cfg</span>.<span class="ident">periods_per_cycle</span>,
-            <span class="ident">pos_lookback_cycles</span>: <span class="ident">cfg</span>.<span class="ident">pos_lookback_cycles</span>,
-            <span class="ident">pos_lock_cycles</span>: <span class="ident">cfg</span>.<span class="ident">pos_lock_cycles</span>,
-            <span class="ident">pos_draw_cached_cycles</span>: <span class="ident">cfg</span>.<span class="ident">pos_draw_cached_cycles</span>,
-            <span class="ident">pos_miss_rate_deactivation_threshold</span>: <span class="ident">cfg</span>.<span class="ident">pos_miss_rate_deactivation_threshold</span>,
-            <span class="ident">initial_rolls_path</span>: <span class="ident">cfg</span>.<span class="ident">initial_rolls_path</span>.<span class="ident">clone</span>(),
-            <span class="ident">initial_draw_seed</span>: <span class="ident">cfg</span>.<span class="ident">initial_draw_seed</span>.<span class="ident">clone</span>(),
-            <span class="ident">roll_price</span>: <span class="ident">cfg</span>.<span class="ident">roll_price</span>,
-            <span class="ident">endorsement_count</span>: <span class="ident">cfg</span>.<span class="ident">endorsement_count</span>,
+<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>ConsensusConfig&gt; <span class="kw">for </span>ProofOfStakeConfig {
+    <span class="kw">fn </span>from(cfg: <span class="kw-2">&amp;</span>ConsensusConfig) -&gt; <span class="self">Self </span>{
+        ProofOfStakeConfig {
+            thread_count: cfg.thread_count,
+            genesis_key: cfg.genesis_key.clone(),
+            periods_per_cycle: cfg.periods_per_cycle,
+            pos_lookback_cycles: cfg.pos_lookback_cycles,
+            pos_lock_cycles: cfg.pos_lock_cycles,
+            pos_draw_cached_cycles: cfg.pos_draw_cached_cycles,
+            pos_miss_rate_deactivation_threshold: cfg.pos_miss_rate_deactivation_threshold,
+            initial_rolls_path: cfg.initial_rolls_path.clone(),
+            initial_draw_seed: cfg.initial_draw_seed.clone(),
+            roll_price: cfg.roll_price,
+            endorsement_count: cfg.endorsement_count,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ConsensusConfig</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">LedgerConfig</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="ident">ConsensusConfig</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">LedgerConfig</span> {
-            <span class="ident">thread_count</span>: <span class="ident">cfg</span>.<span class="ident">thread_count</span>,
-            <span class="ident">ledger_path</span>: <span class="ident">cfg</span>.<span class="ident">ledger_path</span>.<span class="ident">clone</span>(),
-            <span class="ident">ledger_cache_capacity</span>: <span class="ident">cfg</span>.<span class="ident">ledger_cache_capacity</span>,
-            <span class="ident">ledger_flush_interval</span>: <span class="ident">cfg</span>.<span class="ident">ledger_flush_interval</span>,
-            <span class="ident">initial_ledger_path</span>: <span class="ident">cfg</span>.<span class="ident">initial_ledger_path</span>.<span class="ident">clone</span>(),
+<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>ConsensusConfig&gt; <span class="kw">for </span>LedgerConfig {
+    <span class="kw">fn </span>from(cfg: <span class="kw-2">&amp;</span>ConsensusConfig) -&gt; <span class="self">Self </span>{
+        LedgerConfig {
+            thread_count: cfg.thread_count,
+            ledger_path: cfg.ledger_path.clone(),
+            ledger_cache_capacity: cfg.ledger_cache_capacity,
+            ledger_flush_interval: cfg.ledger_flush_interval,
+            initial_ledger_path: cfg.initial_ledger_path.clone(),
         }
     }
 }
 
-<span class="doccomment">/// Communication asynchronous channels for the consensus worker</span>
-<span class="doccomment">/// Contains consensus channels associated (protocol &amp; execution)</span>
-<span class="doccomment">/// Contains also controller asynchronous channels (command, manager receivers and event sender)</span>
-<span class="doccomment">/// Contains a sender to the pool worker commands</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusWorkerChannels</span> {
-    <span class="doccomment">/// Associated protocol command sender.</span>
-    <span class="kw">pub</span> <span class="ident">protocol_command_sender</span>: <span class="ident">ProtocolCommandSender</span>,
-    <span class="doccomment">/// Associated protocol event listener.</span>
-    <span class="kw">pub</span> <span class="ident">protocol_event_receiver</span>: <span class="ident">ProtocolEventReceiver</span>,
-    <span class="doccomment">/// Execution command sender.</span>
-    <span class="kw">pub</span> <span class="ident">execution_controller</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Associated Pool command sender.</span>
-    <span class="kw">pub</span> <span class="ident">pool_command_sender</span>: <span class="ident">PoolCommandSender</span>,
-    <span class="doccomment">/// Channel receiving consensus commands.</span>
-    <span class="kw">pub</span> <span class="ident">controller_command_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ConsensusCommand</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Channel sending out consensus events.</span>
-    <span class="kw">pub</span> <span class="ident">controller_event_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ConsensusEvent</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Channel receiving consensus management commands.</span>
-    <span class="kw">pub</span> <span class="ident">controller_manager_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ConsensusManagementCommand</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Communication asynchronous channels for the consensus worker
+/// Contains consensus channels associated (protocol &amp; execution)
+/// Contains also controller asynchronous channels (command, manager receivers and event sender)
+/// Contains a sender to the pool worker commands
+</span><span class="kw">pub struct </span>ConsensusWorkerChannels {
+    <span class="doccomment">/// Associated protocol command sender.
+    </span><span class="kw">pub </span>protocol_command_sender: ProtocolCommandSender,
+    <span class="doccomment">/// Associated protocol event listener.
+    </span><span class="kw">pub </span>protocol_event_receiver: ProtocolEventReceiver,
+    <span class="doccomment">/// Execution command sender.
+    </span><span class="kw">pub </span>execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
+    <span class="doccomment">/// Associated Pool command sender.
+    </span><span class="kw">pub </span>pool_command_sender: PoolCommandSender,
+    <span class="doccomment">/// Channel receiving consensus commands.
+    </span><span class="kw">pub </span>controller_command_rx: mpsc::Receiver&lt;ConsensusCommand&gt;,
+    <span class="doccomment">/// Channel sending out consensus events.
+    </span><span class="kw">pub </span>controller_event_tx: mpsc::Sender&lt;ConsensusEvent&gt;,
+    <span class="doccomment">/// Channel receiving consensus management commands.
+    </span><span class="kw">pub </span>controller_manager_rx: mpsc::Receiver&lt;ConsensusManagementCommand&gt;,
 }
 
-<span class="doccomment">/// Public channels associated to the consensus module.</span>
-<span class="doccomment">/// Execution &amp; Protocol Sender/Receiver</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusChannels</span> {
-    <span class="doccomment">/// outgoing link to execution component</span>
-    <span class="kw">pub</span> <span class="ident">execution_controller</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// outgoing link to protocol component</span>
-    <span class="kw">pub</span> <span class="ident">protocol_command_sender</span>: <span class="ident">ProtocolCommandSender</span>,
-    <span class="doccomment">/// incoming link to protocol component</span>
-    <span class="kw">pub</span> <span class="ident">protocol_event_receiver</span>: <span class="ident">ProtocolEventReceiver</span>,
-    <span class="doccomment">/// outgoing link to pool component</span>
-    <span class="kw">pub</span> <span class="ident">pool_command_sender</span>: <span class="ident">PoolCommandSender</span>,
+<span class="doccomment">/// Public channels associated to the consensus module.
+/// Execution &amp; Protocol Sender/Receiver
+</span><span class="kw">pub struct </span>ConsensusChannels {
+    <span class="doccomment">/// outgoing link to execution component
+    </span><span class="kw">pub </span>execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
+    <span class="doccomment">/// outgoing link to protocol component
+    </span><span class="kw">pub </span>protocol_command_sender: ProtocolCommandSender,
+    <span class="doccomment">/// incoming link to protocol component
+    </span><span class="kw">pub </span>protocol_event_receiver: ProtocolEventReceiver,
+    <span class="doccomment">/// outgoing link to pool component
+    </span><span class="kw">pub </span>pool_command_sender: PoolCommandSender,
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ConsensusSettings</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ConsensusConfig</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">settings</span>: <span class="kw-2">&amp;</span><span class="ident">ConsensusSettings</span>) -&gt; <span class="self">Self</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-        <span class="doccomment">/// If the feature `testing` is activated we force the unit</span>
-        <span class="doccomment">/// test values to be used for a default initialization.</span>
-        <span class="kw">use</span> <span class="ident">massa_models::constants::default_testing</span>::<span class="kw-2">*</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>))]</span>
-        <span class="kw">use</span> <span class="ident">massa_models::constants</span>::<span class="kw-2">*</span>;
-        <span class="ident">ConsensusConfig</span> {
-            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-            <span class="ident">temp_files</span>: <span class="ident">TempFiles::default</span>(), <span class="comment">// No need to clone</span>
-            <span class="ident">genesis_timestamp</span>: <span class="kw-2">*</span><span class="ident">GENESIS_TIMESTAMP</span>,
-            <span class="ident">end_timestamp</span>: <span class="kw-2">*</span><span class="ident">END_TIMESTAMP</span>,
-            <span class="ident">thread_count</span>: <span class="ident">THREAD_COUNT</span>,
-            <span class="ident">t0</span>: <span class="ident">T0</span>,
-            <span class="ident">genesis_key</span>: <span class="ident">GENESIS_KEY</span>.<span class="ident">clone</span>(),
-            <span class="ident">staking_keys_path</span>: <span class="ident">settings</span>.<span class="ident">staking_keys_path</span>.<span class="ident">clone</span>(),
-            <span class="ident">max_discarded_blocks</span>: <span class="ident">settings</span>.<span class="ident">max_discarded_blocks</span>,
-            <span class="ident">future_block_processing_max_periods</span>: <span class="ident">settings</span>.<span class="ident">future_block_processing_max_periods</span>,
-            <span class="ident">max_future_processing_blocks</span>: <span class="ident">settings</span>.<span class="ident">max_future_processing_blocks</span>,
-            <span class="ident">max_dependency_blocks</span>: <span class="ident">settings</span>.<span class="ident">max_dependency_blocks</span>,
-            <span class="ident">delta_f0</span>: <span class="ident">DELTA_F0</span>,
-            <span class="ident">max_operations_per_block</span>: <span class="ident">MAX_OPERATIONS_PER_BLOCK</span>,
-            <span class="ident">max_operations_fill_attempts</span>: <span class="ident">settings</span>.<span class="ident">max_operations_fill_attempts</span>,
-            <span class="ident">max_block_size</span>: <span class="ident">MAX_BLOCK_SIZE</span>,
-            <span class="ident">operation_validity_periods</span>: <span class="ident">OPERATION_VALIDITY_PERIODS</span>,
-            <span class="ident">periods_per_cycle</span>: <span class="ident">PERIODS_PER_CYCLE</span>,
-            <span class="ident">pos_lookback_cycles</span>: <span class="ident">POS_LOOKBACK_CYCLES</span>,
-            <span class="ident">pos_lock_cycles</span>: <span class="ident">POS_LOCK_CYCLES</span>,
-            <span class="ident">pos_draw_cached_cycles</span>: <span class="ident">settings</span>.<span class="ident">pos_draw_cached_cycles</span>,
-            <span class="ident">pos_miss_rate_deactivation_threshold</span>: <span class="kw-2">*</span><span class="ident">POS_MISS_RATE_DEACTIVATION_THRESHOLD</span>,
-            <span class="ident">ledger_path</span>: <span class="ident">settings</span>.<span class="ident">ledger_path</span>.<span class="ident">clone</span>(),
-            <span class="ident">ledger_cache_capacity</span>: <span class="ident">settings</span>.<span class="ident">ledger_cache_capacity</span>,
-            <span class="ident">ledger_flush_interval</span>: <span class="ident">settings</span>.<span class="ident">ledger_flush_interval</span>,
-            <span class="ident">ledger_reset_at_startup</span>: <span class="ident">settings</span>.<span class="ident">ledger_reset_at_startup</span>,
-            <span class="ident">initial_ledger_path</span>: <span class="ident">settings</span>.<span class="ident">initial_ledger_path</span>.<span class="ident">clone</span>(),
-            <span class="ident">block_reward</span>: <span class="ident">BLOCK_REWARD</span>,
-            <span class="ident">operation_batch_size</span>: <span class="ident">settings</span>.<span class="ident">operation_batch_size</span>,
-            <span class="ident">initial_rolls_path</span>: <span class="ident">settings</span>.<span class="ident">initial_rolls_path</span>.<span class="ident">clone</span>(),
-            <span class="ident">initial_draw_seed</span>: <span class="ident">INITIAL_DRAW_SEED</span>.<span class="ident">to_string</span>(),
-            <span class="ident">roll_price</span>: <span class="ident">ROLL_PRICE</span>,
-            <span class="ident">stats_timespan</span>: <span class="ident">settings</span>.<span class="ident">stats_timespan</span>,
-            <span class="ident">max_send_wait</span>: <span class="ident">settings</span>.<span class="ident">max_send_wait</span>,
-            <span class="ident">force_keep_final_periods</span>: <span class="ident">settings</span>.<span class="ident">force_keep_final_periods</span>,
-            <span class="ident">endorsement_count</span>: <span class="ident">ENDORSEMENT_COUNT</span>,
-            <span class="ident">block_db_prune_interval</span>: <span class="ident">settings</span>.<span class="ident">block_db_prune_interval</span>,
-            <span class="ident">max_item_return_count</span>: <span class="ident">settings</span>.<span class="ident">max_item_return_count</span>,
-            <span class="ident">disable_block_creation</span>: <span class="ident">settings</span>.<span class="ident">disable_block_creation</span>,
-            <span class="ident">max_gas_per_block</span>: <span class="ident">MAX_GAS_PER_BLOCK</span>,
+<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>ConsensusSettings&gt; <span class="kw">for </span>ConsensusConfig {
+    <span class="kw">fn </span>from(settings: <span class="kw-2">&amp;</span>ConsensusSettings) -&gt; <span class="self">Self </span>{
+        <span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+        </span><span class="doccomment">/// If the feature `testing` is activated we force the unit
+        /// test values to be used for a default initialization.
+        </span><span class="kw">use </span>massa_models::constants::default_testing::<span class="kw-2">*</span>;
+        <span class="attribute">#[cfg(not(feature = <span class="string">&quot;testing&quot;</span>))]
+        </span><span class="kw">use </span>massa_models::constants::<span class="kw-2">*</span>;
+        ConsensusConfig {
+            <span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+            </span>temp_files: TempFiles::default(), <span class="comment">// No need to clone
+            </span>genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
+            end_timestamp: <span class="kw-2">*</span>END_TIMESTAMP,
+            thread_count: THREAD_COUNT,
+            t0: T0,
+            genesis_key: GENESIS_KEY.clone(),
+            staking_keys_path: settings.staking_keys_path.clone(),
+            max_discarded_blocks: settings.max_discarded_blocks,
+            future_block_processing_max_periods: settings.future_block_processing_max_periods,
+            max_future_processing_blocks: settings.max_future_processing_blocks,
+            max_dependency_blocks: settings.max_dependency_blocks,
+            delta_f0: DELTA_F0,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            max_operations_fill_attempts: settings.max_operations_fill_attempts,
+            max_block_size: MAX_BLOCK_SIZE,
+            operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+            periods_per_cycle: PERIODS_PER_CYCLE,
+            pos_lookback_cycles: POS_LOOKBACK_CYCLES,
+            pos_lock_cycles: POS_LOCK_CYCLES,
+            pos_draw_cached_cycles: settings.pos_draw_cached_cycles,
+            pos_miss_rate_deactivation_threshold: <span class="kw-2">*</span>POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+            ledger_path: settings.ledger_path.clone(),
+            ledger_cache_capacity: settings.ledger_cache_capacity,
+            ledger_flush_interval: settings.ledger_flush_interval,
+            ledger_reset_at_startup: settings.ledger_reset_at_startup,
+            initial_ledger_path: settings.initial_ledger_path.clone(),
+            block_reward: BLOCK_REWARD,
+            operation_batch_size: settings.operation_batch_size,
+            initial_rolls_path: settings.initial_rolls_path.clone(),
+            initial_draw_seed: INITIAL_DRAW_SEED.to_string(),
+            roll_price: ROLL_PRICE,
+            stats_timespan: settings.stats_timespan,
+            max_send_wait: settings.max_send_wait,
+            force_keep_final_periods: settings.force_keep_final_periods,
+            endorsement_count: ENDORSEMENT_COUNT,
+            block_db_prune_interval: settings.block_db_prune_interval,
+            max_item_return_count: settings.max_item_return_count,
+            disable_block_creation: settings.disable_block_creation,
+            max_gas_per_block: MAX_GAS_PER_BLOCK,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ConsensusSettings</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ConsensusConfig</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">settings</span>: <span class="ident">ConsensusSettings</span>) -&gt; <span class="self">Self</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-        <span class="doccomment">/// If the feature `testing` is activated we force the unit</span>
-        <span class="doccomment">/// test values to be used for a default initialization.</span>
-        <span class="kw">use</span> <span class="ident">massa_models::constants::default_testing</span>::<span class="kw-2">*</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>))]</span>
-        <span class="kw">use</span> <span class="ident">massa_models::constants</span>::<span class="kw-2">*</span>;
-        <span class="ident">ConsensusConfig</span> {
-            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-            <span class="ident">temp_files</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">genesis_timestamp</span>: <span class="kw-2">*</span><span class="ident">GENESIS_TIMESTAMP</span>,
-            <span class="ident">end_timestamp</span>: <span class="kw-2">*</span><span class="ident">END_TIMESTAMP</span>,
-            <span class="ident">thread_count</span>: <span class="ident">THREAD_COUNT</span>,
-            <span class="ident">t0</span>: <span class="ident">T0</span>,
-            <span class="ident">genesis_key</span>: <span class="ident">GENESIS_KEY</span>.<span class="ident">clone</span>(),
-            <span class="ident">staking_keys_path</span>: <span class="ident">settings</span>.<span class="ident">staking_keys_path</span>,
-            <span class="ident">max_discarded_blocks</span>: <span class="ident">settings</span>.<span class="ident">max_discarded_blocks</span>,
-            <span class="ident">future_block_processing_max_periods</span>: <span class="ident">settings</span>.<span class="ident">future_block_processing_max_periods</span>,
-            <span class="ident">max_future_processing_blocks</span>: <span class="ident">settings</span>.<span class="ident">max_future_processing_blocks</span>,
-            <span class="ident">max_dependency_blocks</span>: <span class="ident">settings</span>.<span class="ident">max_dependency_blocks</span>,
-            <span class="ident">delta_f0</span>: <span class="ident">DELTA_F0</span>,
-            <span class="ident">max_operations_per_block</span>: <span class="ident">MAX_OPERATIONS_PER_BLOCK</span>,
-            <span class="ident">max_operations_fill_attempts</span>: <span class="ident">settings</span>.<span class="ident">max_operations_fill_attempts</span>,
-            <span class="ident">max_block_size</span>: <span class="ident">MAX_BLOCK_SIZE</span>,
-            <span class="ident">operation_validity_periods</span>: <span class="ident">OPERATION_VALIDITY_PERIODS</span>,
-            <span class="ident">periods_per_cycle</span>: <span class="ident">PERIODS_PER_CYCLE</span>,
-            <span class="ident">pos_lookback_cycles</span>: <span class="ident">POS_LOOKBACK_CYCLES</span>,
-            <span class="ident">pos_lock_cycles</span>: <span class="ident">POS_LOCK_CYCLES</span>,
-            <span class="ident">pos_draw_cached_cycles</span>: <span class="ident">settings</span>.<span class="ident">pos_draw_cached_cycles</span>,
-            <span class="ident">pos_miss_rate_deactivation_threshold</span>: <span class="kw-2">*</span><span class="ident">POS_MISS_RATE_DEACTIVATION_THRESHOLD</span>,
-            <span class="ident">ledger_path</span>: <span class="ident">settings</span>.<span class="ident">ledger_path</span>,
-            <span class="ident">ledger_cache_capacity</span>: <span class="ident">settings</span>.<span class="ident">ledger_cache_capacity</span>,
-            <span class="ident">ledger_flush_interval</span>: <span class="ident">settings</span>.<span class="ident">ledger_flush_interval</span>,
-            <span class="ident">ledger_reset_at_startup</span>: <span class="ident">settings</span>.<span class="ident">ledger_reset_at_startup</span>,
-            <span class="ident">initial_ledger_path</span>: <span class="ident">settings</span>.<span class="ident">initial_ledger_path</span>,
-            <span class="ident">block_reward</span>: <span class="ident">BLOCK_REWARD</span>,
-            <span class="ident">operation_batch_size</span>: <span class="ident">settings</span>.<span class="ident">operation_batch_size</span>,
-            <span class="ident">initial_rolls_path</span>: <span class="ident">settings</span>.<span class="ident">initial_rolls_path</span>,
-            <span class="ident">initial_draw_seed</span>: <span class="ident">INITIAL_DRAW_SEED</span>.<span class="ident">to_string</span>(),
-            <span class="ident">roll_price</span>: <span class="ident">ROLL_PRICE</span>,
-            <span class="ident">stats_timespan</span>: <span class="ident">settings</span>.<span class="ident">stats_timespan</span>,
-            <span class="ident">max_send_wait</span>: <span class="ident">settings</span>.<span class="ident">max_send_wait</span>,
-            <span class="ident">force_keep_final_periods</span>: <span class="ident">settings</span>.<span class="ident">force_keep_final_periods</span>,
-            <span class="ident">endorsement_count</span>: <span class="ident">ENDORSEMENT_COUNT</span>,
-            <span class="ident">block_db_prune_interval</span>: <span class="ident">settings</span>.<span class="ident">block_db_prune_interval</span>,
-            <span class="ident">max_item_return_count</span>: <span class="ident">settings</span>.<span class="ident">max_item_return_count</span>,
-            <span class="ident">disable_block_creation</span>: <span class="ident">settings</span>.<span class="ident">disable_block_creation</span>,
-            <span class="ident">max_gas_per_block</span>: <span class="ident">MAX_GAS_PER_BLOCK</span>,
+<span class="kw">impl </span>From&lt;ConsensusSettings&gt; <span class="kw">for </span>ConsensusConfig {
+    <span class="kw">fn </span>from(settings: ConsensusSettings) -&gt; <span class="self">Self </span>{
+        <span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+        </span><span class="doccomment">/// If the feature `testing` is activated we force the unit
+        /// test values to be used for a default initialization.
+        </span><span class="kw">use </span>massa_models::constants::default_testing::<span class="kw-2">*</span>;
+        <span class="attribute">#[cfg(not(feature = <span class="string">&quot;testing&quot;</span>))]
+        </span><span class="kw">use </span>massa_models::constants::<span class="kw-2">*</span>;
+        ConsensusConfig {
+            <span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+            </span>temp_files: Default::default(),
+            genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
+            end_timestamp: <span class="kw-2">*</span>END_TIMESTAMP,
+            thread_count: THREAD_COUNT,
+            t0: T0,
+            genesis_key: GENESIS_KEY.clone(),
+            staking_keys_path: settings.staking_keys_path,
+            max_discarded_blocks: settings.max_discarded_blocks,
+            future_block_processing_max_periods: settings.future_block_processing_max_periods,
+            max_future_processing_blocks: settings.max_future_processing_blocks,
+            max_dependency_blocks: settings.max_dependency_blocks,
+            delta_f0: DELTA_F0,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            max_operations_fill_attempts: settings.max_operations_fill_attempts,
+            max_block_size: MAX_BLOCK_SIZE,
+            operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+            periods_per_cycle: PERIODS_PER_CYCLE,
+            pos_lookback_cycles: POS_LOOKBACK_CYCLES,
+            pos_lock_cycles: POS_LOCK_CYCLES,
+            pos_draw_cached_cycles: settings.pos_draw_cached_cycles,
+            pos_miss_rate_deactivation_threshold: <span class="kw-2">*</span>POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+            ledger_path: settings.ledger_path,
+            ledger_cache_capacity: settings.ledger_cache_capacity,
+            ledger_flush_interval: settings.ledger_flush_interval,
+            ledger_reset_at_startup: settings.ledger_reset_at_startup,
+            initial_ledger_path: settings.initial_ledger_path,
+            block_reward: BLOCK_REWARD,
+            operation_batch_size: settings.operation_batch_size,
+            initial_rolls_path: settings.initial_rolls_path,
+            initial_draw_seed: INITIAL_DRAW_SEED.to_string(),
+            roll_price: ROLL_PRICE,
+            stats_timespan: settings.stats_timespan,
+            max_send_wait: settings.max_send_wait,
+            force_keep_final_periods: settings.force_keep_final_periods,
+            endorsement_count: ENDORSEMENT_COUNT,
+            block_db_prune_interval: settings.block_db_prune_interval,
+            max_item_return_count: settings.max_item_return_count,
+            disable_block_creation: settings.disable_block_creation,
+            max_gas_per_block: MAX_GAS_PER_BLOCK,
         }
     }
 }
 
-<span class="doccomment">/// Defining the default consensus configuration for both</span>
-<span class="doccomment">/// testing and not testing.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Use the feature testing to load mocked default variable</span>
-<span class="doccomment">/// This is default variable but the configuration is a dynamic</span>
-<span class="doccomment">/// configuration passed as dependencies with no particular lifetime</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">ConsensusSettings</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="doccomment">/// If the feature `testing` is activated we force the unit</span>
-        <span class="doccomment">/// test values to be used for a default initialization.</span>
-        <span class="kw">use</span> <span class="ident">massa_models::constants::default_testing</span>::<span class="kw-2">*</span>;
-        <span class="self">Self</span> {
-            <span class="ident">staking_keys_path</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">max_discarded_blocks</span>: <span class="ident">MAX_DISCARDED_BLOCKS</span>,
-            <span class="ident">future_block_processing_max_periods</span>: <span class="ident">FUTURE_BLOCK_PROCESSING_MAX_PERIODS</span>,
-            <span class="ident">max_future_processing_blocks</span>: <span class="ident">MAX_FUTURE_PROCESSING_BLOCK</span>,
-            <span class="ident">max_dependency_blocks</span>: <span class="ident">MAX_DEPENDENCY_BLOCK</span>,
-            <span class="ident">max_operations_fill_attempts</span>: <span class="ident">MAX_OPERATION_FILL_ATTEMPTS</span>,
-            <span class="ident">pos_draw_cached_cycles</span>: <span class="ident">POS_DRAW_CACHED_CYCLE</span>,
-            <span class="ident">ledger_path</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">ledger_cache_capacity</span>: <span class="ident">LEDGER_CACHE_CAPACITY</span>,
-            <span class="ident">ledger_flush_interval</span>: <span class="kw-2">*</span><span class="ident">LEDGER_FLUSH_INTERVAL</span>,
-            <span class="ident">ledger_reset_at_startup</span>: <span class="ident">LEDGER_RESET_AT_STARTUP</span>,
-            <span class="ident">initial_ledger_path</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">operation_batch_size</span>: <span class="ident">OPERATION_BATCH_SIZE</span>,
-            <span class="ident">initial_rolls_path</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">stats_timespan</span>: <span class="kw-2">*</span><span class="ident">STATS_TIMESPAN</span>,
-            <span class="ident">max_send_wait</span>: <span class="kw-2">*</span><span class="ident">MAX_SEND_WAIT</span>,
-            <span class="ident">force_keep_final_periods</span>: <span class="ident">FORCE_KEEP_FINAL_PERIOD</span>,
-            <span class="ident">block_db_prune_interval</span>: <span class="kw-2">*</span><span class="ident">BLOCK_DB_PRUNE_INTERVAL</span>,
-            <span class="ident">max_item_return_count</span>: <span class="ident">MAX_ITEM_RETURN_COUNT</span>,
-            <span class="ident">disable_block_creation</span>: <span class="ident">DISABLE_BLOCK_CREATION</span>,
+<span class="doccomment">/// Defining the default consensus configuration for both
+/// testing and not testing.
+///
+/// Use the feature testing to load mocked default variable
+/// This is default variable but the configuration is a dynamic
+/// configuration passed as dependencies with no particular lifetime
+</span><span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+</span><span class="kw">impl </span>Default <span class="kw">for </span>ConsensusSettings {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="doccomment">/// If the feature `testing` is activated we force the unit
+        /// test values to be used for a default initialization.
+        </span><span class="kw">use </span>massa_models::constants::default_testing::<span class="kw-2">*</span>;
+        <span class="self">Self </span>{
+            staking_keys_path: Default::default(),
+            max_discarded_blocks: MAX_DISCARDED_BLOCKS,
+            future_block_processing_max_periods: FUTURE_BLOCK_PROCESSING_MAX_PERIODS,
+            max_future_processing_blocks: MAX_FUTURE_PROCESSING_BLOCK,
+            max_dependency_blocks: MAX_DEPENDENCY_BLOCK,
+            max_operations_fill_attempts: MAX_OPERATION_FILL_ATTEMPTS,
+            pos_draw_cached_cycles: POS_DRAW_CACHED_CYCLE,
+            ledger_path: Default::default(),
+            ledger_cache_capacity: LEDGER_CACHE_CAPACITY,
+            ledger_flush_interval: <span class="kw-2">*</span>LEDGER_FLUSH_INTERVAL,
+            ledger_reset_at_startup: LEDGER_RESET_AT_STARTUP,
+            initial_ledger_path: Default::default(),
+            operation_batch_size: OPERATION_BATCH_SIZE,
+            initial_rolls_path: Default::default(),
+            stats_timespan: <span class="kw-2">*</span>STATS_TIMESPAN,
+            max_send_wait: <span class="kw-2">*</span>MAX_SEND_WAIT,
+            force_keep_final_periods: FORCE_KEEP_FINAL_PERIOD,
+            block_db_prune_interval: <span class="kw-2">*</span>BLOCK_DB_PRUNE_INTERVAL,
+            max_item_return_count: MAX_ITEM_RETURN_COUNT,
+            disable_block_creation: DISABLE_BLOCK_CREATION,
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">std::path::Path</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ConsensusConfig</span> {
-    <span class="doccomment">/// Utility trait used in tests to get a full consensus configuration from an initial ledger path</span>
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">initial_ledger_path</span>: <span class="kw-2">&amp;</span><span class="ident">std::path::Path</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">staking_keys</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">2</span> {
-            <span class="ident">staking_keys</span>.<span class="ident">push</span>(<span class="ident">KeyPair::generate</span>());
+<span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+</span><span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>std::path::Path&gt; <span class="kw">for </span>ConsensusConfig {
+    <span class="doccomment">/// Utility trait used in tests to get a full consensus configuration from an initial ledger path
+    </span><span class="kw">fn </span>from(initial_ledger_path: <span class="kw-2">&amp;</span>std::path::Path) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>staking_keys = Vec::new();
+        <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">2 </span>{
+            staking_keys.push(KeyPair::generate());
         }
-        <span class="ident">massa_models::init_serialization_context</span>(<span class="ident">massa_models::SerializationContext::default</span>());
-        <span class="ident">ConsensusSettings</span> {
-            <span class="ident">staking_keys_path</span>: <span class="ident"><span class="kw">crate</span>::tools::generate_staking_keys_file</span>(<span class="kw-2">&amp;</span><span class="ident">staking_keys</span>)
-                .<span class="ident">path</span>()
-                .<span class="ident">to_path_buf</span>(),
-            <span class="ident">ledger_path</span>: <span class="ident">tempfile::tempdir</span>()
-                .<span class="ident">expect</span>(<span class="string">&quot;cannot create temp dir&quot;</span>)
-                .<span class="ident">path</span>()
-                .<span class="ident">to_path_buf</span>(),
-            <span class="ident">initial_ledger_path</span>: <span class="ident">initial_ledger_path</span>.<span class="ident">to_path_buf</span>(),
-            <span class="ident">initial_rolls_path</span>: <span class="ident">tempfile::tempdir</span>()
-                .<span class="ident">expect</span>(<span class="string">&quot;cannot create temp dir&quot;</span>)
-                .<span class="ident">path</span>()
-                .<span class="ident">to_path_buf</span>(),
-            ..<span class="ident">Default::default</span>()
+        massa_models::init_serialization_context(massa_models::SerializationContext::default());
+        ConsensusSettings {
+            staking_keys_path: <span class="kw">crate</span>::tools::generate_staking_keys_file(<span class="kw-2">&amp;</span>staking_keys)
+                .path()
+                .to_path_buf(),
+            ledger_path: tempfile::tempdir()
+                .expect(<span class="string">&quot;cannot create temp dir&quot;</span>)
+                .path()
+                .to_path_buf(),
+            initial_ledger_path: initial_ledger_path.to_path_buf(),
+            initial_rolls_path: tempfile::tempdir()
+                .expect(<span class="string">&quot;cannot create temp dir&quot;</span>)
+                .path()
+                .to_path_buf(),
+            ..Default::default()
         }
-        .<span class="ident">into</span>()
+        .into()
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Create the default value of `ConsensusConfig`.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Configuration has default values described in crate `massa-models`.</span>
-<span class="doccomment">/// The most of `ConsensusConfig` values have in test mode a default value.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// You can create a `ConsensusConfig` with classic default values and redefining</span>
-<span class="doccomment">/// dynamically the values of desired parameters:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```ignore</span>
-<span class="doccomment">/// let cfg = ConsensusConfig {</span>
-<span class="doccomment">///     max_discarded_blocks: 25,</span>
-<span class="doccomment">///     ..Default::default()</span>
-<span class="doccomment">/// };</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// You can also look at the divers `default()` implementation bellow. For example that</span>
-<span class="doccomment">/// one is used to initialize the _default paths_ :</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```ignore</span>
-<span class="doccomment">/// let cfg = ConsensusConfig {</span>
-<span class="doccomment">///     max_discarded_blocks: 21,</span>
-<span class="doccomment">///     ..ConsensusConfig::default_with_paths(),</span>
-<span class="doccomment">/// };</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">///</span>
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">ConsensusConfig</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="kw">use</span> <span class="ident">massa_models::constants::default_testing</span>::<span class="kw-2">*</span>;
-        <span class="ident">massa_models::init_serialization_context</span>(<span class="ident">massa_models::SerializationContext::default</span>());
-        <span class="kw">let</span> <span class="ident">tempdir</span> <span class="op">=</span> <span class="ident">tempfile::tempdir</span>().<span class="ident">expect</span>(<span class="string">&quot;cannot create temp dir for the ledger path&quot;</span>);
-        <span class="kw">let</span> <span class="ident">path_buf</span> <span class="op">=</span> <span class="ident">tempdir</span>.<span class="ident">path</span>().<span class="ident">to_path_buf</span>();
-        <span class="self">Self</span> {
-            <span class="ident">temp_files</span>: <span class="ident">TempFiles</span> {
-                <span class="ident">temp_dir</span>: <span class="macro">vec!</span>[<span class="ident">tempdir</span>],
-                <span class="ident">temp_files</span>: <span class="macro">vec!</span>[],
+<span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+</span><span class="doccomment">///
+/// Create the default value of `ConsensusConfig`.
+///
+/// Configuration has default values described in crate `massa-models`.
+/// The most of `ConsensusConfig` values have in test mode a default value.
+///
+/// You can create a `ConsensusConfig` with classic default values and redefining
+/// dynamically the values of desired parameters:
+///
+/// ```ignore
+/// let cfg = ConsensusConfig {
+///     max_discarded_blocks: 25,
+///     ..Default::default()
+/// };
+/// ```
+///
+/// You can also look at the divers `default()` implementation bellow. For example that
+/// one is used to initialize the _default paths_ :
+///
+/// ```ignore
+/// let cfg = ConsensusConfig {
+///     max_discarded_blocks: 21,
+///     ..ConsensusConfig::default_with_paths(),
+/// };
+/// ```
+///
+</span><span class="kw">impl </span>Default <span class="kw">for </span>ConsensusConfig {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="kw">use </span>massa_models::constants::default_testing::<span class="kw-2">*</span>;
+        massa_models::init_serialization_context(massa_models::SerializationContext::default());
+        <span class="kw">let </span>tempdir = tempfile::tempdir().expect(<span class="string">&quot;cannot create temp dir for the ledger path&quot;</span>);
+        <span class="kw">let </span>path_buf = tempdir.path().to_path_buf();
+        <span class="self">Self </span>{
+            temp_files: TempFiles {
+                temp_dir: <span class="macro">vec!</span>[tempdir],
+                temp_files: <span class="macro">vec!</span>[],
             },
-            <span class="comment">// reset genesis timestamp because we are in test mode that can take a while to process</span>
-            <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime::now</span>().<span class="ident">expect</span>(<span class="string">&quot;Impossible to reset the timestamp in test&quot;</span>),
-            <span class="ident">end_timestamp</span>: <span class="kw-2">*</span><span class="ident">END_TIMESTAMP</span>,
-            <span class="ident">thread_count</span>: <span class="ident">THREAD_COUNT</span>,
-            <span class="ident">t0</span>: <span class="ident">T0</span>,
-            <span class="ident">genesis_key</span>: <span class="ident">GENESIS_KEY</span>.<span class="ident">clone</span>(),
-            <span class="ident">staking_keys_path</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">max_discarded_blocks</span>: <span class="ident">MAX_DISCARDED_BLOCKS</span>,
-            <span class="ident">future_block_processing_max_periods</span>: <span class="ident">FUTURE_BLOCK_PROCESSING_MAX_PERIODS</span>,
-            <span class="ident">max_future_processing_blocks</span>: <span class="ident">MAX_FUTURE_PROCESSING_BLOCK</span>,
-            <span class="ident">max_dependency_blocks</span>: <span class="ident">MAX_DEPENDENCY_BLOCK</span>,
-            <span class="ident">delta_f0</span>: <span class="ident">DELTA_F0</span>,
-            <span class="ident">max_operations_per_block</span>: <span class="ident">MAX_OPERATIONS_PER_BLOCK</span>,
-            <span class="ident">max_operations_fill_attempts</span>: <span class="ident">MAX_OPERATION_FILL_ATTEMPTS</span>,
-            <span class="ident">max_block_size</span>: <span class="ident">MAX_BLOCK_SIZE</span>,
-            <span class="ident">operation_validity_periods</span>: <span class="ident">OPERATION_VALIDITY_PERIODS</span>,
-            <span class="ident">periods_per_cycle</span>: <span class="ident">PERIODS_PER_CYCLE</span>,
-            <span class="ident">pos_lookback_cycles</span>: <span class="ident">POS_LOOKBACK_CYCLES</span>,
-            <span class="ident">pos_lock_cycles</span>: <span class="ident">POS_LOCK_CYCLES</span>,
-            <span class="ident">pos_draw_cached_cycles</span>: <span class="ident">POS_DRAW_CACHED_CYCLE</span>,
-            <span class="ident">pos_miss_rate_deactivation_threshold</span>: <span class="kw-2">*</span><span class="ident">POS_MISS_RATE_DEACTIVATION_THRESHOLD</span>,
-            <span class="ident">ledger_path</span>: <span class="ident">path_buf</span>,
-            <span class="ident">ledger_cache_capacity</span>: <span class="ident">LEDGER_CACHE_CAPACITY</span>,
-            <span class="ident">ledger_flush_interval</span>: <span class="kw-2">*</span><span class="ident">LEDGER_FLUSH_INTERVAL</span>,
-            <span class="ident">ledger_reset_at_startup</span>: <span class="ident">LEDGER_RESET_AT_STARTUP</span>,
-            <span class="ident">initial_ledger_path</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">block_reward</span>: <span class="ident">BLOCK_REWARD</span>,
-            <span class="ident">operation_batch_size</span>: <span class="ident">OPERATION_BATCH_SIZE</span>,
-            <span class="ident">initial_rolls_path</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">initial_draw_seed</span>: <span class="ident">INITIAL_DRAW_SEED</span>.<span class="ident">to_string</span>(),
-            <span class="ident">roll_price</span>: <span class="ident">ROLL_PRICE</span>,
-            <span class="ident">stats_timespan</span>: <span class="kw-2">*</span><span class="ident">STATS_TIMESPAN</span>,
-            <span class="ident">max_send_wait</span>: <span class="kw-2">*</span><span class="ident">MAX_SEND_WAIT</span>,
-            <span class="ident">force_keep_final_periods</span>: <span class="ident">FORCE_KEEP_FINAL_PERIOD</span>,
-            <span class="ident">endorsement_count</span>: <span class="ident">ENDORSEMENT_COUNT</span>,
-            <span class="ident">block_db_prune_interval</span>: <span class="kw-2">*</span><span class="ident">BLOCK_DB_PRUNE_INTERVAL</span>,
-            <span class="ident">max_item_return_count</span>: <span class="ident">MAX_ITEM_RETURN_COUNT</span>,
-            <span class="ident">disable_block_creation</span>: <span class="ident">DISABLE_BLOCK_CREATION</span>,
-            <span class="ident">max_gas_per_block</span>: <span class="ident">MAX_GAS_PER_BLOCK</span>,
+            <span class="comment">// reset genesis timestamp because we are in test mode that can take a while to process
+            </span>genesis_timestamp: MassaTime::now().expect(<span class="string">&quot;Impossible to reset the timestamp in test&quot;</span>),
+            end_timestamp: <span class="kw-2">*</span>END_TIMESTAMP,
+            thread_count: THREAD_COUNT,
+            t0: T0,
+            genesis_key: GENESIS_KEY.clone(),
+            staking_keys_path: Default::default(),
+            max_discarded_blocks: MAX_DISCARDED_BLOCKS,
+            future_block_processing_max_periods: FUTURE_BLOCK_PROCESSING_MAX_PERIODS,
+            max_future_processing_blocks: MAX_FUTURE_PROCESSING_BLOCK,
+            max_dependency_blocks: MAX_DEPENDENCY_BLOCK,
+            delta_f0: DELTA_F0,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            max_operations_fill_attempts: MAX_OPERATION_FILL_ATTEMPTS,
+            max_block_size: MAX_BLOCK_SIZE,
+            operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+            periods_per_cycle: PERIODS_PER_CYCLE,
+            pos_lookback_cycles: POS_LOOKBACK_CYCLES,
+            pos_lock_cycles: POS_LOCK_CYCLES,
+            pos_draw_cached_cycles: POS_DRAW_CACHED_CYCLE,
+            pos_miss_rate_deactivation_threshold: <span class="kw-2">*</span>POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+            ledger_path: path_buf,
+            ledger_cache_capacity: LEDGER_CACHE_CAPACITY,
+            ledger_flush_interval: <span class="kw-2">*</span>LEDGER_FLUSH_INTERVAL,
+            ledger_reset_at_startup: LEDGER_RESET_AT_STARTUP,
+            initial_ledger_path: Default::default(),
+            block_reward: BLOCK_REWARD,
+            operation_batch_size: OPERATION_BATCH_SIZE,
+            initial_rolls_path: Default::default(),
+            initial_draw_seed: INITIAL_DRAW_SEED.to_string(),
+            roll_price: ROLL_PRICE,
+            stats_timespan: <span class="kw-2">*</span>STATS_TIMESPAN,
+            max_send_wait: <span class="kw-2">*</span>MAX_SEND_WAIT,
+            force_keep_final_periods: FORCE_KEEP_FINAL_PERIOD,
+            endorsement_count: ENDORSEMENT_COUNT,
+            block_db_prune_interval: <span class="kw-2">*</span>BLOCK_DB_PRUNE_INTERVAL,
+            max_item_return_count: MAX_ITEM_RETURN_COUNT,
+            disable_block_creation: DISABLE_BLOCK_CREATION,
+            max_gas_per_block: MAX_GAS_PER_BLOCK,
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-<span class="doccomment">/**
+<span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+</span><span class="doccomment">/**
  * The following implementation correspond to tools used in unit tests
  * It allow you to get a default `ConsensusConfig` (that isn&#39;t possible without
  * the feature *testing* with already set/default `initial_ledger_path`,
  * `staking_keys_path` and `initial_rolls_path`.
  *
  * Used to radically reduce code duplication in unit tests of Consensus.
- */</span>
-<span class="kw">impl</span> <span class="ident">ConsensusConfig</span> {
-    <span class="doccomment">/// default consensus configuration</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">default_with_paths</span>() -&gt; <span class="self">Self</span> {
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tools</span>::<span class="kw-2">*</span>;
-        <span class="kw">let</span> <span class="ident">staking_keys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">KeyPair</span><span class="op">&gt;</span> <span class="op">=</span> (<span class="number">0</span>..<span class="number">1</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">KeyPair::generate</span>()).<span class="ident">collect</span>();
-        <span class="kw">let</span> <span class="ident">ledger_file</span> <span class="op">=</span> <span class="ident">generate_ledger_file</span>(<span class="kw-2">&amp;</span><span class="ident">std::collections::HashMap::new</span>());
-        <span class="kw">let</span> <span class="ident">staking_file</span> <span class="op">=</span> <span class="ident">generate_staking_keys_file</span>(<span class="kw-2">&amp;</span><span class="ident">staking_keys</span>);
-        <span class="kw">let</span> <span class="ident">rolls_file</span> <span class="op">=</span> <span class="ident">generate_default_roll_counts_file</span>(<span class="ident">staking_keys</span>);
-        <span class="ident">ConsensusConfig</span> {
-            <span class="ident">initial_ledger_path</span>: <span class="ident">ledger_file</span>.<span class="ident">path</span>().<span class="ident">to_path_buf</span>(),
-            <span class="ident">staking_keys_path</span>: <span class="ident">staking_file</span>.<span class="ident">path</span>().<span class="ident">to_path_buf</span>(),
-            <span class="ident">initial_rolls_path</span>: <span class="ident">rolls_file</span>.<span class="ident">path</span>().<span class="ident">to_path_buf</span>(),
-            <span class="ident">temp_files</span>: <span class="ident">TempFiles</span> {
-                <span class="ident">temp_files</span>: <span class="macro">vec!</span>[<span class="ident">ledger_file</span>, <span class="ident">staking_file</span>, <span class="ident">rolls_file</span>],
-                <span class="ident">temp_dir</span>: <span class="macro">vec!</span>[],
+ */
+</span><span class="kw">impl </span>ConsensusConfig {
+    <span class="doccomment">/// default consensus configuration
+    </span><span class="kw">pub fn </span>default_with_paths() -&gt; <span class="self">Self </span>{
+        <span class="kw">use </span><span class="kw">crate</span>::tools::<span class="kw-2">*</span>;
+        <span class="kw">let </span>staking_keys: Vec&lt;KeyPair&gt; = (<span class="number">0</span>..<span class="number">1</span>).map(|<span class="kw">_</span>| KeyPair::generate()).collect();
+        <span class="kw">let </span>ledger_file = generate_ledger_file(<span class="kw-2">&amp;</span>std::collections::HashMap::new());
+        <span class="kw">let </span>staking_file = generate_staking_keys_file(<span class="kw-2">&amp;</span>staking_keys);
+        <span class="kw">let </span>rolls_file = generate_default_roll_counts_file(staking_keys);
+        ConsensusConfig {
+            initial_ledger_path: ledger_file.path().to_path_buf(),
+            staking_keys_path: staking_file.path().to_path_buf(),
+            initial_rolls_path: rolls_file.path().to_path_buf(),
+            temp_files: TempFiles {
+                temp_files: <span class="macro">vec!</span>[ledger_file, staking_file, rolls_file],
+                temp_dir: <span class="macro">vec!</span>[],
             },
-            ..<span class="ident">Default::default</span>()
+            ..Default::default()
         }
     }
 
-    <span class="doccomment">/// Default consensus configuration from staking keypairs</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">default_with_staking_keys</span>(<span class="ident">staking_keys</span>: <span class="kw-2">&amp;</span>[<span class="ident">KeyPair</span>]) -&gt; <span class="self">Self</span> {
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tools</span>::<span class="kw-2">*</span>;
-        <span class="kw">let</span> <span class="ident">ledger_file</span> <span class="op">=</span> <span class="ident">generate_ledger_file</span>(<span class="kw-2">&amp;</span><span class="ident">std::collections::HashMap::new</span>());
-        <span class="kw">let</span> <span class="ident">staking_file</span> <span class="op">=</span> <span class="ident">generate_staking_keys_file</span>(<span class="ident">staking_keys</span>);
-        <span class="kw">let</span> <span class="ident">rolls_file</span> <span class="op">=</span> <span class="ident">generate_default_roll_counts_file</span>(<span class="ident">staking_keys</span>.<span class="ident">to_vec</span>());
-        <span class="ident">ConsensusConfig</span> {
-            <span class="ident">initial_ledger_path</span>: <span class="ident">ledger_file</span>.<span class="ident">path</span>().<span class="ident">to_path_buf</span>(),
-            <span class="ident">staking_keys_path</span>: <span class="ident">staking_file</span>.<span class="ident">path</span>().<span class="ident">to_path_buf</span>(),
-            <span class="ident">initial_rolls_path</span>: <span class="ident">rolls_file</span>.<span class="ident">path</span>().<span class="ident">to_path_buf</span>(),
-            <span class="ident">temp_files</span>: <span class="ident">TempFiles</span> {
-                <span class="ident">temp_files</span>: <span class="macro">vec!</span>[<span class="ident">ledger_file</span>, <span class="ident">staking_file</span>, <span class="ident">rolls_file</span>],
-                <span class="ident">temp_dir</span>: <span class="macro">vec!</span>[],
+    <span class="doccomment">/// Default consensus configuration from staking keypairs
+    </span><span class="kw">pub fn </span>default_with_staking_keys(staking_keys: <span class="kw-2">&amp;</span>[KeyPair]) -&gt; <span class="self">Self </span>{
+        <span class="kw">use </span><span class="kw">crate</span>::tools::<span class="kw-2">*</span>;
+        <span class="kw">let </span>ledger_file = generate_ledger_file(<span class="kw-2">&amp;</span>std::collections::HashMap::new());
+        <span class="kw">let </span>staking_file = generate_staking_keys_file(staking_keys);
+        <span class="kw">let </span>rolls_file = generate_default_roll_counts_file(staking_keys.to_vec());
+        ConsensusConfig {
+            initial_ledger_path: ledger_file.path().to_path_buf(),
+            staking_keys_path: staking_file.path().to_path_buf(),
+            initial_rolls_path: rolls_file.path().to_path_buf(),
+            temp_files: TempFiles {
+                temp_files: <span class="macro">vec!</span>[ledger_file, staking_file, rolls_file],
+                temp_dir: <span class="macro">vec!</span>[],
             },
-            ..<span class="ident">Default::default</span>()
+            ..Default::default()
         }
     }
 
-    <span class="doccomment">/// Default consensus configuration from staking keys and ledger</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">default_with_staking_keys_and_ledger</span>(
-        <span class="ident">staking_keys</span>: <span class="kw-2">&amp;</span>[<span class="ident">KeyPair</span>],
-        <span class="ident">ledger</span>: <span class="kw-2">&amp;</span><span class="ident">std::collections::HashMap</span><span class="op">&lt;</span>
-            <span class="ident">massa_models::Address</span>,
-            <span class="ident">massa_models::ledger_models::LedgerData</span>,
-        <span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tools</span>::<span class="kw-2">*</span>;
-        <span class="kw">let</span> <span class="ident">ledger_file</span> <span class="op">=</span> <span class="ident">generate_ledger_file</span>(<span class="ident">ledger</span>);
-        <span class="kw">let</span> <span class="ident">staking_file</span> <span class="op">=</span> <span class="ident">generate_staking_keys_file</span>(<span class="ident">staking_keys</span>);
-        <span class="kw">let</span> <span class="ident">rolls_file</span> <span class="op">=</span> <span class="ident">generate_default_roll_counts_file</span>(<span class="ident">staking_keys</span>.<span class="ident">to_vec</span>());
-        <span class="ident">ConsensusConfig</span> {
-            <span class="ident">initial_ledger_path</span>: <span class="ident">ledger_file</span>.<span class="ident">path</span>().<span class="ident">to_path_buf</span>(),
-            <span class="ident">staking_keys_path</span>: <span class="ident">staking_file</span>.<span class="ident">path</span>().<span class="ident">to_path_buf</span>(),
-            <span class="ident">initial_rolls_path</span>: <span class="ident">rolls_file</span>.<span class="ident">path</span>().<span class="ident">to_path_buf</span>(),
-            <span class="ident">temp_files</span>: <span class="ident">TempFiles</span> {
-                <span class="ident">temp_files</span>: <span class="macro">vec!</span>[<span class="ident">ledger_file</span>, <span class="ident">staking_file</span>, <span class="ident">rolls_file</span>],
-                <span class="ident">temp_dir</span>: <span class="macro">vec!</span>[],
+    <span class="doccomment">/// Default consensus configuration from staking keys and ledger
+    </span><span class="kw">pub fn </span>default_with_staking_keys_and_ledger(
+        staking_keys: <span class="kw-2">&amp;</span>[KeyPair],
+        ledger: <span class="kw-2">&amp;</span>std::collections::HashMap&lt;
+            massa_models::Address,
+            massa_models::ledger_models::LedgerData,
+        &gt;,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">use </span><span class="kw">crate</span>::tools::<span class="kw-2">*</span>;
+        <span class="kw">let </span>ledger_file = generate_ledger_file(ledger);
+        <span class="kw">let </span>staking_file = generate_staking_keys_file(staking_keys);
+        <span class="kw">let </span>rolls_file = generate_default_roll_counts_file(staking_keys.to_vec());
+        ConsensusConfig {
+            initial_ledger_path: ledger_file.path().to_path_buf(),
+            staking_keys_path: staking_file.path().to_path_buf(),
+            initial_rolls_path: rolls_file.path().to_path_buf(),
+            temp_files: TempFiles {
+                temp_files: <span class="macro">vec!</span>[ledger_file, staking_file, rolls_file],
+                temp_dir: <span class="macro">vec!</span>[],
             },
-            ..<span class="ident">Default::default</span>()
+            ..Default::default()
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

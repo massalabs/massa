@@ -195,202 +195,202 @@
 <span id="195">195</span>
 <span id="196">196</span>
 <span id="197">197</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! This file provides structures representing changes to the final state</span>
+//! This file provides structures representing changes to the final state
 
-<span class="kw">use</span> <span class="ident">massa_async_pool</span>::{
-    <span class="ident">AsyncPoolChanges</span>, <span class="ident">AsyncPoolChangesDeserializer</span>, <span class="ident">AsyncPoolChangesSerializer</span>,
+</span><span class="kw">use </span>massa_async_pool::{
+    AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer,
 };
-<span class="kw">use</span> <span class="ident">massa_ledger_exports</span>::{<span class="ident">LedgerChanges</span>, <span class="ident">LedgerChangesDeserializer</span>, <span class="ident">LedgerChangesSerializer</span>};
-<span class="kw">use</span> <span class="ident">massa_serialization</span>::{<span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>};
-<span class="kw">use</span> <span class="ident">nom</span>::{
-    <span class="ident">error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ParseError</span>},
-    <span class="ident">sequence::tuple</span>,
-    <span class="ident">IResult</span>, <span class="ident">Parser</span>,
+<span class="kw">use </span>massa_ledger_exports::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
+<span class="kw">use </span>massa_serialization::{Deserializer, SerializeError, Serializer};
+<span class="kw">use </span>nom::{
+    error::{context, ContextError, ParseError},
+    sequence::tuple,
+    IResult, Parser,
 };
 
-<span class="doccomment">/// represents changes that can be applied to the execution state</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StateChanges</span> {
-    <span class="doccomment">/// ledger changes</span>
-    <span class="kw">pub</span> <span class="ident">ledger_changes</span>: <span class="ident">LedgerChanges</span>,
-    <span class="doccomment">/// asynchronous pool changes</span>
-    <span class="kw">pub</span> <span class="ident">async_pool_changes</span>: <span class="ident">AsyncPoolChanges</span>,
+<span class="doccomment">/// represents changes that can be applied to the execution state
+</span><span class="attribute">#[derive(Default, Debug, Clone, PartialEq, Eq)]
+</span><span class="kw">pub struct </span>StateChanges {
+    <span class="doccomment">/// ledger changes
+    </span><span class="kw">pub </span>ledger_changes: LedgerChanges,
+    <span class="doccomment">/// asynchronous pool changes
+    </span><span class="kw">pub </span>async_pool_changes: AsyncPoolChanges,
 }
 
-<span class="doccomment">/// Basic `StateChanges` serializer.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StateChangesSerializer</span> {
-    <span class="ident">ledger_changes_serializer</span>: <span class="ident">LedgerChangesSerializer</span>,
-    <span class="ident">async_pool_changes_serializer</span>: <span class="ident">AsyncPoolChangesSerializer</span>,
+<span class="doccomment">/// Basic `StateChanges` serializer.
+</span><span class="kw">pub struct </span>StateChangesSerializer {
+    ledger_changes_serializer: LedgerChangesSerializer,
+    async_pool_changes_serializer: AsyncPoolChangesSerializer,
 }
 
-<span class="kw">impl</span> <span class="ident">StateChangesSerializer</span> {
-    <span class="doccomment">/// Creates a `StateChangesSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">ledger_changes_serializer</span>: <span class="ident">LedgerChangesSerializer::new</span>(),
-            <span class="ident">async_pool_changes_serializer</span>: <span class="ident">AsyncPoolChangesSerializer::new</span>(),
+<span class="kw">impl </span>StateChangesSerializer {
+    <span class="doccomment">/// Creates a `StateChangesSerializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            ledger_changes_serializer: LedgerChangesSerializer::new(),
+            async_pool_changes_serializer: AsyncPoolChangesSerializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">StateChangesSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>StateChangesSerializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">StateChanges</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">StateChangesSerializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use massa_serialization::Serializer;</span>
-    <span class="doccomment">/// use massa_models::{Address, Amount, Slot};</span>
-    <span class="doccomment">/// use massa_final_state::{StateChanges, StateChangesSerializer};</span>
-    <span class="doccomment">/// use std::str::FromStr;</span>
-    <span class="doccomment">/// use std::collections::BTreeMap;</span>
-    <span class="doccomment">/// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};</span>
-    <span class="doccomment">/// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let mut state_changes = StateChanges::default();</span>
-    <span class="doccomment">/// let message = AsyncMessage {</span>
-    <span class="doccomment">///     emission_slot: Slot::new(1, 0),</span>
-    <span class="doccomment">///     emission_index: 0,</span>
-    <span class="doccomment">///     sender:  Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),</span>
-    <span class="doccomment">///     destination: Address::from_str(&quot;A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),</span>
-    <span class="doccomment">///     handler: String::from(&quot;test&quot;),</span>
-    <span class="doccomment">///     max_gas: 10000000,</span>
-    <span class="doccomment">///     gas_price: Amount::from_str(&quot;1&quot;).unwrap(),</span>
-    <span class="doccomment">///     coins: Amount::from_str(&quot;1&quot;).unwrap(),</span>
-    <span class="doccomment">///     validity_start: Slot::new(2, 0),</span>
-    <span class="doccomment">///     validity_end: Slot::new(3, 0),</span>
-    <span class="doccomment">///     data: vec![1, 2, 3, 4]</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">/// let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);</span>
-    <span class="doccomment">/// state_changes.async_pool_changes = async_pool_changes;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let amount = Amount::from_str(&quot;1&quot;).unwrap();</span>
-    <span class="doccomment">/// let bytecode = vec![1, 2, 3];</span>
-    <span class="doccomment">/// let ledger_entry = LedgerEntryUpdate {</span>
-    <span class="doccomment">///    parallel_balance: SetOrKeep::Set(amount),</span>
-    <span class="doccomment">///    bytecode: SetOrKeep::Set(bytecode),</span>
-    <span class="doccomment">///    datastore: BTreeMap::default(),</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">/// let mut ledger_changes = LedgerChanges::default();</span>
-    <span class="doccomment">/// ledger_changes.0.insert(</span>
-    <span class="doccomment">///    Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),</span>
-    <span class="doccomment">///    SetUpdateOrDelete::Update(ledger_entry),</span>
-    <span class="doccomment">/// );</span>
-    <span class="doccomment">/// state_changes.ledger_changes = ledger_changes;</span>
-    <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// StateChangesSerializer::new().serialize(&amp;state_changes, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">StateChanges</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">ledger_changes_serializer</span>
-            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">ledger_changes</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">async_pool_changes_serializer</span>
-            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">async_pool_changes</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>Serializer&lt;StateChanges&gt; <span class="kw">for </span>StateChangesSerializer {
+    <span class="doccomment">/// ```
+    /// use massa_serialization::Serializer;
+    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_final_state::{StateChanges, StateChangesSerializer};
+    /// use std::str::FromStr;
+    /// use std::collections::BTreeMap;
+    /// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};
+    /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};
+    ///
+    /// let mut state_changes = StateChanges::default();
+    /// let message = AsyncMessage {
+    ///     emission_slot: Slot::new(1, 0),
+    ///     emission_index: 0,
+    ///     sender:  Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
+    ///     destination: Address::from_str(&quot;A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),
+    ///     handler: String::from(&quot;test&quot;),
+    ///     max_gas: 10000000,
+    ///     gas_price: Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     coins: Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     validity_start: Slot::new(2, 0),
+    ///     validity_end: Slot::new(3, 0),
+    ///     data: vec![1, 2, 3, 4]
+    /// };
+    /// let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
+    /// state_changes.async_pool_changes = async_pool_changes;
+    ///
+    /// let amount = Amount::from_str(&quot;1&quot;).unwrap();
+    /// let bytecode = vec![1, 2, 3];
+    /// let ledger_entry = LedgerEntryUpdate {
+    ///    parallel_balance: SetOrKeep::Set(amount),
+    ///    bytecode: SetOrKeep::Set(bytecode),
+    ///    datastore: BTreeMap::default(),
+    /// };
+    /// let mut ledger_changes = LedgerChanges::default();
+    /// ledger_changes.0.insert(
+    ///    Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
+    ///    SetUpdateOrDelete::Update(ledger_entry),
+    /// );
+    /// state_changes.ledger_changes = ledger_changes;
+    /// let mut serialized = Vec::new();
+    /// StateChangesSerializer::new().serialize(&amp;state_changes, &amp;mut serialized).unwrap();
+    /// ```
+    </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>StateChanges, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="self">self</span>.ledger_changes_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.ledger_changes, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.async_pool_changes_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.async_pool_changes, buffer)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// Basic `StateChanges` deserializer</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StateChangesDeserializer</span> {
-    <span class="ident">ledger_changes_deserializer</span>: <span class="ident">LedgerChangesDeserializer</span>,
-    <span class="ident">async_pool_changes_deserializer</span>: <span class="ident">AsyncPoolChangesDeserializer</span>,
+<span class="doccomment">/// Basic `StateChanges` deserializer
+</span><span class="kw">pub struct </span>StateChangesDeserializer {
+    ledger_changes_deserializer: LedgerChangesDeserializer,
+    async_pool_changes_deserializer: AsyncPoolChangesDeserializer,
 }
 
-<span class="kw">impl</span> <span class="ident">StateChangesDeserializer</span> {
-    <span class="doccomment">/// Creates a `StateChangesDeserializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">ledger_changes_deserializer</span>: <span class="ident">LedgerChangesDeserializer::new</span>(),
-            <span class="ident">async_pool_changes_deserializer</span>: <span class="ident">AsyncPoolChangesDeserializer::new</span>(),
+<span class="kw">impl </span>StateChangesDeserializer {
+    <span class="doccomment">/// Creates a `StateChangesDeserializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            ledger_changes_deserializer: LedgerChangesDeserializer::new(),
+            async_pool_changes_deserializer: AsyncPoolChangesDeserializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">StateChangesDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>StateChangesDeserializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">StateChanges</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">StateChangesDeserializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use massa_serialization::{Serializer, Deserializer, DeserializeError};</span>
-    <span class="doccomment">/// use massa_models::{Address, prehash::Map, Amount, Slot};</span>
-    <span class="doccomment">/// use massa_final_state::{StateChanges, StateChangesSerializer, StateChangesDeserializer};</span>
-    <span class="doccomment">/// use std::str::FromStr;</span>
-    <span class="doccomment">/// use std::collections::BTreeMap;</span>
-    <span class="doccomment">/// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};</span>
-    <span class="doccomment">/// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let mut state_changes = StateChanges::default();</span>
-    <span class="doccomment">/// let message = AsyncMessage {</span>
-    <span class="doccomment">///     emission_slot: Slot::new(1, 0),</span>
-    <span class="doccomment">///     emission_index: 0,</span>
-    <span class="doccomment">///     sender:  Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),</span>
-    <span class="doccomment">///     destination: Address::from_str(&quot;A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),</span>
-    <span class="doccomment">///     handler: String::from(&quot;test&quot;),</span>
-    <span class="doccomment">///     max_gas: 10000000,</span>
-    <span class="doccomment">///     gas_price: Amount::from_str(&quot;1&quot;).unwrap(),</span>
-    <span class="doccomment">///     coins: Amount::from_str(&quot;1&quot;).unwrap(),</span>
-    <span class="doccomment">///     validity_start: Slot::new(2, 0),</span>
-    <span class="doccomment">///     validity_end: Slot::new(3, 0),</span>
-    <span class="doccomment">///     data: vec![1, 2, 3, 4]</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">/// let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);</span>
-    <span class="doccomment">/// state_changes.async_pool_changes = async_pool_changes;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let amount = Amount::from_str(&quot;1&quot;).unwrap();</span>
-    <span class="doccomment">/// let bytecode = vec![1, 2, 3];</span>
-    <span class="doccomment">/// let ledger_entry = LedgerEntryUpdate {</span>
-    <span class="doccomment">///    parallel_balance: SetOrKeep::Set(amount),</span>
-    <span class="doccomment">///    bytecode: SetOrKeep::Set(bytecode),</span>
-    <span class="doccomment">///    datastore: BTreeMap::default(),</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">/// let mut ledger_changes = LedgerChanges::default();</span>
-    <span class="doccomment">/// ledger_changes.0.insert(</span>
-    <span class="doccomment">///    Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),</span>
-    <span class="doccomment">///    SetUpdateOrDelete::Update(ledger_entry),</span>
-    <span class="doccomment">/// );</span>
-    <span class="doccomment">/// state_changes.ledger_changes = ledger_changes;</span>
-    <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// StateChangesSerializer::new().serialize(&amp;state_changes, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// let (rest, state_changes_deser) = StateChangesDeserializer::new().deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
-    <span class="doccomment">/// assert!(rest.is_empty());</span>
-    <span class="doccomment">/// assert_eq!(state_changes_deser, state_changes);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">impl </span>Deserializer&lt;StateChanges&gt; <span class="kw">for </span>StateChangesDeserializer {
+    <span class="doccomment">/// ```
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use massa_models::{Address, prehash::Map, Amount, Slot};
+    /// use massa_final_state::{StateChanges, StateChangesSerializer, StateChangesDeserializer};
+    /// use std::str::FromStr;
+    /// use std::collections::BTreeMap;
+    /// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};
+    /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};
+    ///
+    /// let mut state_changes = StateChanges::default();
+    /// let message = AsyncMessage {
+    ///     emission_slot: Slot::new(1, 0),
+    ///     emission_index: 0,
+    ///     sender:  Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
+    ///     destination: Address::from_str(&quot;A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),
+    ///     handler: String::from(&quot;test&quot;),
+    ///     max_gas: 10000000,
+    ///     gas_price: Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     coins: Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     validity_start: Slot::new(2, 0),
+    ///     validity_end: Slot::new(3, 0),
+    ///     data: vec![1, 2, 3, 4]
+    /// };
+    /// let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
+    /// state_changes.async_pool_changes = async_pool_changes;
+    ///
+    /// let amount = Amount::from_str(&quot;1&quot;).unwrap();
+    /// let bytecode = vec![1, 2, 3];
+    /// let ledger_entry = LedgerEntryUpdate {
+    ///    parallel_balance: SetOrKeep::Set(amount),
+    ///    bytecode: SetOrKeep::Set(bytecode),
+    ///    datastore: BTreeMap::default(),
+    /// };
+    /// let mut ledger_changes = LedgerChanges::default();
+    /// ledger_changes.0.insert(
+    ///    Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
+    ///    SetUpdateOrDelete::Update(ledger_entry),
+    /// );
+    /// state_changes.ledger_changes = ledger_changes;
+    /// let mut serialized = Vec::new();
+    /// StateChangesSerializer::new().serialize(&amp;state_changes, &amp;mut serialized).unwrap();
+    /// let (rest, state_changes_deser) = StateChangesDeserializer::new().deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(state_changes_deser, state_changes);
+    /// ```
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">StateChanges</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">context</span>(
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], StateChanges, E&gt; {
+        context(
             <span class="string">&quot;Failed StateChanges deserialization&quot;</span>,
-            <span class="ident">tuple</span>((
-                <span class="ident">context</span>(<span class="string">&quot;Failed ledger_changes deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">ledger_changes_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+            tuple((
+                context(<span class="string">&quot;Failed ledger_changes deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.ledger_changes_deserializer.deserialize(input)
                 }),
-                <span class="ident">context</span>(<span class="string">&quot;Failed async_pool_changes deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">async_pool_changes_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                context(<span class="string">&quot;Failed async_pool_changes deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.async_pool_changes_deserializer.deserialize(input)
                 }),
             )),
         )
-        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">ledger_changes</span>, <span class="ident">async_pool_changes</span>)<span class="op">|</span> <span class="ident">StateChanges</span> {
-            <span class="ident">ledger_changes</span>,
-            <span class="ident">async_pool_changes</span>,
+        .map(|(ledger_changes, async_pool_changes)| StateChanges {
+            ledger_changes,
+            async_pool_changes,
         })
-        .<span class="ident">parse</span>(<span class="ident">buffer</span>)
+        .parse(buffer)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">StateChanges</span> {
-    <span class="doccomment">/// extends the current `StateChanges` with another one</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">changes</span>: <span class="ident">StateChanges</span>) {
-        <span class="kw">use</span> <span class="ident">massa_ledger_exports::Applicable</span>;
-        <span class="self">self</span>.<span class="ident">ledger_changes</span>.<span class="ident">apply</span>(<span class="ident">changes</span>.<span class="ident">ledger_changes</span>);
-        <span class="self">self</span>.<span class="ident">async_pool_changes</span>.<span class="ident">extend</span>(<span class="ident">changes</span>.<span class="ident">async_pool_changes</span>);
+<span class="kw">impl </span>StateChanges {
+    <span class="doccomment">/// extends the current `StateChanges` with another one
+    </span><span class="kw">pub fn </span>apply(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: StateChanges) {
+        <span class="kw">use </span>massa_ledger_exports::Applicable;
+        <span class="self">self</span>.ledger_changes.apply(changes.ledger_changes);
+        <span class="self">self</span>.async_pool_changes.extend(changes.async_pool_changes);
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

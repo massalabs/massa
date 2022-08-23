@@ -110,117 +110,117 @@
 <span id="110">110</span>
 <span id="111">111</span>
 <span id="112">112</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! # General description</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This crate implements a consensual/deterministic pool of asynchronous messages (`AsyncPool`) within the context of autonomous smart contracts.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! `AsyncPool` is used in conjunction with `FinalLedger` within the `FinalState`, but also as a speculative copy for speculative execution.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## Goal</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Allow a smart contract to send a message to trigger another smart contract&#39;s handler asynchronously.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Note that all the &quot;coins&quot; mentioned here are SCE coins.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## Message format</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```json</span>
-<span class="doccomment">//! {</span>
-<span class="doccomment">//!     &quot;sender&quot;: &quot;xxxx&quot;,  // address that sent the message and spent max_gas*gas_price+coins on emission</span>
-<span class="doccomment">//!     &quot;slot&quot;: {&quot;period&quot;: 123455, &quot;thread&quot;: 11},  // slot at which the message was emitted</span>
-<span class="doccomment">//!     &quot;emission_index&quot;: 212,  // index of the message emitted in this slot</span>
-<span class="doccomment">//!     &quot;destination&quot;: &quot;xxxx&quot;,  // target address</span>
-<span class="doccomment">//!     &quot;handler&quot;: &quot;handle_message&quot;,  // name of the handler function to call in the target SC</span>
-<span class="doccomment">//!     &quot;validity_start&quot;: {&quot;period&quot;: 123456, &quot;thread&quot;: 12},  // the message can be handled starting from the validity_start slot (included)</span>
-<span class="doccomment">//!     &quot;validity_end&quot;: {&quot;period&quot;: 123457, &quot;thread&quot;: 16},  // the message can be handled until the validity_end slot (excluded)</span>
-<span class="doccomment">//!     &quot;max_gas&quot;: 12334,  // max gas available when the handler is called</span>
-<span class="doccomment">//!     &quot;gas_price&quot;: &quot;124.23&quot;,  // gas price for the handler call</span>
-<span class="doccomment">//!     &quot;coins&quot;: &quot;1111.11&quot;,  // amount of coins to transfer to the destination address when calling its handler</span>
-<span class="doccomment">//!     &quot;data&quot;: { ... any object ... }  // data payload of the message, passed as the sole parameter of the destination handler when called</span>
-<span class="doccomment">//! }</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## How to send a message during bytecode execution</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! * messages are sent using an ABI: `send_message(target_address, target_handler, validity_start, validity_end, max_gas, gas_price, coins, data: JSON string) -&gt; Result&lt;(), ABIReturnError&gt;`. Note that data has a configuration defined `max_async_message_data_size`.</span>
-<span class="doccomment">//! * when called, this ABI does this:</span>
-<span class="doccomment">//!   * it consumes `compute_gas_cost_of_message_storage(context.current_slot, validity_end_slot)` of gas in the current execution. This allows making the message emission more gas-consuming when it requires storing the message in queue for longer</span>
-<span class="doccomment">//!   * it consumes `max_gas * gas_price + coins` coins from the sender</span>
-<span class="doccomment">//!   * it generates an `AsyncMessage` and stores it in an asynchronous pool</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Note that `max_gas*gas_price` coins are burned when sending the message.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## How is the `AsyncPool` handled</span>
-<span class="doccomment">//! ```md</span>
-<span class="doccomment">//! * In the AsyncPool, Messages are kept sorted by `priority = AsyncMessageId(msg.max_gas * msg.gas_price, rev(msg.slot), rev(msg.emission_index))`</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! * when an AsyncMessage is added to the AsyncPool:</span>
-<span class="doccomment">//!   * if the AsyncPool length has exceeded config.max_async_pool_length:</span>
-<span class="doccomment">//!     * remove the lowest-priority message and reimburse &quot;coins&quot; to the message sender</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! * At every slot S :</span>
-<span class="doccomment">//!   * expired messages are deleted, and &quot;coins&quot; are credited back to the message sender</span>
-<span class="doccomment">//!   * messages that are valid at slot S (in terms of validity_start, validity end) are popped in highest-to-lowest priority order until they accumulate max_async_gas_per_slot. For each selected message M in decreasing priority order:</span>
-<span class="doccomment">//!     * make sure that M.target_address exists and has a method called M.target_handler with the right signature, otherwise fail the execution</span>
-<span class="doccomment">//!     * credit target_address with M.coins</span>
-<span class="doccomment">//!     * run the target handler function with M.payload as parameter and the context:</span>
-<span class="doccomment">//!       * max_gas = M.max_gas</span>
-<span class="doccomment">//!       * gas_price = M.gas_price</span>
-<span class="doccomment">//!       * slot = S</span>
-<span class="doccomment">//!       * call_stack = [M.target_address, M.sender_address]</span>
-<span class="doccomment">//!   * on any failure, cancel all the effects of execution and credit M.coins back to the sender</span>
-<span class="doccomment">//!   * if there is a block at slot S, the execution of the block happens here</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## How to receive a message (inside the smart contract)</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! * define a public exported handler function taking 1 parameter (the message data)</span>
-<span class="doccomment">//! * this function will be called when a message is processed with the right `destination` and `handler`</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Architecture</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## message.rs</span>
-<span class="doccomment">//! Defines `AsyncMessage` that represents an asynchronous message.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## pool.rs</span>
-<span class="doccomment">//! Defines the `AsyncPool` that manipulates a list of `AsyncMessages` sorted by priority.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## changes.rs</span>
-<span class="doccomment">//! Represents and manipulates changes (message additions/deletions) in the `AsyncPool`.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## bootstrap.rs</span>
-<span class="doccomment">//! Provides serializable structures and tools for bootstrapping the asynchronous pool.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## Test exports</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.</span>
-<span class="doccomment">//! See `test_exports/mod.rs` for details.</span>
+//! # General description
+//!
+//! This crate implements a consensual/deterministic pool of asynchronous messages (`AsyncPool`) within the context of autonomous smart contracts.
+//!
+//! `AsyncPool` is used in conjunction with `FinalLedger` within the `FinalState`, but also as a speculative copy for speculative execution.
+//!
+//! ## Goal
+//!
+//! Allow a smart contract to send a message to trigger another smart contract&#39;s handler asynchronously.
+//!
+//! Note that all the &quot;coins&quot; mentioned here are SCE coins.
+//!
+//! ## Message format
+//!
+//! ```json
+//! {
+//!     &quot;sender&quot;: &quot;xxxx&quot;,  // address that sent the message and spent max_gas*gas_price+coins on emission
+//!     &quot;slot&quot;: {&quot;period&quot;: 123455, &quot;thread&quot;: 11},  // slot at which the message was emitted
+//!     &quot;emission_index&quot;: 212,  // index of the message emitted in this slot
+//!     &quot;destination&quot;: &quot;xxxx&quot;,  // target address
+//!     &quot;handler&quot;: &quot;handle_message&quot;,  // name of the handler function to call in the target SC
+//!     &quot;validity_start&quot;: {&quot;period&quot;: 123456, &quot;thread&quot;: 12},  // the message can be handled starting from the validity_start slot (included)
+//!     &quot;validity_end&quot;: {&quot;period&quot;: 123457, &quot;thread&quot;: 16},  // the message can be handled until the validity_end slot (excluded)
+//!     &quot;max_gas&quot;: 12334,  // max gas available when the handler is called
+//!     &quot;gas_price&quot;: &quot;124.23&quot;,  // gas price for the handler call
+//!     &quot;coins&quot;: &quot;1111.11&quot;,  // amount of coins to transfer to the destination address when calling its handler
+//!     &quot;data&quot;: { ... any object ... }  // data payload of the message, passed as the sole parameter of the destination handler when called
+//! }
+//! ```
+//!
+//! ## How to send a message during bytecode execution
+//!
+//! * messages are sent using an ABI: `send_message(target_address, target_handler, validity_start, validity_end, max_gas, gas_price, coins, data: JSON string) -&gt; Result&lt;(), ABIReturnError&gt;`. Note that data has a configuration defined `max_async_message_data_size`.
+//! * when called, this ABI does this:
+//!   * it consumes `compute_gas_cost_of_message_storage(context.current_slot, validity_end_slot)` of gas in the current execution. This allows making the message emission more gas-consuming when it requires storing the message in queue for longer
+//!   * it consumes `max_gas * gas_price + coins` coins from the sender
+//!   * it generates an `AsyncMessage` and stores it in an asynchronous pool
+//!
+//! Note that `max_gas*gas_price` coins are burned when sending the message.
+//!
+//! ## How is the `AsyncPool` handled
+//! ```md
+//! * In the AsyncPool, Messages are kept sorted by `priority = AsyncMessageId(msg.max_gas * msg.gas_price, rev(msg.slot), rev(msg.emission_index))`
+//!
+//! * when an AsyncMessage is added to the AsyncPool:
+//!   * if the AsyncPool length has exceeded config.max_async_pool_length:
+//!     * remove the lowest-priority message and reimburse &quot;coins&quot; to the message sender
+//!
+//! * At every slot S :
+//!   * expired messages are deleted, and &quot;coins&quot; are credited back to the message sender
+//!   * messages that are valid at slot S (in terms of validity_start, validity end) are popped in highest-to-lowest priority order until they accumulate max_async_gas_per_slot. For each selected message M in decreasing priority order:
+//!     * make sure that M.target_address exists and has a method called M.target_handler with the right signature, otherwise fail the execution
+//!     * credit target_address with M.coins
+//!     * run the target handler function with M.payload as parameter and the context:
+//!       * max_gas = M.max_gas
+//!       * gas_price = M.gas_price
+//!       * slot = S
+//!       * call_stack = [M.target_address, M.sender_address]
+//!   * on any failure, cancel all the effects of execution and credit M.coins back to the sender
+//!   * if there is a block at slot S, the execution of the block happens here
+//!
+//! ## How to receive a message (inside the smart contract)
+//!
+//! * define a public exported handler function taking 1 parameter (the message data)
+//! * this function will be called when a message is processed with the right `destination` and `handler`
+//! ```
+//!
+//! # Architecture
+//!
+//! ## message.rs
+//! Defines `AsyncMessage` that represents an asynchronous message.
+//!
+//! ## pool.rs
+//! Defines the `AsyncPool` that manipulates a list of `AsyncMessages` sorted by priority.
+//!
+//! ## changes.rs
+//! Represents and manipulates changes (message additions/deletions) in the `AsyncPool`.
+//!
+//! ## bootstrap.rs
+//! Provides serializable structures and tools for bootstrapping the asynchronous pool.
+//!
+//! ## Test exports
+//!
+//! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
+//! See `test_exports/mod.rs` for details.
 
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">map_first_last</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">btree_drain_filter</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">drain_filter</span>)]</span>
+</span><span class="attribute">#![feature(map_first_last)]
+#![feature(btree_drain_filter)]
+#![feature(drain_filter)]
 
-<span class="kw">mod</span> <span class="ident">changes</span>;
-<span class="kw">mod</span> <span class="ident">config</span>;
-<span class="kw">mod</span> <span class="ident">message</span>;
-<span class="kw">mod</span> <span class="ident">pool</span>;
+</span><span class="kw">mod </span>changes;
+<span class="kw">mod </span>config;
+<span class="kw">mod </span>message;
+<span class="kw">mod </span>pool;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">changes</span>::{
-    <span class="ident">AsyncPoolChanges</span>, <span class="ident">AsyncPoolChangesDeserializer</span>, <span class="ident">AsyncPoolChangesSerializer</span>, <span class="ident">Change</span>,
+<span class="kw">pub use </span>changes::{
+    AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer, Change,
 };
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">config::AsyncPoolConfig</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">message</span>::{
-    <span class="ident">AsyncMessage</span>, <span class="ident">AsyncMessageDeserializer</span>, <span class="ident">AsyncMessageId</span>, <span class="ident">AsyncMessageIdDeserializer</span>,
-    <span class="ident">AsyncMessageIdSerializer</span>, <span class="ident">AsyncMessageSerializer</span>,
+<span class="kw">pub use </span>config::AsyncPoolConfig;
+<span class="kw">pub use </span>message::{
+    AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncMessageIdDeserializer,
+    AsyncMessageIdSerializer, AsyncMessageSerializer,
 };
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">pool::AsyncPool</span>;
+<span class="kw">pub use </span>pool::AsyncPool;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">test_exports</span>;
+<span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+</span><span class="kw">pub mod </span>test_exports;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_async_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_async_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

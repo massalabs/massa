@@ -465,472 +465,472 @@
 <span id="465">465</span>
 <span id="466">466</span>
 <span id="467">467</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-<span class="doccomment">//! Unsigned time management</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">bound_map</span>)]</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</span><span class="doccomment">//! Unsigned time management
+</span><span class="attribute">#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
+#![feature(bound_map)]
 
-<span class="kw">mod</span> <span class="ident">error</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error::TimeError</span>;
-<span class="kw">use</span> <span class="ident">massa_serialization</span>::{<span class="ident">Deserializer</span>, <span class="ident">Serializer</span>, <span class="ident">U64VarIntDeserializer</span>, <span class="ident">U64VarIntSerializer</span>};
-<span class="kw">use</span> <span class="ident">nom::error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ParseError</span>};
-<span class="kw">use</span> <span class="ident">nom::IResult</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::fmt</span>;
-<span class="kw">use</span> <span class="ident">std::ops::Bound</span>;
-<span class="kw">use</span> <span class="ident">std::time</span>::{<span class="ident">Duration</span>, <span class="ident">SystemTime</span>, <span class="ident">UNIX_EPOCH</span>};
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">convert</span>::{<span class="ident">TryFrom</span>, <span class="ident">TryInto</span>},
-    <span class="ident">str::FromStr</span>,
+</span><span class="kw">mod </span>error;
+<span class="kw">pub use </span>error::TimeError;
+<span class="kw">use </span>massa_serialization::{Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
+<span class="kw">use </span>nom::error::{context, ContextError, ParseError};
+<span class="kw">use </span>nom::IResult;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::fmt;
+<span class="kw">use </span>std::ops::Bound;
+<span class="kw">use </span>std::time::{Duration, SystemTime, UNIX_EPOCH};
+<span class="kw">use </span>std::{
+    convert::{TryFrom, TryInto},
+    str::FromStr,
 };
-<span class="kw">use</span> <span class="ident">time::format_description::well_known::Rfc3339</span>;
-<span class="kw">use</span> <span class="ident">time::OffsetDateTime</span>;
-<span class="kw">use</span> <span class="ident">tokio::time::Instant</span>;
+<span class="kw">use </span>time::format_description::well_known::Rfc3339;
+<span class="kw">use </span>time::OffsetDateTime;
+<span class="kw">use </span>tokio::time::Instant;
 
-<span class="doccomment">/// Time structure used everywhere.</span>
-<span class="doccomment">/// milliseconds since 01/01/1970.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Hash</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MassaTime</span>(<span class="ident">u64</span>);
+<span class="doccomment">/// Time structure used everywhere.
+/// milliseconds since 01/01/1970.
+</span><span class="attribute">#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>MassaTime(u64);
 
-<span class="doccomment">/// Serializer for `MassaTime`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MassaTimeSerializer</span> {
-    <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer</span>,
+<span class="doccomment">/// Serializer for `MassaTime`
+</span><span class="kw">pub struct </span>MassaTimeSerializer {
+    u64_serializer: U64VarIntSerializer,
 }
 
-<span class="kw">impl</span> <span class="ident">MassaTimeSerializer</span> {
-    <span class="doccomment">/// Creates a `MassaTimeSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(),
+<span class="kw">impl </span>MassaTimeSerializer {
+    <span class="doccomment">/// Creates a `MassaTimeSerializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u64_serializer: U64VarIntSerializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">MassaTimeSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>MassaTimeSerializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MassaTimeSerializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use std::ops::Bound::Included;</span>
-    <span class="doccomment">/// use massa_serialization::Serializer;</span>
-    <span class="doccomment">/// use massa_time::{MassaTime, MassaTimeSerializer};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let time: MassaTime = 30.into();</span>
-    <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// let serializer = MassaTimeSerializer::new();</span>
-    <span class="doccomment">/// serializer.serialize(&amp;time, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">serialize</span>(
+<span class="kw">impl </span>Serializer&lt;MassaTime&gt; <span class="kw">for </span>MassaTimeSerializer {
+    <span class="doccomment">/// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::Serializer;
+    /// use massa_time::{MassaTime, MassaTimeSerializer};
+    ///
+    /// let time: MassaTime = 30.into();
+    /// let mut serialized = Vec::new();
+    /// let serializer = MassaTimeSerializer::new();
+    /// serializer.serialize(&amp;time, &amp;mut serialized).unwrap();
+    /// ```
+    </span><span class="kw">fn </span>serialize(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">MassaTime</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">massa_serialization::SerializeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">u64_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">to_millis</span>(), <span class="ident">buffer</span>)
+        value: <span class="kw-2">&amp;</span>MassaTime,
+        buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), massa_serialization::SerializeError&gt; {
+        <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span>value.to_millis(), buffer)
     }
 }
 
-<span class="doccomment">/// Deserializer for `MassaTime`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MassaTimeDeserializer</span> {
-    <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer</span>,
+<span class="doccomment">/// Deserializer for `MassaTime`
+</span><span class="kw">pub struct </span>MassaTimeDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
 }
 
-<span class="kw">impl</span> <span class="ident">MassaTimeDeserializer</span> {
-    <span class="doccomment">/// Creates a `MassaTimeDeserializer`</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Arguments:</span>
-    <span class="doccomment">/// * range: minimum value for the time to deserialize</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">range</span>: (<span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>, <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>)) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer::new</span>(
-                <span class="ident">range</span>.<span class="number">0</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">time</span><span class="op">|</span> <span class="ident">time</span>.<span class="ident">to_millis</span>()),
-                <span class="ident">range</span>.<span class="number">1</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">time</span><span class="op">|</span> <span class="ident">time</span>.<span class="ident">to_millis</span>()),
+<span class="kw">impl </span>MassaTimeDeserializer {
+    <span class="doccomment">/// Creates a `MassaTimeDeserializer`
+    ///
+    /// Arguments:
+    /// * range: minimum value for the time to deserialize
+    </span><span class="kw">pub fn </span>new(range: (Bound&lt;MassaTime&gt;, Bound&lt;MassaTime&gt;)) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u64_deserializer: U64VarIntDeserializer::new(
+                range.<span class="number">0</span>.map(|time| time.to_millis()),
+                range.<span class="number">1</span>.map(|time| time.to_millis()),
             ),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MassaTimeDeserializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use std::ops::Bound::Included;</span>
-    <span class="doccomment">/// use massa_serialization::{Serializer, Deserializer, DeserializeError};</span>
-    <span class="doccomment">/// use massa_time::{MassaTime, MassaTimeSerializer, MassaTimeDeserializer};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let time: MassaTime = 30.into();</span>
-    <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// let serializer = MassaTimeSerializer::new();</span>
-    <span class="doccomment">/// let deserializer = MassaTimeDeserializer::new((Included(0.into()), Included(u64::MAX.into())));</span>
-    <span class="doccomment">/// serializer.serialize(&amp;time, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// let (rest, time_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
-    <span class="doccomment">/// assert!(rest.is_empty());</span>
-    <span class="doccomment">/// assert_eq!(time, time_deser);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">impl </span>Deserializer&lt;MassaTime&gt; <span class="kw">for </span>MassaTimeDeserializer {
+    <span class="doccomment">/// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use massa_time::{MassaTime, MassaTimeSerializer, MassaTimeDeserializer};
+    ///
+    /// let time: MassaTime = 30.into();
+    /// let mut serialized = Vec::new();
+    /// let serializer = MassaTimeSerializer::new();
+    /// let deserializer = MassaTimeDeserializer::new((Included(0.into()), Included(u64::MAX.into())));
+    /// serializer.serialize(&amp;time, &amp;mut serialized).unwrap();
+    /// let (rest, time_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(time, time_deser);
+    /// ```
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">MassaTime</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">context</span>(<span class="string">&quot;Failed MassaTime deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-            <span class="self">self</span>.<span class="ident">u64_deserializer</span>
-                .<span class="ident">deserialize</span>(<span class="ident">input</span>)
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">rest</span>, <span class="ident">res</span>)<span class="op">|</span> (<span class="ident">rest</span>, <span class="ident">res</span>.<span class="ident">into</span>()))
-        })(<span class="ident">buffer</span>)
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], MassaTime, E&gt; {
+        context(<span class="string">&quot;Failed MassaTime deserialization&quot;</span>, |input| {
+            <span class="self">self</span>.u64_deserializer
+                .deserialize(input)
+                .map(|(rest, res)| (rest, res.into()))
+        })(buffer)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">MassaTime</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="ident">to_millis</span>())
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>MassaTime {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.to_millis())
     }
 }
 
-<span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">Duration</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MassaTime</span> {
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">TimeError</span>;
+<span class="kw">impl </span>TryFrom&lt;Duration&gt; <span class="kw">for </span>MassaTime {
+    <span class="kw">type </span>Error = TimeError;
 
-    <span class="doccomment">/// Conversion from `std::time::Duration`.</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use std::time::Duration;</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// # use std::convert::TryFrom;</span>
-    <span class="doccomment">/// let duration: Duration = Duration::from_millis(42);</span>
-    <span class="doccomment">/// let time : MassaTime = MassaTime::from(42);</span>
-    <span class="doccomment">/// assert_eq!(time, MassaTime::try_from(duration).unwrap());</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="ident">Duration</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">MassaTime</span>(
-            <span class="ident">value</span>
-                .<span class="ident">as_millis</span>()
-                .<span class="ident">try_into</span>()
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">TimeError::ConversionError</span>)<span class="question-mark">?</span>,
+    <span class="doccomment">/// Conversion from `std::time::Duration`.
+    /// ```
+    /// # use std::time::Duration;
+    /// # use massa_time::*;
+    /// # use std::convert::TryFrom;
+    /// let duration: Duration = Duration::from_millis(42);
+    /// let time : MassaTime = MassaTime::from(42);
+    /// assert_eq!(time, MassaTime::try_from(duration).unwrap());
+    /// ```
+    </span><span class="kw">fn </span>try_from(value: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+        <span class="prelude-val">Ok</span>(MassaTime(
+            value
+                .as_millis()
+                .try_into()
+                .map_err(|<span class="kw">_</span>| TimeError::ConversionError)<span class="question-mark">?</span>,
         ))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MassaTime</span> {
-    <span class="doccomment">/// Conversion from `u64`, representing timestamp in milliseconds.</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time : MassaTime = MassaTime::from(42);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">val</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">MassaTime</span>(<span class="ident">val</span>)
+<span class="kw">impl </span>From&lt;u64&gt; <span class="kw">for </span>MassaTime {
+    <span class="doccomment">/// Conversion from `u64`, representing timestamp in milliseconds.
+    /// ```
+    /// # use massa_time::*;
+    /// let time : MassaTime = MassaTime::from(42);
+    /// ```
+    </span><span class="kw">fn </span>from(val: u64) -&gt; <span class="self">Self </span>{
+        MassaTime(val)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Duration</span> {
-    <span class="doccomment">/// Conversion from `massa_time` to duration, representing timestamp in milliseconds.</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use std::time::Duration;</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// # use std::convert::Into;</span>
-    <span class="doccomment">/// let duration: Duration = Duration::from_millis(42);</span>
-    <span class="doccomment">/// let time : MassaTime = MassaTime::from(42);</span>
-    <span class="doccomment">/// let res: Duration = time.into();</span>
-    <span class="doccomment">/// assert_eq!(res, duration);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">value</span>: <span class="ident">MassaTime</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">value</span>.<span class="ident">to_duration</span>()
+<span class="kw">impl </span>From&lt;MassaTime&gt; <span class="kw">for </span>Duration {
+    <span class="doccomment">/// Conversion from `massa_time` to duration, representing timestamp in milliseconds.
+    /// ```
+    /// # use std::time::Duration;
+    /// # use massa_time::*;
+    /// # use std::convert::Into;
+    /// let duration: Duration = Duration::from_millis(42);
+    /// let time : MassaTime = MassaTime::from(42);
+    /// let res: Duration = time.into();
+    /// assert_eq!(res, duration);
+    /// ```
+    </span><span class="kw">fn </span>from(value: MassaTime) -&gt; <span class="self">Self </span>{
+        value.to_duration()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">FromStr</span> <span class="kw">for</span> <span class="ident">MassaTime</span> {
-    <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::TimeError</span>;
+<span class="kw">impl </span>FromStr <span class="kw">for </span>MassaTime {
+    <span class="kw">type </span><span class="prelude-val">Err </span>= <span class="kw">crate</span>::TimeError;
 
-    <span class="doccomment">/// Conversion from `&amp;str`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// # use std::str::FromStr;</span>
-    <span class="doccomment">/// let duration: &amp;str = &quot;42&quot;;</span>
-    <span class="doccomment">/// let time : MassaTime = MassaTime::from(42);</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// assert_eq!(time, MassaTime::from_str(duration).unwrap());</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">from_str</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">MassaTime</span>(
-            <span class="ident">u64::from_str</span>(<span class="ident">s</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident"><span class="self">Self</span>::Err::ConversionError</span>)<span class="question-mark">?</span>,
+    <span class="doccomment">/// Conversion from `&amp;str`.
+    ///
+    /// ```
+    /// # use massa_time::*;
+    /// # use std::str::FromStr;
+    /// let duration: &amp;str = &quot;42&quot;;
+    /// let time : MassaTime = MassaTime::from(42);
+    ///
+    /// assert_eq!(time, MassaTime::from_str(duration).unwrap());
+    /// ```
+    </span><span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
+        <span class="prelude-val">Ok</span>(MassaTime(
+            u64::from_str(s).map_err(|<span class="kw">_</span>| <span class="self">Self</span>::Err::ConversionError)<span class="question-mark">?</span>,
         ))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">MassaTime</span> {
-    <span class="doccomment">/// Conversion from `u64`, representing timestamp in milliseconds.</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time : MassaTime = MassaTime::from(42);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">value</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">MassaTime</span>(<span class="ident">value</span>)
+<span class="kw">impl </span>MassaTime {
+    <span class="doccomment">/// Conversion from `u64`, representing timestamp in milliseconds.
+    /// ```
+    /// # use massa_time::*;
+    /// let time : MassaTime = MassaTime::from(42);
+    /// ```
+    </span><span class="kw">pub const fn </span>from(value: u64) -&gt; <span class="self">Self </span>{
+        MassaTime(value)
     }
 
-    <span class="doccomment">/// Smallest time interval</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">EPSILON</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="ident">MassaTime</span>(<span class="number">1</span>);
+    <span class="doccomment">/// Smallest time interval
+    </span><span class="kw">pub const </span>EPSILON: MassaTime = MassaTime(<span class="number">1</span>);
 
-    <span class="doccomment">/// Gets current compensated UNIX timestamp (resolution: milliseconds).</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Parameters</span>
-    <span class="doccomment">///   * `compensation_millis`: when the system clock is slightly off, this parameter allows correcting it by adding this signed number of milliseconds to the locally measured timestamp</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use std::time::{Duration, SystemTime, UNIX_EPOCH};</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// # use std::convert::TryFrom;</span>
-    <span class="doccomment">/// # use std::cmp::max;</span>
-    <span class="doccomment">/// let now_duration : Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();</span>
-    <span class="doccomment">/// let now_massa_time : MassaTime = MassaTime::now().unwrap();</span>
-    <span class="doccomment">/// let converted  :MassaTime = MassaTime::try_from(now_duration).unwrap();</span>
-    <span class="doccomment">/// assert!(max(now_massa_time.saturating_sub(converted), converted.saturating_sub(now_massa_time)) &lt; 100.into())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">compensated_now</span>(<span class="ident">compensation_millis</span>: <span class="ident">i64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">now</span>: <span class="ident">i64</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>()
-            .<span class="ident">duration_since</span>(<span class="ident">UNIX_EPOCH</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">TimeError::TimeOverflowError</span>)<span class="question-mark">?</span>
-            .<span class="ident">as_millis</span>()
-            .<span class="ident">try_into</span>()
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">TimeError::TimeOverflowError</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">compensated</span> <span class="op">=</span> <span class="ident">now</span>
-            .<span class="ident">checked_add</span>(<span class="ident">compensation_millis</span>)
-            .<span class="ident">ok_or</span>(<span class="ident">TimeError::TimeOverflowError</span>)<span class="question-mark">?</span>
-            .<span class="ident">try_into</span>()
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">TimeError::TimeOverflowError</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">MassaTime</span>(<span class="ident">compensated</span>))
+    <span class="doccomment">/// Gets current compensated UNIX timestamp (resolution: milliseconds).
+    ///
+    /// # Parameters
+    ///   * `compensation_millis`: when the system clock is slightly off, this parameter allows correcting it by adding this signed number of milliseconds to the locally measured timestamp
+    ///
+    /// ```
+    /// # use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    /// # use massa_time::*;
+    /// # use std::convert::TryFrom;
+    /// # use std::cmp::max;
+    /// let now_duration : Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+    /// let now_massa_time : MassaTime = MassaTime::now().unwrap();
+    /// let converted  :MassaTime = MassaTime::try_from(now_duration).unwrap();
+    /// assert!(max(now_massa_time.saturating_sub(converted), converted.saturating_sub(now_massa_time)) &lt; 100.into())
+    /// ```
+    </span><span class="kw">pub fn </span>compensated_now(compensation_millis: i64) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TimeError&gt; {
+        <span class="kw">let </span>now: i64 = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|<span class="kw">_</span>| TimeError::TimeOverflowError)<span class="question-mark">?
+            </span>.as_millis()
+            .try_into()
+            .map_err(|<span class="kw">_</span>| TimeError::TimeOverflowError)<span class="question-mark">?</span>;
+        <span class="kw">let </span>compensated = now
+            .checked_add(compensation_millis)
+            .ok_or(TimeError::TimeOverflowError)<span class="question-mark">?
+            </span>.try_into()
+            .map_err(|<span class="kw">_</span>| TimeError::TimeOverflowError)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(MassaTime(compensated))
     }
 
-    <span class="doccomment">/// Gets current UNIX timestamp (resolution: milliseconds).</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use std::time::{Duration, SystemTime, UNIX_EPOCH};</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// # use std::convert::TryFrom;</span>
-    <span class="doccomment">/// # use std::cmp::max;</span>
-    <span class="doccomment">/// let now_duration : Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();</span>
-    <span class="doccomment">/// let now_time : MassaTime = MassaTime::now().unwrap();</span>
-    <span class="doccomment">/// let converted : MassaTime = MassaTime::try_from(now_duration).unwrap();</span>
-    <span class="doccomment">/// assert!(max(now_time.saturating_sub(converted), converted.saturating_sub(now_time)) &lt; 100.into())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">now</span>() -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">now</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>()
-            .<span class="ident">duration_since</span>(<span class="ident">UNIX_EPOCH</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">TimeError::TimeOverflowError</span>)<span class="question-mark">?</span>
-            .<span class="ident">as_millis</span>()
-            .<span class="ident">try_into</span>()
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">TimeError::TimeOverflowError</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">MassaTime</span>(<span class="ident">now</span>))
+    <span class="doccomment">/// Gets current UNIX timestamp (resolution: milliseconds).
+    ///
+    /// ```
+    /// # use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    /// # use massa_time::*;
+    /// # use std::convert::TryFrom;
+    /// # use std::cmp::max;
+    /// let now_duration : Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+    /// let now_time : MassaTime = MassaTime::now().unwrap();
+    /// let converted : MassaTime = MassaTime::try_from(now_duration).unwrap();
+    /// assert!(max(now_time.saturating_sub(converted), converted.saturating_sub(now_time)) &lt; 100.into())
+    /// ```
+    </span><span class="kw">pub fn </span>now() -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TimeError&gt; {
+        <span class="kw">let </span>now: u64 = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|<span class="kw">_</span>| TimeError::TimeOverflowError)<span class="question-mark">?
+            </span>.as_millis()
+            .try_into()
+            .map_err(|<span class="kw">_</span>| TimeError::TimeOverflowError)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(MassaTime(now))
     }
 
-    <span class="doccomment">/// Conversion to `std::time::Duration`.</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use std::time::Duration;</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let duration: Duration = Duration::from_millis(42);</span>
-    <span class="doccomment">/// let time : MassaTime = MassaTime::from(42);</span>
-    <span class="doccomment">/// let res: Duration = time.to_duration();</span>
-    <span class="doccomment">/// assert_eq!(res, duration);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_duration</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Duration</span> {
-        <span class="ident">Duration::from_millis</span>(<span class="self">self</span>.<span class="number">0</span>)
+    <span class="doccomment">/// Conversion to `std::time::Duration`.
+    /// ```
+    /// # use std::time::Duration;
+    /// # use massa_time::*;
+    /// let duration: Duration = Duration::from_millis(42);
+    /// let time : MassaTime = MassaTime::from(42);
+    /// let res: Duration = time.to_duration();
+    /// assert_eq!(res, duration);
+    /// ```
+    </span><span class="kw">pub fn </span>to_duration(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Duration {
+        Duration::from_millis(<span class="self">self</span>.<span class="number">0</span>)
     }
 
-    <span class="doccomment">/// Conversion to `u64`, representing milliseconds.</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time : MassaTime = MassaTime::from(42);</span>
-    <span class="doccomment">/// let res: u64 = time.to_millis();</span>
-    <span class="doccomment">/// assert_eq!(res, 42);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">to_millis</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-    }
+    <span class="doccomment">/// Conversion to `u64`, representing milliseconds.
+    /// ```
+    /// # use massa_time::*;
+    /// let time : MassaTime = MassaTime::from(42);
+    /// let res: u64 = time.to_millis();
+    /// assert_eq!(res, 42);
+    /// ```
+    </span><span class="kw">pub const fn </span>to_millis(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="self">self</span>.<span class="number">0
+    </span>}
 
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use std::time::{Duration, SystemTime, UNIX_EPOCH};</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// # use std::convert::TryFrom;</span>
-    <span class="doccomment">/// # use std::cmp::max;</span>
-    <span class="doccomment">/// # use tokio::time::Instant;</span>
-    <span class="doccomment">/// let (cur_timestamp, cur_instant): (MassaTime, Instant) = (MassaTime::now().unwrap(), Instant::now());</span>
-    <span class="doccomment">/// let massa_time_instant: Instant = cur_timestamp.estimate_instant(0).unwrap();</span>
-    <span class="doccomment">/// assert!(max(</span>
-    <span class="doccomment">///     massa_time_instant.saturating_duration_since(cur_instant),</span>
-    <span class="doccomment">///     cur_instant.saturating_duration_since(massa_time_instant)</span>
-    <span class="doccomment">/// ) &lt; std::time::Duration::from_millis(10))</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">estimate_instant</span>(<span class="self">self</span>, <span class="ident">compensation_millis</span>: <span class="ident">i64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Instant</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">cur_timestamp</span>, <span class="ident">cur_instant</span>): (<span class="ident">MassaTime</span>, <span class="ident">Instant</span>) <span class="op">=</span> (
-            <span class="ident">MassaTime::compensated_now</span>(<span class="ident">compensation_millis</span>)<span class="question-mark">?</span>,
-            <span class="ident">Instant::now</span>(),
+    <span class="doccomment">/// ```
+    /// # use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    /// # use massa_time::*;
+    /// # use std::convert::TryFrom;
+    /// # use std::cmp::max;
+    /// # use tokio::time::Instant;
+    /// let (cur_timestamp, cur_instant): (MassaTime, Instant) = (MassaTime::now().unwrap(), Instant::now());
+    /// let massa_time_instant: Instant = cur_timestamp.estimate_instant(0).unwrap();
+    /// assert!(max(
+    ///     massa_time_instant.saturating_duration_since(cur_instant),
+    ///     cur_instant.saturating_duration_since(massa_time_instant)
+    /// ) &lt; std::time::Duration::from_millis(10))
+    /// ```
+    </span><span class="kw">pub fn </span>estimate_instant(<span class="self">self</span>, compensation_millis: i64) -&gt; <span class="prelude-ty">Result</span>&lt;Instant, TimeError&gt; {
+        <span class="kw">let </span>(cur_timestamp, cur_instant): (MassaTime, Instant) = (
+            MassaTime::compensated_now(compensation_millis)<span class="question-mark">?</span>,
+            Instant::now(),
         );
-        <span class="ident">cur_instant</span>
-            .<span class="ident">checked_add</span>(<span class="self">self</span>.<span class="ident">to_duration</span>())
-            .<span class="ident">ok_or</span>(<span class="ident">TimeError::TimeOverflowError</span>)<span class="question-mark">?</span>
-            .<span class="ident">checked_sub</span>(<span class="ident">cur_timestamp</span>.<span class="ident">to_duration</span>())
-            .<span class="ident">ok_or</span>(<span class="ident">TimeError::TimeOverflowError</span>)
+        cur_instant
+            .checked_add(<span class="self">self</span>.to_duration())
+            .ok_or(TimeError::TimeOverflowError)<span class="question-mark">?
+            </span>.checked_sub(cur_timestamp.to_duration())
+            .ok_or(TimeError::TimeOverflowError)
     }
 
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
-    <span class="doccomment">/// let time_2 : MassaTime = MassaTime::from(7);</span>
-    <span class="doccomment">/// let res : MassaTime = time_1.saturating_sub(time_2);</span>
-    <span class="doccomment">/// assert_eq!(res, MassaTime::from(42-7))</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">saturating_sub</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">MassaTime</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">MassaTime</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">saturating_sub</span>(<span class="ident">t</span>.<span class="number">0</span>))
+    <span class="doccomment">/// ```
+    /// # use massa_time::*;
+    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let time_2 : MassaTime = MassaTime::from(7);
+    /// let res : MassaTime = time_1.saturating_sub(time_2);
+    /// assert_eq!(res, MassaTime::from(42-7))
+    /// ```
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">pub fn </span>saturating_sub(<span class="self">self</span>, t: MassaTime) -&gt; <span class="self">Self </span>{
+        MassaTime(<span class="self">self</span>.<span class="number">0</span>.saturating_sub(t.<span class="number">0</span>))
     }
 
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
-    <span class="doccomment">/// let time_2 : MassaTime = MassaTime::from(7);</span>
-    <span class="doccomment">/// let res : MassaTime = time_1.saturating_add(time_2);</span>
-    <span class="doccomment">/// assert_eq!(res, MassaTime::from(42+7))</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">saturating_add</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">MassaTime</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">MassaTime</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">saturating_add</span>(<span class="ident">t</span>.<span class="number">0</span>))
+    <span class="doccomment">/// ```
+    /// # use massa_time::*;
+    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let time_2 : MassaTime = MassaTime::from(7);
+    /// let res : MassaTime = time_1.saturating_add(time_2);
+    /// assert_eq!(res, MassaTime::from(42+7))
+    /// ```
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">pub fn </span>saturating_add(<span class="self">self</span>, t: MassaTime) -&gt; <span class="self">Self </span>{
+        MassaTime(<span class="self">self</span>.<span class="number">0</span>.saturating_add(t.<span class="number">0</span>))
     }
 
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
-    <span class="doccomment">/// let time_2 : MassaTime = MassaTime::from(7);</span>
-    <span class="doccomment">/// let res : MassaTime = time_1.checked_sub(time_2).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(res, MassaTime::from(42-7))</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_sub</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">MassaTime</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">checked_sub</span>(<span class="ident">t</span>.<span class="number">0</span>)
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">TimeError::CheckedOperationError</span>(<span class="string">&quot;subtraction error&quot;</span>.<span class="ident">to_string</span>()))
-            .<span class="ident">map</span>(<span class="ident">MassaTime</span>)
+    <span class="doccomment">/// ```
+    /// # use massa_time::*;
+    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let time_2 : MassaTime = MassaTime::from(7);
+    /// let res : MassaTime = time_1.checked_sub(time_2).unwrap();
+    /// assert_eq!(res, MassaTime::from(42-7))
+    /// ```
+    </span><span class="kw">pub fn </span>checked_sub(<span class="self">self</span>, t: MassaTime) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TimeError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.checked_sub(t.<span class="number">0</span>)
+            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">&quot;subtraction error&quot;</span>.to_string()))
+            .map(MassaTime)
     }
 
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
-    <span class="doccomment">/// let time_2 : MassaTime = MassaTime::from(7);</span>
-    <span class="doccomment">/// let res : MassaTime = time_1.checked_add(time_2).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(res, MassaTime::from(42+7))</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_add</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">MassaTime</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">checked_add</span>(<span class="ident">t</span>.<span class="number">0</span>)
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">TimeError::CheckedOperationError</span>(<span class="string">&quot;addition error&quot;</span>.<span class="ident">to_string</span>()))
-            .<span class="ident">map</span>(<span class="ident">MassaTime</span>)
+    <span class="doccomment">/// ```
+    /// # use massa_time::*;
+    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let time_2 : MassaTime = MassaTime::from(7);
+    /// let res : MassaTime = time_1.checked_add(time_2).unwrap();
+    /// assert_eq!(res, MassaTime::from(42+7))
+    /// ```
+    </span><span class="kw">pub fn </span>checked_add(<span class="self">self</span>, t: MassaTime) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TimeError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.checked_add(t.<span class="number">0</span>)
+            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">&quot;addition error&quot;</span>.to_string()))
+            .map(MassaTime)
     }
 
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
-    <span class="doccomment">/// let time_2 : MassaTime = MassaTime::from(7);</span>
-    <span class="doccomment">/// let res : u64 = time_1.checked_div_time(time_2).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(res,42/7)</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_div_time</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">MassaTime</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">checked_div</span>(<span class="ident">t</span>.<span class="number">0</span>)
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">TimeError::CheckedOperationError</span>(<span class="string">&quot;division error&quot;</span>.<span class="ident">to_string</span>()))
+    <span class="doccomment">/// ```
+    /// # use massa_time::*;
+    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let time_2 : MassaTime = MassaTime::from(7);
+    /// let res : u64 = time_1.checked_div_time(time_2).unwrap();
+    /// assert_eq!(res,42/7)
+    /// ```
+    </span><span class="kw">pub fn </span>checked_div_time(<span class="self">self</span>, t: MassaTime) -&gt; <span class="prelude-ty">Result</span>&lt;u64, TimeError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.checked_div(t.<span class="number">0</span>)
+            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">&quot;division error&quot;</span>.to_string()))
     }
 
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
-    <span class="doccomment">/// let res : MassaTime = time_1.checked_div_u64(7).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(res,MassaTime::from(42/7))</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_div_u64</span>(<span class="self">self</span>, <span class="ident">n</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MassaTime</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">checked_div</span>(<span class="ident">n</span>)
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">TimeError::CheckedOperationError</span>(<span class="string">&quot;division error&quot;</span>.<span class="ident">to_string</span>()))
-            .<span class="ident">map</span>(<span class="ident">MassaTime</span>)
+    <span class="doccomment">/// ```
+    /// # use massa_time::*;
+    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let res : MassaTime = time_1.checked_div_u64(7).unwrap();
+    /// assert_eq!(res,MassaTime::from(42/7))
+    /// ```
+    </span><span class="kw">pub fn </span>checked_div_u64(<span class="self">self</span>, n: u64) -&gt; <span class="prelude-ty">Result</span>&lt;MassaTime, TimeError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.checked_div(n)
+            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">&quot;division error&quot;</span>.to_string()))
+            .map(MassaTime)
     }
 
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
-    <span class="doccomment">/// let res : MassaTime = time_1.saturating_mul(7);</span>
-    <span class="doccomment">/// assert_eq!(res,MassaTime::from(42*7))</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">saturating_mul</span>(<span class="self">self</span>, <span class="ident">n</span>: <span class="ident">u64</span>) -&gt; <span class="ident">MassaTime</span> {
-        <span class="ident">MassaTime</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">saturating_mul</span>(<span class="ident">n</span>))
+    <span class="doccomment">/// ```
+    /// # use massa_time::*;
+    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let res : MassaTime = time_1.saturating_mul(7);
+    /// assert_eq!(res,MassaTime::from(42*7))
+    /// ```
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">pub fn </span>saturating_mul(<span class="self">self</span>, n: u64) -&gt; MassaTime {
+        MassaTime(<span class="self">self</span>.<span class="number">0</span>.saturating_mul(n))
     }
 
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
-    <span class="doccomment">/// let res : MassaTime = time_1.checked_mul(7).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(res,MassaTime::from(42*7))</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_mul</span>(<span class="self">self</span>, <span class="ident">n</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">checked_mul</span>(<span class="ident">n</span>)
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">TimeError::CheckedOperationError</span>(<span class="string">&quot;multiplication error&quot;</span>.<span class="ident">to_string</span>()))
-            .<span class="ident">map</span>(<span class="ident">MassaTime</span>)
+    <span class="doccomment">/// ```
+    /// # use massa_time::*;
+    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let res : MassaTime = time_1.checked_mul(7).unwrap();
+    /// assert_eq!(res,MassaTime::from(42*7))
+    /// ```
+    </span><span class="kw">pub fn </span>checked_mul(<span class="self">self</span>, n: u64) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TimeError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.checked_mul(n)
+            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">&quot;multiplication error&quot;</span>.to_string()))
+            .map(MassaTime)
     }
 
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
-    <span class="doccomment">/// let time_2 : MassaTime = MassaTime::from(7);</span>
-    <span class="doccomment">/// let res : MassaTime = time_1.checked_rem_time(time_2).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(res,MassaTime::from(42%7))</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_rem_time</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">MassaTime</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">checked_rem</span>(<span class="ident">t</span>.<span class="number">0</span>)
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">TimeError::CheckedOperationError</span>(<span class="string">&quot;remainder error&quot;</span>.<span class="ident">to_string</span>()))
-            .<span class="ident">map</span>(<span class="ident">MassaTime</span>)
+    <span class="doccomment">/// ```
+    /// # use massa_time::*;
+    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let time_2 : MassaTime = MassaTime::from(7);
+    /// let res : MassaTime = time_1.checked_rem_time(time_2).unwrap();
+    /// assert_eq!(res,MassaTime::from(42%7))
+    /// ```
+    </span><span class="kw">pub fn </span>checked_rem_time(<span class="self">self</span>, t: MassaTime) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TimeError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.checked_rem(t.<span class="number">0</span>)
+            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">&quot;remainder error&quot;</span>.to_string()))
+            .map(MassaTime)
     }
 
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
-    <span class="doccomment">/// let res : MassaTime = time_1.checked_rem_u64(7).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(res,MassaTime::from(42%7))</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_rem_u64</span>(<span class="self">self</span>, <span class="ident">n</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">checked_rem</span>(<span class="ident">n</span>)
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">TimeError::CheckedOperationError</span>(<span class="string">&quot;remainder error&quot;</span>.<span class="ident">to_string</span>()))
-            .<span class="ident">map</span>(<span class="ident">MassaTime</span>)
+    <span class="doccomment">/// ```
+    /// # use massa_time::*;
+    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let res : MassaTime = time_1.checked_rem_u64(7).unwrap();
+    /// assert_eq!(res,MassaTime::from(42%7))
+    /// ```
+    </span><span class="kw">pub fn </span>checked_rem_u64(<span class="self">self</span>, n: u64) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TimeError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.checked_rem(n)
+            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">&quot;remainder error&quot;</span>.to_string()))
+            .map(MassaTime)
     }
 
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let massa_time : MassaTime = MassaTime::from(1_640_995_200_000);</span>
-    <span class="doccomment">/// assert_eq!(massa_time.to_utc_string(), &quot;2022-01-01T00:00:00Z&quot;)</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_utc_string</span>(<span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="kw">let</span> <span class="ident">naive</span> <span class="op">=</span> <span class="ident">OffsetDateTime::from_unix_timestamp</span>((<span class="self">self</span>.<span class="ident">to_millis</span>() <span class="op">/</span> <span class="number">1000</span>) <span class="kw">as</span> <span class="ident">i64</span>).<span class="ident">unwrap</span>();
-        <span class="ident">naive</span>.<span class="ident">format</span>(<span class="kw-2">&amp;</span><span class="ident">Rfc3339</span>).<span class="ident">unwrap</span>()
+    <span class="doccomment">/// ```
+    /// # use massa_time::*;
+    /// let massa_time : MassaTime = MassaTime::from(1_640_995_200_000);
+    /// assert_eq!(massa_time.to_utc_string(), &quot;2022-01-01T00:00:00Z&quot;)
+    /// ```
+    </span><span class="kw">pub fn </span>to_utc_string(<span class="self">self</span>) -&gt; String {
+        <span class="kw">let </span>naive = OffsetDateTime::from_unix_timestamp((<span class="self">self</span>.to_millis() / <span class="number">1000</span>) <span class="kw">as </span>i64).unwrap();
+        naive.format(<span class="kw-2">&amp;</span>Rfc3339).unwrap()
     }
 
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let massa_time = MassaTime::from(1000 * ( 8 * 24*60*60 + 1 * 60*60 + 3 * 60 + 6 ));</span>
-    <span class="doccomment">/// let (days, hours, mins, secs) = massa_time.days_hours_mins_secs().unwrap();</span>
-    <span class="doccomment">/// assert_eq!(days, 8);</span>
-    <span class="doccomment">/// assert_eq!(hours, 1);</span>
-    <span class="doccomment">/// assert_eq!(mins, 3);</span>
-    <span class="doccomment">/// assert_eq!(secs, 6);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">days_hours_mins_secs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">i64</span>, <span class="ident">i64</span>, <span class="ident">i64</span>, <span class="ident">i64</span>), <span class="ident">TimeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">time</span>: <span class="ident">time::Duration</span> <span class="op">=</span> <span class="ident">time::Duration::try_from</span>(<span class="self">self</span>.<span class="ident">to_duration</span>())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">TimeError::TimeOverflowError</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">days</span> <span class="op">=</span> <span class="ident">time</span>.<span class="ident">whole_days</span>();
-        <span class="kw">let</span> <span class="ident">hours</span> <span class="op">=</span> (<span class="ident">time</span> <span class="op">-</span> <span class="ident">time::Duration::days</span>(<span class="ident">days</span>)).<span class="ident">whole_hours</span>();
-        <span class="kw">let</span> <span class="ident">mins</span> <span class="op">=</span>
-            (<span class="ident">time</span> <span class="op">-</span> <span class="ident">time::Duration::days</span>(<span class="ident">days</span>) <span class="op">-</span> <span class="ident">time::Duration::hours</span>(<span class="ident">hours</span>)).<span class="ident">whole_minutes</span>();
-        <span class="kw">let</span> <span class="ident">secs</span> <span class="op">=</span> (<span class="ident">time</span>
-            <span class="op">-</span> <span class="ident">time::Duration::days</span>(<span class="ident">days</span>)
-            <span class="op">-</span> <span class="ident">time::Duration::hours</span>(<span class="ident">hours</span>)
-            <span class="op">-</span> <span class="ident">time::Duration::minutes</span>(<span class="ident">mins</span>))
-        .<span class="ident">whole_seconds</span>();
-        <span class="prelude-val">Ok</span>((<span class="ident">days</span>, <span class="ident">hours</span>, <span class="ident">mins</span>, <span class="ident">secs</span>))
+    <span class="doccomment">/// ```
+    /// # use massa_time::*;
+    /// let massa_time = MassaTime::from(1000 * ( 8 * 24*60*60 + 1 * 60*60 + 3 * 60 + 6 ));
+    /// let (days, hours, mins, secs) = massa_time.days_hours_mins_secs().unwrap();
+    /// assert_eq!(days, 8);
+    /// assert_eq!(hours, 1);
+    /// assert_eq!(mins, 3);
+    /// assert_eq!(secs, 6);
+    /// ```
+    </span><span class="kw">pub fn </span>days_hours_mins_secs(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(i64, i64, i64, i64), TimeError&gt; {
+        <span class="kw">let </span>time: time::Duration = time::Duration::try_from(<span class="self">self</span>.to_duration())
+            .map_err(|<span class="kw">_</span>| TimeError::TimeOverflowError)<span class="question-mark">?</span>;
+        <span class="kw">let </span>days = time.whole_days();
+        <span class="kw">let </span>hours = (time - time::Duration::days(days)).whole_hours();
+        <span class="kw">let </span>mins =
+            (time - time::Duration::days(days) - time::Duration::hours(hours)).whole_minutes();
+        <span class="kw">let </span>secs = (time
+            - time::Duration::days(days)
+            - time::Duration::hours(hours)
+            - time::Duration::minutes(mins))
+        .whole_seconds();
+        <span class="prelude-val">Ok</span>((days, hours, mins, secs))
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_time" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_time" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

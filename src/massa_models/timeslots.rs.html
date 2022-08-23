@@ -246,253 +246,253 @@
 <span id="246">246</span>
 <span id="247">247</span>
 <span id="248">248</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! warning: assumes `thread_count &gt;= 1, t0_millis &gt;= 1, t0_millis % thread_count == 0`</span>
+</span><span class="doccomment">//! warning: assumes `thread_count &gt;= 1, t0_millis &gt;= 1, t0_millis % thread_count == 0`
 
-<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
-<span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
+</span><span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>std::convert::TryInto;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ModelsError</span>, <span class="ident">Slot</span>};
+<span class="kw">use crate</span>::{ModelsError, Slot};
 
-<span class="doccomment">/// Counts the number of slots in a slot range [a, b)</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Arguments</span>
-<span class="doccomment">/// * `a`: starting slot (included)</span>
-<span class="doccomment">/// * `b`: ending slot (excluded)</span>
-<span class="doccomment">/// * `thread_count`: number of threads</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">slot_count_in_range</span>(<span class="ident">a</span>: <span class="ident">Slot</span>, <span class="ident">b</span>: <span class="ident">Slot</span>, <span class="ident">thread_count</span>: <span class="ident">u8</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-    <span class="ident">b</span>.<span class="ident">period</span>
-        .<span class="ident">checked_sub</span>(<span class="ident">a</span>.<span class="ident">period</span>)
-        .<span class="ident">ok_or</span>(<span class="ident">ModelsError::TimeOverflowError</span>)<span class="question-mark">?</span>
-        .<span class="ident">checked_mul</span>(<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">u64</span>)
-        .<span class="ident">ok_or</span>(<span class="ident">ModelsError::TimeOverflowError</span>)<span class="question-mark">?</span>
-        .<span class="ident">checked_add</span>(<span class="ident">b</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">u64</span>)
-        .<span class="ident">ok_or</span>(<span class="ident">ModelsError::TimeOverflowError</span>)<span class="question-mark">?</span>
-        .<span class="ident">checked_sub</span>(<span class="ident">a</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">u64</span>)
-        .<span class="ident">ok_or</span>(<span class="ident">ModelsError::TimeOverflowError</span>)
+<span class="doccomment">/// Counts the number of slots in a slot range [a, b)
+///
+/// # Arguments
+/// * `a`: starting slot (included)
+/// * `b`: ending slot (excluded)
+/// * `thread_count`: number of threads
+</span><span class="kw">pub fn </span>slot_count_in_range(a: Slot, b: Slot, thread_count: u8) -&gt; <span class="prelude-ty">Result</span>&lt;u64, ModelsError&gt; {
+    b.period
+        .checked_sub(a.period)
+        .ok_or(ModelsError::TimeOverflowError)<span class="question-mark">?
+        </span>.checked_mul(thread_count <span class="kw">as </span>u64)
+        .ok_or(ModelsError::TimeOverflowError)<span class="question-mark">?
+        </span>.checked_add(b.thread <span class="kw">as </span>u64)
+        .ok_or(ModelsError::TimeOverflowError)<span class="question-mark">?
+        </span>.checked_sub(a.thread <span class="kw">as </span>u64)
+        .ok_or(ModelsError::TimeOverflowError)
 }
 
-<span class="doccomment">/// Gets timestamp in milliseconds for given slot.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Arguments</span>
-<span class="doccomment">/// * `thread_count`: number of threads.</span>
-<span class="doccomment">/// * `t0`: time in milliseconds between two periods in the same thread.</span>
-<span class="doccomment">/// * `slot`: the considered slot.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_block_slot_timestamp</span>(
-    <span class="ident">thread_count</span>: <span class="ident">u8</span>,
-    <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
-    <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span>,
-    <span class="ident">slot</span>: <span class="ident">Slot</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MassaTime</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">base</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="ident">t0</span>
-        .<span class="ident">checked_div_u64</span>(<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">u64</span>)
-        .<span class="ident">or</span>(<span class="prelude-val">Err</span>(<span class="ident">ModelsError::TimeOverflowError</span>))<span class="question-mark">?</span>
-        .<span class="ident">checked_mul</span>(<span class="ident">slot</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">u64</span>)
-        .<span class="ident">or</span>(<span class="prelude-val">Err</span>(<span class="ident">ModelsError::TimeOverflowError</span>))<span class="question-mark">?</span>;
-    <span class="kw">let</span> <span class="ident">shift</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="ident">t0</span>
-        .<span class="ident">checked_mul</span>(<span class="ident">slot</span>.<span class="ident">period</span>)
-        .<span class="ident">or</span>(<span class="prelude-val">Err</span>(<span class="ident">ModelsError::TimeOverflowError</span>))<span class="question-mark">?</span>;
-    <span class="ident">genesis_timestamp</span>
-        .<span class="ident">checked_add</span>(<span class="ident">base</span>)
-        .<span class="ident">or</span>(<span class="prelude-val">Err</span>(<span class="ident">ModelsError::TimeOverflowError</span>))<span class="question-mark">?</span>
-        .<span class="ident">checked_add</span>(<span class="ident">shift</span>)
-        .<span class="ident">or</span>(<span class="prelude-val">Err</span>(<span class="ident">ModelsError::TimeOverflowError</span>))
+<span class="doccomment">/// Gets timestamp in milliseconds for given slot.
+///
+/// # Arguments
+/// * `thread_count`: number of threads.
+/// * `t0`: time in milliseconds between two periods in the same thread.
+/// * `slot`: the considered slot.
+</span><span class="kw">pub fn </span>get_block_slot_timestamp(
+    thread_count: u8,
+    t0: MassaTime,
+    genesis_timestamp: MassaTime,
+    slot: Slot,
+) -&gt; <span class="prelude-ty">Result</span>&lt;MassaTime, ModelsError&gt; {
+    <span class="kw">let </span>base: MassaTime = t0
+        .checked_div_u64(thread_count <span class="kw">as </span>u64)
+        .or(<span class="prelude-val">Err</span>(ModelsError::TimeOverflowError))<span class="question-mark">?
+        </span>.checked_mul(slot.thread <span class="kw">as </span>u64)
+        .or(<span class="prelude-val">Err</span>(ModelsError::TimeOverflowError))<span class="question-mark">?</span>;
+    <span class="kw">let </span>shift: MassaTime = t0
+        .checked_mul(slot.period)
+        .or(<span class="prelude-val">Err</span>(ModelsError::TimeOverflowError))<span class="question-mark">?</span>;
+    genesis_timestamp
+        .checked_add(base)
+        .or(<span class="prelude-val">Err</span>(ModelsError::TimeOverflowError))<span class="question-mark">?
+        </span>.checked_add(shift)
+        .or(<span class="prelude-val">Err</span>(ModelsError::TimeOverflowError))
 }
 
-<span class="doccomment">/// Returns the thread and block period index of the latest block slot at a given timestamp (inclusive), if any happened</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Arguments</span>
-<span class="doccomment">/// * `thread_count`: number of threads.</span>
-<span class="doccomment">/// * `t0`: time in milliseconds between two periods in the same thread.</span>
-<span class="doccomment">/// * `genesis_timestamp`: when the blockclique first started, in milliseconds.</span>
-<span class="doccomment">/// * `timestamp`: target timestamp in milliseconds.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_latest_block_slot_at_timestamp</span>(
-    <span class="ident">thread_count</span>: <span class="ident">u8</span>,
-    <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
-    <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span>,
-    <span class="ident">timestamp</span>: <span class="ident">MassaTime</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">time_since_genesis</span>) <span class="op">=</span> <span class="ident">timestamp</span>.<span class="ident">checked_sub</span>(<span class="ident">genesis_timestamp</span>) {
-        <span class="kw">let</span> <span class="ident">thread</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="ident">time_since_genesis</span>
-            .<span class="ident">checked_rem_time</span>(<span class="ident">t0</span>)<span class="question-mark">?</span>
-            .<span class="ident">checked_div_time</span>(<span class="ident">t0</span>.<span class="ident">checked_div_u64</span>(<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">u64</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>
-            <span class="kw">as</span> <span class="ident">u8</span>;
-        <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">Slot::new</span>(
-            <span class="ident">time_since_genesis</span>.<span class="ident">checked_div_time</span>(<span class="ident">t0</span>)<span class="question-mark">?</span>,
-            <span class="ident">thread</span>,
+<span class="doccomment">/// Returns the thread and block period index of the latest block slot at a given timestamp (inclusive), if any happened
+///
+/// # Arguments
+/// * `thread_count`: number of threads.
+/// * `t0`: time in milliseconds between two periods in the same thread.
+/// * `genesis_timestamp`: when the blockclique first started, in milliseconds.
+/// * `timestamp`: target timestamp in milliseconds.
+</span><span class="kw">pub fn </span>get_latest_block_slot_at_timestamp(
+    thread_count: u8,
+    t0: MassaTime,
+    genesis_timestamp: MassaTime,
+    timestamp: MassaTime,
+) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Slot&gt;, ModelsError&gt; {
+    <span class="kw">if let </span><span class="prelude-val">Ok</span>(time_since_genesis) = timestamp.checked_sub(genesis_timestamp) {
+        <span class="kw">let </span>thread: u8 = time_since_genesis
+            .checked_rem_time(t0)<span class="question-mark">?
+            </span>.checked_div_time(t0.checked_div_u64(thread_count <span class="kw">as </span>u64)<span class="question-mark">?</span>)<span class="question-mark">?
+            </span><span class="kw">as </span>u8;
+        <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(Slot::new(
+            time_since_genesis.checked_div_time(t0)<span class="question-mark">?</span>,
+            thread,
         )));
     }
     <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
 }
 
-<span class="doccomment">/// Returns the thread and block slot index of the current block slot (inclusive), if any happened yet</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Arguments</span>
-<span class="doccomment">/// * `thread_count`: number of threads.</span>
-<span class="doccomment">/// * `t0`: time in milliseconds between two periods in the same thread.</span>
-<span class="doccomment">/// * `genesis_timestamp`: when the blockclique first started, in milliseconds.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_current_latest_block_slot</span>(
-    <span class="ident">thread_count</span>: <span class="ident">u8</span>,
-    <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
-    <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span>,
-    <span class="ident">clock_compensation</span>: <span class="ident">i64</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-    <span class="ident">get_latest_block_slot_at_timestamp</span>(
-        <span class="ident">thread_count</span>,
-        <span class="ident">t0</span>,
-        <span class="ident">genesis_timestamp</span>,
-        <span class="ident">MassaTime::compensated_now</span>(<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>,
+<span class="doccomment">/// Returns the thread and block slot index of the current block slot (inclusive), if any happened yet
+///
+/// # Arguments
+/// * `thread_count`: number of threads.
+/// * `t0`: time in milliseconds between two periods in the same thread.
+/// * `genesis_timestamp`: when the blockclique first started, in milliseconds.
+</span><span class="kw">pub fn </span>get_current_latest_block_slot(
+    thread_count: u8,
+    t0: MassaTime,
+    genesis_timestamp: MassaTime,
+    clock_compensation: i64,
+) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Slot&gt;, ModelsError&gt; {
+    get_latest_block_slot_at_timestamp(
+        thread_count,
+        t0,
+        genesis_timestamp,
+        MassaTime::compensated_now(clock_compensation)<span class="question-mark">?</span>,
     )
 }
 
-<span class="doccomment">/// Turns an `MassaTime` range [start, end) with optional start/end to a `Slot` range [start, end) with optional start/end</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Arguments</span>
-<span class="doccomment">/// * `thread_count`: number of threads.</span>
-<span class="doccomment">/// * `t0`: time in milliseconds between two periods in the same thread.</span>
-<span class="doccomment">/// * `genesis_timestamp`: when the blockclique first started, in milliseconds</span>
-<span class="doccomment">/// * `start_time`: optional start time</span>
-<span class="doccomment">/// * `end_time`: optional end time</span>
-<span class="doccomment">/// # Returns</span>
-<span class="doccomment">/// `(Option&lt;Slot&gt;, Option&lt;Slot&gt;)` pair of options representing the start (included) and end (excluded) slots</span>
-<span class="doccomment">/// or `ConsensusError` on error</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">time_range_to_slot_range</span>(
-    <span class="ident">thread_count</span>: <span class="ident">u8</span>,
-    <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
-    <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span>,
-    <span class="ident">start_time</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
-    <span class="ident">end_time</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">start_slot</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">start_time</span> {
-        <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
-        <span class="prelude-val">Some</span>(<span class="ident">t</span>) =&gt; {
-            <span class="kw">let</span> <span class="ident">inter_slot</span> <span class="op">=</span> <span class="ident">t0</span>.<span class="ident">checked_div_u64</span>(<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">u64</span>)<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">slot_number</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">t</span>
-                .<span class="ident">saturating_sub</span>(<span class="ident">genesis_timestamp</span>)
-                .<span class="ident">checked_add</span>(<span class="ident">inter_slot</span>)<span class="question-mark">?</span>
-                .<span class="ident">saturating_sub</span>(<span class="ident">MassaTime::EPSILON</span>)
-                .<span class="ident">checked_div_time</span>(<span class="ident">inter_slot</span>)<span class="question-mark">?</span>;
-            <span class="prelude-val">Some</span>(<span class="ident">Slot::new</span>(
-                <span class="ident">slot_number</span>
-                    .<span class="ident">checked_div</span>(<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">u64</span>)
-                    .<span class="ident">ok_or</span>(<span class="ident">ModelsError::TimeOverflowError</span>)<span class="question-mark">?</span>,
-                <span class="ident">slot_number</span>
-                    .<span class="ident">checked_rem</span>(<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">u64</span>)
-                    .<span class="ident">ok_or</span>(<span class="ident">ModelsError::TimeOverflowError</span>)<span class="question-mark">?</span>
-                    .<span class="ident">try_into</span>()
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ModelsError::ThreadOverflowError</span>)<span class="question-mark">?</span>,
+<span class="doccomment">/// Turns an `MassaTime` range [start, end) with optional start/end to a `Slot` range [start, end) with optional start/end
+///
+/// # Arguments
+/// * `thread_count`: number of threads.
+/// * `t0`: time in milliseconds between two periods in the same thread.
+/// * `genesis_timestamp`: when the blockclique first started, in milliseconds
+/// * `start_time`: optional start time
+/// * `end_time`: optional end time
+/// # Returns
+/// `(Option&lt;Slot&gt;, Option&lt;Slot&gt;)` pair of options representing the start (included) and end (excluded) slots
+/// or `ConsensusError` on error
+</span><span class="kw">pub fn </span>time_range_to_slot_range(
+    thread_count: u8,
+    t0: MassaTime,
+    genesis_timestamp: MassaTime,
+    start_time: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
+    end_time: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="prelude-ty">Option</span>&lt;Slot&gt;, <span class="prelude-ty">Option</span>&lt;Slot&gt;), ModelsError&gt; {
+    <span class="kw">let </span>start_slot = <span class="kw">match </span>start_time {
+        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
+        <span class="prelude-val">Some</span>(t) =&gt; {
+            <span class="kw">let </span>inter_slot = t0.checked_div_u64(thread_count <span class="kw">as </span>u64)<span class="question-mark">?</span>;
+            <span class="kw">let </span>slot_number: u64 = t
+                .saturating_sub(genesis_timestamp)
+                .checked_add(inter_slot)<span class="question-mark">?
+                </span>.saturating_sub(MassaTime::EPSILON)
+                .checked_div_time(inter_slot)<span class="question-mark">?</span>;
+            <span class="prelude-val">Some</span>(Slot::new(
+                slot_number
+                    .checked_div(thread_count <span class="kw">as </span>u64)
+                    .ok_or(ModelsError::TimeOverflowError)<span class="question-mark">?</span>,
+                slot_number
+                    .checked_rem(thread_count <span class="kw">as </span>u64)
+                    .ok_or(ModelsError::TimeOverflowError)<span class="question-mark">?
+                    </span>.try_into()
+                    .map_err(|<span class="kw">_</span>| ModelsError::ThreadOverflowError)<span class="question-mark">?</span>,
             ))
         }
     };
 
-    <span class="kw">let</span> <span class="ident">end_slot</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">end_time</span> {
-        <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
-        <span class="prelude-val">Some</span>(<span class="ident">t</span>) =&gt; {
-            <span class="kw">let</span> <span class="ident">inter_slot</span> <span class="op">=</span> <span class="ident">t0</span>.<span class="ident">checked_div_u64</span>(<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">u64</span>)<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">slot_number</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">t</span>
-                .<span class="ident">saturating_sub</span>(<span class="ident">genesis_timestamp</span>)
-                .<span class="ident">checked_add</span>(<span class="ident">inter_slot</span>)<span class="question-mark">?</span>
-                .<span class="ident">saturating_sub</span>(<span class="ident">MassaTime::EPSILON</span>)
-                .<span class="ident">checked_div_time</span>(<span class="ident">inter_slot</span>)<span class="question-mark">?</span>;
-            <span class="prelude-val">Some</span>(<span class="ident">Slot::new</span>(
-                <span class="ident">slot_number</span>
-                    .<span class="ident">checked_div</span>(<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">u64</span>)
-                    .<span class="ident">ok_or</span>(<span class="ident">ModelsError::TimeOverflowError</span>)<span class="question-mark">?</span>,
-                <span class="ident">slot_number</span>
-                    .<span class="ident">checked_rem</span>(<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">u64</span>)
-                    .<span class="ident">ok_or</span>(<span class="ident">ModelsError::TimeOverflowError</span>)<span class="question-mark">?</span>
-                    .<span class="ident">try_into</span>()
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ModelsError::ThreadOverflowError</span>)<span class="question-mark">?</span>,
+    <span class="kw">let </span>end_slot = <span class="kw">match </span>end_time {
+        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
+        <span class="prelude-val">Some</span>(t) =&gt; {
+            <span class="kw">let </span>inter_slot = t0.checked_div_u64(thread_count <span class="kw">as </span>u64)<span class="question-mark">?</span>;
+            <span class="kw">let </span>slot_number: u64 = t
+                .saturating_sub(genesis_timestamp)
+                .checked_add(inter_slot)<span class="question-mark">?
+                </span>.saturating_sub(MassaTime::EPSILON)
+                .checked_div_time(inter_slot)<span class="question-mark">?</span>;
+            <span class="prelude-val">Some</span>(Slot::new(
+                slot_number
+                    .checked_div(thread_count <span class="kw">as </span>u64)
+                    .ok_or(ModelsError::TimeOverflowError)<span class="question-mark">?</span>,
+                slot_number
+                    .checked_rem(thread_count <span class="kw">as </span>u64)
+                    .ok_or(ModelsError::TimeOverflowError)<span class="question-mark">?
+                    </span>.try_into()
+                    .map_err(|<span class="kw">_</span>| ModelsError::ThreadOverflowError)<span class="question-mark">?</span>,
             ))
         }
     };
 
-    <span class="prelude-val">Ok</span>((<span class="ident">start_slot</span>, <span class="ident">end_slot</span>))
+    <span class="prelude-val">Ok</span>((start_slot, end_slot))
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">serial_test::serial</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>serial_test::serial;
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="attribute">#[<span class="ident">serial</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_slot_count_in_range</span>() {
+    <span class="attribute">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_slot_count_in_range() {
         <span class="macro">assert_eq!</span>(
-            <span class="ident">slot_count_in_range</span>(<span class="ident">Slot::new</span>(<span class="number">100</span>, <span class="number">3</span>), <span class="ident">Slot::new</span>(<span class="number">100</span>, <span class="number">3</span>), <span class="number">32</span>).<span class="ident">unwrap</span>(),
-            <span class="number">0</span>
-        );
+            slot_count_in_range(Slot::new(<span class="number">100</span>, <span class="number">3</span>), Slot::new(<span class="number">100</span>, <span class="number">3</span>), <span class="number">32</span>).unwrap(),
+            <span class="number">0
+        </span>);
         <span class="macro">assert_eq!</span>(
-            <span class="ident">slot_count_in_range</span>(<span class="ident">Slot::new</span>(<span class="number">100</span>, <span class="number">3</span>), <span class="ident">Slot::new</span>(<span class="number">100</span>, <span class="number">5</span>), <span class="number">32</span>).<span class="ident">unwrap</span>(),
-            <span class="number">2</span>
-        );
+            slot_count_in_range(Slot::new(<span class="number">100</span>, <span class="number">3</span>), Slot::new(<span class="number">100</span>, <span class="number">5</span>), <span class="number">32</span>).unwrap(),
+            <span class="number">2
+        </span>);
         <span class="macro">assert_eq!</span>(
-            <span class="ident">slot_count_in_range</span>(<span class="ident">Slot::new</span>(<span class="number">100</span>, <span class="number">4</span>), <span class="ident">Slot::new</span>(<span class="number">103</span>, <span class="number">13</span>), <span class="number">32</span>).<span class="ident">unwrap</span>(),
-            <span class="number">105</span>
-        );
+            slot_count_in_range(Slot::new(<span class="number">100</span>, <span class="number">4</span>), Slot::new(<span class="number">103</span>, <span class="number">13</span>), <span class="number">32</span>).unwrap(),
+            <span class="number">105
+        </span>);
         <span class="macro">assert_eq!</span>(
-            <span class="ident">slot_count_in_range</span>(<span class="ident">Slot::new</span>(<span class="number">100</span>, <span class="number">13</span>), <span class="ident">Slot::new</span>(<span class="number">103</span>, <span class="number">4</span>), <span class="number">32</span>).<span class="ident">unwrap</span>(),
-            <span class="number">87</span>
-        );
+            slot_count_in_range(Slot::new(<span class="number">100</span>, <span class="number">13</span>), Slot::new(<span class="number">103</span>, <span class="number">4</span>), <span class="number">32</span>).unwrap(),
+            <span class="number">87
+        </span>);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="attribute">#[<span class="ident">serial</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_time_range_to_slot_range</span>() {
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="number">3u8</span>;
-        <span class="kw">let</span> <span class="ident">t0</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="number">30</span>.<span class="ident">into</span>();
-        <span class="kw">let</span> <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="number">100</span>.<span class="ident">into</span>();
+    <span class="attribute">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_time_range_to_slot_range() {
+        <span class="kw">let </span>thread_count = <span class="number">3u8</span>;
+        <span class="kw">let </span>t0: MassaTime = <span class="number">30</span>.into();
+        <span class="kw">let </span>genesis_timestamp: MassaTime = <span class="number">100</span>.into();
         <span class="comment">/* slots:   (0, 0)  (0, 1)  (0, 2)  (1, 0)  (1, 1)  (1, 2)  (2, 0)  (2, 1)  (2, 2)
             time:    100      110     120    130      140    150     160     170     180
-        */</span>
+        */
 
-        <span class="comment">// time [111, 115) =&gt; empty slot range</span>
-        <span class="kw">let</span> (<span class="ident">out_start</span>, <span class="ident">out_end</span>) <span class="op">=</span> <span class="ident">time_range_to_slot_range</span>(
-            <span class="ident">thread_count</span>,
-            <span class="ident">t0</span>,
-            <span class="ident">genesis_timestamp</span>,
-            <span class="prelude-val">Some</span>(<span class="number">111</span>.<span class="ident">into</span>()),
-            <span class="prelude-val">Some</span>(<span class="number">115</span>.<span class="ident">into</span>()),
+        // time [111, 115) =&gt; empty slot range
+        </span><span class="kw">let </span>(out_start, out_end) = time_range_to_slot_range(
+            thread_count,
+            t0,
+            genesis_timestamp,
+            <span class="prelude-val">Some</span>(<span class="number">111</span>.into()),
+            <span class="prelude-val">Some</span>(<span class="number">115</span>.into()),
         )
-        .<span class="ident">unwrap</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">out_start</span>, <span class="ident">out_end</span>);
+        .unwrap();
+        <span class="macro">assert_eq!</span>(out_start, out_end);
 
-        <span class="comment">// time [10, 100) =&gt; empty slot range</span>
-        <span class="kw">let</span> (<span class="ident">out_start</span>, <span class="ident">out_end</span>) <span class="op">=</span> <span class="ident">time_range_to_slot_range</span>(
-            <span class="ident">thread_count</span>,
-            <span class="ident">t0</span>,
-            <span class="ident">genesis_timestamp</span>,
-            <span class="prelude-val">Some</span>(<span class="number">10</span>.<span class="ident">into</span>()),
-            <span class="prelude-val">Some</span>(<span class="number">100</span>.<span class="ident">into</span>()),
+        <span class="comment">// time [10, 100) =&gt; empty slot range
+        </span><span class="kw">let </span>(out_start, out_end) = time_range_to_slot_range(
+            thread_count,
+            t0,
+            genesis_timestamp,
+            <span class="prelude-val">Some</span>(<span class="number">10</span>.into()),
+            <span class="prelude-val">Some</span>(<span class="number">100</span>.into()),
         )
-        .<span class="ident">unwrap</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">out_start</span>, <span class="ident">out_end</span>);
+        .unwrap();
+        <span class="macro">assert_eq!</span>(out_start, out_end);
 
-        <span class="comment">// time [115, 145) =&gt; slots [(0,2), (1,2))</span>
-        <span class="kw">let</span> (<span class="ident">out_start</span>, <span class="ident">out_end</span>) <span class="op">=</span> <span class="ident">time_range_to_slot_range</span>(
-            <span class="ident">thread_count</span>,
-            <span class="ident">t0</span>,
-            <span class="ident">genesis_timestamp</span>,
-            <span class="prelude-val">Some</span>(<span class="number">115</span>.<span class="ident">into</span>()),
-            <span class="prelude-val">Some</span>(<span class="number">145</span>.<span class="ident">into</span>()),
+        <span class="comment">// time [115, 145) =&gt; slots [(0,2), (1,2))
+        </span><span class="kw">let </span>(out_start, out_end) = time_range_to_slot_range(
+            thread_count,
+            t0,
+            genesis_timestamp,
+            <span class="prelude-val">Some</span>(<span class="number">115</span>.into()),
+            <span class="prelude-val">Some</span>(<span class="number">145</span>.into()),
         )
-        .<span class="ident">unwrap</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">out_start</span>, <span class="prelude-val">Some</span>(<span class="ident">Slot::new</span>(<span class="number">0</span>, <span class="number">2</span>)));
-        <span class="macro">assert_eq!</span>(<span class="ident">out_end</span>, <span class="prelude-val">Some</span>(<span class="ident">Slot::new</span>(<span class="number">1</span>, <span class="number">2</span>)));
+        .unwrap();
+        <span class="macro">assert_eq!</span>(out_start, <span class="prelude-val">Some</span>(Slot::new(<span class="number">0</span>, <span class="number">2</span>)));
+        <span class="macro">assert_eq!</span>(out_end, <span class="prelude-val">Some</span>(Slot::new(<span class="number">1</span>, <span class="number">2</span>)));
 
-        <span class="comment">// time [110, 160) =&gt; slots [(0,1), (2,0))</span>
-        <span class="kw">let</span> (<span class="ident">out_start</span>, <span class="ident">out_end</span>) <span class="op">=</span> <span class="ident">time_range_to_slot_range</span>(
-            <span class="ident">thread_count</span>,
-            <span class="ident">t0</span>,
-            <span class="ident">genesis_timestamp</span>,
-            <span class="prelude-val">Some</span>(<span class="number">110</span>.<span class="ident">into</span>()),
-            <span class="prelude-val">Some</span>(<span class="number">160</span>.<span class="ident">into</span>()),
+        <span class="comment">// time [110, 160) =&gt; slots [(0,1), (2,0))
+        </span><span class="kw">let </span>(out_start, out_end) = time_range_to_slot_range(
+            thread_count,
+            t0,
+            genesis_timestamp,
+            <span class="prelude-val">Some</span>(<span class="number">110</span>.into()),
+            <span class="prelude-val">Some</span>(<span class="number">160</span>.into()),
         )
-        .<span class="ident">unwrap</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">out_start</span>, <span class="prelude-val">Some</span>(<span class="ident">Slot::new</span>(<span class="number">0</span>, <span class="number">1</span>)));
-        <span class="macro">assert_eq!</span>(<span class="ident">out_end</span>, <span class="prelude-val">Some</span>(<span class="ident">Slot::new</span>(<span class="number">2</span>, <span class="number">0</span>)));
+        .unwrap();
+        <span class="macro">assert_eq!</span>(out_start, <span class="prelude-val">Some</span>(Slot::new(<span class="number">0</span>, <span class="number">1</span>)));
+        <span class="macro">assert_eq!</span>(out_end, <span class="prelude-val">Some</span>(Slot::new(<span class="number">2</span>, <span class="number">0</span>)));
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

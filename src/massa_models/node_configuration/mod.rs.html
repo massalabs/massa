@@ -74,81 +74,81 @@
 <span id="74">74</span>
 <span id="75">75</span>
 <span id="76">76</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Main node configuration and all that stuff is here</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Introduction</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This module is mainly used to define the default values used through</span>
-<span class="doccomment">//! the project in all *Configuration* objects.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The name &quot;constant&quot; is a used for some hard-coded default values. It shouldn&#39;t</span>
-<span class="doccomment">//! be used as it as a constant. When you need one of these values, you better</span>
-<span class="doccomment">//! use the `cfg` parameter in your worker.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The only place where it&#39;s safe to use it is in files named `settings.rs`</span>
-<span class="doccomment">//! or `config.rs`</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Testing or default</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! You have access to the constants (in test or in normal mode) with the</span>
-<span class="doccomment">//! following imports. When you have a doubt for the import, use the auto</span>
-<span class="doccomment">//! dispatcher `use massa_models::constants::*;`</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```ignore</span>
-<span class="doccomment">//! // Classic import automatically root to `testings` or `default`</span>
-<span class="doccomment">//! // depending on the compilation context.</span>
-<span class="doccomment">//! use massa_models::constants::*;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // Force to import the nominal constants</span>
-<span class="doccomment">//! use massa_models::constants::default::*;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // Force to import the testings constants</span>
-<span class="doccomment">//! use massa_models::constants::default_testing::*;</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Note about rooting</span>
-<span class="doccomment">//! ```md</span>
-<span class="doccomment">//! |T|S| not(T) or S | T and not(S)</span>
-<span class="doccomment">//! |0|0| 1           | 0</span>
-<span class="doccomment">//! |1|0| 0           | 1</span>
-<span class="doccomment">//! |0|1| 1           | 0</span>
-<span class="doccomment">//! |1|1| 1           | 0</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! `#[cfg(any(not(feature = &quot;testing&quot;), feature = &quot;sandbox&quot;))]`</span>
-<span class="doccomment">//! On `cargo run --release` or `cargo run --features sandbox`</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! #`[cfg(all(feature = &quot;testing&quot;, not(feature = &quot;sandbox&quot;)))]`</span>
-<span class="doccomment">//! On `cargo run` or `cargo test`</span>
-<span class="doccomment">//!</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Main node configuration and all that stuff is here
+//!
+//! # Introduction
+//!
+//! This module is mainly used to define the default values used through
+//! the project in all *Configuration* objects.
+//!
+//! The name &quot;constant&quot; is a used for some hard-coded default values. It shouldn&#39;t
+//! be used as it as a constant. When you need one of these values, you better
+//! use the `cfg` parameter in your worker.
+//!
+//! The only place where it&#39;s safe to use it is in files named `settings.rs`
+//! or `config.rs`
+//!
+//! # Testing or default
+//!
+//! You have access to the constants (in test or in normal mode) with the
+//! following imports. When you have a doubt for the import, use the auto
+//! dispatcher `use massa_models::constants::*;`
+//!
+//! ```ignore
+//! // Classic import automatically root to `testings` or `default`
+//! // depending on the compilation context.
+//! use massa_models::constants::*;
+//!
+//! // Force to import the nominal constants
+//! use massa_models::constants::default::*;
+//!
+//! // Force to import the testings constants
+//! use massa_models::constants::default_testing::*;
+//! ```
+//!
+//! # Note about rooting
+//! ```md
+//! |T|S| not(T) or S | T and not(S)
+//! |0|0| 1           | 0
+//! |1|0| 0           | 1
+//! |0|1| 1           | 0
+//! |1|1| 1           | 0
+//! ```
+//!
+//! `#[cfg(any(not(feature = &quot;testing&quot;), feature = &quot;sandbox&quot;))]`
+//! On `cargo run --release` or `cargo run --features sandbox`
+//!
+//! #`[cfg(all(feature = &quot;testing&quot;, not(feature = &quot;sandbox&quot;)))]`
+//! On `cargo run` or `cargo test`
+//!
 
-<span class="comment">// **************************************************************</span>
-<span class="comment">// Note:</span>
-<span class="comment">// We can force the access to one of defined value (test or not)</span>
-<span class="comment">// with `use massa_config::exported_constants::CONST_VALUE`</span>
-<span class="comment">// Nevertheless the design is more like using `massa_config::CONST_VALUE`</span>
-<span class="comment">// and defining in `Cargo.toml` if we are testing or not</span>
-<span class="comment">// ```toml</span>
-<span class="comment">// [dependencies]</span>
-<span class="comment">//     massa_config = { path = &quot;../massa-config&quot; }</span>
-<span class="comment">// [dev-dependencies]</span>
-<span class="comment">//     massa_config = { path = &quot;../massa-config&quot;, features = [&quot;testing&quot;] }</span>
-<span class="comment">// ```</span>
-<span class="comment">//</span>
+</span><span class="comment">// **************************************************************
+// Note:
+// We can force the access to one of defined value (test or not)
+// with `use massa_config::exported_constants::CONST_VALUE`
+// Nevertheless the design is more like using `massa_config::CONST_VALUE`
+// and defining in `Cargo.toml` if we are testing or not
+// ```toml
+// [dependencies]
+//     massa_config = { path = &quot;../massa-config&quot; }
+// [dev-dependencies]
+//     massa_config = { path = &quot;../massa-config&quot;, features = [&quot;testing&quot;] }
+// ```
+//
 
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">default</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">default_testing</span>;
+</span><span class="kw">pub mod </span>default;
+<span class="kw">pub mod </span>default_testing;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>), <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">default</span>::<span class="kw-2">*</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">all</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>, <span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)))]</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">default_testing</span>::<span class="kw-2">*</span>;
+<span class="attribute">#[cfg(any(not(feature = <span class="string">&quot;testing&quot;</span>), feature = <span class="string">&quot;sandbox&quot;</span>))]
+</span><span class="kw">pub use </span>default::<span class="kw-2">*</span>;
+<span class="attribute">#[cfg(all(feature = <span class="string">&quot;testing&quot;</span>, not(feature = <span class="string">&quot;sandbox&quot;</span>)))]
+</span><span class="kw">pub use </span>default_testing::<span class="kw-2">*</span>;
 
-<span class="kw">mod</span> <span class="ident">compact_config</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">compact_config::CompactConfig</span>;
+<span class="kw">mod </span>compact_config;
+<span class="kw">pub use </span>compact_config::CompactConfig;
 
-<span class="comment">// Export tool to read user setting file</span>
-<span class="kw">mod</span> <span class="ident">massa_settings</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">massa_settings::build_massa_settings</span>;
+<span class="comment">// Export tool to read user setting file
+</span><span class="kw">mod </span>massa_settings;
+<span class="kw">pub use </span>massa_settings::build_massa_settings;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

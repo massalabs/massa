@@ -368,375 +368,375 @@
 <span id="368">368</span>
 <span id="369">369</span>
 <span id="370">370</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">array_from_slice</span>,
-    <span class="ident">error::ModelsResult</span> <span class="kw">as</span> <span class="prelude-ty">Result</span>,
-    <span class="ident">node_configuration::ADDRESS_SIZE_BYTES</span>,
-    <span class="ident">prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>},
-    <span class="ident">u8_from_slice</span>, <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">ModelsError</span>,
-    <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>,
+</span><span class="kw">use crate</span>::{
+    array_from_slice,
+    error::ModelsResult <span class="kw">as </span><span class="prelude-ty">Result</span>,
+    node_configuration::ADDRESS_SIZE_BYTES,
+    prehash::{Map, Set},
+    u8_from_slice, Address, Amount, DeserializeCompact, DeserializeVarInt, ModelsError,
+    SerializeCompact, SerializeVarInt,
 };
-<span class="kw">use</span> <span class="ident">core::usize</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::collections::hash_map</span>;
+<span class="kw">use </span>core::usize;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::collections::hash_map;
 
-<span class="doccomment">/// a consensus ledger entry</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Serialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerData</span> {
-    <span class="doccomment">/// the balance in coins</span>
-    <span class="kw">pub</span> <span class="ident">balance</span>: <span class="ident">Amount</span>,
+<span class="doccomment">/// a consensus ledger entry
+</span><span class="attribute">#[derive(Debug, Default, Deserialize, Clone, Copy, Serialize)]
+</span><span class="kw">pub struct </span>LedgerData {
+    <span class="doccomment">/// the balance in coins
+    </span><span class="kw">pub </span>balance: Amount,
 }
 
-<span class="doccomment">/// Checks performed:</span>
-<span class="doccomment">/// - Balance.</span>
-<span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">LedgerData</span> {
-    <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">balance</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+<span class="doccomment">/// Checks performed:
+/// - Balance.
+</span><span class="kw">impl </span>SerializeCompact <span class="kw">for </span>LedgerData {
+    <span class="kw">fn </span>to_bytes_compact(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;u8&gt; = Vec::new();
+        res.extend(<span class="kw-2">&amp;</span><span class="self">self</span>.balance.to_bytes_compact()<span class="question-mark">?</span>);
+        <span class="prelude-val">Ok</span>(res)
     }
 }
 
-<span class="doccomment">/// Checks performed:</span>
-<span class="doccomment">/// - Balance.</span>
-<span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">LedgerData</span> {
-    <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>)<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0usize</span>;
-        <span class="kw">let</span> (<span class="ident">balance</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">Amount::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-        <span class="prelude-val">Ok</span>((<span class="ident">LedgerData</span> { <span class="ident">balance</span> }, <span class="ident">cursor</span>))
+<span class="doccomment">/// Checks performed:
+/// - Balance.
+</span><span class="kw">impl </span>DeserializeCompact <span class="kw">for </span>LedgerData {
+    <span class="kw">fn </span>from_bytes_compact(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize)&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="number">0usize</span>;
+        <span class="kw">let </span>(balance, delta) = Amount::from_bytes_compact(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+        cursor += delta;
+        <span class="prelude-val">Ok</span>((LedgerData { balance }, cursor))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">LedgerData</span> {
-    <span class="doccomment">/// new `LedgerData` from an initial balance</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">starting_balance</span>: <span class="ident">Amount</span>) -&gt; <span class="ident">LedgerData</span> {
-        <span class="ident">LedgerData</span> {
-            <span class="ident">balance</span>: <span class="ident">starting_balance</span>,
+<span class="kw">impl </span>LedgerData {
+    <span class="doccomment">/// new `LedgerData` from an initial balance
+    </span><span class="kw">pub fn </span>new(starting_balance: Amount) -&gt; LedgerData {
+        LedgerData {
+            balance: starting_balance,
         }
     }
 
-    <span class="doccomment">/// apply a `LedgerChange` for an entry</span>
-    <span class="doccomment">/// Can fail in overflow or underflow occur</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_change</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">change</span>: <span class="kw-2">&amp;</span><span class="ident">LedgerChange</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">change</span>.<span class="ident">balance_increment</span> {
-            <span class="self">self</span>.<span class="ident">balance</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">balance</span>
-                .<span class="ident">checked_add</span>(<span class="ident">change</span>.<span class="ident">balance_delta</span>)
-                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                    <span class="ident">ModelsError::InvalidLedgerChange</span>(
-                        <span class="string">&quot;balance overflow in LedgerData::apply_change&quot;</span>.<span class="ident">into</span>(),
+    <span class="doccomment">/// apply a `LedgerChange` for an entry
+    /// Can fail in overflow or underflow occur
+    </span><span class="kw">pub fn </span>apply_change(<span class="kw-2">&amp;mut </span><span class="self">self</span>, change: <span class="kw-2">&amp;</span>LedgerChange) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">if </span>change.balance_increment {
+            <span class="self">self</span>.balance = <span class="self">self
+                </span>.balance
+                .checked_add(change.balance_delta)
+                .ok_or_else(|| {
+                    ModelsError::InvalidLedgerChange(
+                        <span class="string">&quot;balance overflow in LedgerData::apply_change&quot;</span>.into(),
                     )
                 })<span class="question-mark">?</span>;
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">balance</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">balance</span>
-                .<span class="ident">checked_sub</span>(<span class="ident">change</span>.<span class="ident">balance_delta</span>)
-                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                    <span class="ident">ModelsError::InvalidLedgerChange</span>(
-                        <span class="string">&quot;balance overflow in LedgerData::apply_change&quot;</span>.<span class="ident">into</span>(),
+        } <span class="kw">else </span>{
+            <span class="self">self</span>.balance = <span class="self">self
+                </span>.balance
+                .checked_sub(change.balance_delta)
+                .ok_or_else(|| {
+                    ModelsError::InvalidLedgerChange(
+                        <span class="string">&quot;balance overflow in LedgerData::apply_change&quot;</span>.into(),
                     )
                 })<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// returns true if the balance is zero</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_nil</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">balance</span> <span class="op">==</span> <span class="ident">Amount::default</span>()
+    <span class="doccomment">/// returns true if the balance is zero
+    </span><span class="kw">pub fn </span>is_nil(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.balance == Amount::default()
     }
 }
 
-<span class="doccomment">/// A balance change that can be applied to an address</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerChange</span> {
-    <span class="doccomment">/// Amount to add or subtract</span>
-    <span class="kw">pub</span> <span class="ident">balance_delta</span>: <span class="ident">Amount</span>,
-    <span class="doccomment">/// whether to increment or decrements balance of delta</span>
-    <span class="kw">pub</span> <span class="ident">balance_increment</span>: <span class="ident">bool</span>,
+<span class="doccomment">/// A balance change that can be applied to an address
+</span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>LedgerChange {
+    <span class="doccomment">/// Amount to add or subtract
+    </span><span class="kw">pub </span>balance_delta: Amount,
+    <span class="doccomment">/// whether to increment or decrements balance of delta
+    </span><span class="kw">pub </span>balance_increment: bool,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">LedgerChange</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">LedgerChange</span> {
-            <span class="ident">balance_delta</span>: <span class="ident">Amount::default</span>(),
-            <span class="ident">balance_increment</span>: <span class="bool-val">true</span>,
+<span class="kw">impl </span>Default <span class="kw">for </span>LedgerChange {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        LedgerChange {
+            balance_delta: Amount::default(),
+            balance_increment: <span class="bool-val">true</span>,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">LedgerChange</span> {
-    <span class="doccomment">/// Applies another ledger change on top of self</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">chain</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">change</span>: <span class="kw-2">&amp;</span><span class="ident">LedgerChange</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">balance_increment</span> <span class="op">==</span> <span class="ident">change</span>.<span class="ident">balance_increment</span> {
-            <span class="self">self</span>.<span class="ident">balance_delta</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">balance_delta</span>
-                .<span class="ident">checked_add</span>(<span class="ident">change</span>.<span class="ident">balance_delta</span>)
-                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                    <span class="ident">ModelsError::InvalidLedgerChange</span>(<span class="string">&quot;overflow in LedgerChange::chain&quot;</span>.<span class="ident">into</span>())
+<span class="kw">impl </span>LedgerChange {
+    <span class="doccomment">/// Applies another ledger change on top of self
+    </span><span class="kw">pub fn </span>chain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, change: <span class="kw-2">&amp;</span>LedgerChange) -&gt; <span class="prelude-ty">Result</span>&lt;(), ModelsError&gt; {
+        <span class="kw">if </span><span class="self">self</span>.balance_increment == change.balance_increment {
+            <span class="self">self</span>.balance_delta = <span class="self">self
+                </span>.balance_delta
+                .checked_add(change.balance_delta)
+                .ok_or_else(|| {
+                    ModelsError::InvalidLedgerChange(<span class="string">&quot;overflow in LedgerChange::chain&quot;</span>.into())
                 })<span class="question-mark">?</span>;
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">change</span>.<span class="ident">balance_delta</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">balance_delta</span> {
-            <span class="self">self</span>.<span class="ident">balance_delta</span> <span class="op">=</span> <span class="ident">change</span>
-                .<span class="ident">balance_delta</span>
-                .<span class="ident">checked_sub</span>(<span class="self">self</span>.<span class="ident">balance_delta</span>)
-                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                    <span class="ident">ModelsError::InvalidLedgerChange</span>(<span class="string">&quot;underflow in LedgerChange::chain&quot;</span>.<span class="ident">into</span>())
+        } <span class="kw">else if </span>change.balance_delta &gt; <span class="self">self</span>.balance_delta {
+            <span class="self">self</span>.balance_delta = change
+                .balance_delta
+                .checked_sub(<span class="self">self</span>.balance_delta)
+                .ok_or_else(|| {
+                    ModelsError::InvalidLedgerChange(<span class="string">&quot;underflow in LedgerChange::chain&quot;</span>.into())
                 })<span class="question-mark">?</span>;
-            <span class="self">self</span>.<span class="ident">balance_increment</span> <span class="op">=</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">balance_increment</span>;
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">balance_delta</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">balance_delta</span>
-                .<span class="ident">checked_sub</span>(<span class="ident">change</span>.<span class="ident">balance_delta</span>)
-                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                    <span class="ident">ModelsError::InvalidLedgerChange</span>(<span class="string">&quot;underflow in LedgerChange::chain&quot;</span>.<span class="ident">into</span>())
+            <span class="self">self</span>.balance_increment = !<span class="self">self</span>.balance_increment;
+        } <span class="kw">else </span>{
+            <span class="self">self</span>.balance_delta = <span class="self">self
+                </span>.balance_delta
+                .checked_sub(change.balance_delta)
+                .ok_or_else(|| {
+                    ModelsError::InvalidLedgerChange(<span class="string">&quot;underflow in LedgerChange::chain&quot;</span>.into())
                 })<span class="question-mark">?</span>;
         }
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">balance_delta</span> <span class="op">==</span> <span class="ident">Amount::default</span>() {
-            <span class="self">self</span>.<span class="ident">balance_increment</span> <span class="op">=</span> <span class="bool-val">true</span>;
+        <span class="kw">if </span><span class="self">self</span>.balance_delta == Amount::default() {
+            <span class="self">self</span>.balance_increment = <span class="bool-val">true</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// true if the change is 0</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_nil</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">balance_delta</span> <span class="op">==</span> <span class="ident">Amount::default</span>()
+    <span class="doccomment">/// true if the change is 0
+    </span><span class="kw">pub fn </span>is_nil(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.balance_delta == Amount::default()
     }
 }
 
-<span class="doccomment">/// Checks performed:</span>
-<span class="doccomment">/// - Balance delta.</span>
-<span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">LedgerChange</span> {
-    <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident"><span class="kw">crate</span>::ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="ident">res</span>.<span class="ident">push</span>(<span class="kw">if</span> <span class="self">self</span>.<span class="ident">balance_increment</span> { <span class="number">1u8</span> } <span class="kw">else</span> { <span class="number">0u8</span> });
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">balance_delta</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+<span class="doccomment">/// Checks performed:
+/// - Balance delta.
+</span><span class="kw">impl </span>SerializeCompact <span class="kw">for </span>LedgerChange {
+    <span class="kw">fn </span>to_bytes_compact(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, <span class="kw">crate</span>::ModelsError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;u8&gt; = Vec::new();
+        res.push(<span class="kw">if </span><span class="self">self</span>.balance_increment { <span class="number">1u8 </span>} <span class="kw">else </span>{ <span class="number">0u8 </span>});
+        res.extend(<span class="kw-2">&amp;</span><span class="self">self</span>.balance_delta.to_bytes_compact()<span class="question-mark">?</span>);
+        <span class="prelude-val">Ok</span>(res)
     }
 }
 
-<span class="doccomment">/// Checks performed:</span>
-<span class="doccomment">/// - Increment flag.</span>
-<span class="doccomment">/// - Balance delta.</span>
-<span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">LedgerChange</span> {
-    <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident"><span class="kw">crate</span>::ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0usize</span>;
+<span class="doccomment">/// Checks performed:
+/// - Increment flag.
+/// - Balance delta.
+</span><span class="kw">impl </span>DeserializeCompact <span class="kw">for </span>LedgerChange {
+    <span class="kw">fn </span>from_bytes_compact(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), <span class="kw">crate</span>::ModelsError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="number">0usize</span>;
 
-        <span class="kw">let</span> <span class="ident">balance_increment</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">u8_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span> {
-            <span class="number">0u8</span> =&gt; <span class="bool-val">false</span>,
-            <span class="number">1u8</span> =&gt; <span class="bool-val">true</span>,
-            <span class="kw">_</span> =&gt; {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::DeserializeError</span>(
-                    <span class="string">&quot;wrong boolean balance_increment encoding in LedgerChange deserialization&quot;</span>
-                        .<span class="ident">into</span>(),
+        <span class="kw">let </span>balance_increment = <span class="kw">match </span>u8_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">? </span>{
+            <span class="number">0u8 </span>=&gt; <span class="bool-val">false</span>,
+            <span class="number">1u8 </span>=&gt; <span class="bool-val">true</span>,
+            <span class="kw">_ </span>=&gt; {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::DeserializeError(
+                    <span class="string">&quot;wrong boolean balance_increment encoding in LedgerChange deserialization&quot;
+                        </span>.into(),
                 ))
             }
         };
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+        cursor += <span class="number">1</span>;
 
-        <span class="kw">let</span> (<span class="ident">balance_delta</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">Amount::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
+        <span class="kw">let </span>(balance_delta, delta) = Amount::from_bytes_compact(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+        cursor += delta;
 
         <span class="prelude-val">Ok</span>((
-            <span class="ident">LedgerChange</span> {
-                <span class="ident">balance_increment</span>,
-                <span class="ident">balance_delta</span>,
+            LedgerChange {
+                balance_increment,
+                balance_delta,
             },
-            <span class="ident">cursor</span>,
+            cursor,
         ))
     }
 }
 
-<span class="doccomment">/// Map an address to a `LedgerChange`</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerChanges</span>(<span class="kw">pub</span> <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">LedgerChange</span><span class="op">&gt;</span>);
+<span class="doccomment">/// Map an address to a `LedgerChange`
+</span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+</span><span class="kw">pub struct </span>LedgerChanges(<span class="kw">pub </span>Map&lt;Address, LedgerChange&gt;);
 
-<span class="kw">impl</span> <span class="ident">LedgerChanges</span> {
-    <span class="doccomment">/// addresses that are impacted by these ledger changes</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_involved_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>()
+<span class="kw">impl </span>LedgerChanges {
+    <span class="doccomment">/// addresses that are impacted by these ledger changes
+    </span><span class="kw">pub fn </span>get_involved_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Set&lt;Address&gt; {
+        <span class="self">self</span>.<span class="number">0</span>.keys().copied().collect()
     }
 
-    <span class="doccomment">/// applies a `LedgerChange`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>, <span class="ident">change</span>: <span class="kw-2">&amp;</span><span class="ident">LedgerChange</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">entry</span>(<span class="kw-2">*</span><span class="ident">addr</span>) {
-            <span class="ident">hash_map::Entry::Occupied</span>(<span class="kw-2">mut</span> <span class="ident">occ</span>) =&gt; {
-                <span class="ident">occ</span>.<span class="ident">get_mut</span>().<span class="ident">chain</span>(<span class="ident">change</span>)<span class="question-mark">?</span>;
-                <span class="kw">if</span> <span class="ident">occ</span>.<span class="ident">get</span>().<span class="ident">is_nil</span>() {
-                    <span class="ident">occ</span>.<span class="ident">remove</span>();
+    <span class="doccomment">/// applies a `LedgerChange`
+    </span><span class="kw">pub fn </span>apply(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, change: <span class="kw-2">&amp;</span>LedgerChange) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.entry(<span class="kw-2">*</span>addr) {
+            hash_map::Entry::Occupied(<span class="kw-2">mut </span>occ) =&gt; {
+                occ.get_mut().chain(change)<span class="question-mark">?</span>;
+                <span class="kw">if </span>occ.get().is_nil() {
+                    occ.remove();
                 }
             }
-            <span class="ident">hash_map::Entry::Vacant</span>(<span class="ident">vac</span>) =&gt; {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">LedgerChange::default</span>();
-                <span class="ident">res</span>.<span class="ident">chain</span>(<span class="ident">change</span>)<span class="question-mark">?</span>;
-                <span class="kw">if</span> <span class="op">!</span><span class="ident">res</span>.<span class="ident">is_nil</span>() {
-                    <span class="ident">vac</span>.<span class="ident">insert</span>(<span class="ident">res</span>);
+            hash_map::Entry::Vacant(vac) =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>res = LedgerChange::default();
+                res.chain(change)<span class="question-mark">?</span>;
+                <span class="kw">if </span>!res.is_nil() {
+                    vac.insert(res);
                 }
             }
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// chain with another `LedgerChange`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">chain</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">LedgerChanges</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">for</span> (<span class="ident">addr</span>, <span class="ident">change</span>) <span class="kw">in</span> <span class="ident">other</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
-            <span class="self">self</span>.<span class="ident">apply</span>(<span class="ident">addr</span>, <span class="ident">change</span>)<span class="question-mark">?</span>;
+    <span class="doccomment">/// chain with another `LedgerChange`
+    </span><span class="kw">pub fn </span>chain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>LedgerChanges) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">for </span>(addr, change) <span class="kw">in </span>other.<span class="number">0</span>.iter() {
+            <span class="self">self</span>.apply(addr, change)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// merge another ledger changes into self, overwriting existing data</span>
-    <span class="doccomment">/// addresses that are in not other are removed from self</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sync_from</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addrs</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>, <span class="kw-2">mut</span> <span class="ident">other</span>: <span class="ident">LedgerChanges</span>) {
-        <span class="kw">for</span> <span class="ident">addr</span> <span class="kw">in</span> <span class="ident">addrs</span>.<span class="ident">iter</span>() {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">new_val</span>) <span class="op">=</span> <span class="ident">other</span>.<span class="number">0</span>.<span class="ident">remove</span>(<span class="ident">addr</span>) {
-                <span class="self">self</span>.<span class="number">0</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">addr</span>, <span class="ident">new_val</span>);
-            } <span class="kw">else</span> {
-                <span class="self">self</span>.<span class="number">0</span>.<span class="ident">remove</span>(<span class="ident">addr</span>);
+    <span class="doccomment">/// merge another ledger changes into self, overwriting existing data
+    /// addresses that are in not other are removed from self
+    </span><span class="kw">pub fn </span>sync_from(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>Set&lt;Address&gt;, <span class="kw-2">mut </span>other: LedgerChanges) {
+        <span class="kw">for </span>addr <span class="kw">in </span>addrs.iter() {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(new_val) = other.<span class="number">0</span>.remove(addr) {
+                <span class="self">self</span>.<span class="number">0</span>.insert(<span class="kw-2">*</span>addr, new_val);
+            } <span class="kw">else </span>{
+                <span class="self">self</span>.<span class="number">0</span>.remove(addr);
             }
         }
     }
 
-    <span class="doccomment">/// clone subset</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clone_subset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addrs</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">LedgerChanges</span>(
-            <span class="self">self</span>.<span class="number">0</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">a</span>, <span class="ident">dta</span>)<span class="op">|</span> {
-                    <span class="kw">if</span> <span class="ident">addrs</span>.<span class="ident">contains</span>(<span class="ident">a</span>) {
-                        <span class="prelude-val">Some</span>((<span class="kw-2">*</span><span class="ident">a</span>, <span class="ident">dta</span>.<span class="ident">clone</span>()))
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">None</span>
-                    }
+    <span class="doccomment">/// clone subset
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">pub fn </span>clone_subset(<span class="kw-2">&amp;</span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>Set&lt;Address&gt;) -&gt; <span class="self">Self </span>{
+        LedgerChanges(
+            <span class="self">self</span>.<span class="number">0
+                </span>.iter()
+                .filter_map(|(a, dta)| {
+                    <span class="kw">if </span>addrs.contains(a) {
+                        <span class="prelude-val">Some</span>((<span class="kw-2">*</span>a, dta.clone()))
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">None
+                    </span>}
                 })
-                .<span class="ident">collect</span>(),
+                .collect(),
         )
     }
 
-    <span class="doccomment">/// add reward related changes</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_reward</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">creator</span>: <span class="ident">Address</span>,
-        <span class="ident">endorsers</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-        <span class="ident">parent_creator</span>: <span class="ident">Address</span>,
-        <span class="ident">reward</span>: <span class="ident">Amount</span>,
-        <span class="ident">endorsement_count</span>: <span class="ident">u32</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">endorsers_count</span> <span class="op">=</span> <span class="ident">endorsers</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>;
-        <span class="kw">let</span> <span class="ident">third</span> <span class="op">=</span> <span class="ident">reward</span>
-            .<span class="ident">checked_div_u64</span>(<span class="number">3</span> <span class="op">*</span> (<span class="number">1</span> <span class="op">+</span> (<span class="ident">endorsement_count</span> <span class="kw">as</span> <span class="ident">u64</span>)))
-            .<span class="ident">ok_or</span>(<span class="ident">ModelsError::AmountOverflowError</span>)<span class="question-mark">?</span>;
-        <span class="kw">for</span> <span class="ident">ed</span> <span class="kw">in</span> <span class="ident">endorsers</span> {
-            <span class="self">self</span>.<span class="ident">apply</span>(
-                <span class="kw-2">&amp;</span><span class="ident">parent_creator</span>,
-                <span class="kw-2">&amp;</span><span class="ident">LedgerChange</span> {
-                    <span class="ident">balance_delta</span>: <span class="ident">third</span>,
-                    <span class="ident">balance_increment</span>: <span class="bool-val">true</span>,
+    <span class="doccomment">/// add reward related changes
+    </span><span class="kw">pub fn </span>add_reward(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        creator: Address,
+        endorsers: Vec&lt;Address&gt;,
+        parent_creator: Address,
+        reward: Amount,
+        endorsement_count: u32,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">let </span>endorsers_count = endorsers.len() <span class="kw">as </span>u64;
+        <span class="kw">let </span>third = reward
+            .checked_div_u64(<span class="number">3 </span>* (<span class="number">1 </span>+ (endorsement_count <span class="kw">as </span>u64)))
+            .ok_or(ModelsError::AmountOverflowError)<span class="question-mark">?</span>;
+        <span class="kw">for </span>ed <span class="kw">in </span>endorsers {
+            <span class="self">self</span>.apply(
+                <span class="kw-2">&amp;</span>parent_creator,
+                <span class="kw-2">&amp;</span>LedgerChange {
+                    balance_delta: third,
+                    balance_increment: <span class="bool-val">true</span>,
                 },
             )<span class="question-mark">?</span>;
-            <span class="self">self</span>.<span class="ident">apply</span>(
-                <span class="kw-2">&amp;</span><span class="ident">ed</span>,
-                <span class="kw-2">&amp;</span><span class="ident">LedgerChange</span> {
-                    <span class="ident">balance_delta</span>: <span class="ident">third</span>,
-                    <span class="ident">balance_increment</span>: <span class="bool-val">true</span>,
+            <span class="self">self</span>.apply(
+                <span class="kw-2">&amp;</span>ed,
+                <span class="kw-2">&amp;</span>LedgerChange {
+                    balance_delta: third,
+                    balance_increment: <span class="bool-val">true</span>,
                 },
             )<span class="question-mark">?</span>;
         }
-        <span class="kw">let</span> <span class="ident">total_credited</span> <span class="op">=</span> <span class="ident">third</span>
-            .<span class="ident">checked_mul_u64</span>(<span class="number">2</span> <span class="op">*</span> <span class="ident">endorsers_count</span>)
-            .<span class="ident">ok_or</span>(<span class="ident">ModelsError::AmountOverflowError</span>)<span class="question-mark">?</span>;
-        <span class="comment">// here we credited only parent_creator and ed for every endorsement</span>
-        <span class="comment">// total_credited now contains the total amount already credited</span>
+        <span class="kw">let </span>total_credited = third
+            .checked_mul_u64(<span class="number">2 </span>* endorsers_count)
+            .ok_or(ModelsError::AmountOverflowError)<span class="question-mark">?</span>;
+        <span class="comment">// here we credited only parent_creator and ed for every endorsement
+        // total_credited now contains the total amount already credited
 
-        <span class="kw">let</span> <span class="ident">expected_credit</span> <span class="op">=</span> <span class="ident">reward</span>
-            .<span class="ident">checked_mul_u64</span>(<span class="number">1</span> <span class="op">+</span> <span class="ident">endorsers_count</span>)
-            .<span class="ident">ok_or</span>(<span class="ident">ModelsError::AmountOverflowError</span>)<span class="question-mark">?</span>
-            .<span class="ident">checked_div_u64</span>(<span class="number">1</span> <span class="op">+</span> (<span class="ident">endorsement_count</span> <span class="kw">as</span> <span class="ident">u64</span>))
-            .<span class="ident">ok_or</span>(<span class="ident">ModelsError::AmountOverflowError</span>)<span class="question-mark">?</span>;
-        <span class="comment">// here expected_credit contains the expected amount that should be credited in total</span>
-        <span class="comment">// the difference between expected_credit and total_credited is sent to the block creator</span>
-        <span class="self">self</span>.<span class="ident">apply</span>(
-            <span class="kw-2">&amp;</span><span class="ident">creator</span>,
-            <span class="kw-2">&amp;</span><span class="ident">LedgerChange</span> {
-                <span class="ident">balance_delta</span>: <span class="ident">expected_credit</span>.<span class="ident">saturating_sub</span>(<span class="ident">total_credited</span>),
-                <span class="ident">balance_increment</span>: <span class="bool-val">true</span>,
+        </span><span class="kw">let </span>expected_credit = reward
+            .checked_mul_u64(<span class="number">1 </span>+ endorsers_count)
+            .ok_or(ModelsError::AmountOverflowError)<span class="question-mark">?
+            </span>.checked_div_u64(<span class="number">1 </span>+ (endorsement_count <span class="kw">as </span>u64))
+            .ok_or(ModelsError::AmountOverflowError)<span class="question-mark">?</span>;
+        <span class="comment">// here expected_credit contains the expected amount that should be credited in total
+        // the difference between expected_credit and total_credited is sent to the block creator
+        </span><span class="self">self</span>.apply(
+            <span class="kw-2">&amp;</span>creator,
+            <span class="kw-2">&amp;</span>LedgerChange {
+                balance_delta: expected_credit.saturating_sub(total_credited),
+                balance_increment: <span class="bool-val">true</span>,
             },
         )
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">LedgerChanges</span> {
-    <span class="doccomment">/// ## Example</span>
-    <span class="doccomment">/// ```rust</span>
-    <span class="doccomment">/// # use massa_models::{SerializeCompact, DeserializeCompact, SerializationContext, Address, Amount};</span>
-    <span class="doccomment">/// # use std::str::FromStr;</span>
-    <span class="doccomment">/// # use massa_models::ledger_models::{LedgerChanges, LedgerChange};</span>
-    <span class="doccomment">/// # let ledger_changes = LedgerChanges(vec![</span>
-    <span class="doccomment">/// #   (</span>
-    <span class="doccomment">/// #       Address::from_bs58_check(&quot;2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi&quot;.into()).unwrap(),</span>
-    <span class="doccomment">/// #       LedgerChange {</span>
-    <span class="doccomment">/// #           balance_delta: Amount::from_str(&quot;1149&quot;).unwrap(),</span>
-    <span class="doccomment">/// #           balance_increment: true</span>
-    <span class="doccomment">/// #       },</span>
-    <span class="doccomment">/// #   ),</span>
-    <span class="doccomment">/// #   (</span>
-    <span class="doccomment">/// #       Address::from_bs58_check(&quot;2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q&quot;.into()).unwrap(),</span>
-    <span class="doccomment">/// #       LedgerChange {</span>
-    <span class="doccomment">/// #           balance_delta: Amount::from_str(&quot;1020&quot;).unwrap(),</span>
-    <span class="doccomment">/// #           balance_increment: true</span>
-    <span class="doccomment">/// #       },</span>
-    <span class="doccomment">/// #   )</span>
-    <span class="doccomment">/// # ].into_iter().collect());</span>
-    <span class="doccomment">/// # massa_models::init_serialization_context(massa_models::SerializationContext::default());</span>
-    <span class="doccomment">/// let bytes = ledger_changes.clone().to_bytes_compact().unwrap();</span>
-    <span class="doccomment">/// let (res, _) = LedgerChanges::from_bytes_compact(&amp;bytes).unwrap();</span>
-    <span class="doccomment">/// for (address, data) in &amp;ledger_changes.0 {</span>
-    <span class="doccomment">///    assert!(res.0.iter().filter(|(addr, dta)| &amp;address == addr &amp;&amp; dta.to_bytes_compact().unwrap() == data.to_bytes_compact().unwrap()).count() == 1)</span>
-    <span class="doccomment">/// }</span>
-    <span class="doccomment">/// assert_eq!(ledger_changes.0.len(), res.0.len());</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+<span class="kw">impl </span>SerializeCompact <span class="kw">for </span>LedgerChanges {
+    <span class="doccomment">/// ## Example
+    /// ```rust
+    /// # use massa_models::{SerializeCompact, DeserializeCompact, SerializationContext, Address, Amount};
+    /// # use std::str::FromStr;
+    /// # use massa_models::ledger_models::{LedgerChanges, LedgerChange};
+    /// # let ledger_changes = LedgerChanges(vec![
+    /// #   (
+    /// #       Address::from_bs58_check(&quot;2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi&quot;.into()).unwrap(),
+    /// #       LedgerChange {
+    /// #           balance_delta: Amount::from_str(&quot;1149&quot;).unwrap(),
+    /// #           balance_increment: true
+    /// #       },
+    /// #   ),
+    /// #   (
+    /// #       Address::from_bs58_check(&quot;2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q&quot;.into()).unwrap(),
+    /// #       LedgerChange {
+    /// #           balance_delta: Amount::from_str(&quot;1020&quot;).unwrap(),
+    /// #           balance_increment: true
+    /// #       },
+    /// #   )
+    /// # ].into_iter().collect());
+    /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
+    /// let bytes = ledger_changes.clone().to_bytes_compact().unwrap();
+    /// let (res, _) = LedgerChanges::from_bytes_compact(&amp;bytes).unwrap();
+    /// for (address, data) in &amp;ledger_changes.0 {
+    ///    assert!(res.0.iter().filter(|(addr, dta)| &amp;address == addr &amp;&amp; dta.to_bytes_compact().unwrap() == data.to_bytes_compact().unwrap()).count() == 1)
+    /// }
+    /// assert_eq!(ledger_changes.0.len(), res.0.len());
+    /// ```
+    </span><span class="kw">fn </span>to_bytes_compact(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;u8&gt; = Vec::new();
 
-        <span class="kw">let</span> <span class="ident">entry_count</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-            <span class="ident">ModelsError::SerializeError</span>(<span class="macro">format!</span>(
+        <span class="kw">let </span>entry_count: u64 = <span class="self">self</span>.<span class="number">0</span>.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(<span class="macro">format!</span>(
                 <span class="string">&quot;too many entries in ConsensusLedgerSubset: {}&quot;</span>,
-                <span class="ident">err</span>
+                err
             ))
         })<span class="question-mark">?</span>;
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">entry_count</span>.<span class="ident">to_varint_bytes</span>());
-        <span class="kw">for</span> (<span class="ident">address</span>, <span class="ident">data</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">address</span>.<span class="ident">to_bytes</span>());
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
+        res.extend(entry_count.to_varint_bytes());
+        <span class="kw">for </span>(address, data) <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.iter() {
+            res.extend(address.to_bytes());
+            res.extend(<span class="kw-2">&amp;</span>data.to_bytes_compact()<span class="question-mark">?</span>);
         }
 
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+        <span class="prelude-val">Ok</span>(res)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">LedgerChanges</span> {
-    <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0usize</span>;
+<span class="kw">impl </span>DeserializeCompact <span class="kw">for </span>LedgerChanges {
+    <span class="kw">fn </span>from_bytes_compact(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="number">0usize</span>;
 
-        <span class="kw">let</span> (<span class="ident">entry_count</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u64::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-        <span class="comment">// TODO: add entry_count checks ... see #1200</span>
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
+        <span class="kw">let </span>(entry_count, delta) = u64::from_varint_bytes(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+        <span class="comment">// TODO: add entry_count checks ... see #1200
+        </span>cursor += delta;
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ledger_subset</span> <span class="op">=</span> <span class="ident">LedgerChanges</span>(<span class="ident">Map::default</span>());
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">entry_count</span> {
-            <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">Address::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
-            <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">ADDRESS_SIZE_BYTES</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>ledger_subset = LedgerChanges(Map::default());
+        <span class="kw">for _ in </span><span class="number">0</span>..entry_count {
+            <span class="kw">let </span>address = Address::from_bytes(<span class="kw-2">&amp;</span>array_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>);
+            cursor += ADDRESS_SIZE_BYTES;
 
-            <span class="kw">let</span> (<span class="ident">data</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">LedgerChange::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-            <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
+            <span class="kw">let </span>(data, delta) = LedgerChange::from_bytes_compact(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
+            cursor += delta;
 
-            <span class="ident">ledger_subset</span>.<span class="number">0</span>.<span class="ident">insert</span>(<span class="ident">address</span>, <span class="ident">data</span>);
+            ledger_subset.<span class="number">0</span>.insert(address, data);
         }
 
-        <span class="prelude-val">Ok</span>((<span class="ident">ledger_subset</span>, <span class="ident">cursor</span>))
+        <span class="prelude-val">Ok</span>((ledger_subset, cursor))
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

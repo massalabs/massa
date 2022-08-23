@@ -216,223 +216,223 @@
 <span id="216">216</span>
 <span id="217">217</span>
 <span id="218">218</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">//! This file defines the final state of the node, which includes</span>
-<span class="doccomment">//! the final ledger and asynchronous message pool that are kept at</span>
-<span class="doccomment">//! the output of a given final slot (the latest executed final slot),</span>
-<span class="doccomment">//! and need to be bootstrapped by nodes joining the network.</span>
+//! This file defines the final state of the node, which includes
+//! the final ledger and asynchronous message pool that are kept at
+//! the output of a given final slot (the latest executed final slot),
+//! and need to be bootstrapped by nodes joining the network.
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">config::FinalStateConfig</span>, <span class="ident">error::FinalStateError</span>, <span class="ident">state_changes::StateChanges</span>};
-<span class="kw">use</span> <span class="ident">massa_async_pool</span>::{<span class="ident">AsyncMessageId</span>, <span class="ident">AsyncPool</span>, <span class="ident">AsyncPoolChanges</span>, <span class="ident">Change</span>};
-<span class="kw">use</span> <span class="ident">massa_ledger_exports</span>::{<span class="ident">LedgerChanges</span>, <span class="ident">LedgerController</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">constants::THREAD_COUNT</span>, <span class="ident">Address</span>, <span class="ident">Slot</span>};
-<span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
+</span><span class="kw">use crate</span>::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
+<span class="kw">use </span>massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
+<span class="kw">use </span>massa_ledger_exports::{LedgerChanges, LedgerController};
+<span class="kw">use </span>massa_models::{constants::THREAD_COUNT, Address, Slot};
+<span class="kw">use </span>std::collections::VecDeque;
 
-<span class="doccomment">/// Represents a final state `(ledger, async pool)`</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">FinalState</span> {
-    <span class="doccomment">/// execution state configuration</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">config</span>: <span class="ident">FinalStateConfig</span>,
-    <span class="doccomment">/// slot at the output of which the state is attached</span>
-    <span class="kw">pub</span> <span class="ident">slot</span>: <span class="ident">Slot</span>,
-    <span class="doccomment">/// final ledger associating addresses to their balance, executable bytecode and data</span>
-    <span class="kw">pub</span> <span class="ident">ledger</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">LedgerController</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// asynchronous pool containing messages sorted by priority and their data</span>
-    <span class="kw">pub</span> <span class="ident">async_pool</span>: <span class="ident">AsyncPool</span>,
-    <span class="doccomment">/// history of recent final state changes, useful for streaming bootstrap</span>
-    <span class="doccomment">/// `front = oldest`, `back = newest`</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">changes_history</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span>(<span class="ident">Slot</span>, <span class="ident">StateChanges</span>)<span class="op">&gt;</span>,
+<span class="doccomment">/// Represents a final state `(ledger, async pool)`
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>FinalState {
+    <span class="doccomment">/// execution state configuration
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) config: FinalStateConfig,
+    <span class="doccomment">/// slot at the output of which the state is attached
+    </span><span class="kw">pub </span>slot: Slot,
+    <span class="doccomment">/// final ledger associating addresses to their balance, executable bytecode and data
+    </span><span class="kw">pub </span>ledger: Box&lt;<span class="kw">dyn </span>LedgerController&gt;,
+    <span class="doccomment">/// asynchronous pool containing messages sorted by priority and their data
+    </span><span class="kw">pub </span>async_pool: AsyncPool,
+    <span class="doccomment">/// history of recent final state changes, useful for streaming bootstrap
+    /// `front = oldest`, `back = newest`
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) changes_history: VecDeque&lt;(Slot, StateChanges)&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">FinalState</span> {
-    <span class="doccomment">/// Initializes a new `FinalState`</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `config`: the configuration of the execution state</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">config</span>: <span class="ident">FinalStateConfig</span>,
-        <span class="ident">ledger</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">LedgerController</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">FinalStateError</span><span class="op">&gt;</span> {
-        <span class="comment">// attach at the output of the latest initial final slot, that is the last genesis slot</span>
-        <span class="kw">let</span> <span class="ident">slot</span> <span class="op">=</span> <span class="ident">Slot::new</span>(<span class="number">0</span>, <span class="ident">config</span>.<span class="ident">thread_count</span>.<span class="ident">saturating_sub</span>(<span class="number">1</span>));
+<span class="kw">impl </span>FinalState {
+    <span class="doccomment">/// Initializes a new `FinalState`
+    ///
+    /// # Arguments
+    /// * `config`: the configuration of the execution state
+    </span><span class="kw">pub fn </span>new(
+        config: FinalStateConfig,
+        ledger: Box&lt;<span class="kw">dyn </span>LedgerController&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, FinalStateError&gt; {
+        <span class="comment">// attach at the output of the latest initial final slot, that is the last genesis slot
+        </span><span class="kw">let </span>slot = Slot::new(<span class="number">0</span>, config.thread_count.saturating_sub(<span class="number">1</span>));
 
-        <span class="comment">// create the async pool</span>
-        <span class="kw">let</span> <span class="ident">async_pool</span> <span class="op">=</span> <span class="ident">AsyncPool::new</span>(<span class="ident">config</span>.<span class="ident">async_pool_config</span>.<span class="ident">clone</span>());
+        <span class="comment">// create the async pool
+        </span><span class="kw">let </span>async_pool = AsyncPool::new(config.async_pool_config.clone());
 
-        <span class="comment">// generate the final state</span>
-        <span class="prelude-val">Ok</span>(<span class="ident">FinalState</span> {
-            <span class="ident">slot</span>,
-            <span class="ident">ledger</span>,
-            <span class="ident">async_pool</span>,
-            <span class="ident">config</span>,
-            <span class="ident">changes_history</span>: <span class="ident">Default::default</span>(), <span class="comment">// no changes in history</span>
-        })
+        <span class="comment">// generate the final state
+        </span><span class="prelude-val">Ok</span>(FinalState {
+            slot,
+            ledger,
+            async_pool,
+            config,
+            changes_history: Default::default(), <span class="comment">// no changes in history
+        </span>})
     }
 
-    <span class="doccomment">/// Applies changes to the execution state at a given slot, and settles that slot forever.</span>
-    <span class="doccomment">/// Once this is called, the state is attached at the output of the provided slot.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Panics if the new slot is not the one coming just after the current one.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">finalize</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>, <span class="ident">changes</span>: <span class="ident">StateChanges</span>) {
-        <span class="comment">// check slot consistency</span>
-        <span class="kw">let</span> <span class="ident">next_slot</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">slot</span>
-            .<span class="ident">get_next_slot</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">thread_count</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;overflow in execution state slot&quot;</span>);
-        <span class="kw">if</span> <span class="ident">slot</span> <span class="op">!</span><span class="op">=</span> <span class="ident">next_slot</span> {
-            <span class="macro">panic!</span>(<span class="string">&quot;attempting to apply execution state changes at slot {} while the current slot is {}&quot;</span>, <span class="ident">slot</span>, <span class="self">self</span>.<span class="ident">slot</span>);
+    <span class="doccomment">/// Applies changes to the execution state at a given slot, and settles that slot forever.
+    /// Once this is called, the state is attached at the output of the provided slot.
+    ///
+    /// Panics if the new slot is not the one coming just after the current one.
+    </span><span class="kw">pub fn </span>finalize(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot, changes: StateChanges) {
+        <span class="comment">// check slot consistency
+        </span><span class="kw">let </span>next_slot = <span class="self">self
+            </span>.slot
+            .get_next_slot(<span class="self">self</span>.config.thread_count)
+            .expect(<span class="string">&quot;overflow in execution state slot&quot;</span>);
+        <span class="kw">if </span>slot != next_slot {
+            <span class="macro">panic!</span>(<span class="string">&quot;attempting to apply execution state changes at slot {} while the current slot is {}&quot;</span>, slot, <span class="self">self</span>.slot);
         }
 
-        <span class="comment">// update current slot</span>
-        <span class="self">self</span>.<span class="ident">slot</span> <span class="op">=</span> <span class="ident">slot</span>;
+        <span class="comment">// update current slot
+        </span><span class="self">self</span>.slot = slot;
 
-        <span class="comment">// apply changes</span>
-        <span class="self">self</span>.<span class="ident">ledger</span>
-            .<span class="ident">apply_changes</span>(<span class="ident">changes</span>.<span class="ident">ledger_changes</span>.<span class="ident">clone</span>(), <span class="self">self</span>.<span class="ident">slot</span>);
-        <span class="self">self</span>.<span class="ident">async_pool</span>
-            .<span class="ident">apply_changes_unchecked</span>(<span class="kw-2">&amp;</span><span class="ident">changes</span>.<span class="ident">async_pool_changes</span>);
+        <span class="comment">// apply changes
+        </span><span class="self">self</span>.ledger
+            .apply_changes(changes.ledger_changes.clone(), <span class="self">self</span>.slot);
+        <span class="self">self</span>.async_pool
+            .apply_changes_unchecked(<span class="kw-2">&amp;</span>changes.async_pool_changes);
 
-        <span class="comment">// push history element and limit history size</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">final_history_length</span> <span class="op">&gt;</span> <span class="number">0</span> {
-            <span class="kw">while</span> <span class="self">self</span>.<span class="ident">changes_history</span>.<span class="ident">len</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">final_history_length</span> {
-                <span class="self">self</span>.<span class="ident">changes_history</span>.<span class="ident">pop_front</span>();
+        <span class="comment">// push history element and limit history size
+        </span><span class="kw">if </span><span class="self">self</span>.config.final_history_length &gt; <span class="number">0 </span>{
+            <span class="kw">while </span><span class="self">self</span>.changes_history.len() &gt;= <span class="self">self</span>.config.final_history_length {
+                <span class="self">self</span>.changes_history.pop_front();
             }
-            <span class="self">self</span>.<span class="ident">changes_history</span>.<span class="ident">push_back</span>((<span class="ident">slot</span>, <span class="ident">changes</span>));
+            <span class="self">self</span>.changes_history.push_back((slot, changes));
         }
     }
 
-    <span class="doccomment">/// Used for bootstrap</span>
-    <span class="doccomment">/// Take a part of the final state changes (ledger and async pool) using a `Slot`, a `Address` and a `AsyncMessageId`.</span>
-    <span class="doccomment">/// Every ledgers changes that are after `last_slot` and before or equal of `last_address` must be returned.</span>
-    <span class="doccomment">/// Every async pool changes that are after `last_slot` and before or equal of `last_id_async_pool` must be returned.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Error case: When the last_slot is too old for `self.changes_history`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_state_changes_part</span>(
+    <span class="doccomment">/// Used for bootstrap
+    /// Take a part of the final state changes (ledger and async pool) using a `Slot`, a `Address` and a `AsyncMessageId`.
+    /// Every ledgers changes that are after `last_slot` and before or equal of `last_address` must be returned.
+    /// Every async pool changes that are after `last_slot` and before or equal of `last_id_async_pool` must be returned.
+    ///
+    /// Error case: When the last_slot is too old for `self.changes_history`
+    </span><span class="kw">pub fn </span>get_state_changes_part(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">last_slot</span>: <span class="ident">Slot</span>,
-        <span class="ident">last_address</span>: <span class="ident">Address</span>,
-        <span class="ident">last_id_async_pool</span>: <span class="ident">AsyncMessageId</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">StateChanges</span>, <span class="ident">FinalStateError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">pos_slot</span> <span class="op">=</span> <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">changes_history</span>.<span class="ident">is_empty</span>() {
-            <span class="comment">// Safe because we checked that there is changes just above.</span>
-            <span class="kw">let</span> <span class="ident">index</span> <span class="op">=</span> <span class="ident">last_slot</span>
-                .<span class="ident">slots_since</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">changes_history</span>[<span class="number">0</span>].<span class="number">0</span>, <span class="ident">THREAD_COUNT</span>)
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                    <span class="ident">FinalStateError::LedgerError</span>(<span class="string">&quot;Last slot is overflowing history.&quot;</span>.<span class="ident">to_string</span>())
+        last_slot: Slot,
+        last_address: Address,
+        last_id_async_pool: AsyncMessageId,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;StateChanges, FinalStateError&gt; {
+        <span class="kw">let </span>pos_slot = <span class="kw">if </span>!<span class="self">self</span>.changes_history.is_empty() {
+            <span class="comment">// Safe because we checked that there is changes just above.
+            </span><span class="kw">let </span>index = last_slot
+                .slots_since(<span class="kw-2">&amp;</span><span class="self">self</span>.changes_history[<span class="number">0</span>].<span class="number">0</span>, THREAD_COUNT)
+                .map_err(|<span class="kw">_</span>| {
+                    FinalStateError::LedgerError(<span class="string">&quot;Last slot is overflowing history.&quot;</span>.to_string())
                 })<span class="question-mark">?</span>;
-            <span class="comment">// Check if `last_slot` isn&#39;t in the future</span>
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">changes_history</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">index</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">FinalStateError::LedgerError</span>(
-                    <span class="string">&quot;Last slot is overflowing history.&quot;</span>.<span class="ident">to_string</span>(),
+            <span class="comment">// Check if `last_slot` isn&#39;t in the future
+            </span><span class="kw">if </span><span class="self">self</span>.changes_history.len() <span class="kw">as </span>u64 &lt;= index {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(FinalStateError::LedgerError(
+                    <span class="string">&quot;Last slot is overflowing history.&quot;</span>.to_string(),
                 ));
             }
-            <span class="ident">index</span>
-        } <span class="kw">else</span> {
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">StateChanges::default</span>());
+            index
+        } <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(StateChanges::default());
         };
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res_changes</span>: <span class="ident">StateChanges</span> <span class="op">=</span> <span class="ident">StateChanges::default</span>();
-        <span class="kw">for</span> (<span class="kw">_</span>, <span class="ident">changes</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">changes_history</span>.<span class="ident">range</span>((<span class="ident">pos_slot</span> <span class="kw">as</span> <span class="ident">usize</span>)..) {
-            <span class="comment">//Get ledger change that concern address &lt;= last_address.</span>
-            <span class="kw">let</span> <span class="ident">ledger_changes</span>: <span class="ident">LedgerChanges</span> <span class="op">=</span> <span class="ident">LedgerChanges</span>(
-                <span class="ident">changes</span>
-                    .<span class="ident">ledger_changes</span>
-                    .<span class="number">0</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">address</span>, <span class="ident">change</span>)<span class="op">|</span> {
-                        <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">address</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">last_address</span> {
-                            <span class="prelude-val">Some</span>((<span class="kw-2">*</span><span class="ident">address</span>, <span class="ident">change</span>.<span class="ident">clone</span>()))
-                        } <span class="kw">else</span> {
-                            <span class="prelude-val">None</span>
-                        }
+        <span class="kw">let </span><span class="kw-2">mut </span>res_changes: StateChanges = StateChanges::default();
+        <span class="kw">for </span>(<span class="kw">_</span>, changes) <span class="kw">in </span><span class="self">self</span>.changes_history.range((pos_slot <span class="kw">as </span>usize)..) {
+            <span class="comment">//Get ledger change that concern address &lt;= last_address.
+            </span><span class="kw">let </span>ledger_changes: LedgerChanges = LedgerChanges(
+                changes
+                    .ledger_changes
+                    .<span class="number">0
+                    </span>.iter()
+                    .filter_map(|(address, change)| {
+                        <span class="kw">if </span><span class="kw-2">*</span>address &lt;= last_address {
+                            <span class="prelude-val">Some</span>((<span class="kw-2">*</span>address, change.clone()))
+                        } <span class="kw">else </span>{
+                            <span class="prelude-val">None
+                        </span>}
                     })
-                    .<span class="ident">collect</span>(),
+                    .collect(),
             );
-            <span class="ident">res_changes</span>.<span class="ident">ledger_changes</span> <span class="op">=</span> <span class="ident">ledger_changes</span>;
+            res_changes.ledger_changes = ledger_changes;
 
-            <span class="comment">//Get async pool changes that concern ids &lt;= last_id_async_pool</span>
-            <span class="kw">let</span> <span class="ident">async_pool_changes</span>: <span class="ident">AsyncPoolChanges</span> <span class="op">=</span> <span class="ident">AsyncPoolChanges</span>(
-                <span class="ident">changes</span>
-                    .<span class="ident">async_pool_changes</span>
-                    .<span class="number">0</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">change</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">change</span> {
-                        <span class="ident">Change::Add</span>(<span class="ident">id</span>, <span class="kw">_</span>) <span class="kw">if</span> <span class="ident">id</span> <span class="op">&lt;</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">last_id_async_pool</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">change</span>.<span class="ident">clone</span>()),
-                        <span class="ident">Change::Delete</span>(<span class="ident">id</span>) <span class="kw">if</span> <span class="ident">id</span> <span class="op">&lt;</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">last_id_async_pool</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">change</span>.<span class="ident">clone</span>()),
-                        <span class="ident">Change::Add</span>(..) =&gt; <span class="prelude-val">None</span>,
-                        <span class="ident">Change::Delete</span>(..) =&gt; <span class="prelude-val">None</span>,
+            <span class="comment">//Get async pool changes that concern ids &lt;= last_id_async_pool
+            </span><span class="kw">let </span>async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(
+                changes
+                    .async_pool_changes
+                    .<span class="number">0
+                    </span>.iter()
+                    .filter_map(|change| <span class="kw">match </span>change {
+                        Change::Add(id, <span class="kw">_</span>) <span class="kw">if </span>id &lt;= <span class="kw-2">&amp;</span>last_id_async_pool =&gt; <span class="prelude-val">Some</span>(change.clone()),
+                        Change::Delete(id) <span class="kw">if </span>id &lt;= <span class="kw-2">&amp;</span>last_id_async_pool =&gt; <span class="prelude-val">Some</span>(change.clone()),
+                        Change::Add(..) =&gt; <span class="prelude-val">None</span>,
+                        Change::Delete(..) =&gt; <span class="prelude-val">None</span>,
                     })
-                    .<span class="ident">collect</span>(),
+                    .collect(),
             );
-            <span class="ident">res_changes</span>.<span class="ident">async_pool_changes</span> <span class="op">=</span> <span class="ident">async_pool_changes</span>;
+            res_changes.async_pool_changes = async_pool_changes;
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">res_changes</span>)
+        <span class="prelude-val">Ok</span>(res_changes)
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
 
-    <span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
+    <span class="kw">use </span>std::collections::VecDeque;
 
-    <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">FinalState</span>, <span class="ident">StateChanges</span>};
-    <span class="kw">use</span> <span class="ident">massa_async_pool::test_exports::get_random_message</span>;
-    <span class="kw">use</span> <span class="ident">massa_ledger_exports::SetUpdateOrDelete</span>;
-    <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">Slot</span>};
-    <span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
+    <span class="kw">use crate</span>::{FinalState, StateChanges};
+    <span class="kw">use </span>massa_async_pool::test_exports::get_random_message;
+    <span class="kw">use </span>massa_ledger_exports::SetUpdateOrDelete;
+    <span class="kw">use </span>massa_models::{Address, Slot};
+    <span class="kw">use </span>massa_signature::KeyPair;
 
-    <span class="kw">fn</span> <span class="ident">get_random_address</span>() -&gt; <span class="ident">Address</span> {
-        <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
-        <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>.<span class="ident">get_public_key</span>())
+    <span class="kw">fn </span>get_random_address() -&gt; Address {
+        <span class="kw">let </span>keypair = KeyPair::generate();
+        Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key())
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">get_state_changes_part</span>() {
-        <span class="kw">let</span> <span class="ident">message</span> <span class="op">=</span> <span class="ident">get_random_message</span>();
-        <span class="comment">// Building the state changes</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">history_state_changes</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span>(<span class="ident">Slot</span>, <span class="ident">StateChanges</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">VecDeque::new</span>();
-        <span class="kw">let</span> (<span class="ident">low_address</span>, <span class="ident">high_address</span>) <span class="op">=</span> {
-            <span class="kw">let</span> <span class="ident">address1</span> <span class="op">=</span> <span class="ident">get_random_address</span>();
-            <span class="kw">let</span> <span class="ident">address2</span> <span class="op">=</span> <span class="ident">get_random_address</span>();
-            <span class="kw">if</span> <span class="ident">address1</span> <span class="op">&lt;</span> <span class="ident">address2</span> {
-                (<span class="ident">address1</span>, <span class="ident">address2</span>)
-            } <span class="kw">else</span> {
-                (<span class="ident">address2</span>, <span class="ident">address1</span>)
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>get_state_changes_part() {
+        <span class="kw">let </span>message = get_random_message();
+        <span class="comment">// Building the state changes
+        </span><span class="kw">let </span><span class="kw-2">mut </span>history_state_changes: VecDeque&lt;(Slot, StateChanges)&gt; = VecDeque::new();
+        <span class="kw">let </span>(low_address, high_address) = {
+            <span class="kw">let </span>address1 = get_random_address();
+            <span class="kw">let </span>address2 = get_random_address();
+            <span class="kw">if </span>address1 &lt; address2 {
+                (address1, address2)
+            } <span class="kw">else </span>{
+                (address2, address1)
             }
         };
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">state_changes</span> <span class="op">=</span> <span class="ident">StateChanges::default</span>();
-        <span class="ident">state_changes</span>
-            .<span class="ident">ledger_changes</span>
-            .<span class="number">0</span>
-            .<span class="ident">insert</span>(<span class="ident">low_address</span>, <span class="ident">SetUpdateOrDelete::Delete</span>);
-        <span class="ident">state_changes</span>
-            .<span class="ident">async_pool_changes</span>
-            .<span class="number">0</span>
-            .<span class="ident">push</span>(<span class="ident">massa_async_pool::Change::Add</span>(
-                <span class="ident">message</span>.<span class="ident">compute_id</span>(),
-                <span class="ident">message</span>.<span class="ident">clone</span>(),
+        <span class="kw">let </span><span class="kw-2">mut </span>state_changes = StateChanges::default();
+        state_changes
+            .ledger_changes
+            .<span class="number">0
+            </span>.insert(low_address, SetUpdateOrDelete::Delete);
+        state_changes
+            .async_pool_changes
+            .<span class="number">0
+            </span>.push(massa_async_pool::Change::Add(
+                message.compute_id(),
+                message.clone(),
             ));
-        <span class="ident">history_state_changes</span>.<span class="ident">push_front</span>((<span class="ident">Slot::new</span>(<span class="number">3</span>, <span class="number">0</span>), <span class="ident">state_changes</span>));
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">state_changes</span> <span class="op">=</span> <span class="ident">StateChanges::default</span>();
-        <span class="ident">state_changes</span>
-            .<span class="ident">ledger_changes</span>
-            .<span class="number">0</span>
-            .<span class="ident">insert</span>(<span class="ident">high_address</span>, <span class="ident">SetUpdateOrDelete::Delete</span>);
-        <span class="ident">history_state_changes</span>.<span class="ident">push_front</span>((<span class="ident">Slot::new</span>(<span class="number">2</span>, <span class="number">0</span>), <span class="ident">state_changes</span>.<span class="ident">clone</span>()));
-        <span class="ident">history_state_changes</span>.<span class="ident">push_front</span>((<span class="ident">Slot::new</span>(<span class="number">1</span>, <span class="number">0</span>), <span class="ident">state_changes</span>));
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">final_state</span>: <span class="ident">FinalState</span> <span class="op">=</span> <span class="ident">Default::default</span>();
-        <span class="ident">final_state</span>.<span class="ident">changes_history</span> <span class="op">=</span> <span class="ident">history_state_changes</span>;
-        <span class="comment">// Test slot filter</span>
-        <span class="kw">let</span> <span class="ident">part</span> <span class="op">=</span> <span class="ident">final_state</span>
-            .<span class="ident">get_state_changes_part</span>(<span class="ident">Slot::new</span>(<span class="number">2</span>, <span class="number">0</span>), <span class="ident">low_address</span>, <span class="ident">message</span>.<span class="ident">compute_id</span>())
-            .<span class="ident">unwrap</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">part</span>.<span class="ident">ledger_changes</span>.<span class="number">0</span>.<span class="ident">len</span>(), <span class="number">1</span>);
-        <span class="comment">// Test address filter</span>
-        <span class="kw">let</span> <span class="ident">part</span> <span class="op">=</span> <span class="ident">final_state</span>
-            .<span class="ident">get_state_changes_part</span>(<span class="ident">Slot::new</span>(<span class="number">2</span>, <span class="number">0</span>), <span class="ident">high_address</span>, <span class="ident">message</span>.<span class="ident">compute_id</span>())
-            .<span class="ident">unwrap</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">part</span>.<span class="ident">ledger_changes</span>.<span class="number">0</span>.<span class="ident">len</span>(), <span class="number">1</span>);
+        history_state_changes.push_front((Slot::new(<span class="number">3</span>, <span class="number">0</span>), state_changes));
+        <span class="kw">let </span><span class="kw-2">mut </span>state_changes = StateChanges::default();
+        state_changes
+            .ledger_changes
+            .<span class="number">0
+            </span>.insert(high_address, SetUpdateOrDelete::Delete);
+        history_state_changes.push_front((Slot::new(<span class="number">2</span>, <span class="number">0</span>), state_changes.clone()));
+        history_state_changes.push_front((Slot::new(<span class="number">1</span>, <span class="number">0</span>), state_changes));
+        <span class="kw">let </span><span class="kw-2">mut </span>final_state: FinalState = Default::default();
+        final_state.changes_history = history_state_changes;
+        <span class="comment">// Test slot filter
+        </span><span class="kw">let </span>part = final_state
+            .get_state_changes_part(Slot::new(<span class="number">2</span>, <span class="number">0</span>), low_address, message.compute_id())
+            .unwrap();
+        <span class="macro">assert_eq!</span>(part.ledger_changes.<span class="number">0</span>.len(), <span class="number">1</span>);
+        <span class="comment">// Test address filter
+        </span><span class="kw">let </span>part = final_state
+            .get_state_changes_part(Slot::new(<span class="number">2</span>, <span class="number">0</span>), high_address, message.compute_id())
+            .unwrap();
+        <span class="macro">assert_eq!</span>(part.ledger_changes.<span class="number">0</span>.len(), <span class="number">1</span>);
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

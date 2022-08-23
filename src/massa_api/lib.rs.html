@@ -271,278 +271,278 @@
 <span id="271">271</span>
 <span id="272">272</span>
 <span id="273">273</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-<span class="doccomment">//! Json RPC API for a massa-node</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ApiError::WrongAPI</span>;
-<span class="kw">use</span> <span class="ident">error::ApiError</span>;
-<span class="kw">use</span> <span class="ident">jsonrpc_core</span>::{<span class="ident">BoxFuture</span>, <span class="ident">IoHandler</span>, <span class="ident">Value</span>};
-<span class="kw">use</span> <span class="ident">jsonrpc_derive::rpc</span>;
-<span class="kw">use</span> <span class="ident">jsonrpc_http_server</span>::{<span class="ident">CloseHandle</span>, <span class="ident">ServerBuilder</span>};
-<span class="kw">use</span> <span class="ident">massa_consensus_exports</span>::{<span class="ident">ConsensusCommandSender</span>, <span class="ident">ConsensusConfig</span>};
-<span class="kw">use</span> <span class="ident">massa_execution_exports::ExecutionController</span>;
-<span class="kw">use</span> <span class="ident">massa_models::api</span>::{
-    <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">BlockSummary</span>, <span class="ident">DatastoreEntryInput</span>, <span class="ident">DatastoreEntryOutput</span>,
-    <span class="ident">EndorsementInfo</span>, <span class="ident">EventFilter</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>, <span class="ident">OperationInput</span>,
-    <span class="ident">ReadOnlyBytecodeExecution</span>, <span class="ident">ReadOnlyCall</span>, <span class="ident">TimeInterval</span>,
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</span><span class="doccomment">//! Json RPC API for a massa-node
+</span><span class="attribute">#![feature(async_closure)]
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
+</span><span class="kw">use </span><span class="kw">crate</span>::error::ApiError::WrongAPI;
+<span class="kw">use </span>error::ApiError;
+<span class="kw">use </span>jsonrpc_core::{BoxFuture, IoHandler, Value};
+<span class="kw">use </span>jsonrpc_derive::rpc;
+<span class="kw">use </span>jsonrpc_http_server::{CloseHandle, ServerBuilder};
+<span class="kw">use </span>massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
+<span class="kw">use </span>massa_execution_exports::ExecutionController;
+<span class="kw">use </span>massa_models::api::{
+    AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
+    EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
+    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
 };
-<span class="kw">use</span> <span class="ident">massa_models::clique::Clique</span>;
-<span class="kw">use</span> <span class="ident">massa_models::composite::PubkeySig</span>;
-<span class="kw">use</span> <span class="ident">massa_models::execution::ExecuteReadOnlyResponse</span>;
-<span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
-<span class="kw">use</span> <span class="ident">massa_models::operation::OperationId</span>;
-<span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
-<span class="kw">use</span> <span class="ident">massa_models::prehash::Set</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">Version</span>};
-<span class="kw">use</span> <span class="ident">massa_network_exports</span>::{<span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkSettings</span>};
-<span class="kw">use</span> <span class="ident">massa_pool::PoolCommandSender</span>;
-<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
-<span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">SocketAddr</span>};
-<span class="kw">use</span> <span class="ident">std::thread</span>;
-<span class="kw">use</span> <span class="ident">std::thread::JoinHandle</span>;
-<span class="kw">use</span> <span class="ident">tokio::sync::mpsc</span>;
-<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">info</span>, <span class="ident">warn</span>};
+<span class="kw">use </span>massa_models::clique::Clique;
+<span class="kw">use </span>massa_models::composite::PubkeySig;
+<span class="kw">use </span>massa_models::execution::ExecuteReadOnlyResponse;
+<span class="kw">use </span>massa_models::node::NodeId;
+<span class="kw">use </span>massa_models::operation::OperationId;
+<span class="kw">use </span>massa_models::output_event::SCOutputEvent;
+<span class="kw">use </span>massa_models::prehash::Set;
+<span class="kw">use </span>massa_models::{Address, BlockId, EndorsementId, Version};
+<span class="kw">use </span>massa_network_exports::{NetworkCommandSender, NetworkSettings};
+<span class="kw">use </span>massa_pool::PoolCommandSender;
+<span class="kw">use </span>massa_signature::KeyPair;
+<span class="kw">use </span>std::net::{IpAddr, SocketAddr};
+<span class="kw">use </span>std::thread;
+<span class="kw">use </span>std::thread::JoinHandle;
+<span class="kw">use </span>tokio::sync::mpsc;
+<span class="kw">use </span>tracing::{info, warn};
 
-<span class="kw">mod</span> <span class="ident">error</span>;
-<span class="kw">mod</span> <span class="ident">private</span>;
-<span class="kw">mod</span> <span class="ident">public</span>;
-<span class="kw">mod</span> <span class="ident">settings</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">settings::APISettings</span>;
+<span class="kw">mod </span>error;
+<span class="kw">mod </span>private;
+<span class="kw">mod </span>public;
+<span class="kw">mod </span>settings;
+<span class="kw">pub use </span>settings::APISettings;
 
-<span class="doccomment">/// Public API component</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Public</span> {
-    <span class="doccomment">/// link to the consensus component</span>
-    <span class="kw">pub</span> <span class="ident">consensus_command_sender</span>: <span class="ident">ConsensusCommandSender</span>,
-    <span class="doccomment">/// link to the execution component</span>
-    <span class="kw">pub</span> <span class="ident">execution_controller</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// link to the pool component</span>
-    <span class="kw">pub</span> <span class="ident">pool_command_sender</span>: <span class="ident">PoolCommandSender</span>,
-    <span class="doccomment">/// consensus configuration (TODO: remove it, can be retrieved via an endpoint)</span>
-    <span class="kw">pub</span> <span class="ident">consensus_config</span>: <span class="ident">ConsensusConfig</span>,
-    <span class="doccomment">/// API settings</span>
-    <span class="kw">pub</span> <span class="ident">api_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">APISettings</span>,
-    <span class="doccomment">/// network setting (TODO consider removing)</span>
-    <span class="kw">pub</span> <span class="ident">network_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">NetworkSettings</span>,
-    <span class="doccomment">/// node version (TODO remove, can be retrieved via an endpoint)</span>
-    <span class="kw">pub</span> <span class="ident">version</span>: <span class="ident">Version</span>,
-    <span class="doccomment">/// link to the network component</span>
-    <span class="kw">pub</span> <span class="ident">network_command_sender</span>: <span class="ident">NetworkCommandSender</span>,
-    <span class="doccomment">/// compensation milliseconds (used to sync time with bootstrap server)</span>
-    <span class="kw">pub</span> <span class="ident">compensation_millis</span>: <span class="ident">i64</span>,
-    <span class="doccomment">/// our node id</span>
-    <span class="kw">pub</span> <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
+<span class="doccomment">/// Public API component
+</span><span class="kw">pub struct </span>Public {
+    <span class="doccomment">/// link to the consensus component
+    </span><span class="kw">pub </span>consensus_command_sender: ConsensusCommandSender,
+    <span class="doccomment">/// link to the execution component
+    </span><span class="kw">pub </span>execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
+    <span class="doccomment">/// link to the pool component
+    </span><span class="kw">pub </span>pool_command_sender: PoolCommandSender,
+    <span class="doccomment">/// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
+    </span><span class="kw">pub </span>consensus_config: ConsensusConfig,
+    <span class="doccomment">/// API settings
+    </span><span class="kw">pub </span>api_settings: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>APISettings,
+    <span class="doccomment">/// network setting (TODO consider removing)
+    </span><span class="kw">pub </span>network_settings: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>NetworkSettings,
+    <span class="doccomment">/// node version (TODO remove, can be retrieved via an endpoint)
+    </span><span class="kw">pub </span>version: Version,
+    <span class="doccomment">/// link to the network component
+    </span><span class="kw">pub </span>network_command_sender: NetworkCommandSender,
+    <span class="doccomment">/// compensation milliseconds (used to sync time with bootstrap server)
+    </span><span class="kw">pub </span>compensation_millis: i64,
+    <span class="doccomment">/// our node id
+    </span><span class="kw">pub </span>node_id: NodeId,
 }
 
-<span class="doccomment">/// Private API content</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Private</span> {
-    <span class="doccomment">/// link to the consensus component</span>
-    <span class="kw">pub</span> <span class="ident">consensus_command_sender</span>: <span class="ident">ConsensusCommandSender</span>,
-    <span class="doccomment">/// link to the network component</span>
-    <span class="kw">pub</span> <span class="ident">network_command_sender</span>: <span class="ident">NetworkCommandSender</span>,
-    <span class="doccomment">/// link to the execution component</span>
-    <span class="kw">pub</span> <span class="ident">execution_controller</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// consensus configuration (TODO: remove it, can be retrieved via an endpoint)</span>
-    <span class="kw">pub</span> <span class="ident">consensus_config</span>: <span class="ident">ConsensusConfig</span>,
-    <span class="doccomment">/// API settings</span>
-    <span class="kw">pub</span> <span class="ident">api_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">APISettings</span>,
-    <span class="doccomment">/// stop channel</span>
-    <span class="kw">pub</span> <span class="ident">stop_node_channel</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
+<span class="doccomment">/// Private API content
+</span><span class="kw">pub struct </span>Private {
+    <span class="doccomment">/// link to the consensus component
+    </span><span class="kw">pub </span>consensus_command_sender: ConsensusCommandSender,
+    <span class="doccomment">/// link to the network component
+    </span><span class="kw">pub </span>network_command_sender: NetworkCommandSender,
+    <span class="doccomment">/// link to the execution component
+    </span><span class="kw">pub </span>execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
+    <span class="doccomment">/// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
+    </span><span class="kw">pub </span>consensus_config: ConsensusConfig,
+    <span class="doccomment">/// API settings
+    </span><span class="kw">pub </span>api_settings: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>APISettings,
+    <span class="doccomment">/// stop channel
+    </span><span class="kw">pub </span>stop_node_channel: mpsc::Sender&lt;()&gt;,
 }
 
-<span class="doccomment">/// The API wrapper</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">API</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">T</span>);
+<span class="doccomment">/// The API wrapper
+</span><span class="kw">pub struct </span>API&lt;T&gt;(T);
 
-<span class="doccomment">/// Used to manage the API</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">RpcServer</span>: <span class="ident">Endpoints</span> {
-    <span class="doccomment">/// Start the API</span>
-    <span class="kw">fn</span> <span class="ident">serve</span>(<span class="self">self</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">SocketAddr</span>) -&gt; <span class="ident">StopHandle</span>;
+<span class="doccomment">/// Used to manage the API
+</span><span class="kw">pub trait </span>RpcServer: Endpoints {
+    <span class="doccomment">/// Start the API
+    </span><span class="kw">fn </span>serve(<span class="self">self</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span>SocketAddr) -&gt; StopHandle;
 }
 
-<span class="kw">fn</span> <span class="ident">serve</span>(<span class="ident">api</span>: <span class="kw">impl</span> <span class="ident">Endpoints</span>, <span class="ident">url</span>: <span class="kw-2">&amp;</span><span class="ident">SocketAddr</span>) -&gt; <span class="ident">StopHandle</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">io</span> <span class="op">=</span> <span class="ident">IoHandler::new</span>();
-    <span class="ident">io</span>.<span class="ident">extend_with</span>(<span class="ident">api</span>.<span class="ident">to_delegate</span>());
+<span class="kw">fn </span>serve(api: <span class="kw">impl </span>Endpoints, url: <span class="kw-2">&amp;</span>SocketAddr) -&gt; StopHandle {
+    <span class="kw">let </span><span class="kw-2">mut </span>io = IoHandler::new();
+    io.extend_with(api.to_delegate());
 
-    <span class="kw">let</span> <span class="ident">server</span> <span class="op">=</span> <span class="ident">ServerBuilder::new</span>(<span class="ident">io</span>)
-        .<span class="ident">event_loop_executor</span>(<span class="ident">tokio::runtime::Handle::current</span>())
-        .<span class="ident">max_request_body_size</span>(<span class="number">50</span> <span class="op">*</span> <span class="number">1024</span> <span class="op">*</span> <span class="number">1024</span>)
-        .<span class="ident">start_http</span>(<span class="ident">url</span>)
-        .<span class="ident">expect</span>(<span class="string">&quot;Unable to start RPC server&quot;</span>);
+    <span class="kw">let </span>server = ServerBuilder::new(io)
+        .event_loop_executor(tokio::runtime::Handle::current())
+        .max_request_body_size(<span class="number">50 </span>* <span class="number">1024 </span>* <span class="number">1024</span>)
+        .start_http(url)
+        .expect(<span class="string">&quot;Unable to start RPC server&quot;</span>);
 
-    <span class="kw">let</span> <span class="ident">close_handle</span> <span class="op">=</span> <span class="ident">server</span>.<span class="ident">close_handle</span>();
-    <span class="kw">let</span> <span class="ident">join_handle</span> <span class="op">=</span> <span class="ident">thread::spawn</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">server</span>.<span class="ident">wait</span>());
+    <span class="kw">let </span>close_handle = server.close_handle();
+    <span class="kw">let </span>join_handle = thread::spawn(|| server.wait());
 
-    <span class="ident">StopHandle</span> {
-        <span class="ident">close_handle</span>,
-        <span class="ident">join_handle</span>,
+    StopHandle {
+        close_handle,
+        join_handle,
     }
 }
 
-<span class="doccomment">/// Used to be able to stop the API</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StopHandle</span> {
-    <span class="ident">close_handle</span>: <span class="ident">CloseHandle</span>,
-    <span class="ident">join_handle</span>: <span class="ident">JoinHandle</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
+<span class="doccomment">/// Used to be able to stop the API
+</span><span class="kw">pub struct </span>StopHandle {
+    close_handle: CloseHandle,
+    join_handle: JoinHandle&lt;()&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">StopHandle</span> {
-    <span class="doccomment">/// stop the API gracefully</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">stop</span>(<span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">close_handle</span>.<span class="ident">close</span>();
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">join_handle</span>.<span class="ident">join</span>() {
-            <span class="macro">warn!</span>(<span class="string">&quot;API thread panicked: {:?}&quot;</span>, <span class="ident">err</span>);
-        } <span class="kw">else</span> {
+<span class="kw">impl </span>StopHandle {
+    <span class="doccomment">/// stop the API gracefully
+    </span><span class="kw">pub fn </span>stop(<span class="self">self</span>) {
+        <span class="self">self</span>.close_handle.close();
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.join_handle.join() {
+            <span class="macro">warn!</span>(<span class="string">&quot;API thread panicked: {:?}&quot;</span>, err);
+        } <span class="kw">else </span>{
             <span class="macro">info!</span>(<span class="string">&quot;API finished cleanly&quot;</span>);
         }
     }
 }
 
-<span class="doccomment">/// Exposed API endpoints</span>
-<span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">server</span>)]</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Endpoints</span> {
-    <span class="doccomment">/// Gracefully stop the node.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;stop_node&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">stop_node</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+<span class="doccomment">/// Exposed API endpoints
+</span><span class="attribute">#[rpc(server)]
+</span><span class="kw">pub trait </span>Endpoints {
+    <span class="doccomment">/// Gracefully stop the node.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;stop_node&quot;</span>)]
+    </span><span class="kw">fn </span>stop_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;(), ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Sign message with node&#39;s key.</span>
-    <span class="doccomment">/// Returns the public key that signed the message and the signature.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;node_sign_message&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">node_sign_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PubkeySig</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Sign message with node&#39;s key.
+    /// Returns the public key that signed the message and the signature.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;node_sign_message&quot;</span>)]
+    </span><span class="kw">fn </span>node_sign_message(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;u8&gt;) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;PubkeySig, ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Add a vector of new keys for the node to use to stake.</span>
-    <span class="doccomment">/// No confirmation to expect.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;add_staking_secret_keys&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">add_staking_secret_keys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">KeyPair</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Add a vector of new keys for the node to use to stake.
+    /// No confirmation to expect.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;add_staking_secret_keys&quot;</span>)]
+    </span><span class="kw">fn </span>add_staking_secret_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;KeyPair&gt;) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;(), ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Execute bytecode in read-only mode.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;execute_read_only_bytecode&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">execute_read_only_bytecode</span>(
+    <span class="doccomment">/// Execute bytecode in read-only mode.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;execute_read_only_bytecode&quot;</span>)]
+    </span><span class="kw">fn </span>execute_read_only_bytecode(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ReadOnlyBytecodeExecution</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExecuteReadOnlyResponse</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+        <span class="kw">_</span>: Vec&lt;ReadOnlyBytecodeExecution&gt;,
+    ) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;ExecuteReadOnlyResponse&gt;, ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Execute an SC function in read-only mode.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;execute_read_only_call&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">execute_read_only_call</span>(
+    <span class="doccomment">/// Execute an SC function in read-only mode.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;execute_read_only_call&quot;</span>)]
+    </span><span class="kw">fn </span>execute_read_only_call(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ReadOnlyCall</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExecuteReadOnlyResponse</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+        <span class="kw">_</span>: Vec&lt;ReadOnlyCall&gt;,
+    ) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;ExecuteReadOnlyResponse&gt;, ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Remove a vector of addresses used to stake.</span>
-    <span class="doccomment">/// No confirmation to expect.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;remove_staking_addresses&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">remove_staking_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Remove a vector of addresses used to stake.
+    /// No confirmation to expect.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;remove_staking_addresses&quot;</span>)]
+    </span><span class="kw">fn </span>remove_staking_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;Address&gt;) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;(), ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Return hash set of staking addresses.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_staking_addresses&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">get_staking_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Return hash set of staking addresses.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;get_staking_addresses&quot;</span>)]
+    </span><span class="kw">fn </span>get_staking_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Set&lt;Address&gt;, ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Bans given IP address(es).</span>
-    <span class="doccomment">/// No confirmation to expect.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;node_ban_by_ip&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">node_ban_by_ip</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Bans given IP address(es).
+    /// No confirmation to expect.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;node_ban_by_ip&quot;</span>)]
+    </span><span class="kw">fn </span>node_ban_by_ip(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;(), ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Bans given node id.</span>
-    <span class="doccomment">/// No confirmation to expect.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;node_ban_by_id&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">node_ban_by_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Bans given node id.
+    /// No confirmation to expect.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;node_ban_by_id&quot;</span>)]
+    </span><span class="kw">fn </span>node_ban_by_id(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;NodeId&gt;) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;(), ApiError&gt;&gt;;
 
-    <span class="doccomment">/// whitelist given IP address.</span>
-    <span class="doccomment">/// No confirmation to expect.</span>
-    <span class="doccomment">/// Note: If the ip was unknown it adds it to the known peers, otherwise it updates the peer type</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;node_whitelist&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">node_whitelist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// whitelist given IP address.
+    /// No confirmation to expect.
+    /// Note: If the ip was unknown it adds it to the known peers, otherwise it updates the peer type
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;node_whitelist&quot;</span>)]
+    </span><span class="kw">fn </span>node_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;(), ApiError&gt;&gt;;
 
-    <span class="doccomment">/// remove from whitelist given IP address.</span>
-    <span class="doccomment">/// keep it as standard</span>
-    <span class="doccomment">/// No confirmation to expect.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;node_remove_from_whitelist&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">node_remove_from_whitelist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// remove from whitelist given IP address.
+    /// keep it as standard
+    /// No confirmation to expect.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;node_remove_from_whitelist&quot;</span>)]
+    </span><span class="kw">fn </span>node_remove_from_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;(), ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Unbans given IP address(es).</span>
-    <span class="doccomment">/// No confirmation to expect.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;node_unban_by_ip&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">node_unban_by_ip</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Unbans given IP address(es).
+    /// No confirmation to expect.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;node_unban_by_ip&quot;</span>)]
+    </span><span class="kw">fn </span>node_unban_by_ip(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;(), ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Unbans given node id.</span>
-    <span class="doccomment">/// No confirmation to expect.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;node_unban_by_id&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">node_unban_by_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Unbans given node id.
+    /// No confirmation to expect.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;node_unban_by_id&quot;</span>)]
+    </span><span class="kw">fn </span>node_unban_by_id(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;NodeId&gt;) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;(), ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_status&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">get_status</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NodeStatus</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;get_status&quot;</span>)]
+    </span><span class="kw">fn </span>get_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;NodeStatus, ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Get cliques.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_cliques&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">get_cliques</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Clique</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Get cliques.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;get_cliques&quot;</span>)]
+    </span><span class="kw">fn </span>get_cliques(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;Clique&gt;, ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Returns the active stakers and their active roll counts for the current cycle.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_stakers&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">get_stakers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Address</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Returns the active stakers and their active roll counts for the current cycle.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;get_stakers&quot;</span>)]
+    </span><span class="kw">fn </span>get_stakers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;(Address, u64)&gt;, ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Returns operations information associated to a given list of operations&#39; IDs.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_operations&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">get_operations</span>(
+    <span class="doccomment">/// Returns operations information associated to a given list of operations&#39; IDs.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;get_operations&quot;</span>)]
+    </span><span class="kw">fn </span>get_operations(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationInfo</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+        <span class="kw">_</span>: Vec&lt;OperationId&gt;,
+    ) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;OperationInfo&gt;, ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Get endorsements (not yet implemented).</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_endorsements&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">get_endorsements</span>(
+    <span class="doccomment">/// Get endorsements (not yet implemented).
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;get_endorsements&quot;</span>)]
+    </span><span class="kw">fn </span>get_endorsements(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementInfo</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+        <span class="kw">_</span>: Vec&lt;EndorsementId&gt;,
+    ) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;EndorsementInfo&gt;, ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Get information on a block given its hash.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_block&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">get_block</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">BlockId</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BlockInfo</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Get information on a block given its hash.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;get_block&quot;</span>)]
+    </span><span class="kw">fn </span>get_block(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: BlockId) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;BlockInfo, ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Get the block graph within the specified time interval.</span>
-    <span class="doccomment">/// Optional parameters: from `&lt;time_start&gt;` (included) and to `&lt;time_end&gt;` (excluded) millisecond timestamp</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_graph_interval&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">get_graph_interval</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">TimeInterval</span>)
-        -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockSummary</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Get the block graph within the specified time interval.
+    /// Optional parameters: from `&lt;time_start&gt;` (included) and to `&lt;time_end&gt;` (excluded) millisecond timestamp
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;get_graph_interval&quot;</span>)]
+    </span><span class="kw">fn </span>get_graph_interval(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: TimeInterval)
+        -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;BlockSummary&gt;, ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Get multiple datastore entries.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_datastore_entries&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">get_datastore_entries</span>(
+    <span class="doccomment">/// Get multiple datastore entries.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;get_datastore_entries&quot;</span>)]
+    </span><span class="kw">fn </span>get_datastore_entries(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DatastoreEntryInput</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DatastoreEntryOutput</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+        <span class="kw">_</span>: Vec&lt;DatastoreEntryInput&gt;,
+    ) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;DatastoreEntryOutput&gt;, ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Get addresses.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_addresses&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">get_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AddressInfo</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Get addresses.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;get_addresses&quot;</span>)]
+    </span><span class="kw">fn </span>get_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;Address&gt;) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;AddressInfo&gt;, ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Adds operations to pool. Returns operations that were ok and sent to pool.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;send_operations&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">send_operations</span>(
+    <span class="doccomment">/// Adds operations to pool. Returns operations that were ok and sent to pool.
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;send_operations&quot;</span>)]
+    </span><span class="kw">fn </span>send_operations(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationInput</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+        <span class="kw">_</span>: Vec&lt;OperationInput&gt;,
+    ) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;OperationId&gt;, ApiError&gt;&gt;;
 
-    <span class="doccomment">/// Get events optionally filtered by:</span>
-    <span class="doccomment">/// * start slot</span>
-    <span class="doccomment">/// * end slot</span>
-    <span class="doccomment">/// * emitter address</span>
-    <span class="doccomment">/// * original caller address</span>
-    <span class="doccomment">/// * operation id</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_filtered_sc_output_event&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">get_filtered_sc_output_event</span>(
+    <span class="doccomment">/// Get events optionally filtered by:
+    /// * start slot
+    /// * end slot
+    /// * emitter address
+    /// * original caller address
+    /// * operation id
+    </span><span class="attribute">#[rpc(name = <span class="string">&quot;get_filtered_sc_output_event&quot;</span>)]
+    </span><span class="kw">fn </span>get_filtered_sc_output_event(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw">_</span>: <span class="ident">EventFilter</span>,
-    ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+        <span class="kw">_</span>: EventFilter,
+    ) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;SCOutputEvent&gt;, ApiError&gt;&gt;;
 }
 
-<span class="kw">fn</span> <span class="ident">wrong_api</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>() -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">closure</span> <span class="op">=</span> <span class="kw">async</span> <span class="kw">move</span> <span class="op">|</span><span class="op">|</span> <span class="prelude-val">Err</span>(<span class="ident">WrongAPI</span>);
-    <span class="ident">Box::pin</span>(<span class="ident">closure</span>())
+<span class="kw">fn </span>wrong_api&lt;T&gt;() -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;T, ApiError&gt;&gt; {
+    <span class="kw">let </span>closure = <span class="kw">async move </span>|| <span class="prelude-val">Err</span>(WrongAPI);
+    Box::pin(closure())
 }
 
-<span class="kw">fn</span> <span class="ident">_jsonrpc_assert</span>(<span class="ident">_method</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">_request</span>: <span class="ident">Value</span>, <span class="ident">_response</span>: <span class="ident">Value</span>) {
-    <span class="comment">// TODO: jsonrpc_client_transports::RawClient::call_method ... see #1182</span>
-}
+<span class="kw">fn </span>_jsonrpc_assert(_method: <span class="kw-2">&amp;</span>str, _request: Value, _response: Value) {
+    <span class="comment">// TODO: jsonrpc_client_transports::RawClient::call_method ... see #1182
+</span>}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

@@ -176,183 +176,183 @@
 <span id="176">176</span>
 <span id="177">177</span>
 <span id="178">178</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">settings::PoolConfig</span>, <span class="ident">PoolError</span>};
-<span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
-<span class="kw">use</span> <span class="ident">massa_models::wrapped::Wrapped</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementId</span>, <span class="ident">Slot</span>, <span class="ident">WrappedEndorsement</span>};
+</span><span class="kw">use crate</span>::{settings::PoolConfig, PoolError};
+<span class="kw">use </span>massa_models::prehash::{Map, Set};
+<span class="kw">use </span>massa_models::wrapped::Wrapped;
+<span class="kw">use </span>massa_models::{Address, BlockId, Endorsement, EndorsementId, Slot, WrappedEndorsement};
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EndorsementPool</span> {
-    <span class="ident">endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>,
-    <span class="ident">latest_final_periods</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
-    <span class="ident">current_slot</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
-    <span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">PoolConfig</span>,
+<span class="kw">pub struct </span>EndorsementPool {
+    endorsements: Map&lt;EndorsementId, WrappedEndorsement&gt;,
+    latest_final_periods: Vec&lt;u64&gt;,
+    current_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
+    cfg: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>PoolConfig,
 }
 
-<span class="kw">impl</span> <span class="ident">EndorsementPool</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">PoolConfig</span>) -&gt; <span class="ident">EndorsementPool</span> {
-        <span class="ident">EndorsementPool</span> {
-            <span class="ident">endorsements</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">cfg</span>,
-            <span class="ident">current_slot</span>: <span class="prelude-val">None</span>,
-            <span class="ident">latest_final_periods</span>: <span class="macro">vec!</span>[<span class="number">0</span>; <span class="ident">cfg</span>.<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">usize</span>],
+<span class="kw">impl </span>EndorsementPool {
+    <span class="kw">pub fn </span>new(cfg: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>PoolConfig) -&gt; EndorsementPool {
+        EndorsementPool {
+            endorsements: Default::default(),
+            cfg,
+            current_slot: <span class="prelude-val">None</span>,
+            latest_final_periods: <span class="macro">vec!</span>[<span class="number">0</span>; cfg.thread_count <span class="kw">as </span>usize],
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">endorsements</span>.<span class="ident">len</span>()
+    <span class="kw">pub fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.endorsements.len()
     }
 
-    <span class="doccomment">/// Removes endorsements that are too old</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_latest_final_periods</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">periods</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">endorsements</span>.<span class="ident">retain</span>(
-            <span class="op">|</span><span class="kw">_</span>,
-             <span class="ident">Wrapped</span> {
-                 <span class="ident">content</span>: <span class="ident">Endorsement</span> { <span class="ident">slot</span>, .. },
+    <span class="doccomment">/// Removes endorsements that are too old
+    </span><span class="kw">pub fn </span>update_latest_final_periods(<span class="kw-2">&amp;mut </span><span class="self">self</span>, periods: Vec&lt;u64&gt;) {
+        <span class="self">self</span>.endorsements.retain(
+            |<span class="kw">_</span>,
+             Wrapped {
+                 content: Endorsement { slot, .. },
                  ..
-             }<span class="op">|</span> <span class="ident">slot</span>.<span class="ident">period</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">periods</span>[<span class="ident">slot</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>],
+             }| slot.period &gt;= periods[slot.thread <span class="kw">as </span>usize],
         );
-        <span class="self">self</span>.<span class="ident">latest_final_periods</span> <span class="op">=</span> <span class="ident">periods</span>;
+        <span class="self">self</span>.latest_final_periods = periods;
     }
 
-    <span class="doccomment">/// gets ok endorsements for a given slot, with given endorsed block and endorsement creators at index</span>
-    <span class="doccomment">/// returns sorted and deduped endorsements</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_endorsements</span>(
+    <span class="doccomment">/// gets ok endorsements for a given slot, with given endorsed block and endorsement creators at index
+    /// returns sorted and deduped endorsements
+    </span><span class="kw">pub fn </span>get_endorsements(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">target_slot</span>: <span class="ident">Slot</span>,
-        <span class="ident">parent</span>: <span class="ident">BlockId</span>,
-        <span class="ident">creators</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">endorsements</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">_endo_id</span>, <span class="ident">endorsement</span>)<span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">creator</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">endorsement</span>.<span class="ident">creator_address</span>;
-                <span class="kw">if</span> <span class="ident">endorsement</span>.<span class="ident">content</span>.<span class="ident">endorsed_block</span> <span class="op">==</span> <span class="ident">parent</span>
-                    <span class="op">&amp;&amp;</span> <span class="ident">endorsement</span>.<span class="ident">content</span>.<span class="ident">slot</span> <span class="op">==</span> <span class="ident">target_slot</span>
-                    <span class="op">&amp;&amp;</span> <span class="ident">creators</span>.<span class="ident">get</span>(<span class="ident">endorsement</span>.<span class="ident">content</span>.<span class="ident">index</span> <span class="kw">as</span> <span class="ident">usize</span>) <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="ident">creator</span>)
+        target_slot: Slot,
+        parent: BlockId,
+        creators: Vec&lt;Address&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;WrappedEndorsement&gt;, PoolError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>candidates = <span class="self">self
+            </span>.endorsements
+            .iter()
+            .filter_map(|(_endo_id, endorsement)| {
+                <span class="kw">let </span>creator = <span class="kw-2">&amp;</span>endorsement.creator_address;
+                <span class="kw">if </span>endorsement.content.endorsed_block == parent
+                    &amp;&amp; endorsement.content.slot == target_slot
+                    &amp;&amp; creators.get(endorsement.content.index <span class="kw">as </span>usize) == <span class="prelude-val">Some</span>(creator)
                 {
-                    <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(<span class="ident">endorsement</span>.<span class="ident">clone</span>()))
-                } <span class="kw">else</span> {
-                    <span class="prelude-val">None</span>
-                }
+                    <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(endorsement.clone()))
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>}
             })
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span><span class="op">&gt;</span>()<span class="question-mark">?</span>;
-        <span class="ident">candidates</span>.<span class="ident">sort_unstable_by_key</span>(<span class="op">|</span><span class="ident">endo</span><span class="op">|</span> <span class="ident">endo</span>.<span class="ident">content</span>.<span class="ident">index</span>);
-        <span class="ident">candidates</span>.<span class="ident">dedup_by_key</span>(<span class="op">|</span><span class="ident">endo</span><span class="op">|</span> <span class="ident">endo</span>.<span class="ident">content</span>.<span class="ident">index</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">candidates</span>)
+            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;WrappedEndorsement&gt;, PoolError&gt;&gt;()<span class="question-mark">?</span>;
+        candidates.sort_unstable_by_key(|endo| endo.content.index);
+        candidates.dedup_by_key(|endo| endo.content.index);
+        <span class="prelude-val">Ok</span>(candidates)
     }
 
-    <span class="doccomment">/// Incoming endorsements. Returns newly added.</span>
-    <span class="doccomment">/// Prunes the pool if there are too many endorsements</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_endorsements</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">newly_added</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="ident">::default</span>();
-        <span class="kw">for</span> (<span class="ident">endorsement_id</span>, <span class="ident">endorsement</span>) <span class="kw">in</span> <span class="ident">endorsements</span>.<span class="ident">into_iter</span>() {
+    <span class="doccomment">/// Incoming endorsements. Returns newly added.
+    /// Prunes the pool if there are too many endorsements
+    </span><span class="kw">pub fn </span>add_endorsements(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        endorsements: Map&lt;EndorsementId, WrappedEndorsement&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Set&lt;EndorsementId&gt;, PoolError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>newly_added = Set::&lt;EndorsementId&gt;::default();
+        <span class="kw">for </span>(endorsement_id, endorsement) <span class="kw">in </span>endorsements.into_iter() {
             <span class="macro">massa_trace!</span>(<span class="string">&quot;pool add_endorsements endorsement&quot;</span>, {
-                <span class="string">&quot;endorsement&quot;</span>: <span class="ident">endorsement</span>
+                <span class="string">&quot;endorsement&quot;</span>: endorsement
             });
 
-            <span class="comment">// Already present</span>
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">endorsements</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">endorsement_id</span>) {
+            <span class="comment">// Already present
+            </span><span class="kw">if </span><span class="self">self</span>.endorsements.contains_key(<span class="kw-2">&amp;</span>endorsement_id) {
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;pool add_endorsement endorsement already present&quot;</span>, {});
                 <span class="kw">continue</span>;
             }
 
-            <span class="comment">// too old</span>
-            <span class="kw">if</span> <span class="ident">endorsement</span>.<span class="ident">content</span>.<span class="ident">slot</span>.<span class="ident">period</span>
-                <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">latest_final_periods</span>[<span class="ident">endorsement</span>.<span class="ident">content</span>.<span class="ident">slot</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>]
+            <span class="comment">// too old
+            </span><span class="kw">if </span>endorsement.content.slot.period
+                &lt; <span class="self">self</span>.latest_final_periods[endorsement.content.slot.thread <span class="kw">as </span>usize]
             {
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;pool add_endorsement endorsement too old&quot;</span>, {});
                 <span class="kw">continue</span>;
             }
 
-            <span class="self">self</span>.<span class="ident">endorsements</span>.<span class="ident">insert</span>(<span class="ident">endorsement_id</span>, <span class="ident">endorsement</span>);
-            <span class="ident">newly_added</span>.<span class="ident">insert</span>(<span class="ident">endorsement_id</span>);
+            <span class="self">self</span>.endorsements.insert(endorsement_id, endorsement);
+            newly_added.insert(endorsement_id);
         }
 
-        <span class="comment">// remove excess endorsements</span>
-        <span class="kw">let</span> <span class="ident">removed</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">prune</span>();
-        <span class="kw">for</span> <span class="ident">id</span> <span class="kw">in</span> <span class="ident">removed</span>.<span class="ident">into_iter</span>() {
-            <span class="ident">newly_added</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>);
+        <span class="comment">// remove excess endorsements
+        </span><span class="kw">let </span>removed = <span class="self">self</span>.prune();
+        <span class="kw">for </span>id <span class="kw">in </span>removed.into_iter() {
+            newly_added.remove(<span class="kw-2">&amp;</span>id);
         }
 
-        <span class="prelude-val">Ok</span>(<span class="ident">newly_added</span>)
+        <span class="prelude-val">Ok</span>(newly_added)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_current_slot</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>) {
-        <span class="self">self</span>.<span class="ident">current_slot</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">slot</span>);
+    <span class="kw">pub fn </span>update_current_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot) {
+        <span class="self">self</span>.current_slot = <span class="prelude-val">Some</span>(slot);
     }
 
-    <span class="doccomment">/// Prune the pool while there are more endorsements than set max</span>
-    <span class="doccomment">/// Kept endorsements are the one that are absolutely closer to the current slot</span>
-    <span class="kw">fn</span> <span class="ident">prune</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">removed</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="ident">::default</span>();
+    <span class="doccomment">/// Prune the pool while there are more endorsements than set max
+    /// Kept endorsements are the one that are absolutely closer to the current slot
+    </span><span class="kw">fn </span>prune(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Set&lt;EndorsementId&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>removed = Set::&lt;EndorsementId&gt;::default();
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">endorsements</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">settings</span>.<span class="ident">max_endorsement_count</span> <span class="kw">as</span> <span class="ident">usize</span> {
-            <span class="kw">let</span> <span class="ident">excess</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">endorsements</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">settings</span>.<span class="ident">max_endorsement_count</span> <span class="kw">as</span> <span class="ident">usize</span>;
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">candidates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">endorsements</span>.<span class="ident">clone</span>().<span class="ident">into_iter</span>().<span class="ident">collect</span>();
-            <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">latest_final_periods</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u8</span>;
-            <span class="kw">let</span> <span class="ident">current_slot_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">current_slot</span>.<span class="ident">map_or</span>(<span class="number">0u64</span>, <span class="op">|</span><span class="ident">s</span><span class="op">|</span> {
-                <span class="ident">s</span>.<span class="ident">period</span>
-                    .<span class="ident">saturating_mul</span>(<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">u64</span>)
-                    .<span class="ident">saturating_add</span>(<span class="ident">s</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">u64</span>)
+        <span class="kw">if </span><span class="self">self</span>.endorsements.len() &gt; <span class="self">self</span>.cfg.settings.max_endorsement_count <span class="kw">as </span>usize {
+            <span class="kw">let </span>excess = <span class="self">self</span>.endorsements.len() - <span class="self">self</span>.cfg.settings.max_endorsement_count <span class="kw">as </span>usize;
+            <span class="kw">let </span><span class="kw-2">mut </span>candidates: Vec&lt;<span class="kw">_</span>&gt; = <span class="self">self</span>.endorsements.clone().into_iter().collect();
+            <span class="kw">let </span>thread_count = <span class="self">self</span>.latest_final_periods.len() <span class="kw">as </span>u8;
+            <span class="kw">let </span>current_slot_index = <span class="self">self</span>.current_slot.map_or(<span class="number">0u64</span>, |s| {
+                s.period
+                    .saturating_mul(thread_count <span class="kw">as </span>u64)
+                    .saturating_add(s.thread <span class="kw">as </span>u64)
             });
-            <span class="ident">candidates</span>.<span class="ident">sort_unstable_by_key</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">e</span>)<span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">slot_index</span> <span class="op">=</span> <span class="ident">e</span>
-                    .<span class="ident">content</span>
-                    .<span class="ident">slot</span>
-                    .<span class="ident">period</span>
-                    .<span class="ident">saturating_mul</span>(<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">u64</span>)
-                    .<span class="ident">saturating_add</span>(<span class="ident">e</span>.<span class="ident">content</span>.<span class="ident">slot</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">u64</span>);
-                <span class="kw">let</span> <span class="ident">abs_diff</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">slot_index</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">current_slot_index</span> {
-                    <span class="ident">slot_index</span> <span class="op">-</span> <span class="ident">current_slot_index</span>
-                } <span class="kw">else</span> {
-                    <span class="ident">current_slot_index</span> <span class="op">-</span> <span class="ident">slot_index</span>
+            candidates.sort_unstable_by_key(|(<span class="kw">_</span>, e)| {
+                <span class="kw">let </span>slot_index = e
+                    .content
+                    .slot
+                    .period
+                    .saturating_mul(thread_count <span class="kw">as </span>u64)
+                    .saturating_add(e.content.slot.thread <span class="kw">as </span>u64);
+                <span class="kw">let </span>abs_diff = <span class="kw">if </span>slot_index &gt;= current_slot_index {
+                    slot_index - current_slot_index
+                } <span class="kw">else </span>{
+                    current_slot_index - slot_index
                 };
-                <span class="ident">std::cmp::Reverse</span>(<span class="ident">abs_diff</span>)
+                std::cmp::Reverse(abs_diff)
             });
-            <span class="ident">candidates</span>.<span class="ident">truncate</span>(<span class="ident">excess</span>);
-            <span class="kw">for</span> (<span class="ident">c_id</span>, <span class="kw">_</span>) <span class="kw">in</span> <span class="ident">candidates</span>.<span class="ident">into_iter</span>() {
-                <span class="self">self</span>.<span class="ident">endorsements</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">c_id</span>);
-                <span class="ident">removed</span>.<span class="ident">insert</span>(<span class="ident">c_id</span>);
+            candidates.truncate(excess);
+            <span class="kw">for </span>(c_id, <span class="kw">_</span>) <span class="kw">in </span>candidates.into_iter() {
+                <span class="self">self</span>.endorsements.remove(<span class="kw-2">&amp;</span>c_id);
+                removed.insert(c_id);
             }
         }
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.endorsement_pool.prune&quot;</span>, { <span class="string">&quot;removed&quot;</span>: <span class="ident">removed</span> });
-        <span class="ident">removed</span>
+        <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.endorsement_pool.prune&quot;</span>, { <span class="string">&quot;removed&quot;</span>: removed });
+        removed
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_endorsement_by_address</span>(
+    <span class="kw">pub fn </span>get_endorsement_by_address(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">address</span>: <span class="ident">Address</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Map::default</span>();
-        <span class="kw">for</span> (<span class="ident">id</span>, <span class="ident">ed</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">endorsements</span>.<span class="ident">iter</span>() {
-            <span class="kw">if</span> <span class="ident">ed</span>.<span class="ident">creator_address</span> <span class="op">==</span> <span class="ident">address</span> {
-                <span class="ident">res</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">id</span>, <span class="ident">ed</span>.<span class="ident">clone</span>());
+        address: Address,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Map&lt;EndorsementId, WrappedEndorsement&gt;, PoolError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res = Map::default();
+        <span class="kw">for </span>(id, ed) <span class="kw">in </span><span class="self">self</span>.endorsements.iter() {
+            <span class="kw">if </span>ed.creator_address == address {
+                res.insert(<span class="kw-2">*</span>id, ed.clone());
             }
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+        <span class="prelude-val">Ok</span>(res)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_endorsement_by_id</span>(
+    <span class="kw">pub fn </span>get_endorsement_by_id(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">endorsements</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">WrappedEndorsement</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">endorsements</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">id</span>, <span class="ident">ed</span>)<span class="op">|</span> {
-                <span class="kw">if</span> <span class="ident">endorsements</span>.<span class="ident">contains</span>(<span class="ident">id</span>) {
-                    <span class="prelude-val">Some</span>((<span class="kw-2">*</span><span class="ident">id</span>, <span class="ident">ed</span>.<span class="ident">clone</span>()))
-                } <span class="kw">else</span> {
-                    <span class="prelude-val">None</span>
-                }
+        endorsements: Set&lt;EndorsementId&gt;,
+    ) -&gt; Map&lt;EndorsementId, WrappedEndorsement&gt; {
+        <span class="self">self</span>.endorsements
+            .iter()
+            .filter_map(|(id, ed)| {
+                <span class="kw">if </span>endorsements.contains(id) {
+                    <span class="prelude-val">Some</span>((<span class="kw-2">*</span>id, ed.clone()))
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>}
             })
-            .<span class="ident">collect</span>()
+            .collect()
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

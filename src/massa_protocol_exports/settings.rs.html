@@ -36,43 +36,43 @@
 <span id="36">36</span>
 <span id="37">37</span>
 <span id="38">38</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
-<span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
+</span><span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>serde::Deserialize;
 
-<span class="doccomment">/// Protocol Configuration</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProtocolSettings</span> {
-    <span class="doccomment">/// after `ask_block_timeout` milliseconds we try to ask a block to another node</span>
-    <span class="kw">pub</span> <span class="ident">ask_block_timeout</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// max known blocks of current nodes we keep in memory (by node)</span>
-    <span class="kw">pub</span> <span class="ident">max_known_blocks_size</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// max known blocks of foreign nodes we keep in memory (by node)</span>
-    <span class="kw">pub</span> <span class="ident">max_node_known_blocks_size</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// max wanted blocks per node kept in memory</span>
-    <span class="kw">pub</span> <span class="ident">max_node_wanted_blocks_size</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// max known operations current node kept in memory</span>
-    <span class="kw">pub</span> <span class="ident">max_known_ops_size</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// max known operations of foreign nodes we keep in memory (by node)</span>
-    <span class="kw">pub</span> <span class="ident">max_node_known_ops_size</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// max known endorsements by our node that we kept in memory</span>
-    <span class="kw">pub</span> <span class="ident">max_known_endorsements_size</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// max known endorsements of foreign nodes we keep in memory (by node)</span>
-    <span class="kw">pub</span> <span class="ident">max_node_known_endorsements_size</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// we ask for the same block `max_simultaneous_ask_blocks_per_node` times at the same time</span>
-    <span class="kw">pub</span> <span class="ident">max_simultaneous_ask_blocks_per_node</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Max wait time for sending a Network or Node event.</span>
-    <span class="kw">pub</span> <span class="ident">max_send_wait</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// Maximum number of batches in the memory buffer.</span>
-    <span class="doccomment">/// Dismiss the new batches if overflow</span>
-    <span class="kw">pub</span> <span class="ident">operation_batch_buffer_capacity</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Start processing batches in the buffer each `operation_batch_proc_period` in millisecond</span>
-    <span class="kw">pub</span> <span class="ident">operation_batch_proc_period</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// All operations asked are prune each `operation_asked_pruning_period` millisecond</span>
-    <span class="kw">pub</span> <span class="ident">asked_operations_pruning_period</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// Maximum of operations sent in one message.</span>
-    <span class="kw">pub</span> <span class="ident">max_operations_per_message</span>: <span class="ident">u64</span>,
+<span class="doccomment">/// Protocol Configuration
+</span><span class="attribute">#[derive(Debug, Deserialize, Clone, Copy)]
+</span><span class="kw">pub struct </span>ProtocolSettings {
+    <span class="doccomment">/// after `ask_block_timeout` milliseconds we try to ask a block to another node
+    </span><span class="kw">pub </span>ask_block_timeout: MassaTime,
+    <span class="doccomment">/// max known blocks of current nodes we keep in memory (by node)
+    </span><span class="kw">pub </span>max_known_blocks_size: usize,
+    <span class="doccomment">/// max known blocks of foreign nodes we keep in memory (by node)
+    </span><span class="kw">pub </span>max_node_known_blocks_size: usize,
+    <span class="doccomment">/// max wanted blocks per node kept in memory
+    </span><span class="kw">pub </span>max_node_wanted_blocks_size: usize,
+    <span class="doccomment">/// max known operations current node kept in memory
+    </span><span class="kw">pub </span>max_known_ops_size: usize,
+    <span class="doccomment">/// max known operations of foreign nodes we keep in memory (by node)
+    </span><span class="kw">pub </span>max_node_known_ops_size: usize,
+    <span class="doccomment">/// max known endorsements by our node that we kept in memory
+    </span><span class="kw">pub </span>max_known_endorsements_size: usize,
+    <span class="doccomment">/// max known endorsements of foreign nodes we keep in memory (by node)
+    </span><span class="kw">pub </span>max_node_known_endorsements_size: usize,
+    <span class="doccomment">/// we ask for the same block `max_simultaneous_ask_blocks_per_node` times at the same time
+    </span><span class="kw">pub </span>max_simultaneous_ask_blocks_per_node: usize,
+    <span class="doccomment">/// Max wait time for sending a Network or Node event.
+    </span><span class="kw">pub </span>max_send_wait: MassaTime,
+    <span class="doccomment">/// Maximum number of batches in the memory buffer.
+    /// Dismiss the new batches if overflow
+    </span><span class="kw">pub </span>operation_batch_buffer_capacity: usize,
+    <span class="doccomment">/// Start processing batches in the buffer each `operation_batch_proc_period` in millisecond
+    </span><span class="kw">pub </span>operation_batch_proc_period: MassaTime,
+    <span class="doccomment">/// All operations asked are prune each `operation_asked_pruning_period` millisecond
+    </span><span class="kw">pub </span>asked_operations_pruning_period: MassaTime,
+    <span class="doccomment">/// Maximum of operations sent in one message.
+    </span><span class="kw">pub </span>max_operations_per_message: u64,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

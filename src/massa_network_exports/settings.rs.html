@@ -187,194 +187,194 @@
 <span id="187">187</span>
 <span id="188">188</span>
 <span id="189">189</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident">enum_map::EnumMap</span>;
-<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
-<span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
-<span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">SocketAddr</span>};
+</span><span class="kw">use </span>enum_map::EnumMap;
+<span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>serde::Deserialize;
+<span class="kw">use </span>std::net::{IpAddr, SocketAddr};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::peers::PeerType</span>;
+<span class="kw">use </span><span class="kw">crate</span>::peers::PeerType;
 
-<span class="doccomment">/// Network configuration</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NetworkSettings</span> {
-    <span class="doccomment">/// Where to listen for communications.</span>
-    <span class="kw">pub</span> <span class="ident">bind</span>: <span class="ident">SocketAddr</span>,
-    <span class="doccomment">/// Our own IP if it is routable, else None.</span>
-    <span class="kw">pub</span> <span class="ident">routable_ip</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Protocol port</span>
-    <span class="kw">pub</span> <span class="ident">protocol_port</span>: <span class="ident">u16</span>,
-    <span class="doccomment">/// Time interval spent waiting for a response from a peer.</span>
-    <span class="doccomment">/// In milliseconds</span>
-    <span class="kw">pub</span> <span class="ident">connect_timeout</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// `Network_worker` will try to connect to available peers every `wakeup_interval`.</span>
-    <span class="doccomment">/// In milliseconds</span>
-    <span class="kw">pub</span> <span class="ident">wakeup_interval</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// Path to the file containing initial peers.</span>
-    <span class="kw">pub</span> <span class="ident">initial_peers_file</span>: <span class="ident">std::path::PathBuf</span>,
-    <span class="doccomment">/// Path to the file containing known peers.</span>
-    <span class="kw">pub</span> <span class="ident">peers_file</span>: <span class="ident">std::path::PathBuf</span>,
-    <span class="doccomment">/// Path to the file containing our keypair</span>
-    <span class="kw">pub</span> <span class="ident">keypair_file</span>: <span class="ident">std::path::PathBuf</span>,
-    <span class="doccomment">/// Configuration for `PeerType` connections</span>
-    <span class="kw">pub</span> <span class="ident">peer_types_config</span>: <span class="ident">EnumMap</span><span class="op">&lt;</span><span class="ident">PeerType</span>, <span class="ident">PeerTypeConnectionConfig</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Limit on the number of in connections per ip.</span>
-    <span class="kw">pub</span> <span class="ident">max_in_connections_per_ip</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Limit on the number of idle peers we remember.</span>
-    <span class="kw">pub</span> <span class="ident">max_idle_peers</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Limit on the number of banned peers we remember.</span>
-    <span class="kw">pub</span> <span class="ident">max_banned_peers</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Peer database is dumped every `peers_file_dump_interval` in milliseconds</span>
-    <span class="kw">pub</span> <span class="ident">peers_file_dump_interval</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// After `message_timeout` milliseconds we are no longer waiting on handshake message</span>
-    <span class="kw">pub</span> <span class="ident">message_timeout</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// Every `ask_peer_list_interval` in milliseconds we ask every one for its advertisable peers list.</span>
-    <span class="kw">pub</span> <span class="ident">ask_peer_list_interval</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// Max wait time for sending a Network or Node event.</span>
-    <span class="kw">pub</span> <span class="ident">max_send_wait</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// Time after which we forget a node</span>
-    <span class="kw">pub</span> <span class="ident">ban_timeout</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// Timeout Duration when we send a `PeerList` in handshake</span>
-    <span class="kw">pub</span> <span class="ident">peer_list_send_timeout</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// Max number of in connection overflowed managed by the handshake that send a list of peers</span>
-    <span class="kw">pub</span> <span class="ident">max_in_connection_overflow</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Max operations per message in the network to avoid sending to big data packet.</span>
-    <span class="kw">pub</span> <span class="ident">max_operations_per_message</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// Read limitation for a connection in bytes per seconds</span>
-    <span class="kw">pub</span> <span class="ident">max_bytes_read</span>: <span class="ident">f64</span>,
-    <span class="doccomment">/// Write limitation for a connection in bytes per seconds</span>
-    <span class="kw">pub</span> <span class="ident">max_bytes_write</span>: <span class="ident">f64</span>,
+<span class="doccomment">/// Network configuration
+</span><span class="attribute">#[derive(Debug, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>NetworkSettings {
+    <span class="doccomment">/// Where to listen for communications.
+    </span><span class="kw">pub </span>bind: SocketAddr,
+    <span class="doccomment">/// Our own IP if it is routable, else None.
+    </span><span class="kw">pub </span>routable_ip: <span class="prelude-ty">Option</span>&lt;IpAddr&gt;,
+    <span class="doccomment">/// Protocol port
+    </span><span class="kw">pub </span>protocol_port: u16,
+    <span class="doccomment">/// Time interval spent waiting for a response from a peer.
+    /// In milliseconds
+    </span><span class="kw">pub </span>connect_timeout: MassaTime,
+    <span class="doccomment">/// `Network_worker` will try to connect to available peers every `wakeup_interval`.
+    /// In milliseconds
+    </span><span class="kw">pub </span>wakeup_interval: MassaTime,
+    <span class="doccomment">/// Path to the file containing initial peers.
+    </span><span class="kw">pub </span>initial_peers_file: std::path::PathBuf,
+    <span class="doccomment">/// Path to the file containing known peers.
+    </span><span class="kw">pub </span>peers_file: std::path::PathBuf,
+    <span class="doccomment">/// Path to the file containing our keypair
+    </span><span class="kw">pub </span>keypair_file: std::path::PathBuf,
+    <span class="doccomment">/// Configuration for `PeerType` connections
+    </span><span class="kw">pub </span>peer_types_config: EnumMap&lt;PeerType, PeerTypeConnectionConfig&gt;,
+    <span class="doccomment">/// Limit on the number of in connections per ip.
+    </span><span class="kw">pub </span>max_in_connections_per_ip: usize,
+    <span class="doccomment">/// Limit on the number of idle peers we remember.
+    </span><span class="kw">pub </span>max_idle_peers: usize,
+    <span class="doccomment">/// Limit on the number of banned peers we remember.
+    </span><span class="kw">pub </span>max_banned_peers: usize,
+    <span class="doccomment">/// Peer database is dumped every `peers_file_dump_interval` in milliseconds
+    </span><span class="kw">pub </span>peers_file_dump_interval: MassaTime,
+    <span class="doccomment">/// After `message_timeout` milliseconds we are no longer waiting on handshake message
+    </span><span class="kw">pub </span>message_timeout: MassaTime,
+    <span class="doccomment">/// Every `ask_peer_list_interval` in milliseconds we ask every one for its advertisable peers list.
+    </span><span class="kw">pub </span>ask_peer_list_interval: MassaTime,
+    <span class="doccomment">/// Max wait time for sending a Network or Node event.
+    </span><span class="kw">pub </span>max_send_wait: MassaTime,
+    <span class="doccomment">/// Time after which we forget a node
+    </span><span class="kw">pub </span>ban_timeout: MassaTime,
+    <span class="doccomment">/// Timeout Duration when we send a `PeerList` in handshake
+    </span><span class="kw">pub </span>peer_list_send_timeout: MassaTime,
+    <span class="doccomment">/// Max number of in connection overflowed managed by the handshake that send a list of peers
+    </span><span class="kw">pub </span>max_in_connection_overflow: usize,
+    <span class="doccomment">/// Max operations per message in the network to avoid sending to big data packet.
+    </span><span class="kw">pub </span>max_operations_per_message: u32,
+    <span class="doccomment">/// Read limitation for a connection in bytes per seconds
+    </span><span class="kw">pub </span>max_bytes_read: f64,
+    <span class="doccomment">/// Write limitation for a connection in bytes per seconds
+    </span><span class="kw">pub </span>max_bytes_write: f64,
 }
 
-<span class="doccomment">/// Connection configuration for a peer type</span>
-<span class="doccomment">/// Limit the current connections for a given peer type as a whole</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PeerTypeConnectionConfig</span> {
-    <span class="doccomment">/// max number of incoming connection</span>
-    <span class="kw">pub</span> <span class="ident">max_in_connections</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// target number of outgoing connections</span>
-    <span class="kw">pub</span> <span class="ident">target_out_connections</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// max number of on going outgoing connection attempt</span>
-    <span class="kw">pub</span> <span class="ident">max_out_attempts</span>: <span class="ident">usize</span>,
+<span class="doccomment">/// Connection configuration for a peer type
+/// Limit the current connections for a given peer type as a whole
+</span><span class="attribute">#[derive(Debug, Deserialize, Clone, Default)]
+</span><span class="kw">pub struct </span>PeerTypeConnectionConfig {
+    <span class="doccomment">/// max number of incoming connection
+    </span><span class="kw">pub </span>max_in_connections: usize,
+    <span class="doccomment">/// target number of outgoing connections
+    </span><span class="kw">pub </span>target_out_connections: usize,
+    <span class="doccomment">/// max number of on going outgoing connection attempt
+    </span><span class="kw">pub </span>max_out_attempts: usize,
 }
 
-<span class="doccomment">/// setting tests</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::NetworkSettings</span>;
-    <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">test_exports::tools::get_temp_keypair_file</span>, <span class="ident">PeerType</span>};
-    <span class="kw">use</span> <span class="ident">enum_map::enum_map</span>;
-    <span class="kw">use</span> <span class="ident">massa_models::constants</span>::{<span class="ident">BASE_NETWORK_CONTROLLER_IP</span>, <span class="ident">MAX_OPERATIONS_PER_MESSAGE</span>};
-    <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
-    <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">Ipv4Addr</span>, <span class="ident">SocketAddr</span>};
+<span class="doccomment">/// setting tests
+</span><span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+</span><span class="kw">pub mod </span>tests {
+    <span class="kw">use </span><span class="kw">crate</span>::NetworkSettings;
+    <span class="kw">use crate</span>::{test_exports::tools::get_temp_keypair_file, PeerType};
+    <span class="kw">use </span>enum_map::enum_map;
+    <span class="kw">use </span>massa_models::constants::{BASE_NETWORK_CONTROLLER_IP, MAX_OPERATIONS_PER_MESSAGE};
+    <span class="kw">use </span>massa_time::MassaTime;
+    <span class="kw">use </span>std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-    <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::PeerTypeConnectionConfig</span>;
+    <span class="kw">use </span><span class="kw">super</span>::PeerTypeConnectionConfig;
 
-    <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">NetworkSettings</span> {
-        <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-            <span class="kw">let</span> <span class="ident">peer_types_config</span> <span class="op">=</span> <span class="macro">enum_map!</span> {
-                <span class="ident">PeerType::Bootstrap</span> =&gt; <span class="ident">PeerTypeConnectionConfig</span> {
-                    <span class="ident">target_out_connections</span>: <span class="number">1</span>,
-                    <span class="ident">max_out_attempts</span>: <span class="number">1</span>,
-                    <span class="ident">max_in_connections</span>: <span class="number">1</span>,
+    <span class="kw">impl </span>Default <span class="kw">for </span>NetworkSettings {
+        <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+            <span class="kw">let </span>peer_types_config = <span class="macro">enum_map! </span>{
+                PeerType::Bootstrap =&gt; PeerTypeConnectionConfig {
+                    target_out_connections: <span class="number">1</span>,
+                    max_out_attempts: <span class="number">1</span>,
+                    max_in_connections: <span class="number">1</span>,
                 },
-                <span class="ident">PeerType::WhiteListed</span> =&gt; <span class="ident">PeerTypeConnectionConfig</span> {
-                    <span class="ident">target_out_connections</span>: <span class="number">2</span>,
-                    <span class="ident">max_out_attempts</span>: <span class="number">2</span>,
-                    <span class="ident">max_in_connections</span>: <span class="number">3</span>,
+                PeerType::WhiteListed =&gt; PeerTypeConnectionConfig {
+                    target_out_connections: <span class="number">2</span>,
+                    max_out_attempts: <span class="number">2</span>,
+                    max_in_connections: <span class="number">3</span>,
                 },
-                <span class="ident">PeerType::Standard</span> =&gt; <span class="ident">PeerTypeConnectionConfig</span> {
-                    <span class="ident">target_out_connections</span>: <span class="number">10</span>,
-                    <span class="ident">max_out_attempts</span>: <span class="number">15</span>,
-                    <span class="ident">max_in_connections</span>: <span class="number">5</span>,
+                PeerType::Standard =&gt; PeerTypeConnectionConfig {
+                    target_out_connections: <span class="number">10</span>,
+                    max_out_attempts: <span class="number">15</span>,
+                    max_in_connections: <span class="number">5</span>,
                 }
             };
-            <span class="ident">NetworkSettings</span> {
-                <span class="ident">bind</span>: <span class="ident">SocketAddr::new</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">Ipv4Addr::new</span>(<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>)), <span class="number">8080</span>),
-                <span class="ident">routable_ip</span>: <span class="prelude-val">Some</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">Ipv4Addr::new</span>(<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>))),
-                <span class="ident">protocol_port</span>: <span class="number">0</span>,
-                <span class="ident">connect_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">180_000</span>),
-                <span class="ident">wakeup_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">10_000</span>),
-                <span class="ident">peers_file</span>: <span class="ident">std::path::PathBuf::new</span>(),
-                <span class="ident">max_in_connections_per_ip</span>: <span class="number">2</span>,
-                <span class="ident">max_idle_peers</span>: <span class="number">3</span>,
-                <span class="ident">max_banned_peers</span>: <span class="number">3</span>,
-                <span class="ident">peers_file_dump_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">10_000</span>),
-                <span class="ident">message_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">5000u64</span>),
-                <span class="ident">ask_peer_list_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">50000u64</span>),
-                <span class="ident">keypair_file</span>: <span class="ident">std::path::PathBuf::new</span>(),
-                <span class="ident">max_send_wait</span>: <span class="ident">MassaTime::from</span>(<span class="number">100</span>),
-                <span class="ident">ban_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">100_000_000</span>),
-                <span class="ident">initial_peers_file</span>: <span class="ident">std::path::PathBuf::new</span>(),
-                <span class="ident">peer_list_send_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">500</span>),
-                <span class="ident">max_in_connection_overflow</span>: <span class="number">2</span>,
-                <span class="ident">peer_types_config</span>,
-                <span class="ident">max_operations_per_message</span>: <span class="ident">MAX_OPERATIONS_PER_MESSAGE</span>,
-                <span class="ident">max_bytes_read</span>: <span class="ident">std::f64::INFINITY</span>,
-                <span class="ident">max_bytes_write</span>: <span class="ident">std::f64::INFINITY</span>,
+            NetworkSettings {
+                bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>)), <span class="number">8080</span>),
+                routable_ip: <span class="prelude-val">Some</span>(IpAddr::V4(Ipv4Addr::new(<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>))),
+                protocol_port: <span class="number">0</span>,
+                connect_timeout: MassaTime::from(<span class="number">180_000</span>),
+                wakeup_interval: MassaTime::from(<span class="number">10_000</span>),
+                peers_file: std::path::PathBuf::new(),
+                max_in_connections_per_ip: <span class="number">2</span>,
+                max_idle_peers: <span class="number">3</span>,
+                max_banned_peers: <span class="number">3</span>,
+                peers_file_dump_interval: MassaTime::from(<span class="number">10_000</span>),
+                message_timeout: MassaTime::from(<span class="number">5000u64</span>),
+                ask_peer_list_interval: MassaTime::from(<span class="number">50000u64</span>),
+                keypair_file: std::path::PathBuf::new(),
+                max_send_wait: MassaTime::from(<span class="number">100</span>),
+                ban_timeout: MassaTime::from(<span class="number">100_000_000</span>),
+                initial_peers_file: std::path::PathBuf::new(),
+                peer_list_send_timeout: MassaTime::from(<span class="number">500</span>),
+                max_in_connection_overflow: <span class="number">2</span>,
+                peer_types_config,
+                max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
+                max_bytes_read: std::f64::INFINITY,
+                max_bytes_write: std::f64::INFINITY,
             }
         }
     }
 
-    <span class="kw">impl</span> <span class="ident">NetworkSettings</span> {
-        <span class="doccomment">/// default network settings from port and peer file path</span>
-        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">scenarios_default</span>(<span class="ident">port</span>: <span class="ident">u16</span>, <span class="ident">peers_file</span>: <span class="kw-2">&amp;</span><span class="ident">std::path::Path</span>) -&gt; <span class="self">Self</span> {
-            <span class="comment">// Init the serialization context with a default,</span>
-            <span class="comment">// can be overwritten with a more specific one in the test.</span>
-            <span class="ident">massa_models::init_serialization_context</span>(<span class="ident">massa_models::SerializationContext</span> {
-                <span class="ident">max_advertise_length</span>: <span class="number">128</span>,
-                <span class="ident">max_bootstrap_blocks</span>: <span class="number">100</span>,
-                <span class="ident">max_bootstrap_cliques</span>: <span class="number">100</span>,
-                <span class="ident">max_bootstrap_deps</span>: <span class="number">100</span>,
-                <span class="ident">max_bootstrap_children</span>: <span class="number">100</span>,
-                <span class="ident">max_ask_blocks_per_message</span>: <span class="number">10</span>,
-                <span class="ident">endorsement_count</span>: <span class="number">8</span>,
-                ..<span class="ident">massa_models::SerializationContext::default</span>()
+    <span class="kw">impl </span>NetworkSettings {
+        <span class="doccomment">/// default network settings from port and peer file path
+        </span><span class="kw">pub fn </span>scenarios_default(port: u16, peers_file: <span class="kw-2">&amp;</span>std::path::Path) -&gt; <span class="self">Self </span>{
+            <span class="comment">// Init the serialization context with a default,
+            // can be overwritten with a more specific one in the test.
+            </span>massa_models::init_serialization_context(massa_models::SerializationContext {
+                max_advertise_length: <span class="number">128</span>,
+                max_bootstrap_blocks: <span class="number">100</span>,
+                max_bootstrap_cliques: <span class="number">100</span>,
+                max_bootstrap_deps: <span class="number">100</span>,
+                max_bootstrap_children: <span class="number">100</span>,
+                max_ask_blocks_per_message: <span class="number">10</span>,
+                endorsement_count: <span class="number">8</span>,
+                ..massa_models::SerializationContext::default()
             });
-            <span class="kw">let</span> <span class="ident">peer_types_config</span> <span class="op">=</span> <span class="macro">enum_map!</span> {
-                <span class="ident">PeerType::Bootstrap</span> =&gt; <span class="ident">PeerTypeConnectionConfig</span> {
-                    <span class="ident">target_out_connections</span>: <span class="number">1</span>,
-                    <span class="ident">max_out_attempts</span>: <span class="number">1</span>,
-                    <span class="ident">max_in_connections</span>: <span class="number">1</span>,
+            <span class="kw">let </span>peer_types_config = <span class="macro">enum_map! </span>{
+                PeerType::Bootstrap =&gt; PeerTypeConnectionConfig {
+                    target_out_connections: <span class="number">1</span>,
+                    max_out_attempts: <span class="number">1</span>,
+                    max_in_connections: <span class="number">1</span>,
                 },
-                <span class="ident">PeerType::WhiteListed</span> =&gt; <span class="ident">PeerTypeConnectionConfig</span> {
-                    <span class="ident">target_out_connections</span>: <span class="number">2</span>,
-                    <span class="ident">max_out_attempts</span>: <span class="number">2</span>,
-                    <span class="ident">max_in_connections</span>: <span class="number">3</span>,
+                PeerType::WhiteListed =&gt; PeerTypeConnectionConfig {
+                    target_out_connections: <span class="number">2</span>,
+                    max_out_attempts: <span class="number">2</span>,
+                    max_in_connections: <span class="number">3</span>,
                 },
-                <span class="ident">PeerType::Standard</span> =&gt; <span class="ident">PeerTypeConnectionConfig</span> {
-                    <span class="ident">target_out_connections</span>: <span class="number">10</span>,
-                    <span class="ident">max_out_attempts</span>: <span class="number">15</span>,
-                    <span class="ident">max_in_connections</span>: <span class="number">5</span>,
+                PeerType::Standard =&gt; PeerTypeConnectionConfig {
+                    target_out_connections: <span class="number">10</span>,
+                    max_out_attempts: <span class="number">15</span>,
+                    max_in_connections: <span class="number">5</span>,
                 }
             };
-            <span class="self">Self</span> {
-                <span class="ident">bind</span>: <span class="macro">format!</span>(<span class="string">&quot;0.0.0.0:{}&quot;</span>, <span class="ident">port</span>).<span class="ident">parse</span>().<span class="ident">unwrap</span>(),
-                <span class="ident">routable_ip</span>: <span class="prelude-val">Some</span>(<span class="ident">BASE_NETWORK_CONTROLLER_IP</span>),
-                <span class="ident">protocol_port</span>: <span class="ident">port</span>,
-                <span class="ident">connect_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">3000</span>),
-                <span class="ident">peers_file</span>: <span class="ident">peers_file</span>.<span class="ident">to_path_buf</span>(),
-                <span class="ident">wakeup_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">3000</span>),
-                <span class="ident">max_in_connections_per_ip</span>: <span class="number">100</span>,
-                <span class="ident">max_idle_peers</span>: <span class="number">100</span>,
-                <span class="ident">max_banned_peers</span>: <span class="number">100</span>,
-                <span class="ident">peers_file_dump_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">30000</span>),
-                <span class="ident">message_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">5000u64</span>),
-                <span class="ident">ask_peer_list_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">50000u64</span>),
-                <span class="ident">keypair_file</span>: <span class="ident">get_temp_keypair_file</span>().<span class="ident">path</span>().<span class="ident">to_path_buf</span>(),
-                <span class="ident">max_send_wait</span>: <span class="ident">MassaTime::from</span>(<span class="number">100</span>),
-                <span class="ident">ban_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">100_000_000</span>),
-                <span class="ident">initial_peers_file</span>: <span class="ident">peers_file</span>.<span class="ident">to_path_buf</span>(),
-                <span class="ident">peer_list_send_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">50</span>),
-                <span class="ident">max_in_connection_overflow</span>: <span class="number">10</span>,
-                <span class="ident">peer_types_config</span>,
-                <span class="ident">max_operations_per_message</span>: <span class="ident">MAX_OPERATIONS_PER_MESSAGE</span>,
-                <span class="ident">max_bytes_read</span>: <span class="ident">std::f64::INFINITY</span>,
-                <span class="ident">max_bytes_write</span>: <span class="ident">std::f64::INFINITY</span>,
+            <span class="self">Self </span>{
+                bind: <span class="macro">format!</span>(<span class="string">&quot;0.0.0.0:{}&quot;</span>, port).parse().unwrap(),
+                routable_ip: <span class="prelude-val">Some</span>(BASE_NETWORK_CONTROLLER_IP),
+                protocol_port: port,
+                connect_timeout: MassaTime::from(<span class="number">3000</span>),
+                peers_file: peers_file.to_path_buf(),
+                wakeup_interval: MassaTime::from(<span class="number">3000</span>),
+                max_in_connections_per_ip: <span class="number">100</span>,
+                max_idle_peers: <span class="number">100</span>,
+                max_banned_peers: <span class="number">100</span>,
+                peers_file_dump_interval: MassaTime::from(<span class="number">30000</span>),
+                message_timeout: MassaTime::from(<span class="number">5000u64</span>),
+                ask_peer_list_interval: MassaTime::from(<span class="number">50000u64</span>),
+                keypair_file: get_temp_keypair_file().path().to_path_buf(),
+                max_send_wait: MassaTime::from(<span class="number">100</span>),
+                ban_timeout: MassaTime::from(<span class="number">100_000_000</span>),
+                initial_peers_file: peers_file.to_path_buf(),
+                peer_list_send_timeout: MassaTime::from(<span class="number">50</span>),
+                max_in_connection_overflow: <span class="number">10</span>,
+                peer_types_config,
+                max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
+                max_bytes_read: std::f64::INFINITY,
+                max_bytes_write: std::f64::INFINITY,
             }
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

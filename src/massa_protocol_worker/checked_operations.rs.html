@@ -41,48 +41,48 @@
 <span id="41">41</span>
 <span id="42">42</span>
 <span id="43">43</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">operation</span>::{<span class="ident">OperationId</span>, <span class="ident">OperationPrefixId</span>},
-    <span class="ident">prehash::Map</span>,
+</pre><pre class="rust"><code><span class="kw">use </span>massa_models::{
+    operation::{OperationId, OperationPrefixId},
+    prehash::Map,
 };
 
-<span class="doccomment">/// The structure store the previously checked operations.</span>
-<span class="doccomment">/// Manage the relation between [OperationPrefixId] and [OperationId]</span>
-<span class="doccomment">/// note: we could think about replace `Vec&lt;OperationId&gt;` with `Vec&lt;OperationSuffixId&gt;`</span>
-<span class="doccomment">///       if the execution time CPU is equivalent</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">CheckedOperations</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationPrefixId</span>, <span class="ident">OperationId</span><span class="op">&gt;</span>);
+<span class="doccomment">/// The structure store the previously checked operations.
+/// Manage the relation between [OperationPrefixId] and [OperationId]
+/// note: we could think about replace `Vec&lt;OperationId&gt;` with `Vec&lt;OperationSuffixId&gt;`
+///       if the execution time CPU is equivalent
+</span><span class="attribute">#[derive(Default)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>CheckedOperations(Map&lt;OperationPrefixId, OperationId&gt;);
 
-<span class="kw">impl</span> <span class="ident">CheckedOperations</span> {
-    <span class="doccomment">/// Insert in the adapter an operation `id`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If the set did not have this value present, `true` is returned.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If the set did have this value present, `false` is returned.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">OperationId</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">let</span> <span class="ident">prefix</span> <span class="op">=</span> <span class="ident">id</span>.<span class="ident">prefix</span>();
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">insert</span>(<span class="ident">prefix</span>, <span class="kw-2">*</span><span class="ident">id</span>).<span class="ident">is_none</span>()
+<span class="kw">impl </span>CheckedOperations {
+    <span class="doccomment">/// Insert in the adapter an operation `id`.
+    ///
+    /// If the set did not have this value present, `true` is returned.
+    ///
+    /// If the set did have this value present, `false` is returned.
+    </span><span class="kw">pub fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>OperationId) -&gt; bool {
+        <span class="kw">let </span>prefix = id.prefix();
+        <span class="self">self</span>.<span class="number">0</span>.insert(prefix, <span class="kw-2">*</span>id).is_none()
     }
 
-    <span class="doccomment">/// Get a set of [OperationIds] matching with the givec `prefix`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">prefix</span>: <span class="kw-2">&amp;</span><span class="ident">OperationPrefixId</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">OperationId</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">get</span>(<span class="ident">prefix</span>)
+    <span class="doccomment">/// Get a set of [OperationIds] matching with the givec `prefix`.
+    </span><span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, prefix: <span class="kw-2">&amp;</span>OperationPrefixId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>OperationId&gt; {
+        <span class="self">self</span>.<span class="number">0</span>.get(prefix)
     }
 
-    <span class="doccomment">/// Clear the content of the adapter.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">clear</span>()
+    <span class="doccomment">/// Clear the content of the adapter.
+    </span><span class="kw">pub fn </span>clear(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.<span class="number">0</span>.clear()
     }
 
-    <span class="doccomment">/// Returns the number of prefix keys in the adapter.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">len</span>()
+    <span class="doccomment">/// Returns the number of prefix keys in the adapter.
+    </span><span class="kw">pub fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.<span class="number">0</span>.len()
     }
 
-    <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">prefix</span>: <span class="kw-2">&amp;</span><span class="ident">OperationPrefixId</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">contains_key</span>(<span class="ident">prefix</span>)
+    <span class="attribute">#[inline(always)]
+    </span><span class="kw">pub fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, prefix: <span class="kw-2">&amp;</span>OperationPrefixId) -&gt; bool {
+        <span class="self">self</span>.<span class="number">0</span>.contains_key(prefix)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

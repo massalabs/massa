@@ -152,143 +152,143 @@
 <span id="152">152</span>
 <span id="153">153</span>
 <span id="154">154</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">drain_filter</span>)]</span>
-<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
-<span class="doccomment">//! Manages a connection with a node</span>
+</span><span class="attribute">#![feature(async_closure)]
+#![feature(drain_filter)]
+#![feature(ip)]
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
+</span><span class="doccomment">//! Manages a connection with a node
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">network_worker</span>::{<span class="ident">NetworkWorker</span>, <span class="ident">NetworkWorkerChannels</span>},
-    <span class="ident">peer_info_database::PeerInfoDatabase</span>,
+</span><span class="kw">use crate</span>::{
+    network_worker::{NetworkWorker, NetworkWorkerChannels},
+    peer_info_database::PeerInfoDatabase,
 };
-<span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">constants::CHANNEL_SIZE</span>, <span class="ident">node::NodeId</span>, <span class="ident">Version</span>};
-<span class="kw">use</span> <span class="ident">massa_network_exports</span>::{
-    <span class="ident">BootstrapPeers</span>, <span class="ident">Establisher</span>, <span class="ident">NetworkCommand</span>, <span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkError</span>, <span class="ident">NetworkEvent</span>,
-    <span class="ident">NetworkEventReceiver</span>, <span class="ident">NetworkManagementCommand</span>, <span class="ident">NetworkManager</span>, <span class="ident">NetworkSettings</span>,
+<span class="kw">use </span>massa_logging::massa_trace;
+<span class="kw">use </span>massa_models::{constants::CHANNEL_SIZE, node::NodeId, Version};
+<span class="kw">use </span>massa_network_exports::{
+    BootstrapPeers, Establisher, NetworkCommand, NetworkCommandSender, NetworkError, NetworkEvent,
+    NetworkEventReceiver, NetworkManagementCommand, NetworkManager, NetworkSettings,
 };
-<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
-<span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
-<span class="kw">use</span> <span class="ident">tokio::sync::mpsc</span>;
-<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">debug</span>, <span class="ident">error</span>, <span class="ident">info</span>, <span class="ident">warn</span>};
+<span class="kw">use </span>massa_signature::KeyPair;
+<span class="kw">use </span>massa_storage::Storage;
+<span class="kw">use </span>tokio::sync::mpsc;
+<span class="kw">use </span>tracing::{debug, error, info, warn};
 
-<span class="comment">//pub use establisher::Establisher;</span>
-<span class="kw">mod</span> <span class="ident">binders</span>;
-<span class="kw">mod</span> <span class="ident">handshake_worker</span>;
-<span class="kw">mod</span> <span class="ident">messages</span>;
-<span class="kw">mod</span> <span class="ident">network_cmd_impl</span>;
-<span class="kw">mod</span> <span class="ident">network_event</span>;
-<span class="kw">mod</span> <span class="ident">network_worker</span>;
-<span class="kw">mod</span> <span class="ident">node_worker</span>;
-<span class="kw">mod</span> <span class="ident">peer_info_database</span>;
+<span class="comment">//pub use establisher::Establisher;
+</span><span class="kw">mod </span>binders;
+<span class="kw">mod </span>handshake_worker;
+<span class="kw">mod </span>messages;
+<span class="kw">mod </span>network_cmd_impl;
+<span class="kw">mod </span>network_event;
+<span class="kw">mod </span>network_worker;
+<span class="kw">mod </span>node_worker;
+<span class="kw">mod </span>peer_info_database;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tests</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">pub mod </span>tests;
 
-<span class="doccomment">/// Starts a new `NetworkWorker` in a spawned task</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Arguments</span>
-<span class="doccomment">/// * `cfg`: network configuration</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">start_network_controller</span>(
-    <span class="ident">network_settings</span>: <span class="ident">NetworkSettings</span>,
-    <span class="kw-2">mut</span> <span class="ident">establisher</span>: <span class="ident">Establisher</span>,
-    <span class="ident">clock_compensation</span>: <span class="ident">i64</span>,
-    <span class="ident">initial_peers</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BootstrapPeers</span><span class="op">&gt;</span>,
-    <span class="ident">storage</span>: <span class="ident">Storage</span>,
-    <span class="ident">version</span>: <span class="ident">Version</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>
+<span class="doccomment">/// Starts a new `NetworkWorker` in a spawned task
+///
+/// # Arguments
+/// * `cfg`: network configuration
+</span><span class="kw">pub async fn </span>start_network_controller(
+    network_settings: NetworkSettings,
+    <span class="kw-2">mut </span>establisher: Establisher,
+    clock_compensation: i64,
+    initial_peers: <span class="prelude-ty">Option</span>&lt;BootstrapPeers&gt;,
+    storage: Storage,
+    version: Version,
+) -&gt; <span class="prelude-ty">Result</span>&lt;
     (
-        <span class="ident">NetworkCommandSender</span>,
-        <span class="ident">NetworkEventReceiver</span>,
-        <span class="ident">NetworkManager</span>,
-        <span class="ident">KeyPair</span>,
-        <span class="ident">NodeId</span>,
+        NetworkCommandSender,
+        NetworkEventReceiver,
+        NetworkManager,
+        KeyPair,
+        NodeId,
     ),
-    <span class="ident">NetworkError</span>,
-<span class="op">&gt;</span> {
+    NetworkError,
+&gt; {
     <span class="macro">debug!</span>(<span class="string">&quot;starting network controller&quot;</span>);
 
-    <span class="comment">// check that local IP is routable</span>
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">self_ip</span>) <span class="op">=</span> <span class="ident">network_settings</span>.<span class="ident">routable_ip</span> {
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">self_ip</span>.<span class="ident">is_global</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::InvalidIpError</span>(<span class="ident">self_ip</span>));
+    <span class="comment">// check that local IP is routable
+    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(self_ip) = network_settings.routable_ip {
+        <span class="kw">if </span>!self_ip.is_global() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(NetworkError::InvalidIpError(self_ip));
         }
     }
 
-    <span class="comment">// try to read node keypair from file, otherwise generate it &amp; write to file. Then derive nodeId</span>
-    <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">std::path::Path::is_file</span>(<span class="kw-2">&amp;</span><span class="ident">network_settings</span>.<span class="ident">keypair_file</span>) {
-        <span class="comment">// file exists: try to load it</span>
-        <span class="kw">let</span> <span class="ident">keypair_bs58_check_encoded</span> <span class="op">=</span> <span class="ident">tokio::fs::read_to_string</span>(<span class="kw-2">&amp;</span><span class="ident">network_settings</span>.<span class="ident">keypair_file</span>)
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                <span class="ident">std::io::Error::new</span>(<span class="ident">err</span>.<span class="ident">kind</span>(), <span class="macro">format!</span>(<span class="string">&quot;could not load node key file: {}&quot;</span>, <span class="ident">err</span>))
+    <span class="comment">// try to read node keypair from file, otherwise generate it &amp; write to file. Then derive nodeId
+    </span><span class="kw">let </span>keypair = <span class="kw">if </span>std::path::Path::is_file(<span class="kw-2">&amp;</span>network_settings.keypair_file) {
+        <span class="comment">// file exists: try to load it
+        </span><span class="kw">let </span>keypair_bs58_check_encoded = tokio::fs::read_to_string(<span class="kw-2">&amp;</span>network_settings.keypair_file)
+            .<span class="kw">await
+            </span>.map_err(|err| {
+                std::io::Error::new(err.kind(), <span class="macro">format!</span>(<span class="string">&quot;could not load node key file: {}&quot;</span>, err))
             })<span class="question-mark">?</span>;
-        <span class="ident">serde_json::from_slice</span>::<span class="op">&lt;</span><span class="ident">KeyPair</span><span class="op">&gt;</span>(<span class="ident">keypair_bs58_check_encoded</span>.<span class="ident">as_bytes</span>())<span class="question-mark">?</span>
-    } <span class="kw">else</span> {
-        <span class="comment">// node file does not exist: generate the key and save it</span>
-        <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">tokio::fs::write</span>(
-            <span class="kw-2">&amp;</span><span class="ident">network_settings</span>.<span class="ident">keypair_file</span>,
-            <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>)<span class="question-mark">?</span>,
+        serde_json::from_slice::&lt;KeyPair&gt;(keypair_bs58_check_encoded.as_bytes())<span class="question-mark">?
+    </span>} <span class="kw">else </span>{
+        <span class="comment">// node file does not exist: generate the key and save it
+        </span><span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tokio::fs::write(
+            <span class="kw-2">&amp;</span>network_settings.keypair_file,
+            serde_json::to_string(<span class="kw-2">&amp;</span>keypair)<span class="question-mark">?</span>,
         )
-        .<span class="kw">await</span>
-        {
-            <span class="macro">warn!</span>(<span class="string">&quot;could not generate node key file: {}&quot;</span>, <span class="ident">e</span>);
+        .<span class="kw">await
+        </span>{
+            <span class="macro">warn!</span>(<span class="string">&quot;could not generate node key file: {}&quot;</span>, e);
         }
-        <span class="ident">keypair</span>
+        keypair
     };
-    <span class="kw">let</span> <span class="ident">self_node_id</span> <span class="op">=</span> <span class="ident">NodeId</span>(<span class="ident">keypair</span>.<span class="ident">get_public_key</span>());
+    <span class="kw">let </span>self_node_id = NodeId(keypair.get_public_key());
 
-    <span class="macro">info!</span>(<span class="string">&quot;The node_id of this node is: {}&quot;</span>, <span class="ident">self_node_id</span>);
-    <span class="macro">massa_trace!</span>(<span class="string">&quot;self_node_id&quot;</span>, { <span class="string">&quot;node_id&quot;</span>: <span class="ident">self_node_id</span> });
+    <span class="macro">info!</span>(<span class="string">&quot;The node_id of this node is: {}&quot;</span>, self_node_id);
+    <span class="macro">massa_trace!</span>(<span class="string">&quot;self_node_id&quot;</span>, { <span class="string">&quot;node_id&quot;</span>: self_node_id });
 
-    <span class="comment">// create listener</span>
-    <span class="kw">let</span> <span class="ident">listener</span> <span class="op">=</span> <span class="ident">establisher</span>.<span class="ident">get_listener</span>(<span class="ident">network_settings</span>.<span class="ident">bind</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="comment">// create listener
+    </span><span class="kw">let </span>listener = establisher.get_listener(network_settings.bind).<span class="kw">await</span><span class="question-mark">?</span>;
 
     <span class="macro">debug!</span>(<span class="string">&quot;Loading peer database&quot;</span>);
-    <span class="comment">// load peer info database</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peer_info_db</span> <span class="op">=</span> <span class="ident">PeerInfoDatabase::new</span>(<span class="kw-2">&amp;</span><span class="ident">network_settings</span>, <span class="ident">clock_compensation</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="comment">// load peer info database
+    </span><span class="kw">let </span><span class="kw-2">mut </span>peer_info_db = PeerInfoDatabase::new(<span class="kw-2">&amp;</span>network_settings, clock_compensation).<span class="kw">await</span><span class="question-mark">?</span>;
 
-    <span class="comment">// add bootstrap peers</span>
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">peers</span>) <span class="op">=</span> <span class="ident">initial_peers</span> {
-        <span class="ident">peer_info_db</span>.<span class="ident">merge_candidate_peers</span>(<span class="kw-2">&amp;</span><span class="ident">peers</span>.<span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="comment">// add bootstrap peers
+    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(peers) = initial_peers {
+        peer_info_db.merge_candidate_peers(<span class="kw-2">&amp;</span>peers.<span class="number">0</span>)<span class="question-mark">?</span>;
     }
 
-    <span class="comment">// launch controller</span>
-    <span class="kw">let</span> (<span class="ident">command_tx</span>, <span class="ident">controller_command_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">NetworkCommand</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
-    <span class="kw">let</span> (<span class="ident">controller_event_tx</span>, <span class="ident">event_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">NetworkEvent</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
-    <span class="kw">let</span> (<span class="ident">manager_tx</span>, <span class="ident">controller_manager_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">NetworkManagementCommand</span><span class="op">&gt;</span>(<span class="number">1</span>);
-    <span class="kw">let</span> <span class="ident">cfg_copy</span> <span class="op">=</span> <span class="ident">network_settings</span>.<span class="ident">clone</span>();
-    <span class="kw">let</span> <span class="ident">keypair_cloned</span> <span class="op">=</span> <span class="ident">keypair</span>.<span class="ident">clone</span>();
-    <span class="kw">let</span> <span class="ident">join_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">NetworkWorker::new</span>(
-            <span class="ident">cfg_copy</span>,
-            <span class="ident">keypair_cloned</span>,
-            <span class="ident">listener</span>,
-            <span class="ident">establisher</span>,
-            <span class="ident">peer_info_db</span>,
-            <span class="ident">NetworkWorkerChannels</span> {
-                <span class="ident">controller_command_rx</span>,
-                <span class="ident">controller_event_tx</span>,
-                <span class="ident">controller_manager_rx</span>,
+    <span class="comment">// launch controller
+    </span><span class="kw">let </span>(command_tx, controller_command_rx) = mpsc::channel::&lt;NetworkCommand&gt;(CHANNEL_SIZE);
+    <span class="kw">let </span>(controller_event_tx, event_rx) = mpsc::channel::&lt;NetworkEvent&gt;(CHANNEL_SIZE);
+    <span class="kw">let </span>(manager_tx, controller_manager_rx) = mpsc::channel::&lt;NetworkManagementCommand&gt;(<span class="number">1</span>);
+    <span class="kw">let </span>cfg_copy = network_settings.clone();
+    <span class="kw">let </span>keypair_cloned = keypair.clone();
+    <span class="kw">let </span>join_handle = tokio::spawn(<span class="kw">async move </span>{
+        <span class="kw">let </span>res = NetworkWorker::new(
+            cfg_copy,
+            keypair_cloned,
+            listener,
+            establisher,
+            peer_info_db,
+            NetworkWorkerChannels {
+                controller_command_rx,
+                controller_event_tx,
+                controller_manager_rx,
             },
-            <span class="ident">storage</span>,
-            <span class="ident">version</span>,
+            storage,
+            version,
         )
-        .<span class="ident">run_loop</span>()
+        .run_loop()
         .<span class="kw">await</span>;
-        <span class="kw">match</span> <span class="ident">res</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; {
-                <span class="macro">error!</span>(<span class="string">&quot;network worker crashed: {}&quot;</span>, <span class="ident">err</span>);
-                <span class="prelude-val">Err</span>(<span class="ident">err</span>)
+        <span class="kw">match </span>res {
+            <span class="prelude-val">Err</span>(err) =&gt; {
+                <span class="macro">error!</span>(<span class="string">&quot;network worker crashed: {}&quot;</span>, err);
+                <span class="prelude-val">Err</span>(err)
             }
-            <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; {
+            <span class="prelude-val">Ok</span>(v) =&gt; {
                 <span class="macro">info!</span>(<span class="string">&quot;network worker finished cleanly&quot;</span>);
-                <span class="prelude-val">Ok</span>(<span class="ident">v</span>)
+                <span class="prelude-val">Ok</span>(v)
             }
         }
     });
@@ -296,15 +296,15 @@
     <span class="macro">debug!</span>(<span class="string">&quot;network controller started&quot;</span>);
 
     <span class="prelude-val">Ok</span>((
-        <span class="ident">NetworkCommandSender</span>(<span class="ident">command_tx</span>),
-        <span class="ident">NetworkEventReceiver</span>(<span class="ident">event_rx</span>),
-        <span class="ident">NetworkManager</span> {
-            <span class="ident">join_handle</span>,
-            <span class="ident">manager_tx</span>,
+        NetworkCommandSender(command_tx),
+        NetworkEventReceiver(event_rx),
+        NetworkManager {
+            join_handle,
+            manager_tx,
         },
-        <span class="ident">keypair</span>,
-        <span class="ident">self_node_id</span>,
+        keypair,
+        self_node_id,
     ))
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

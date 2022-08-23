@@ -330,337 +330,337 @@
 <span id="330">330</span>
 <span id="331">331</span>
 <span id="332">332</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::AMOUNT_DECIMAL_FACTOR</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ModelsError</span>;
-<span class="kw">use</span> <span class="ident">massa_serialization</span>::{<span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>};
-<span class="kw">use</span> <span class="ident">massa_serialization</span>::{<span class="ident">U64VarIntDeserializer</span>, <span class="ident">U64VarIntSerializer</span>};
-<span class="kw">use</span> <span class="ident">nom::error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ParseError</span>};
-<span class="kw">use</span> <span class="ident">nom::IResult</span>;
-<span class="kw">use</span> <span class="ident">rust_decimal::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">serde::de::Unexpected</span>;
-<span class="kw">use</span> <span class="ident">std::fmt</span>;
-<span class="kw">use</span> <span class="ident">std::ops::Bound</span>;
-<span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
+</span><span class="kw">use </span><span class="kw">crate</span>::constants::AMOUNT_DECIMAL_FACTOR;
+<span class="kw">use </span><span class="kw">crate</span>::ModelsError;
+<span class="kw">use </span>massa_serialization::{Deserializer, SerializeError, Serializer};
+<span class="kw">use </span>massa_serialization::{U64VarIntDeserializer, U64VarIntSerializer};
+<span class="kw">use </span>nom::error::{context, ContextError, ParseError};
+<span class="kw">use </span>nom::IResult;
+<span class="kw">use </span>rust_decimal::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>serde::de::Unexpected;
+<span class="kw">use </span>std::fmt;
+<span class="kw">use </span>std::ops::Bound;
+<span class="kw">use </span>std::str::FromStr;
 
-<span class="doccomment">/// A structure representing a decimal Amount of coins with safe operations</span>
-<span class="doccomment">/// this allows ensuring that there is never an uncontrolled overflow or precision loss</span>
-<span class="doccomment">/// while providing a convenient decimal interface for users</span>
-<span class="doccomment">/// The underlying `u64` raw representation if a fixed-point value with factor `AMOUNT_DECIMAL_FACTOR`</span>
-<span class="doccomment">/// The minimal value is 0 and the maximal value is 18446744073.709551615</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Amount</span>(<span class="ident">u64</span>);
+<span class="doccomment">/// A structure representing a decimal Amount of coins with safe operations
+/// this allows ensuring that there is never an uncontrolled overflow or precision loss
+/// while providing a convenient decimal interface for users
+/// The underlying `u64` raw representation if a fixed-point value with factor `AMOUNT_DECIMAL_FACTOR`
+/// The minimal value is 0 and the maximal value is 18446744073.709551615
+</span><span class="attribute">#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Default)]
+</span><span class="kw">pub struct </span>Amount(u64);
 
-<span class="kw">impl</span> <span class="ident">Amount</span> {
-    <span class="doccomment">/// Create a zero Amount</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">zero</span>() -&gt; <span class="self">Self</span> {
+<span class="kw">impl </span>Amount {
+    <span class="doccomment">/// Create a zero Amount
+    </span><span class="kw">pub const fn </span>zero() -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>(<span class="number">0</span>)
     }
 
-    <span class="doccomment">/// Create an Amount from the form `mantissa / (10^scale)`</span>
-    <span class="doccomment">/// Panics on any error.</span>
-    <span class="doccomment">/// Used for constant initialization.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_models::Amount;</span>
-    <span class="doccomment">/// # use std::str::FromStr;</span>
-    <span class="doccomment">/// let amount_1: Amount = Amount::from_str(&quot;0.042&quot;).unwrap();</span>
-    <span class="doccomment">/// let amount_2: Amount = Amount::from_mantissa_scale(42, 3);</span>
-    <span class="doccomment">/// assert_eq!(amount_1, amount_2);</span>
-    <span class="doccomment">/// let amount_1: Amount = Amount::from_str(&quot;1000&quot;).unwrap();</span>
-    <span class="doccomment">/// let amount_2: Amount = Amount::from_mantissa_scale(1000, 0);</span>
-    <span class="doccomment">/// assert_eq!(amount_1, amount_2);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">from_mantissa_scale</span>(<span class="ident">mantissa</span>: <span class="ident">u64</span>, <span class="ident">scale</span>: <span class="ident">u32</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">raw_mantissa</span> <span class="op">=</span> (<span class="ident">mantissa</span> <span class="kw">as</span> <span class="ident">u128</span>) <span class="op">*</span> (<span class="ident">AMOUNT_DECIMAL_FACTOR</span> <span class="kw">as</span> <span class="ident">u128</span>);
-        <span class="kw">let</span> <span class="ident">scale_factor</span> <span class="op">=</span> <span class="kw">match</span> <span class="number">10u128</span>.<span class="ident">checked_pow</span>(<span class="ident">scale</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-            <span class="prelude-val">None</span> =&gt; <span class="macro">panic!</span>(),
+    <span class="doccomment">/// Create an Amount from the form `mantissa / (10^scale)`
+    /// Panics on any error.
+    /// Used for constant initialization.
+    ///
+    /// ```
+    /// # use massa_models::Amount;
+    /// # use std::str::FromStr;
+    /// let amount_1: Amount = Amount::from_str(&quot;0.042&quot;).unwrap();
+    /// let amount_2: Amount = Amount::from_mantissa_scale(42, 3);
+    /// assert_eq!(amount_1, amount_2);
+    /// let amount_1: Amount = Amount::from_str(&quot;1000&quot;).unwrap();
+    /// let amount_2: Amount = Amount::from_mantissa_scale(1000, 0);
+    /// assert_eq!(amount_1, amount_2);
+    /// ```
+    </span><span class="kw">pub const fn </span>from_mantissa_scale(mantissa: u64, scale: u32) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>raw_mantissa = (mantissa <span class="kw">as </span>u128) * (AMOUNT_DECIMAL_FACTOR <span class="kw">as </span>u128);
+        <span class="kw">let </span>scale_factor = <span class="kw">match </span><span class="number">10u128</span>.checked_pow(scale) {
+            <span class="prelude-val">Some</span>(v) =&gt; v,
+            <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(),
         };
-        <span class="macro">assert!</span>(<span class="ident">raw_mantissa</span> <span class="op">%</span> <span class="ident">scale_factor</span> <span class="op">==</span> <span class="number">0</span>);
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">raw_mantissa</span> <span class="op">/</span> <span class="ident">scale_factor</span>;
-        <span class="macro">assert!</span>(<span class="ident">res</span> <span class="op">&lt;</span><span class="op">=</span> (<span class="ident">u64::MAX</span> <span class="kw">as</span> <span class="ident">u128</span>));
-        <span class="self">Self</span>(<span class="ident">res</span> <span class="kw">as</span> <span class="ident">u64</span>)
+        <span class="macro">assert!</span>(raw_mantissa % scale_factor == <span class="number">0</span>);
+        <span class="kw">let </span>res = raw_mantissa / scale_factor;
+        <span class="macro">assert!</span>(res &lt;= (u64::MAX <span class="kw">as </span>u128));
+        <span class="self">Self</span>(res <span class="kw">as </span>u64)
     }
 
-    <span class="doccomment">/// Obtains the underlying raw `u64` representation</span>
-    <span class="doccomment">/// Warning: do not use this unless you know what you are doing</span>
-    <span class="doccomment">/// because the raw value does not take the `AMOUNT_DECIMAL_FACTOR` into account.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_raw</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
-        <span class="self">self</span>.<span class="number">0</span>
+    <span class="doccomment">/// Obtains the underlying raw `u64` representation
+    /// Warning: do not use this unless you know what you are doing
+    /// because the raw value does not take the `AMOUNT_DECIMAL_FACTOR` into account.
+    </span><span class="kw">pub fn </span>to_raw(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="self">self</span>.<span class="number">0
+    </span>}
+
+    <span class="doccomment">/// constructs an `Amount` from the underlying raw `u64` representation
+    /// Warning: do not use this unless you know what you are doing
+    /// because the raw value does not take the `AMOUNT_DECIMAL_FACTOR` into account
+    /// In most cases, you should be using `Amount::from_str(&quot;11.23&quot;)`
+    </span><span class="kw">pub const fn </span>from_raw(raw: u64) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(raw)
     }
 
-    <span class="doccomment">/// constructs an `Amount` from the underlying raw `u64` representation</span>
-    <span class="doccomment">/// Warning: do not use this unless you know what you are doing</span>
-    <span class="doccomment">/// because the raw value does not take the `AMOUNT_DECIMAL_FACTOR` into account</span>
-    <span class="doccomment">/// In most cases, you should be using `Amount::from_str(&quot;11.23&quot;)`</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">from_raw</span>(<span class="ident">raw</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span>(<span class="ident">raw</span>)
+    <span class="doccomment">/// safely add self to another amount, saturating the result on overflow
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">pub fn </span>saturating_add(<span class="self">self</span>, amount: Amount) -&gt; <span class="self">Self </span>{
+        Amount(<span class="self">self</span>.<span class="number">0</span>.saturating_add(amount.<span class="number">0</span>))
     }
 
-    <span class="doccomment">/// safely add self to another amount, saturating the result on overflow</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">saturating_add</span>(<span class="self">self</span>, <span class="ident">amount</span>: <span class="ident">Amount</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">Amount</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">saturating_add</span>(<span class="ident">amount</span>.<span class="number">0</span>))
+    <span class="doccomment">/// safely subtract another amount from self, saturating the result on underflow
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">pub fn </span>saturating_sub(<span class="self">self</span>, amount: Amount) -&gt; <span class="self">Self </span>{
+        Amount(<span class="self">self</span>.<span class="number">0</span>.saturating_sub(amount.<span class="number">0</span>))
     }
 
-    <span class="doccomment">/// safely subtract another amount from self, saturating the result on underflow</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">saturating_sub</span>(<span class="self">self</span>, <span class="ident">amount</span>: <span class="ident">Amount</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">Amount</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">saturating_sub</span>(<span class="ident">amount</span>.<span class="number">0</span>))
+    <span class="doccomment">/// returns true if the amount is zero
+    </span><span class="kw">pub fn </span>is_zero(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.<span class="number">0 </span>== <span class="number">0
+    </span>}
+
+    <span class="doccomment">/// safely subtract another amount from self, returning None on underflow
+    /// ```
+    /// # use massa_models::Amount;
+    /// # use std::str::FromStr;
+    /// let amount_1 : Amount = Amount::from_str(&quot;42&quot;).unwrap();
+    /// let amount_2 : Amount = Amount::from_str(&quot;7&quot;).unwrap();
+    /// let res : Amount = amount_1.checked_sub(amount_2).unwrap();
+    /// assert_eq!(res, Amount::from_str(&quot;35&quot;).unwrap())
+    /// ```
+    </span><span class="kw">pub fn </span>checked_sub(<span class="self">self</span>, amount: Amount) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="self">self</span>.<span class="number">0</span>.checked_sub(amount.<span class="number">0</span>).map(Amount)
     }
 
-    <span class="doccomment">/// returns true if the amount is zero</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_zero</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="number">0</span> <span class="op">==</span> <span class="number">0</span>
+    <span class="doccomment">/// safely add self to another amount, returning None on overflow
+    /// ```
+    /// # use massa_models::Amount;
+    /// # use std::str::FromStr;
+    /// let amount_1 : Amount = Amount::from_str(&quot;42&quot;).unwrap();
+    /// let amount_2 : Amount = Amount::from_str(&quot;7&quot;).unwrap();
+    /// let res : Amount = amount_1.checked_add(amount_2).unwrap();
+    /// assert_eq!(res, Amount::from_str(&quot;49&quot;).unwrap())
+    /// ```
+    </span><span class="kw">pub fn </span>checked_add(<span class="self">self</span>, amount: Amount) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="self">self</span>.<span class="number">0</span>.checked_add(amount.<span class="number">0</span>).map(Amount)
     }
 
-    <span class="doccomment">/// safely subtract another amount from self, returning None on underflow</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_models::Amount;</span>
-    <span class="doccomment">/// # use std::str::FromStr;</span>
-    <span class="doccomment">/// let amount_1 : Amount = Amount::from_str(&quot;42&quot;).unwrap();</span>
-    <span class="doccomment">/// let amount_2 : Amount = Amount::from_str(&quot;7&quot;).unwrap();</span>
-    <span class="doccomment">/// let res : Amount = amount_1.checked_sub(amount_2).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(res, Amount::from_str(&quot;35&quot;).unwrap())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_sub</span>(<span class="self">self</span>, <span class="ident">amount</span>: <span class="ident">Amount</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">checked_sub</span>(<span class="ident">amount</span>.<span class="number">0</span>).<span class="ident">map</span>(<span class="ident">Amount</span>)
+    <span class="doccomment">/// safely multiply self with a `u64`, returning None on overflow
+    /// ```
+    /// # use massa_models::Amount;
+    /// # use std::str::FromStr;
+    /// let amount_1 : Amount = Amount::from_str(&quot;42&quot;).unwrap();
+    /// let res : Amount = amount_1.checked_mul_u64(7).unwrap();
+    /// assert_eq!(res, Amount::from_str(&quot;294&quot;).unwrap())
+    /// ```
+    </span><span class="kw">pub fn </span>checked_mul_u64(<span class="self">self</span>, factor: u64) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="self">self</span>.<span class="number">0</span>.checked_mul(factor).map(Amount)
     }
 
-    <span class="doccomment">/// safely add self to another amount, returning None on overflow</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_models::Amount;</span>
-    <span class="doccomment">/// # use std::str::FromStr;</span>
-    <span class="doccomment">/// let amount_1 : Amount = Amount::from_str(&quot;42&quot;).unwrap();</span>
-    <span class="doccomment">/// let amount_2 : Amount = Amount::from_str(&quot;7&quot;).unwrap();</span>
-    <span class="doccomment">/// let res : Amount = amount_1.checked_add(amount_2).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(res, Amount::from_str(&quot;49&quot;).unwrap())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_add</span>(<span class="self">self</span>, <span class="ident">amount</span>: <span class="ident">Amount</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">checked_add</span>(<span class="ident">amount</span>.<span class="number">0</span>).<span class="ident">map</span>(<span class="ident">Amount</span>)
+    <span class="doccomment">/// safely multiply self with a `u64`, saturating the result on overflow
+    /// ```
+    /// # use massa_models::Amount;
+    /// # use std::str::FromStr;
+    /// let amount_1 : Amount = Amount::from_str(&quot;42&quot;).unwrap();
+    /// let res : Amount = amount_1.saturating_mul_u64(7);
+    /// assert_eq!(res, Amount::from_str(&quot;294&quot;).unwrap());
+    /// ```
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">pub fn </span>saturating_mul_u64(<span class="self">self</span>, factor: u64) -&gt; <span class="self">Self </span>{
+        Amount(<span class="self">self</span>.<span class="number">0</span>.saturating_mul(factor))
     }
 
-    <span class="doccomment">/// safely multiply self with a `u64`, returning None on overflow</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_models::Amount;</span>
-    <span class="doccomment">/// # use std::str::FromStr;</span>
-    <span class="doccomment">/// let amount_1 : Amount = Amount::from_str(&quot;42&quot;).unwrap();</span>
-    <span class="doccomment">/// let res : Amount = amount_1.checked_mul_u64(7).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(res, Amount::from_str(&quot;294&quot;).unwrap())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_mul_u64</span>(<span class="self">self</span>, <span class="ident">factor</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">checked_mul</span>(<span class="ident">factor</span>).<span class="ident">map</span>(<span class="ident">Amount</span>)
-    }
-
-    <span class="doccomment">/// safely multiply self with a `u64`, saturating the result on overflow</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_models::Amount;</span>
-    <span class="doccomment">/// # use std::str::FromStr;</span>
-    <span class="doccomment">/// let amount_1 : Amount = Amount::from_str(&quot;42&quot;).unwrap();</span>
-    <span class="doccomment">/// let res : Amount = amount_1.saturating_mul_u64(7);</span>
-    <span class="doccomment">/// assert_eq!(res, Amount::from_str(&quot;294&quot;).unwrap());</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">saturating_mul_u64</span>(<span class="self">self</span>, <span class="ident">factor</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">Amount</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">saturating_mul</span>(<span class="ident">factor</span>))
-    }
-
-    <span class="doccomment">/// safely divide self by a `u64`, returning None if the factor is zero</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_models::Amount;</span>
-    <span class="doccomment">/// # use std::str::FromStr;</span>
-    <span class="doccomment">/// let amount_1 : Amount = Amount::from_str(&quot;42&quot;).unwrap();</span>
-    <span class="doccomment">/// let res : Amount = amount_1.checked_div_u64(7).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(res, Amount::from_str(&quot;6&quot;).unwrap());</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_div_u64</span>(<span class="self">self</span>, <span class="ident">factor</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">checked_div</span>(<span class="ident">factor</span>).<span class="ident">map</span>(<span class="ident">Amount</span>)
-    }
-}
-
-<span class="doccomment">/// display an Amount in decimal string form (like &quot;10.33&quot;)</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">/// # use massa_models::Amount;</span>
-<span class="doccomment">/// # use std::str::FromStr;</span>
-<span class="doccomment">/// let value = Amount::from_str(&quot;11.111&quot;).unwrap();</span>
-<span class="doccomment">/// assert_eq!(format!(&quot;{}&quot;, value), &quot;11.111&quot;)</span>
-<span class="doccomment">/// ```</span>
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">Amount</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">let</span> <span class="ident">res_string</span> <span class="op">=</span> <span class="ident">Decimal::from_u64</span>(<span class="self">self</span>.<span class="number">0</span>)
-            .<span class="ident">unwrap</span>() <span class="comment">// will never panic</span>
-            .<span class="ident">checked_div</span>(<span class="ident">AMOUNT_DECIMAL_FACTOR</span>.<span class="ident">into</span>()) <span class="comment">// will never panic</span>
-            .<span class="ident">unwrap</span>() <span class="comment">// will never panic</span>
-            .<span class="ident">to_string</span>();
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">res_string</span>)
+    <span class="doccomment">/// safely divide self by a `u64`, returning None if the factor is zero
+    /// ```
+    /// # use massa_models::Amount;
+    /// # use std::str::FromStr;
+    /// let amount_1 : Amount = Amount::from_str(&quot;42&quot;).unwrap();
+    /// let res : Amount = amount_1.checked_div_u64(7).unwrap();
+    /// assert_eq!(res, Amount::from_str(&quot;6&quot;).unwrap());
+    /// ```
+    </span><span class="kw">pub fn </span>checked_div_u64(<span class="self">self</span>, factor: u64) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="self">self</span>.<span class="number">0</span>.checked_div(factor).map(Amount)
     }
 }
 
-<span class="doccomment">/// Use display impl in debug to get the decimal representation</span>
-<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">Amount</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>)
+<span class="doccomment">/// display an Amount in decimal string form (like &quot;10.33&quot;)
+///
+/// ```
+/// # use massa_models::Amount;
+/// # use std::str::FromStr;
+/// let value = Amount::from_str(&quot;11.111&quot;).unwrap();
+/// assert_eq!(format!(&quot;{}&quot;, value), &quot;11.111&quot;)
+/// ```
+</span><span class="kw">impl </span>fmt::Display <span class="kw">for </span>Amount {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="kw">let </span>res_string = Decimal::from_u64(<span class="self">self</span>.<span class="number">0</span>)
+            .unwrap() <span class="comment">// will never panic
+            </span>.checked_div(AMOUNT_DECIMAL_FACTOR.into()) <span class="comment">// will never panic
+            </span>.unwrap() <span class="comment">// will never panic
+            </span>.to_string();
+        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, res_string)
     }
 }
 
-<span class="doccomment">/// build an Amount from decimal string form (like &quot;10.33&quot;)</span>
-<span class="doccomment">/// note that this will fail if the string format is invalid</span>
-<span class="doccomment">/// or if the conversion would cause an overflow, underflow or precision loss</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">/// # use massa_models::Amount;</span>
-<span class="doccomment">/// # use std::str::FromStr;</span>
-<span class="doccomment">/// assert!(Amount::from_str(&quot;11.1&quot;).is_ok());</span>
-<span class="doccomment">/// assert!(Amount::from_str(&quot;11.1111111111111111111111&quot;).is_err());</span>
-<span class="doccomment">/// assert!(Amount::from_str(&quot;1111111111111111111111&quot;).is_err());</span>
-<span class="doccomment">/// assert!(Amount::from_str(&quot;-11.1&quot;).is_err());</span>
-<span class="doccomment">/// assert!(Amount::from_str(&quot;abc&quot;).is_err());</span>
-<span class="doccomment">/// ```</span>
-<span class="kw">impl</span> <span class="ident">FromStr</span> <span class="kw">for</span> <span class="ident">Amount</span> {
-    <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident">ModelsError</span>;
+<span class="doccomment">/// Use display impl in debug to get the decimal representation
+</span><span class="kw">impl </span>fmt::Debug <span class="kw">for </span>Amount {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>)
+    }
+}
 
-    <span class="kw">fn</span> <span class="ident">from_str</span>(<span class="ident">str_amount</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Decimal::from_str</span>(<span class="ident">str_amount</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> <span class="ident">ModelsError::AmountParseError</span>(<span class="ident">err</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>
-            .<span class="ident">checked_mul</span>(<span class="ident">AMOUNT_DECIMAL_FACTOR</span>.<span class="ident">into</span>())
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">ModelsError::AmountParseError</span>(<span class="string">&quot;amount is too large&quot;</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">res</span>.<span class="ident">is_sign_negative</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::AmountParseError</span>(
-                <span class="string">&quot;amounts cannot be strictly negative&quot;</span>.<span class="ident">to_string</span>(),
+<span class="doccomment">/// build an Amount from decimal string form (like &quot;10.33&quot;)
+/// note that this will fail if the string format is invalid
+/// or if the conversion would cause an overflow, underflow or precision loss
+///
+/// ```
+/// # use massa_models::Amount;
+/// # use std::str::FromStr;
+/// assert!(Amount::from_str(&quot;11.1&quot;).is_ok());
+/// assert!(Amount::from_str(&quot;11.1111111111111111111111&quot;).is_err());
+/// assert!(Amount::from_str(&quot;1111111111111111111111&quot;).is_err());
+/// assert!(Amount::from_str(&quot;-11.1&quot;).is_err());
+/// assert!(Amount::from_str(&quot;abc&quot;).is_err());
+/// ```
+</span><span class="kw">impl </span>FromStr <span class="kw">for </span>Amount {
+    <span class="kw">type </span><span class="prelude-val">Err </span>= ModelsError;
+
+    <span class="kw">fn </span>from_str(str_amount: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
+        <span class="kw">let </span>res = Decimal::from_str(str_amount)
+            .map_err(|err| ModelsError::AmountParseError(err.to_string()))<span class="question-mark">?
+            </span>.checked_mul(AMOUNT_DECIMAL_FACTOR.into())
+            .ok_or_else(|| ModelsError::AmountParseError(<span class="string">&quot;amount is too large&quot;</span>.to_string()))<span class="question-mark">?</span>;
+        <span class="kw">if </span>res.is_sign_negative() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::AmountParseError(
+                <span class="string">&quot;amounts cannot be strictly negative&quot;</span>.to_string(),
             ));
         }
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">res</span>.<span class="ident">fract</span>().<span class="ident">is_zero</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::AmountParseError</span>(<span class="macro">format!</span>(
+        <span class="kw">if </span>!res.fract().is_zero() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::AmountParseError(<span class="macro">format!</span>(
                 <span class="string">&quot;amounts cannot be more precise than 1/{}&quot;</span>,
-                <span class="ident">AMOUNT_DECIMAL_FACTOR</span>
+                AMOUNT_DECIMAL_FACTOR
             )));
         }
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">res</span>.<span class="ident">to_u64</span>().<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="ident">ModelsError::AmountParseError</span>(
-                <span class="string">&quot;amount is too large to be represented as u64&quot;</span>.<span class="ident">to_string</span>(),
+        <span class="kw">let </span>res = res.to_u64().ok_or_else(|| {
+            ModelsError::AmountParseError(
+                <span class="string">&quot;amount is too large to be represented as u64&quot;</span>.to_string(),
             )
         })<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">Amount</span>(<span class="ident">res</span>))
+        <span class="prelude-val">Ok</span>(Amount(res))
     }
 }
 
-<span class="doccomment">/// Serializer for amount</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AmountSerializer</span> {
-    <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer</span>,
+<span class="doccomment">/// Serializer for amount
+</span><span class="kw">pub struct </span>AmountSerializer {
+    u64_serializer: U64VarIntSerializer,
 }
 
-<span class="kw">impl</span> <span class="ident">AmountSerializer</span> {
-    <span class="doccomment">/// Create a new `AmountSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(),
+<span class="kw">impl </span>AmountSerializer {
+    <span class="doccomment">/// Create a new `AmountSerializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u64_serializer: U64VarIntSerializer::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">AmountSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>AmountSerializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">AmountSerializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use massa_models::{Amount, AmountSerializer};</span>
-    <span class="doccomment">/// use massa_serialization::Serializer;</span>
-    <span class="doccomment">/// use std::str::FromStr;</span>
-    <span class="doccomment">/// use std::ops::Bound::Included;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let amount = Amount::from_str(&quot;11.111&quot;).unwrap();</span>
-    <span class="doccomment">/// let serializer = AmountSerializer::new();</span>
-    <span class="doccomment">/// let mut serialized = vec![];</span>
-    <span class="doccomment">/// serializer.serialize(&amp;amount, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Amount</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">u64_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="number">0</span>, <span class="ident">buffer</span>)
+<span class="kw">impl </span>Serializer&lt;Amount&gt; <span class="kw">for </span>AmountSerializer {
+    <span class="doccomment">/// ```
+    /// use massa_models::{Amount, AmountSerializer};
+    /// use massa_serialization::Serializer;
+    /// use std::str::FromStr;
+    /// use std::ops::Bound::Included;
+    ///
+    /// let amount = Amount::from_str(&quot;11.111&quot;).unwrap();
+    /// let serializer = AmountSerializer::new();
+    /// let mut serialized = vec![];
+    /// serializer.serialize(&amp;amount, &amp;mut serialized).unwrap();
+    /// ```
+    </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>Amount, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span>value.<span class="number">0</span>, buffer)
     }
 }
 
-<span class="doccomment">/// Deserializer for amount</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AmountDeserializer</span> {
-    <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer</span>,
+<span class="doccomment">/// Deserializer for amount
+</span><span class="kw">pub struct </span>AmountDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
 }
 
-<span class="kw">impl</span> <span class="ident">AmountDeserializer</span> {
-    <span class="doccomment">/// Create a new `AmountDeserializer`</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">min_amount</span>: <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>, <span class="ident">max_amount</span>: <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer::new</span>(<span class="ident">min_amount</span>, <span class="ident">max_amount</span>),
+<span class="kw">impl </span>AmountDeserializer {
+    <span class="doccomment">/// Create a new `AmountDeserializer`
+    </span><span class="kw">pub const fn </span>new(min_amount: Bound&lt;u64&gt;, max_amount: Bound&lt;u64&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u64_deserializer: U64VarIntDeserializer::new(min_amount, max_amount),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">AmountDeserializer</span> {
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use massa_models::{Amount, AmountSerializer, AmountDeserializer};</span>
-    <span class="doccomment">/// use massa_serialization::{Serializer, Deserializer, DeserializeError};</span>
-    <span class="doccomment">/// use std::str::FromStr;</span>
-    <span class="doccomment">/// use std::ops::Bound::Included;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let amount = Amount::from_str(&quot;11.111&quot;).unwrap();</span>
-    <span class="doccomment">/// let serializer = AmountSerializer::new();</span>
-    <span class="doccomment">/// let deserializer = AmountDeserializer::new(Included(0), Included(u64::MAX));</span>
-    <span class="doccomment">/// let mut serialized = vec![];</span>
-    <span class="doccomment">/// serializer.serialize(&amp;amount, &amp;mut serialized).unwrap();</span>
-    <span class="doccomment">/// let (rest, amount_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
-    <span class="doccomment">/// assert!(rest.is_empty());</span>
-    <span class="doccomment">/// assert_eq!(amount_deser, amount);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">impl </span>Deserializer&lt;Amount&gt; <span class="kw">for </span>AmountDeserializer {
+    <span class="doccomment">/// ```
+    /// use massa_models::{Amount, AmountSerializer, AmountDeserializer};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    /// use std::ops::Bound::Included;
+    ///
+    /// let amount = Amount::from_str(&quot;11.111&quot;).unwrap();
+    /// let serializer = AmountSerializer::new();
+    /// let deserializer = AmountDeserializer::new(Included(0), Included(u64::MAX));
+    /// let mut serialized = vec![];
+    /// serializer.serialize(&amp;amount, &amp;mut serialized).unwrap();
+    /// let (rest, amount_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(amount_deser, amount);
+    /// ```
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">Amount</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">context</span>(<span class="string">&quot;Failed Amount deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-            <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">raw</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">u64_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)<span class="question-mark">?</span>;
-            <span class="prelude-val">Ok</span>((<span class="ident">rest</span>, <span class="ident">Amount::from_raw</span>(<span class="ident">raw</span>)))
-        })(<span class="ident">buffer</span>)
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Amount, E&gt; {
+        context(<span class="string">&quot;Failed Amount deserialization&quot;</span>, |input| {
+            <span class="kw">let </span>(rest, raw) = <span class="self">self</span>.u64_deserializer.deserialize(input)<span class="question-mark">?</span>;
+            <span class="prelude-val">Ok</span>((rest, Amount::from_raw(raw)))
+        })(buffer)
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">serde::Deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Amount</span> {
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(<span class="ident">deserializer</span>: <span class="ident">D</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Amount</span>, <span class="ident">D::Error</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">serde::de::Deserializer</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; serde::Deserialize&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>Amount {
+    <span class="kw">fn </span>deserialize&lt;D&gt;(deserializer: D) -&gt; <span class="prelude-ty">Result</span>&lt;Amount, D::Error&gt;
+    <span class="kw">where
+        </span>D: serde::de::Deserializer&lt;<span class="lifetime">&#39;de</span>&gt;,
     {
-        <span class="ident">deserializer</span>.<span class="ident">deserialize_str</span>(<span class="ident">AmountVisitor</span>)
+        deserializer.deserialize_str(AmountVisitor)
     }
 }
 
-<span class="kw">struct</span> <span class="ident">AmountVisitor</span>;
+<span class="kw">struct </span>AmountVisitor;
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">serde::de::Visitor</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">AmountVisitor</span> {
-    <span class="kw">type</span> <span class="ident">Value</span> <span class="op">=</span> <span class="ident">Amount</span>;
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; serde::de::Visitor&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>AmountVisitor {
+    <span class="kw">type </span>Value = Amount;
 
-    <span class="kw">fn</span> <span class="ident">visit_str</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Amount</span>, <span class="ident">E</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">E</span>: <span class="ident">serde::de::Error</span>,
+    <span class="kw">fn </span>visit_str&lt;E&gt;(<span class="self">self</span>, value: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Amount, E&gt;
+    <span class="kw">where
+        </span>E: serde::de::Error,
     {
-        <span class="ident">Amount::from_str</span>(<span class="ident">value</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">E::invalid_value</span>(<span class="ident">Unexpected::Str</span>(<span class="ident">value</span>), <span class="kw-2">&amp;</span><span class="self">self</span>))
+        Amount::from_str(value).map_err(|<span class="kw">_</span>| E::invalid_value(Unexpected::Str(value), <span class="kw-2">&amp;</span><span class="self">self</span>))
     }
 
-    <span class="kw">fn</span> <span class="ident">expecting</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">formatter</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span>) -&gt; <span class="ident">fmt::Result</span> {
+    <span class="kw">fn </span>expecting(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
         <span class="macro">write!</span>(
-            <span class="ident">formatter</span>,
-            <span class="string">&quot;an Amount type representing a fixed-point currency amount&quot;</span>
-        )
+            formatter,
+            <span class="string">&quot;an Amount type representing a fixed-point currency amount&quot;
+        </span>)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">serde::Serialize</span> <span class="kw">for</span> <span class="ident">Amount</span> {
-    <span class="kw">fn</span> <span class="ident">serialize</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">serializer</span>: <span class="ident">S</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">S::Ok</span>, <span class="ident">S::Error</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">S</span>: <span class="ident">serde::Serializer</span>,
+<span class="kw">impl </span>serde::Serialize <span class="kw">for </span>Amount {
+    <span class="kw">fn </span>serialize&lt;S&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, serializer: S) -&gt; <span class="prelude-ty">Result</span>&lt;S::Ok, S::Error&gt;
+    <span class="kw">where
+        </span>S: serde::Serializer,
     {
-        <span class="ident">serializer</span>.<span class="ident">serialize_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_string</span>())
+        serializer.serialize_str(<span class="kw-2">&amp;</span><span class="self">self</span>.to_string())
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

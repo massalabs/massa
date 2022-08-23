@@ -309,316 +309,316 @@
 <span id="309">309</span>
 <span id="310">310</span>
 <span id="311">311</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">commands::NetworkManagementCommand</span>, <span class="ident">error::NetworkError</span>, <span class="ident">BootstrapPeers</span>, <span class="ident">NetworkCommand</span>,
-    <span class="ident">NetworkEvent</span>, <span class="ident">Peers</span>,
+</span><span class="kw">use crate</span>::{
+    commands::NetworkManagementCommand, error::NetworkError, BootstrapPeers, NetworkCommand,
+    NetworkEvent, Peers,
 };
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">composite::PubkeySig</span>,
-    <span class="ident">node::NodeId</span>,
-    <span class="ident">operation</span>::{<span class="ident">OperationIds</span>, <span class="ident">OperationPrefixIds</span>},
-    <span class="ident">stats::NetworkStats</span>,
-    <span class="ident">BlockId</span>, <span class="ident">WrappedEndorsement</span>,
+<span class="kw">use </span>massa_models::{
+    composite::PubkeySig,
+    node::NodeId,
+    operation::{OperationIds, OperationPrefixIds},
+    stats::NetworkStats,
+    BlockId, WrappedEndorsement,
 };
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">collections</span>::{<span class="ident">HashMap</span>, <span class="ident">VecDeque</span>},
-    <span class="ident">net::IpAddr</span>,
+<span class="kw">use </span>std::{
+    collections::{HashMap, VecDeque},
+    net::IpAddr,
 };
-<span class="kw">use</span> <span class="ident">tokio</span>::{
-    <span class="ident">sync</span>::{<span class="ident">mpsc</span>, <span class="ident">oneshot</span>},
-    <span class="ident">task::JoinHandle</span>,
+<span class="kw">use </span>tokio::{
+    sync::{mpsc, oneshot},
+    task::JoinHandle,
 };
 
-<span class="doccomment">/// Network command sender</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NetworkCommandSender</span>(<span class="kw">pub</span> <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">NetworkCommand</span><span class="op">&gt;</span>);
+<span class="doccomment">/// Network command sender
+</span><span class="attribute">#[derive(Clone)]
+</span><span class="kw">pub struct </span>NetworkCommandSender(<span class="kw">pub </span>mpsc::Sender&lt;NetworkCommand&gt;);
 
-<span class="kw">impl</span> <span class="ident">NetworkCommandSender</span> {
-    <span class="doccomment">/// ban node(s) by id(s)</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_ban_by_ids</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::NodeBanByIds</span>(<span class="ident">ids</span>))
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send BanId command&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
+<span class="kw">impl </span>NetworkCommandSender {
+    <span class="doccomment">/// ban node(s) by id(s)
+    </span><span class="kw">pub async fn </span>node_ban_by_ids(<span class="kw-2">&amp;</span><span class="self">self</span>, ids: Vec&lt;NodeId&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(NetworkCommand::NodeBanByIds(ids))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| NetworkError::ChannelError(<span class="string">&quot;could not send BanId command&quot;</span>.into()))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// ban node(s) by ip(s)</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_ban_by_ips</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::NodeBanByIps</span>(<span class="ident">ips</span>))
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send BanIp command&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
+    <span class="doccomment">/// ban node(s) by ip(s)
+    </span><span class="kw">pub async fn </span>node_ban_by_ips(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(NetworkCommand::NodeBanByIps(ips))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| NetworkError::ChannelError(<span class="string">&quot;could not send BanIp command&quot;</span>.into()))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// add ip to whitelist</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">whitelist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::Whitelist</span>(<span class="ident">ips</span>))
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send Whitelist command&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
+    <span class="doccomment">/// add ip to whitelist
+    </span><span class="kw">pub async fn </span>whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(NetworkCommand::Whitelist(ips))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| NetworkError::ChannelError(<span class="string">&quot;could not send Whitelist command&quot;</span>.into()))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// remove ip from whitelist</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">remove_from_whitelist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::RemoveFromWhitelist</span>(<span class="ident">ips</span>))
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send RemoveFromWhitelist command&quot;</span>.<span class="ident">into</span>())
+    <span class="doccomment">/// remove ip from whitelist
+    </span><span class="kw">pub async fn </span>remove_from_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(NetworkCommand::RemoveFromWhitelist(ips))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
+                NetworkError::ChannelError(<span class="string">&quot;could not send RemoveFromWhitelist command&quot;</span>.into())
             })<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// remove from banned node(s) by id(s)</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_unban_by_ids</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::NodeUnbanByIds</span>(<span class="ident">ids</span>))
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send Unban command&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
+    <span class="doccomment">/// remove from banned node(s) by id(s)
+    </span><span class="kw">pub async fn </span>node_unban_by_ids(<span class="kw-2">&amp;</span><span class="self">self</span>, ids: Vec&lt;NodeId&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(NetworkCommand::NodeUnbanByIds(ids))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| NetworkError::ChannelError(<span class="string">&quot;could not send Unban command&quot;</span>.into()))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// remove from banned node(s) by ip(s)</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_unban_ips</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::NodeUnbanByIps</span>(<span class="ident">ips</span>))
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send Unban command&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
+    <span class="doccomment">/// remove from banned node(s) by ip(s)
+    </span><span class="kw">pub async fn </span>node_unban_ips(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(NetworkCommand::NodeUnbanByIps(ips))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| NetworkError::ChannelError(<span class="string">&quot;could not send Unban command&quot;</span>.into()))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Send the order to send block.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_block</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node</span>: <span class="ident">NodeId</span>, <span class="ident">block_id</span>: <span class="ident">BlockId</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::SendBlock</span> { <span class="ident">node</span>, <span class="ident">block_id</span> })
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send SendBlock command&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
+    <span class="doccomment">/// Send the order to send block.
+    </span><span class="kw">pub async fn </span>send_block(<span class="kw-2">&amp;</span><span class="self">self</span>, node: NodeId, block_id: BlockId) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(NetworkCommand::SendBlock { node, block_id })
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| NetworkError::ChannelError(<span class="string">&quot;could not send SendBlock command&quot;</span>.into()))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Send the order to ask for a block.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">ask_for_block_list</span>(
+    <span class="doccomment">/// Send the order to ask for a block.
+    </span><span class="kw">pub async fn </span>ask_for_block_list(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">list</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::AskForBlocks</span> { <span class="ident">list</span> })
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send AskForBlock command&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
+        list: HashMap&lt;NodeId, Vec&lt;BlockId&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(NetworkCommand::AskForBlocks { list })
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| NetworkError::ChannelError(<span class="string">&quot;could not send AskForBlock command&quot;</span>.into()))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Send the order to send block header.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note: with the current use of shared storage,</span>
-    <span class="doccomment">/// sending a header requires having the block stored.</span>
-    <span class="doccomment">/// This matches the current use of `send_block_header`,</span>
-    <span class="doccomment">/// which is only used after a block has been integrated in the graph.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_block_header</span>(
+    <span class="doccomment">/// Send the order to send block header.
+    ///
+    /// Note: with the current use of shared storage,
+    /// sending a header requires having the block stored.
+    /// This matches the current use of `send_block_header`,
+    /// which is only used after a block has been integrated in the graph.
+    </span><span class="kw">pub async fn </span>send_block_header(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::SendBlockHeader</span> { <span class="ident">node</span>, <span class="ident">block_id</span> })
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send SendBlockHeader command&quot;</span>.<span class="ident">into</span>())
+        node: NodeId,
+        block_id: BlockId,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(NetworkCommand::SendBlockHeader { node, block_id })
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
+                NetworkError::ChannelError(<span class="string">&quot;could not send SendBlockHeader command&quot;</span>.into())
             })<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Send the order to get peers.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_peers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Peers</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::GetPeers</span>(<span class="ident">response_tx</span>))
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send GetPeers command&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
-        <span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-            <span class="ident">NetworkError::ChannelError</span>(
-                <span class="string">&quot;could not send GetAdvertisablePeerListChannelError upstream&quot;</span>.<span class="ident">into</span>(),
+    <span class="doccomment">/// Send the order to get peers.
+    </span><span class="kw">pub async fn </span>get_peers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Peers, NetworkError&gt; {
+        <span class="kw">let </span>(response_tx, response_rx) = oneshot::channel();
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(NetworkCommand::GetPeers(response_tx))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| NetworkError::ChannelError(<span class="string">&quot;could not send GetPeers command&quot;</span>.into()))<span class="question-mark">?</span>;
+        response_rx.<span class="kw">await</span>.map_err(|<span class="kw">_</span>| {
+            NetworkError::ChannelError(
+                <span class="string">&quot;could not send GetAdvertisablePeerListChannelError upstream&quot;</span>.into(),
             )
         })
     }
 
-    <span class="doccomment">/// get network stats</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_network_stats</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NetworkStats</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::GetStats</span> { <span class="ident">response_tx</span> })
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send GetPeers command&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
-        <span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-            <span class="ident">NetworkError::ChannelError</span>(
-                <span class="string">&quot;could not send GetAdvertisablePeerListChannelError upstream&quot;</span>.<span class="ident">into</span>(),
+    <span class="doccomment">/// get network stats
+    </span><span class="kw">pub async fn </span>get_network_stats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;NetworkStats, NetworkError&gt; {
+        <span class="kw">let </span>(response_tx, response_rx) = oneshot::channel();
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(NetworkCommand::GetStats { response_tx })
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| NetworkError::ChannelError(<span class="string">&quot;could not send GetPeers command&quot;</span>.into()))<span class="question-mark">?</span>;
+        response_rx.<span class="kw">await</span>.map_err(|<span class="kw">_</span>| {
+            NetworkError::ChannelError(
+                <span class="string">&quot;could not send GetAdvertisablePeerListChannelError upstream&quot;</span>.into(),
             )
         })
     }
 
-    <span class="doccomment">/// Send the order to get bootstrap peers.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_bootstrap_peers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BootstrapPeers</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>::<span class="op">&lt;</span><span class="ident">BootstrapPeers</span><span class="op">&gt;</span>();
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::GetBootstrapPeers</span>(<span class="ident">response_tx</span>))
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send GetBootstrapPeers command&quot;</span>.<span class="ident">into</span>())
+    <span class="doccomment">/// Send the order to get bootstrap peers.
+    </span><span class="kw">pub async fn </span>get_bootstrap_peers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapPeers, NetworkError&gt; {
+        <span class="kw">let </span>(response_tx, response_rx) = oneshot::channel::&lt;BootstrapPeers&gt;();
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(NetworkCommand::GetBootstrapPeers(response_tx))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
+                NetworkError::ChannelError(<span class="string">&quot;could not send GetBootstrapPeers command&quot;</span>.into())
             })<span class="question-mark">?</span>;
-        <span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-            <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send GetBootstrapPeers response upstream&quot;</span>.<span class="ident">into</span>())
+        response_rx.<span class="kw">await</span>.map_err(|<span class="kw">_</span>| {
+            NetworkError::ChannelError(<span class="string">&quot;could not send GetBootstrapPeers response upstream&quot;</span>.into())
         })
     }
 
-    <span class="doccomment">/// send block not found to node</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">block_not_found</span>(
+    <span class="doccomment">/// send block not found to node
+    </span><span class="kw">pub async fn </span>block_not_found(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::BlockNotFound</span> { <span class="ident">node</span>, <span class="ident">block_id</span> })
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send block_not_found command&quot;</span>.<span class="ident">into</span>())
+        node: NodeId,
+        block_id: BlockId,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(NetworkCommand::BlockNotFound { node, block_id })
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
+                NetworkError::ChannelError(<span class="string">&quot;could not send block_not_found command&quot;</span>.into())
             })<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// send operations to node</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_operations</span>(
+    <span class="doccomment">/// send operations to node
+    </span><span class="kw">pub async fn </span>send_operations(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="ident">operations</span>: <span class="ident">OperationIds</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::SendOperations</span> { <span class="ident">node</span>, <span class="ident">operations</span> })
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send SendOperations command&quot;</span>.<span class="ident">into</span>())
+        node: NodeId,
+        operations: OperationIds,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(NetworkCommand::SendOperations { node, operations })
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
+                NetworkError::ChannelError(<span class="string">&quot;could not send SendOperations command&quot;</span>.into())
             })<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Create a new call to the network, sending a announcement of `OperationIds` to a</span>
-    <span class="doccomment">/// target node (`to_node`)</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// Can return a `[NetworkError::ChannelError]` that must be managed by the direct caller of the</span>
-    <span class="doccomment">/// function.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_operations_batch</span>(
+    <span class="doccomment">/// Create a new call to the network, sending a announcement of `OperationIds` to a
+    /// target node (`to_node`)
+    ///
+    /// # Returns
+    /// Can return a `[NetworkError::ChannelError]` that must be managed by the direct caller of the
+    /// function.
+    </span><span class="kw">pub async fn </span>send_operations_batch(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">to_node</span>: <span class="ident">NodeId</span>,
-        <span class="ident">batch</span>: <span class="ident">OperationPrefixIds</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::SendOperationAnnouncements</span> { <span class="ident">to_node</span>, <span class="ident">batch</span> })
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">NetworkError::ChannelError</span>(
-                    <span class="string">&quot;could not send SendOperationAnnouncements command&quot;</span>.<span class="ident">into</span>(),
+        to_node: NodeId,
+        batch: OperationPrefixIds,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(NetworkCommand::SendOperationAnnouncements { to_node, batch })
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
+                NetworkError::ChannelError(
+                    <span class="string">&quot;could not send SendOperationAnnouncements command&quot;</span>.into(),
                 )
             })<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Create a new call to the network, sending a `wishlist` of `operationIds` to a</span>
-    <span class="doccomment">/// target node (`to_node`) in order to receive the full operations in the future.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// Can return a `[NetworkError::ChannelError]` that must be managed by the direct caller of the</span>
-    <span class="doccomment">/// function.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_ask_for_operations</span>(
+    <span class="doccomment">/// Create a new call to the network, sending a `wishlist` of `operationIds` to a
+    /// target node (`to_node`) in order to receive the full operations in the future.
+    ///
+    /// # Returns
+    /// Can return a `[NetworkError::ChannelError]` that must be managed by the direct caller of the
+    /// function.
+    </span><span class="kw">pub async fn </span>send_ask_for_operations(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">to_node</span>: <span class="ident">NodeId</span>,
-        <span class="ident">wishlist</span>: <span class="ident">OperationPrefixIds</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::AskForOperations</span> { <span class="ident">to_node</span>, <span class="ident">wishlist</span> })
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send AskForOperations command&quot;</span>.<span class="ident">into</span>())
+        to_node: NodeId,
+        wishlist: OperationPrefixIds,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(NetworkCommand::AskForOperations { to_node, wishlist })
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
+                NetworkError::ChannelError(<span class="string">&quot;could not send AskForOperations command&quot;</span>.into())
             })<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// send endorsements to node id</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_endorsements</span>(
+    <span class="doccomment">/// send endorsements to node id
+    </span><span class="kw">pub async fn </span>send_endorsements(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::SendEndorsements</span> { <span class="ident">node</span>, <span class="ident">endorsements</span> })
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send send_endorsement command&quot;</span>.<span class="ident">into</span>())
+        node: NodeId,
+        endorsements: Vec&lt;WrappedEndorsement&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(NetworkCommand::SendEndorsements { node, endorsements })
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
+                NetworkError::ChannelError(<span class="string">&quot;could not send send_endorsement command&quot;</span>.into())
             })<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Sign a message using the node&#39;s keypair</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_sign_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">msg</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PubkeySig</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::NodeSignMessage</span> { <span class="ident">msg</span>, <span class="ident">response_tx</span> })
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send GetBootstrapPeers command&quot;</span>.<span class="ident">into</span>())
+    <span class="doccomment">/// Sign a message using the node&#39;s keypair
+    </span><span class="kw">pub async fn </span>node_sign_message(<span class="kw-2">&amp;</span><span class="self">self</span>, msg: Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;PubkeySig, NetworkError&gt; {
+        <span class="kw">let </span>(response_tx, response_rx) = oneshot::channel();
+        <span class="self">self</span>.<span class="number">0
+            </span>.send(NetworkCommand::NodeSignMessage { msg, response_tx })
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
+                NetworkError::ChannelError(<span class="string">&quot;could not send GetBootstrapPeers command&quot;</span>.into())
             })<span class="question-mark">?</span>;
-        <span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-            <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send GetBootstrapPeers response upstream&quot;</span>.<span class="ident">into</span>())
+        response_rx.<span class="kw">await</span>.map_err(|<span class="kw">_</span>| {
+            NetworkError::ChannelError(<span class="string">&quot;could not send GetBootstrapPeers response upstream&quot;</span>.into())
         })
     }
 }
 
-<span class="doccomment">/// network event receiver</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NetworkEventReceiver</span>(<span class="kw">pub</span> <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">NetworkEvent</span><span class="op">&gt;</span>);
+<span class="doccomment">/// network event receiver
+</span><span class="kw">pub struct </span>NetworkEventReceiver(<span class="kw">pub </span>mpsc::Receiver&lt;NetworkEvent&gt;);
 
-<span class="kw">impl</span> <span class="ident">NetworkEventReceiver</span> {
-    <span class="doccomment">/// wait network event</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">wait_event</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NetworkEvent</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">recv</span>()
-            .<span class="kw">await</span>
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not receive event&quot;</span>.<span class="ident">into</span>()))
+<span class="kw">impl </span>NetworkEventReceiver {
+    <span class="doccomment">/// wait network event
+    </span><span class="kw">pub async fn </span>wait_event(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;NetworkEvent, NetworkError&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.recv()
+            .<span class="kw">await
+            </span>.ok_or_else(|| NetworkError::ChannelError(<span class="string">&quot;could not receive event&quot;</span>.into()))
     }
 
-    <span class="doccomment">/// drains remaining events and returns them in a `VecDeque`</span>
-    <span class="doccomment">/// note: events are sorted from oldest to newest</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">drain</span>(<span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">NetworkEvent</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">remaining_events</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">NetworkEvent</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">VecDeque::new</span>();
-        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">evt</span>) <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">recv</span>().<span class="kw">await</span> {
-            <span class="ident">remaining_events</span>.<span class="ident">push_back</span>(<span class="ident">evt</span>);
+    <span class="doccomment">/// drains remaining events and returns them in a `VecDeque`
+    /// note: events are sorted from oldest to newest
+    </span><span class="kw">pub async fn </span>drain(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; VecDeque&lt;NetworkEvent&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>remaining_events: VecDeque&lt;NetworkEvent&gt; = VecDeque::new();
+        <span class="kw">while let </span><span class="prelude-val">Some</span>(evt) = <span class="self">self</span>.<span class="number">0</span>.recv().<span class="kw">await </span>{
+            remaining_events.push_back(evt);
         }
-        <span class="ident">remaining_events</span>
+        remaining_events
     }
 }
 
-<span class="doccomment">/// Network manager</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NetworkManager</span> {
-    <span class="doccomment">/// network handle</span>
-    <span class="kw">pub</span> <span class="ident">join_handle</span>: <span class="ident">JoinHandle</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// management commands</span>
-    <span class="kw">pub</span> <span class="ident">manager_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">NetworkManagementCommand</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Network manager
+</span><span class="kw">pub struct </span>NetworkManager {
+    <span class="doccomment">/// network handle
+    </span><span class="kw">pub </span>join_handle: JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), NetworkError&gt;&gt;,
+    <span class="doccomment">/// management commands
+    </span><span class="kw">pub </span>manager_tx: mpsc::Sender&lt;NetworkManagementCommand&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">NetworkManager</span> {
-    <span class="doccomment">/// stop network</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">stop</span>(
+<span class="kw">impl </span>NetworkManager {
+    <span class="doccomment">/// stop network
+    </span><span class="kw">pub async fn </span>stop(
         <span class="self">self</span>,
-        <span class="ident">network_event_receiver</span>: <span class="ident">NetworkEventReceiver</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="ident">drop</span>(<span class="self">self</span>.<span class="ident">manager_tx</span>);
-        <span class="kw">let</span> <span class="ident">_remaining_events</span> <span class="op">=</span> <span class="ident">network_event_receiver</span>.<span class="ident">drain</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">join_handle</span>.<span class="kw">await</span><span class="question-mark">?</span>;
+        network_event_receiver: NetworkEventReceiver,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+        drop(<span class="self">self</span>.manager_tx);
+        <span class="kw">let </span>_remaining_events = network_event_receiver.drain().<span class="kw">await</span>;
+        <span class="kw">let _ </span>= <span class="self">self</span>.join_handle.<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>

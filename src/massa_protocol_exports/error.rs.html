@@ -59,66 +59,66 @@
 <span id="59">59</span>
 <span id="60">60</span>
 <span id="61">61</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ProtocolEvent</span>;
-<span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
-<span class="kw">use</span> <span class="ident">massa_models::ModelsError</span>;
-<span class="kw">use</span> <span class="ident">massa_network_exports::ConnectionId</span>;
-<span class="kw">use</span> <span class="ident">massa_network_exports::NetworkError</span>;
-<span class="kw">use</span> <span class="ident">std::net::IpAddr</span>;
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+</span><span class="kw">use </span><span class="kw">crate</span>::ProtocolEvent;
+<span class="kw">use </span>displaydoc::Display;
+<span class="kw">use </span>massa_models::ModelsError;
+<span class="kw">use </span>massa_network_exports::ConnectionId;
+<span class="kw">use </span>massa_network_exports::NetworkError;
+<span class="kw">use </span>std::net::IpAddr;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="doccomment">/// protocol error</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Display</span>, <span class="ident">Error</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProtocolError</span> {
-    <span class="doccomment">/// wrong signature</span>
-    <span class="ident">WrongSignature</span>,
-    <span class="doccomment">/// Protocol err:{0}</span>
-    <span class="ident">GeneralProtocolError</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// An error occurred during channel communication: {0}</span>
-    <span class="ident">ChannelError</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// A tokio task has crashed err:{0}</span>
-    <span class="ident">TokioTaskJoinError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">tokio::task::JoinError</span>),
-    <span class="doccomment">/// error receiving one shot response : {0}</span>
-    <span class="ident">TokioRecvError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">tokio::sync::oneshot::error::RecvError</span>),
-    <span class="doccomment">/// error sending protocol event: {0}</span>
-    <span class="ident">TokioSendError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">tokio::sync::mpsc::error::SendError</span><span class="op">&lt;</span><span class="ident">ProtocolEvent</span><span class="op">&gt;</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Error during network connection:`{0:?}`</span>
-    <span class="ident">PeerConnectionError</span>(<span class="ident">NetworkConnectionErrorType</span>),
-    <span class="doccomment">/// The ip:`{0}` address is not valid</span>
-    <span class="ident">InvalidIpError</span>(<span class="ident">IpAddr</span>),
-    <span class="doccomment">/// Active connection missing:`{0}`</span>
-    <span class="ident">ActiveConnectionMissing</span>(<span class="ident">ConnectionId</span>),
-    <span class="doccomment">/// IO error : {0}</span>
-    <span class="ident">IOError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">std::io::Error</span>),
-    <span class="doccomment">/// Serde error : {0}</span>
-    <span class="ident">SerdeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">serde_json::Error</span>),
-    <span class="doccomment">/// `massa_hash` error {0}</span>
-    <span class="ident">MassaHashError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_hash::MassaHashError</span>),
-    <span class="doccomment">/// the network controller should not drop a node command sender before shutting down the node.</span>
-    <span class="ident">UnexpectedNodeCommandChannelClosure</span>,
-    <span class="doccomment">/// the writer of a node should not drop its event sender before sending a `clean_exit` message.</span>
-    <span class="ident">UnexpectedWriterClosure</span>,
-    <span class="doccomment">/// Time error {0}</span>
-    <span class="ident">TimeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_time::TimeError</span>),
-    <span class="doccomment">/// missing peers</span>
-    <span class="ident">MissingPeersError</span>,
-    <span class="doccomment">/// models error: {0}</span>
-    <span class="ident">ModelsError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ModelsError</span>),
-    <span class="doccomment">/// network error: {0}</span>
-    <span class="ident">NetworkError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">NetworkError</span>),
-    <span class="doccomment">/// container inconsistency error: {0}</span>
-    <span class="ident">ContainerInconsistencyError</span>(<span class="ident">String</span>),
+<span class="doccomment">/// protocol error
+</span><span class="attribute">#[non_exhaustive]
+#[derive(Display, Error, Debug)]
+</span><span class="kw">pub enum </span>ProtocolError {
+    <span class="doccomment">/// wrong signature
+    </span>WrongSignature,
+    <span class="doccomment">/// Protocol err:{0}
+    </span>GeneralProtocolError(String),
+    <span class="doccomment">/// An error occurred during channel communication: {0}
+    </span>ChannelError(String),
+    <span class="doccomment">/// A tokio task has crashed err:{0}
+    </span>TokioTaskJoinError(<span class="attribute">#[from] </span>tokio::task::JoinError),
+    <span class="doccomment">/// error receiving one shot response : {0}
+    </span>TokioRecvError(<span class="attribute">#[from] </span>tokio::sync::oneshot::error::RecvError),
+    <span class="doccomment">/// error sending protocol event: {0}
+    </span>TokioSendError(<span class="attribute">#[from] </span>Box&lt;tokio::sync::mpsc::error::SendError&lt;ProtocolEvent&gt;&gt;),
+    <span class="doccomment">/// Error during network connection:`{0:?}`
+    </span>PeerConnectionError(NetworkConnectionErrorType),
+    <span class="doccomment">/// The ip:`{0}` address is not valid
+    </span>InvalidIpError(IpAddr),
+    <span class="doccomment">/// Active connection missing:`{0}`
+    </span>ActiveConnectionMissing(ConnectionId),
+    <span class="doccomment">/// IO error : {0}
+    </span>IOError(<span class="attribute">#[from] </span>std::io::Error),
+    <span class="doccomment">/// Serde error : {0}
+    </span>SerdeError(<span class="attribute">#[from] </span>serde_json::Error),
+    <span class="doccomment">/// `massa_hash` error {0}
+    </span>MassaHashError(<span class="attribute">#[from] </span>massa_hash::MassaHashError),
+    <span class="doccomment">/// the network controller should not drop a node command sender before shutting down the node.
+    </span>UnexpectedNodeCommandChannelClosure,
+    <span class="doccomment">/// the writer of a node should not drop its event sender before sending a `clean_exit` message.
+    </span>UnexpectedWriterClosure,
+    <span class="doccomment">/// Time error {0}
+    </span>TimeError(<span class="attribute">#[from] </span>massa_time::TimeError),
+    <span class="doccomment">/// missing peers
+    </span>MissingPeersError,
+    <span class="doccomment">/// models error: {0}
+    </span>ModelsError(<span class="attribute">#[from] </span>ModelsError),
+    <span class="doccomment">/// network error: {0}
+    </span>NetworkError(<span class="attribute">#[from] </span>NetworkError),
+    <span class="doccomment">/// container inconsistency error: {0}
+    </span>ContainerInconsistencyError(String),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NetworkConnectionErrorType</span> {
-    <span class="ident">CloseConnectionWithNoConnectionToClose</span>(<span class="ident">IpAddr</span>),
-    <span class="ident">PeerInfoNotFoundError</span>(<span class="ident">IpAddr</span>),
-    <span class="ident">ToManyConnectionAttempt</span>(<span class="ident">IpAddr</span>),
-    <span class="ident">ToManyConnectionFailure</span>(<span class="ident">IpAddr</span>),
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub enum </span>NetworkConnectionErrorType {
+    CloseConnectionWithNoConnectionToClose(IpAddr),
+    PeerInfoNotFoundError(IpAddr),
+    ToManyConnectionAttempt(IpAddr),
+    ToManyConnectionFailure(IpAddr),
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (29e4a9ee0 2022-08-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>
