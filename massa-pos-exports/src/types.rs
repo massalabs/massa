@@ -510,7 +510,7 @@ impl Serializer<PoSChanges> for PoSChangesSerializer {
         }
 
         // deferred_credits
-        let entry_count: u64 = value.production_stats.len().try_into().map_err(|err| {
+        let entry_count: u64 = value.deferred_credits.0.len().try_into().map_err(|err| {
             SerializeError::GeneralError(format!("too many entries in deferred_credits: {}", err))
         })?;
         self.u64_serializer.serialize(&entry_count, buffer)?;

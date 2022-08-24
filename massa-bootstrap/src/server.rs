@@ -295,8 +295,6 @@ pub async fn send_final_state_stream(
                 .get_cycle_history_part(old_cycle)?;
             pos_cycle_data = cycle_data;
 
-            println!("cycle_completion: {:?}", cycle_completion);
-
             let (credits_data, new_last_credits_slot) = final_state_read
                 .pos_state
                 .get_deferred_credits_part(old_credits_slot)?;

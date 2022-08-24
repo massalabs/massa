@@ -134,8 +134,6 @@ impl FinalState {
         last_id_async_pool: Option<AsyncMessageId>,
         pos_cycle_completion: Option<bool>,
     ) -> Result<StateChanges, FinalStateError> {
-        println!("get_state_changes_part starts");
-
         let pos_slot = if !self.changes_history.is_empty() {
             // Safe because we checked that there is changes just above.
             let index = last_slot
@@ -194,11 +192,9 @@ impl FinalState {
 
             // Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
             if pos_cycle_completion == Some(false) {
-                println!("retrieving changes");
                 res_changes.roll_state_changes = changes.roll_state_changes.clone();
             }
         }
-        println!("get_state_changes_part ends");
         Ok(res_changes)
     }
 }
@@ -255,6 +251,7 @@ mod tests {
         history_state_changes.push_front((Slot::new(1, 0), state_changes));
         let mut final_state: FinalState = Default::default();
         final_state.changes_history = history_state_changes;
+        // TODO: Fix this when refactoring test.
         // // Test slot filter
         // let part = final_state
         //     .get_state_changes_part(Slot::new(2, 0), low_address, message.compute_id(), None)

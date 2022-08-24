@@ -122,7 +122,6 @@ impl BlockFactoryWorker {
         let block_producer_addr = match self.channels.selector.get_producer(slot) {
             Ok(addr) => addr,
             Err(err) => {
-                println!("TEST IN");
                 warn!(
                     "block factory could not get selector draws for slot {}: {}",
                     slot, err

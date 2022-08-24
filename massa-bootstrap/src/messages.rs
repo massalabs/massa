@@ -284,7 +284,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
-    /// let message_deserializer = BootstrapServerMessageDeserializer::new(16, 10, 100, 100, 1000, 1000, 1000, 1000, 1000, 1000, 100000, 100000, 100000, 100000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000);
+    /// let message_deserializer = BootstrapServerMessageDeserializer::new(16, 10, 100, 100, 1000, 1000, 1000, 1000, 1000, 1000, 100000, 10000, 10000, 10000, 100000);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),
     ///    version: Version::from_str("TEST.1.0").unwrap(),
@@ -410,7 +410,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
 }
 
 /// Messages used during bootstrap by client
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BootstrapClientMessage {
     /// Ask for bootstrap peers
     AskBootstrapPeers,

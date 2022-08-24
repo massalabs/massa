@@ -127,7 +127,7 @@ fn get_random_pos_state(r_limit: u64) -> PoSFinalState {
         cycle_history.push_back(CycleInfo {
             cycle: i,
             roll_counts,
-            complete: if i == r_limit - 1 { false } else { true },
+            complete: false, //if i == r_limit - 1 { false } else { true },
             rng_seed,
             production_stats,
         });
@@ -156,7 +156,6 @@ fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
 pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalState {
     let mut rng = rand::thread_rng();
     let r_limit: u64 = rng.gen_range(25..50);
-    println!("RAND_LIMIT = {}", r_limit);
 
     let mut sorted_ledger = HashMap::new();
     let mut messages = BTreeMap::new();
