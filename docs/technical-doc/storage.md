@@ -24,8 +24,8 @@ let storage: Storage = Default::default();
 **All subsequent instances of `Storage` used throughout the program should always be clones of that instance.**
 
 There are two ways of cloning an instance of `Storage`:
-* `storage.clone()` will clone an existing instance and claim all the local references to objects that the initial instance held
-* `storage.clone_without_refs()` will clone an existing instance but the resulting instance will not hold any local references to objects
+* `storage.clone()` will clone an existing instance and claim all the references to objects that the initial instance held
+* `storage.clone_without_refs()` will clone an existing instance but the resulting instance will not hold any references to objects
 
 ### Adding an element to the global shared object store
 
@@ -35,29 +35,29 @@ Note that the same applies to blocks and endorsements.
 ```rust
 let operations: Vec<WrappedOperation> = XXXX;
 storage.store_operations(operations);
-// Here, all `operations` were stored inside the global shared object store and `storage` has acquired local references to all of them. Objects that were already stored beforehand are not overwritten, but a local reference is simply acquired. 
+// Here, all `operations` were stored inside the global shared object store and `storage` has acquired references to all of them. Objects that were already stored beforehand are not overwritten, but a reference is simply acquired. 
 ```
 
-### Claiming a local reference to an object that is already in the globally shared store
+### Claiming a reference to an object that is already in the globally shared store
 
-Here we take the example of claiming a local reference to a set of operations that is already in the global shared object store.
+Here we take the example of claiming a reference to a set of operations that is already in the global shared object store.
 Note that the same applies to blocks and endorsements.
 
 ```rust
 let operation_ids: Set<OperationId> = XXXX;
 let claimed: Set<OperationId> = storage.claim_operation_refs(&operation_ids);
-// Here, `claimed` contains the set of operation IDs among `operation_ids` for which local references were successfully claimed by the `storage` instance. Elements of `operation_ids` that were not found in the global shared object store are absent from `claimed`.
+// Here, `claimed` contains the set of operation IDs among `operation_ids` for which references were successfully claimed by the `storage` instance. Elements of `operation_ids` that were not found in the global shared object store are absent from `claimed`.
 ```
 
-### Dropping local references to objects
+### Dropping references to objects
 
-When a `Storage` instance is dropped, all its local references are automatically dropped.
+When a `Storage` instance is dropped, all its references are automatically dropped.
 
-To drop a specific local reference to an operation for example, use:
+To drop a specific reference to an operation for example, use:
 ```rust
 let operation_ids: Set<OperationId> = XXXX;
 storage.drop_block_refs(&operation_ids);
-// Here, `storage` does not own any local references to operations listed `operation_ids` anymore. Operations that were not owned beforehand are ignored.
+// Here, `storage` does not own any references to operations listed `operation_ids` anymore. Operations that were not owned beforehand are ignored.
 ```
 When not a single `Storage` instance references a given object anymore, that object is removed from the global shared object store.
 
@@ -71,7 +71,7 @@ let local_op_refs: &Set<OperationId> = storage.get_op_refs();
 ### Merging, splitting off
 
 * `storage.extend(other)` consumes `other` and adds its locally owned object references to `storage`
-* `let new_storage = storage.split_off(&block_id_set, &operation_id_set, &endorsement_id_set);` efficiently transfers ownership of sets of local object references from `storage` to a new `new_storage` instance. `storage` loses the transferred local references, and `new_storage` acquires them.
+* `let new_storage = storage.split_off(&block_id_set, &operation_id_set, &endorsement_id_set);` efficiently transfers ownership of sets of local object references from `storage` to a new `new_storage` instance. `storage` loses the transferred references, and `new_storage` acquires them.
 
 ### Accessing objects in the global shared object store
 
@@ -112,13 +112,13 @@ Here are the available query criteria:
 
 Pools only reference operations and endorsements.
 
-The operation pool (resp. endorsement pool) has its own instance of `Storage` that owns local references to all the operations (resp. endorsements) currently in the pool.
+The operation pool (resp. endorsement pool) has its own instance of `Storage` that owns references to all the operations (resp. endorsements) currently in the pool.
 
 When sending a set of operations to the operation pool, simply use `PoolController::add_operations(storage)`. All the the operations that `storage: Storage` locally owns references to will be added to the operation pool.
 
 When sending a set of endorsements to the operation pool, simply use `PoolController::add_endorsements(storage)`. All the the endorsements that `storage: Storage` locally owns references to will be added to the endorsement pool.
 
-When an object is pruned from a pool, its local reference in that pool's storage instance is dropped.
+When an object is pruned from a pool, its reference in that pool's storage instance is dropped.
 
 When asking pool for a set of endorsements to create a block, use `PoolController::get_block_endorsements(..) -> (Vec<Option<EndorsementId>>, Storage)` where the returned `Vec` is used to keep the order of the endorsements for which references are owned in the returned `Storage` instance.
 
@@ -129,7 +129,7 @@ When asking pool for a set of operations to create a block, use `PoolController:
 The endorsement factory simply produces a batch of endorsements whenever one or more of its addresses are selected to produce endorsements at the current slot. That batch is added to a clean instance of `storage: Storage` which is then sent to `Protocol` for propagation using `ProtocolCommandSender::propagate_endorsements(storage.clone())` and to `Pool` using `PoolController::add_endorsements(storage)`.
 
 The block factory works according the following steps whenever an owned address is selected to create a block at the current slot:
-* factory first prepares an instance of `block_storage: Storage` that owns no local references.
+* factory first prepares an instance of `block_storage: Storage` that owns no references.
 * factory then extends `block_storage` with the endorsements obtained from `PoolController::get_block_endorsements(..) -> (Vec<Option<EndorsementId>>, Storage)`.
 * factory then extends `block_storage` with the operations obtained from `PoolController::get_block_operations(..) -> (Vec<OperationId>, Storage)`.
 * factory then assembles the resulting block and stores it in `block_storage` as well.
@@ -145,14 +145,14 @@ When the `get_operations`, `get_endorsements`, `get_block` or `get_addresses` is
 
 Consensus and Graph only manage blocks.
 
-Each block managed by `Consensus/Graph` ia accompanied by its specific instance of `Storage` that owns local references to:
+Each block managed by `Consensus/Graph` ia accompanied by its specific instance of `Storage` that owns references to:
 * the block itself
 * the endorsements contained in the block
 * the operations contained in the block
 * the parents of the block (when available)
 That way, dropping the block's `Storage` instance allows dropping references to all its dependencies at the same time.
 
-Full blocks are sent to `Consensus` through `ConsensusCommandSender::send_block(block_id, slot, block_storage)`. The provided `block_storage: Storage` needs to own local references to the block itself, along with its operations and endorsements, but not necessarily its parents as they might not be available in the global shared block store yet. Note that providing `block_id` allows making sure that we are extracting the target block from the provided `block_storage` and not any of its dependency blocks.
+Full blocks are sent to `Consensus` through `ConsensusCommandSender::send_block(block_id, slot, block_storage)`. The provided `block_storage: Storage` needs to own references to the block itself, along with its operations and endorsements, but not necessarily its parents as they might not be available in the global shared block store yet. Note that providing `block_id` allows making sure that we are extracting the target block from the provided `block_storage` and not any of its dependency blocks.
 
 When `Consensus` manages to add the block to the graph, it adds the references to the block's parents to the block's `Storage` instance, and calls `ProtocolCommandSender::integrated_block(block.id, block.storage.clone())` for `Protocol` to propagate the block.
 
