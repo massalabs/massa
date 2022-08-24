@@ -103,7 +103,7 @@ fn test_prune() {
                 index_in_slot: 1,
                 call_stack: VecDeque::new(),
                 origin_operation_id: None,
-                candidate: false,
+                is_final: false,
             },
             data: i.to_string(),
         });
