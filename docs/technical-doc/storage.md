@@ -13,7 +13,7 @@ The `Storage` structure contains:
 * shared reference counters to those objects
 * a local (non-shared) list of object references owned by that particular instance of `Storage`
 
-### Contructing and cloning `Storage`
+### Constructing and cloning `Storage`
 
 An initial `Storage` object should be created in the program's entry point using:
 
