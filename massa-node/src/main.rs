@@ -10,6 +10,7 @@ use dialoguer::Password;
 use massa_api::{APIConfig, Private, Public, RpcServer, StopHandle, API};
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager};
+use massa_consensus_exports::ConsensusManager;
 use massa_consensus_exports::{
     events::ConsensusEvent, settings::ConsensusChannels, ConsensusConfig, ConsensusEventReceiver,
 };
@@ -63,6 +64,7 @@ async fn launch(
 ) -> (
     ConsensusEventReceiver,
     Option<BootstrapManager>,
+    ConsensusManager,
     Box<dyn ExecutionManager>,
     Box<dyn SelectorManager>,
     Box<dyn PoolController>,
@@ -299,7 +301,7 @@ async fn launch(
     // init consensus configuration
     let consensus_config = ConsensusConfig::from(&SETTINGS.consensus);
     // launch consensus controller
-    let (consensus_command_sender, consensus_event_receiver, _consensus_manager) =
+    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             consensus_config.clone(),
             ConsensusChannels {
@@ -390,6 +392,7 @@ async fn launch(
     (
         consensus_event_receiver,
         bootstrap_manager,
+        consensus_manager,
         execution_manager,
         selector_manager,
         pool_manager,
@@ -404,6 +407,7 @@ async fn launch(
 
 struct Managers {
     bootstrap_manager: Option<BootstrapManager>,
+    consensus_manager: ConsensusManager,
     execution_manager: Box<dyn ExecutionManager>,
     selector_manager: Box<dyn SelectorManager>,
     pool_manager: Box<dyn PoolController>,
@@ -413,10 +417,11 @@ struct Managers {
 }
 
 async fn stop(
-    _consensus_event_receiver: ConsensusEventReceiver,
+    consensus_event_receiver: ConsensusEventReceiver,
     Managers {
         bootstrap_manager,
         mut execution_manager,
+        consensus_manager,
         mut selector_manager,
         pool_manager,
         protocol_manager,
@@ -555,6 +560,7 @@ async fn main(args: Args) -> anyhow::Result<()> {
         let (
             mut consensus_event_receiver,
             bootstrap_manager,
+            consensus_manager,
             execution_manager,
             selector_manager,
             pool_manager,
@@ -603,6 +609,7 @@ async fn main(args: Args) -> anyhow::Result<()> {
             consensus_event_receiver,
             Managers {
                 bootstrap_manager,
+                consensus_manager,
                 execution_manager,
                 selector_manager,
                 pool_manager,

@@ -48,7 +48,7 @@ where
 
     let (
         _network_controller,
-        _protocol_event_receiver,
+        protocol_event_receiver,
         _protocol_command_sender,
         protocol_manager,
         _pool_event_receiver,
@@ -62,7 +62,7 @@ where
     .await;
 
     protocol_manager
-        .stop()
+        .stop(protocol_event_receiver)
         .await
         .expect("Failed to shutdown protocol.");
 }
@@ -105,7 +105,7 @@ where
 
     let (
         _network_controller,
-        _protocol_event_receiver,
+        protocol_event_receiver,
         _protocol_command_sender,
         protocol_manager,
         _protocol_pool_event_receiver,
@@ -120,7 +120,7 @@ where
     .await;
 
     protocol_manager
-        .stop()
+        .stop(protocol_event_receiver)
         .await
         .expect("Failed to shutdown protocol.");
 }

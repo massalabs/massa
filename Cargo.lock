@@ -2058,26 +2058,17 @@ dependencies = [
  "massa_time",
  "serde 1.0.144",
  "thiserror",
- "tokio",
 ]
 
 [[package]]
 name = "massa_pool_worker"
 version = "0.1.0"
 dependencies = [
- "futures 0.3.23",
- "lazy_static",
  "massa_execution_exports",
- "massa_hash",
  "massa_models",
  "massa_pool_exports",
- "massa_protocol_exports",
- "massa_signature",
  "massa_storage",
- "massa_time",
  "num",
- "serial_test 0.9.0",
- "tokio",
 ]
 
 [[package]]
@@ -2133,7 +2124,6 @@ dependencies = [
  "massa_logging",
  "massa_models",
  "massa_network_exports",
- "massa_pool_exports",
  "massa_signature",
  "massa_storage",
  "massa_time",
