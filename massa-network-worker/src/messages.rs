@@ -169,8 +169,7 @@ impl Serializer<Message> for MessageSerializer {
                     self.u32_serializer
                         .serialize(&u32::from(info_type), buffer)?;
                     if let AskForBlocksInfo::Operations(ids) = info {
-                        let op_ids_serializer = OperationIdsSerializer::new();
-                        op_ids_serializer.serialize(&ids, buffer)?;
+                        self.operations_ids_serializer.serialize(&ids, buffer)?;
                     }
                 }
             }
