@@ -193,9 +193,7 @@ impl NodeWorker {
                                 res
                             }
                             ToSend::ReplyForBlocksInfo(reply_list) => {
-                                for replies in
-                                    reply_list.chunks(self.cfg.max_ask_blocks as usize)
-                                {
+                                for replies in reply_list.chunks(self.cfg.max_ask_blocks as usize) {
                                     let mut res: Vec<u8> = Vec::new();
                                     u32_serializer.serialize(
                                         &u32::from(MessageTypeId::ReplyForBlocks),
