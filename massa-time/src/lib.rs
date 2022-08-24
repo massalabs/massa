@@ -281,7 +281,7 @@ impl MassaTime {
     /// # use massa_time::*;
     /// # use std::convert::TryFrom;
     /// # use std::cmp::max;
-    /// # use tokio::time::Instant;
+    /// # use std::time::Instant;
     /// let (cur_timestamp, cur_instant): (MassaTime, Instant) = (MassaTime::now().unwrap(), Instant::now());
     /// let massa_time_instant: Instant = cur_timestamp.estimate_instant(0).unwrap();
     /// assert!(max(

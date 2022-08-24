@@ -209,6 +209,7 @@ impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntryUpdate {
     ///    parallel_balance: SetOrKeep::Keep,
+    ///    sequential_balance: SetOrKeep::Keep,
     ///    bytecode: SetOrKeep::Set(bytecode.clone()),
     ///    datastore: store,
     /// };
@@ -281,6 +282,7 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntryUpdate {
     ///    parallel_balance: SetOrKeep::Keep,
+    ///    sequential_balance: SetOrKeep::Keep,
     ///    bytecode: SetOrKeep::Set(bytecode.clone()),
     ///    datastore: store,
     /// };
@@ -384,6 +386,7 @@ impl Serializer<LedgerChanges> for LedgerChangesSerializer {
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {
     ///    parallel_balance: amount,
+    ///    sequential_balance: amount,
     ///    bytecode,
     ///    datastore: store,
     /// };
@@ -466,6 +469,7 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {
     ///    parallel_balance: amount,
+    ///    sequential_balance: amount,
     ///    bytecode,
     ///    datastore: store,
     /// };

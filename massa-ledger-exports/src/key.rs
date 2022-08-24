@@ -137,7 +137,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
     /// ## Example
     /// ```
     /// use massa_models::address::Address;
-    /// use massa_ledger_exports::{KeyDeserializer, KeySerializer, DATASTORE_IDENT, BALANCE_IDENT};
+    /// use massa_ledger_exports::{KeyDeserializer, KeySerializer, DATASTORE_IDENT, SEQ_BALANCE_IDENT};
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use massa_hash::Hash;
     /// use std::str::FromStr;
@@ -158,7 +158,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
     /// let mut key = Vec::new();
     /// let mut serialized = Vec::new();
     /// key.extend(address.to_bytes());
-    /// key.push(BALANCE_IDENT);
+    /// key.push(SEQ_BALANCE_IDENT);
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// let (rest, key_deser) = KeyDeserializer::new(10000).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());

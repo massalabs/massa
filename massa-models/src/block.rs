@@ -260,7 +260,7 @@ impl Serializer<Block> for BlockSerializer {
     /// // create block
     /// let orig_block = Block {
     ///     header: orig_header,
-    ///     operations: Set::default(),
+    ///     operations: Vec::new(),
     /// };
     ///
     /// let mut buffer = Vec::new();
@@ -342,7 +342,7 @@ impl Deserializer<Block> for BlockDeserializer {
     /// // create block
     /// let orig_block = Block {
     ///     header: orig_header,
-    ///     operations: Set::default(),
+    ///     operations: Vec::new(),
     /// };
     ///
     /// let mut buffer = Vec::new();

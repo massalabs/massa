@@ -199,6 +199,7 @@ impl Serializer<LedgerEntry> for LedgerEntrySerializer {
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {
     ///    parallel_balance: amount,
+    ///    sequential_balance: amount,
     ///    bytecode,
     ///    datastore: store,
     /// };
@@ -266,6 +267,7 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {
     ///    parallel_balance: amount,
+    ///    sequential_balance: amount,
     ///    bytecode,
     ///    datastore: store,
     /// };
