@@ -12,6 +12,7 @@ impl PoSFinalState {
     pub fn new(
         initial_seed_string: &String,
         initial_rolls_path: &PathBuf,
+        selector: Box<dyn SelectorController>,
     ) -> Result<Self, PosError> {
         // load get initial rolls from file
         let initial_rolls = serde_json::from_str::<BTreeMap<Address, u64>>(
@@ -28,22 +29,15 @@ impl PoSFinalState {
         Ok(Self {
             cycle_history: Default::default(),
             deferred_credits: Default::default(),
-            selector: None,
+            selector,
             initial_rolls,
             initial_seeds,
         })
     }
 
-    /// Used to give the selector controller to `PoSFinalState` when it has been created.
-    /// Also sends the current draw inputs (initial or bootstrapped) to the selector.
+    /// Sends the current draw inputs (initial or bootstrapped) to the selector.
     /// Waits for the initial draws to be performed.
-    pub fn give_selector_controller(
-        &mut self,
-        selector: Box<dyn SelectorController>,
-    ) -> PosResult<()> {
-        // set selector
-        self.selector = Some(selector);
-
+    pub fn compute_initial_draws(&mut self) -> PosResult<()> {
         // if cycle_history starts at a cycle that is strictly higher than 0, do not feed cycles 0, 1 to selector
         let history_starts_late = self
             .cycle_history
@@ -80,10 +74,7 @@ impl PoSFinalState {
 
         // wait for all fed cycles to be drawn
         if let Some(wait_cycle) = max_cycle {
-            self.selector
-                .as_mut()
-                .unwrap() // cannot fail: defined at the beginning of the function
-                .wait_for_draws(wait_cycle)?;
+            self.selector.as_mut().wait_for_draws(wait_cycle)?;
         }
         Ok(())
     }
@@ -224,7 +215,6 @@ impl PoSFinalState {
         // feed selector
         self.selector
             .as_ref()
-            .expect("critical: SelectorController is missing from PoSFinalState")
             .feed_cycle(draw_cycle, lookback_rolls, lookback_seed)
     }
 

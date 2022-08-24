@@ -9,10 +9,11 @@ use massa_async_pool::{AsyncPool, AsyncPoolConfig};
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_models::Slot;
+use massa_pos_exports::PoSFinalState;
 
-/// Default value of `FinalState` used for tests
-impl Default for FinalState {
-    fn default() -> Self {
+impl FinalState {
+    /// Default value of `FinalState` used for tests
+    pub fn default_with_pos(pos: PoSFinalState) -> Self {
         let config = FinalStateConfig::default();
         let slot = Slot::new(0, config.thread_count.saturating_sub(1));
 
@@ -23,7 +24,7 @@ impl Default for FinalState {
         let async_pool = AsyncPool::new(config.async_pool_config.clone());
 
         // create the pos state
-        let pos_state = Default::default();
+        let pos_state = pos;
 
         // create a default executed ops
         let executed_ops = Default::default();
@@ -44,7 +45,6 @@ impl Default for FinalState {
 /// Default value of `FinalStateConfig` used for tests
 impl Default for FinalStateConfig {
     fn default() -> FinalStateConfig {
-        // IMPORTANT TODO: update this default
         FinalStateConfig {
             ledger_config: LedgerConfig::default(),
             async_pool_config: AsyncPoolConfig::default(),

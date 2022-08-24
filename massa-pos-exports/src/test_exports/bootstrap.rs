@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    path::PathBuf,
-};
+use std::collections::{HashMap, VecDeque};
 
 use massa_models::{
     constants::default_testing::{CHANNEL_SIZE, ENDORSEMENT_COUNT, PERIODS_PER_CYCLE},
@@ -16,11 +13,9 @@ impl Default for SelectorConfig {
         Self {
             thread_count: THREAD_COUNT,
             endorsement_count: ENDORSEMENT_COUNT,
-            max_draw_cache: 00,
+            max_draw_cache: 10,
             periods_per_cycle: PERIODS_PER_CYCLE,
             genesis_address: Address::from_public_key(&KeyPair::generate().get_public_key()),
-            initial_rolls_path: PathBuf::default(),
-            initial_draw_seed: String::default(),
             channel_size: CHANNEL_SIZE,
         }
     }

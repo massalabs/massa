@@ -63,8 +63,12 @@ fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir
         initial_seed_string: "".to_string(),
         periods_per_cycle: 10,
     };
+    let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
+        .expect("could not start selector controller");
     Ok((
-        Arc::new(RwLock::new(FinalState::new(cfg, Box::new(ledger)).unwrap())),
+        Arc::new(RwLock::new(
+            FinalState::new(cfg, Box::new(ledger), selector_controller).unwrap(),
+        )),
         tempfile,
         tempdir,
     ))
@@ -74,10 +78,8 @@ fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir
 #[serial]
 fn test_execution_shutdown() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
-    let mut selector_config = SelectorConfig::default();
-    let initial_rolls_file = get_initial_rolls();
-    selector_config.initial_rolls_path = initial_rolls_file.path().to_path_buf();
-    let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
+    let (_selector_manager, selector_controller) =
+        start_selector_worker(SelectorConfig::default()).unwrap();
     let (mut manager, _) = start_execution_worker(
         ExecutionConfig::default(),
         sample_state,
@@ -90,10 +92,8 @@ fn test_execution_shutdown() {
 #[serial]
 fn test_sending_command() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
-    let mut selector_config = SelectorConfig::default();
-    let initial_rolls_file = get_initial_rolls();
-    selector_config.initial_rolls_path = initial_rolls_file.path().to_path_buf();
-    let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
+    let (_selector_manager, selector_controller) =
+        start_selector_worker(SelectorConfig::default()).unwrap();
     let (mut manager, controller) = start_execution_worker(
         ExecutionConfig::default(),
         sample_state,
@@ -107,10 +107,8 @@ fn test_sending_command() {
 #[serial]
 fn test_sending_read_only_execution_command() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
-    let mut selector_config = SelectorConfig::default();
-    let initial_rolls_file = get_initial_rolls();
-    selector_config.initial_rolls_path = initial_rolls_file.path().to_path_buf();
-    let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
+    let (_selector_manager, selector_controller) =
+        start_selector_worker(SelectorConfig::default()).unwrap();
     let (mut manager, controller) = start_execution_worker(
         ExecutionConfig::default(),
         sample_state,
@@ -150,10 +148,8 @@ fn test_nested_call_gas_usage() {
     // init the storage
     let mut storage = Storage::default();
     // start the execution worker
-    let mut selector_config = SelectorConfig::default();
-    let initial_rolls_file = get_initial_rolls();
-    selector_config.initial_rolls_path = initial_rolls_file.path().to_path_buf();
-    let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
+    let (_selector_manager, selector_controller) =
+        start_selector_worker(SelectorConfig::default()).unwrap();
     let (mut manager, controller) =
         start_execution_worker(exec_cfg, sample_state, selector_controller);
     // get random keypair
@@ -258,10 +254,8 @@ fn send_and_receive_async_message() {
     // init the storage
     let mut storage = Storage::default();
     // start the execution worker
-    let mut selector_config = SelectorConfig::default();
-    let initial_rolls_file = get_initial_rolls();
-    selector_config.initial_rolls_path = initial_rolls_file.path().to_path_buf();
-    let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
+    let (_selector_manager, selector_controller) =
+        start_selector_worker(SelectorConfig::default()).unwrap();
     let (mut manager, controller) =
         start_execution_worker(exec_cfg, sample_state, selector_controller);
     // get random keypair
@@ -312,10 +306,8 @@ fn generate_events() {
     };
     let mut storage: Storage = Default::default();
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
-    let mut selector_config = SelectorConfig::default();
-    let initial_rolls_file = get_initial_rolls();
-    selector_config.initial_rolls_path = initial_rolls_file.path().to_path_buf();
-    let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
+    let (_selector_manager, selector_controller) =
+        start_selector_worker(SelectorConfig::default()).unwrap();
     let (mut manager, controller) =
         start_execution_worker(exec_cfg, sample_state, selector_controller);
 

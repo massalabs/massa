@@ -41,14 +41,13 @@ pub struct SelectorAddressInfo {
 }
 
 /// Final state of PoS
-#[derive(Default)]
 pub struct PoSFinalState {
     /// contiguous cycle history. Back = newest.
     pub cycle_history: VecDeque<CycleInfo>,
     /// coins to be credited at the end of the slot
     pub deferred_credits: DeferredCredits,
-    /// selector controller to feed the cycle when completed
-    pub selector: Option<Box<dyn SelectorController>>,
+    /// selector controller
+    pub selector: Box<dyn SelectorController>,
     /// initial rolls, used for negative cycle lookback
     pub initial_rolls: BTreeMap<Address, u64>,
     /// initial seeds, used for negative cycle lookback (cycles -2, -1 in that order)

@@ -41,12 +41,15 @@ impl FinalState {
     pub fn new(
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
+        selector: Box<dyn SelectorController>,
     ) -> Result<Self, FinalStateError> {
         // create the pos state
-        let pos_state = PoSFinalState::new(&config.initial_seed_string, &config.initial_rolls_path)
-            .map_err(|err| {
-                FinalStateError::PosError(format!("PoS final state init error: {}", err))
-            })?;
+        let pos_state = PoSFinalState::new(
+            &config.initial_seed_string,
+            &config.initial_rolls_path,
+            selector,
+        )
+        .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
 
         // attach at the output of the latest initial final slot, that is the last genesis slot
         let slot = Slot::new(0, config.thread_count.saturating_sub(1));
@@ -69,13 +72,10 @@ impl FinalState {
         })
     }
 
-    /// Give the selector controller to `PoSFinalState` and inform the selector of the current states
-    pub fn give_selector_controller(
-        &mut self,
-        selector: Box<dyn SelectorController>,
-    ) -> Result<(), FinalStateError> {
+    /// Performs the initial draws.
+    pub fn compute_initial_draws(&mut self) -> Result<(), FinalStateError> {
         self.pos_state
-            .give_selector_controller(selector)
+            .compute_initial_draws()
             .map_err(|err| FinalStateError::PosError(err.to_string()))
     }
 
@@ -204,7 +204,7 @@ mod tests {
 
     use std::collections::VecDeque;
 
-    use crate::{FinalState, StateChanges};
+    use crate::StateChanges;
     use massa_async_pool::test_exports::get_random_message;
     use massa_ledger_exports::SetUpdateOrDelete;
     use massa_models::{Address, Slot};
@@ -249,9 +249,9 @@ mod tests {
             .insert(high_address, SetUpdateOrDelete::Delete);
         history_state_changes.push_front((Slot::new(2, 0), state_changes.clone()));
         history_state_changes.push_front((Slot::new(1, 0), state_changes));
-        let mut final_state: FinalState = Default::default();
-        final_state.changes_history = history_state_changes;
-        // TODO: Fix this when refactoring test.
+        // TODO: re-enable this test after refactoring is over
+        // let mut final_state: FinalState = Default::default();
+        // final_state.changes_history = history_state_changes;
         // // Test slot filter
         // let part = final_state
         //     .get_state_changes_part(Slot::new(2, 0), low_address, message.compute_id(), None)

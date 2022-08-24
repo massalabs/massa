@@ -120,14 +120,14 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 }
 
 /// generates a random PoS final state
-fn get_random_pos_state(r_limit: u64) -> PoSFinalState {
+fn get_random_pos_state(r_limit: u64, pos: PoSFinalState) -> PoSFinalState {
     let mut cycle_history = VecDeque::new();
     for i in 0u64..r_limit {
         let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit);
         cycle_history.push_back(CycleInfo {
             cycle: i,
             roll_counts,
-            complete: false, //if i == r_limit - 1 { false } else { true },
+            complete: false, // if i == r_limit - 1 { false } else { true },
             rng_seed,
             production_stats,
         });
@@ -136,7 +136,7 @@ fn get_random_pos_state(r_limit: u64) -> PoSFinalState {
     PoSFinalState {
         cycle_history,
         deferred_credits,
-        ..Default::default()
+        ..pos
     }
 }
 
@@ -153,7 +153,7 @@ fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
 }
 
 /// generates a random bootstrap state for the final state
-pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalState {
+pub fn get_random_final_state_bootstrap(thread_count: u8, pos: PoSFinalState) -> FinalState {
     let mut rng = rand::thread_rng();
     let r_limit: u64 = rng.gen_range(25..50);
 
@@ -189,7 +189,7 @@ pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalState {
         Box::new(final_ledger),
         async_pool,
         changes_history,
-        get_random_pos_state(r_limit),
+        get_random_pos_state(r_limit, pos),
         ExecutedOps::default(),
     )
 }

@@ -16,7 +16,7 @@ use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender
 use massa_final_state::{test_exports::assert_eq_final_state, FinalState};
 use massa_models::{Slot, Version};
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
-use massa_pos_exports::{test_exports::assert_eq_pos_selection, SelectorConfig};
+use massa_pos_exports::{test_exports::assert_eq_pos_selection, PoSFinalState, SelectorConfig};
 use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -37,9 +37,25 @@ lazy_static::lazy_static! {
 async fn test_bootstrap_server() {
     let (bootstrap_config, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
 
+    let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
+    let (mut server_selector_manager, server_selector_controller) =
+        start_selector_worker(SelectorConfig::default())
+            .expect("could not start server selector controller");
+    let (mut client_selector_manager, client_selector_controller) =
+        start_selector_worker(SelectorConfig::default())
+            .expect("could not start client selector controller");
+
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
-    let final_state_bootstrap = get_random_final_state_bootstrap(2);
+    let final_state_bootstrap = get_random_final_state_bootstrap(
+        2,
+        PoSFinalState::new(
+            &"".to_string(),
+            &rolls_path,
+            server_selector_controller.clone(),
+        )
+        .unwrap(),
+    );
     let final_state = Arc::new(RwLock::new(final_state_bootstrap));
 
     let (bootstrap_establisher, bootstrap_interface) = mock_establisher::new();
@@ -57,7 +73,14 @@ async fn test_bootstrap_server() {
     .unwrap()
     .unwrap();
 
-    let final_state_client = Arc::new(RwLock::new(FinalState::default()));
+    let final_state_client = Arc::new(RwLock::new(FinalState::default_with_pos(
+        PoSFinalState::new(
+            &"".to_string(),
+            &rolls_path,
+            client_selector_controller.clone(),
+        )
+        .unwrap(),
+    )));
     let final_state_client_clone = final_state_client.clone();
     let final_state_clone = final_state.clone();
 
@@ -187,30 +210,9 @@ async fn test_bootstrap_server() {
     // check final states
     assert_eq_final_state(&final_state.read(), &final_state_client.read());
 
-    // start selector controllers
-    let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
-    let (mut server_selector_manager, server_selector_controller) =
-        start_selector_worker(SelectorConfig {
-            max_draw_cache: 10,
-            initial_rolls_path: rolls_path.clone(),
-            ..Default::default()
-        })
-        .expect("could not start server selector controller");
-    let (mut client_selector_manager, client_selector_controller) =
-        start_selector_worker(SelectorConfig {
-            max_draw_cache: 10,
-            initial_rolls_path: rolls_path,
-            ..Default::default()
-        })
-        .expect("could not start client selector controller");
-    final_state
-        .write()
-        .give_selector_controller(server_selector_controller.clone())
-        .unwrap();
-    final_state_client
-        .write()
-        .give_selector_controller(client_selector_controller.clone())
-        .unwrap();
+    // compute initial draws
+    final_state.write().compute_initial_draws().unwrap();
+    final_state_client.write().compute_initial_draws().unwrap();
 
     // check selection draw
     let server_selection = server_selector_controller.get_entire_selection();
