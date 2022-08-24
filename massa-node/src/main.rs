@@ -445,6 +445,11 @@ async fn stop(
     // stop factory
     factory_manager.stop();
 
+    let protocol_event_receiver = consensus_manager
+        .stop(consensus_event_receiver)
+        .await
+        .expect("consensus shutdown failed");
+
     // stop pool
     //TODO make a proper manager
     mem::drop(pool_manager);
@@ -461,7 +466,7 @@ async fn stop(
 
     // stop protocol controller
     let network_event_receiver = protocol_manager
-        .stop()
+        .stop(protocol_event_receiver)
         .await
         .expect("protocol shutdown failed");
 
