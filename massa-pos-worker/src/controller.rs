@@ -97,7 +97,7 @@ impl SelectorController for SelectorControllerImpl {
         cache
             .get(cycle)
             .and_then(|selections| selections.draws.get(&slot).cloned())
-            .ok_or_else(|| PosError::CycleUnavailable(cycle))
+            .ok_or(PosError::CycleUnavailable(cycle))
     }
 
     /// Get [Address] of the selected block producer for a given slot
@@ -113,7 +113,7 @@ impl SelectorController for SelectorControllerImpl {
         cache
             .get(cycle)
             .and_then(|selections| selections.draws.get(&slot).map(|s| s.producer))
-            .ok_or_else(|| PosError::CycleUnavailable(cycle))
+            .ok_or(PosError::CycleUnavailable(cycle))
     }
 
     /// Return a list of slots where `address` has been choosen to produce a

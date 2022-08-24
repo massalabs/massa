@@ -193,7 +193,7 @@ impl PoSFinalState {
             Some(c) => {
                 let index = self
                     .get_cycle_index(c)
-                    .ok_or_else(|| PosError::CycleUnavailable(c))?;
+                    .ok_or(PosError::CycleUnavailable(c))?;
                 let cycle_info = &self.cycle_history[index];
                 if !cycle_info.complete {
                     return Err(PosError::CycleUnfinalised(c));
@@ -210,7 +210,7 @@ impl PoSFinalState {
             Some(c) => {
                 let index = self
                     .get_cycle_index(c)
-                    .ok_or_else(|| PosError::CycleUnavailable(c))?;
+                    .ok_or(PosError::CycleUnavailable(c))?;
                 let cycle_info = &self.cycle_history[index];
                 if !cycle_info.complete {
                     return Err(PosError::CycleUnfinalised(c));
@@ -218,7 +218,7 @@ impl PoSFinalState {
                 Hash::compute_from(&cycle_info.rng_seed.clone().into_vec())
             }
             // looking back to negative cycles
-            None => self.initial_seeds[draw_cycle as usize].clone(),
+            None => self.initial_seeds[draw_cycle as usize],
         };
 
         // feed selector
@@ -263,7 +263,7 @@ impl PoSFinalState {
     /// Retrives the productions statistics for all addresses on a given cycle
     pub fn get_all_production_stats(&self, cycle: u64) -> Option<&Map<Address, ProductionStats>> {
         self.get_cycle_index(cycle)
-            .and_then(|idx| Some(&self.cycle_history[idx].production_stats))
+            .map(|idx| &self.cycle_history[idx].production_stats)
     }
 
     /// Gets the index of a cycle in history

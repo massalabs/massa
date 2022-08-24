@@ -73,7 +73,7 @@ impl Serializer<ExecutedOps> for ExecutedOpsSerializer {
         // encode entries
         for (op_id, slot) in &value.0 {
             buffer.extend(op_id.to_bytes());
-            self.slot_serializer.serialize(&slot, buffer)?;
+            self.slot_serializer.serialize(slot, buffer)?;
         }
 
         Ok(())

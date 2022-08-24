@@ -891,10 +891,10 @@ impl ExecutionState {
             let endorsement_target_creators = {
                 let blocks = block_store.read_blocks();
                 endorsement_targets
-                    .into_iter()
+                    .iter()
                     .map(|b_id| {
                         blocks
-                            .get(&b_id)
+                            .get(b_id)
                             .expect("endorsed block absent from storage")
                             .creator_address
                     })
@@ -941,7 +941,7 @@ impl ExecutionState {
                 .checked_div_u64(3 * (1 + (self.config.endorsement_count)))
                 .expect("critical: block_credits checked_div factor is 0");
             for (endorsement_creator, endorsement_target_creator) in endorsement_creators
-                .into_iter()
+                .iter()
                 .zip(endorsement_target_creators.into_iter())
             {
                 // credit creator of the endorsement with sequential coins

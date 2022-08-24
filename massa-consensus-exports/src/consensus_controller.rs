@@ -89,7 +89,7 @@ impl ConsensusCommandSender {
         massa_trace!("consensus.consensus_controller.get_block_statuses", {});
         self.0
             .send(ConsensusCommand::GetBlockStatuses {
-                ids: ids.iter().cloned().collect(),
+                ids: ids.to_vec(),
                 response_tx,
             })
             .await

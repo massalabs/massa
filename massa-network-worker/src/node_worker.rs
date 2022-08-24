@@ -67,7 +67,7 @@ async fn send_data(
     write_timeout: MassaTime,
     data: &[u8],
 ) -> Result<(), NetworkError> {
-    match timeout(write_timeout.to_duration(), socket_writer.send(&data)).await {
+    match timeout(write_timeout.to_duration(), socket_writer.send(data)).await {
         Err(_err) => {
             massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv.send.timeout", {
                 "node": node_id,
@@ -217,7 +217,7 @@ impl NodeWorker {
                                                 )?;
                                                 let op_ids_serializer =
                                                     OperationIdsSerializer::new();
-                                                op_ids_serializer.serialize(&op_ids, &mut res)?;
+                                                op_ids_serializer.serialize(op_ids, &mut res)?;
                                             }
                                             ReplyForBlocksInfo::Operations(operation_ids) => {
                                                 u32_serializer.serialize(
@@ -225,7 +225,7 @@ impl NodeWorker {
                                                     &mut res,
                                                 )?;
                                                 u32_serializer.serialize(
-                                                    &u32::from(operation_ids.len() as u32),
+                                                    &(operation_ids.len() as u32),
                                                     &mut res,
                                                 )?;
                                                 let wrapped_operation_serializer =
@@ -252,16 +252,13 @@ impl NodeWorker {
                                                 )?;
                                             }
                                         }
-                                        if let Err(err) = send_data(
+                                        send_data(
                                             &mut socket_writer,
                                             node_id_copy,
                                             write_timeout,
                                             &res,
                                         )
-                                        .await
-                                        {
-                                            return Err(err);
-                                        }
+                                        .await?;
                                     }
                                 }
                                 continue;
@@ -313,12 +310,8 @@ impl NodeWorker {
                                 res
                             }
                         };
-                        if let Err(err) =
-                            send_data(&mut socket_writer, node_id_copy, write_timeout, &bytes_vec)
-                                .await
-                        {
-                            return Err(err);
-                        }
+                        send_data(&mut socket_writer, node_id_copy, write_timeout, &bytes_vec)
+                            .await?;
                     }
                     None => {
                         massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv. None", {});

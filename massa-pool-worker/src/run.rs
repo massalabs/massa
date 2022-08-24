@@ -14,12 +14,12 @@ pub fn start_pool(
     // start operation pool
     let operation_pool = Arc::new(RwLock::new(OperationPool::init(
         config,
-        &storage,
+        storage,
         execution_controller,
     )));
 
     // start endorsement pool
-    let endorsement_pool = Arc::new(RwLock::new(EndorsementPool::init(config, &storage)));
+    let endorsement_pool = Arc::new(RwLock::new(EndorsementPool::init(config, storage)));
 
     PoolControllerImpl {
         _config: config,

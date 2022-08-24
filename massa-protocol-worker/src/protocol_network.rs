@@ -282,7 +282,7 @@ impl ProtocolWorker {
 
             // Update ask block
             let mut set = Set::<BlockId>::with_capacity_and_hasher(1, BuildMap::default());
-            set.insert(block_id.clone());
+            set.insert(block_id);
             self.stop_asking_blocks(set)?;
 
             // Re-add to wishlist with new state.

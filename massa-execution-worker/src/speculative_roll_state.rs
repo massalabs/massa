@@ -380,7 +380,7 @@ impl SpeculativeRollState {
                 accumulated_stats
                     .entry(*addr)
                     .and_modify(|cur| cur.extend(stats))
-                    .or_insert_with(|| stats.clone());
+                    .or_insert_with(|| *stats);
             }
         }
 
@@ -400,7 +400,7 @@ impl SpeculativeRollState {
                     accumulated_stats
                         .entry(*addr)
                         .and_modify(|cur| cur.extend(stats))
-                        .or_insert_with(|| stats.clone());
+                        .or_insert_with(|| *stats);
                 }
             }
             if !underflow {
@@ -416,7 +416,7 @@ impl SpeculativeRollState {
                 accumulated_stats
                     .entry(*addr)
                     .and_modify(|cur| cur.extend(stats))
-                    .or_insert_with(|| stats.clone());
+                    .or_insert_with(|| *stats);
             }
             (accumulated_stats, !global_overflow)
         } else {

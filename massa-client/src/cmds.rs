@@ -625,7 +625,7 @@ impl Command {
 
             Command::wallet_generate_secret_key => {
                 let key = KeyPair::generate();
-                let ad = wallet.add_keypairs(vec![key.clone()])?[0];
+                let ad = wallet.add_keypairs(vec![key])?[0];
                 if json {
                     Ok(Box::new(ad.to_string()))
                 } else {

@@ -35,6 +35,7 @@ use massa_models::constants::default::{
     MAX_OPERATIONS_PER_BLOCK, MAX_PARAMETERS_SIZE, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
     ROLL_PRICE, T0, THREAD_COUNT, VERSION,
 };
+use massa_models::constants::CHANNEL_SIZE;
 use massa_models::Address;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
@@ -244,7 +245,7 @@ async fn launch(
     // launch selector worker
     let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
         max_draw_cache: SETTINGS.selector.max_draw_cache,
-        channel_size: SETTINGS.selector.channel_size,
+        channel_size: CHANNEL_SIZE,
         thread_count: THREAD_COUNT,
         endorsement_count: ENDORSEMENT_COUNT,
         periods_per_cycle: PERIODS_PER_CYCLE,

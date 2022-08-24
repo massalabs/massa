@@ -221,10 +221,9 @@ impl OperationPool {
                 .entry(op_info.creator_address)
                 .or_insert_with(|| {
                     self.execution_controller
-                        .get_final_and_candidate_sequential_balances(&vec![op_info.creator_address])
-                        [0]
-                    .1
-                    .unwrap_or_default()
+                        .get_final_and_candidate_sequential_balances(&[op_info.creator_address])[0]
+                        .1
+                        .unwrap_or_default()
                 });
             if *creator_seq_balance < op_info.max_sequential_spending {
                 continue;

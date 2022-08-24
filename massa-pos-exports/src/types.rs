@@ -144,7 +144,7 @@ impl PoSFinalState {
             u64_ser.serialize(&(roll_counts.len() as u64), &mut part)?;
             for (addr, count) in roll_counts {
                 part.extend(addr.to_bytes());
-                u64_ser.serialize(&count, &mut part)?;
+                u64_ser.serialize(count, &mut part)?;
             }
             bitvec_ser.serialize(rng_seed, &mut part)?;
             // TODO: limit this with PRODUCTION_STATS_PART_SIZE_MESSAGE_BYTES
@@ -209,10 +209,7 @@ impl PoSFinalState {
     ///
     /// # Arguments
     /// `part`: the raw data received from `get_pos_state_part` and used to update PoS State
-    pub fn set_cycle_history_part<'a>(
-        &mut self,
-        part: &'a [u8],
-    ) -> Result<Option<u64>, ModelsError> {
+    pub fn set_cycle_history_part(&mut self, part: &[u8]) -> Result<Option<u64>, ModelsError> {
         if part.is_empty() {
             return Ok(None);
         }
@@ -307,10 +304,7 @@ impl PoSFinalState {
     ///
     /// # Arguments
     /// `part`: the raw data received from `get_pos_state_part` and used to update PoS State
-    pub fn set_deferred_credits_part<'a>(
-        &mut self,
-        part: &'a [u8],
-    ) -> Result<Option<Slot>, ModelsError> {
+    pub fn set_deferred_credits_part(&mut self, part: &[u8]) -> Result<Option<Slot>, ModelsError> {
         if part.is_empty() {
             return Ok(None);
         }
@@ -440,7 +434,7 @@ impl PoSChanges {
         for (other_addr, other_stats) in other.production_stats {
             self.production_stats
                 .entry(other_addr)
-                .or_insert_with(|| ProductionStats::default())
+                .or_insert_with(ProductionStats::default)
                 .extend(&other_stats);
         }
 

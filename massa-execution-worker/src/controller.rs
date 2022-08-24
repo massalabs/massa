@@ -177,7 +177,7 @@ impl ExecutionController for ExecutionControllerImpl {
     fn unexecuted_ops_among(&self, ops: &Set<OperationId>, thread: u8) -> Set<OperationId> {
         self.execution_state
             .read()
-            .unexecuted_ops_among(&ops, thread)
+            .unexecuted_ops_among(ops, thread)
     }
 
     /// Gets infos about a batch of addresses

@@ -396,15 +396,13 @@ impl LedgerDB {
         let mut last_key = None;
 
         // Iterates over the whole database
-        for res in db_iterator {
-            if let Ok((key, entry)) = res {
-                if (part.len() as u64) < (self.ledger_part_size_message_bytes) {
-                    key_serializer.serialize(&key.to_vec(), &mut part)?;
-                    ser.serialize(&entry.to_vec(), &mut part)?;
-                    last_key = Some(key.to_vec());
-                } else {
-                    break;
-                }
+        for (key, entry) in db_iterator.flatten() {
+            if (part.len() as u64) < (self.ledger_part_size_message_bytes) {
+                key_serializer.serialize(&key.to_vec(), &mut part)?;
+                ser.serialize(&entry.to_vec(), &mut part)?;
+                last_key = Some(key.to_vec());
+            } else {
+                break;
             }
         }
         Ok((part, last_key))
