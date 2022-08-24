@@ -1,6 +1,9 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::{ProtocolCommand, ProtocolCommandSender, ProtocolEvent, protocol_controller::ProtocolEventReceiver};
+use crate::{
+    protocol_controller::ProtocolEventReceiver, ProtocolCommand, ProtocolCommandSender,
+    ProtocolEvent,
+};
 use massa_models::{BlockId, Slot, WrappedHeader};
 use massa_storage::Storage;
 use massa_time::MassaTime;

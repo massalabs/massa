@@ -17,7 +17,7 @@ use massa_models::{
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use std::collections::{HashMap};
+use std::collections::HashMap;
 use tokio::time::sleep;
 
 /// test utility structures
