@@ -82,6 +82,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntryUpdate {
     ///    parallel_balance: SetOrKeep::Set(amount),
+    ///    sequential_balance: SetOrKeep::Set(amount),
     ///    bytecode: SetOrKeep::Set(bytecode),
     ///    datastore: BTreeMap::default(),
     /// };
@@ -176,6 +177,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntryUpdate {
     ///    parallel_balance: SetOrKeep::Set(amount),
+    ///    sequential_balance: SetOrKeep::Set(amount),
     ///    bytecode: SetOrKeep::Set(bytecode),
     ///    datastore: BTreeMap::default(),
     /// };
@@ -189,7 +191,8 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// StateChangesSerializer::new().serialize(&state_changes, &mut serialized).unwrap();
     /// let (rest, state_changes_deser) = StateChangesDeserializer::new(32, 10000, 10000, 10000, 10000, 10000, 10000).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
-    /// assert_eq!(state_changes_deser, state_changes);
+    /// assert_eq!(state_changes_deser.ledger_changes, state_changes.ledger_changes);
+    /// assert_eq!(state_changes_deser.async_pool_changes, state_changes.async_pool_changes);
     /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,

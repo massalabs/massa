@@ -279,30 +279,22 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// // create block
     /// let orig_block = Block {
     ///     header: orig_header,
-    ///     operations: Set::default(),
+    ///     operations: Vec::new(),
     /// };
     ///
-    /// let mut dependencies = Set::default();
     /// let full_block = Block::new_wrapped(orig_block, BlockSerializer::new(), &keypair).unwrap();
-    /// dependencies.insert(BlockId(Hash::compute_from(b"23tuSEWed8WoEasjboGxKi4qRtM7qFJnnp4QrsuASmNnk81GnH")));
     /// let export_active_block = ExportActiveBlock {
     ///    block: full_block.clone(),
-    ///    block_id: full_block.id,
     ///    parents: vec![],
-    ///    children: vec![],
-    ///    dependencies,
+    ///    operations: vec![],
     ///    is_final: false,
-    ///    block_ledger_changes: LedgerChanges::default(),
-    ///    roll_updates: RollUpdates::default(),
-    ///    production_events: vec![],
     /// };
     ///
     /// let mut serialized = Vec::new();
     /// ExportActiveBlockSerializer::new().serialize(&export_active_block, &mut serialized).unwrap();
-    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(32, 9, 1000, 1000, 1000, 1000, 10000, 10000).deserialize::<DeserializeError>(&serialized).unwrap();
-    /// assert_eq!(export_deserialized.block_id, export_active_block.block_id);
+    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(32, 9, 1000, 1000, 1000, 1000, ).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert_eq!(export_deserialized.block.id, export_active_block.block.id);
     /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);
-    /// assert_eq!(export_deserialized.dependencies, export_active_block.dependencies);
     /// assert_eq!(rest.len(), 0);
     /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(

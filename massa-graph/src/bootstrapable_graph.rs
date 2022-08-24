@@ -36,22 +36,13 @@ impl BootstrapableGraphSerializer {
 impl Serializer<BootstrapableGraph> for BootstrapableGraphSerializer {
     /// ## Example
     /// ```rust
-    /// use massa_graph::{BootstrapableGraph, BootstrapableGraphSerializer, ledger::ConsensusLedgerSubset};
+    /// use massa_graph::{BootstrapableGraph, BootstrapableGraphSerializer};
     /// use massa_serialization::Serializer;
     /// use massa_hash::Hash;
     /// use massa_models::{prehash::Map, BlockId, constants::THREAD_COUNT};
     /// let mut bootstrapable_graph = BootstrapableGraph {
-    ///   active_blocks: Map::default(),
-    ///   best_parents: Vec::new(),
-    ///   latest_final_blocks_periods: Vec::new(),
-    ///   gi_head: Map::default(),
-    ///   max_cliques: Vec::new(),
-    ///   ledger: ConsensusLedgerSubset::default(),
+    ///   final_blocks: Vec::new(),
     /// };
-    /// for i in 0..THREAD_COUNT {
-    ///   bootstrapable_graph.best_parents.push((BlockId(Hash::compute_from("nvqFJ38Gixhv5Pf3QaJofXa2kW37bHtnk2QKaA6ZRycJLv8FH".as_bytes())), 7));
-    ///   bootstrapable_graph.latest_final_blocks_periods.push((BlockId(Hash::compute_from("nvqFJ38Gixhv5Pf3QaJofXa2kW37bHtnk2QKaA6ZRycJLv8FH".as_bytes())), 10));
-    /// }
     /// let mut buffer = Vec::new();
     /// BootstrapableGraphSerializer::new().serialize(&bootstrapable_graph, &mut buffer).unwrap();
     /// ```
@@ -118,25 +109,16 @@ impl BootstrapableGraphDeserializer {
 impl Deserializer<BootstrapableGraph> for BootstrapableGraphDeserializer {
     /// ## Example
     /// ```rust
-    /// use massa_graph::{BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer, ledger::ConsensusLedgerSubset};
+    /// use massa_graph::{BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use massa_hash::Hash;
     /// use massa_models::{prehash::Map, BlockId, constants::THREAD_COUNT};
     /// let mut bootstrapable_graph = BootstrapableGraph {
-    ///   active_blocks: Map::default(),
-    ///   best_parents: Vec::new(),
-    ///   latest_final_blocks_periods: Vec::new(),
-    ///   gi_head: Map::default(),
-    ///   max_cliques: Vec::new(),
-    ///   ledger: ConsensusLedgerSubset::default(),
+    ///   final_blocks: Vec::new(),
     /// };
-    /// for i in 0..32 {
-    ///   bootstrapable_graph.best_parents.push((BlockId(Hash::compute_from("nvqFJ38Gixhv5Pf3QaJofXa2kW37bHtnk2QKaA6ZRycJLv8FH".as_bytes())), 7));
-    ///   bootstrapable_graph.latest_final_blocks_periods.push((BlockId(Hash::compute_from("nvqFJ38Gixhv5Pf3QaJofXa2kW37bHtnk2QKaA6ZRycJLv8FH".as_bytes())), 10));
-    /// }
     /// let mut buffer = Vec::new();
     /// BootstrapableGraphSerializer::new().serialize(&bootstrapable_graph, &mut buffer).unwrap();
-    /// let (rest, bootstrapable_graph_deserialized) = BootstrapableGraphDeserializer::new(32, 9, 10, 10, 100, 1000, 1000, 1000, 10000, 10000).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, bootstrapable_graph_deserialized) = BootstrapableGraphDeserializer::new(32, 9, 10, 10, 100, 1000, 1000).deserialize::<DeserializeError>(&buffer).unwrap();
     /// let mut buffer2 = Vec::new();
     /// BootstrapableGraphSerializer::new().serialize(&bootstrapable_graph_deserialized, &mut buffer2).unwrap();
     /// assert_eq!(buffer, buffer2);
