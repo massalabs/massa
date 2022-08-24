@@ -9,6 +9,7 @@ mass adoption.
 [![Coverage Status](https://coveralls.io/repos/github/massalabs/massa/badge.svg?branch=main)](https://coveralls.io/github/massalabs/massa?branch=main)
 [![Docs](https://img.shields.io/static/v1?label=docs&message=massa&color=blue)](https://massalabs.github.io/massa/massa_node/)
 [![OpenRPC Playground](https://img.shields.io/static/v1?label=openrpc-playground&message=massa&color=blue)](https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercontent.com/massalabs/massa/main/docs/technical-doc/openrpc.json)
+[![Open in Gitpod](https://shields.io/badge/Gitpod-contribute-brightgreen?logo=gitpod&style=flat)](https://gitpod.io/#https://github.com/massalabs/massa)
 
 ## Introduction
 
