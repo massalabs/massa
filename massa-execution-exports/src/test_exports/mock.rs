@@ -8,14 +8,12 @@ use crate::{
 };
 use massa_ledger_exports::LedgerEntry;
 use massa_models::{
-    api::EventFilter,
-    output_event::SCOutputEvent,
-    prehash::{Map, Set},
-    Address, Amount, BlockId, OperationId, Slot,
+    api::EventFilter, output_event::SCOutputEvent, prehash::Set, Address, Amount, BlockId,
+    OperationId, Slot,
 };
 use massa_storage::Storage;
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap},
+    collections::{BTreeMap, HashMap},
     sync::{
         mpsc::{self, Receiver},
         Arc, Mutex,
@@ -129,11 +127,11 @@ impl ExecutionController for MockExecutionController {
         Vec::default()
     }
 
-    fn get_addresses_infos(&self, addresses: &[Address]) -> Vec<ExecutionAddressInfo> {
+    fn get_addresses_infos(&self, _addresses: &[Address]) -> Vec<ExecutionAddressInfo> {
         Vec::default()
     }
 
-    fn get_cycle_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64> {
+    fn get_cycle_active_rolls(&self, _cycle: u64) -> BTreeMap<Address, u64> {
         BTreeMap::default()
     }
 

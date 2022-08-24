@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{prehash::Set, BlockId, EndorsementId, OperationId, Slot, WrappedOperation};
+use massa_models::{BlockId, EndorsementId, OperationId, Slot};
 use massa_pool_exports::PoolController;
 use massa_storage::Storage;
 
@@ -14,31 +14,31 @@ impl MockPoolController {
 }
 
 impl PoolController for MockPoolController {
-    fn add_endorsements(&mut self, endorsements: Storage) {
+    fn add_endorsements(&mut self, _endorsements: Storage) {
         todo!("")
     }
-    fn add_operations(&mut self, operations: Storage) {
+    fn add_operations(&mut self, _operations: Storage) {
         todo!("")
     }
-    fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
+    fn notify_final_cs_periods(&mut self, _final_cs_periods: &[u64]) {
         todo!("")
     }
-    fn get_block_operations(&self, slot: &Slot) -> (Vec<OperationId>, Storage) {
+    fn get_block_operations(&self, _slot: &Slot) -> (Vec<OperationId>, Storage) {
         todo!("")
     }
     fn get_block_endorsements(
         &self,
-        target_block: &BlockId,
-        target_slot: &Slot,
+        _target_block: &BlockId,
+        _target_slot: &Slot,
     ) -> (Vec<Option<EndorsementId>>, Storage) {
         todo!("")
     }
 
-    fn contains_endorsements(&self, endorsements: &[EndorsementId]) -> Vec<bool> {
+    fn contains_endorsements(&self, _endorsements: &[EndorsementId]) -> Vec<bool> {
         todo!("")
     }
 
-    fn contains_operations(&self, operations: &[OperationId]) -> Vec<bool> {
+    fn contains_operations(&self, _operations: &[OperationId]) -> Vec<bool> {
         todo!("")
     }
 

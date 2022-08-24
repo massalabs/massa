@@ -26,7 +26,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
 
-    let mut storage: Storage = Default::default();
+    let storage: Storage = Default::default();
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =

@@ -14,5 +14,6 @@ pub use config::PoolConfig;
 pub use controller_traits::PoolController;
 pub use error::PoolError;
 
+/// Test utils
 #[cfg(feature = "testing")]
 pub mod test_exports;

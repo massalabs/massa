@@ -15,7 +15,7 @@ use crate::{
 pub struct MockConsensusController {
     /// Command receiver
     pub consensus_command_rx: mpsc::Receiver<ConsensusCommand>,
-    consensus_event_tx: mpsc::Sender<ConsensusEvent>,
+    _consensus_event_tx: mpsc::Sender<ConsensusEvent>,
 }
 
 impl MockConsensusController {
@@ -28,7 +28,7 @@ impl MockConsensusController {
         (
             MockConsensusController {
                 consensus_command_rx,
-                consensus_event_tx,
+                _consensus_event_tx: consensus_event_tx,
             },
             ConsensusCommandSender(consensus_command_tx),
             ConsensusEventReceiver(consensus_event_rx),

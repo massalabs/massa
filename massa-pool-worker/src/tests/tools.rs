@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::mock_protocol_controller::MockProtocolController;
-use crate::{controller_impl::PoolControllerImpl, start_pool};
+use crate::start_pool;
 use futures::Future;
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_hash::Hash;
@@ -21,13 +21,13 @@ where
 {
     let storage: Storage = Default::default();
 
-    let (protocol_controller, protocol_command_sender, protocol_pool_event_receiver) =
+    let (protocol_controller, _protocol_command_sender, _protocol_pool_event_receiver) =
         MockProtocolController::new();
 
-    let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
+    let (execution_controller, _execution_receiver) = MockExecutionController::new_with_receiver();
     let pool_controller = start_pool(*cfg, &storage, execution_controller);
 
-    let (_protocol_controller, _pool_controller, storage) =
+    let (_protocol_controller, _pool_controller, _storage) =
         test(protocol_controller, Box::new(pool_controller), storage).await;
 }
 

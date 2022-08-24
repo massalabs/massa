@@ -25,7 +25,7 @@ use parking_lot::RwLock;
 use serial_test::serial;
 use std::{
     cmp::Reverse,
-    collections::{BTreeMap, HashMap, VecDeque},
+    collections::{BTreeMap, HashMap},
     str::FromStr,
     sync::Arc,
     time::Duration,

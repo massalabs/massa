@@ -1,23 +1,16 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use super::tools::{create_executesc, random_address_on_thread};
-use crate::tests::tools::{self, create_roll_transaction, create_transaction};
-use massa_consensus_exports::test_exports::{generate_ledger_file, generate_roll_counts_file};
+use super::tools::random_address_on_thread;
+use crate::tests::tools;
+use massa_consensus_exports::test_exports::generate_roll_counts_file;
 use massa_consensus_exports::ConsensusConfig;
-use massa_hash::Hash;
 use massa_models::ledger_models::LedgerData;
 use massa_models::rolls::{RollCounts, RollUpdate, RollUpdates};
-use massa_models::wrapped::WrappedContent;
-use massa_models::{
-    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, Slot,
-    WrappedBlock, WrappedEndorsement,
-};
+use massa_models::{Amount, Slot};
 use massa_protocol_exports::ProtocolCommand;
-use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
-use std::str::FromStr;
 use tokio::time::sleep_until;
 
 // #[tokio::test]

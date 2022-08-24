@@ -5,6 +5,7 @@ use massa_models::{
 };
 use massa_signature::KeyPair;
 
+/// Create an empty block for testing. Can be used to generate genesis blocks.
 pub fn create_empty_block(keypair: &KeyPair, slot: &Slot) -> WrappedBlock {
     let header = BlockHeader::new_wrapped(
         BlockHeader {

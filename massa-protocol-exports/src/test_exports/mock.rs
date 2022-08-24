@@ -6,12 +6,16 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use tokio::{sync::mpsc, time::sleep};
 
+/// Mock of the protocol
+/// TODO: Improve doc
 pub struct MockProtocolController {
     protocol_command_rx: mpsc::Receiver<ProtocolCommand>,
     protocol_event_tx: mpsc::Sender<ProtocolEvent>,
 }
 
 impl MockProtocolController {
+    /// Creates a new protocol mock
+    /// TODO: Improve doc
     pub fn new() -> (Self, ProtocolCommandSender, ProtocolEventReceiver) {
         let (protocol_command_tx, protocol_command_rx) = mpsc::channel::<ProtocolCommand>(256);
         let (protocol_event_tx, protocol_event_rx) = mpsc::channel::<ProtocolEvent>(256);
@@ -25,6 +29,7 @@ impl MockProtocolController {
         )
     }
 
+    /// Wait for a command sent to protocol and intercept it to pass it to `filter_map` function.
     pub async fn wait_command<F, T>(&mut self, timeout: MassaTime, filter_map: F) -> Option<T>
     where
         F: Fn(ProtocolCommand) -> Option<T>,
@@ -54,6 +59,7 @@ impl MockProtocolController {
             .expect("could not send protocol event");
     }
 
+    /// Send a receive header to the protocol event channel
     pub async fn receive_header(&mut self, header: WrappedHeader) {
         let block_id = header.id;
         self.protocol_event_tx
@@ -62,6 +68,7 @@ impl MockProtocolController {
             .expect("could not send protocol event");
     }
 
+    /// Not implemented
     pub async fn receive_get_active_blocks(&mut self, _list: Vec<BlockId>) {}
 
     /// ignore all commands while waiting for a future

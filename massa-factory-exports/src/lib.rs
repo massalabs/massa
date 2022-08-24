@@ -16,5 +16,6 @@ pub use controller_traits::FactoryManager;
 pub use error::*;
 pub use types::*;
 
+/// Tests utils
 #[cfg(feature = "testing")]
 pub mod test_exports;

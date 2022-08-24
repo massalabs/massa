@@ -27,7 +27,6 @@ use massa_protocol_exports::ProtocolCommand;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use std::collections::VecDeque;
 use std::{collections::HashSet, future::Future, path::Path};
 use std::{
     str::FromStr,
@@ -64,7 +63,7 @@ pub fn random_address_on_thread(thread: u8, thread_count: u8) -> AddressTest {
 }
 
 /// Generate a random address
-pub fn random_address() -> AddressTest {
+pub fn _random_address() -> AddressTest {
     let keypair = KeyPair::generate();
     AddressTest {
         address: Address::from_public_key(&keypair.get_public_key()),
@@ -240,16 +239,16 @@ pub async fn validate_notify_block_attack_attempt(
 }
 
 pub async fn validate_block_found(
-    protocol_controller: &mut MockProtocolController,
-    valid_hash: &BlockId,
-    timeout_ms: u64,
+    _protocol_controller: &mut MockProtocolController,
+    _valid_hash: &BlockId,
+    _timeout_ms: u64,
 ) {
 }
 
 pub async fn validate_block_not_found(
-    protocol_controller: &mut MockProtocolController,
-    valid_hash: &BlockId,
-    timeout_ms: u64,
+    _protocol_controller: &mut MockProtocolController,
+    _valid_hash: &BlockId,
+    _timeout_ms: u64,
 ) {
 }
 
@@ -306,7 +305,7 @@ pub async fn propagate_block(
     block_hash
 }
 
-pub fn create_roll_transaction(
+pub fn _create_roll_transaction(
     keypair: &KeyPair,
     roll_count: u64,
     buy: bool,
@@ -327,9 +326,9 @@ pub fn create_roll_transaction(
     Operation::new_wrapped(content, OperationSerializer::new(), &keypair).unwrap()
 }
 
-pub async fn wait_pool_slot(
-    pool_controller: &mut MockPoolController,
-    t0: MassaTime,
+pub async fn _wait_pool_slot(
+    _pool_controller: &mut MockPoolController,
+    _t0: MassaTime,
     period: u64,
     thread: u8,
 ) -> Slot {
@@ -350,7 +349,7 @@ pub async fn wait_pool_slot(
     Slot::new(period, thread)
 }
 
-pub fn create_transaction(
+pub fn _create_transaction(
     keypair: &KeyPair,
     recipient_address: Address,
     amount: u64,
@@ -371,7 +370,7 @@ pub fn create_transaction(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn create_executesc(
+pub fn _create_executesc(
     keypair: &KeyPair,
     expire_period: u64,
     fee: u64,
@@ -395,7 +394,7 @@ pub fn create_executesc(
     Operation::new_wrapped(content, OperationSerializer::new(), keypair).unwrap()
 }
 
-pub fn create_roll_buy(
+pub fn _create_roll_buy(
     keypair: &KeyPair,
     roll_count: u64,
     expire_period: u64,
@@ -489,7 +488,7 @@ pub fn create_endorsement(
     Endorsement::new_wrapped(content, EndorsementSerializer::new(), sender_keypair).unwrap()
 }
 
-pub fn get_export_active_test_block(
+pub fn _get_export_active_test_block(
     parents: Vec<(BlockId, u64)>,
     operations: Vec<WrappedOperation>,
     slot: Slot,
@@ -632,7 +631,7 @@ pub async fn _load_initial_staking_keys(
 }
 
 /// Runs a consensus test, passing a mock pool controller to it.
-pub async fn consensus_pool_test<F, V>(
+pub async fn _consensus_pool_test<F, V>(
     cfg: ConsensusConfig,
     boot_graph: Option<BootstrapableGraph>,
     test: F,

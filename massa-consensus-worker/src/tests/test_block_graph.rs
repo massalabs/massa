@@ -1,33 +1,17 @@
 use crate::tests::tools::get_dummy_block_id;
-use massa_consensus_exports::ConsensusConfig;
 use massa_graph::{
-    create_genesis_block, export_active_block::ExportActiveBlock, settings::GraphConfig,
-    BlockGraph, BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
+    export_active_block::ExportActiveBlock, BootstrapableGraph, BootstrapableGraphDeserializer,
+    BootstrapableGraphSerializer,
 };
 use massa_hash::Hash;
 use massa_models::{
-    active_block::ActiveBlock,
-    clique::Clique,
-    constants::{
-        default::{MAX_LEDGER_CHANGES_PER_SLOT, MAX_PRODUCTION_EVENTS_PER_BLOCK},
-        MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CLIQUES, MAX_BOOTSTRAP_DEPS, MAX_BOOTSTRAP_POS_ENTRIES,
-        MAX_OPERATIONS_PER_BLOCK,
-    },
-    ledger_models::LedgerData,
-    prehash::{Map, Set},
-    wrapped::WrappedContent,
-    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer,
+    wrapped::WrappedContent, Block, BlockHeader, BlockHeaderSerializer, BlockSerializer,
     Endorsement, EndorsementSerializer, Slot, WrappedBlock,
 };
-use massa_pos_exports::SelectorConfig;
-use massa_pos_worker::start_selector_worker;
+
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use massa_signature::{KeyPair, PublicKey};
-use massa_storage::Storage;
+use massa_signature::KeyPair;
 use serial_test::serial;
-use std::{collections::VecDeque, str::FromStr};
-use tempfile::NamedTempFile;
-use tracing::warn;
 
 /// the data input to create the public keys was generated using the secp256k1 curve
 /// a test using this function is a regression test not an implementation test

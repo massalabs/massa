@@ -31,7 +31,7 @@ fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
 #[test]
 #[serial]
 fn test_pool() {
-    let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
+    let (execution_controller, _execution_receiver) = MockExecutionController::new_with_receiver();
     let mut pool = OperationPool::init(*POOL_CONFIG, &Default::default(), execution_controller);
     // generate (id, transactions, range of validity) by threads
     let mut thread_tx_lists = vec![Vec::new(); POOL_CONFIG.thread_count as usize];
@@ -131,7 +131,6 @@ fn test_pool() {
         let fee = 1000;
         let expire_period: u64 = 300;
         let op = get_transaction(expire_period, fee);
-        let id = op.verify_integrity().unwrap();
         let mut storage = Storage::default();
         storage.store_operations(vec![op.clone()]);
         pool.add_operations(storage);

@@ -162,5 +162,6 @@ impl std::fmt::Display for Wallet {
     }
 }
 
+/// Test utils
 #[cfg(feature = "testing")]
 pub mod test_exports;

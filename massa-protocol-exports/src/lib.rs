@@ -19,5 +19,6 @@ pub use settings::{ProtocolConfig, ProtocolSettings};
 /// TODO: Add only if test. Removed the configuration test because don't work if running cargo test on an other sub-crate.
 pub mod tests;
 
+/// Tests utils
 #[cfg(feature = "testing")]
 pub mod test_exports;

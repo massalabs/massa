@@ -33,14 +33,13 @@ async fn test_pool() {
                 let start_period =
                     expire_period.saturating_sub(POOL_CONFIG.operation_validity_periods);
                 let op = get_transaction(expire_period, fee);
-                let id = op.verify_integrity().unwrap();
 
                 let mut ops = Storage::default();
                 ops.store_operations(vec![op.clone()]);
 
                 pool_controller.add_operations(ops.clone());
 
-                let newly_added = match protocol_controller
+                match protocol_controller
                     .wait_command(250.into(), op_filter)
                     .await
                 {
@@ -77,7 +76,7 @@ async fn test_pool() {
                 for period in 0u64..70 {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 3;
-                    let (ids, storage_ops) = pool_controller.get_block_operations(&target_slot);
+                    let (_ids, storage_ops) = pool_controller.get_block_operations(&target_slot);
                     assert!(storage_ops
                         .get_op_refs()
                         .iter()
@@ -105,7 +104,7 @@ async fn test_pool() {
                 for period in 0u64..70 {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 4;
-                    let (ids, storage_ops) = pool_controller.get_block_operations(&target_slot);
+                    let (_ids, storage_ops) = pool_controller.get_block_operations(&target_slot);
                     assert!(storage_ops
                         .get_op_refs()
                         .iter()
@@ -127,7 +126,6 @@ async fn test_pool() {
                 let fee = 1000;
                 let expire_period: u64 = 300;
                 let op = get_transaction(expire_period, fee);
-                let id = op.verify_integrity().unwrap();
                 let mut ops = Storage::default();
                 ops.store_operations(vec![op.clone()]);
 
@@ -139,7 +137,7 @@ async fn test_pool() {
                 {
                     panic!("unexpected protocol command {:?}", cmd)
                 };
-                let (ids, storage_ops) =
+                let (ids, _storage_ops) =
                     pool_controller.get_block_operations(&Slot::new(expire_period - 1, op.thread));
                 assert!(ids.is_empty());
             }
@@ -167,7 +165,6 @@ async fn test_pool_with_execute_sc() {
                 let start_period =
                     expire_period.saturating_sub(POOL_CONFIG.operation_validity_periods);
                 let op = create_executesc(expire_period, fee, 100, 1); // Only the fee determines the rentability
-                let id = op.verify_integrity().unwrap();
 
                 let mut ops = Storage::default();
                 ops.store_operations(vec![op.clone()]);
@@ -208,7 +205,7 @@ async fn test_pool_with_execute_sc() {
                 for period in 0u64..70 {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 3;
-                    let (ids, storage_ops) = pool_controller.get_block_operations(&target_slot);
+                    let (_ids, storage_ops) = pool_controller.get_block_operations(&target_slot);
                     assert!(storage_ops
                         .get_op_refs()
                         .iter()
@@ -236,7 +233,7 @@ async fn test_pool_with_execute_sc() {
                 for period in 0u64..70 {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 4;
-                    let (ids, storage_ops) = pool_controller.get_block_operations(&target_slot);
+                    let (_ids, storage_ops) = pool_controller.get_block_operations(&target_slot);
                     assert!(storage_ops
                         .get_op_refs()
                         .iter()
@@ -258,7 +255,6 @@ async fn test_pool_with_execute_sc() {
                 let fee = 1000;
                 let expire_period: u64 = 300;
                 let op = get_transaction(expire_period, fee);
-                let id = op.verify_integrity().unwrap();
                 let mut ops = Storage::default();
                 ops.store_operations(vec![op.clone()]);
 
@@ -270,7 +266,7 @@ async fn test_pool_with_execute_sc() {
                 {
                     panic!("unexpected protocol command {:?}", cmd)
                 };
-                let (ids, storage_ops) =
+                let (ids, _storage_ops) =
                     pool_controller.get_block_operations(&Slot::new(expire_period - 1, op.thread));
                 assert!(ids.is_empty());
             }
@@ -343,7 +339,7 @@ async fn test_pool_with_protocol_events() {
 async fn test_pool_propagate_newly_added_endorsements() {
     pool_test(
         &POOL_CONFIG,
-        async move |mut protocol_controller, pool_controller, storage| {
+        async move |mut protocol_controller, pool_controller, _storage| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateEndorsements(_) => Some(cmd),
                 _ => None,

@@ -84,5 +84,6 @@ pub mod constants {
     pub use crate::node_configuration::*;
 }
 
+/// Test utils
 #[cfg(feature = "testing")]
 pub mod test_exports;

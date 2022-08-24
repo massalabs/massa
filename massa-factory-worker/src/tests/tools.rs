@@ -54,7 +54,7 @@ impl TestFactory {
         let (pool_controller, pool_receiver) = MockPoolController::new_with_receiver();
         let mut storage = Storage::default();
         let mut factory_config = FactoryConfig::default();
-        let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
+        let (_protocol_controller, protocol_command_sender, _protocol_event_receiver) =
             MockProtocolController::new();
         let producer_keypair = default_keypair;
         let producer_address = Address::from_public_key(&producer_keypair.get_public_key());
