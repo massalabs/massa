@@ -25,7 +25,7 @@ pub enum ProtocolEvent {
         block_id: BlockId,
         /// block slot
         slot: Slot,
-        /// storage containing endorsements and operations
+         /// storage instance containing the block and its dependencies (except the parents)
         storage: Storage,
     },
     /// A block header with a valid signature has been received.
