@@ -39,6 +39,13 @@ impl EventStore {
         self.0.extend(other.0.into_iter());
     }
 
+    /// Set the events of this store as final
+    pub fn finalize(&mut self) {
+        for output in self.0.iter_mut() {
+            output.context.candidate = false;
+        }
+    }
+
     /// Get events optionally filtered by:
     /// * start slot
     /// * end slot
@@ -96,6 +103,7 @@ fn test_prune() {
                 index_in_slot: 1,
                 call_stack: VecDeque::new(),
                 origin_operation_id: None,
+                candidate: false,
             },
             data: i.to_string(),
         });
