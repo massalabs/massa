@@ -16,10 +16,7 @@ use massa_models::{Block, WrappedBlock};
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkEvent, ReplyForBlocksInfo};
 use massa_protocol_exports::{ProtocolError, ProtocolEvent};
 use massa_serialization::Serializer;
-use tokio::{
-    sync::oneshot,
-    time::{Instant, Sleep},
-};
+use tokio::time::{Instant, Sleep};
 use tracing::{info, warn};
 
 // static tracing messages
@@ -116,7 +113,6 @@ impl ProtocolWorker {
                 massa_trace!(ENDORSEMENTS, { "node": node, "endorsements": endorsements});
                 if self
                     .note_endorsements_from_node(endorsements, &node, true)
-                    .await
                     .is_err()
                 {
                     warn!(
@@ -313,10 +309,7 @@ impl ProtocolWorker {
         block_id: BlockId,
         operations: Vec<WrappedOperation>,
     ) -> Result<(), ProtocolError> {
-        let (tx, rx) = oneshot::channel();
-        self.note_operations_from_node(operations.clone(), &from_node_id, Some(tx))
-            .await?;
-        let _ = rx.await;
+        self.note_operations_from_node(operations.clone(), &from_node_id)?;
 
         let wanted_operation_ids: Set<OperationId> = match self.block_wishlist.get(&block_id) {
             Some(AskForBlocksInfo::Operations(ids)) => ids.clone().into_iter().collect(),

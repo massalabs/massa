@@ -2055,8 +2055,10 @@ dependencies = [
  "displaydoc",
  "massa_models",
  "massa_storage",
+ "massa_time",
  "serde 1.0.144",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]
@@ -2131,6 +2133,7 @@ dependencies = [
  "massa_logging",
  "massa_models",
  "massa_network_exports",
+ "massa_pool_exports",
  "massa_signature",
  "massa_storage",
  "massa_time",
@@ -2151,6 +2154,7 @@ dependencies = [
  "massa_logging",
  "massa_models",
  "massa_network_exports",
+ "massa_pool_exports",
  "massa_protocol_exports",
  "massa_serialization",
  "massa_signature",

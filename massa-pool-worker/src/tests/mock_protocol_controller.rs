@@ -3,9 +3,7 @@
 use massa_models::prehash::Map;
 use massa_models::{constants::CHANNEL_SIZE, EndorsementId, OperationId};
 use massa_models::{WrappedEndorsement, WrappedOperation};
-use massa_protocol_exports::{
-    ProtocolCommand, ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
-};
+use massa_protocol_exports::{ProtocolCommand, ProtocolCommandSender};
 use massa_time::MassaTime;
 use tokio::{sync::mpsc, time::sleep};
 
