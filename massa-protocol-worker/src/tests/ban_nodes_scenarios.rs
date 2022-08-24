@@ -4,8 +4,9 @@ use super::tools::protocol_test;
 use massa_models::prehash::Set;
 use massa_models::{BlockId, Slot};
 use massa_network_exports::{BlockInfoReply, NetworkCommand};
+use massa_pool_exports::test_exports::MockPoolControllerMessage;
 use massa_protocol_exports::tests::tools;
-use massa_protocol_exports::{ProtocolEvent, ProtocolPoolEvent};
+use massa_protocol_exports::ProtocolEvent;
 use massa_signature::KeyPair;
 use serial_test::serial;
 use std::collections::HashSet;
@@ -75,7 +76,7 @@ async fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
                     protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
-                    mut protocol_pool_event_receiver| {
+                    mut pool_event_receiver| {
             // Create 1 node.
             let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
@@ -97,25 +98,16 @@ async fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
             tools::assert_banned_nodes(vec![creator_node.id], &mut network_controller).await;
 
             // Check protocol does not send operation to pool.
-            match tools::wait_protocol_pool_event(
-                &mut protocol_pool_event_receiver,
-                1000.into(),
-                |evt| match evt {
-                    evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
-                    _ => None,
-                },
-            )
-            .await
-            {
-                None => {}
-                _ => panic!("Protocol unexpectedly sent operation."),
-            }
+            pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+                evt @ MockPoolControllerMessage::AddOperations { .. } => Some(evt),
+                _ => None,
+            });
             (
                 network_controller,
                 protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_pool_event_receiver,
+                pool_event_receiver,
             )
         },
     )

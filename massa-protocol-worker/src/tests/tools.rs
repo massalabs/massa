@@ -48,10 +48,10 @@ where
 
     let (
         _network_controller,
-        protocol_event_receiver,
+        _protocol_event_receiver,
         _protocol_command_sender,
         protocol_manager,
-        _protocol_event_receiver,
+        _pool_event_receiver,
     ) = test(
         network_controller,
         protocol_event_receiver,
@@ -105,7 +105,7 @@ where
 
     let (
         _network_controller,
-        protocol_event_receiver,
+        _protocol_event_receiver,
         _protocol_command_sender,
         protocol_manager,
         _protocol_pool_event_receiver,
@@ -114,7 +114,7 @@ where
         protocol_event_receiver,
         protocol_command_sender,
         protocol_manager,
-        protocol_pool_event_receiver,
+        mock_pool_receiver,
         storage,
     )
     .await;

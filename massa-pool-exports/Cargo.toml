@@ -12,7 +12,6 @@ thiserror = "1.0"
 massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
 massa_time = { path = "../massa-time", optional = true }
-tokio = { version = "1.20", features = ["full"], optional = true } # todo replqce feature full with minimal requirements
 
 [dev-dependencies]
 
@@ -21,4 +20,4 @@ tokio = { version = "1.20", features = ["full"], optional = true } # todo replqc
 instrument = [
     "massa_models/instrument",
 ]
-testing = [ "dep:massa_time", "dep:tokio" ]
+testing = [ "dep:massa_time" ]

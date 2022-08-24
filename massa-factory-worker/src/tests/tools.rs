@@ -12,7 +12,9 @@ use massa_models::{
     constants::ENDORSEMENT_COUNT, prehash::Map, test_exports::get_next_slot_instant, Address,
     BlockId, Slot, WrappedEndorsement, WrappedOperation,
 };
-use massa_pool_exports::test_exports::{MockPoolController, MockPoolControllerMessage};
+use massa_pool_exports::test_exports::{
+    MockPoolController, MockPoolControllerMessage, PoolEventReceiver,
+};
 use massa_pos_exports::{
     test_exports::{MockSelectorController, MockSelectorControllerMessage},
     Selection,
@@ -31,7 +33,7 @@ use massa_wallet::test_exports::create_test_wallet;
 /// Then you can use the method `get_next_created_block` that will manage the answers from the mock to the factory depending on the parameters you gave.
 pub struct TestFactory {
     consensus_controller: MockConsensusController,
-    pool_receiver: Receiver<MockPoolControllerMessage>,
+    pool_receiver: PoolEventReceiver,
     selector_receiver: Receiver<MockSelectorControllerMessage>,
     factory_config: FactoryConfig,
     factory_manager: Box<dyn FactoryManager>,
@@ -157,45 +159,48 @@ impl TestFactory {
             }
             _ => panic!("unexpected message"),
         }
-        match self
-            .pool_receiver
-            .recv_timeout(Duration::from_millis(100))
-            .unwrap()
-        {
-            MockPoolControllerMessage::GetBlockEndorsements {
-                block_id: _,
-                slot: _,
-                response_tx,
-            } => {
-                if let Some(endorsements) = endorsements {
-                    let ids = endorsements.iter().map(|endo| Some(endo.id)).collect();
-                    self.storage.store_endorsements(endorsements);
-                    response_tx.send((ids, self.storage.clone())).unwrap();
-                } else {
-                    response_tx.send((vec![], Storage::default())).unwrap();
+        self.pool_receiver
+            .wait_command(MassaTime::from(100), |command| match command {
+                MockPoolControllerMessage::GetBlockEndorsements {
+                    block_id: _,
+                    slot: _,
+                    response_tx,
+                } => {
+                    if let Some(endorsements) = &endorsements {
+                        let ids = endorsements.iter().map(|endo| Some(endo.id)).collect();
+                        let mut storage = self.storage.clone_without_refs();
+                        storage.store_endorsements(endorsements.clone());
+                        response_tx.send((ids, self.storage.clone())).unwrap();
+                        Some(())
+                    } else {
+                        response_tx.send((vec![], Storage::default())).unwrap();
+                        Some(())
+                    }
                 }
-            }
-            _ => panic!("unexpected message"),
-        }
-        match self
-            .pool_receiver
-            .recv_timeout(Duration::from_millis(100))
-            .unwrap()
-        {
-            MockPoolControllerMessage::GetBlockOperations {
-                slot: _,
-                response_tx,
-            } => {
-                if let Some(operations) = operations {
-                    let ids = operations.iter().map(|op| op.id).collect();
-                    self.storage.store_operations(operations);
-                    response_tx.send((ids, self.storage.clone())).unwrap();
-                } else {
-                    response_tx.send((vec![], Storage::default())).unwrap();
+                _ => panic!("unexpected message"),
+            })
+            .unwrap();
+
+        self.pool_receiver
+            .wait_command(MassaTime::from(100), |command| match command {
+                MockPoolControllerMessage::GetBlockOperations {
+                    slot: _,
+                    response_tx,
+                } => {
+                    if let Some(operations) = &operations {
+                        let ids = operations.iter().map(|op| op.id).collect();
+                        let mut storage = self.storage.clone_without_refs();
+                        storage.store_operations(operations.clone());
+                        response_tx.send((ids, self.storage.clone())).unwrap();
+                        Some(())
+                    } else {
+                        response_tx.send((vec![], Storage::default())).unwrap();
+                        None
+                    }
                 }
-            }
-            _ => panic!("unexpected message"),
-        }
+                _ => panic!("unexpected message"),
+            })
+            .unwrap();
         match self
             .consensus_controller
             .consensus_command_rx

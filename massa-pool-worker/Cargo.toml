@@ -12,15 +12,6 @@ massa_storage = { path = "../massa-storage" }
 massa_pool_exports = { path = "../massa-pool-exports" }
 massa_execution_exports = { path = "../massa-execution-exports" }
 
-[dev-dependencies]
-serial_test = "0.9"
-tokio = { version = "1.20", features = ["full"] }
-lazy_static = "1.4"
-massa_signature = { path = "../massa-signature" }
-massa_protocol_exports = { path = "../massa-protocol-exports" }
-massa_hash = { path = "../massa-hash" }
-futures = "0.3"
-massa_time = { path = "../massa-time" }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]

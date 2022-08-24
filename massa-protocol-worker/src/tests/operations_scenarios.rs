@@ -122,8 +122,8 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
 
             // Check protocol does not send operations to consensus.
             pool_event_receiver.wait_command(1000.into(), |evt| match evt {
-                _ => Some(MockPoolControllerMessage::Any),
                 MockPoolControllerMessage::AddOperations { .. } => None,
+                _ => Some(MockPoolControllerMessage::Any),
             });
 
             (
@@ -162,10 +162,10 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
                 .await;
 
             pool_event_receiver.wait_command(1000.into(), |evt| match evt {
-                _ => Some(MockPoolControllerMessage::Any),
                 MockPoolControllerMessage::AddOperations { .. } => {
                     panic!("Unexpected or no protocol event.")
                 }
+                _ => Some(MockPoolControllerMessage::Any),
             });
 
             let expected_operation_id = operation.verify_integrity().unwrap();
@@ -229,10 +229,10 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 .send_operations(nodes[0].id, vec![operation.clone()])
                 .await;
             pool_event_receiver.wait_command(1000.into(), |evt| match evt {
-                _ => Some(MockPoolControllerMessage::Any),
                 MockPoolControllerMessage::AddOperations { .. } => {
                     panic!("Unexpected or no protocol event.")
                 }
+                _ => Some(MockPoolControllerMessage::Any),
             });
             // create and connect a node that does not know about the endorsement
             let new_nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
