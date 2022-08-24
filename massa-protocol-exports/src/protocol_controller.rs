@@ -1,5 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::collections::VecDeque;
+
 use crate::error::ProtocolError;
 use massa_logging::massa_trace;
 
@@ -7,11 +9,10 @@ use massa_models::{
     prehash::{Map, Set},
     Slot,
 };
-use massa_models::{BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader};
+use massa_models::{BlockId, EndorsementId, OperationId, WrappedHeader};
 use massa_network_exports::NetworkEventReceiver;
 use massa_storage::Storage;
 use serde::Serialize;
-use std::collections::VecDeque;
 use tokio::{sync::mpsc, task::JoinHandle};
 use tracing::debug;
 
@@ -71,7 +72,7 @@ pub enum ProtocolCommand {
     ///       by the controller
     PropagateOperations(Set<OperationId>),
     /// Propagate endorsements
-    PropagateEndorsements(Map<EndorsementId, WrappedEndorsement>),
+    PropagateEndorsements(Storage),
 }
 
 /// protocol management commands
@@ -149,12 +150,9 @@ impl ProtocolCommandSender {
     }
 
     /// propagate endorsements to connected node
-    pub fn propagate_endorsements(
-        &mut self,
-        endorsements: Map<EndorsementId, WrappedEndorsement>,
-    ) -> Result<(), ProtocolError> {
+    pub fn propagate_endorsements(&mut self, endorsements: Storage) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_endorsements", {
-            "endorsements": endorsements
+            "endorsements": endorsements.get_endorsement_refs()
         });
         self.0
             .blocking_send(ProtocolCommand::PropagateEndorsements(endorsements))
@@ -213,13 +211,8 @@ impl ProtocolManager {
     }
 
     /// Stop the protocol controller
-    pub async fn stop(
-        self,
-        protocol_event_receiver: ProtocolEventReceiver,
-        //protocol_pool_event_receiver: ProtocolPoolEventReceiver,
-    ) -> Result<NetworkEventReceiver, ProtocolError> {
+    pub async fn stop(self) -> Result<NetworkEventReceiver, ProtocolError> {
         drop(self.manager_tx);
-        let _remaining_events = protocol_event_receiver.drain().await;
         //let _remaining_events = protocol_pool_event_receiver.drain().await;
         let network_event_receiver = self.join_handle.await??;
         Ok(network_event_receiver)

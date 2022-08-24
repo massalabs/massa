@@ -1,7 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::mock_network_controller::MockNetworkController;
-use crate::{ProtocolConfig, ProtocolEvent, ProtocolEventReceiver};
+use crate::protocol_controller::ProtocolEventReceiver;
+use crate::{ProtocolConfig, ProtocolEvent};
 use massa_hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::operation::OperationSerializer;
@@ -16,7 +17,7 @@ use massa_models::{
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use std::collections::HashMap;
+use std::collections::{HashMap};
 use tokio::time::sleep;
 
 /// test utility structures
@@ -273,28 +274,6 @@ where
         }
     }
 }
-
-/// wait protocol pool event
-//pub async fn wait_protocol_pool_event<F>(
-//    protocol_event_receiver: &mut ProtocolPoolEventReceiver,
-//    timeout: MassaTime,
-//    filter_map: F,
-//) -> Option<ProtocolPoolEvent>
-//where
-//    F: Fn(ProtocolPoolEvent) -> Option<ProtocolPoolEvent>,
-//{
-//    let timer = sleep(timeout.into());
-//    tokio::pin!(timer);
-//    loop {
-//        tokio::select! {
-//            evt_opt = protocol_event_receiver.wait_event() => match evt_opt {
-//                Ok(orig_evt) => if let Some(res_evt) = filter_map(orig_evt) { return Some(res_evt); },
-//                _ => return None
-//            },
-//            _ = &mut timer => return None
-//        }
-//    }
-//}
 
 /// assert block id has been asked to node
 pub async fn assert_hash_asked_to_node(

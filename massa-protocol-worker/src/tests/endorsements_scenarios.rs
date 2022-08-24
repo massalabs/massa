@@ -6,8 +6,9 @@ use super::tools::protocol_test;
 use massa_models::prehash::Map;
 use massa_models::{Address, Slot};
 use massa_network_exports::NetworkCommand;
+use massa_pool_exports::test_exports::MockPoolControllerMessage;
 use massa_protocol_exports::tests::tools;
-use massa_protocol_exports::{ProtocolEvent, ProtocolPoolEvent};
+use massa_protocol_exports::ProtocolEvent;
 use serial_test::serial;
 use std::time::Duration;
 
@@ -21,7 +22,7 @@ async fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
                     protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
-                    mut protocol_pool_event_receiver| {
+                    mut pool_event_receiver| {
             // Create 1 node.
             let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
@@ -38,27 +39,26 @@ async fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
                 .await;
 
             // Check protocol sends endorsements to pool.
-            let received_endorsements = match tools::wait_protocol_pool_event(
-                &mut protocol_pool_event_receiver,
-                1000.into(),
-                |evt| match evt {
-                    evt @ ProtocolPoolEvent::ReceivedEndorsements { .. } => Some(evt),
+            let received_endorsements =
+                match pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+                    evt @ MockPoolControllerMessage::AddEndorsements { .. } => Some(evt),
                     _ => None,
-                },
-            )
-            .await
-            {
-                Some(ProtocolPoolEvent::ReceivedEndorsements { endorsements, .. }) => endorsements,
-                _ => panic!("Unexpected or no protocol pool event."),
-            };
-            assert!(received_endorsements.contains_key(&expected_endorsement_id));
+                }) {
+                    Some(MockPoolControllerMessage::AddEndorsements { endorsements, .. }) => {
+                        endorsements
+                    }
+                    _ => panic!("Unexpected or no protocol pool event."),
+                };
+            assert!(received_endorsements
+                .get_endorsement_refs()
+                .contains(&expected_endorsement_id));
 
             (
                 network_controller,
                 protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_pool_event_receiver,
+                pool_event_receiver,
             )
         },
     )
@@ -75,7 +75,7 @@ async fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() 
                     protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
-                    mut protocol_pool_event_receiver| {
+                    mut pool_event_receiver| {
             // Create 1 node.
             let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
@@ -93,26 +93,19 @@ async fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() 
                 .await;
 
             // Check protocol does not send endorsements to pool.
-            if let Some(ProtocolPoolEvent::ReceivedEndorsements { .. }) =
-                tools::wait_protocol_pool_event(
-                    &mut protocol_pool_event_receiver,
-                    1000.into(),
-                    |evt| match evt {
-                        evt @ ProtocolPoolEvent::ReceivedEndorsements { .. } => Some(evt),
-                        _ => None,
-                    },
-                )
-                .await
-            {
-                panic!("Protocol send invalid endorsements.")
-            };
+            pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+                MockPoolControllerMessage::AddEndorsements { .. } => {
+                    panic!("Protocol send invalid endorsements.")
+                }
+                _ => Some(MockPoolControllerMessage::Any),
+            });
 
             (
                 network_controller,
                 protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_pool_event_receiver,
+                pool_event_receiver,
             )
         },
     )
@@ -129,7 +122,7 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
                     protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
-                    mut protocol_pool_event_receiver| {
+                    mut pool_event_receiver| {
             // Create 2 nodes.
             let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
@@ -141,19 +134,12 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
             network_controller
                 .send_endorsements(nodes[0].id, vec![endorsement.clone()])
                 .await;
-            let _received_endorsements = match tools::wait_protocol_pool_event(
-                &mut protocol_pool_event_receiver,
-                1000.into(),
-                |evt| match evt {
-                    evt @ ProtocolPoolEvent::ReceivedEndorsements { .. } => Some(evt),
-                    _ => None,
-                },
-            )
-            .await
-            {
-                Some(ProtocolPoolEvent::ReceivedEndorsements { endorsements, .. }) => endorsements,
-                _ => panic!("Unexpected or no protocol pool event."),
-            };
+            pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+                MockPoolControllerMessage::AddEndorsements { .. } => {
+                    panic!("Protocol send invalid endorsements.")
+                }
+                _ => Some(MockPoolControllerMessage::Any),
+            });
 
             let expected_endorsement_id = endorsement.id;
 

@@ -289,7 +289,7 @@ async fn launch(
             SETTINGS.protocol.into(),
             network_command_sender.clone(),
             network_event_receiver,
-            pool_controller.clone(),
+            pool_manager.clone(),
             shared_storage.clone(),
         )
         .await
@@ -305,7 +305,7 @@ async fn launch(
                 execution_controller: execution_controller.clone(),
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
-                pool_command_sender: pool_controller.clone(),
+                pool_command_sender: pool_manager.clone(),
                 selector_controller: selector_controller.clone(),
             },
             bootstrap_state.graph,
@@ -392,7 +392,7 @@ async fn launch(
         consensus_manager,
         execution_manager,
         selector_manager,
-        pool_controller,
+        pool_manager,
         protocol_manager,
         network_manager,
         factory_manager,
@@ -445,12 +445,6 @@ async fn stop(
     // stop factory
     factory_manager.stop();
 
-    // stop consensus controller
-    let protocol_event_receiver = consensus_manager
-        .stop(consensus_event_receiver)
-        .await
-        .expect("consensus shutdown failed");
-
     // stop pool
     //TODO make a proper manager
     mem::drop(pool_manager);
@@ -467,9 +461,7 @@ async fn stop(
 
     // stop protocol controller
     let network_event_receiver = protocol_manager
-        .stop(
-            protocol_event_receiver, /*, protocol_pool_event_receiver*/
-        )
+        .stop()
         .await
         .expect("protocol shutdown failed");
 

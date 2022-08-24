@@ -62,6 +62,7 @@ pub async fn start_protocol_controller(
     let (controller_event_tx, event_rx) = mpsc::channel::<ProtocolEvent>(CHANNEL_SIZE);
     let (command_tx, controller_command_rx) = mpsc::channel::<ProtocolCommand>(CHANNEL_SIZE);
     let (manager_tx, controller_manager_rx) = mpsc::channel::<ProtocolManagementCommand>(1);
+    let pool_controller = pool_controller.clone();
     let join_handle = tokio::spawn(async move {
         let res = ProtocolWorker::new(
             config,
@@ -310,15 +311,12 @@ impl ProtocolWorker {
         timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         match cmd {
-            ProtocolCommand::IntegratedBlock {
-                block_id,
-                storage: _,
-            } => {
-                // TODO properly manage storage
+            ProtocolCommand::IntegratedBlock { block_id, storage } => {
                 massa_trace!(
                     "protocol.protocol_worker.process_command.integrated_block.begin",
                     { "block_id": block_id }
                 );
+                self.storage.extend(storage);
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     // node that isn't asking for that block
                     let cond = node_info.get_known_block(&block_id);
@@ -408,14 +406,22 @@ impl ProtocolWorker {
             ProtocolCommand::PropagateEndorsements(endorsements) => {
                 massa_trace!(
                     "protocol.protocol_worker.process_command.propagate_endorsements.begin",
-                    { "endorsements": endorsements }
+                    { "endorsements": endorsements.get_endorsement_refs() }
                 );
                 for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_endorsements: Map<EndorsementId, WrappedEndorsement> = endorsements
-                        .iter()
-                        .filter(|(id, _)| !node_info.knows_endorsement(id))
-                        .map(|(k, v)| (*k, v.clone()))
-                        .collect();
+                    let new_endorsements: Map<EndorsementId, WrappedEndorsement> = {
+                        let endorsements_reader = endorsements.read_endorsements();
+                        endorsements
+                            .get_endorsement_refs()
+                            .iter()
+                            .filter_map(|id| {
+                                if node_info.knows_endorsement(id) {
+                                    return None;
+                                }
+                                Some((*id, endorsements_reader.get(id).cloned().unwrap()))
+                            })
+                            .collect()
+                    };
                     node_info.insert_known_endorsements(
                         new_endorsements.keys().copied().collect(),
                         self.config.max_node_known_endorsements_size,
@@ -945,8 +951,6 @@ impl ProtocolWorker {
 
             let mut endorsements = self.storage.clone_without_refs();
             endorsements.store_endorsements(new_endorsements.into_values().collect());
-            self.storage
-                .claim_endorsement_refs(endorsements.get_local_endorsement_ids());
 
             // Add to pool, propagate if required
             self.pool_controller.add_endorsements(endorsements);

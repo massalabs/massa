@@ -11,8 +11,8 @@ mod settings;
 
 pub use error::ProtocolError;
 pub use protocol_controller::{
-    BlocksResults, ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
-    ProtocolManagementCommand, ProtocolManager,
+    BlocksResults, ProtocolCommand, ProtocolCommandSender, ProtocolEvent,
+    ProtocolManagementCommand, ProtocolManager, ProtocolEventReceiver
 };
 pub use settings::{ProtocolConfig, ProtocolSettings};
 
@@ -21,4 +21,5 @@ pub mod tests;
 
 /// Tests utils
 #[cfg(feature = "testing")]
+/// Exports testing tools as mock, functions helpers and configs
 pub mod test_exports;

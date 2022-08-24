@@ -8,7 +8,7 @@ use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
     node::NodeId,
-    prehash::{BuildMap, Map, Set},
+    prehash::{BuildMap, Set},
     wrapped::{Id, Wrapped},
     BlockId, BlockSerializer, OperationId, WrappedOperation,
 };
