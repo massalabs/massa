@@ -1775,7 +1775,6 @@ dependencies = [
 name = "massa_consensus_worker"
 version = "0.1.0"
 dependencies = [
- "futures 0.3.23",
  "massa_cipher",
  "massa_consensus_exports",
  "massa_execution_exports",
@@ -1791,11 +1790,8 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
- "num",
- "rand 0.8.5",
  "serde_json",
  "serial_test 0.9.0",
- "tempfile",
  "tokio",
  "tracing",
 ]
@@ -1924,7 +1920,6 @@ dependencies = [
  "num",
  "serde 1.0.144",
  "serde_json",
- "serial_test 0.9.0",
  "thiserror",
  "tracing",
 ]
