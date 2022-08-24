@@ -7,7 +7,7 @@ use super::{
 use itertools::Itertools;
 use massa_logging::massa_trace;
 use massa_models::{
-    constants::{MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE, NODE_SEND_CHANNEL_SIZE},
+    constants::{MAX_ENDORSEMENTS_PER_MESSAGE, NODE_SEND_CHANNEL_SIZE},
     node::NodeId,
     operation::OperationIdsSerializer,
     wrapped::{Id, WrappedSerializer},
@@ -194,7 +194,7 @@ impl NodeWorker {
                             }
                             ToSend::ReplyForBlocksInfo(reply_list) => {
                                 for replies in
-                                    reply_list.chunks(MAX_ASK_BLOCKS_PER_MESSAGE as usize)
+                                    reply_list.chunks(self.cfg.max_ask_blocks as usize)
                                 {
                                     let mut res: Vec<u8> = Vec::new();
                                     u32_serializer.serialize(
@@ -463,7 +463,7 @@ impl NodeWorker {
                         Some(NodeCommand::AskForBlocks(list)) => {
                             // cut hash list on sub list if exceed max_ask_blocks_per_message
                             massa_trace!("node_worker.run_loop. send Message::AskForBlocks", {"hashlist": list, "node": self.node_id});
-                            for to_send_list in list.chunks(MAX_ASK_BLOCKS_PER_MESSAGE as usize) {
+                            for to_send_list in list.chunks(self.cfg.max_ask_blocks as usize) {
                                 if self.try_send_to_node(&writer_command_tx, ToSend::Msg(Message::AskForBlocks(to_send_list.to_vec()))).is_err() {
                                     break 'select_loop;
                                 }
@@ -472,7 +472,7 @@ impl NodeWorker {
                         Some(NodeCommand::ReplyForBlocks(list)) => {
                             // cut hash list on sub list if exceed max_ask_blocks_per_message
                             massa_trace!("node_worker.run_loop. send Message::ReplyForBlocks", {"hashlist": list, "node": self.node_id});
-                            for to_send_list in list.chunks(MAX_ASK_BLOCKS_PER_MESSAGE as usize) {
+                            for to_send_list in list.chunks(self.cfg.max_ask_blocks as usize) {
                                 if self.try_send_to_node(&writer_command_tx, ToSend::ReplyForBlocksInfo(to_send_list.to_vec())).is_err() {
                                     break 'select_loop;
                                 }
