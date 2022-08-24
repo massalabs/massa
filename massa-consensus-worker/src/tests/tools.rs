@@ -670,10 +670,7 @@ pub async fn _consensus_pool_test<F, V>(
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
-    let selector_config = SelectorConfig {
-        initial_rolls_path: cfg.initial_rolls_path.clone(),
-        ..Default::default()
-    };
+    let selector_config = SelectorConfig::default();
     // launch consensus controller
     let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -763,10 +760,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
-    let selector_config = SelectorConfig {
-        initial_rolls_path: cfg.initial_rolls_path.clone(),
-        ..Default::default()
-    };
+    let selector_config = SelectorConfig::default();
     let (mut selector_manager, selector_controller) =
         start_selector_worker(selector_config).unwrap();
     // launch consensus controller
@@ -841,10 +835,7 @@ where
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let pool_controller = MockPoolController::new();
-    let selector_config = SelectorConfig {
-        initial_rolls_path: cfg.initial_rolls_path.clone(),
-        ..Default::default()
-    };
+    let selector_config = SelectorConfig::default();
     let (mut selector_manager, selector_controller) =
         start_selector_worker(selector_config).unwrap();
     // for now, execution_rx is ignored: clique updates to Execution pile up and are discarded
@@ -935,10 +926,7 @@ where
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
-    let selector_config = SelectorConfig {
-        initial_rolls_path: cfg.initial_rolls_path.clone(),
-        ..Default::default()
-    };
+    let selector_config = SelectorConfig::default();
     let (mut selector_manager, selector_controller) =
         start_selector_worker(selector_config).unwrap();
     // launch consensus controller

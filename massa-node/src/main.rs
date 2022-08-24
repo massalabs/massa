@@ -116,9 +116,25 @@ async fn launch(
     // Create final ledger
     let ledger = FinalLedger::new(ledger_config.clone()).expect("could not init final ledger");
 
+    // launch selector worker
+    let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
+        max_draw_cache: SETTINGS.selector.max_draw_cache,
+        channel_size: CHANNEL_SIZE,
+        thread_count: THREAD_COUNT,
+        endorsement_count: ENDORSEMENT_COUNT,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        genesis_address: Address::from_public_key(&GENESIS_KEY.get_public_key()),
+    })
+    .expect("could not start selector worker");
+
     // Create final state
     let final_state = Arc::new(parking_lot::RwLock::new(
-        FinalState::new(final_state_config, Box::new(ledger)).expect("could not init final state"),
+        FinalState::new(
+            final_state_config,
+            Box::new(ledger),
+            selector_controller.clone(),
+        )
+        .expect("could not init final state"),
     ));
 
     // interrupt signal listener
@@ -242,24 +258,11 @@ async fn launch(
     .await
     .expect("could not start protocol controller");
 
-    // launch selector worker
-    let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
-        max_draw_cache: SETTINGS.selector.max_draw_cache,
-        channel_size: CHANNEL_SIZE,
-        thread_count: THREAD_COUNT,
-        endorsement_count: ENDORSEMENT_COUNT,
-        periods_per_cycle: PERIODS_PER_CYCLE,
-        genesis_address: Address::from_public_key(&GENESIS_KEY.get_public_key()),
-        initial_rolls_path: SETTINGS.consensus.initial_rolls_path.clone(),
-        initial_draw_seed: INITIAL_DRAW_SEED.into(),
-    })
-    .expect("could not start selector worker");
-
     // give the controller to final state in order for it to feed the cycles
     final_state
         .write()
-        .give_selector_controller(selector_controller.clone())
-        .expect("could give selector controller to final state"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
+        .compute_initial_draws()
+        .expect("could not compute the initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
 
     // launch execution module
     let execution_config = ExecutionConfig {

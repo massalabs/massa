@@ -32,13 +32,11 @@ async fn test_invalid_block_notified_as_attack_attempt() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let selector_config = SelectorConfig {
-        initial_rolls_path: cfg.initial_rolls_path.clone(),
         thread_count: 2,
         periods_per_cycle: 100,
         genesis_address: Address::from_public_key(&staking_keys[0].get_public_key()),
         endorsement_count: 0,
         max_draw_cache: 10,
-        initial_draw_seed: "".to_string(),
         channel_size: 256,
     };
     let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
@@ -103,13 +101,11 @@ async fn test_invalid_header_notified_as_attack_attempt() {
         MockProtocolController::new();
     let pool_controller = MockPoolController::new();
     let selector_config = SelectorConfig {
-        initial_rolls_path: cfg.initial_rolls_path.clone(),
         thread_count: 2,
         periods_per_cycle: 100,
         genesis_address: Address::from_public_key(&staking_keys[0].get_public_key()),
         endorsement_count: 0,
         max_draw_cache: 10,
-        initial_draw_seed: "".to_string(),
         channel_size: 256,
     };
     let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
