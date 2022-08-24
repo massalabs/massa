@@ -487,10 +487,8 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_protocol_event.received_block",
                     { "block_id": block_id }
                 );
-
                 self.block_db
                     .incoming_block(block_id, slot, self.previous_slot, storage)?;
-
                 self.block_db_changed().await?;
             }
             ProtocolEvent::ReceivedBlockHeader { block_id, header } => {

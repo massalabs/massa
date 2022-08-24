@@ -17,13 +17,13 @@ tracing = "0.1"
 itertools = "0.10"
 # custom modules
 massa_consensus_exports = { path = "../massa-consensus-exports" }
-massa_execution_exports = { path = "../massa-execution-exports" }
 massa_graph = { path = "../massa-graph" }
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
 massa_network_exports = { path = "../massa-network-exports" }
 massa_pool_exports = { path = "../massa-pool-exports" }
 massa_protocol_exports = { path = "../massa-protocol-exports" }
+massa_execution_exports = { path = "../massa-execution-exports" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_storage = { path = "../massa-storage" }
 massa_serialization = { path = "../massa-serialization"}

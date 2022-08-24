@@ -53,4 +53,19 @@ impl PoolController for MockPoolController {
     fn clone_box(&self) -> Box<dyn PoolController> {
         Box::new(self.clone())
     }
+
+    fn get_stats(&self) -> (usize, usize) {
+        todo!()
+    }
+
+    fn get_operations_by_ids(
+        &self,
+        ids: &massa_models::prehash::Set<OperationId>,
+    ) -> Vec<massa_models::WrappedOperation> {
+        todo!()
+    }
+
+    fn get_endorsement_ids(&self) -> massa_models::prehash::Set<EndorsementId> {
+        todo!()
+    }
 }

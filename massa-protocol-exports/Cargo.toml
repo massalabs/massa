@@ -25,7 +25,11 @@ massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_storage = { path = "../massa-storage" }
 
+# Load mock pool for tests
+massa_pool_exports = { path = "../massa-pool-exports", features = ["testing"], optional = true }
+
 [dev-dependencies]
+
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
@@ -35,4 +39,4 @@ instrument = [
     "massa_network_exports/instrument",
 ]
 sandbox = ["massa_models/sandbox"]
-testing = ["futures"]
+testing = ["futures", "dep:massa_pool_exports"]

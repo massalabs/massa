@@ -1,8 +1,9 @@
 use crate::start_protocol_controller;
 use futures::Future;
+use massa_pool_exports::test_exports::{MockPoolController, PoolEventReceiver};
 use massa_protocol_exports::{
     tests::mock_network_controller::MockNetworkController, ProtocolCommandSender, ProtocolConfig,
-    ProtocolEventReceiver, ProtocolManager, ProtocolPoolEventReceiver,
+    ProtocolEventReceiver, ProtocolManager,
 };
 use massa_storage::Storage;
 
@@ -13,7 +14,7 @@ where
         ProtocolEventReceiver,
         ProtocolCommandSender,
         ProtocolManager,
-        ProtocolPoolEventReceiver,
+        PoolEventReceiver,
     ) -> V,
     V: Future<
         Output = (
@@ -21,23 +22,26 @@ where
             ProtocolEventReceiver,
             ProtocolCommandSender,
             ProtocolManager,
-            ProtocolPoolEventReceiver,
+            PoolEventReceiver,
         ),
     >,
 {
     let (network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
+
+    let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
+
     // start protocol controller
-    let (
-        protocol_command_sender,
-        protocol_event_receiver,
-        protocol_pool_event_receiver,
-        protocol_manager,
+    let (protocol_command_sender, protocol_event_receiver, protocol_manager): (
+        ProtocolCommandSender,
+        ProtocolEventReceiver,
+        ProtocolManager,
     ) = start_protocol_controller(
-        *protocol_config,
+        protocol_config.clone(),
         network_command_sender,
         network_event_receiver,
-        Default::default(),
+        pool_controller,
+        Storage::default(),
     )
     .await
     .expect("could not start protocol controller");
@@ -47,20 +51,18 @@ where
         protocol_event_receiver,
         _protocol_command_sender,
         protocol_manager,
-        _protocol_pool_event_receiver,
+        _protocol_event_receiver,
     ) = test(
         network_controller,
         protocol_event_receiver,
         protocol_command_sender,
         protocol_manager,
-        protocol_pool_event_receiver,
+        pool_event_receiver,
     )
     .await;
 
     protocol_manager
-        .stop(
-            protocol_event_receiver, /*protocol_pool_event_receiver*/
-        )
+        .stop()
         .await
         .expect("Failed to shutdown protocol.");
 }
@@ -72,7 +74,7 @@ where
         ProtocolEventReceiver,
         ProtocolCommandSender,
         ProtocolManager,
-        ProtocolPoolEventReceiver,
+        PoolEventReceiver,
         Storage,
     ) -> V,
     V: Future<
@@ -81,27 +83,25 @@ where
             ProtocolEventReceiver,
             ProtocolCommandSender,
             ProtocolManager,
-            ProtocolPoolEventReceiver,
+            PoolEventReceiver,
         ),
     >,
 {
     let (network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
+    let (pool_controller, mock_pool_receiver) = MockPoolController::new_with_receiver();
     let storage = Storage::default();
     // start protocol controller
-    let (
-        protocol_command_sender,
-        protocol_event_receiver,
-        protocol_pool_event_receiver,
-        protocol_manager,
-    ) = start_protocol_controller(
-        *protocol_config,
-        network_command_sender,
-        network_event_receiver,
-        storage.clone(),
-    )
-    .await
-    .expect("could not start protocol controller");
+    let (protocol_command_sender, protocol_event_receiver, protocol_manager) =
+        start_protocol_controller(
+            *protocol_config,
+            network_command_sender,
+            network_event_receiver,
+            pool_controller,
+            storage.clone(),
+        )
+        .await
+        .expect("could not start protocol controller");
 
     let (
         _network_controller,
@@ -120,9 +120,7 @@ where
     .await;
 
     protocol_manager
-        .stop(
-            protocol_event_receiver, /*protocol_pool_event_receiver*/
-        )
+        .stop()
         .await
         .expect("Failed to shutdown protocol.");
 }

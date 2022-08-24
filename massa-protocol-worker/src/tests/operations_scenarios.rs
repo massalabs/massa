@@ -7,8 +7,9 @@ use massa_models::prehash::Map;
 use massa_models::{self, Address, Amount, Slot};
 use massa_models::{operation::OperationId, prehash::Set};
 use massa_network_exports::{BlockInfoReply, NetworkCommand};
+use massa_pool_exports::test_exports::MockPoolControllerMessage;
 use massa_protocol_exports::tests::tools;
-use massa_protocol_exports::{BlocksResults, ProtocolEvent, ProtocolPoolEvent};
+use massa_protocol_exports::{BlocksResults, ProtocolEvent};
 use serial_test::serial;
 use std::str::FromStr;
 use std::time::Duration;
@@ -46,28 +47,25 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
                 .await;
 
             // Check protocol sends operations to consensus.
-            let received_operations = match tools::wait_protocol_pool_event(
-                &mut protocol_pool_event_receiver,
-                1000.into(),
-                |evt| match evt {
-                    evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
+            let received_operations =
+                match protocol_pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+                    evt @ MockPoolControllerMessage::AddOperations { .. } => Some(evt),
                     _ => None,
-                },
-            )
-            .await
-            {
-                Some(ProtocolPoolEvent::ReceivedOperations { operations, .. }) => operations,
-                _ => panic!("Unexpected or no protocol pool event."),
-            };
+                }) {
+                    Some(MockPoolControllerMessage::AddOperations { operations, .. }) => operations,
+                    _ => panic!("Unexpected or no protocol pool event."),
+                };
 
+            let op_refs = received_operations.get_op_refs();
             // Check the event includes the expected operations.
-            assert!(received_operations.contains_key(&expected_operation_id_1));
-            assert!(received_operations.contains_key(&expected_operation_id_2));
+            assert!(op_refs.contains(&expected_operation_id_1));
+            assert!(op_refs.contains(&expected_operation_id_2));
 
+            let ops_reader = received_operations.read_operations();
             // Check that the operations come with their serialized representations.
             assert_eq!(
                 expected_operation_id_1,
-                received_operations
+                ops_reader
                     .get(&expected_operation_id_1)
                     .unwrap()
                     .verify_integrity()
@@ -75,7 +73,7 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
             );
             assert_eq!(
                 expected_operation_id_2,
-                received_operations
+                ops_reader
                     .get(&expected_operation_id_2)
                     .unwrap()
                     .verify_integrity()
@@ -104,7 +102,7 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
                     protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
-                    mut protocol_pool_event_receiver| {
+                    mut pool_event_receiver| {
             // Create 1 node.
             let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
@@ -123,26 +121,17 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
                 .await;
 
             // Check protocol does not send operations to consensus.
-            if let Some(ProtocolPoolEvent::ReceivedOperations { .. }) =
-                tools::wait_protocol_pool_event(
-                    &mut protocol_pool_event_receiver,
-                    1000.into(),
-                    |evt| match evt {
-                        evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
-                        _ => None,
-                    },
-                )
-                .await
-            {
-                panic!("Protocol send invalid operations.")
-            };
+            pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+                _ => Some(MockPoolControllerMessage::Any),
+                MockPoolControllerMessage::AddOperations { .. } => None,
+            });
 
             (
                 network_controller,
                 protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_pool_event_receiver,
+                pool_event_receiver,
             )
         },
     )
@@ -159,7 +148,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
                     protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
-                    mut protocol_pool_event_receiver| {
+                    mut pool_event_receiver| {
             // Create 2 nodes.
             let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
@@ -171,19 +160,13 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
             network_controller
                 .send_operations(nodes[0].id, vec![operation.clone()])
                 .await;
-            let _received_operations = match tools::wait_protocol_pool_event(
-                &mut protocol_pool_event_receiver,
-                1000.into(),
-                |evt| match evt {
-                    evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
-                    _ => None,
-                },
-            )
-            .await
-            {
-                Some(ProtocolPoolEvent::ReceivedOperations { operations, .. }) => operations,
-                _ => panic!("Unexpected or no protocol pool event."),
-            };
+
+            pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+                _ => Some(MockPoolControllerMessage::Any),
+                MockPoolControllerMessage::AddOperations { .. } => {
+                    panic!("Unexpected or no protocol event.")
+                }
+            });
 
             let expected_operation_id = operation.verify_integrity().unwrap();
 
@@ -216,7 +199,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
                 protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_pool_event_receiver,
+                pool_event_receiver,
             )
         },
     )
@@ -233,7 +216,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                     protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
-                    mut protocol_pool_event_receiver| {
+                    mut pool_event_receiver| {
             // Create 1 nodes.
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
@@ -245,19 +228,12 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             network_controller
                 .send_operations(nodes[0].id, vec![operation.clone()])
                 .await;
-            let _received_operations = match tools::wait_protocol_pool_event(
-                &mut protocol_pool_event_receiver,
-                1000.into(),
-                |evt| match evt {
-                    evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
-                    _ => None,
-                },
-            )
-            .await
-            {
-                Some(ProtocolPoolEvent::ReceivedOperations { operations, .. }) => operations,
-                _ => panic!("Unexpected or no protocol pool event."),
-            };
+            pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+                _ => Some(MockPoolControllerMessage::Any),
+                MockPoolControllerMessage::AddOperations { .. } => {
+                    panic!("Unexpected or no protocol event.")
+                }
+            });
             // create and connect a node that does not know about the endorsement
             let new_nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
@@ -298,7 +274,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_pool_event_receiver,
+                pool_event_receiver,
             )
         },
     )
@@ -580,7 +556,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
                     protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
-                    mut protocol_pool_event_receiver| {
+                    mut pool_event_receiver| {
             // Create 2 nodes.
             let mut nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
@@ -605,28 +581,21 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
                 .await;
 
             // 5. Check that the operation included in the block is not propagated.
-            match tools::wait_protocol_pool_event(
-                &mut protocol_pool_event_receiver,
-                1000.into(),
-                |evt| match evt {
-                    evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
-                    _ => None,
-                },
-            )
-            .await
-            {
+
+            match pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+                evt @ MockPoolControllerMessage::AddOperations { .. } => Some(evt),
+                _ => None,
+            }) {
                 None => panic!("Protocol did not send operations to pool."),
-                Some(ProtocolPoolEvent::ReceivedOperations {
-                    done_signal,
-                    operations,
-                }) => {
+                Some(MockPoolControllerMessage::AddOperations { operations }) => {
                     let expected_id = operation.verify_integrity().unwrap();
-                    assert!(done_signal.is_none());
-                    assert!(operations.contains_key(&expected_id));
-                    assert_eq!(operations.len(), 1);
+                    let op_refs = operations.get_op_refs();
+                    assert!(op_refs.contains(&expected_id));
+                    assert_eq!(op_refs.len(), 1);
+                    let ops_reader = operations.read_operations();
                     assert_eq!(
                         expected_id,
-                        operations
+                        ops_reader
                             .get(&expected_id)
                             .unwrap()
                             .verify_integrity()
@@ -640,7 +609,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
                 protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_pool_event_receiver,
+                pool_event_receiver,
             )
         },
     )

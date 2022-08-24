@@ -7,8 +7,12 @@ use std::sync::{
 
 use massa_models::{BlockId, EndorsementId, OperationId, Slot};
 use massa_storage::Storage;
+use massa_time::MassaTime;
 
 use crate::PoolController;
+
+/// Test tool to mock pool controller responses
+pub struct PoolEventReceiver(Receiver<MockPoolControllerMessage>);
 
 /// List of possible messages you can receive from the mock
 /// Each variant corresponds to a unique method in `PoolController`,
@@ -75,6 +79,8 @@ pub enum MockPoolControllerMessage {
         /// Periods that are final
         periods: Vec<u64>,
     },
+    /// No need to specify the response
+    Any,
 }
 
 /// A mocked pool controller that will intercept calls on its methods
@@ -87,9 +93,35 @@ pub struct MockPoolController(Arc<Mutex<mpsc::Sender<MockPoolControllerMessage>>
 impl MockPoolController {
     /// Create a new pair (mock execution controller, mpsc receiver for emitted messages)
     /// Note that unbounded mpsc channels are used
-    pub fn new_with_receiver() -> (Box<dyn PoolController>, Receiver<MockPoolControllerMessage>) {
+    pub fn new_with_receiver() -> (Box<dyn PoolController>, PoolEventReceiver) {
         let (tx, rx) = mpsc::channel();
-        (Box::new(MockPoolController(Arc::new(Mutex::new(tx)))), rx)
+        (
+            Box::new(MockPoolController(Arc::new(Mutex::new(tx)))),
+            PoolEventReceiver(rx),
+        )
+    }
+}
+
+impl PoolEventReceiver {
+    /// wait command
+    pub fn wait_command<F, T>(&mut self, timeout: MassaTime, filter_map: F) -> Option<T>
+    where
+        F: Fn(MockPoolControllerMessage) -> Option<T>,
+    {
+        let msg = match self.0.recv_timeout(timeout.into()) {
+            Ok(msg) => filter_map(msg),
+            Err(_) => {
+                let m = filter_map(MockPoolControllerMessage::Any);
+                if m.is_some() {
+                    panic!("unexpected closure of network command channel.")
+                }
+                m
+            }
+        };
+        if msg.is_none() {
+            panic!("unexpected message")
+        }
+        msg
     }
 }
 

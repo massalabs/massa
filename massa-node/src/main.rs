@@ -243,26 +243,11 @@ async fn launch(
         .await
         .expect("could not start network controller");
 
-    // launch protocol controller
-    let (
-        protocol_command_sender,
-        protocol_event_receiver,
-        _protocol_pool_event_receiver,
-        protocol_manager,
-    ) = start_protocol_controller(
-        SETTINGS.protocol.into(),
-        network_command_sender.clone(),
-        network_event_receiver,
-        shared_storage.clone(),
-    )
-    .await
-    .expect("could not start protocol controller");
-
     // give the controller to final state in order for it to feed the cycles
     final_state
         .write()
         .compute_initial_draws()
-        .expect("could not compute the initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
+        .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
 
     // launch execution module
     let execution_config = ExecutionConfig {
@@ -300,6 +285,18 @@ async fn launch(
     };
     let pool_controller = start_pool(pool_config, &shared_storage, execution_controller.clone());
     let pool_manager: Box<dyn PoolController> = Box::new(pool_controller.clone());
+
+    // launch protocol controller
+    let (protocol_command_sender, protocol_event_receiver, protocol_manager) =
+        start_protocol_controller(
+            SETTINGS.protocol.into(),
+            network_command_sender.clone(),
+            network_event_receiver,
+            pool_manager.clone(),
+            shared_storage.clone(),
+        )
+        .await
+        .expect("could not start protocol controller");
 
     // init consensus configuration
     let consensus_config = ConsensusConfig::from(&SETTINGS.consensus);
@@ -451,12 +448,6 @@ async fn stop(
     // stop factory
     factory_manager.stop();
 
-    // stop consensus controller
-    let protocol_event_receiver = consensus_manager
-        .stop(consensus_event_receiver)
-        .await
-        .expect("consensus shutdown failed");
-
     // stop pool
     //TODO make a proper manager
     mem::drop(pool_manager);
@@ -473,9 +464,7 @@ async fn stop(
 
     // stop protocol controller
     let network_event_receiver = protocol_manager
-        .stop(
-            protocol_event_receiver, /*, protocol_pool_event_receiver*/
-        )
+        .stop()
         .await
         .expect("protocol shutdown failed");
 
