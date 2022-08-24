@@ -5,7 +5,7 @@
 ### General description
 
 This crate provides the `Storage` structure which give access to a globally shared object store containing blocks, endorsements and operations.
-It also allows locally claiming references to a list of shared objects for a particular instance of `Storage`.
+It also allows claiming references to a list of shared objects for a particular instance of `Storage`.
 When no instance of `Storage` owns a reference to a given object anymore, that object is automatically dropped from the globally shared object store. 
 
 The `Storage` structure contains:
@@ -61,17 +61,17 @@ storage.drop_block_refs(&operation_ids);
 ```
 When not a single `Storage` instance references a given object anymore, that object is removed from the global shared object store.
 
-### Listing locally owned objects
+### Listing the references to objects that a Storage instance holds
 
-To get a read-only reference to the set of locally owned operations for example, simply use:
+For example, to get a read-only reference to the set of operation references owned by a `storage: Storage` instance, simply use:
 ```rust
-let local_op_refs: &Set<OperationId> = storage.get_op_refs();
+let op_refs: &Set<OperationId> = storage.get_op_refs();
 ```
 
 ### Merging, splitting off
 
-* `storage.extend(other)` consumes `other` and adds its locally owned object references to `storage`
-* `let new_storage = storage.split_off(&block_id_set, &operation_id_set, &endorsement_id_set);` efficiently transfers ownership of sets of local object references from `storage` to a new `new_storage` instance. `storage` loses the transferred references, and `new_storage` acquires them.
+* `storage.extend(other)` consumes `other` and adds its object references to `storage`
+* `let new_storage = storage.split_off(&block_id_set, &operation_id_set, &endorsement_id_set);` efficiently transfers ownership of sets of object references from `storage` to a new `new_storage` instance. `storage` loses the transferred references, and `new_storage` acquires them.
 
 ### Accessing objects in the global shared object store
 
@@ -114,9 +114,9 @@ Pools only reference operations and endorsements.
 
 The operation pool (resp. endorsement pool) has its own instance of `Storage` that owns references to all the operations (resp. endorsements) currently in the pool.
 
-When sending a set of operations to the operation pool, simply use `PoolController::add_operations(storage)`. All the the operations that `storage: Storage` locally owns references to will be added to the operation pool.
+When sending a set of operations to the operation pool, simply use `PoolController::add_operations(storage)`. All the the operations that `storage: Storage` owns references to will be added to the operation pool.
 
-When sending a set of endorsements to the operation pool, simply use `PoolController::add_endorsements(storage)`. All the the endorsements that `storage: Storage` locally owns references to will be added to the endorsement pool.
+When sending a set of endorsements to the operation pool, simply use `PoolController::add_endorsements(storage)`. All the the endorsements that `storage: Storage` owns references to will be added to the endorsement pool.
 
 When an object is pruned from a pool, its reference in that pool's storage instance is dropped.
 
