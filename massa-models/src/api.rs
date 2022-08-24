@@ -542,10 +542,10 @@ pub struct EventFilter {
     pub original_operation_id: Option<OperationId>,
     /// optional event status
     ///
-    /// Some(true) means candidate
-    /// Some(false) means final
+    /// Some(true) means final
+    /// Some(false) means candidate
     /// None means final _and_ candidate
-    pub candidate: Option<bool>,
+    pub is_final: Option<bool>,
 }
 
 /// read only bytecode execution request
