@@ -58,36 +58,35 @@ impl SelectorThread {
         let (cache_cv, cache_lock) = &*self.cache;
         let mut cache_guard = cache_lock.write();
 
-        // check cache validity and continuity
-        let cache = cache_guard.as_mut().map_err(|err| err.clone())?;
-        if let Some(last_cycle) = cache.0.back() {
-            if last_cycle.cycle.checked_add(1) != Some(cycle) {
-                return Err(PosError::ContainerInconsistency(
-                    "discontinuity in cycle draws history".into(),
-                ));
-            }
-        }
-
-        // add draw results to cache, or extract error
-        let out_result = match draws_result {
-            Ok(cycle_draws) => {
-                // add to draws
-                cache.0.push_back(cycle_draws);
-
-                // truncate cache to keep only the desired number of elements
-                while cache.0.len() > self.cfg.max_draw_cache {
-                    cache.0.pop_front();
+        let out_result = {
+            // check cache validity and continuity
+            let cache = cache_guard.as_mut().map_err(|err| err.clone())?;
+            if let Some(last_cycle) = cache.0.back() {
+                if last_cycle.cycle.checked_add(1) != Some(cycle) {
+                    return Err(PosError::ContainerInconsistency(
+                        "discontinuity in cycle draws history".into(),
+                    ));
                 }
-
-                // no error
-                Ok(())
             }
-            // draw error
-            Err(err) => Err(err),
-        };
 
-        // drop the writable reference to the cache
-        std::mem::drop(cache);
+            // add draw results to cache, or extract error
+            match draws_result {
+                Ok(cycle_draws) => {
+                    // add to draws
+                    cache.0.push_back(cycle_draws);
+
+                    // truncate cache to keep only the desired number of elements
+                    while cache.0.len() > self.cfg.max_draw_cache {
+                        cache.0.pop_front();
+                    }
+
+                    // no error
+                    Ok(())
+                }
+                // draw error
+                Err(err) => Err(err),
+            }
+        };
 
         // if there was an error, save a clone of the error to the cache
         if let Err(err) = &out_result {

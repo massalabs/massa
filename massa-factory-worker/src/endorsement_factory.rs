@@ -134,12 +134,14 @@ impl EndorsementFactoryWorker {
             let wallet = self.wallet.read().expect("could not lock wallet");
             for (index, producer_addr) in producer_addrs.into_iter().enumerate() {
                 // check if the block producer address is handled by the wallet
-                let producer_keypair = match wallet.find_associated_keypair(&producer_addr) {
-                    // the selected block producer is managed locally => continue to attempt endorsement production
-                    Some(kp) => kp.clone(),
-                    // the selected block producer is not managed locally => continue
-                    None => continue,
-                };
+                let producer_keypair =
+                    if let Some(kp) = wallet.find_associated_keypair(&producer_addr) {
+                        // the selected block producer is managed locally => continue to attempt endorsement production
+                        kp.clone()
+                    } else {
+                        // the selected block producer is not managed locally => continue
+                        continue;
+                    };
                 producers_indices.push((producer_keypair, index));
             }
         }

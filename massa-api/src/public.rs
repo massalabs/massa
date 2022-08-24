@@ -376,7 +376,7 @@ impl Endpoints for API<Public> {
         // ask pool whether it carries the operations
         let in_pool = self.0.pool_command_sender.contains_operations(&ops);
 
-        let api_cfg = self.0.api_settings.clone();
+        let api_cfg = self.0.api_settings;
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let closure = async move || {
             if ops.len() as u64 > api_cfg.max_arguments {
@@ -461,7 +461,7 @@ impl Endpoints for API<Public> {
         let in_pool = self.0.pool_command_sender.contains_endorsements(&eds);
 
         let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let api_cfg = self.0.api_settings.clone();
+        let api_cfg = self.0.api_settings;
         let closure = async move || {
             if eds.len() as u64 > api_cfg.max_arguments {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));
@@ -527,7 +527,7 @@ impl Endpoints for API<Public> {
             };
 
             let graph_status = consensus_command_sender
-                .get_block_statuses(&vec![id])
+                .get_block_statuses(&[id])
                 .await?
                 .into_iter()
                 .next()

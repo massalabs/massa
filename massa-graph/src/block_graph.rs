@@ -225,6 +225,7 @@ impl<'a> BlockGraphExport {
 
 /// Bootstrap compatible version of the block graph
 #[derive(Debug, Clone)]
+#[allow(clippy::type_complexity)]
 pub struct BlockGraphExport {
     /// Genesis blocks.
     pub genesis_blocks: Vec<BlockId>,

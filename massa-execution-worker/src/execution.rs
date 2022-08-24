@@ -824,6 +824,7 @@ impl ExecutionState {
     ///
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
+    #[allow(clippy::borrowed_box)]
     pub fn execute_slot(
         &self,
         slot: Slot,

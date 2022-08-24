@@ -29,6 +29,7 @@ use std::ops::Bound::{Excluded, Included};
 
 /// Messages used during bootstrap by server
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum BootstrapServerMessage {
     /// Sync clocks
     BootstrapTime {
@@ -469,6 +470,12 @@ impl BootstrapClientMessageSerializer {
             opt_u64_serializer: OptionSerializer::new(U64VarIntSerializer::new()),
             opt_slot_serializer: OptionSerializer::new(SlotSerializer::new()),
         }
+    }
+}
+
+impl Default for BootstrapClientMessageSerializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

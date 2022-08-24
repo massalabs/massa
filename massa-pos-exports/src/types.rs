@@ -102,6 +102,7 @@ impl PoSFinalState {
     ///
     /// # Returns
     /// The PoS part and the updated cursor
+    #[allow(clippy::type_complexity)]
     pub fn get_cycle_history_part(
         &self,
         cursor: Option<u64>,
@@ -216,6 +217,7 @@ impl PoSFinalState {
         let u64_deser = U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX));
         let bitvec_deser = BitVecDeserializer::new();
         let address_deser = AddressDeserializer::new();
+        #[allow(clippy::type_complexity)]
         let (rest, cycle): (
             &[u8],
             (

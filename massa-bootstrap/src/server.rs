@@ -247,6 +247,7 @@ impl BootstrapServer {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn send_final_state_stream(
     server: &mut BootstrapServerBinder,
     last_key: Option<Vec<u8>>,

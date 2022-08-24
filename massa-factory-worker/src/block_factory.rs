@@ -12,7 +12,6 @@ use massa_models::{
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use std::{
-    convert::identity,
     sync::{mpsc, Arc, RwLock},
     thread,
     time::Instant,
@@ -132,13 +131,15 @@ impl BlockFactoryWorker {
 
         // check if the block producer address is handled by the wallet
         let block_producer_keypair_ref = self.wallet.read().expect("could not lock wallet");
-        let block_producer_keypair =
-            match block_producer_keypair_ref.find_associated_keypair(&block_producer_addr) {
-                // the selected block producer is managed locally => continue to attempt block production
-                Some(kp) => kp,
-                // the selected block producer is not managed locally => quit
-                None => return,
-            };
+        let block_producer_keypair = if let Some(kp) =
+            block_producer_keypair_ref.find_associated_keypair(&block_producer_addr)
+        {
+            // the selected block producer is managed locally => continue to attempt block production
+            kp
+        } else {
+            // the selected block producer is not managed locally => quit
+            return;
+        };
         // get best parents and their periods
         let parents: Vec<(BlockId, u64)> = self
             .channels
@@ -176,7 +177,7 @@ impl BlockFactoryWorker {
             let endo_read = endo_storage.read_endorsements();
             endorsements_ids
                 .into_iter()
-                .filter_map(identity)
+                .flatten()
                 .map(|endo_id| {
                     endo_read
                         .get(&endo_id)

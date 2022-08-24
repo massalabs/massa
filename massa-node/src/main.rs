@@ -365,7 +365,7 @@ async fn launch(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
         execution_controller.clone(),
-        api_config.clone(),
+        api_config,
         consensus_config.clone(),
         node_wallet,
     );
@@ -375,7 +375,7 @@ async fn launch(
     let api_public = API::<Public>::new(
         consensus_command_sender.clone(),
         execution_controller.clone(),
-        api_config.clone(),
+        api_config,
         selector_controller.clone(),
         consensus_config,
         pool_manager.clone(),

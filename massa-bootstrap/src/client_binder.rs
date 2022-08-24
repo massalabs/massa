@@ -49,6 +49,7 @@ impl BootstrapClientBinder {
     /// # Argument
     /// * duplex: duplex stream.
     /// * limit: limit max bytes per second (up and down)
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         duplex: Duplex,
         remote_pubkey: PublicKey,
