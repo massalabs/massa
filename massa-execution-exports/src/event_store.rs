@@ -42,7 +42,7 @@ impl EventStore {
     /// Set the events of this store as final
     pub fn finalize(&mut self) {
         for output in self.0.iter_mut() {
-            output.context.candidate = false;
+            output.context.is_final = true;
         }
     }
 

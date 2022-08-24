@@ -34,7 +34,7 @@ pub struct EventExecutionContext {
     /// origin operation id
     pub origin_operation_id: Option<OperationId>,
     /// if the event is final
-    pub candidate: bool,
+    pub is_final: bool,
 }
 
 impl Display for EventExecutionContext {
