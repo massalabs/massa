@@ -88,18 +88,10 @@ impl OperationPool {
     }
 
     /// Checks if an operation is relevant according to its thread and period validity range
-    fn is_operation_relevant(&self, op_info: &OperationInfo) -> bool {
+    pub(crate) fn is_operation_relevant(&self, op_info: &OperationInfo) -> bool {
         // too old
-        if *op_info.validity_period_range.end()
-            <= self.last_cs_final_periods[op_info.thread as usize]
-        {
-            return false;
-        }
-
-        // validity not started yet
-        //TODO eliminate ops whose validity hasn't started yet
-
-        true
+        *op_info.validity_period_range.end() > self.last_cs_final_periods[op_info.thread as usize]
+        // todo check if validity not started yet
     }
 
     /// Add a list of operations to the pool
@@ -221,10 +213,13 @@ impl OperationPool {
                 .entry(op_info.creator_address)
                 .or_insert_with(|| {
                     self.execution_controller
-                        .get_final_and_candidate_sequential_balances(&[op_info.creator_address])[0]
+                        .get_final_and_candidate_sequential_balances(&[op_info.creator_address])
+                        .get(0)
+                        .unwrap_or(&(None, None))
                         .1
                         .unwrap_or_default()
                 });
+
             if *creator_seq_balance < op_info.max_sequential_spending {
                 continue;
             }

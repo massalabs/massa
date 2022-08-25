@@ -18,6 +18,7 @@ use std::{
         mpsc::{self, Receiver},
         Arc, Mutex,
     },
+    time::Duration,
 };
 
 /// List of possible messages coming from the mock.
@@ -54,6 +55,22 @@ pub enum MockExecutionControllerMessage {
         req: ReadOnlyExecutionRequest,
         /// response channel
         response_tx: mpsc::Sender<Result<ExecutionOutput, ExecutionError>>,
+    },
+    /// Unexecuted operation among call
+    UnexecutedOpsAmong {
+        /// operation ids
+        ops: Set<OperationId>,
+        /// thread
+        thread: u8,
+        /// response channel
+        response_tx: mpsc::Sender<Set<OperationId>>,
+    },
+    /// Get final and candidate sequencial balances by addresses
+    GetFinalAndCandidateSequentialBalances {
+        /// addresses to get
+        addresses: Vec<Address>,
+        /// response channel
+        response_tx: mpsc::Sender<Vec<(Option<Amount>, Option<Amount>)>>,
     },
 }
 
@@ -115,9 +132,18 @@ impl ExecutionController for MockExecutionController {
 
     fn get_final_and_candidate_sequential_balances(
         &self,
-        _addresses: &[Address],
+        addresses: &[Address],
     ) -> Vec<(Option<Amount>, Option<Amount>)> {
-        Vec::default()
+        let (response_tx, response_rx) = mpsc::channel();
+        if let Err(err) = self.0.lock().unwrap().send(
+            MockExecutionControllerMessage::GetFinalAndCandidateSequentialBalances {
+                addresses: addresses.to_vec(),
+                response_tx,
+            },
+        ) {
+            println!("mock error {err}");
+        }
+        response_rx.recv_timeout(Duration::from_millis(50)).unwrap()
     }
 
     fn get_final_and_active_data_entry(
@@ -148,8 +174,21 @@ impl ExecutionController for MockExecutionController {
         response_rx.recv().unwrap()
     }
 
-    fn unexecuted_ops_among(&self, _ops: &Set<OperationId>, _thread: u8) -> Set<OperationId> {
-        Set::default()
+    fn unexecuted_ops_among(&self, ops: &Set<OperationId>, thread: u8) -> Set<OperationId> {
+        let (response_tx, response_rx) = mpsc::channel();
+        if let Err(err) =
+            self.0
+                .lock()
+                .unwrap()
+                .send(MockExecutionControllerMessage::UnexecutedOpsAmong {
+                    ops: ops.clone(),
+                    thread,
+                    response_tx,
+                })
+        {
+            println!("mock error {err}");
+        }
+        response_rx.recv_timeout(Duration::from_millis(50)).unwrap()
     }
 
     fn clone_box(&self) -> Box<dyn ExecutionController> {

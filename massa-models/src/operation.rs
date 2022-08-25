@@ -817,6 +817,7 @@ impl WrappedOperation {
 
 impl WrappedOperation {
     /// get the range of periods during which an operation is valid
+    /// Range: (op.expire_period - cfg.operation_validity_period) -> op.expire_period (included)
     pub fn get_validity_range(&self, operation_validity_period: u64) -> RangeInclusive<u64> {
         let start = self
             .content
