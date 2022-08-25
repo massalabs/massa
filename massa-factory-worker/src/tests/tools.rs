@@ -191,11 +191,11 @@ impl TestFactory {
                         let ids = operations.iter().map(|op| op.id).collect();
                         let mut storage = self.storage.clone_without_refs();
                         storage.store_operations(operations.clone());
-                        response_tx.send((ids, self.storage.clone())).unwrap();
+                        response_tx.send((ids, storage.clone())).unwrap();
                         Some(())
                     } else {
                         response_tx.send((vec![], Storage::default())).unwrap();
-                        None
+                        Some(())
                     }
                 }
                 _ => panic!("unexpected message"),
