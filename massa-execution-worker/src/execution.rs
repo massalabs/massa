@@ -127,7 +127,7 @@ impl ExecutionState {
     ///
     /// # Arguments
     /// * `exec_ou`t: execution output to apply
-    pub fn apply_final_execution_output(&mut self, exec_out: ExecutionOutput) {
+    pub fn apply_final_execution_output(&mut self, mut exec_out: ExecutionOutput) {
         if self.final_cursor >= exec_out.slot {
             panic!("attempting to apply a final execution output at or before the current final_cursor");
         }
@@ -146,6 +146,7 @@ impl ExecutionState {
         }
 
         // append generated events to the final event store
+        exec_out.events.finalize();
         self.final_events.extend(exec_out.events);
         self.final_events.prune(self.config.max_final_events);
     }
@@ -815,17 +816,33 @@ impl ExecutionState {
     /// * emitter address
     /// * original caller address
     /// * operation id
+    /// * event state (final, candidate or both)
     pub fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
-        self.final_events
-            .get_filtered_sc_output_event(&filter)
-            .into_iter()
-            .chain(
-                self.active_history
-                    .read()
-                    .0
-                    .iter()
-                    .flat_map(|item| item.events.get_filtered_sc_output_event(&filter)),
-            )
-            .collect()
+        match filter.is_final {
+            Some(true) => self
+                .final_events
+                .get_filtered_sc_output_events(&filter)
+                .into_iter()
+                .collect(),
+            Some(false) => self
+                .active_history
+                .read()
+                .0
+                .iter()
+                .flat_map(|item| item.events.get_filtered_sc_output_events(&filter))
+                .collect(),
+            None => self
+                .final_events
+                .get_filtered_sc_output_events(&filter)
+                .into_iter()
+                .chain(
+                    self.active_history
+                        .read()
+                        .0
+                        .iter()
+                        .flat_map(|item| item.events.get_filtered_sc_output_events(&filter)),
+                )
+                .collect(),
+        }
     }
 }
