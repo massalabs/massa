@@ -201,7 +201,7 @@ impl ProtocolWorker {
     }
 
     /// Return the sum of all operation's serialized sizes in the Set<Id>
-    fn get_total_operations_size(storage: &Storage, operation_ids: Set<OperationId>) -> usize {
+    fn get_total_operations_size(storage: &Storage, operation_ids: &Set<OperationId>) -> usize {
         let op_reader = storage.read_operations();
         let mut total: usize = 0;
         operation_ids.iter().for_each(|id| {
@@ -274,7 +274,8 @@ impl ProtocolWorker {
             let mut missing_operation = std::mem::take(&mut operation_ids_set);
             missing_operation.retain(|id| !known_operations.contains(id));
 
-            info.operations_size = Self::get_total_operations_size(&self.storage, known_operations);
+            info.operations_size =
+                Self::get_total_operations_size(&self.storage, &known_operations);
 
             if info.operations_size > self.config.max_serialized_operations_size_per_block {
                 let _ = self.ban_node(&from_node_id).await;
@@ -321,11 +322,10 @@ impl ProtocolWorker {
     ) -> Result<(), ProtocolError> {
         self.note_operations_from_node(operations.clone(), &from_node_id)?;
 
-        let (wanted_operation_ids, block_storage) = match self.block_wishlist.get(&block_id) {
-            Some((AskForBlocksInfo::Operations(ids), Some(storage))) => (
-                ids.clone().into_iter().collect::<Set<OperationId>>(),
-                storage,
-            ),
+        let wanted_operation_ids = match self.block_wishlist.get(&block_id) {
+            Some((AskForBlocksInfo::Operations(ids), Some(_))) => {
+                ids.clone().into_iter().collect::<Set<OperationId>>()
+            }
             _ => return Ok(()),
         };
 
@@ -383,8 +383,7 @@ impl ProtocolWorker {
         };
 
         // create block storage (without parents)
-        let mut block_storage = block_storage.clone();
-
+        let mut block_storage = self.block_wishlist.remove(&block_id).unwrap().1.unwrap();
         // add block to local storage and claim ref
         block_storage.store_block(wrapped_block);
         // add operations to local storage and claim ref

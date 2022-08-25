@@ -798,6 +798,7 @@ impl Endpoints for API<Public> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
         let mut protocol_sender = self.0.protocol_command_sender.clone();
         let api_cfg = self.0.api_settings;
+        let mut to_send = self.0.storage.clone_without_refs();
         let closure = async move || {
             if ops.len() as u64 > api_cfg.max_arguments {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));
@@ -835,7 +836,6 @@ impl Endpoints for API<Public> {
                     Err(e) => Err(e),
                 })
                 .collect::<Result<Vec<WrappedOperation>, ApiError>>()?;
-            let mut to_send = Storage::default();
             to_send.store_operations(verified_ops.clone());
             let ids: Vec<OperationId> = verified_ops.iter().map(|op| op.id).collect();
             cmd_sender.add_operations(to_send.clone());

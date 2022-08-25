@@ -22,7 +22,9 @@ impl CheckedOperations {
     }
 
     pub fn extend(&mut self, ids: &Set<OperationId>) {
-        let _ = ids.iter().map(|id| self.insert(id));
+        ids.iter().for_each(|id| {
+            self.insert(id);
+        });
     }
 
     /// Get a operation id matching with the givec `prefix` or None if there is none.
