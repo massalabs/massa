@@ -141,7 +141,7 @@ pub struct ProtocolWorker {
     pub(crate) active_nodes: HashMap<NodeId, NodeInfo>,
     /// List of wanted blocks,
     /// with the info representing their state withint the as_block workflow.
-    pub(crate) block_wishlist: Map<BlockId, AskForBlocksInfo>,
+    pub(crate) block_wishlist: Map<BlockId, (AskForBlocksInfo, Option<Storage>)>,
     /// List of processed endorsements
     checked_endorsements: Set<EndorsementId>,
     /// List of processed operations
@@ -367,7 +367,8 @@ impl ProtocolWorker {
                 massa_trace!("protocol.protocol_worker.process_command.wishlist_delta.begin", { "new": new, "remove": remove });
                 self.stop_asking_blocks(remove)?;
                 for block in new.into_iter() {
-                    self.block_wishlist.insert(block, AskForBlocksInfo::Info);
+                    self.block_wishlist
+                        .insert(block, (AskForBlocksInfo::Info, None));
                 }
                 self.update_ask_block(timer).await?;
                 massa_trace!(
@@ -375,11 +376,13 @@ impl ProtocolWorker {
                     {}
                 );
             }
-            ProtocolCommand::PropagateOperations(operation_ids) => {
+            ProtocolCommand::PropagateOperations(operations) => {
+                let operation_ids = operations.get_op_refs().clone();
                 massa_trace!(
                     "protocol.protocol_worker.process_command.propagate_operations.begin",
                     { "operation_ids": operation_ids }
                 );
+                self.storage.extend(operations);
                 for id in operation_ids.iter() {
                     self.checked_operations.insert(id);
                 }
@@ -621,7 +624,7 @@ impl ProtocolWorker {
                 ask_block_list
                     .entry(best_node)
                     .or_insert_with(Vec::new)
-                    .push((hash, required_info.clone()));
+                    .push((hash, required_info.0.clone()));
 
                 let timeout_at = now
                     .checked_add(self.config.ask_block_timeout.into())
