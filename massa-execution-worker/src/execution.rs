@@ -146,6 +146,7 @@ impl ExecutionState {
         }
 
         // append generated events to the final event store
+        exec_out.events.finalize();
         self.final_events.extend(exec_out.events);
         self.final_events.prune(self.config.max_final_events);
     }
