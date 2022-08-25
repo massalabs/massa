@@ -31,7 +31,7 @@ impl EndorsementPool {
         EndorsementPool {
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
             endorsements_indexed: Default::default(),
-            endorsements_sorted: Default::default(),
+            endorsements_sorted: vec![Default::default(); config.thread_count as usize],
             config,
             storage: storage.clone_without_refs(),
         }
@@ -52,10 +52,6 @@ impl EndorsementPool {
         // update internal final CS period counter
         self.last_cs_final_periods = final_cs_periods.to_vec();
 
-        // At start there is no endorsements in `endorsements_sorted`.
-        if self.endorsements_sorted.is_empty() {
-            return;
-        }
         // remove old endorsements
         let mut removed: Set<EndorsementId> = Default::default();
         for thread in 0..self.config.thread_count {
