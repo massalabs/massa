@@ -255,7 +255,6 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_block_integration(
 ) {
     let protocol_config = &tools::PROTOCOL_CONFIG;
@@ -333,7 +332,6 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_get_block_results(
 ) {
     let protocol_config = &tools::PROTOCOL_CONFIG;
@@ -410,7 +408,6 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_indirect_knowledge_via_header(
 ) {
     let protocol_config = &tools::PROTOCOL_CONFIG;

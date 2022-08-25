@@ -112,7 +112,6 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_sends_blocks_when_asked_for() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
@@ -194,7 +193,6 @@ async fn test_protocol_sends_blocks_when_asked_for() {
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header_to_others() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
@@ -301,7 +299,6 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
 

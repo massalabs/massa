@@ -17,7 +17,6 @@ use std::str::FromStr;
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_sends_blocks_with_operations_to_consensus() {
     //         // setup logging
     // stderrlog::new()

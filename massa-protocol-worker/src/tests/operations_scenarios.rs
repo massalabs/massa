@@ -283,7 +283,6 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_get_block_results(
 ) {
     let protocol_config = &tools::PROTOCOL_CONFIG;
@@ -363,7 +362,6 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_indirect_knowledge_via_header(
 ) {
     let protocol_config = &tools::PROTOCOL_CONFIG;
@@ -454,7 +452,6 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_indirect_knowledge_via_wrong_root_hash_header(
 ) {
     let protocol_config = &tools::PROTOCOL_CONFIG;
@@ -547,7 +544,6 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_does_not_propagates_operations_when_receiving_those_inside_a_block() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
