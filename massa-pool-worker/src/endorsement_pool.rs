@@ -104,7 +104,12 @@ impl EndorsementPool {
                 );
                 // note that we don't want equivalent endorsements (slot, index, block etc...) to overwrite each other
                 if self.endorsements_indexed.try_insert(key, endo.id).is_ok() {
-                    self.endorsements_sorted[endo.content.slot.thread as usize].insert(key,endo.id).expect("endorsement is expected to be absent from endorsements_sorted at this point");
+                    if self.endorsements_sorted[endo.content.slot.thread as usize]
+                        .insert(key, endo.id)
+                        .is_some()
+                    {
+                        panic!("endorsement is expected to be absent from endorsements_sorted at this point");
+                    }
                     added.insert(endo.id);
                 }
             }

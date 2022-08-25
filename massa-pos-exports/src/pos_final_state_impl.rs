@@ -1,4 +1,7 @@
-use std::{collections::{BTreeMap, VecDeque}, path::PathBuf};
+use std::{
+    collections::{BTreeMap, VecDeque},
+    path::PathBuf,
+};
 
 use massa_hash::Hash;
 use massa_models::{prehash::Map, Address, Amount, Slot};
@@ -33,7 +36,7 @@ impl PoSFinalState {
             rng_seed: Default::default(),
             production_stats: Default::default(),
             roll_counts: initial_rolls.clone(),
-            complete: false
+            complete: false,
         });
         Ok(Self {
             cycle_history,

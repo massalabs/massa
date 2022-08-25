@@ -9,7 +9,6 @@ use massa_models::{
     composite::PubkeySig, node::NodeId, operation::OperationPrefixIds, stats::NetworkStats,
     BlockId, OperationId, WrappedEndorsement,
 };
-use tracing::info;
 use std::{
     collections::{HashMap, VecDeque},
     net::IpAddr,
@@ -18,6 +17,7 @@ use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
 };
+use tracing::info;
 
 /// Network command sender
 #[derive(Clone)]
