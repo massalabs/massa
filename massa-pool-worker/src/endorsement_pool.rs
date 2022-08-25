@@ -52,6 +52,10 @@ impl EndorsementPool {
         // update internal final CS period counter
         self.last_cs_final_periods = final_cs_periods.to_vec();
 
+        // At start there is no endorsements in `endorsements_sorted`.
+        if self.endorsements_sorted.is_empty() {
+            return;
+        }
         // remove old endorsements
         let mut removed: Set<EndorsementId> = Default::default();
         for thread in 0..self.config.thread_count {

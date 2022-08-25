@@ -9,6 +9,7 @@ use massa_models::{
     composite::PubkeySig, node::NodeId, operation::OperationPrefixIds, stats::NetworkStats,
     BlockId, OperationId, WrappedEndorsement,
 };
+use tracing::info;
 use std::{
     collections::{HashMap, VecDeque},
     net::IpAddr,
@@ -292,9 +293,11 @@ impl NetworkManager {
         self,
         network_event_receiver: NetworkEventReceiver,
     ) -> Result<(), NetworkError> {
+        info!("stopping network manager...");
         drop(self.manager_tx);
         let _remaining_events = network_event_receiver.drain().await;
         let _ = self.join_handle.await?;
+        info!("network manager stopped");
         Ok(())
     }
 }
