@@ -1,5 +1,6 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::slot::Slot;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::fmt::Formatter;
@@ -15,6 +16,8 @@ pub struct ExecutionStats {
     pub final_block_count: usize,
     /// number of final executed operations in the time window
     pub final_executed_operations_count: usize,
+    /// active execution cursor slot
+    pub active_cursor: Slot,
 }
 
 impl std::fmt::Display for ExecutionStats {
@@ -40,6 +43,7 @@ impl std::fmt::Display for ExecutionStats {
             "\tFinal executed operation count: {}",
             self.final_executed_operations_count
         )?;
+        writeln!(f, "\tActive cursor: {}", self.active_cursor)?;
         Ok(())
     }
 }

@@ -119,7 +119,7 @@ impl ExecutionState {
 
     /// Get execution statistics
     pub fn get_stats(&self) -> ExecutionStats {
-        self.stats_counter.get_stats()
+        self.stats_counter.get_stats(self.active_cursor)
     }
 
     /// Gets out the first (oldest) execution history item, removing it from history.

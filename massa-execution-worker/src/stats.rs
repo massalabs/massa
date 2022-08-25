@@ -1,6 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::stats::ExecutionStats;
+use massa_models::Slot;
 use massa_time::MassaTime;
 use std::collections::VecDeque;
 
@@ -63,7 +64,7 @@ impl ExecutionStatsCounter {
     }
 
     /// get statistics
-    pub fn get_stats(&self) -> ExecutionStats {
+    pub fn get_stats(&self, active_cursor: Slot) -> ExecutionStats {
         let current_time = MassaTime::compensated_now(self.compensation_millis)
             .expect("could not get current time");
         let start_time = current_time.saturating_sub(self.time_window_duration);
@@ -80,6 +81,7 @@ impl ExecutionStatsCounter {
             final_executed_operations_count: self.final_executed_ops.iter().map(map_func).sum(),
             time_window_start: start_time,
             time_window_end: current_time,
+            active_cursor,
         }
     }
 }
