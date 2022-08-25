@@ -146,7 +146,6 @@ impl ExecutionState {
         }
 
         // append generated events to the final event store
-        exec_out.events.finalize();
         self.final_events.extend(exec_out.events);
         self.final_events.prune(self.config.max_final_events);
     }
@@ -821,7 +820,7 @@ impl ExecutionState {
         match filter.is_final {
             Some(true) => self
                 .final_events
-                .get_filtered_sc_output_event(&filter)
+                .get_filtered_sc_output_events(&filter)
                 .into_iter()
                 .collect(),
             Some(false) => self
@@ -829,18 +828,18 @@ impl ExecutionState {
                 .read()
                 .0
                 .iter()
-                .flat_map(|item| item.events.get_filtered_sc_output_event(&filter))
+                .flat_map(|item| item.events.get_filtered_sc_output_events(&filter))
                 .collect(),
             None => self
                 .final_events
-                .get_filtered_sc_output_event(&filter)
+                .get_filtered_sc_output_events(&filter)
                 .into_iter()
                 .chain(
                     self.active_history
                         .read()
                         .0
                         .iter()
-                        .flat_map(|item| item.events.get_filtered_sc_output_event(&filter)),
+                        .flat_map(|item| item.events.get_filtered_sc_output_events(&filter)),
                 )
                 .collect(),
         }

@@ -52,7 +52,8 @@ impl EventStore {
     /// * emitter address
     /// * original caller address
     /// * operation id
-    pub fn get_filtered_sc_output_event(&self, filter: &EventFilter) -> VecDeque<SCOutputEvent> {
+    /// * is_final
+    pub fn get_filtered_sc_output_events(&self, filter: &EventFilter) -> VecDeque<SCOutputEvent> {
         self.0
             .iter()
             .filter(|x| {
@@ -63,6 +64,11 @@ impl EventStore {
                 }
                 if let Some(end) = filter.end {
                     if x.context.slot >= end {
+                        return false;
+                    }
+                }
+                if let Some(is_final) = filter.is_final {
+                    if x.context.is_final != is_final {
                         return false;
                     }
                 }
