@@ -838,10 +838,8 @@ impl Endpoints for API<Public> {
             let mut to_send = Storage::default();
             to_send.store_operations(verified_ops.clone());
             let ids: Vec<OperationId> = verified_ops.iter().map(|op| op.id).collect();
-            cmd_sender.add_operations(to_send);
-            protocol_sender
-                .propagate_operations(ids.iter().cloned().collect())
-                .await?;
+            cmd_sender.add_operations(to_send.clone());
+            protocol_sender.propagate_operations(to_send).await?;
             Ok(ids)
         };
         Box::pin(closure())

@@ -375,11 +375,13 @@ impl ProtocolWorker {
                     {}
                 );
             }
-            ProtocolCommand::PropagateOperations(operation_ids) => {
+            ProtocolCommand::PropagateOperations(operations) => {
+                let operation_ids = operations.get_op_refs().clone();
                 massa_trace!(
                     "protocol.protocol_worker.process_command.propagate_operations.begin",
                     { "operation_ids": operation_ids }
                 );
+                self.storage.extend(operations);
                 for id in operation_ids.iter() {
                     self.checked_operations.insert(id);
                 }

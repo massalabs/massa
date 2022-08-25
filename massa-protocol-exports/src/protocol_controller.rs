@@ -70,7 +70,7 @@ pub enum ProtocolCommand {
     /// Propagate operations (send batches)
     /// note: Set<OperationId> are replaced with OperationPrefixIds
     ///       by the controller
-    PropagateOperations(Set<OperationId>),
+    PropagateOperations(Storage),
     /// Propagate endorsements
     PropagateEndorsements(Storage),
 }
@@ -134,15 +134,12 @@ impl ProtocolCommandSender {
     /// Propagate a batch of operation ids (from pool).
     ///
     /// note: Full `OperationId` is replaced by a `OperationPrefixId` later by the worker.
-    pub async fn propagate_operations(
-        &mut self,
-        operation_ids: Set<OperationId>,
-    ) -> Result<(), ProtocolError> {
+    pub async fn propagate_operations(&mut self, operations: Storage) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_operations", {
-            "operations": operation_ids
+            "operations": operations.get_op_refs()
         });
         self.0
-            .send(ProtocolCommand::PropagateOperations(operation_ids))
+            .send(ProtocolCommand::PropagateOperations(operations))
             .await
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_operation command send error".into())
