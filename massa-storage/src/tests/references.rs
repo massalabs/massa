@@ -2,10 +2,8 @@ use crate::Storage;
 use massa_factory_exports::test_exports::create_empty_block;
 use massa_models::{prehash::Set, Slot};
 use massa_signature::KeyPair;
-use serial_test::serial;
 
 #[test]
-#[serial]
 fn test_clone() {
     let mut storage = Storage::default();
     let slot = Slot::new(0, 0);
@@ -19,7 +17,6 @@ fn test_clone() {
 }
 
 #[test]
-#[serial]
 fn test_clone_without_ref() {
     let mut storage = Storage::default();
     let slot = Slot::new(0, 0);
@@ -32,7 +29,6 @@ fn test_clone_without_ref() {
 }
 
 #[test]
-#[serial]
 fn test_retrieve_all_ref_dropped() {
     let mut storage = Storage::default();
     let slot = Slot::new(0, 0);
@@ -58,7 +54,6 @@ fn test_retrieve_all_ref_dropped() {
 }
 
 #[test]
-#[serial]
 fn test_retrieve_all_ref_dropped_automatically() {
     let mut storage = Storage::default();
     let slot = Slot::new(0, 0);

@@ -2,10 +2,8 @@ use crate::Storage;
 use massa_factory_exports::test_exports::create_empty_block;
 use massa_models::{prehash::Set, Slot};
 use massa_signature::KeyPair;
-use serial_test::serial;
 
 #[test]
-#[serial]
 /// Store a block and retrieve it.
 fn test_basic_insert() {
     let mut storage = Storage::default();
@@ -19,7 +17,6 @@ fn test_basic_insert() {
 }
 
 #[test]
-#[serial]
 /// Test double insert of the same block.
 /// We expect that it's stored only one time
 fn test_double_insert() {

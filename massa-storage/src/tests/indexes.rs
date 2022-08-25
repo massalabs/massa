@@ -2,10 +2,8 @@ use crate::Storage;
 use massa_factory_exports::test_exports::create_empty_block;
 use massa_models::{Address, Slot};
 use massa_signature::KeyPair;
-use serial_test::serial;
 
 #[test]
-#[serial]
 fn test_block_index_slot() {
     let mut storage = Storage::default();
     let slot = Slot::new(0, 0);
@@ -19,7 +17,6 @@ fn test_block_index_slot() {
 }
 
 #[test]
-#[serial]
 fn test_block_index_by_creator() {
     let mut storage = Storage::default();
     let slot = Slot::new(0, 0);
@@ -36,7 +33,6 @@ fn test_block_index_by_creator() {
 }
 
 #[test]
-#[serial]
 fn test_block_fail_find() {
     let mut storage = Storage::default();
     let slot = Slot::new(0, 0);

@@ -2204,7 +2204,6 @@ dependencies = [
  "massa_signature",
  "parking_lot 0.12.1",
  "serde_json",
- "serial_test 0.9.0",
  "tracing",
 ]
 
