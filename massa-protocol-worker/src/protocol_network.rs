@@ -16,6 +16,7 @@ use massa_models::{Block, WrappedBlock};
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkEvent, ReplyForBlocksInfo};
 use massa_protocol_exports::{ProtocolError, ProtocolEvent};
 use massa_serialization::Serializer;
+use massa_storage::Storage;
 use tokio::time::{Instant, Sleep};
 use tracing::{info, warn};
 
@@ -199,6 +200,18 @@ impl ProtocolWorker {
             })
     }
 
+    /// Return the sum of all operation's serialized sizes in the Set<Id>
+    fn get_total_operations_size(storage: &Storage, operation_ids: Set<OperationId>) -> usize {
+        let op_reader = storage.read_operations();
+        let mut total: usize = 0;
+        operation_ids.iter().for_each(|id| {
+            if let Some(op) = op_reader.get(id) {
+                total = total.saturating_add(op.serialized_size());
+            }
+        });
+        total
+    }
+
     /// On block information received, manage when we get a list of operations.
     /// Ask for the missing operations that are not in the `checked_operations` cache variable.
     ///
@@ -221,18 +234,21 @@ impl ProtocolWorker {
         block_id: BlockId,
         operation_ids: Vec<OperationId>,
     ) -> Result<(), ProtocolError> {
+        // All operation ids sent into a set
+        let mut operation_ids_set: Set<OperationId> = operation_ids.iter().cloned().collect();
+
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
             node_info.insert_known_ops(
-                operation_ids.iter().cloned().collect(),
+                operation_ids_set.clone(),
                 self.config.max_node_known_ops_size,
             );
         }
 
-        match self.block_wishlist.get(&block_id) {
-            Some(AskForBlocksInfo::Info) => {}
-            _ => return Ok(()),
+        if self.block_wishlist.get(&block_id).is_none() {
+            return Ok(());
         }
+
         let mut info = match self.checked_headers.get_mut(&block_id) {
             Some(info) => info,
             _ => {
@@ -250,26 +266,15 @@ impl ProtocolWorker {
         if info.header.content.operation_merkle_root == Hash::compute_from(&total_hash) {
             // Add the ops of info.
             info.operations = Some(operation_ids.clone());
+            let mut block_storage = self.storage.clone_without_refs();
+            let known_operations = block_storage.claim_operation_refs(&operation_ids_set);
+            // remember the claimed operation to prune them later
+            self.checked_operations.extend(&known_operations);
+            // Compute the missing operations using `operation_ids_set`
+            let mut missing_operation = std::mem::take(&mut operation_ids_set);
+            missing_operation.retain(|id| !known_operations.contains(id));
 
-            let missing_operations = {
-                let ops = self.storage.read_operations();
-                operation_ids
-                    .into_iter()
-                    .filter(|op| {
-                        // Filter missing operations returning true if not found and compute
-                        // the sum of operation bytes size
-                        if let Some(operation_id) = self.checked_operations.get(&op.into_prefix()) {
-                            let op = ops
-                                .get(operation_id)
-                                .expect("unexpected checked operation not in storage");
-                            info.operations_size =
-                                info.operations_size.saturating_add(op.serialized_size());
-                            return false;
-                        }
-                        true
-                    })
-                    .collect()
-            };
+            info.operations_size = Self::get_total_operations_size(&self.storage, known_operations);
 
             if info.operations_size > self.config.max_serialized_operations_size_per_block {
                 let _ = self.ban_node(&from_node_id).await;
@@ -282,8 +287,13 @@ impl ProtocolWorker {
             self.stop_asking_blocks(set)?;
 
             // Re-add to wishlist with new state.
-            self.block_wishlist
-                .insert(block_id, AskForBlocksInfo::Operations(missing_operations));
+            self.block_wishlist.insert(
+                block_id,
+                (
+                    AskForBlocksInfo::Operations(missing_operation.into_iter().collect()),
+                    Some(block_storage),
+                ),
+            );
         } else {
             let _ = self.ban_node(&from_node_id).await;
         }
@@ -311,10 +321,14 @@ impl ProtocolWorker {
     ) -> Result<(), ProtocolError> {
         self.note_operations_from_node(operations.clone(), &from_node_id)?;
 
-        let wanted_operation_ids: Set<OperationId> = match self.block_wishlist.get(&block_id) {
-            Some(AskForBlocksInfo::Operations(ids)) => ids.clone().into_iter().collect(),
+        let (wanted_operation_ids, block_storage) = match self.block_wishlist.get(&block_id) {
+            Some((AskForBlocksInfo::Operations(ids), Some(storage))) => (
+                ids.clone().into_iter().collect::<Set<OperationId>>(),
+                storage,
+            ),
             _ => return Ok(()),
         };
+
         let info = match self.checked_headers.get(&block_id) {
             Some(info) => info,
             _ => {
@@ -369,14 +383,12 @@ impl ProtocolWorker {
         };
 
         // create block storage (without parents)
-        let mut block_storage = self.storage.clone_without_refs();
+        let mut block_storage = block_storage.clone();
 
         // add block to local storage and claim ref
         block_storage.store_block(wrapped_block);
-
         // add operations to local storage and claim ref
         block_storage.store_operations(operations);
-
         // add endorsements to local storage and claim ref
         // TODO change this if we make endorsements separate from block header
         block_storage.store_endorsements(info.header.content.endorsements.clone());

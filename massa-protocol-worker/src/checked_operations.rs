@@ -21,6 +21,10 @@ impl CheckedOperations {
         self.0.insert(prefix, *id).is_none()
     }
 
+    pub fn extend(&mut self, ids: &Set<OperationId>) {
+        let _ = ids.iter().map(|id| self.insert(id));
+    }
+
     /// Get a operation id matching with the givec `prefix` or None if there is none.
     pub fn get(&self, prefix: &OperationPrefixId) -> Option<&OperationId> {
         self.0.get(prefix)
