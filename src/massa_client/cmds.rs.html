@@ -1136,6 +1136,9 @@
 <span id="1136">1136</span>
 <span id="1137">1137</span>
 <span id="1138">1138</span>
+<span id="1139">1139</span>
+<span id="1140">1140</span>
+<span id="1141">1141</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::repl::Output;
@@ -1736,6 +1739,9 @@
                     emitter_address: parse_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">2</span>]),
                     original_caller_address: parse_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">3</span>]),
                     original_operation_id: parse_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">4</span>]),
+                    <span class="comment">// TODO: update client to enable this option
+                    // see `EventFilter` description for more info
+                    </span>is_final: <span class="prelude-val">None</span>,
                 };
                 <span class="kw">match </span>client.public.get_filtered_sc_output_event(filter).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(events) =&gt; <span class="prelude-val">Ok</span>(Box::new(events)),
@@ -2275,4 +2281,4 @@
     })
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>

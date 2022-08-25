@@ -571,6 +571,12 @@
 <span id="571">571</span>
 <span id="572">572</span>
 <span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::address::AddressCycleProductionStats;
@@ -1113,6 +1119,12 @@
     </span><span class="kw">pub </span>original_caller_address: <span class="prelude-ty">Option</span>&lt;Address&gt;,
     <span class="doccomment">/// optional operation id
     </span><span class="kw">pub </span>original_operation_id: <span class="prelude-ty">Option</span>&lt;OperationId&gt;,
+    <span class="doccomment">/// optional event status
+    ///
+    /// Some(true) means final
+    /// Some(false) means candidate
+    /// None means final _and_ candidate
+    </span><span class="kw">pub </span>is_final: <span class="prelude-ty">Option</span>&lt;bool&gt;,
 }
 
 <span class="doccomment">/// read only bytecode execution request
@@ -1145,4 +1157,4 @@
     </span><span class="kw">pub </span>caller_address: <span class="prelude-ty">Option</span>&lt;Address&gt;,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>

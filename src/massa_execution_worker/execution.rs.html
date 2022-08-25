@@ -829,6 +829,23 @@
 <span id="829">829</span>
 <span id="830">830</span>
 <span id="831">831</span>
+<span id="832">832</span>
+<span id="833">833</span>
+<span id="834">834</span>
+<span id="835">835</span>
+<span id="836">836</span>
+<span id="837">837</span>
+<span id="838">838</span>
+<span id="839">839</span>
+<span id="840">840</span>
+<span id="841">841</span>
+<span id="842">842</span>
+<span id="843">843</span>
+<span id="844">844</span>
+<span id="845">845</span>
+<span id="846">846</span>
+<span id="847">847</span>
+<span id="848">848</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -958,7 +975,7 @@
     ///
     /// # Arguments
     /// * `exec_ou`t: execution output to apply
-    </span><span class="kw">pub fn </span>apply_final_execution_output(<span class="kw-2">&amp;mut </span><span class="self">self</span>, exec_out: ExecutionOutput) {
+    </span><span class="kw">pub fn </span>apply_final_execution_output(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>exec_out: ExecutionOutput) {
         <span class="kw">if </span><span class="self">self</span>.final_cursor &gt;= exec_out.slot {
             <span class="macro">panic!</span>(<span class="string">&quot;attempting to apply a final execution output at or before the current final_cursor&quot;</span>);
         }
@@ -977,7 +994,8 @@
         }
 
         <span class="comment">// append generated events to the final event store
-        </span><span class="self">self</span>.final_events.extend(exec_out.events);
+        </span>exec_out.events.finalize();
+        <span class="self">self</span>.final_events.extend(exec_out.events);
         <span class="self">self</span>.final_events.prune(<span class="self">self</span>.config.max_final_events);
     }
 
@@ -1646,19 +1664,35 @@
     /// * emitter address
     /// * original caller address
     /// * operation id
+    /// * event state (final, candidate or both)
     </span><span class="kw">pub fn </span>get_filtered_sc_output_event(<span class="kw-2">&amp;</span><span class="self">self</span>, filter: EventFilter) -&gt; Vec&lt;SCOutputEvent&gt; {
-        <span class="self">self</span>.final_events
-            .get_filtered_sc_output_event(<span class="kw-2">&amp;</span>filter)
-            .into_iter()
-            .chain(
-                <span class="self">self</span>.active_history
-                    .read()
-                    .<span class="number">0
-                    </span>.iter()
-                    .flat_map(|item| item.events.get_filtered_sc_output_event(<span class="kw-2">&amp;</span>filter)),
-            )
-            .collect()
+        <span class="kw">match </span>filter.is_final {
+            <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; <span class="self">self
+                </span>.final_events
+                .get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter)
+                .into_iter()
+                .collect(),
+            <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; <span class="self">self
+                </span>.active_history
+                .read()
+                .<span class="number">0
+                </span>.iter()
+                .flat_map(|item| item.events.get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter))
+                .collect(),
+            <span class="prelude-val">None </span>=&gt; <span class="self">self
+                </span>.final_events
+                .get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter)
+                .into_iter()
+                .chain(
+                    <span class="self">self</span>.active_history
+                        .read()
+                        .<span class="number">0
+                        </span>.iter()
+                        .flat_map(|item| item.events.get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter)),
+                )
+                .collect(),
+        }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>

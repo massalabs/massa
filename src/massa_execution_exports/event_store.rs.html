@@ -107,6 +107,20 @@
 <span id="107">107</span>
 <span id="108">108</span>
 <span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents an event store allowing to store, search and retrieve
@@ -148,13 +162,21 @@
         <span class="self">self</span>.<span class="number">0</span>.extend(other.<span class="number">0</span>.into_iter());
     }
 
+    <span class="doccomment">/// Set the events of this store as final
+    </span><span class="kw">pub fn </span>finalize(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">for </span>output <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.iter_mut() {
+            output.context.is_final = <span class="bool-val">true</span>;
+        }
+    }
+
     <span class="doccomment">/// Get events optionally filtered by:
     /// * start slot
     /// * end slot
     /// * emitter address
     /// * original caller address
     /// * operation id
-    </span><span class="kw">pub fn </span>get_filtered_sc_output_event(<span class="kw-2">&amp;</span><span class="self">self</span>, filter: <span class="kw-2">&amp;</span>EventFilter) -&gt; VecDeque&lt;SCOutputEvent&gt; {
+    /// * is_final
+    </span><span class="kw">pub fn </span>get_filtered_sc_output_events(<span class="kw-2">&amp;</span><span class="self">self</span>, filter: <span class="kw-2">&amp;</span>EventFilter) -&gt; VecDeque&lt;SCOutputEvent&gt; {
         <span class="self">self</span>.<span class="number">0
             </span>.iter()
             .filter(|x| {
@@ -165,6 +187,11 @@
                 }
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = filter.end {
                     <span class="kw">if </span>x.context.slot &gt;= end {
+                        <span class="kw">return </span><span class="bool-val">false</span>;
+                    }
+                }
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(is_final) = filter.is_final {
+                    <span class="kw">if </span>x.context.is_final != is_final {
                         <span class="kw">return </span><span class="bool-val">false</span>;
                     }
                 }
@@ -205,6 +232,7 @@
                 index_in_slot: <span class="number">1</span>,
                 call_stack: VecDeque::new(),
                 origin_operation_id: <span class="prelude-val">None</span>,
+                is_final: <span class="bool-val">false</span>,
             },
             data: i.to_string(),
         });
@@ -217,4 +245,4 @@
     <span class="macro">assert_eq!</span>(store.<span class="number">0</span>[<span class="number">0</span>].data, <span class="string">&quot;7&quot;</span>);
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>

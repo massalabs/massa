@@ -623,6 +623,7 @@
 <span id="623">623</span>
 <span id="624">624</span>
 <span id="625">625</span>
+<span id="626">626</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1229,6 +1230,7 @@
             read_only: <span class="self">self</span>.read_only,
             index_in_slot: <span class="self">self</span>.created_event_index,
             origin_operation_id: <span class="self">self</span>.origin_operation_id,
+            is_final: <span class="bool-val">false</span>,
         };
 
         <span class="comment">// Return the event
@@ -1249,4 +1251,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
