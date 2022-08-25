@@ -265,6 +265,7 @@ async fn launch(
         endorsement_count: ENDORSEMENT_COUNT as u64,
         operation_validity_period: OPERATION_VALIDITY_PERIODS,
         periods_per_cycle: PERIODS_PER_CYCLE,
+        stats_time_window_duration: SETTINGS.execution.stats_time_window_duration,
     };
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,

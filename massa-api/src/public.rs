@@ -258,6 +258,7 @@ impl Endpoints for API<Public> {
     }
 
     fn get_status(&self) -> BoxFuture<Result<NodeStatus, ApiError>> {
+        let execution_controller = self.0.execution_controller.clone();
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let network_command_sender = self.0.network_command_sender.clone();
         let network_config = self.0.network_settings.clone();
@@ -275,6 +276,8 @@ impl Endpoints for API<Public> {
                 consensus_settings.genesis_timestamp,
                 now,
             )?;
+
+            let execution_stats = execution_controller.get_stats();
 
             let (consensus_stats, network_stats, peers) = tokio::join!(
                 consensus_command_sender.get_stats(),
@@ -305,6 +308,7 @@ impl Endpoints for API<Public> {
                 next_slot: last_slot
                     .unwrap_or_else(|| Slot::new(0, 0))
                     .get_next_slot(consensus_settings.thread_count)?,
+                execution_stats: execution_stats,
                 consensus_stats: consensus_stats?,
                 network_stats: network_stats?,
                 pool_stats,

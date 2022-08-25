@@ -28,6 +28,7 @@ pub struct ExecutionSettings {
     pub max_final_events: usize,
     pub readonly_queue_length: usize,
     pub cursor_delay: MassaTime,
+    pub stats_time_window_duration: MassaTime,
 }
 
 #[derive(Clone, Debug, Deserialize)]

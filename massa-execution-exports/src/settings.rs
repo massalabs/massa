@@ -36,4 +36,6 @@ pub struct ExecutionConfig {
     pub endorsement_count: u64,
     /// periods per cycle
     pub periods_per_cycle: u64,
+    /// duration of the statistics time window
+    pub stats_time_window_duration: MassaTime,
 }

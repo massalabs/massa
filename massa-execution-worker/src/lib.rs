@@ -68,6 +68,8 @@
 //! This module contains the implementation of a generic finite-size execution request queue.
 //! It handles requests that come with an MPSC to send back the result of their execution once it's done.
 //!
+//! ## `stats.rs`
+//! Defines a structure that gathers execution statistics.
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
@@ -84,6 +86,7 @@ mod speculative_async_pool;
 mod speculative_executed_ops;
 mod speculative_ledger;
 mod speculative_roll_state;
+mod stats;
 mod worker;
 
 pub use worker::start_execution_worker;
