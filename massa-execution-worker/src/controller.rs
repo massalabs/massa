@@ -12,6 +12,7 @@ use massa_execution_exports::{
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Set;
+use massa_models::stats::ExecutionStats;
 use massa_models::{Address, Amount, OperationId};
 use massa_models::{BlockId, Slot};
 use massa_storage::Storage;
@@ -207,6 +208,11 @@ impl ExecutionController for ExecutionControllerImpl {
             });
         }
         res
+    }
+
+    /// Get execution statistics
+    fn get_stats(&self) -> ExecutionStats {
+        self.execution_state.read().get_stats()
     }
 
     /// Returns a boxed clone of self.

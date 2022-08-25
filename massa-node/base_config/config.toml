@@ -22,6 +22,8 @@
     # by how many milliseconds shoud the execution lag behind real time
     # higher values increase speculative execution lag but improve performance
     cursor_delay = 2000
+    # duration of the statistics time window in milliseconds
+    stats_time_window_duration = 30000
 
 [ledger]
     # path to the initial smart contract balance ledger

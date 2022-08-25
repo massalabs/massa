@@ -3,7 +3,7 @@
 use crate::address::ExecutionAddressCycleInfo;
 use crate::ledger_models::LedgerData;
 use crate::node::NodeId;
-use crate::stats::{ConsensusStats, NetworkStats};
+use crate::stats::{ConsensusStats, ExecutionStats, NetworkStats};
 use crate::WrappedEndorsement;
 use crate::WrappedOperation;
 use crate::{
@@ -51,6 +51,8 @@ pub struct NodeStatus {
     pub pool_stats: (usize, usize),
     /// network stats
     pub network_stats: NetworkStats,
+    /// execution stats
+    pub execution_stats: ExecutionStats,
     /// compact configuration
     pub config: CompactConfig,
 }

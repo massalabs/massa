@@ -4,6 +4,46 @@ use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::fmt::Formatter;
 
+/// execution statistics
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ExecutionStats {
+    /// time window start
+    pub time_window_start: MassaTime,
+    /// time window end
+    pub time_window_end: MassaTime,
+    /// number of final blocks in the time window
+    pub final_block_count: usize,
+    /// number of final executed operations in the time window
+    pub final_executed_operations_count: usize,
+}
+
+impl std::fmt::Display for ExecutionStats {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Execution stats:")?;
+        writeln!(
+            f,
+            "\tStart stats timespan time: {}",
+            self.time_window_start.to_utc_string()
+        )?;
+        writeln!(
+            f,
+            "\tEnd stats timespan time: {}",
+            self.time_window_end.to_utc_string()
+        )?;
+        writeln!(
+            f,
+            "\tFinal executed block count: {}",
+            self.final_block_count
+        )?;
+        writeln!(
+            f,
+            "\tFinal executed operation count: {}",
+            self.final_executed_operations_count
+        )?;
+        Ok(())
+    }
+}
+
 /// stats produced by network module
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NetworkStats {

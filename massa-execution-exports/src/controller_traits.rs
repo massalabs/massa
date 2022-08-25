@@ -9,6 +9,7 @@ use crate::ExecutionError;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Set;
+use massa_models::stats::ExecutionStats;
 use massa_models::Address;
 use massa_models::Amount;
 use massa_models::BlockId;
@@ -82,6 +83,9 @@ pub trait ExecutionController: Send + Sync {
 
     /// Gets infos about a batch of addresses
     fn get_addresses_infos(&self, addresses: &[Address]) -> Vec<ExecutionAddressInfo>;
+
+    /// Get execution statistics
+    fn get_stats(&self) -> ExecutionStats;
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn ExecutionController>`.

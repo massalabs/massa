@@ -11,6 +11,7 @@
 use crate::active_history::{ActiveHistory, HistorySearchResult};
 use crate::context::ExecutionContext;
 use crate::interface_impl::InterfaceImpl;
+use crate::stats::ExecutionStatsCounter;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
@@ -22,6 +23,7 @@ use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Set;
+use massa_models::stats::ExecutionStats;
 use massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
 use massa_models::{Amount, Slot};
 use massa_pos_exports::SelectorController;
@@ -62,6 +64,8 @@ pub(crate) struct ExecutionState {
     execution_context: Arc<Mutex<ExecutionContext>>,
     // execution interface allowing the VM runtime to access the Massa context
     execution_interface: Box<dyn Interface>,
+    // execution statistics
+    stats_counter: ExecutionStatsCounter,
 }
 
 impl ExecutionState {
@@ -95,7 +99,6 @@ impl ExecutionState {
 
         // build the execution state
         ExecutionState {
-            config,
             final_state,
             execution_context,
             execution_interface,
@@ -106,7 +109,17 @@ impl ExecutionState {
             // no active slots executed yet: set active_cursor to the last final block
             active_cursor: last_final_slot,
             final_cursor: last_final_slot,
+            stats_counter: ExecutionStatsCounter::new(
+                config.stats_time_window_duration,
+                config.clock_compensation,
+            ),
+            config,
         }
+    }
+
+    /// Get execution statistics
+    pub fn get_stats(&self) -> ExecutionStats {
+        self.stats_counter.get_stats()
     }
 
     /// Gets out the first (oldest) execution history item, removing it from history.
@@ -121,16 +134,24 @@ impl ExecutionState {
     /// The newly applied final output should be from the slot just after the last executed final slot
     ///
     /// # Arguments
-    /// * `exec_ou`t: execution output to apply
+    /// * `exec_out`: execution output to apply
     pub fn apply_final_execution_output(&mut self, mut exec_out: ExecutionOutput) {
         if self.final_cursor >= exec_out.slot {
             panic!("attempting to apply a final execution output at or before the current final_cursor");
+        }
+
+        // count stats
+        if exec_out.block_id.is_some() {
+            self.stats_counter.register_final_blocks(1);
+            self.stats_counter
+                .register_final_executed_operations(exec_out.state_changes.executed_ops.len());
         }
 
         // apply state changes to the final ledger
         self.final_state
             .write()
             .finalize(exec_out.slot, exec_out.state_changes);
+
         // update the final ledger's slot
         self.final_cursor = exec_out.slot;
 

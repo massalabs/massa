@@ -22,6 +22,11 @@ use std::ops::Bound::{Excluded, Included};
 pub struct ExecutedOps(Map<OperationId, Slot>);
 
 impl ExecutedOps {
+    /// returns the number of executed operations
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
     /// extends with another ExecutedOps
     pub fn extend(&mut self, other: ExecutedOps) {
         self.0.extend(other.0);
