@@ -2198,8 +2198,10 @@ dependencies = [
 name = "massa_storage"
 version = "0.1.0"
 dependencies = [
+ "massa_factory_exports",
  "massa_logging",
  "massa_models",
+ "massa_signature",
  "parking_lot 0.12.1",
  "serde_json",
  "tracing",

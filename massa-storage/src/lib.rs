@@ -14,6 +14,9 @@ mod block_indexes;
 mod endorsement_indexes;
 mod operation_indexes;
 
+#[cfg(test)]
+mod tests;
+
 use block_indexes::BlockIndexes;
 use endorsement_indexes::EndorsementIndexes;
 use massa_models::prehash::{BuildMap, Map, PreHashed, Set};
