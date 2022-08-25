@@ -760,6 +760,7 @@ impl ExecutionContext {
             read_only: self.read_only,
             index_in_slot: self.created_event_index,
             origin_operation_id: self.origin_operation_id,
+            is_final: false,
         };
 
         // Return the event

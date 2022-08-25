@@ -599,7 +599,9 @@ impl Command {
                     emitter_address: parse_value(&p, p_list[2]),
                     original_caller_address: parse_value(&p, p_list[3]),
                     original_operation_id: parse_value(&p, p_list[4]),
-                    candidate: parse_value(&p, p_list[5]),
+                    // TODO: update client to enable this option
+                    // see `EventFilter` description for more info
+                    is_final: None,
                 };
                 match client.public.get_filtered_sc_output_event(filter).await {
                     Ok(events) => Ok(Box::new(events)),
