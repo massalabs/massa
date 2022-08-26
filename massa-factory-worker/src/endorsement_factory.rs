@@ -56,15 +56,16 @@ impl EndorsementFactoryWorker {
     /// Slots can be skipped if we waited too much in-between.
     /// Extra safety against double-production caused by clock adjustments (this is the role of the previous_slot parameter).
     fn get_next_slot(&self, previous_slot: Option<Slot>) -> (Slot, Instant) {
-        // get current absolute time
-        let now = MassaTime::compensated_now(self.cfg.clock_compensation_millis)
-            .expect("could not get current time");
+        // get delayed time
+        let shifted_now = MassaTime::compensated_now(self.cfg.clock_compensation_millis)
+            .expect("could not get current time")
+            .saturating_sub(self.half_t0);
 
         // if it's the first computed slot, add a time shift to prevent double-production on node restart with clock skew
         let base_time = if previous_slot.is_none() {
-            now.saturating_add(self.cfg.initial_delay)
+            shifted_now.saturating_add(self.cfg.initial_delay)
         } else {
-            now
+            shifted_now
         };
 
         // get closest slot according to the current absolute time
@@ -84,7 +85,7 @@ impl EndorsementFactoryWorker {
             }
         }
 
-        // get the tiemstamp of the target slot
+        // get the timestamp of the target slot
         let next_instant = get_block_slot_timestamp(
             self.cfg.thread_count,
             self.cfg.t0,
@@ -103,8 +104,8 @@ impl EndorsementFactoryWorker {
     ///
     /// # Return value
     /// Returns `true` if the instant was reached, otherwise `false` if there was an interruption.
-    fn interruptible_wait_until(&self, duration: Instant) -> bool {
-        match self.factory_receiver.recv_deadline(duration) {
+    fn interruptible_wait_until(&self, deadline: Instant) -> bool {
+        match self.factory_receiver.recv_deadline(deadline) {
             // message received => quit main loop
             Ok(()) => false,
             // timeout => continue main loop
