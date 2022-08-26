@@ -390,6 +390,8 @@ pub async fn get_state(
     // if we are before genesis, do not bootstrap
     if now < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
+        // create the initial cycle of PoS cycle_history
+        final_state.write().pos_state.create_initial_cycle();
         return Ok(GlobalBootstrapState::new(final_state.clone()));
     }
     // we are after genesis => bootstrap

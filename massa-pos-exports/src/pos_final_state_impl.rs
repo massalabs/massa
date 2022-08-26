@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeMap, VecDeque},
-    path::PathBuf,
-};
+use std::{collections::BTreeMap, path::PathBuf};
 
 use massa_hash::Hash;
 use massa_models::{prehash::Map, Address, Amount, Slot};
@@ -29,22 +26,27 @@ impl PoSFinalState {
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-        let mut cycle_history = VecDeque::new();
-        cycle_history.push_back(CycleInfo {
-            cycle: 0,
-            // TODO: Feed with genesis block hashes
-            rng_seed: Default::default(),
-            production_stats: Default::default(),
-            roll_counts: initial_rolls.clone(),
-            complete: false,
-        });
         Ok(Self {
-            cycle_history,
+            cycle_history: Default::default(),
             deferred_credits: Default::default(),
             selector,
             initial_rolls,
             initial_seeds,
         })
+    }
+
+    /// Create the initial cycle based off the initial rolls.
+    ///
+    /// This should be called only if bootstrap did not happen.
+    pub fn create_initial_cycle(&mut self) {
+        self.cycle_history.push_back(CycleInfo {
+            cycle: 0,
+            // TODO: Feed with genesis block hashes
+            rng_seed: Default::default(),
+            production_stats: Default::default(),
+            roll_counts: self.initial_rolls.clone(),
+            complete: false,
+        });
     }
 
     /// Sends the current draw inputs (initial or bootstrapped) to the selector.

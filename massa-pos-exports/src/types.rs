@@ -94,6 +94,19 @@ impl DeferredCredits {
 }
 
 impl PoSFinalState {
+    fn get_first_cycle_index(&self) -> usize {
+        // for bootstrap:
+        // if cycle_history is full skip the bootstrap safety cycle
+        // if not stream it
+        //
+        // TODO: use config
+        if self.cycle_history.len() >= 6 {
+            1
+        } else {
+            0
+        }
+    }
+
     /// Gets a part of the Proof of Stake cycle_history. Used only in the bootstrap process.
     ///
     /// # Arguments:
@@ -117,12 +130,11 @@ impl PoSFinalState {
                 }
                 index.saturating_add(1)
             } else {
-                // if an outdated cycle is provided restart from the beginning
-                // get second to first element to avoid the bootstrap safety cycle
-                1
+                // if an outdated cycle is provided start from the beginning
+                self.get_first_cycle_index()
             }
         } else {
-            1
+            self.get_first_cycle_index()
         };
         let mut part = Vec::new();
         let mut last_cycle = None;
