@@ -64,7 +64,7 @@ impl EndorsementFactoryWorker {
         let base_time = if previous_slot.is_none() {
             now.saturating_add(self.cfg.initial_delay)
         } else {
-            now
+            now.saturating_sub(self.half_t0)
         };
 
         // get closest slot according to the current absolute time
