@@ -27,6 +27,11 @@ impl ExecutedOps {
         self.0.len()
     }
 
+    /// Check is there is no executed ops
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     /// extends with another ExecutedOps
     pub fn extend(&mut self, other: ExecutedOps) {
         self.0.extend(other.0);

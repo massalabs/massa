@@ -36,6 +36,8 @@ impl ExecutionStatsCounter {
         while let Some((_, t)) = self.final_blocks.front() {
             if t < &start_time {
                 self.final_blocks.pop_front();
+            } else {
+                break;
             }
         }
 
@@ -43,6 +45,8 @@ impl ExecutionStatsCounter {
         while let Some((_, t)) = self.final_executed_ops.front() {
             if t < &start_time {
                 self.final_executed_ops.pop_front();
+            } else {
+                break;
             }
         }
     }

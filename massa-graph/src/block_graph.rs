@@ -2640,7 +2640,7 @@ impl BlockGraph {
         // block not found in the blockclique: search in the final blocks
         blocks_at_slot
             .into_iter()
-            .find(|b_id| match self.block_statuses.get(&b_id) {
+            .find(|b_id| match self.block_statuses.get(b_id) {
                 Some(BlockStatus::Active { a_block, .. }) => a_block.is_final,
                 _ => false,
             })

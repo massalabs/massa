@@ -308,7 +308,7 @@ impl Endpoints for API<Public> {
                 next_slot: last_slot
                     .unwrap_or_else(|| Slot::new(0, 0))
                     .get_next_slot(consensus_settings.thread_count)?,
-                execution_stats: execution_stats,
+                execution_stats,
                 consensus_stats: consensus_stats?,
                 network_stats: network_stats?,
                 pool_stats,
