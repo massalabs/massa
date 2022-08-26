@@ -1223,15 +1223,19 @@ impl ExecutionState {
     ///
     /// By default it returns an empty map.
     pub fn get_cycle_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64> {
-        let lookback_cycle = cycle.saturating_sub(3);
+        let lookback_cycle = cycle.checked_sub(3);
         let final_state = self.final_state.read();
-        let lookback_cycle_index = match final_state.pos_state.get_cycle_index(lookback_cycle) {
-            Some(v) => v,
-            None => Default::default(),
-        };
-        final_state.pos_state.cycle_history[lookback_cycle_index]
-            .roll_counts
-            .clone()
+        if let Some(lookback_cycle) = lookback_cycle {
+            let lookback_cycle_index = match final_state.pos_state.get_cycle_index(lookback_cycle) {
+                Some(v) => v,
+                None => Default::default(),
+            };
+            final_state.pos_state.cycle_history[lookback_cycle_index]
+                .roll_counts
+                .clone()
+        } else {
+            final_state.pos_state.initial_rolls.clone()
+        }
     }
 
     /// Gets execution events optionally filtered by:

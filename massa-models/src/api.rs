@@ -301,6 +301,8 @@ impl AddressInfo {
                 .last()
                 .and_then(|c| c.active_rolls)
                 .unwrap_or_default(),
+            final_rolls: self.final_roll_count,
+            candidate_rolls: self.candidate_roll_count,
             final_sequential_balance: self.final_sequential_balance,
             candidate_sequential_balance: self.candidate_sequential_balance,
             final_parallel_balance: self.final_parallel_balance,
@@ -331,6 +333,10 @@ pub struct CompactAddressInfo {
     pub address: Address,
     /// the thread it is
     pub thread: u8,
+    /// candidate rolls
+    pub candidate_rolls: u64,
+    /// final rolls
+    pub final_rolls: u64,
     /// active rolls
     pub active_rolls: u64,
     /// final sequential balance
@@ -356,7 +362,11 @@ impl std::fmt::Display for CompactAddressInfo {
             "\tParallel balance: final={}, candidate={}",
             self.final_parallel_balance, self.candidate_parallel_balance
         )?;
-        writeln!(f, "\tActive rolls:\n{}", self.active_rolls)?;
+        writeln!(
+            f,
+            "\tRolls: active={}, final={}, candidate={}",
+            self.active_rolls, self.final_rolls, self.candidate_rolls
+        )?;
         Ok(())
     }
 }
