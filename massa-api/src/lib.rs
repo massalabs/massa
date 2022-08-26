@@ -241,7 +241,7 @@ pub trait Endpoints {
 
     /// Get information on the block at a slot in the blockclique.
     /// If there is no block at this slot a `None` is returned.
-    #[rpc(name = "get_block")]
+    #[rpc(name = "get_blockclique_block_by_slot")]
     fn get_blockclique_block_by_slot(&self, _: Slot) -> BoxFuture<Result<Option<Block>, ApiError>>;
 
     /// Get the block graph within the specified time interval.

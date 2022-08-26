@@ -14,7 +14,7 @@ use massa_network_exports::NetworkEventReceiver;
 use massa_storage::Storage;
 use serde::Serialize;
 use tokio::{sync::mpsc, task::JoinHandle};
-use tracing::debug;
+use tracing::{debug, info};
 
 /// Possible types of events that can happen.
 #[allow(clippy::large_enum_variant)]
@@ -213,10 +213,11 @@ impl ProtocolManager {
         protocol_event_receiver: ProtocolEventReceiver,
         //protocol_pool_event_receiver: ProtocolPoolEventReceiver,
     ) -> Result<NetworkEventReceiver, ProtocolError> {
-        let _remaining_events = protocol_event_receiver.drain().await;
+        info!("stopping protocol controller...");
         drop(self.manager_tx);
-        //let _remaining_events = protocol_pool_event_receiver.drain().await;
+        let _remaining_events = protocol_event_receiver.drain().await;
         let network_event_receiver = self.join_handle.await??;
+        info!("protocol controller stopped");
         Ok(network_event_receiver)
     }
 }

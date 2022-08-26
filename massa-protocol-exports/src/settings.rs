@@ -78,9 +78,6 @@ pub struct ProtocolConfig {
 
 impl From<ProtocolSettings> for ProtocolConfig {
     fn from(settings: ProtocolSettings) -> Self {
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
         let thread_count = THREAD_COUNT;
 
         Self {

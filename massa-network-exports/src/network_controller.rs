@@ -17,6 +17,7 @@ use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
 };
+use tracing::info;
 
 /// Network command sender
 #[derive(Clone)]
@@ -292,9 +293,11 @@ impl NetworkManager {
         self,
         network_event_receiver: NetworkEventReceiver,
     ) -> Result<(), NetworkError> {
+        info!("stopping network manager...");
         drop(self.manager_tx);
         let _remaining_events = network_event_receiver.drain().await;
         let _ = self.join_handle.await?;
+        info!("network manager stopped");
         Ok(())
     }
 }

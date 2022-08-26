@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{
+    collections::{BTreeMap, VecDeque},
+    path::PathBuf,
+};
 
 use massa_hash::Hash;
 use massa_models::{prehash::Map, Address, Amount, Slot};
@@ -22,12 +25,21 @@ impl PoSFinalState {
         )
         .map_err(|err| PosError::RollsFileLoadingError(format!("error opening file: {}", err)))?;
 
-        // Seeds used as the initial seeds for negative cycles (-2 and -1 respecrively)
+        // Seeds used as the initial seeds for negative cycles (-2 and -1 respectively)
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
+        let mut cycle_history = VecDeque::new();
+        cycle_history.push_back(CycleInfo {
+            cycle: 0,
+            // TODO: Feed with genesis block hashes
+            rng_seed: Default::default(),
+            production_stats: Default::default(),
+            roll_counts: initial_rolls.clone(),
+            complete: false,
+        });
         Ok(Self {
-            cycle_history: Default::default(),
+            cycle_history,
             deferred_credits: Default::default(),
             selector,
             initial_rolls,
@@ -115,6 +127,7 @@ impl PoSFinalState {
             if info.cycle != cycle {
                 self.cycle_history.push_back(CycleInfo {
                     cycle,
+                    roll_counts: info.roll_counts.clone(),
                     ..Default::default()
                 });
                 // add 1 for the current cycle and 1 for bootstrap safety
@@ -125,6 +138,7 @@ impl PoSFinalState {
         } else {
             self.cycle_history.push_back(CycleInfo {
                 cycle,
+                roll_counts: self.initial_rolls.clone(),
                 ..Default::default()
             });
         }
