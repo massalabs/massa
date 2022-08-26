@@ -1,15 +1,61 @@
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! # Internal Pool units tests
+//! Units tests that are internals to pool and do not require any foreign
+//! modules to be tested.
+//!
+//! # Add operations
+//! Fonction: [test_add_operation]
+//! Classic usage of internal `add_operations` function from the [OperationPool].
+//!
+//! # Add irrelevant operation
+//! Function: [test_add_irrelevant_operation]
+//! Same as classic but we try to add irrelevant operation. (See the definition
+//! chapter below)
+//!
+//! # Definition
+//! Relevant operation: Operation with a validity range corresponding to the
+//! latest period given his own thread. All operation which doesn't fit these
+//! requirements are "irrelevant"
+//!
+use super::config::POOL_CONFIG;
+use super::tools::{create_some_operations, operation_pool_test};
 use crate::operation_pool::OperationPool;
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_models::{
     prehash::Map, wrapped::WrappedContent, Address, Amount, Operation, OperationSerializer,
     OperationType, Slot, WrappedOperation,
 };
+use massa_pool_exports::PoolConfig;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use serial_test::serial;
 use std::str::FromStr;
 
-use super::config::POOL_CONFIG;
+#[test]
+#[serial_test::serial]
+fn test_add_operation() {
+    operation_pool_test(PoolConfig::default(), |mut operation_pool, mut storage| {
+        storage.store_operations(create_some_operations(10, &KeyPair::generate(), 2));
+        operation_pool.add_operations(storage);
+        assert_eq!(operation_pool.storage.get_op_refs().len(), 10);
+    });
+}
+
+/// Test if adding irrelevant operations make simply skip the add.
+/// # Initilization
+/// Init an
+#[test]
+#[serial_test::serial]
+fn test_add_irrelevant_operation() {
+    let pool_config = PoolConfig::default();
+    let thread_count = pool_config.thread_count;
+    operation_pool_test(PoolConfig::default(), |mut operation_pool, mut storage| {
+        storage.store_operations(create_some_operations(10, &KeyPair::generate(), 1));
+        operation_pool.notify_final_cs_periods(&vec![51; thread_count.into()]);
+        operation_pool.add_operations(storage);
+        assert_eq!(operation_pool.storage.get_op_refs().len(), 0);
+    });
+}
 
 fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
     let sender_keypair = KeyPair::generate();
@@ -28,6 +74,7 @@ fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
     Operation::new_wrapped(content, OperationSerializer::new(), &sender_keypair).unwrap()
 }
 
+/// TODO refacto old tests
 #[test]
 #[serial]
 fn test_pool() {
