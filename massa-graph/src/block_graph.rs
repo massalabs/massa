@@ -2627,6 +2627,15 @@ impl BlockGraph {
                 )
                 .next()
                 .cloned()
+                .or(blocks_at_slot
+                    .iter()
+                    .find(|&b| {
+                        self.latest_final_blocks_periods
+                            .iter()
+                            .find(|(b_id, _)| b_id == b)
+                            .is_some()
+                    })
+                    .cloned())
         } else {
             None
         }

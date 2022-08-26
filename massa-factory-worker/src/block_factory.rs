@@ -86,7 +86,7 @@ impl BlockFactoryWorker {
             }
         }
 
-        // get the tiemstamp of the target slot
+        // get the timestamp of the target slot
         let next_instant = get_block_slot_timestamp(
             self.cfg.thread_count,
             self.cfg.t0,
