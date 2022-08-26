@@ -104,16 +104,6 @@ async fn stream_final_state(
                 }
                 BootstrapServerMessage::FinalStateFinished => {
                     info!("State bootstrap complete");
-                    // remove the first cycle if is cycle 0 and the following one is not consequential
-                    let mut write_final_state = global_bootstrap_state.final_state.write();
-                    if let (Some(info0), Some(info1)) = (
-                        write_final_state.pos_state.cycle_history.front(),
-                        write_final_state.pos_state.cycle_history.get(1),
-                    ) {
-                        if info0.cycle == 0 && info1.cycle != 1 {
-                            write_final_state.pos_state.cycle_history.pop_front();
-                        }
-                    }
                     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
                     return Ok(());
                 }
@@ -400,6 +390,8 @@ pub async fn get_state(
     // if we are before genesis, do not bootstrap
     if now < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
+        // create the initial cycle of PoS cycle_history
+        final_state.write().pos_state.create_initial_cycle();
         return Ok(GlobalBootstrapState::new(final_state.clone()));
     }
     // we are after genesis => bootstrap

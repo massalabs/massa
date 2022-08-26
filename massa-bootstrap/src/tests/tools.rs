@@ -122,8 +122,7 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 /// generates a random PoS final state
 fn get_random_pos_state(r_limit: u64, pos: PoSFinalState) -> PoSFinalState {
     let mut cycle_history = VecDeque::new();
-    // start at 2 to have the fist cycle being non-consequential with the initial one
-    for i in 2u64..r_limit {
+    for i in 0u64..r_limit {
         let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit);
         cycle_history.push_back(CycleInfo {
             cycle: i,
@@ -184,13 +183,15 @@ pub fn get_random_final_state_bootstrap(thread_count: u8, pos: PoSFinalState) ->
             },
         ));
     }
+    let pos_state = get_random_pos_state(r_limit, pos);
+    // pos_state.create_initial_cycle();
     create_final_state(
         Default::default(),
         slot,
         Box::new(final_ledger),
         async_pool,
         changes_history,
-        get_random_pos_state(r_limit, pos),
+        pos_state,
         ExecutedOps::default(),
     )
 }
