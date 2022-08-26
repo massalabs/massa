@@ -220,7 +220,7 @@ impl OperationPool {
                         .unwrap_or_default()
                 });
 
-            if *creator_seq_balance < op_info.max_sequential_spending {
+            if *creator_seq_balance < op_info.fee {
                 continue;
             }
 
