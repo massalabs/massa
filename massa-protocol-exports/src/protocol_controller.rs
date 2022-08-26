@@ -182,7 +182,6 @@ impl ProtocolEventReceiver {
     /// note: events are sorted from oldest to newest
     pub async fn drain(mut self) -> VecDeque<ProtocolEvent> {
         let mut remaining_events: VecDeque<ProtocolEvent> = VecDeque::new();
-        self.0.close();
         while let Some(evt) = self.0.recv().await {
             debug!(
                 "after receiving event from ProtocolEventReceiver.0 in protocol_controller drain"
@@ -217,9 +216,8 @@ impl ProtocolManager {
         protocol_event_receiver: ProtocolEventReceiver,
         //protocol_pool_event_receiver: ProtocolPoolEventReceiver,
     ) -> Result<NetworkEventReceiver, ProtocolError> {
-        let _remaining_events = protocol_event_receiver.drain().await;
         drop(self.manager_tx);
-        //let _remaining_events = protocol_pool_event_receiver.drain().await;
+        let _remaining_events = protocol_event_receiver.drain().await;
         let network_event_receiver = self.join_handle.await??;
         Ok(network_event_receiver)
     }
