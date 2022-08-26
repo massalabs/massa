@@ -563,7 +563,7 @@ impl ConsensusWorker {
             .into_iter()
             .filter_map(|b_id| match self.block_db.get_active_block(&b_id) {
                 Some((a_b, storage)) if a_b.is_final => {
-                    Some((a_b.slot, (a_b.block_id, storage.clone_without_refs())))
+                    Some((a_b.slot, (a_b.block_id, storage.clone())))
                 }
                 _ => None,
             })
@@ -572,9 +572,7 @@ impl ConsensusWorker {
             .clone()
             .into_iter()
             .filter_map(|b_id| match self.block_db.get_active_block(&b_id) {
-                Some((a_b, storage)) => {
-                    Some((a_b.slot, (a_b.block_id, storage.clone_without_refs())))
-                }
+                Some((a_b, storage)) => Some((a_b.slot, (a_b.block_id, storage.clone()))),
                 _ => None,
             })
             .collect();
