@@ -330,6 +330,7 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
 impl Applicable<LedgerEntryUpdate> for LedgerEntryUpdate {
     /// extends the `LedgerEntryUpdate` with another one
     fn apply(&mut self, update: LedgerEntryUpdate) {
+        self.sequential_balance.apply(update.sequential_balance);
         self.parallel_balance.apply(update.parallel_balance);
         self.bytecode.apply(update.bytecode);
         self.datastore.extend(update.datastore);
