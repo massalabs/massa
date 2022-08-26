@@ -2613,32 +2613,37 @@ impl BlockGraph {
             .map_or_else(Set::<BlockId>::default, |(_, v)| v.block_ids.clone())
     }
 
-    /// get the blockclique block ID at a given slot, if any
+    /// get the blockclique (or final) block ID at a given slot, if any
     pub fn get_blockclique_block_at_slot(&self, slot: &Slot) -> Option<BlockId> {
-        if let Some(blocks_at_slot) = self.storage.read_blocks().get_blocks_by_slot(slot) {
-            blocks_at_slot
-                .intersection(
-                    &self
-                        .max_cliques
-                        .iter()
-                        .find(|c| c.is_blockclique)
-                        .expect("expected one clique to be the blockclique")
-                        .block_ids,
-                )
-                .next()
-                .cloned()
-                .or(blocks_at_slot
+        // List all blocks at this slot.
+        // The list should be small: make a copy of it to avoid holding the storage lock.
+        let blocks_at_slot = match self.storage.read_blocks().get_blocks_by_slot(slot).cloned() {
+            Some(v) => v,
+            None => return None,
+        };
+
+        // search for the block in the blockclique
+        let search_in_blockclique = blocks_at_slot
+            .intersection(
+                &self
+                    .max_cliques
                     .iter()
-                    .find(|&b| {
-                        self.latest_final_blocks_periods
-                            .iter()
-                            .find(|(b_id, _)| b_id == b)
-                            .is_some()
-                    })
-                    .cloned())
-        } else {
-            None
+                    .find(|c| c.is_blockclique)
+                    .expect("expected one clique to be the blockclique")
+                    .block_ids,
+            )
+            .next();
+        if let Some(found_id) = search_in_blockclique {
+            return Some(*found_id);
         }
+
+        // block not found in the blockclique: search in the final blocks
+        blocks_at_slot
+            .into_iter()
+            .find(|b_id| match self.block_statuses.get(&b_id) {
+                Some(BlockStatus::Active { a_block, .. }) => a_block.is_final,
+                _ => false,
+            })
     }
 
     /// Clones all stored final blocks, not only the still-useful ones
