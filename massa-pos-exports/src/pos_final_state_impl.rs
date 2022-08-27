@@ -1,32 +1,33 @@
-use std::{collections::BTreeMap, path::PathBuf};
+use std::collections::BTreeMap;
 
 use massa_hash::Hash;
-use massa_models::{prehash::PreHashMap, Address, Amount, Slot};
+use massa_models::{address::Address, amount::Amount, prehash::PreHashMap, slot::Slot};
 
 use crate::{
-    CycleInfo, PoSChanges, PoSFinalState, PosError, PosResult, ProductionStats, SelectorController,
+    CycleInfo, PoSChanges, PoSFinalState, PosError, PosResult, ProductionStats, SelectorConfig,
+    SelectorController,
 };
 
 impl PoSFinalState {
     /// create a new PoSFinalState
     pub fn new(
-        initial_seed_string: &String,
-        initial_rolls_path: &PathBuf,
+        config: SelectorConfig,
         selector: Box<dyn SelectorController>,
     ) -> Result<Self, PosError> {
         // load get initial rolls from file
         let initial_rolls = serde_json::from_str::<BTreeMap<Address, u64>>(
-            &std::fs::read_to_string(initial_rolls_path).map_err(|err| {
+            &std::fs::read_to_string(&config.initial_rolls_path).map_err(|err| {
                 PosError::RollsFileLoadingError(format!("error while deserializing: {}", err))
             })?,
         )
         .map_err(|err| PosError::RollsFileLoadingError(format!("error opening file: {}", err)))?;
 
         // Seeds used as the initial seeds for negative cycles (-2 and -1 respectively)
-        let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
+        let init_seed = Hash::compute_from(config.initial_draw_seed.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
         Ok(Self {
+            config,
             cycle_history: Default::default(),
             deferred_credits: Default::default(),
             selector,

@@ -2,7 +2,7 @@ use crate::settings::PeerTypeConnectionConfig;
 use displaydoc::Display;
 use enum_map::Enum;
 use massa_models::node::NodeId;
-use massa_models::{IpAddrDeserializer, IpAddrSerializer};
+use massa_models::serialization::{IpAddrDeserializer, IpAddrSerializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };

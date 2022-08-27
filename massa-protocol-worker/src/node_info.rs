@@ -6,8 +6,8 @@
 //! Same as for wanted/known blocks, we remember here in cache which node asked
 //! for operations and which operations he seem to already know.
 
-use massa_models::prehash::{BuildHashMapper, PreHashMap, PreHashSet};
-use massa_models::{BlockId, EndorsementId, OperationId};
+use massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet};
+use massa_models::{block::BlockId, endorsement::EndorsementId, operation::OperationId};
 use massa_protocol_exports::ProtocolConfig;
 use std::collections::VecDeque;
 use tokio::time::Instant;

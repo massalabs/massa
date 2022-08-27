@@ -1,8 +1,9 @@
 use std::collections::hash_map;
 
 use massa_models::{
+    address::Address,
+    operation::{OperationId, WrappedOperation},
     prehash::{PreHashMap, PreHashSet},
-    Address, OperationId, WrappedOperation,
 };
 
 /// Container for all operations and different indexes.

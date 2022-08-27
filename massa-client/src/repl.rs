@@ -14,7 +14,7 @@ use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
-use massa_models::{Address, OperationId};
+use massa_models::{address::Address, operation::OperationId};
 use massa_sdk::Client;
 use massa_wallet::Wallet;
 use rev_lines::RevLines;

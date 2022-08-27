@@ -12,7 +12,7 @@ use crate::{
 };
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_logging::massa_trace;
-use massa_models::{config::CHANNEL_SIZE, node::NodeId, Version};
+use massa_models::{config::CHANNEL_SIZE, node::NodeId, version::Version};
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, Establisher, HandshakeErrorType, Listener,
     NetworkCommand, NetworkConfig, NetworkConnectionErrorType, NetworkError, NetworkEvent,

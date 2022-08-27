@@ -1,7 +1,14 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{config::CHANNEL_SIZE, node::NodeId, OperationId};
-use massa_models::{BlockId, WrappedEndorsement, WrappedHeader, WrappedOperation};
+use massa_models::{
+    block::{BlockId, WrappedHeader},
+    endorsement::WrappedEndorsement,
+};
+use massa_models::{
+    config::CHANNEL_SIZE,
+    node::NodeId,
+    operation::{OperationId, WrappedOperation},
+};
 use massa_network_exports::{
     AskForBlocksInfo, BlockInfoReply, NetworkCommand, NetworkCommandSender, NetworkEvent,
     NetworkEventReceiver,

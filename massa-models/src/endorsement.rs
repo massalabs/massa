@@ -1,6 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::config::ENDORSEMENT_ID_SIZE_BYTES;
 use crate::prehash::PreHashed;
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 use crate::wrapped::{Id, Wrapped, WrappedContent};
@@ -19,6 +18,9 @@ use nom::{
 use serde::{Deserialize, Serialize};
 use std::ops::Bound::{Excluded, Included};
 use std::{fmt::Display, str::FromStr};
+
+/// Endorsement ID size in bytes
+pub const ENDORSEMENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
 /// endorsement id
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]

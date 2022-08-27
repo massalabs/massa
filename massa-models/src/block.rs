@@ -112,9 +112,8 @@ impl WrappedContent for Block {
     fn new_wrapped<SC: Serializer<Self>, U: Id>(
         content: Self,
         content_serializer: SC,
-        keypair: &KeyPair,
+        _keypair: &KeyPair,
     ) -> Result<Wrapped<Self, U>, ModelsError> {
-        let public_key = keypair.get_public_key();
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&content, &mut content_serialized)?;
         Ok(Wrapped {
@@ -527,6 +526,7 @@ pub struct BlockHeaderDeserializer {
     endorsement_deserializer: WrappedDeserializer<Endorsement, EndorsementDeserializer>,
     length_endorsements_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
+    thread_count: u8,
 }
 
 impl BlockHeaderDeserializer {
@@ -546,6 +546,7 @@ impl BlockHeaderDeserializer {
                 Included(endorsement_count),
             ),
             hash_deserializer: HashDeserializer::new(),
+            thread_count,
         }
     }
 }
@@ -619,7 +620,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                                         .deserialize(input)
                                         .map(|(rest, hash)| (rest, BlockId(hash)))
                                 }),
-                                THREAD_COUNT as usize,
+                                self.thread_count as usize,
                             ),
                         ),
                     )),

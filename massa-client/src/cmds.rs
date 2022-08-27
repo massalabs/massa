@@ -11,7 +11,12 @@ use massa_models::node::NodeId;
 use massa_models::prehash::PreHashMap;
 use massa_models::timeslots::get_current_latest_block_slot;
 use massa_models::{
-    Address, Amount, BlockId, EndorsementId, Operation, OperationId, OperationType, Slot,
+    address::Address,
+    amount::Amount,
+    block::BlockId,
+    endorsement::EndorsementId,
+    operation::{Operation, OperationId, OperationType},
+    slot::Slot,
 };
 use massa_sdk::Client;
 use massa_signature::KeyPair;

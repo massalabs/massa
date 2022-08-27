@@ -6,10 +6,14 @@ use crate::error::ProtocolError;
 use massa_logging::massa_trace;
 
 use massa_models::{
-    prehash::{PreHashMap, PreHashSet},
-    Slot,
+    block::{BlockId, WrappedHeader},
+    endorsement::EndorsementId,
+    operation::OperationId,
 };
-use massa_models::{BlockId, EndorsementId, OperationId, WrappedHeader};
+use massa_models::{
+    prehash::{PreHashMap, PreHashSet},
+    slot::Slot,
+};
 use massa_network_exports::NetworkEventReceiver;
 use massa_storage::Storage;
 use serde::Serialize;

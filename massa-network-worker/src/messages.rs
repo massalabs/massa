@@ -2,17 +2,18 @@
 
 use massa_hash::HashDeserializer;
 use massa_models::{
-    array_from_slice,
+    block::{BlockHeader, BlockHeaderDeserializer, BlockId, WrappedHeader},
     config::HANDSHAKE_RANDOMNESS_SIZE_BYTES,
-    operation::OperationPrefixIds,
+    endorsement::{Endorsement, EndorsementDeserializer, WrappedEndorsement},
     operation::{
-        OperationIdsDeserializer, OperationIdsSerializer, OperationPrefixIdsDeserializer,
-        OperationPrefixIdsSerializer, OperationsDeserializer, OperationsSerializer,
+        OperationIdsDeserializer, OperationIdsSerializer, OperationPrefixIds,
+        OperationPrefixIdsDeserializer, OperationPrefixIdsSerializer, OperationsDeserializer,
+        OperationsSerializer, WrappedOperation,
     },
+    serialization::array_from_slice,
+    serialization::{IpAddrDeserializer, IpAddrSerializer},
+    version::{Version, VersionDeserializer, VersionSerializer},
     wrapped::{WrappedDeserializer, WrappedSerializer},
-    BlockHeader, BlockHeaderDeserializer, BlockId, Endorsement, EndorsementDeserializer,
-    IpAddrDeserializer, IpAddrSerializer, Version, VersionDeserializer, VersionSerializer,
-    WrappedEndorsement, WrappedHeader, WrappedOperation,
 };
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply};
 use massa_serialization::{

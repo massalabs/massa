@@ -5,7 +5,10 @@ use crate::messages::MessageDeserializer;
 
 use super::messages::Message;
 use async_speed_limit::{clock::StandardClock, Limiter, Resource};
-use massa_models::{DeserializeMinBEInt, ModelsError, SerializeMinBEInt};
+use massa_models::{
+    error::ModelsError,
+    serialization::{DeserializeMinBEInt, SerializeMinBEInt},
+};
 use massa_network_exports::{NetworkError, ReadHalf, WriteHalf};
 use massa_serialization::{DeserializeError, Deserializer};
 use std::convert::TryInto;

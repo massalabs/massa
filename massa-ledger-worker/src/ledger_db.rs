@@ -4,8 +4,11 @@
 
 use massa_ledger_exports::*;
 use massa_models::{
-    Address, Amount, AmountSerializer, ModelsError, Slot, SlotSerializer, VecU8Deserializer,
-    VecU8Serializer,
+    address::Address,
+    amount::{Amount, AmountDeserializer, AmountSerializer},
+    error::ModelsError,
+    serialization::{VecU8Deserializer, VecU8Serializer},
+    slot::{Slot, SlotSerializer},
 };
 use massa_serialization::{Deserializer, Serializer};
 use nom::multi::many0;

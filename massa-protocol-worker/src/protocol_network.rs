@@ -7,12 +7,13 @@ use crate::protocol_worker::ProtocolWorker;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
+    block::{Block, WrappedBlock},
+    block::{BlockId, BlockSerializer},
     node::NodeId,
-    prehash::{BuildHashMapper, PreHashSet},
+    operation::{OperationId, WrappedOperation},
+    prehash::{CapacityAllocator, PreHashSet},
     wrapped::{Id, Wrapped},
-    BlockId, BlockSerializer, OperationId, WrappedOperation,
 };
-use massa_models::{Block, WrappedBlock};
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkEvent, ReplyForBlocksInfo};
 use massa_protocol_exports::{ProtocolError, ProtocolEvent};
 use massa_serialization::Serializer;
@@ -351,7 +352,8 @@ impl ProtocolWorker {
         // - full operations serialized size overflow
         for op in operations.iter() {
             full_op_size = full_op_size.saturating_add(op.serialized_size());
-            if op.thread != info.header.content.slot.thread
+            let op_thread = op.creator_address.get_thread(self.config.thread_count);
+            if op_thread != info.header.content.slot.thread
                 || !received_ids.insert(op.id)
                 || full_op_size > self.config.max_serialized_operations_size_per_block
             {

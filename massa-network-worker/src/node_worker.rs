@@ -6,13 +6,13 @@ use super::{
 };
 use itertools::Itertools;
 use massa_logging::massa_trace;
+use massa_models::block::BlockId;
 use massa_models::{
     config::{MAX_ENDORSEMENTS_PER_MESSAGE, NODE_SEND_CHANNEL_SIZE},
     node::NodeId,
-    operation::OperationIdsSerializer,
+    operation::{OperationId, OperationIdsSerializer},
     wrapped::{Id, WrappedSerializer},
 };
-use massa_models::{BlockId, OperationId};
 use massa_network_exports::{
     ConnectionClosureReason, NetworkConfig, NetworkError, NodeCommand, NodeEvent, NodeEventType,
     ReplyForBlocksInfo,

@@ -8,11 +8,12 @@ use massa_models::node::NodeId;
 use massa_models::operation::OperationSerializer;
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
-    Address, Amount, Block, BlockHeader, BlockId, BlockSerializer, Slot, WrappedBlock,
-    WrappedEndorsement, WrappedOperation,
-};
-use massa_models::{
-    BlockHeaderSerializer, Endorsement, EndorsementSerializer, Operation, OperationType,
+    address::Address,
+    amount::Amount,
+    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock},
+    endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement},
+    operation::{Operation, OperationType, WrappedOperation},
+    slot::Slot,
 };
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand};
 use massa_signature::KeyPair;

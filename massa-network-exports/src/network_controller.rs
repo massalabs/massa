@@ -6,8 +6,12 @@ use crate::{
     BootstrapPeers, NetworkCommand, NetworkEvent, Peers,
 };
 use massa_models::{
-    composite::PubkeySig, node::NodeId, operation::OperationPrefixIds, stats::NetworkStats,
-    BlockId, OperationId, WrappedEndorsement,
+    block::BlockId,
+    composite::PubkeySig,
+    endorsement::WrappedEndorsement,
+    node::NodeId,
+    operation::{OperationId, OperationPrefixIds},
+    stats::NetworkStats,
 };
 use std::{
     collections::{HashMap, VecDeque},

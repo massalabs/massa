@@ -1,8 +1,12 @@
 use std::{collections::hash_map, collections::HashMap};
 
 use massa_models::{
+    address::Address,
+    block::{BlockId, WrappedBlock},
+    endorsement::EndorsementId,
+    operation::OperationId,
     prehash::{PreHashMap, PreHashSet},
-    Address, BlockId, EndorsementId, OperationId, Slot, WrappedBlock,
+    slot::Slot,
 };
 
 /// Container for all blocks and different indexes.

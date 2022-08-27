@@ -5,11 +5,13 @@ use std::collections::{BTreeMap, VecDeque};
 use bitvec::prelude::*;
 use massa_hash::Hash;
 use massa_models::{
+    address::{Address, AddressDeserializer},
+    amount::{Amount, AmountDeserializer, AmountSerializer},
     api::IndexedSlot,
-    config::{POS_MISS_RATE_DEACTIVATION_THRESHOLD, THREAD_COUNT},
+    error::ModelsError,
     prehash::PreHashMap,
-    Address, AddressDeserializer, Amount, AmountDeserializer, AmountSerializer, BitVecDeserializer,
-    BitVecSerializer, ModelsError, Slot, SlotDeserializer, SlotSerializer,
+    serialization::{BitVecDeserializer, BitVecSerializer},
+    slot::{Slot, SlotDeserializer, SlotSerializer},
 };
 use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
@@ -27,7 +29,7 @@ use nom::{
 use num::rational::Ratio;
 use std::ops::Bound::{Excluded, Included, Unbounded};
 
-use crate::SelectorController;
+use crate::{SelectorConfig, SelectorController};
 
 /// Selector info about an address
 #[derive(Default)]
@@ -42,6 +44,8 @@ pub struct SelectorAddressInfo {
 
 /// Final state of PoS
 pub struct PoSFinalState {
+    /// config
+    pub config: SelectorConfig,
     /// contiguous cycle history. Back = newest.
     pub cycle_history: VecDeque<CycleInfo>,
     /// coins to be credited at the end of the slot
@@ -324,7 +328,7 @@ impl PoSFinalState {
         let amount_deser = AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
         let slot_deser = SlotDeserializer::new(
             (Included(u64::MIN), Included(u64::MAX)),
-            (Included(0), Excluded(THREAD_COUNT)),
+            (Included(0), Excluded(self.config.thread_count)),
         );
         let u64_deser = U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX));
         let address_deser = AddressDeserializer::new();
@@ -397,13 +401,12 @@ pub struct ProductionStats {
 
 impl ProductionStats {
     /// Check if the production stats are above the required percentage
-    pub fn satisfying(&self) -> bool {
+    pub fn is_satisfying(&self, max_miss_ratio: &Ratio<u64>) -> bool {
         let opportunities_count = self.block_success_count + self.block_failure_count;
         if opportunities_count == 0 {
             return true;
         }
-        Ratio::new(self.block_failure_count, opportunities_count)
-            <= *POS_MISS_RATE_DEACTIVATION_THRESHOLD
+        &Ratio::new(self.block_failure_count, opportunities_count) <= max_miss_ratio
     }
 
     /// Increment a production stat struct with another
@@ -545,20 +548,14 @@ pub struct PoSChangesDeserializer {
     deferred_credits_deserializer: DeferredCreditsDeserializer,
 }
 
-impl Default for PoSChangesDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl PoSChangesDeserializer {
     /// Create a new `PoSChanges` Deserializer
-    pub fn new() -> PoSChangesDeserializer {
+    pub fn new(thread_count: u8) -> PoSChangesDeserializer {
         PoSChangesDeserializer {
             bit_vec_deserializer: BitVecDeserializer::new(),
             roll_changes_deserializer: RollChangesDeserializer::new(),
             production_stats_deserializer: ProductionStatsDeserializer::new(),
-            deferred_credits_deserializer: DeferredCreditsDeserializer::new(),
+            deferred_credits_deserializer: DeferredCreditsDeserializer::new(thread_count),
         }
     }
 }
@@ -682,12 +679,12 @@ struct DeferredCreditsDeserializer {
 }
 
 impl DeferredCreditsDeserializer {
-    fn new() -> DeferredCreditsDeserializer {
+    fn new(thread_count: u8) -> DeferredCreditsDeserializer {
         DeferredCreditsDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(THREAD_COUNT)),
+                (Included(0), Excluded(thread_count)),
             ),
             credit_deserializer: CreditDeserializer::new(),
         }

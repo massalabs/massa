@@ -35,7 +35,7 @@ use massa_models::config::default::{
     MAX_OPERATIONS_PER_BLOCK, MAX_PARAMETERS_SIZE, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
     ROLL_PRICE, T0, THREAD_COUNT, VERSION,
 };
-use massa_models::config::CHANNEL_SIZE;
+use massa_models::config::{ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, CHANNEL_SIZE};
 use massa_models::Address;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
@@ -95,6 +95,9 @@ async fn launch(
     };
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
+        thread_count: THREAD_COUNT,
+        part_size_message_bytes: ASYNC_POOL_PART_SIZE_MESSAGE_BYTES,
+        max_data_async_message: MAX_DATA_ASYNC_MESSAGE,
     };
     let final_state_config = FinalStateConfig {
         final_history_length: SETTINGS.ledger.final_history_length,

@@ -17,7 +17,9 @@ use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{PreHashMap, PreHashSet};
-use massa_models::{Address, BlockId, EndorsementId, OperationId};
+use massa_models::{
+    address::Address, block::BlockId, endorsement::EndorsementId, operation::OperationId,
+};
 use massa_signature::KeyPair;
 use serde::de::DeserializeOwned;
 use serde::Serialize;

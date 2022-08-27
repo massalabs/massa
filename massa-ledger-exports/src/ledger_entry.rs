@@ -4,8 +4,8 @@
 
 use crate::ledger_changes::LedgerEntryUpdate;
 use crate::types::{Applicable, SetOrDelete};
-use massa_models::amount::{AmountDeserializer, AmountSerializer};
-use massa_models::{Amount, VecU8Deserializer, VecU8Serializer};
+use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
+use massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };

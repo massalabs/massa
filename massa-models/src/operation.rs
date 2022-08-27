@@ -7,7 +7,7 @@ use crate::{
     address::{Address, AddressDeserializer},
     amount::{Amount, AmountDeserializer, AmountSerializer},
     error::ModelsError,
-    StringSerializer, VecU8Deserializer, VecU8Serializer,
+    serialization::{StringSerializer, VecU8Deserializer, VecU8Serializer},
 };
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{

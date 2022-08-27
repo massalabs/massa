@@ -207,7 +207,7 @@ impl SpeculativeRollState {
             .or_insert_with(PreHashMap::default);
 
         for (addr, stats) in production_stats {
-            if !stats.satisfying() {
+            if !stats.is_satisfying() {
                 if let Occupied(mut entry) = self.added_changes.roll_changes.entry(addr) {
                     if let Some(amount) = roll_price.checked_mul_u64(*entry.get()) {
                         credits.insert(addr, amount);

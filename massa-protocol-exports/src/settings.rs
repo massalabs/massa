@@ -1,6 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{config::MAX_SERIALIZED_OPERATIONS_SIZE_PER_BLOCK, THREAD_COUNT};
 use massa_time::MassaTime;
 use serde::Deserialize;
 
@@ -76,10 +75,12 @@ pub struct ProtocolConfig {
     pub max_serialized_operations_size_per_block: usize,
 }
 
-impl From<ProtocolSettings> for ProtocolConfig {
-    fn from(settings: ProtocolSettings) -> Self {
-        let thread_count = THREAD_COUNT;
-
+impl ProtocolConfig {
+    fn from(
+        settings: ProtocolSettings,
+        thread_count: u8,
+        max_serialized_operations_size_per_block: usize,
+    ) -> Self {
         Self {
             thread_count,
             ask_block_timeout: settings.ask_block_timeout,
@@ -96,7 +97,7 @@ impl From<ProtocolSettings> for ProtocolConfig {
             operation_batch_proc_period: settings.operation_batch_proc_period,
             asked_operations_pruning_period: settings.asked_operations_pruning_period,
             max_operations_per_message: settings.max_operations_per_message,
-            max_serialized_operations_size_per_block: MAX_SERIALIZED_OPERATIONS_SIZE_PER_BLOCK,
+            max_serialized_operations_size_per_block,
         }
     }
 }

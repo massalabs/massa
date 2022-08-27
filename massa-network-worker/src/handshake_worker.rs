@@ -17,7 +17,7 @@ use massa_models::{
         ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_MESSAGE_SIZE,
         MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
     },
-    Version,
+    version::Version,
 };
 use massa_models::{
     config::{MAX_ASK_BLOCKS_PER_MESSAGE, MAX_OPERATIONS_PER_MESSAGE},

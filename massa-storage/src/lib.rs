@@ -19,10 +19,12 @@ mod tests;
 
 use block_indexes::BlockIndexes;
 use endorsement_indexes::EndorsementIndexes;
-use massa_models::prehash::{BuildHashMapper, PreHashMap, PreHashSet, PreHashed};
+use massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet, PreHashed};
 use massa_models::wrapped::Id;
 use massa_models::{
-    BlockId, EndorsementId, OperationId, WrappedBlock, WrappedEndorsement, WrappedOperation,
+    block::{BlockId, WrappedBlock},
+    endorsement::{EndorsementId, WrappedEndorsement},
+    operation::{OperationId, WrappedOperation},
 };
 use operation_indexes::OperationIndexes;
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};

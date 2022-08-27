@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::ModelsError;
+use crate::error::ModelsError;
 use massa_serialization::{Deserializer, Serializer, U32VarIntDeserializer, U32VarIntSerializer};
 use nom::bytes::complete::take;
 use nom::error::context;

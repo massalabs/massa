@@ -1,7 +1,8 @@
 use crate::{
+    address::Address,
+    error::ModelsError,
     error::ModelsResult as Result,
     prehash::{PreHashMap, PreHashSet},
-    Address, ModelsError,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,

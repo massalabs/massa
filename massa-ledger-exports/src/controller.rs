@@ -1,4 +1,4 @@
-use massa_models::{Address, Amount, ModelsError, Slot};
+use massa_models::{address::Address, amount::Amount, error::ModelsError, slot::Slot};
 use std::collections::BTreeSet;
 use std::fmt::Debug;
 

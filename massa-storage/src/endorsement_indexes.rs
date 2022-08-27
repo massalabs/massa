@@ -1,8 +1,9 @@
 use std::collections::hash_map;
 
 use massa_models::{
+    address::Address,
+    endorsement::{EndorsementId, WrappedEndorsement},
     prehash::{PreHashMap, PreHashSet},
-    Address, EndorsementId, WrappedEndorsement,
 };
 
 /// Container for all endorsements and different indexes.

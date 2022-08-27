@@ -8,13 +8,7 @@ use crate::{
     message::{AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
     AsyncMessageDeserializer, AsyncMessageSerializer,
 };
-use massa_models::{
-    config::{
-        default::{ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, MAX_DATA_ASYNC_MESSAGE},
-        THREAD_COUNT,
-    },
-    ModelsError, Slot,
-};
+use massa_models::{error::ModelsError, slot::Slot};
 use massa_serialization::{Deserializer, Serializer};
 use nom::{multi::many0, sequence::tuple};
 use std::collections::BTreeMap;
@@ -155,7 +149,7 @@ impl AsyncPool {
         let id_async_message_serializer = AsyncMessageIdSerializer::new();
         let async_message_serializer = AsyncMessageSerializer::new();
         for (id, message) in self.messages.range((last_id, Unbounded)) {
-            if part.len() < ASYNC_POOL_PART_SIZE_MESSAGE_BYTES as usize {
+            if part.len() < self.config.part_size_message_bytes as usize {
                 id_async_message_serializer.serialize(id, &mut part)?;
                 async_message_serializer.serialize(message, &mut part)?;
                 next_last_id = Some(*id);
@@ -177,9 +171,12 @@ impl AsyncPool {
         &mut self,
         part: &'a [u8],
     ) -> Result<Option<AsyncMessageId>, ModelsError> {
-        let async_message_id_deserializer = AsyncMessageIdDeserializer::new(THREAD_COUNT);
-        let async_message_deserializer =
-            AsyncMessageDeserializer::new(THREAD_COUNT, MAX_DATA_ASYNC_MESSAGE);
+        let async_message_id_deserializer =
+            AsyncMessageIdDeserializer::new(self.config.thread_count);
+        let async_message_deserializer = AsyncMessageDeserializer::new(
+            self.config.thread_count,
+            self.config.max_data_async_message,
+        );
         let (rest, messages) = many0(|input: &'a [u8]| {
             if input.is_empty() {
                 return Err(nom::Err::Error(nom::error::Error::new(
@@ -206,10 +203,15 @@ impl AsyncPool {
 #[test]
 fn test_take_batch() {
     use massa_hash::Hash;
-    use massa_models::{Address, Amount, Slot};
+    use massa_models::{address::Address, amount::Amount, slot::Slot};
     use std::str::FromStr;
 
-    let config = AsyncPoolConfig { max_length: 10 };
+    let config = AsyncPoolConfig {
+        thread_count: 2,
+        max_length: 10,
+        max_data_async_message: 1000000,
+        part_size_message_bytes: 1_000_000,
+    };
     let mut pool = AsyncPool::new(config);
     let address = Address(Hash::compute_from(b"abc"));
     for i in 1..10 {

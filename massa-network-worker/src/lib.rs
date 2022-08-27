@@ -12,7 +12,7 @@ use crate::{
     peer_info_database::PeerInfoDatabase,
 };
 use massa_logging::massa_trace;
-use massa_models::{config::CHANNEL_SIZE, node::NodeId, Version};
+use massa_models::{node::NodeId, version::Version};
 use massa_network_exports::{
     BootstrapPeers, Establisher, NetworkCommand, NetworkCommandSender, NetworkConfig, NetworkError,
     NetworkEvent, NetworkEventReceiver, NetworkManagementCommand, NetworkManager,
@@ -105,8 +105,10 @@ pub async fn start_network_controller(
     }
 
     // launch controller
-    let (command_tx, controller_command_rx) = mpsc::channel::<NetworkCommand>(CHANNEL_SIZE);
-    let (controller_event_tx, event_rx) = mpsc::channel::<NetworkEvent>(CHANNEL_SIZE);
+    let (command_tx, controller_command_rx) =
+        mpsc::channel::<NetworkCommand>(network_settings.controller_channel_size);
+    let (controller_event_tx, event_rx) =
+        mpsc::channel::<NetworkEvent>(network_settings.event_channel_size);
     let (manager_tx, controller_manager_rx) = mpsc::channel::<NetworkManagementCommand>(1);
     let cfg_copy = network_settings.clone();
     let keypair_cloned = keypair.clone();

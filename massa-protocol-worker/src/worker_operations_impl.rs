@@ -14,9 +14,8 @@ use crate::protocol_worker::ProtocolWorker;
 use massa_logging::massa_trace;
 use massa_models::{
     node::NodeId,
-    operation::OperationPrefixIds,
-    prehash::{BuildHashMapper, PreHashSet},
-    WrappedOperation,
+    operation::{OperationPrefixIds, WrappedOperation},
+    prehash::{CapacityAllocator, PreHashSet},
 };
 use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;

@@ -6,13 +6,14 @@ use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use massa_logging::massa_trace;
 
 use massa_models::{
+    block::{BlockHeaderSerializer, BlockId, WrappedHeader},
     config::CHANNEL_SIZE,
+    endorsement::{EndorsementId, EndorsementSerializer, WrappedEndorsement},
     node::NodeId,
     operation::OperationPrefixId,
-    prehash::{BuildHashMapper, PreHashMap, PreHashSet},
-    BlockHeaderSerializer, BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader,
+    operation::{OperationId, OperationSerializer, WrappedOperation},
+    prehash::{CapacityAllocator, PreHashMap, PreHashSet},
 };
-use massa_models::{EndorsementSerializer, OperationSerializer, WrappedOperation};
 use massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEventReceiver};
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{

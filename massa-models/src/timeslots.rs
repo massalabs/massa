@@ -5,7 +5,7 @@
 use massa_time::MassaTime;
 use std::convert::TryInto;
 
-use crate::{ModelsError, Slot};
+use crate::{error::ModelsError, slot::Slot};
 
 /// Counts the number of slots in a slot range [a, b)
 ///

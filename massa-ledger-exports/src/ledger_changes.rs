@@ -8,10 +8,10 @@ use crate::types::{
     SetOrKeepDeserializer, SetOrKeepSerializer, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
     SetUpdateOrDeleteSerializer,
 };
-use massa_models::address::AddressDeserializer;
-use massa_models::amount::{AmountDeserializer, AmountSerializer};
-use massa_models::{prehash::PreHashMap, Address, Amount};
-use massa_models::{VecU8Deserializer, VecU8Serializer};
+use massa_models::address::{Address, AddressDeserializer};
+use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
+use massa_models::prehash::PreHashMap;
+use massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };

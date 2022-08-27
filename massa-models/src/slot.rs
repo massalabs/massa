@@ -1,6 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::config::SLOT_KEY_SIZE;
 use crate::error::ModelsError;
 use massa_hash::Hash;
 use massa_serialization::{
@@ -20,6 +19,9 @@ pub struct Slot {
     /// thread
     pub thread: u8,
 }
+
+/// size of the slot key representation
+pub const SLOT_KEY_SIZE: usize = 9;
 
 /// Basic serializer for `Slot`
 pub struct SlotSerializer {

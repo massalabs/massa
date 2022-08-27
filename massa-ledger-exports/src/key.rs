@@ -1,6 +1,6 @@
 use massa_models::{
-    address::AddressDeserializer, address::ADDRESS_SIZE_BYTES, Address, VecU8Deserializer,
-    VecU8Serializer,
+    address::{Address, AddressDeserializer, ADDRESS_SIZE_BYTES},
+    serialization::{VecU8Deserializer, VecU8Serializer},
 };
 use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
 use nom::error::{ContextError, ParseError};

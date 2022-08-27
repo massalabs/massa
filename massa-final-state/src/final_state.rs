@@ -10,7 +10,7 @@ use crate::{
 };
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_ledger_exports::{LedgerChanges, LedgerController};
-use massa_models::{config::THREAD_COUNT, Address, Slot};
+use massa_models::{address::Address, slot::Slot};
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use std::collections::VecDeque;
 
@@ -44,12 +44,9 @@ impl FinalState {
         selector: Box<dyn SelectorController>,
     ) -> Result<Self, FinalStateError> {
         // create the pos state
-        let pos_state = PoSFinalState::new(
-            &config.initial_seed_string,
-            &config.initial_rolls_path,
-            selector,
-        )
-        .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
+        let pos_state = PoSFinalState::new(config.clone(), selector).map_err(|err| {
+            FinalStateError::PosError(format!("PoS final state init error: {}", err))
+        })?;
 
         // attach at the output of the latest initial final slot, that is the last genesis slot
         let slot = Slot::new(0, config.thread_count.saturating_sub(1));
@@ -137,7 +134,7 @@ impl FinalState {
         let pos_slot = if !self.changes_history.is_empty() {
             // Safe because we checked that there is changes just above.
             let index = last_slot
-                .slots_since(&self.changes_history[0].0, THREAD_COUNT)
+                .slots_since(&self.changes_history[0].0, self.config.thread_count)
                 .map_err(|_| {
                     FinalStateError::LedgerError("Last slot is overflowing history.".to_string())
                 })?;
