@@ -1,38 +1,63 @@
-use std::collections::BTreeMap;
+use std::{
+    collections::BTreeMap,
+    ops::Bound::{Excluded, Included},
+    path::PathBuf,
+};
 
 use massa_hash::Hash;
-use massa_models::{address::Address, amount::Amount, prehash::PreHashMap, slot::Slot};
+use massa_models::{
+    address::{Address, AddressDeserializer},
+    amount::{Amount, AmountDeserializer},
+    prehash::PreHashMap,
+    slot::{Slot, SlotDeserializer},
+};
+use massa_serialization::U64VarIntDeserializer;
 
 use crate::{
-    CycleInfo, PoSChanges, PoSFinalState, PosError, PosResult, ProductionStats, SelectorConfig,
-    SelectorController,
+    CycleInfo, PoSChanges, PoSFinalState, PosError, PosResult, ProductionStats, SelectorController,
 };
 
 impl PoSFinalState {
     /// create a new PoSFinalState
     pub fn new(
-        config: SelectorConfig,
+        initial_seed_string: &String,
+        initial_rolls_path: &PathBuf,
+        thread_count: u8,
         selector: Box<dyn SelectorController>,
     ) -> Result<Self, PosError> {
         // load get initial rolls from file
         let initial_rolls = serde_json::from_str::<BTreeMap<Address, u64>>(
-            &std::fs::read_to_string(&config.initial_rolls_path).map_err(|err| {
+            &std::fs::read_to_string(initial_rolls_path).map_err(|err| {
                 PosError::RollsFileLoadingError(format!("error while deserializing: {}", err))
             })?,
         )
         .map_err(|err| PosError::RollsFileLoadingError(format!("error opening file: {}", err)))?;
 
         // Seeds used as the initial seeds for negative cycles (-2 and -1 respectively)
-        let init_seed = Hash::compute_from(config.initial_draw_seed.as_bytes());
+        let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
+        // Deserializers
+        let amount_deserializer =
+            AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
+        let slot_deserializer = SlotDeserializer::new(
+            (Included(u64::MIN), Included(u64::MAX)),
+            (Included(0), Excluded(thread_count)),
+        );
+        let deferred_credit_length_deserializer =
+            U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)); // TODO define a max here
+        let address_deserializer = AddressDeserializer::new();
+
         Ok(Self {
-            config,
             cycle_history: Default::default(),
             deferred_credits: Default::default(),
             selector,
             initial_rolls,
             initial_seeds,
+            amount_deserializer,
+            slot_deserializer,
+            deferred_credit_length_deserializer,
+            address_deserializer,
         })
     }
 

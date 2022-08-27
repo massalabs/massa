@@ -1,7 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_models::slot::Slot;
 use massa_models::stats::ExecutionStats;
-use massa_models::Slot;
 use massa_time::MassaTime;
 use std::collections::VecDeque;
 

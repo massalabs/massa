@@ -2,7 +2,7 @@
 
 //! This module provides the structures used to provide configuration parameters to the Execution system
 
-use massa_models::Amount;
+use massa_models::amount::Amount;
 use massa_time::MassaTime;
 
 /// Execution module configuration

@@ -9,16 +9,17 @@ use crate::{
 };
 use massa_hash::Hash;
 use massa_logging::massa_trace;
+use massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet};
 use massa_models::{
     active_block::ActiveBlock, api::BlockGraphStatus, clique::Clique, wrapped::WrappedContent,
-    WrappedBlock,
 };
 use massa_models::{
-    prehash::{BuildHashMapper, PreHashMap, PreHashSet},
-    WrappedHeader,
-};
-use massa_models::{
-    Address, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, Slot,
+    address::Address,
+    block::{
+        Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock,
+        WrappedHeader,
+    },
+    slot::Slot,
 };
 use massa_pos_exports::SelectorController;
 use massa_signature::PublicKey;
@@ -2622,7 +2623,7 @@ impl BlockGraph {
             match storage_read.get_blocks_by_slot(slot) {
                 Some(v) => v.clone(),
                 None => return None,
-            };
+            }
         };
 
         // search for the block in the blockclique

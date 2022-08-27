@@ -2,10 +2,10 @@ use crate::error::{GraphError, GraphResult as Result};
 use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,
+    block::{Block, BlockDeserializer, BlockId, WrappedBlock},
+    operation::{Operation, OperationDeserializer, WrappedOperation},
     prehash::{PreHashMap, PreHashSet},
     wrapped::{WrappedDeserializer, WrappedSerializer},
-    Block, BlockDeserializer, BlockId, Operation, OperationDeserializer, WrappedBlock,
-    WrappedOperation,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,

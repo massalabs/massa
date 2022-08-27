@@ -2,7 +2,9 @@ use massa_execution_exports::ExecutionOutput;
 use massa_ledger_exports::{
     LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
-use massa_models::{prehash::PreHashMap, Address, Amount, OperationId, Slot};
+use massa_models::{
+    address::Address, amount::Amount, operation::OperationId, prehash::PreHashMap, slot::Slot,
+};
 use std::collections::{BTreeMap, VecDeque};
 
 #[derive(Default)]

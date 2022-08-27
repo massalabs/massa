@@ -3,7 +3,9 @@
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
 use massa_models::address::ExecutionAddressCycleInfo;
-use massa_models::{prehash::PreHashMap, Address, Amount, BlockId, Slot};
+use massa_models::{
+    address::Address, amount::Amount, block::BlockId, prehash::PreHashMap, slot::Slot,
+};
 use massa_pos_exports::{PoSChanges, ProductionStats};
 use parking_lot::RwLock;
 use std::collections::hash_map::Entry::Occupied;

@@ -4,7 +4,7 @@
 
 use crate::active_history::{ActiveHistory, HistorySearchResult};
 use massa_final_state::{ExecutedOps, FinalState};
-use massa_models::{OperationId, Slot};
+use massa_models::{operation::OperationId, slot::Slot};
 use parking_lot::RwLock;
 use std::sync::Arc;
 

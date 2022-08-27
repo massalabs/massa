@@ -2,8 +2,11 @@
 
 use massa_execution_exports::ExecutionController;
 use massa_models::{
-    prehash::{BuildHashMapper, PreHashMap, PreHashSet},
-    Address, Amount, OperationId, Slot,
+    address::Address,
+    amount::Amount,
+    operation::OperationId,
+    prehash::{CapacityAllocator, PreHashMap, PreHashSet},
+    slot::Slot,
 };
 use massa_pool_exports::PoolConfig;
 use massa_storage::Storage;
@@ -115,6 +118,7 @@ impl OperationPool {
                     ),
                     self.config.operation_validity_periods,
                     self.config.roll_price,
+                    self.config.thread_count,
                 );
                 if !self.is_operation_relevant(&op_info) {
                     continue;

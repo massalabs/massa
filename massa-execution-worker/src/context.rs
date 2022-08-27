@@ -17,8 +17,12 @@ use massa_final_state::{ExecutedOps, FinalState, StateChanges};
 use massa_ledger_exports::LedgerChanges;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::{
+    address::Address,
+    amount::Amount,
+    block::BlockId,
+    operation::OperationId,
     output_event::{EventExecutionContext, SCOutputEvent},
-    Address, Amount, BlockId, OperationId, Slot,
+    slot::Slot,
 };
 use massa_pos_exports::PoSChanges;
 use parking_lot::RwLock;

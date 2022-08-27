@@ -2,7 +2,7 @@
 
 #![allow(clippy::assertions_on_constants)]
 
-use massa_models::Amount;
+use massa_models::amount::Amount;
 use massa_signature::KeyPair;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, usize};

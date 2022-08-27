@@ -29,7 +29,7 @@ use nom::{
 use num::rational::Ratio;
 use std::ops::Bound::{Excluded, Included, Unbounded};
 
-use crate::{SelectorConfig, SelectorController};
+use crate::SelectorController;
 
 /// Selector info about an address
 #[derive(Default)]
@@ -44,8 +44,6 @@ pub struct SelectorAddressInfo {
 
 /// Final state of PoS
 pub struct PoSFinalState {
-    /// config
-    pub config: SelectorConfig,
     /// contiguous cycle history. Back = newest.
     pub cycle_history: VecDeque<CycleInfo>,
     /// coins to be credited at the end of the slot
@@ -56,6 +54,14 @@ pub struct PoSFinalState {
     pub initial_rolls: BTreeMap<Address, u64>,
     /// initial seeds, used for negative cycle lookback (cycles -2, -1 in that order)
     pub initial_seeds: Vec<Hash>,
+    /// amount deserializer
+    pub(crate) amount_deserializer: AmountDeserializer,
+    /// slot deserializer
+    pub(crate) slot_deserializer: SlotDeserializer,
+    /// deserializer
+    pub(crate) deferred_credit_length_deserializer: U64VarIntDeserializer,
+    /// address deserializer
+    pub(crate) address_deserializer: AddressDeserializer,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -325,30 +331,30 @@ impl PoSFinalState {
         if part.is_empty() {
             return Ok(None);
         }
-        let amount_deser = AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
-        let slot_deser = SlotDeserializer::new(
-            (Included(u64::MIN), Included(u64::MAX)),
-            (Included(0), Excluded(self.config.thread_count)),
-        );
-        let u64_deser = U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX));
-        let address_deser = AddressDeserializer::new();
         let (rest, credits) = context(
             "deferred_credits",
             length_count(
                 context("deferred_credits length", |input| {
-                    u64_deser.deserialize(input)
+                    self.deferred_credit_length_deserializer.deserialize(input)
                 }),
                 tuple((
                     context("slot", |input| {
-                        slot_deser.deserialize::<DeserializeError>(input)
+                        self.slot_deserializer
+                            .deserialize::<DeserializeError>(input)
                     }),
                     context(
                         "credits",
                         length_count(
-                            context("credits length", |input| u64_deser.deserialize(input)),
+                            context("credits length", |input| {
+                                self.deferred_credit_length_deserializer.deserialize(input)
+                            }),
                             tuple((
-                                context("address", |input| address_deser.deserialize(input)),
-                                context("amount", |input| amount_deser.deserialize(input)),
+                                context("address", |input| {
+                                    self.address_deserializer.deserialize(input)
+                                }),
+                                context("amount", |input| {
+                                    self.amount_deserializer.deserialize(input)
+                                }),
                             )),
                         ),
                     ),

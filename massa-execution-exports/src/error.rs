@@ -19,7 +19,7 @@ pub enum ExecutionError {
     MassaHashError(#[from] massa_hash::MassaHashError),
 
     /// `ModelsError`: {0}
-    ModelsError(#[from] massa_models::ModelsError),
+    ModelsError(#[from] massa_models::error::ModelsError),
 
     /// RollBuy error: {0}
     RollBuyError(String),

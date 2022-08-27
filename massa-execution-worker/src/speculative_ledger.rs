@@ -8,7 +8,7 @@
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
 use massa_ledger_exports::{Applicable, LedgerChanges};
-use massa_models::{config::default::MAX_DATASTORE_KEY_LENGTH, Address, Amount};
+use massa_models::{address::Address, amount::Amount, config::default::MAX_DATASTORE_KEY_LENGTH};
 use parking_lot::RwLock;
 use std::sync::Arc;
 

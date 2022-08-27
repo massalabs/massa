@@ -13,10 +13,10 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest,
 };
 use massa_final_state::FinalState;
-use massa_models::BlockId;
+use massa_models::block::BlockId;
 use massa_models::{
+    slot::Slot,
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
-    Slot,
 };
 use massa_pos_exports::SelectorController;
 use massa_storage::Storage;

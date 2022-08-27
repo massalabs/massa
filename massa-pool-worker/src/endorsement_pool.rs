@@ -1,8 +1,10 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::{
-    prehash::{BuildHashMapper, PreHashSet},
-    BlockId, EndorsementId, Slot,
+    block::BlockId,
+    endorsement::EndorsementId,
+    prehash::{CapacityAllocator, PreHashSet},
+    slot::Slot,
 };
 use massa_pool_exports::PoolConfig;
 use massa_storage::Storage;

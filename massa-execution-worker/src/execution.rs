@@ -24,8 +24,12 @@ use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
-use massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
-use massa_models::{Amount, Slot};
+use massa_models::{
+    address::Address,
+    block::BlockId,
+    operation::{OperationId, OperationType, WrappedOperation},
+};
+use massa_models::{amount::Amount, slot::Slot};
 use massa_pos_exports::SelectorController;
 use massa_sc_runtime::Interface;
 use massa_storage::Storage;
@@ -286,7 +290,7 @@ impl ExecutionState {
         let sender_addr = operation.creator_address;
 
         // get the thread to which the operation belongs
-        let op_thread = operation.thread;
+        let op_thread = sender_addr.get_thread(self.config.thread_count);
 
         // check block/op thread compatibility
         if op_thread != block_slot.thread {
