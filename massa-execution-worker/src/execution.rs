@@ -1033,6 +1033,7 @@ impl ExecutionState {
             self.config.periods_per_cycle,
             self.config.thread_count,
             self.config.roll_price,
+            self.config.max_miss_ratio,
         )
     }
 
@@ -1109,6 +1110,7 @@ impl ExecutionState {
             self.config.periods_per_cycle,
             self.config.thread_count,
             self.config.roll_price,
+            self.config.max_miss_ratio,
         ))
     }
 

@@ -3,11 +3,12 @@
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_hash::Hash;
 use massa_models::{
+    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedHeader},
+    endorsement::WrappedEndorsement,
     prehash::PreHashSet,
+    slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
     wrapped::WrappedContent,
-    Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, Slot, WrappedEndorsement,
-    WrappedHeader,
 };
 use massa_time::MassaTime;
 use massa_wallet::Wallet;

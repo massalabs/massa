@@ -46,7 +46,7 @@
 //! `massa-models` crate sources.
 use massa_execution_exports::ExecutionController;
 use massa_graph::settings::GraphConfig;
-use massa_models::Amount;
+use massa_models::amount::Amount;
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolEventReceiver};

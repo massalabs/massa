@@ -18,7 +18,7 @@ pub enum BootstrapError {
     /// general bootstrap error: {0}
     GeneralError(String),
     /// models error: {0}
-    ModelsError(#[from] massa_models::ModelsError),
+    ModelsError(#[from] massa_models::error::ModelsError),
     /// serialize error: {0}
     SerializeError(#[from] SerializeError),
     /// unexpected message received from server: {0:?}

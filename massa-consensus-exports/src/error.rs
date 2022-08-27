@@ -2,7 +2,7 @@
 use displaydoc::Display;
 use massa_execution_exports::ExecutionError;
 use massa_graph::error::GraphError;
-use massa_models::ModelsError;
+use massa_models::error::ModelsError;
 use massa_protocol_exports::ProtocolError;
 use thiserror::Error;
 

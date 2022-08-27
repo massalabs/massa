@@ -1807,6 +1807,7 @@ dependencies = [
  "massa_models",
  "massa_storage",
  "massa_time",
+ "num",
  "thiserror",
 ]
 
@@ -1828,6 +1829,7 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
+ "num",
  "parking_lot 0.12.1",
  "rand 0.8.5",
  "rand_xoshiro",

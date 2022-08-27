@@ -9,7 +9,7 @@ use massa_graph::{BlockGraph, BlockGraphExport};
 use massa_models::prehash::PreHashSet;
 use massa_models::stats::ConsensusStats;
 use massa_models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
-use massa_models::{Address, BlockId, Slot};
+use massa_models::{address::Address, block::BlockId, slot::Slot};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
 use massa_time::MassaTime;
 use std::{cmp::max, collections::HashSet, collections::VecDeque};

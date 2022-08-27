@@ -2,8 +2,8 @@
 
 use massa_graph::{BlockGraphExport, BootstrapableGraph};
 use massa_models::api::BlockGraphStatus;
+use massa_models::{block::BlockId, slot::Slot};
 use massa_models::{clique::Clique, stats::ConsensusStats};
-use massa_models::{BlockId, Slot};
 use massa_protocol_exports::ProtocolEventReceiver;
 use massa_storage::Storage;
 use std::collections::VecDeque;

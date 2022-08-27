@@ -2,9 +2,11 @@
 
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_models::{
+    block::BlockId,
+    endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement},
+    slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
     wrapped::WrappedContent,
-    BlockId, Endorsement, EndorsementSerializer, Slot, WrappedEndorsement,
 };
 use massa_signature::KeyPair;
 use massa_time::MassaTime;

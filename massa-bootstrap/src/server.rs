@@ -13,7 +13,7 @@ use massa_final_state::{FinalState, StateChanges};
 use massa_graph::BootstrapableGraph;
 use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
-use massa_models::{Slot, Version};
+use massa_models::{slot::Slot, version::Version};
 use massa_network_exports::{BootstrapPeers, NetworkCommandSender};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;

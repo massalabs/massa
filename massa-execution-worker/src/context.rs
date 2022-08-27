@@ -25,6 +25,7 @@ use massa_models::{
     slot::Slot,
 };
 use massa_pos_exports::PoSChanges;
+use num::rational::Ratio;
 use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
@@ -690,6 +691,7 @@ impl ExecutionContext {
         periods_per_cycle: u64,
         thread_count: u8,
         roll_price: Amount,
+        max_miss_ratio: Ratio<u64>,
     ) -> ExecutionOutput {
         let slot = self.slot;
 
@@ -709,6 +711,7 @@ impl ExecutionContext {
                 periods_per_cycle,
                 thread_count,
                 roll_price,
+                max_miss_ratio,
             );
         }
 

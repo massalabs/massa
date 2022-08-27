@@ -22,7 +22,13 @@ use massa_models::node::NodeId;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
-use massa_models::{Address, Block, BlockId, EndorsementId, Slot, Version};
+use massa_models::{
+    address::Address,
+    block::{Block, BlockId},
+    endorsement::EndorsementId,
+    slot::Slot,
+    version::Version,
+};
 use massa_network_exports::{NetworkCommandSender, NetworkConfig};
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;

@@ -16,25 +16,34 @@ use massa_models::api::{
 use massa_models::execution::ReadOnlyResult;
 use massa_models::operation::OperationDeserializer;
 use massa_models::wrapped::WrappedDeserializer;
-use massa_models::{timeslots, Block, ModelsError, WrappedEndorsement, WrappedOperation};
+use massa_models::{
+    block::Block, endorsement::WrappedEndorsement, error::ModelsError, operation::WrappedOperation,
+    timeslots,
+};
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolCommandSender;
 use massa_serialization::{DeserializeError, Deserializer};
 
 use itertools::{izip, Itertools};
 use massa_models::{
+    address::Address,
     api::{
         AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo, EventFilter,
         NodeStatus, OperationInfo, TimeInterval,
     },
+    block::BlockId,
     clique::Clique,
     composite::PubkeySig,
+    config::CompactConfig,
+    endorsement::EndorsementId,
     execution::ExecuteReadOnlyResponse,
     node::NodeId,
+    operation::OperationId,
     output_event::SCOutputEvent,
     prehash::{PreHashMap, PreHashSet},
+    slot::Slot,
     timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range},
-    Address, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
+    version::Version,
 };
 use massa_network_exports::{NetworkCommandSender, NetworkConfig};
 use massa_pool_exports::PoolController;

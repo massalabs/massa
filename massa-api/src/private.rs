@@ -20,7 +20,13 @@ use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
-use massa_models::{Address, Block, BlockId, EndorsementId, OperationId, Slot};
+use massa_models::{
+    address::Address,
+    block::{Block, BlockId},
+    endorsement::EndorsementId,
+    operation::OperationId,
+    slot::Slot,
+};
 use massa_network_exports::NetworkCommandSender;
 use massa_signature::KeyPair;
 use massa_wallet::Wallet;

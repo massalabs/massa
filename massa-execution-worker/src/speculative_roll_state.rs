@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::active_history::ActiveHistory;
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
 use massa_models::address::ExecutionAddressCycleInfo;
@@ -7,12 +8,11 @@ use massa_models::{
     address::Address, amount::Amount, block::BlockId, prehash::PreHashMap, slot::Slot,
 };
 use massa_pos_exports::{PoSChanges, ProductionStats};
+use num::rational::Ratio;
 use parking_lot::RwLock;
 use std::collections::hash_map::Entry::Occupied;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
-
-use crate::active_history::ActiveHistory;
 
 /// Speculative state of the rolls
 #[allow(dead_code)]
@@ -181,6 +181,7 @@ impl SpeculativeRollState {
         periods_per_cycle: u64,
         thread_count: u8,
         roll_price: Amount,
+        max_miss_ratio: Ratio<u64>,
     ) {
         let cycle = slot.get_cycle(periods_per_cycle);
 
@@ -209,7 +210,7 @@ impl SpeculativeRollState {
             .or_insert_with(PreHashMap::default);
 
         for (addr, stats) in production_stats {
-            if !stats.is_satisfying() {
+            if !stats.is_satisfying(&max_miss_ratio) {
                 if let Occupied(mut entry) = self.added_changes.roll_changes.entry(addr) {
                     if let Some(amount) = roll_price.checked_mul_u64(*entry.get()) {
                         credits.insert(addr, amount);

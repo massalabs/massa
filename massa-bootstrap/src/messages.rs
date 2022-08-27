@@ -6,9 +6,13 @@ use massa_graph::{
     BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
 };
 use massa_ledger_exports::{KeyDeserializer, KeySerializer};
+use massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
 use massa_models::slot::SlotDeserializer;
-use massa_models::{slot::SlotSerializer, Slot, Version};
-use massa_models::{VecU8Deserializer, VecU8Serializer, VersionDeserializer, VersionSerializer};
+use massa_models::{
+    slot::Slot,
+    slot::SlotSerializer,
+    version::{Version, VersionDeserializer, VersionSerializer},
+};
 use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
 use massa_serialization::{
     Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
