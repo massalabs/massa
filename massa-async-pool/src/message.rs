@@ -455,8 +455,10 @@ mod tests {
 
     use crate::{AsyncMessage, AsyncMessageDeserializer, AsyncMessageSerializer};
     use massa_models::{
+        address::Address,
+        amount::Amount,
         config::{default::MAX_DATA_ASYNC_MESSAGE, THREAD_COUNT},
-        Address, Amount, Slot,
+        slot::Slot,
     };
     use std::str::FromStr;
 

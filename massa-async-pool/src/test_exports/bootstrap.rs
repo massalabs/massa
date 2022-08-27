@@ -3,7 +3,7 @@
 use std::{cmp::Reverse, collections::BTreeMap, str::FromStr};
 
 use crate::{AsyncMessage, AsyncPool, AsyncPoolConfig};
-use massa_models::{config::THREAD_COUNT, Address, Amount, Slot};
+use massa_models::{address::Address, amount::Amount, config::THREAD_COUNT, slot::Slot};
 use massa_signature::KeyPair;
 use rand::Rng;
 
