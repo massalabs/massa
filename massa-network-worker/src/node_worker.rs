@@ -7,7 +7,7 @@ use super::{
 use itertools::Itertools;
 use massa_logging::massa_trace;
 use massa_models::{
-    constants::{MAX_ENDORSEMENTS_PER_MESSAGE, NODE_SEND_CHANNEL_SIZE},
+    config::{MAX_ENDORSEMENTS_PER_MESSAGE, NODE_SEND_CHANNEL_SIZE},
     node::NodeId,
     operation::OperationIdsSerializer,
     wrapped::{Id, WrappedSerializer},

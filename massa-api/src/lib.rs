@@ -21,7 +21,7 @@ use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::Set;
+use massa_models::prehash::PreHashSet;
 use massa_models::{Address, Block, BlockId, EndorsementId, Slot, Version};
 use massa_network_exports::{NetworkCommandSender, NetworkConfig};
 use massa_pool_exports::PoolController;
@@ -175,7 +175,7 @@ pub trait Endpoints {
 
     /// Return hash set of staking addresses.
     #[rpc(name = "get_staking_addresses")]
-    fn get_staking_addresses(&self) -> BoxFuture<Result<Set<Address>, ApiError>>;
+    fn get_staking_addresses(&self) -> BoxFuture<Result<PreHashSet<Address>, ApiError>>;
 
     /// Bans given IP address(es).
     /// No confirmation to expect.

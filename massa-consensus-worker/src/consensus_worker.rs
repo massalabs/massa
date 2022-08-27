@@ -6,7 +6,7 @@ use massa_consensus_exports::{
     ConsensusConfig,
 };
 use massa_graph::{BlockGraph, BlockGraphExport};
-use massa_models::prehash::Set;
+use massa_models::prehash::PreHashSet;
 use massa_models::stats::ConsensusStats;
 use massa_models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
 use massa_models::{Address, BlockId, Slot};
@@ -29,7 +29,7 @@ pub struct ConsensusWorker {
     /// Next slot
     next_slot: Slot,
     /// blocks we want
-    wishlist: Set<BlockId>,
+    wishlist: PreHashSet<BlockId>,
     /// latest final periods
     latest_final_periods: Vec<u64>,
     /// clock compensation
@@ -142,7 +142,7 @@ impl ConsensusWorker {
             block_db,
             previous_slot,
             next_slot,
-            wishlist: Set::<BlockId>::default(),
+            wishlist: PreHashSet::<BlockId>::default(),
             latest_final_periods,
             clock_compensation,
             channels,

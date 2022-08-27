@@ -8,7 +8,7 @@ use massa_models::api::{
 };
 use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
 use massa_models::node::NodeId;
-use massa_models::prehash::Map;
+use massa_models::prehash::PreHashMap;
 use massa_models::timeslots::get_current_latest_block_slot;
 use massa_models::{
     Address, Amount, BlockId, EndorsementId, Operation, OperationId, OperationType, Slot,
@@ -295,7 +295,7 @@ impl Display for ExtendedWalletEntry {
 /// Aggregation of the local, with some useful information as the balance, etc
 /// to be printed by the client.
 #[derive(Debug, Serialize)]
-pub struct ExtendedWallet(Map<Address, ExtendedWalletEntry>);
+pub struct ExtendedWallet(PreHashMap<Address, ExtendedWalletEntry>);
 
 impl ExtendedWallet {
     /// Reorganize everything into an extended wallet

@@ -13,9 +13,9 @@ use massa_consensus_exports::{
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_graph::{export_active_block::ExportActiveBlock, BlockGraphExport, BootstrapableGraph};
 use massa_hash::Hash;
-use massa_models::prehash::Map;
+use massa_models::prehash::PreHashMap;
 use massa_models::{
-    prehash::Set,
+    prehash::PreHashSet,
     wrapped::{Id, WrappedContent},
     Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer,
     Endorsement, EndorsementSerializer, Operation, OperationSerializer, OperationType, Slot,
@@ -162,8 +162,8 @@ pub async fn validate_ask_for_block(
 
 pub async fn validate_wishlist(
     protocol_controller: &mut MockProtocolController,
-    new: Set<BlockId>,
-    remove: Set<BlockId>,
+    new: PreHashSet<BlockId>,
+    remove: PreHashSet<BlockId>,
     timeout_ms: u64,
 ) {
     let param = protocol_controller
@@ -619,9 +619,9 @@ pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<KeyPair>) -> KeyPair {
 pub async fn _load_initial_staking_keys(
     path: &Path,
     password: &str,
-) -> ConsensusResult<Map<Address, KeyPair>> {
+) -> ConsensusResult<PreHashMap<Address, KeyPair>> {
     if !std::path::Path::is_file(path) {
-        return Ok(Map::default());
+        return Ok(PreHashMap::default());
     }
     let (_version, data) = decrypt(password, &tokio::fs::read(path).await?)?;
     serde_json::from_slice::<Vec<KeyPair>>(&data)?

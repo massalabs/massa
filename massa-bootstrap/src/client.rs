@@ -390,9 +390,15 @@ pub async fn get_state(
     // if we are before genesis, do not bootstrap
     if now < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
-        // create the initial cycle of PoS cycle_history
-        final_state.write().pos_state.create_initial_cycle();
-        return Ok(GlobalBootstrapState::new(final_state.clone()));
+        // init final state
+        {
+            let final_state_guard = final_state.write();
+            // load ledger from initial ledger file
+            final_state_guard.ledger.load_initial();
+            // create the initial cycle of PoS cycle_history
+            final_state_guard.pos_state.create_initial_cycle();
+        }
+        return Ok(GlobalBootstrapState::new(final_state));
     }
     // we are after genesis => bootstrap
     massa_trace!("bootstrap.lib.get_state.init_from_others", {});

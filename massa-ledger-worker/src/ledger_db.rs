@@ -1,10 +1,10 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! Module to interact with the disk ledger
 
 use massa_ledger_exports::*;
 use massa_models::{
-    Address, AmountSerializer, ModelsError, Slot, SlotSerializer, VecU8Deserializer,
+    Address, Amount, AmountSerializer, ModelsError, Slot, SlotSerializer, VecU8Deserializer,
     VecU8Serializer,
 };
 use massa_serialization::{Deserializer, Serializer};
@@ -51,7 +51,6 @@ pub(crate) struct LedgerDB {
     max_datastore_key_length: u8,
     ledger_part_size_message_bytes: u64,
     address_bytes_size: usize,
-    #[cfg(feature = "testing")]
     amount_deserializer: AmountDeserializer,
 }
 
@@ -84,7 +83,6 @@ fn test_end_prefix() {
     assert_eq!(end_prefix(&[5, 6, 255]), Some(vec![5, 7]));
 }
 
-// TODO: save attached slot in metadata for a lighter bootstrap after disconnection
 impl LedgerDB {
     /// Create and initialize a new LedgerDB.
     ///
@@ -96,8 +94,6 @@ impl LedgerDB {
         ledger_part_size_message_bytes: u64,
         address_bytes_size: usize,
     ) -> Self {
-        #[cfg(feature = "testing")]
-        use massa_models::Amount;
         let mut db_opts = Options::default();
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
@@ -119,7 +115,6 @@ impl LedgerDB {
             max_datastore_key_length,
             address_bytes_size,
             ledger_part_size_message_bytes,
-            #[cfg(feature = "testing")]
             amount_deserializer: AmountDeserializer::new(
                 Bound::Included(Amount::MIN),
                 Bound::Included(Amount::MAX),
@@ -524,7 +519,7 @@ mod tests {
     use crate::ledger_db::LedgerSubEntry;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
     use massa_models::{
-        constants::default_testing::ADDRESS_SIZE_BYTES, Address, Amount, AmountDeserializer,
+        config::default_testing::ADDRESS_SIZE_BYTES, Address, Amount, AmountDeserializer,
     };
     use massa_serialization::{DeserializeError, Deserializer};
     use massa_signature::KeyPair;

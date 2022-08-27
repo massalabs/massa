@@ -2,7 +2,7 @@ use massa_execution_exports::ExecutionOutput;
 use massa_ledger_exports::{
     LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
-use massa_models::{prehash::Map, Address, Amount, OperationId, Slot};
+use massa_models::{prehash::PreHashMap, Address, Amount, OperationId, Slot};
 use std::collections::{BTreeMap, VecDeque};
 
 #[derive(Default)]
@@ -178,7 +178,7 @@ impl ActiveHistory {
     ///
     /// # Arguments
     /// * `slot`: slot _at_ which we fetch the credits
-    pub fn fetch_all_deferred_credits_at(&self, slot: &Slot) -> Map<Address, Amount> {
+    pub fn fetch_all_deferred_credits_at(&self, slot: &Slot) -> PreHashMap<Address, Amount> {
         self.0
             .iter()
             .filter_map(|output| {

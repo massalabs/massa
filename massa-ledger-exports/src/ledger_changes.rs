@@ -10,7 +10,7 @@ use crate::types::{
 };
 use massa_models::address::AddressDeserializer;
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
-use massa_models::{prehash::Map, Address, Amount};
+use massa_models::{prehash::PreHashMap, Address, Amount};
 use massa_models::{VecU8Deserializer, VecU8Serializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -339,7 +339,9 @@ impl Applicable<LedgerEntryUpdate> for LedgerEntryUpdate {
 
 /// represents a list of changes to multiple ledger entries
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct LedgerChanges(pub Map<Address, SetUpdateOrDelete<LedgerEntry, LedgerEntryUpdate>>);
+pub struct LedgerChanges(
+    pub PreHashMap<Address, SetUpdateOrDelete<LedgerEntry, LedgerEntryUpdate>>,
+);
 
 /// `LedgerChanges` serializer
 pub struct LedgerChangesSerializer {

@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry};
-use massa_models::{constants::default_testing::ADDRESS_SIZE_BYTES, Address};
+use massa_models::{config::default_testing::ADDRESS_SIZE_BYTES, Address};
 use std::collections::HashMap;
 use tempfile::TempDir;
 

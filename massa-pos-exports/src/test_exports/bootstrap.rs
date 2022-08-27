@@ -1,7 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 
 use massa_models::{
-    constants::default_testing::{CHANNEL_SIZE, ENDORSEMENT_COUNT, PERIODS_PER_CYCLE},
+    config::default_testing::{CHANNEL_SIZE, ENDORSEMENT_COUNT, PERIODS_PER_CYCLE},
     Address, Slot, THREAD_COUNT,
 };
 use massa_signature::KeyPair;

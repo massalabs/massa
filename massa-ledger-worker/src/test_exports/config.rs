@@ -4,7 +4,7 @@
 use tempfile::TempDir;
 
 use crate::{ledger_db::LedgerDB, FinalLedger};
-use massa_models::constants::default_testing::ADDRESS_SIZE_BYTES;
+use massa_models::config::default_testing::ADDRESS_SIZE_BYTES;
 
 /// Default value of `FinalLedger` used for tests
 impl Default for FinalLedger {

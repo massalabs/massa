@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{constants::MAX_SERIALIZED_OPERATIONS_SIZE_PER_BLOCK, THREAD_COUNT};
+use massa_models::{config::MAX_SERIALIZED_OPERATIONS_SIZE_PER_BLOCK, THREAD_COUNT};
 use massa_time::MassaTime;
 use serde::Deserialize;
 

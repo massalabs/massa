@@ -19,7 +19,7 @@ use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::Set;
+use massa_models::prehash::PreHashSet;
 use massa_models::{Address, Block, BlockId, EndorsementId, OperationId, Slot};
 use massa_network_exports::NetworkCommandSender;
 use massa_signature::KeyPair;
@@ -117,7 +117,7 @@ impl Endpoints for API<Private> {
         Box::pin(closure())
     }
 
-    fn get_staking_addresses(&self) -> BoxFuture<Result<Set<Address>, ApiError>> {
+    fn get_staking_addresses(&self) -> BoxFuture<Result<PreHashSet<Address>, ApiError>> {
         let node_wallet = self.0.node_wallet.clone();
         let closure = async move || {
             Ok(node_wallet

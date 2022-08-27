@@ -325,9 +325,9 @@ impl From<&ConsensusSettings> for ConsensusConfig {
         #[cfg(feature = "testing")]
         /// If the feature `testing` is activated we force the unit
         /// test values to be used for a default initialization.
-        use massa_models::constants::default_testing::*;
+        use massa_models::config::default_testing::*;
         #[cfg(not(feature = "testing"))]
-        use massa_models::constants::*;
+        use massa_models::config::*;
         ConsensusConfig {
             #[cfg(feature = "testing")]
             temp_files: TempFiles::default(), // No need to clone
@@ -377,9 +377,9 @@ impl From<ConsensusSettings> for ConsensusConfig {
         #[cfg(feature = "testing")]
         /// If the feature `testing` is activated we force the unit
         /// test values to be used for a default initialization.
-        use massa_models::constants::default_testing::*;
+        use massa_models::config::default_testing::*;
         #[cfg(not(feature = "testing"))]
-        use massa_models::constants::*;
+        use massa_models::config::*;
         ConsensusConfig {
             #[cfg(feature = "testing")]
             temp_files: Default::default(),
@@ -435,7 +435,7 @@ impl Default for ConsensusSettings {
     fn default() -> Self {
         /// If the feature `testing` is activated we force the unit
         /// test values to be used for a default initialization.
-        use massa_models::constants::default_testing::*;
+        use massa_models::config::default_testing::*;
         Self {
             staking_keys_path: Default::default(),
             max_discarded_blocks: MAX_DISCARDED_BLOCKS,
@@ -517,7 +517,7 @@ impl From<&std::path::Path> for ConsensusConfig {
 ///
 impl Default for ConsensusConfig {
     fn default() -> Self {
-        use massa_models::constants::default_testing::*;
+        use massa_models::config::default_testing::*;
         let tempdir = tempfile::tempdir().expect("cannot create temp dir for the ledger path");
         let path_buf = tempdir.path().to_path_buf();
         Self {

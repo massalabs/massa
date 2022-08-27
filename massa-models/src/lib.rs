@@ -9,34 +9,6 @@
 
 extern crate lazy_static;
 
-pub use address::{Address, AddressDeserializer};
-pub use amount::{Amount, AmountDeserializer, AmountSerializer};
-pub use block::{
-    Block, BlockDeserializer, BlockHeader, BlockHeaderDeserializer, BlockHeaderSerializer, BlockId,
-    BlockSerializer, WrappedBlock, WrappedHeader,
-};
-pub use composite::{
-    OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
-    StakersCycleProductionStats,
-};
-pub use endorsement::{
-    Endorsement, EndorsementDeserializer, EndorsementId, EndorsementSerializer, WrappedEndorsement,
-};
-pub use error::ModelsError;
-pub use operation::{
-    Operation, OperationDeserializer, OperationId, OperationIdDeserializer,
-    OperationIdsDeserializer, OperationIdsSerializer, OperationPrefixId,
-    OperationPrefixIdDeserializer, OperationPrefixIds, OperationPrefixIdsDeserializer,
-    OperationPrefixIdsSerializer, OperationSerializer, OperationType, OperationTypeDeserializer,
-    OperationTypeSerializer, OperationsDeserializer, OperationsSerializer, WrappedOperation,
-};
-pub use serialization::{
-    array_from_slice, u8_from_slice, BitVecDeserializer, BitVecSerializer, DeserializeMinBEInt,
-    IpAddrDeserializer, IpAddrSerializer, SerializeMinBEInt, StringDeserializer, StringSerializer,
-    VecU8Deserializer, VecU8Serializer,
-};
-pub use slot::{Slot, SlotDeserializer, SlotSerializer};
-pub use version::{Version, VersionDeserializer, VersionSerializer};
 /// active blocks related structures
 pub mod active_block;
 /// address related structures
@@ -45,12 +17,16 @@ pub mod address;
 pub mod amount;
 /// structure use by the API
 pub mod api;
-mod block;
+/// block-related sturctures
+pub mod block;
 /// clique
 pub mod clique;
 /// various structures
 pub mod composite;
-mod endorsement;
+/// node config
+pub mod config;
+/// endorsements
+pub mod endorsement;
 /// models error
 pub mod error;
 /// execution related structures
@@ -59,7 +35,6 @@ pub mod execution;
 pub mod ledger_models;
 /// node related structure
 pub mod node;
-mod node_configuration;
 /// operations
 pub mod operation;
 /// smart contract output events
@@ -68,21 +43,18 @@ pub mod output_event;
 pub mod prehash;
 /// rolls
 pub mod rolls;
-mod serialization;
+/// serialization
+pub mod serialization;
 /// slots
 pub mod slot;
 /// various statistics
 pub mod stats;
 /// management of the relation between time and slots
 pub mod timeslots;
-mod version;
+/// versions
+pub mod version;
 /// trait for signed structure
 pub mod wrapped;
-pub use node_configuration::{CompactConfig, THREAD_COUNT};
-/// Expose constants
-pub mod constants {
-    pub use crate::node_configuration::*;
-}
 
 /// Test utils
 #[cfg(feature = "testing")]

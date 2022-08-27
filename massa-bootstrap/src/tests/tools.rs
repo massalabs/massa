@@ -13,7 +13,7 @@ use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
-use massa_models::constants::default_testing::{
+use massa_models::config::default_testing::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH,
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT,
@@ -21,7 +21,7 @@ use massa_models::constants::default_testing::{
     MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK,
     MAX_PARAMETERS_SIZE, THREAD_COUNT,
 };
-use massa_models::prehash::Map;
+use massa_models::prehash::PreHashMap;
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
     Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, Endorsement, Slot,
@@ -77,12 +77,12 @@ fn get_random_pos_cycles_info(
     r_limit: u64,
 ) -> (
     BTreeMap<Address, u64>,
-    Map<Address, ProductionStats>,
+    PreHashMap<Address, ProductionStats>,
     BitVec<u8>,
 ) {
     let mut rng = rand::thread_rng();
     let mut roll_counts = BTreeMap::default();
-    let mut production_stats = Map::default();
+    let mut production_stats = PreHashMap::default();
     let mut rng_seed: BitVec<u8> = BitVec::default();
 
     for i in 0u64..(r_limit / 2) {
@@ -104,7 +104,7 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
     let mut deferred_credits = DeferredCredits::default();
 
     for i in 0u64..r_limit {
-        let mut credits = Map::default();
+        let mut credits = PreHashMap::default();
         for j in 0u64..(r_limit / 2) {
             credits.insert(get_random_address(), Amount::from_raw(j));
         }

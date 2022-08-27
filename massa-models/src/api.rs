@@ -1,13 +1,14 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::address::ExecutionAddressCycleInfo;
+use crate::endorsement::{EndorsementId, WrappedEndorsement};
 use crate::ledger_models::LedgerData;
 use crate::node::NodeId;
+use crate::operation::{OperationId, WrappedOperation};
 use crate::stats::{ConsensusStats, ExecutionStats, NetworkStats};
-use crate::WrappedEndorsement;
-use crate::WrappedOperation;
 use crate::{
-    Address, Amount, Block, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
+    address::Address, amount::Amount, block::Block, block::BlockId, config::CompactConfig,
+    slot::Slot, version::Version,
 };
 use massa_signature::{PublicKey, Signature};
 use massa_time::MassaTime;

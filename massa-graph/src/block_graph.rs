@@ -14,7 +14,7 @@ use massa_models::{
     WrappedBlock,
 };
 use massa_models::{
-    prehash::{BuildMap, Map, Set},
+    prehash::{BuildHashMapper, PreHashMap, PreHashSet},
     WrappedHeader,
 };
 use massa_models::{
@@ -74,7 +74,7 @@ enum BlockStatus {
         /// Given header/block
         header_or_block: HeaderOrBlock,
         /// includes self if it's only a header
-        unsatisfied_dependencies: Set<BlockId>,
+        unsatisfied_dependencies: PreHashSet<BlockId>,
         /// Used to limit and sort the number of blocks/headers waiting for dependencies
         sequence_number: u64,
     },
@@ -125,7 +125,7 @@ pub struct ExportCompiledBlock {
     /// set contains the headers' hashes
     /// of blocks referencing exported block as a parent,
     /// in thread i.
-    pub children: Vec<Set<BlockId>>,
+    pub children: Vec<PreHashSet<BlockId>>,
     /// Active or final
     pub is_final: bool,
 }
@@ -148,14 +148,8 @@ impl<'a> BlockGraphExport {
     ) -> Result<Self> {
         let mut export = BlockGraphExport {
             genesis_blocks: block_graph.genesis_hashes.clone(),
-            active_blocks: Map::with_capacity_and_hasher(
-                block_graph.block_statuses.len(),
-                BuildMap::default(),
-            ),
-            discarded_blocks: Map::with_capacity_and_hasher(
-                block_graph.block_statuses.len(),
-                BuildMap::default(),
-            ),
+            active_blocks: PreHashMap::with_capacity(block_graph.block_statuses.len()),
+            discarded_blocks: PreHashMap::with_capacity(block_graph.block_statuses.len()),
             best_parents: block_graph.best_parents.clone(),
             latest_final_blocks_periods: block_graph.latest_final_blocks_periods.clone(),
             gi_head: block_graph.gi_head.clone(),
@@ -208,7 +202,9 @@ impl<'a> BlockGraphExport {
                                 children: a_block
                                     .children
                                     .iter()
-                                    .map(|thread| thread.keys().copied().collect::<Set<BlockId>>())
+                                    .map(|thread| {
+                                        thread.keys().copied().collect::<PreHashSet<BlockId>>()
+                                    })
                                     .collect(),
                                 is_final: a_block.is_final,
                             },
@@ -230,15 +226,15 @@ pub struct BlockGraphExport {
     /// Genesis blocks.
     pub genesis_blocks: Vec<BlockId>,
     /// Map of active blocks, were blocks are in their exported version.
-    pub active_blocks: Map<BlockId, ExportCompiledBlock>,
+    pub active_blocks: PreHashMap<BlockId, ExportCompiledBlock>,
     /// Finite cache of discarded blocks, in exported version (slot, creator_address, parents).
-    pub discarded_blocks: Map<BlockId, (DiscardReason, (Slot, Address, Vec<BlockId>))>,
+    pub discarded_blocks: PreHashMap<BlockId, (DiscardReason, (Slot, Address, Vec<BlockId>))>,
     /// Best parents hashes in each thread.
     pub best_parents: Vec<(BlockId, u64)>,
     /// Latest final period and block hash in each thread.
     pub latest_final_blocks_periods: Vec<(BlockId, u64)>,
     /// Head of the incompatibility graph.
-    pub gi_head: Map<BlockId, Set<BlockId>>,
+    pub gi_head: PreHashMap<BlockId, PreHashSet<BlockId>>,
     /// List of maximal cliques of compatible blocks.
     pub max_cliques: Vec<Clique>,
 }
@@ -252,34 +248,34 @@ pub struct BlockGraph {
     /// Used to limit the number of waiting and discarded blocks
     sequence_counter: u64,
     /// Every block we know about
-    block_statuses: Map<BlockId, BlockStatus>,
+    block_statuses: PreHashMap<BlockId, BlockStatus>,
     /// Ids of incoming blocks/headers
-    incoming_index: Set<BlockId>,
+    incoming_index: PreHashSet<BlockId>,
     /// ids of waiting for slot blocks/headers
-    waiting_for_slot_index: Set<BlockId>,
+    waiting_for_slot_index: PreHashSet<BlockId>,
     /// ids of waiting for dependencies blocks/headers
-    waiting_for_dependencies_index: Set<BlockId>,
+    waiting_for_dependencies_index: PreHashSet<BlockId>,
     /// ids of active blocks
-    active_index: Set<BlockId>,
+    active_index: PreHashSet<BlockId>,
     /// ids of discarded blocks
-    discarded_index: Set<BlockId>,
+    discarded_index: PreHashSet<BlockId>,
     /// One (block id, period) per thread
     latest_final_blocks_periods: Vec<(BlockId, u64)>,
     /// One `(block id, period)` per thread TODO not sure I understand the difference with `latest_final_blocks_periods`
     best_parents: Vec<(BlockId, u64)>,
     /// Incompatibility graph: maps a block id to the block ids it is incompatible with
     /// One entry per Active Block
-    gi_head: Map<BlockId, Set<BlockId>>,
+    gi_head: PreHashMap<BlockId, PreHashSet<BlockId>>,
     /// All the cliques
     max_cliques: Vec<Clique>,
     /// Blocks that need to be propagated
-    to_propagate: Map<BlockId, Storage>,
+    to_propagate: PreHashMap<BlockId, Storage>,
     /// List of block ids we think are attack attempts
     attack_attempts: Vec<BlockId>,
     /// Newly final blocks
-    new_final_blocks: Set<BlockId>,
+    new_final_blocks: PreHashSet<BlockId>,
     /// Newly stale block mapped to creator and slot
-    new_stale_blocks: Map<BlockId, (Address, Slot)>,
+    new_stale_blocks: PreHashMap<BlockId, (Address, Slot)>,
     /// Shared storage,
     storage: Storage,
     /// Selector controller
@@ -294,7 +290,7 @@ enum HeaderCheckOutcome {
         /// one (parent block id, parent's period) per thread
         parents_hash_period: Vec<(BlockId, u64)>,
         /// blocks that header is incompatible with
-        incompatibilities: Set<BlockId>,
+        incompatibilities: PreHashSet<BlockId>,
         /// number of incompatibilities that are inherited from the parents
         inherited_incompatibilities_count: usize,
         /// fitness
@@ -305,7 +301,7 @@ enum HeaderCheckOutcome {
     /// it must wait for its slot to be fully processed
     WaitForSlot,
     /// it must wait for these block ids to be fully processed
-    WaitForDependencies(Set<BlockId>),
+    WaitForDependencies(PreHashSet<BlockId>),
 }
 
 /// Possible outcomes of endorsements check
@@ -369,7 +365,7 @@ impl BlockGraph {
     ) -> Result<Self> {
         // load genesis blocks
 
-        let mut block_statuses = Map::default();
+        let mut block_statuses = PreHashMap::default();
         let mut genesis_block_ids = Vec::with_capacity(cfg.thread_count as usize);
         for thread in 0u8..cfg.thread_count {
             let (block_id, block) = create_genesis_block(&cfg, thread).map_err(|err| {
@@ -384,7 +380,7 @@ impl BlockGraph {
                     a_block: Box::new(ActiveBlock {
                         creator_address: block.creator_address,
                         parents: Vec::new(),
-                        children: vec![Map::default(); cfg.thread_count as usize],
+                        children: vec![PreHashMap::default(); cfg.thread_count as usize],
                         descendants: Default::default(),
                         is_final: true,
                         block_id,
@@ -429,7 +425,7 @@ impl BlockGraph {
                 latest_final_blocks_periods,
                 gi_head: Default::default(),
                 max_cliques: vec![Clique {
-                    block_ids: Set::<BlockId>::default(),
+                    block_ids: PreHashSet::<BlockId>::default(),
                     fitness: 0,
                     is_blockclique: true,
                 }],
@@ -477,7 +473,7 @@ impl BlockGraph {
             }
 
             // list active block parents
-            let active_blocks_map: Map<BlockId, (Slot, Vec<BlockId>)> = res_graph
+            let active_blocks_map: PreHashMap<BlockId, (Slot, Vec<BlockId>)> = res_graph
                 .block_statuses
                 .iter()
                 .filter_map(|(h, s)| {
@@ -501,7 +497,7 @@ impl BlockGraph {
 
                 // deduce descendants
                 let mut ancestors: VecDeque<BlockId> = b_parents.into_iter().collect();
-                let mut visited: Set<BlockId> = Default::default();
+                let mut visited: PreHashSet<BlockId> = Default::default();
                 while let Some(ancestor_h) = ancestors.pop_back() {
                     if !visited.insert(ancestor_h) {
                         continue;
@@ -530,9 +526,9 @@ impl BlockGraph {
                 latest_final_blocks_periods: genesis_block_ids.iter().map(|h| (*h, 0)).collect(),
                 best_parents: genesis_block_ids.iter().map(|v| (*v, 0)).collect(),
                 genesis_hashes: genesis_block_ids,
-                gi_head: Map::default(),
+                gi_head: PreHashMap::default(),
                 max_cliques: vec![Clique {
-                    block_ids: Set::<BlockId>::default(),
+                    block_ids: PreHashSet::<BlockId>::default(),
                     fitness: 0,
                     is_blockclique: true,
                 }],
@@ -548,7 +544,7 @@ impl BlockGraph {
 
     /// export full graph in a bootstrap compatible version
     pub fn export_bootstrap_graph(&self) -> Result<BootstrapableGraph> {
-        let mut required_final_blocks: Set<_> = self.list_required_active_blocks()?;
+        let mut required_final_blocks: PreHashSet<_> = self.list_required_active_blocks()?;
         required_final_blocks.retain(|b_id| {
             if let Some(BlockStatus::Active { a_block, .. }) = self.block_statuses.get(b_id) {
                 if a_block.is_final {
@@ -590,7 +586,7 @@ impl BlockGraph {
     }
 
     /// Returns the list of block IDs created by a given address, and their finality statuses
-    pub fn get_block_ids_by_creator(&self, address: &Address) -> Map<BlockId, Status> {
+    pub fn get_block_ids_by_creator(&self, address: &Address) -> PreHashMap<BlockId, Status> {
         // iterate on active (final and non-final) blocks
         self.active_index
             .iter()
@@ -876,7 +872,7 @@ impl BlockGraph {
                 match self.check_header(&block_id, &header, current_slot)? {
                     HeaderCheckOutcome::Proceed { .. } => {
                         // set as waiting dependencies
-                        let mut dependencies = Set::<BlockId>::default();
+                        let mut dependencies = PreHashSet::<BlockId>::default();
                         dependencies.insert(block_id); // add self as unsatisfied
                         self.block_statuses.insert(
                             block_id,
@@ -1199,7 +1195,7 @@ impl BlockGraph {
     /// # Argument
     /// * `block_id`: block ID
     fn get_full_active_block(
-        block_statuses: &Map<BlockId, BlockStatus>,
+        block_statuses: &PreHashMap<BlockId, BlockStatus>,
         block_id: BlockId,
     ) -> Option<(&ActiveBlock, &Storage)> {
         match block_statuses.get(&block_id) {
@@ -1212,9 +1208,9 @@ impl BlockGraph {
     ///
     /// # Argument
     /// * hash : hash of the given block
-    fn get_active_block_and_descendants(&self, block_id: &BlockId) -> Result<Set<BlockId>> {
+    fn get_active_block_and_descendants(&self, block_id: &BlockId) -> Result<PreHashSet<BlockId>> {
         let mut to_visit = vec![*block_id];
-        let mut result = Set::<BlockId>::default();
+        let mut result = PreHashSet::<BlockId>::default();
         while let Some(visit_h) = to_visit.pop() {
             if !result.insert(visit_h) {
                 continue; // already visited
@@ -1257,8 +1253,8 @@ impl BlockGraph {
             "block_id": block_id
         });
         let mut parents: Vec<(BlockId, u64)> = Vec::with_capacity(self.cfg.thread_count as usize);
-        let mut incomp = Set::<BlockId>::default();
-        let mut missing_deps = Set::<BlockId>::default();
+        let mut incomp = PreHashSet::<BlockId>::default();
+        let mut missing_deps = PreHashSet::<BlockId>::default();
         let creator_addr = header.creator_address;
 
         // check that is older than the latest final block in that thread
@@ -1304,7 +1300,7 @@ impl BlockGraph {
         // and if someone double staked, they will be denounced
 
         // list parents and ensure they are present
-        let parent_set: Set<BlockId> = header.content.parents.iter().copied().collect();
+        let parent_set: PreHashSet<BlockId> = header.content.parents.iter().copied().collect();
         for parent_thread in 0u8..self.cfg.thread_count {
             let parent_hash = header.content.parents[parent_thread as usize];
             match self.block_statuses.get(&parent_hash) {
@@ -1597,8 +1593,8 @@ impl BlockGraph {
     }
 
     /// Computes max cliques of compatible blocks
-    pub fn compute_max_cliques(&self) -> Vec<Set<BlockId>> {
-        let mut max_cliques: Vec<Set<BlockId>> = Vec::new();
+    pub fn compute_max_cliques(&self) -> Vec<PreHashSet<BlockId>> {
+        let mut max_cliques: Vec<PreHashSet<BlockId>> = Vec::new();
 
         // algorithm adapted from IK_GPX as summarized in:
         //   Cazals et al., "A note on the problem of reporting maximal cliques"
@@ -1606,10 +1602,14 @@ impl BlockGraph {
         //   https://doi.org/10.1016/j.tcs.2008.05.010
 
         // stack: r, p, x
-        let mut stack: Vec<(Set<BlockId>, Set<BlockId>, Set<BlockId>)> = vec![(
-            Set::<BlockId>::default(),
+        let mut stack: Vec<(
+            PreHashSet<BlockId>,
+            PreHashSet<BlockId>,
+            PreHashSet<BlockId>,
+        )> = vec![(
+            PreHashSet::<BlockId>::default(),
             self.gi_head.keys().cloned().collect(),
-            Set::<BlockId>::default(),
+            PreHashSet::<BlockId>::default(),
         )];
         while let Some((r, mut p, mut x)) = stack.pop() {
             if p.is_empty() && x.is_empty() {
@@ -1627,19 +1627,19 @@ impl BlockGraph {
                 .unwrap(); // p was checked to be non-empty before
 
             // iterate over u_set = (p /\ Neighbors(u_p, GI))
-            let u_set: Set<BlockId> =
+            let u_set: PreHashSet<BlockId> =
                 &p & &(&self.gi_head[&u_p] | &vec![u_p].into_iter().collect());
             for u_i in u_set.into_iter() {
                 p.remove(&u_i);
-                let u_i_set: Set<BlockId> = vec![u_i].into_iter().collect();
-                let comp_n_u_i: Set<BlockId> = &self.gi_head[&u_i] | &u_i_set;
+                let u_i_set: PreHashSet<BlockId> = vec![u_i].into_iter().collect();
+                let comp_n_u_i: PreHashSet<BlockId> = &self.gi_head[&u_i] | &u_i_set;
                 stack.push((&r | &u_i_set, &p - &comp_n_u_i, &x - &comp_n_u_i));
                 x.insert(u_i);
             }
         }
         if max_cliques.is_empty() {
             // make sure at least one clique remains
-            max_cliques = vec![Set::<BlockId>::default()];
+            max_cliques = vec![PreHashSet::<BlockId>::default()];
         }
         max_cliques
     }
@@ -1651,7 +1651,7 @@ impl BlockGraph {
         parents_hash_period: Vec<(BlockId, u64)>,
         add_block_creator: PublicKey,
         add_block_slot: Slot,
-        incomp: Set<BlockId>,
+        incomp: PreHashSet<BlockId>,
         inherited_incomp_count: usize,
         fitness: u64,
         mut storage: Storage,
@@ -1671,7 +1671,7 @@ impl BlockGraph {
                 a_block: Box::new(ActiveBlock {
                     creator_address: Address::from_public_key(&add_block_creator),
                     parents: parents_hash_period.clone(),
-                    descendants: Set::<BlockId>::default(),
+                    descendants: PreHashSet::<BlockId>::default(),
                     block_id: add_block_id,
                     children: vec![Default::default(); self.cfg.thread_count as usize],
                     is_final: false,
@@ -1703,7 +1703,7 @@ impl BlockGraph {
         {
             let mut ancestors: VecDeque<BlockId> =
                 parents_hash_period.iter().map(|(h, _)| *h).collect();
-            let mut visited = Set::<BlockId>::default();
+            let mut visited = PreHashSet::<BlockId>::default();
             while let Some(ancestor_h) = ancestors.pop_back() {
                 if !visited.insert(ancestor_h) {
                     continue;
@@ -1858,8 +1858,8 @@ impl BlockGraph {
             let mut indices: Vec<usize> = (0..self.max_cliques.len()).collect();
             indices
                 .sort_unstable_by_key(|&i| std::cmp::Reverse(self.max_cliques[i].block_ids.len()));
-            let mut high_set = Set::<BlockId>::default();
-            let mut low_set = Set::<BlockId>::default();
+            let mut high_set = PreHashSet::<BlockId>::default();
+            let mut low_set = PreHashSet::<BlockId>::default();
             for clique_i in indices.into_iter() {
                 if self.max_cliques[clique_i].fitness >= fitness_threshold {
                     high_set.extend(&self.max_cliques[clique_i].block_ids);
@@ -1906,7 +1906,7 @@ impl BlockGraph {
                 if self.max_cliques.is_empty() {
                     // make sure at least one clique remains
                     self.max_cliques = vec![Clique {
-                        block_ids: Set::<BlockId>::default(),
+                        block_ids: PreHashSet::<BlockId>::default(),
                         fitness: 0,
                         is_blockclique: true,
                     }];
@@ -1976,7 +1976,7 @@ impl BlockGraph {
             indices.retain(|&i| self.max_cliques[i].fitness > self.cfg.delta_f0);
             indices.sort_unstable_by_key(|&i| std::cmp::Reverse(self.max_cliques[i].fitness));
 
-            let mut final_blocks = Set::<BlockId>::default();
+            let mut final_blocks = PreHashSet::<BlockId>::default();
             for clique_i in indices.into_iter() {
                 massa_trace!(
                     "consensus.block_graph.add_block_to_graph.list_final_blocks.loop",
@@ -2058,7 +2058,7 @@ impl BlockGraph {
                 if self.max_cliques.is_empty() {
                     // make sure at least one clique remains
                     self.max_cliques = vec![Clique {
-                        block_ids: Set::<BlockId>::default(),
+                        block_ids: PreHashSet::<BlockId>::default(),
                         fitness: 0,
                         is_blockclique: true,
                     }];
@@ -2081,10 +2081,10 @@ impl BlockGraph {
         Ok(())
     }
 
-    fn list_required_active_blocks(&self) -> Result<Set<BlockId>> {
+    fn list_required_active_blocks(&self) -> Result<PreHashSet<BlockId>> {
         // list all active blocks
-        let mut retain_active: Set<BlockId> =
-            Set::<BlockId>::with_capacity_and_hasher(self.active_index.len(), BuildMap::default());
+        let mut retain_active: PreHashSet<BlockId> =
+            PreHashSet::<BlockId>::with_capacity(self.active_index.len());
 
         let latest_final_blocks: Vec<BlockId> = self
             .latest_final_blocks_periods
@@ -2203,7 +2203,7 @@ impl BlockGraph {
     }
 
     /// prune active blocks and return final blocks, return discarded final blocks
-    fn prune_active(&mut self) -> Result<Map<BlockId, ActiveBlock>> {
+    fn prune_active(&mut self) -> Result<PreHashMap<BlockId, ActiveBlock>> {
         // list required active blocks
         let mut retain_active = self.list_required_active_blocks()?;
 
@@ -2226,7 +2226,7 @@ impl BlockGraph {
         }
 
         // remove unused final active blocks
-        let mut discarded_finals: Map<BlockId, ActiveBlock> = Map::default();
+        let mut discarded_finals: PreHashMap<BlockId, ActiveBlock> = PreHashMap::default();
         let to_remove: Vec<BlockId> = self
             .active_index
             .difference(&retain_active)
@@ -2295,7 +2295,7 @@ impl BlockGraph {
 
     fn promote_dep_tree(&mut self, hash: BlockId) -> Result<()> {
         let mut to_explore = vec![hash];
-        let mut to_promote: Map<BlockId, (Slot, u64)> = Map::default();
+        let mut to_promote: PreHashMap<BlockId, (Slot, u64)> = PreHashMap::default();
         while let Some(h) = to_explore.pop() {
             if to_promote.contains_key(&h) {
                 continue;
@@ -2331,8 +2331,8 @@ impl BlockGraph {
     }
 
     fn prune_waiting_for_dependencies(&mut self) -> Result<()> {
-        let mut to_discard: Map<BlockId, Option<DiscardReason>> = Map::default();
-        let mut to_keep: Map<BlockId, (u64, Slot)> = Map::default();
+        let mut to_discard: PreHashMap<BlockId, Option<DiscardReason>> = PreHashMap::default();
+        let mut to_keep: PreHashMap<BlockId, (u64, Slot)> = PreHashMap::default();
 
         // list items that are older than the latest final blocks in their threads or have deps that are discarded
         {
@@ -2548,7 +2548,7 @@ impl BlockGraph {
     }
 
     /// prune and return final blocks, return discarded final blocks
-    pub fn prune(&mut self) -> Result<Map<BlockId, ActiveBlock>> {
+    pub fn prune(&mut self) -> Result<PreHashMap<BlockId, ActiveBlock>> {
         let before = self.max_cliques.len();
         // Step 1: discard final blocks that are not useful to the graph anymore and return them
         let discarded_finals = self.prune_active()?;
@@ -2574,8 +2574,8 @@ impl BlockGraph {
     }
 
     /// get the current block wish list, including the operations hash.
-    pub fn get_block_wishlist(&self) -> Result<Set<BlockId>> {
-        let mut wishlist = Set::<BlockId>::default();
+    pub fn get_block_wishlist(&self) -> Result<PreHashSet<BlockId>> {
+        let mut wishlist = PreHashSet::<BlockId>::default();
         for block_id in self.waiting_for_dependencies_index.iter() {
             if let Some(BlockStatus::WaitingForDependencies {
                 unsatisfied_dependencies,
@@ -2605,21 +2605,24 @@ impl BlockGraph {
     }
 
     /// get the clique of higher fitness
-    pub fn get_blockclique(&self) -> Set<BlockId> {
+    pub fn get_blockclique(&self) -> PreHashSet<BlockId> {
         self.max_cliques
             .iter()
             .enumerate()
             .find(|(_, c)| c.is_blockclique)
-            .map_or_else(Set::<BlockId>::default, |(_, v)| v.block_ids.clone())
+            .map_or_else(PreHashSet::<BlockId>::default, |(_, v)| v.block_ids.clone())
     }
 
     /// get the blockclique (or final) block ID at a given slot, if any
     pub fn get_blockclique_block_at_slot(&self, slot: &Slot) -> Option<BlockId> {
         // List all blocks at this slot.
         // The list should be small: make a copy of it to avoid holding the storage lock.
-        let blocks_at_slot = match self.storage.read_blocks().get_blocks_by_slot(slot).cloned() {
-            Some(v) => v,
-            None => return None,
+        let blocks_at_slot = {
+            let storage_read = self.storage.read_blocks();
+            match storage_read.get_blocks_by_slot(slot) {
+                Some(v) => v.clone(),
+                None => return None,
+            };
         };
 
         // search for the block in the blockclique
@@ -2662,7 +2665,7 @@ impl BlockGraph {
 
     /// Get the block id's to be propagated.
     /// Must be called by the consensus worker within `block_db_changed`.
-    pub fn get_blocks_to_propagate(&mut self) -> Map<BlockId, Storage> {
+    pub fn get_blocks_to_propagate(&mut self) -> PreHashMap<BlockId, Storage> {
         mem::take(&mut self.to_propagate)
     }
 
@@ -2674,13 +2677,13 @@ impl BlockGraph {
 
     /// Get the ids of blocks that became final.
     /// Must be called by the consensus worker within `block_db_changed`.
-    pub fn get_new_final_blocks(&mut self) -> Set<BlockId> {
+    pub fn get_new_final_blocks(&mut self) -> PreHashSet<BlockId> {
         mem::take(&mut self.new_final_blocks)
     }
 
     /// Get the ids of blocks that became stale.
     /// Must be called by the consensus worker within `block_db_changed`.
-    pub fn get_new_stale_blocks(&mut self) -> Map<BlockId, (Address, Slot)> {
+    pub fn get_new_stale_blocks(&mut self) -> PreHashMap<BlockId, (Address, Slot)> {
         mem::take(&mut self.new_stale_blocks)
     }
 }

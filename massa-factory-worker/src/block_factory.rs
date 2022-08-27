@@ -3,7 +3,7 @@
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_hash::Hash;
 use massa_models::{
-    prehash::Set,
+    prehash::PreHashSet,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
     wrapped::WrappedContent,
     Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, Slot, WrappedEndorsement,
@@ -155,7 +155,7 @@ impl BlockFactoryWorker {
                 &parents
                     .iter()
                     .map(|(b_id, _)| *b_id)
-                    .collect::<Set<BlockId>>(),
+                    .collect::<PreHashSet<BlockId>>(),
             );
             if claimed_parents.len() != parents.len() {
                 warn!("block factory could claim parents for slot {}", slot);

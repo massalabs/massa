@@ -22,7 +22,7 @@ use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::Set;
+use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
 use massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
 use massa_models::{Amount, Slot};
@@ -1275,7 +1275,11 @@ impl ExecutionState {
     }
 
     /// List which operations inside the provided list were not executed
-    pub fn unexecuted_ops_among(&self, ops: &Set<OperationId>, thread: u8) -> Set<OperationId> {
+    pub fn unexecuted_ops_among(
+        &self,
+        ops: &PreHashSet<OperationId>,
+        thread: u8,
+    ) -> PreHashSet<OperationId> {
         let mut ops = ops.clone();
 
         if ops.is_empty() {

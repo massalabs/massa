@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use enum_map::EnumMap;
 use massa_consensus_exports::ConsensusSettings;
-use massa_models::constants::build_massa_settings;
+use massa_models::config::build_massa_settings;
 use massa_protocol_exports::ProtocolSettings;
 use massa_signature::PublicKey;
 use massa_time::MassaTime;

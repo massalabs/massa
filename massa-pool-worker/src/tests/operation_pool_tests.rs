@@ -22,7 +22,7 @@ use super::tools::{create_some_operations, operation_pool_test};
 use crate::operation_pool::OperationPool;
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_models::{
-    prehash::Map, wrapped::WrappedContent, Address, Amount, Operation, OperationSerializer,
+    prehash::PreHashMap, wrapped::WrappedContent, Address, Amount, Operation, OperationSerializer,
     OperationType, Slot, WrappedOperation,
 };
 use massa_pool_exports::PoolConfig;
@@ -89,7 +89,7 @@ fn test_pool() {
         let op = get_transaction(expire_period, fee);
         let id = op.verify_integrity().unwrap();
 
-        let mut ops = Map::default();
+        let mut ops = PreHashMap::default();
         ops.insert(id, op.clone());
         let mut storage = Storage::default();
         storage.store_operations(ops.values().cloned().collect());

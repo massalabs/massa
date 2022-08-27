@@ -10,7 +10,7 @@ use crate::{
 };
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_ledger_exports::{LedgerChanges, LedgerController};
-use massa_models::{constants::THREAD_COUNT, Address, Slot};
+use massa_models::{config::THREAD_COUNT, Address, Slot};
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use std::collections::VecDeque;
 

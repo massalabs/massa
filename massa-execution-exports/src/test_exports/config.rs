@@ -9,7 +9,7 @@ use crate::ExecutionConfig;
 /// Default value of `ExecutionConfig` used for tests
 impl Default for ExecutionConfig {
     fn default() -> Self {
-        use massa_models::constants::default_testing::*;
+        use massa_models::config::default_testing::*;
 
         Self {
             readonly_queue_length: READONLY_QUEUE_LENGTH,

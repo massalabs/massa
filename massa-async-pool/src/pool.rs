@@ -9,7 +9,7 @@ use crate::{
     AsyncMessageDeserializer, AsyncMessageSerializer,
 };
 use massa_models::{
-    constants::{
+    config::{
         default::{ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, MAX_DATA_ASYNC_MESSAGE},
         THREAD_COUNT,
     },

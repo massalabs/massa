@@ -6,7 +6,7 @@ use crate::{
     client_binder::BootstrapClientBinder, server_binder::BootstrapServerBinder,
     tests::tools::get_bootstrap_config, BootstrapPeers,
 };
-use massa_models::constants::default_testing::{
+use massa_models::config::default_testing::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH,
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT,

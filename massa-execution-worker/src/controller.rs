@@ -11,7 +11,7 @@ use massa_execution_exports::{
 };
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::Set;
+use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
 use massa_models::{Address, Amount, OperationId};
 use massa_models::{BlockId, Slot};
@@ -175,7 +175,11 @@ impl ExecutionController for ExecutionControllerImpl {
     }
 
     /// List which operations inside the provided list were not executed
-    fn unexecuted_ops_among(&self, ops: &Set<OperationId>, thread: u8) -> Set<OperationId> {
+    fn unexecuted_ops_among(
+        &self,
+        ops: &PreHashSet<OperationId>,
+        thread: u8,
+    ) -> PreHashSet<OperationId> {
         self.execution_state
             .read()
             .unexecuted_ops_among(ops, thread)

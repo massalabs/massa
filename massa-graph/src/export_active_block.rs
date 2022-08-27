@@ -2,7 +2,7 @@ use crate::error::{GraphError, GraphResult as Result};
 use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,
-    prehash::{Map, Set},
+    prehash::{PreHashMap, PreHashSet},
     wrapped::{WrappedDeserializer, WrappedSerializer},
     Block, BlockDeserializer, BlockId, Operation, OperationDeserializer, WrappedBlock,
     WrappedOperation,
@@ -94,7 +94,7 @@ impl ExportActiveBlock {
                 .operations
                 .iter()
                 .cloned()
-                .collect::<Set<_>>()
+                .collect::<PreHashSet<_>>()
         {
             return Err(GraphError::MissingOperation(
                 "operation list mismatch on active block conversion".into(),
@@ -112,7 +112,7 @@ impl ExportActiveBlock {
             creator_address: self.block.creator_address,
             block_id: self.block.id,
             parents: self.parents.clone(),
-            children: vec![Map::default(); thread_count as usize], // will be computed once the full graph is available
+            children: vec![PreHashMap::default(); thread_count as usize], // will be computed once the full graph is available
             descendants: Default::default(), // will be computed once the full graph is available
             is_final: self.is_final,
             slot: self.block.content.header.content.slot,

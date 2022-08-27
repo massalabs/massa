@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::tools::protocol_test;
-use massa_models::prehash::Set;
+use massa_models::prehash::PreHashSet;
 use massa_models::{BlockId, Slot};
 use massa_network_exports::{BlockInfoReply, NetworkCommand};
 use massa_pool_exports::test_exports::MockPoolControllerMessage;
@@ -155,7 +155,7 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
             protocol_command_sender
                 .send_wishlist_delta(
                     vec![block.id].into_iter().collect(),
-                    Set::<BlockId>::default(),
+                    PreHashSet::<BlockId>::default(),
                 )
                 .await
                 .unwrap();
@@ -276,7 +276,7 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
             protocol_command_sender
                 .send_wishlist_delta(
                     vec![expected_hash].into_iter().collect(),
-                    Set::<BlockId>::default(),
+                    PreHashSet::<BlockId>::default(),
                 )
                 .await
                 .expect("Failed to ask for block.");

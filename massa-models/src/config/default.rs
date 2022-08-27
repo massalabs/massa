@@ -15,7 +15,7 @@
 //! (`default_testing.rs`) But as for the current file you shouldn't modify it.
 use std::str::FromStr;
 
-use crate::{Amount, Version};
+use crate::{amount::Amount, version::Version};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
@@ -191,23 +191,8 @@ pub const MAX_DUPLEX_BUFFER_SIZE: usize = 1024;
 // Divers constants
 //
 
-/// address size
-pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 /// Safe to import, amount decimal factor
 pub const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
-/// block id size
-pub const BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
-/// endorsement id size
-pub const ENDORSEMENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
-/// operation id size
-pub const OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
-/// operation id prefix size
-pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;
-/// slot as a key size
-pub const SLOT_KEY_SIZE: usize = 9;
-
-/// Size of the event id hash used in execution module, safe to import
-pub const EVENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]

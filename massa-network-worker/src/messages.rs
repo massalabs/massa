@@ -3,7 +3,7 @@
 use massa_hash::HashDeserializer;
 use massa_models::{
     array_from_slice,
-    constants::HANDSHAKE_RANDOMNESS_SIZE_BYTES,
+    config::HANDSHAKE_RANDOMNESS_SIZE_BYTES,
     operation::OperationPrefixIds,
     operation::{
         OperationIdsDeserializer, OperationIdsSerializer, OperationPrefixIdsDeserializer,
@@ -514,7 +514,7 @@ impl Deserializer<Message> for MessageDeserializer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use massa_models::constants::default_testing::{
+    use massa_models::config::default_testing::{
         ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
         MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
         MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_PARAMETERS_SIZE, THREAD_COUNT,

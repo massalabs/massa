@@ -1,10 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::constants::ENDORSEMENT_ID_SIZE_BYTES;
+use crate::config::ENDORSEMENT_ID_SIZE_BYTES;
 use crate::prehash::PreHashed;
+use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 use crate::wrapped::{Id, Wrapped, WrappedContent};
-use crate::{BlockId, ModelsError, Slot};
-use crate::{SlotDeserializer, SlotSerializer};
+use crate::{block::BlockId, error::ModelsError};
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
@@ -19,8 +19,6 @@ use nom::{
 use serde::{Deserialize, Serialize};
 use std::ops::Bound::{Excluded, Included};
 use std::{fmt::Display, str::FromStr};
-
-const ENDORSEMENT_ID_STRING_PREFIX: &str = "END";
 
 /// endorsement id
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
@@ -40,38 +38,14 @@ impl Id for EndorsementId {
 
 impl std::fmt::Display for EndorsementId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if cfg!(feature = "hash-prefix") {
-            write!(
-                f,
-                "{}-{}",
-                ENDORSEMENT_ID_STRING_PREFIX,
-                self.0.to_bs58_check()
-            )
-        } else {
-            write!(f, "{}", self.0.to_bs58_check())
-        }
+        write!(f, "{}", self.0.to_bs58_check())
     }
 }
 
 impl FromStr for EndorsementId {
     type Err = ModelsError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if cfg!(feature = "hash-prefix") {
-            let v: Vec<_> = s.split('-').collect();
-            if v.len() != 2 {
-                // assume there is no prefix
-                Ok(EndorsementId(Hash::from_str(s)?))
-            } else if v[0] != ENDORSEMENT_ID_STRING_PREFIX {
-                Err(ModelsError::WrongPrefix(
-                    ENDORSEMENT_ID_STRING_PREFIX.to_string(),
-                    v[0].to_string(),
-                ))
-            } else {
-                Ok(EndorsementId(Hash::from_str(v[1])?))
-            }
-        } else {
-            Ok(EndorsementId(Hash::from_str(s)?))
-        }
+        Ok(EndorsementId(Hash::from_str(s)?))
     }
 }
 

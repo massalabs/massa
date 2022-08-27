@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::constants::SLOT_KEY_SIZE;
+use crate::config::SLOT_KEY_SIZE;
 use crate::error::ModelsError;
 use massa_hash::Hash;
 use massa_serialization::{

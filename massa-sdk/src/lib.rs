@@ -16,7 +16,7 @@ use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{Map, Set};
+use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::{Address, BlockId, EndorsementId, OperationId};
 use massa_signature::KeyPair;
 use serde::de::DeserializeOwned;
@@ -112,7 +112,7 @@ impl RpcClient {
     }
 
     /// Return hash-set of staking addresses.
-    pub async fn get_staking_addresses(&self) -> RpcResult<Set<Address>> {
+    pub async fn get_staking_addresses(&self) -> RpcResult<PreHashSet<Address>> {
         self.call_method("get_staking_addresses", "Set<Address>", ())
             .await
     }
@@ -171,7 +171,7 @@ impl RpcClient {
     // Debug (specific information)
 
     /// Returns the active stakers and their roll counts for the current cycle.
-    pub(crate) async fn _get_stakers(&self) -> RpcResult<Map<Address, u64>> {
+    pub(crate) async fn _get_stakers(&self) -> RpcResult<PreHashMap<Address, u64>> {
         self.call_method("get_stakers", "Map<Address, u64>", ())
             .await
     }

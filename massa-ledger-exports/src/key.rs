@@ -1,5 +1,5 @@
 use massa_models::{
-    address::AddressDeserializer, constants::ADDRESS_SIZE_BYTES, Address, VecU8Deserializer,
+    address::AddressDeserializer, address::ADDRESS_SIZE_BYTES, Address, VecU8Deserializer,
     VecU8Serializer,
 };
 use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};

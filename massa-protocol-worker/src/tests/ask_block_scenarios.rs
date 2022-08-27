@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::tools::protocol_test;
-use massa_models::prehash::Set;
+use massa_models::prehash::PreHashSet;
 use massa_models::{BlockId, Slot};
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand};
 use massa_protocol_exports::tests::tools;
@@ -44,7 +44,7 @@ async fn test_without_a_priori() {
             protocol_command_sender
                 .send_wishlist_delta(
                     vec![hash_1].into_iter().collect(),
-                    Set::<BlockId>::default(),
+                    PreHashSet::<BlockId>::default(),
                 )
                 .await
                 .unwrap();
@@ -137,7 +137,7 @@ async fn test_someone_knows_it() {
             protocol_command_sender
                 .send_wishlist_delta(
                     vec![hash_1].into_iter().collect(),
-                    Set::<BlockId>::default(),
+                    PreHashSet::<BlockId>::default(),
                 )
                 .await
                 .unwrap();
@@ -221,7 +221,7 @@ async fn test_dont_want_it_anymore() {
             protocol_command_sender
                 .send_wishlist_delta(
                     vec![hash_1].into_iter().collect(),
-                    Set::<BlockId>::default(),
+                    PreHashSet::<BlockId>::default(),
                 )
                 .await
                 .unwrap();
@@ -232,7 +232,7 @@ async fn test_dont_want_it_anymore() {
             // we don't want it anymore
             protocol_command_sender
                 .send_wishlist_delta(
-                    Set::<BlockId>::default(),
+                    PreHashSet::<BlockId>::default(),
                     vec![hash_1].into_iter().collect(),
                 )
                 .await
@@ -299,7 +299,7 @@ async fn test_no_one_has_it() {
             protocol_command_sender
                 .send_wishlist_delta(
                     vec![hash_1].into_iter().collect(),
-                    Set::<BlockId>::default(),
+                    PreHashSet::<BlockId>::default(),
                 )
                 .await
                 .unwrap();
@@ -385,7 +385,7 @@ async fn test_multiple_blocks_without_a_priori() {
             protocol_command_sender
                 .send_wishlist_delta(
                     vec![hash_1, hash_2].into_iter().collect(),
-                    Set::<BlockId>::default(),
+                    PreHashSet::<BlockId>::default(),
                 )
                 .await
                 .unwrap();

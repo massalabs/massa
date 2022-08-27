@@ -14,7 +14,7 @@ use crate::{
 use enum_map::enum_map;
 use enum_map::EnumMap;
 use massa_hash::Hash;
-use massa_models::constants::default_testing::{
+use massa_models::config::default_testing::{
     ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
     MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
     MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_PARAMETERS_SIZE,

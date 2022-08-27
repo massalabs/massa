@@ -24,7 +24,7 @@
 //!    ..UsedConfig::default()
 //! };
 //! ```
-use crate::{Amount, Version};
+use crate::{amount::Amount, version::Version};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
@@ -53,14 +53,8 @@ lazy_static::lazy_static! {
     pub static ref VERSION: Version = "DEVE.0.0".parse().unwrap();
 }
 
-/// Size of the random bytes array used for the bootstrap, safe to import
-pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
-/// Safe to import
-pub const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
 /// our default ip
 pub const BASE_NETWORK_CONTROLLER_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
-/// block id size
-pub const BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 /// reward for a block
 pub const BLOCK_REWARD: Amount = Amount::from_mantissa_scale(1, 0);
 /// random bootstrap message size
@@ -71,10 +65,6 @@ pub const CHANNEL_SIZE: usize = 256;
 pub const DELTA_F0: u64 = 32;
 /// target endorsement count
 pub const ENDORSEMENT_COUNT: u32 = 9;
-/// endorsement id size
-pub const ENDORSEMENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
-/// event id size
-pub const EVENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 /// random handshake message size
 pub const HANDSHAKE_RANDOMNESS_SIZE_BYTES: usize = 32;
 /// initial seed
@@ -125,10 +115,6 @@ pub const MAX_OPERATIONS_PER_MESSAGE: u32 = 1024;
 pub const MAX_SERIALIZED_OPERATIONS_SIZE_PER_BLOCK: usize = 2 ^ 10;
 /// node send channel size
 pub const NODE_SEND_CHANNEL_SIZE: usize = 1024;
-/// operation id size
-pub const OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
-/// operation id prefix size
-pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;
 /// operation validity periods
 pub const OPERATION_VALIDITY_PERIODS: u64 = 1;
 /// periods per cycle

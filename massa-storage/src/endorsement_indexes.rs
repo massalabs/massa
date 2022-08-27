@@ -1,7 +1,7 @@
 use std::collections::hash_map;
 
 use massa_models::{
-    prehash::{Map, Set},
+    prehash::{PreHashMap, PreHashSet},
     Address, EndorsementId, WrappedEndorsement,
 };
 
@@ -10,9 +10,9 @@ use massa_models::{
 #[derive(Default)]
 pub struct EndorsementIndexes {
     /// Endorsements structure container
-    endorsements: Map<EndorsementId, WrappedEndorsement>,
+    endorsements: PreHashMap<EndorsementId, WrappedEndorsement>,
     /// Structure mapping creators with the created endorsements
-    index_by_creator: Map<Address, Set<EndorsementId>>,
+    index_by_creator: PreHashMap<Address, PreHashSet<EndorsementId>>,
 }
 
 impl EndorsementIndexes {
@@ -64,7 +64,10 @@ impl EndorsementIndexes {
     ///
     /// Returns:
     /// - optional reference to a set of endorsements created by that address
-    pub fn get_endorsements_created_by(&self, address: &Address) -> Option<&Set<EndorsementId>> {
+    pub fn get_endorsements_created_by(
+        &self,
+        address: &Address,
+    ) -> Option<&PreHashSet<EndorsementId>> {
         self.index_by_creator.get(address)
     }
 }

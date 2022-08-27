@@ -23,7 +23,7 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
-use massa_models::constants::default::{
+use massa_models::config::default::{
     ADDRESS_SIZE_BYTES, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT,
     END_TIMESTAMP, GENESIS_KEY, GENESIS_TIMESTAMP, INITIAL_DRAW_SEED,
     LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
@@ -35,7 +35,7 @@ use massa_models::constants::default::{
     MAX_OPERATIONS_PER_BLOCK, MAX_PARAMETERS_SIZE, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
     ROLL_PRICE, T0, THREAD_COUNT, VERSION,
 };
-use massa_models::constants::CHANNEL_SIZE;
+use massa_models::config::CHANNEL_SIZE;
 use massa_models::Address;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;

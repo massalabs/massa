@@ -1,8 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::constants::ADDRESS_SIZE_BYTES;
+use crate::error::ModelsError;
 use crate::prehash::PreHashed;
-use crate::ModelsError;
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -13,6 +12,9 @@ use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 use std::ops::Bound::Included;
 use std::str::FromStr;
+
+/// Size of a serialized address, in bytes
+pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
 /// Derived from a public key
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]

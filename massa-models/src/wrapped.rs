@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::{node_configuration::THREAD_COUNT, Address, ModelsError};
+use crate::{address::Address, error::ModelsError};
 use massa_hash::Hash;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use massa_signature::{
@@ -29,8 +29,6 @@ where
     pub creator_public_key: PublicKey,
     /// the content creator address
     pub creator_address: Address,
-    /// Thread of the operation creator
-    pub thread: u8,
     /// Id
     pub id: U,
     #[serde(skip)]
@@ -69,7 +67,6 @@ where
             signature: keypair.sign(&hash)?,
             creator_public_key: public_key,
             creator_address,
-            thread: creator_address.get_thread(THREAD_COUNT),
             content,
             serialized_data: content_serialized,
             id: U::new(hash),
@@ -125,7 +122,6 @@ where
                 signature,
                 creator_public_key,
                 creator_address,
-                thread: creator_address.get_thread(THREAD_COUNT),
                 serialized_data: content_serialized.to_vec(),
                 id: U::new(Hash::compute_from(&serialized_full_data)),
             },

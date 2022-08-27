@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, path::PathBuf};
 
 use massa_hash::Hash;
-use massa_models::{prehash::Map, Address, Amount, Slot};
+use massa_models::{prehash::PreHashMap, Address, Amount, Slot};
 
 use crate::{
     CycleInfo, PoSChanges, PoSFinalState, PosError, PosResult, ProductionStats, SelectorController,
@@ -262,7 +262,7 @@ impl PoSFinalState {
     }
 
     /// Retrives every deferred credit of the given slot
-    pub fn get_deferred_credits_at(&self, slot: &Slot) -> Map<Address, Amount> {
+    pub fn get_deferred_credits_at(&self, slot: &Slot) -> PreHashMap<Address, Amount> {
         self.deferred_credits
             .0
             .get(slot)
@@ -271,7 +271,10 @@ impl PoSFinalState {
     }
 
     /// Retrives the productions statistics for all addresses on a given cycle
-    pub fn get_all_production_stats(&self, cycle: u64) -> Option<&Map<Address, ProductionStats>> {
+    pub fn get_all_production_stats(
+        &self,
+        cycle: u64,
+    ) -> Option<&PreHashMap<Address, ProductionStats>> {
         self.get_cycle_index(cycle)
             .map(|idx| &self.cycle_history[idx].production_stats)
     }

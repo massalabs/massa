@@ -1,5 +1,5 @@
 use super::*;
-use crate::Amount;
+use crate::amount::Amount;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;

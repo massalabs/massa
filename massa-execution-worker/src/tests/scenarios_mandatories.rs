@@ -11,7 +11,7 @@ use massa_ledger_exports::{LedgerConfig, LedgerError};
 use massa_ledger_worker::FinalLedger;
 use massa_models::{
     api::EventFilter,
-    constants::{FINAL_HISTORY_LENGTH, THREAD_COUNT},
+    config::{FINAL_HISTORY_LENGTH, THREAD_COUNT},
     wrapped::WrappedContent,
     Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, Operation,
     OperationSerializer, OperationType, WrappedBlock, WrappedOperation,

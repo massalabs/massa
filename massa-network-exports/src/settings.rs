@@ -96,7 +96,7 @@ pub mod tests {
     use crate::NetworkConfig;
     use crate::{test_exports::tools::get_temp_keypair_file, PeerType};
     use enum_map::enum_map;
-    use massa_models::constants::default_testing::{
+    use massa_models::config::default_testing::{
         BASE_NETWORK_CONTROLLER_IP, ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH,
         MAX_ASK_BLOCKS_PER_MESSAGE, MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE,
         MAX_FUNCTION_NAME_LENGTH, MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_MESSAGE,

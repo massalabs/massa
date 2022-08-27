@@ -36,7 +36,6 @@ toml_edit = "0.14"
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
-hash-prefix = ["massa_models/hash-prefix", "massa_signature/hash-prefix"]
 instrument = [
     "tokio/tracing",
     "massa_models/instrument",

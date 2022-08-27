@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 /// This file defines testing tools related to the configuration
 use massa_models::{
-    constants::default_testing::{
+    config::default_testing::{
         ADDRESS_SIZE_BYTES, LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_DATASTORE_KEY_LENGTH,
     },
     Address, Amount,

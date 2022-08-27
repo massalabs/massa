@@ -6,8 +6,8 @@ use bitvec::prelude::*;
 use massa_hash::Hash;
 use massa_models::{
     api::IndexedSlot,
-    constants::{POS_MISS_RATE_DEACTIVATION_THRESHOLD, THREAD_COUNT},
-    prehash::Map,
+    config::{POS_MISS_RATE_DEACTIVATION_THRESHOLD, THREAD_COUNT},
+    prehash::PreHashMap,
     Address, AddressDeserializer, Amount, AmountDeserializer, AmountSerializer, BitVecDeserializer,
     BitVecSerializer, ModelsError, Slot, SlotDeserializer, SlotSerializer,
 };
@@ -56,7 +56,7 @@ pub struct PoSFinalState {
 
 #[derive(Debug, Default, Clone)]
 /// Structure containing all the PoS deferred credits information
-pub struct DeferredCredits(pub BTreeMap<Slot, Map<Address, Amount>>);
+pub struct DeferredCredits(pub BTreeMap<Slot, PreHashMap<Address, Amount>>);
 
 impl DeferredCredits {
     /// Extends the current DeferredCredits with another but accumulates the addresses and amounts
@@ -383,7 +383,7 @@ pub struct CycleInfo {
     /// random seed bits of all slots in the cycle so far
     pub rng_seed: BitVec<u8>,
     /// Per-address production statistics
-    pub production_stats: Map<Address, ProductionStats>,
+    pub production_stats: PreHashMap<Address, ProductionStats>,
 }
 
 /// Block production statistic
@@ -424,10 +424,10 @@ pub struct PoSChanges {
     pub seed_bits: BitVec<u8>,
 
     /// new roll counts for addresses (can be 0 to remove the address from the registry)
-    pub roll_changes: Map<Address, u64>,
+    pub roll_changes: PreHashMap<Address, u64>,
 
     /// updated production statistics
-    pub production_stats: Map<Address, ProductionStats>,
+    pub production_stats: PreHashMap<Address, ProductionStats>,
 
     /// set deferred credits indexed by target slot (can be set to 0 to cancel some, in case of slash)
     /// ordered structure to ensure slot iteration order is deterministic
@@ -603,11 +603,11 @@ impl RollChangesDeserializer {
     }
 }
 
-impl Deserializer<Map<Address, u64>> for RollChangesDeserializer {
+impl Deserializer<PreHashMap<Address, u64>> for RollChangesDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Map<Address, u64>, E> {
+    ) -> IResult<&'a [u8], PreHashMap<Address, u64>, E> {
         context(
             "Failed RollChanges deserialization",
             length_count(
@@ -639,11 +639,11 @@ impl ProductionStatsDeserializer {
     }
 }
 
-impl Deserializer<Map<Address, ProductionStats>> for ProductionStatsDeserializer {
+impl Deserializer<PreHashMap<Address, ProductionStats>> for ProductionStatsDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Map<Address, ProductionStats>, E> {
+    ) -> IResult<&'a [u8], PreHashMap<Address, ProductionStats>, E> {
         context(
             "Failed ProductionStats deserialization",
             length_count(
@@ -735,11 +735,11 @@ impl CreditDeserializer {
     }
 }
 
-impl Deserializer<Map<Address, Amount>> for CreditDeserializer {
+impl Deserializer<PreHashMap<Address, Amount>> for CreditDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Map<Address, Amount>, E> {
+    ) -> IResult<&'a [u8], PreHashMap<Address, Amount>, E> {
         context(
             "Failed Credit deserialization",
             length_count(

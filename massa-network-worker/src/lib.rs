@@ -12,7 +12,7 @@ use crate::{
     peer_info_database::PeerInfoDatabase,
 };
 use massa_logging::massa_trace;
-use massa_models::{constants::CHANNEL_SIZE, node::NodeId, Version};
+use massa_models::{config::CHANNEL_SIZE, node::NodeId, Version};
 use massa_network_exports::{
     BootstrapPeers, Establisher, NetworkCommand, NetworkCommandSender, NetworkConfig, NetworkError,
     NetworkEvent, NetworkEventReceiver, NetworkManagementCommand, NetworkManager,

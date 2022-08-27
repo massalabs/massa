@@ -12,7 +12,7 @@ use massa_hash::Hash;
 use massa_models::address::Address;
 use massa_models::composite::PubkeySig;
 use massa_models::operation::OperationSerializer;
-use massa_models::prehash::{Map, Set};
+use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::wrapped::WrappedContent;
 use massa_models::{Operation, WrappedOperation};
 use massa_signature::{KeyPair, PublicKey};
@@ -25,7 +25,7 @@ mod error;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Wallet {
     /// Keypairs and addresses
-    pub keys: Map<Address, KeyPair>,
+    pub keys: PreHashMap<Address, KeyPair>,
     /// Path to the file containing the keypairs (encrypted)
     pub wallet_path: PathBuf,
     /// Password
@@ -38,7 +38,8 @@ impl Wallet {
         if path.is_file() {
             let content = &std::fs::read(&path)?[..];
             let (_version, decrypted_content) = decrypt(&password, content)?;
-            let keys = serde_json::from_slice::<Map<Address, KeyPair>>(&decrypted_content[..])?;
+            let keys =
+                serde_json::from_slice::<PreHashMap<Address, KeyPair>>(&decrypted_content[..])?;
             Ok(Wallet {
                 keys,
                 wallet_path: path,
@@ -46,7 +47,7 @@ impl Wallet {
             })
         } else {
             let wallet = Wallet {
-                keys: Map::default(),
+                keys: PreHashMap::default(),
                 wallet_path: path,
                 password,
             };
@@ -119,7 +120,7 @@ impl Wallet {
     }
 
     /// Get all addresses in the wallet
-    pub fn get_wallet_address_list(&self) -> Set<Address> {
+    pub fn get_wallet_address_list(&self) -> PreHashSet<Address> {
         self.keys.keys().copied().collect()
     }
 
@@ -133,7 +134,7 @@ impl Wallet {
     }
 
     /// Export keys and addresses
-    pub fn get_full_wallet(&self) -> &Map<Address, KeyPair> {
+    pub fn get_full_wallet(&self) -> &PreHashMap<Address, KeyPair> {
         &self.keys
     }
 

@@ -18,7 +18,7 @@ use std::time::Duration;
 use crate::tests::tools::create_some_operations;
 use crate::tests::tools::pool_test;
 use massa_execution_exports::test_exports::MockExecutionControllerMessage as ControllerMsg;
-use massa_models::prehash::Set;
+use massa_models::prehash::PreHashSet;
 use massa_models::Address;
 use massa_models::OperationId;
 use massa_models::Slot;
@@ -102,7 +102,7 @@ fn test_simple_get_operations() {
 /// Launch a default mock for execution controller on call get_block_operation API.
 fn launch_basic_get_block_operation_execution_mock(
     operations_len: usize,
-    unexecuted_ops: Set<OperationId>,
+    unexecuted_ops: PreHashSet<OperationId>,
     recvr: Receiver<ControllerMsg>,
 ) {
     let receive = |er: &Receiver<ControllerMsg>| er.recv_timeout(Duration::from_millis(10));

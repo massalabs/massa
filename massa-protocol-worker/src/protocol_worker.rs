@@ -6,10 +6,10 @@ use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use massa_logging::massa_trace;
 
 use massa_models::{
-    constants::CHANNEL_SIZE,
+    config::CHANNEL_SIZE,
     node::NodeId,
     operation::OperationPrefixId,
-    prehash::{BuildMap, Map, Set},
+    prehash::{BuildHashMapper, PreHashMap, PreHashSet},
     BlockHeaderSerializer, BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader,
 };
 use massa_models::{EndorsementSerializer, OperationSerializer, WrappedOperation};
@@ -100,7 +100,7 @@ pub async fn start_protocol_controller(
 /// Info about a block we've seen
 pub(crate) struct BlockInfo {
     /// Endorsements contained in the block header.
-    pub(crate) endorsements: Map<EndorsementId, u32>,
+    pub(crate) endorsements: PreHashMap<EndorsementId, u32>,
     /// Operations contained in the block,
     /// if we've received them already, and none otherwise.
     pub(crate) operations: Option<Vec<OperationId>>,
@@ -111,7 +111,7 @@ pub(crate) struct BlockInfo {
 }
 
 impl BlockInfo {
-    fn new(endorsements: Map<EndorsementId, u32>, header: WrappedHeader) -> Self {
+    fn new(endorsements: PreHashMap<EndorsementId, u32>, header: WrappedHeader) -> Self {
         BlockInfo {
             endorsements,
             operations: None,
@@ -141,13 +141,13 @@ pub struct ProtocolWorker {
     pub(crate) active_nodes: HashMap<NodeId, NodeInfo>,
     /// List of wanted blocks,
     /// with the info representing their state withint the as_block workflow.
-    pub(crate) block_wishlist: Map<BlockId, (AskForBlocksInfo, Option<Storage>)>,
+    pub(crate) block_wishlist: PreHashMap<BlockId, (AskForBlocksInfo, Option<Storage>)>,
     /// List of processed endorsements
-    checked_endorsements: Set<EndorsementId>,
+    checked_endorsements: PreHashSet<EndorsementId>,
     /// List of processed operations
     pub(crate) checked_operations: CheckedOperations,
     /// List of processed headers
-    pub(crate) checked_headers: Map<BlockId, BlockInfo>,
+    pub(crate) checked_headers: PreHashMap<BlockId, BlockInfo>,
     /// List of ids of operations that we asked to the nodes
     pub(crate) asked_operations: HashMap<OperationPrefixId, (Instant, Vec<NodeId>)>,
     /// Buffer for operations that we want later
@@ -387,7 +387,7 @@ impl ProtocolWorker {
                     self.checked_operations.insert(id);
                 }
                 for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_ops: Set<OperationId> = operation_ids
+                    let new_ops: PreHashSet<OperationId> = operation_ids
                         .iter()
                         .filter(|id| !node_info.knows_op(id))
                         .copied()
@@ -412,7 +412,7 @@ impl ProtocolWorker {
                     { "endorsements": endorsements.get_endorsement_refs() }
                 );
                 for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_endorsements: Map<EndorsementId, WrappedEndorsement> = {
+                    let new_endorsements: PreHashMap<EndorsementId, WrappedEndorsement> = {
                         let endorsements_reader = endorsements.read_endorsements();
                         endorsements
                             .get_endorsement_refs()
@@ -448,7 +448,7 @@ impl ProtocolWorker {
     /// Remove the given blocks from the local wishlist
     pub(crate) fn stop_asking_blocks(
         &mut self,
-        remove_hashes: Set<BlockId>,
+        remove_hashes: PreHashSet<BlockId>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.stop_asking_blocks", {
             "remove": remove_hashes
@@ -477,7 +477,7 @@ impl ProtocolWorker {
             .ok_or(TimeError::TimeOverflowError)?;
 
         // list blocks to re-ask and gather candidate nodes to ask from
-        let mut candidate_nodes: Map<BlockId, Vec<_>> = Default::default();
+        let mut candidate_nodes: PreHashMap<BlockId, Vec<_>> = Default::default();
         let mut ask_block_list: HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>> =
             Default::default();
 
@@ -684,7 +684,7 @@ impl ProtocolWorker {
         &mut self,
         header: &WrappedHeader,
         source_node_id: &NodeId,
-    ) -> Result<Option<(BlockId, Map<EndorsementId, u32>, bool)>, ProtocolError> {
+    ) -> Result<Option<(BlockId, PreHashMap<EndorsementId, u32>, bool)>, ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
 
         // check header integrity
@@ -859,12 +859,12 @@ impl ProtocolWorker {
         &mut self,
         operations: Vec<WrappedOperation>,
         source_node_id: &NodeId,
-    ) -> Result<(Vec<OperationId>, Map<OperationId, usize>), ProtocolError> {
+    ) -> Result<(Vec<OperationId>, PreHashMap<OperationId, usize>), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
         let length = operations.len();
         let mut seen_ops = vec![];
-        let mut new_operations = Map::with_capacity_and_hasher(length, BuildMap::default());
-        let mut received_ids = Map::with_capacity_and_hasher(length, BuildMap::default());
+        let mut new_operations = PreHashMap::with_capacity(length);
+        let mut received_ids = PreHashMap::with_capacity(length);
         for (idx, operation) in operations.into_iter().enumerate() {
             let operation_id = operation.id;
             seen_ops.push(operation_id);
@@ -916,13 +916,13 @@ impl ProtocolWorker {
         endorsements: Vec<WrappedEndorsement>,
         source_node_id: &NodeId,
         propagate: bool,
-    ) -> Result<(Map<EndorsementId, u32>, bool), ProtocolError> {
+    ) -> Result<(PreHashMap<EndorsementId, u32>, bool), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": source_node_id, "endorsements": endorsements});
         let length = endorsements.len();
         let mut contains_duplicates = false;
 
-        let mut new_endorsements = Map::with_capacity_and_hasher(length, BuildMap::default());
-        let mut endorsement_ids = Map::default();
+        let mut new_endorsements = PreHashMap::with_capacity(length);
+        let mut endorsement_ids = PreHashMap::default();
         for endorsement in endorsements.into_iter() {
             let endorsement_id = endorsement.id;
             if endorsement_ids

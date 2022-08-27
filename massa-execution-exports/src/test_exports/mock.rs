@@ -8,7 +8,7 @@ use crate::{
 };
 use massa_ledger_exports::LedgerEntry;
 use massa_models::{
-    api::EventFilter, output_event::SCOutputEvent, prehash::Set, Address, Amount, BlockId,
+    api::EventFilter, output_event::SCOutputEvent, prehash::PreHashSet, Address, Amount, BlockId,
     OperationId, Slot,
 };
 use massa_storage::Storage;
@@ -59,11 +59,11 @@ pub enum MockExecutionControllerMessage {
     /// Unexecuted operation among call
     UnexecutedOpsAmong {
         /// operation ids
-        ops: Set<OperationId>,
+        ops: PreHashSet<OperationId>,
         /// thread
         thread: u8,
         /// response channel
-        response_tx: mpsc::Sender<Set<OperationId>>,
+        response_tx: mpsc::Sender<PreHashSet<OperationId>>,
     },
     /// Get final and candidate sequencial balances by addresses
     GetFinalAndCandidateSequentialBalances {
@@ -174,7 +174,11 @@ impl ExecutionController for MockExecutionController {
         response_rx.recv().unwrap()
     }
 
-    fn unexecuted_ops_among(&self, ops: &Set<OperationId>, thread: u8) -> Set<OperationId> {
+    fn unexecuted_ops_among(
+        &self,
+        ops: &PreHashSet<OperationId>,
+        thread: u8,
+    ) -> PreHashSet<OperationId> {
         let (response_tx, response_rx) = mpsc::channel();
         if let Err(err) =
             self.0

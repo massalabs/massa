@@ -32,7 +32,7 @@ use massa_models::{
     execution::ExecuteReadOnlyResponse,
     node::NodeId,
     output_event::SCOutputEvent,
-    prehash::{Map, Set},
+    prehash::{PreHashMap, PreHashSet},
     timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range},
     Address, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
 };
@@ -237,8 +237,8 @@ impl Endpoints for API<Public> {
         crate::wrong_api::<()>()
     }
 
-    fn get_staking_addresses(&self) -> BoxFuture<Result<Set<Address>, ApiError>> {
-        crate::wrong_api::<Set<Address>>()
+    fn get_staking_addresses(&self) -> BoxFuture<Result<PreHashSet<Address>, ApiError>> {
+        crate::wrong_api::<PreHashSet<Address>>()
     }
 
     fn node_ban_by_ip(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
@@ -356,7 +356,7 @@ impl Endpoints for API<Public> {
         ops: Vec<OperationId>,
     ) -> BoxFuture<Result<Vec<OperationInfo>, ApiError>> {
         // get the operations and the list of blocks that contain them from storage
-        let storage_info: Vec<(WrappedOperation, Set<BlockId>)> = {
+        let storage_info: Vec<(WrappedOperation, PreHashSet<BlockId>)> = {
             let read_ops = self.0.storage.read_operations();
             let read_blocks = self.0.storage.read_blocks();
             ops.iter()
@@ -398,7 +398,7 @@ impl Endpoints for API<Public> {
                 let involved_block_statuses = consensus_command_sender
                     .get_block_statuses(&involved_blocks)
                     .await?;
-                let block_statuses: Map<BlockId, BlockGraphStatus> = involved_blocks
+                let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
                     .into_iter()
                     .zip(involved_block_statuses.into_iter())
                     .collect();
@@ -440,7 +440,7 @@ impl Endpoints for API<Public> {
         eds: Vec<EndorsementId>,
     ) -> BoxFuture<Result<Vec<EndorsementInfo>, ApiError>> {
         // get the endorsements and the list of blocks that contain them from storage
-        let storage_info: Vec<(WrappedEndorsement, Set<BlockId>)> = {
+        let storage_info: Vec<(WrappedEndorsement, PreHashSet<BlockId>)> = {
             let read_endos = self.0.storage.read_endorsements();
             let read_blocks = self.0.storage.read_blocks();
             eds.iter()
@@ -482,7 +482,7 @@ impl Endpoints for API<Public> {
                 let involved_block_statuses = consensus_command_sender
                     .get_block_statuses(&involved_blocks)
                     .await?;
-                let block_statuses: Map<BlockId, BlockGraphStatus> = involved_blocks
+                let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
                     .into_iter()
                     .zip(involved_block_statuses.into_iter())
                     .collect();
@@ -660,7 +660,7 @@ impl Endpoints for API<Public> {
         addresses: Vec<Address>,
     ) -> BoxFuture<Result<Vec<AddressInfo>, ApiError>> {
         // get info from storage about which blocks the addresses have created
-        let created_blocks: Vec<Set<BlockId>> = {
+        let created_blocks: Vec<PreHashSet<BlockId>> = {
             let lck = self.0.storage.read_blocks();
             addresses
                 .iter()
@@ -673,7 +673,7 @@ impl Endpoints for API<Public> {
         };
 
         // get info from storage about which operations the addresses have created
-        let created_operations: Vec<Set<OperationId>> = {
+        let created_operations: Vec<PreHashSet<OperationId>> = {
             let lck = self.0.storage.read_operations();
             addresses
                 .iter()
@@ -686,7 +686,7 @@ impl Endpoints for API<Public> {
         };
 
         // get info from storage about which endorsements the addresses have created
-        let created_endorsements: Vec<Set<EndorsementId>> = {
+        let created_endorsements: Vec<PreHashSet<EndorsementId>> = {
             let lck = self.0.storage.read_endorsements();
             addresses
                 .iter()

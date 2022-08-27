@@ -9,7 +9,7 @@ use massa_factory_exports::{
     test_exports::create_empty_block, FactoryChannels, FactoryConfig, FactoryManager,
 };
 use massa_models::{
-    constants::ENDORSEMENT_COUNT, prehash::Map, test_exports::get_next_slot_instant, Address,
+    config::ENDORSEMENT_COUNT, prehash::PreHashMap, test_exports::get_next_slot_instant, Address,
     BlockId, Slot, WrappedEndorsement, WrappedOperation,
 };
 use massa_pool_exports::test_exports::{
@@ -60,7 +60,7 @@ impl TestFactory {
             MockProtocolController::new();
         let producer_keypair = default_keypair;
         let producer_address = Address::from_public_key(&producer_keypair.get_public_key());
-        let mut accounts = Map::default();
+        let mut accounts = PreHashMap::default();
 
         let mut genesis_blocks = vec![];
         for i in 0..factory_config.thread_count {
