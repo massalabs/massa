@@ -45,26 +45,28 @@ use massa_signature::KeyPair;
 /// same length than those added previously.
 #[test]
 fn test_simple_get_operations() {
+    let config = PoolConfig::default();
     pool_test(
-        PoolConfig::default(),
+        config.clone(),
         |mut pool_controller, execution_receiver, mut storage| {
             let keypair = KeyPair::generate();
             storage.store_operations(create_some_operations(10, &keypair, 1));
 
             let creator_address = Address::from_public_key(&keypair.get_public_key());
+            let creator_thread = creator_address.get_thread(config.thread_count);
             let unexecuted_ops = storage.get_op_refs().clone();
             pool_controller.add_operations(storage);
 
             // start mock execution thread
             std::thread::spawn(move || {
-                match execution_receiver.recv_timeout(Duration::from_millis(10)) {
+                match execution_receiver.recv_timeout(Duration::from_millis(100)) {
                     Ok(ControllerMsg::UnexecutedOpsAmong { response_tx, .. }) => {
                         response_tx.send(unexecuted_ops.clone()).unwrap();
                     }
                     Ok(_) => panic!("unexpected controller request"),
                     Err(_) => panic!("execution never called"),
                 }
-                match execution_receiver.recv_timeout(Duration::from_millis(10)) {
+                match execution_receiver.recv_timeout(Duration::from_millis(100)) {
                     Ok(ControllerMsg::GetFinalAndCandidateSequentialBalances {
                         addresses,
                         response_tx,
@@ -78,7 +80,7 @@ fn test_simple_get_operations() {
                     Err(_) => panic!("execution never called"),
                 }
                 (0..9).for_each(|_| {
-                    match execution_receiver.recv_timeout(Duration::from_millis(10)) {
+                    match execution_receiver.recv_timeout(Duration::from_millis(100)) {
                         Ok(ControllerMsg::UnexecutedOpsAmong { response_tx, .. }) => {
                             response_tx.send(unexecuted_ops.clone()).unwrap();
                         }
@@ -88,11 +90,10 @@ fn test_simple_get_operations() {
                 })
             });
 
-            let mut block_operations_storage =
-                pool_controller.get_block_operations(&Slot::new(1, 0)).1;
+            let block_operations_storage = pool_controller
+                .get_block_operations(&Slot::new(1, creator_thread))
+                .1;
 
-            block_operations_storage
-                .extend(pool_controller.get_block_operations(&Slot::new(1, 1)).1);
             assert_eq!(block_operations_storage.get_op_refs().len(), 10);
         },
     );
@@ -143,17 +144,19 @@ fn test_get_operations_overflow() {
     static MAX_OP_LEN: usize = 5;
     let mut max_block_size = 0;
     let keypair = KeyPair::generate();
+    let creator_address = Address::from_public_key(&keypair.get_public_key());
     let operations = create_some_operations(OP_LEN, &keypair, 1);
     operations
         .iter()
         .take(MAX_OP_LEN)
         .for_each(|op| max_block_size += op.serialized_size() as u32);
-
+    let config = PoolConfig {
+        max_block_size,
+        ..Default::default()
+    };
+    let creator_thread = creator_address.get_thread(config.thread_count);
     pool_test(
-        PoolConfig {
-            max_block_size,
-            ..Default::default()
-        },
+        config.clone(),
         |mut pool_controller, execution_receiver, mut storage| {
             storage.store_operations(operations);
 
@@ -167,11 +170,10 @@ fn test_get_operations_overflow() {
                 execution_receiver,
             );
 
-            let mut block_operations_storage =
-                pool_controller.get_block_operations(&Slot::new(1, 0)).1;
+            let block_operations_storage = pool_controller
+                .get_block_operations(&Slot::new(1, creator_thread))
+                .1;
 
-            block_operations_storage
-                .extend(pool_controller.get_block_operations(&Slot::new(1, 1)).1);
             assert_eq!(block_operations_storage.get_op_refs().len(), MAX_OP_LEN);
         },
     );
