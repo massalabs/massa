@@ -1,10 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 /// This file defines testing tools related to the configuration
 use massa_models::{
+    address::Address,
+    amount::Amount,
     config::default_testing::{
-        ADDRESS_SIZE_BYTES, LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_DATASTORE_KEY_LENGTH,
+        LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_DATASTORE_KEY_LENGTH, THREAD_COUNT,
     },
-    Address, Amount,
 };
 use std::collections::BTreeMap;
 use std::io::Seek;
@@ -18,9 +19,9 @@ impl Default for LedgerConfig {
         LedgerConfig {
             // unused by the mock (you can use `LedgerConfig::sample()` to get
             // a NamedTempFile in addition)
-            initial_sce_ledger_path: "".into(),
+            initial_ledger_path: "".into(),
             disk_ledger_path: "".into(),
-            address_bytes_size: ADDRESS_SIZE_BYTES,
+            thread_count: THREAD_COUNT,
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_ledger_part_size: LEDGER_PART_SIZE_MESSAGE_BYTES,
         }
@@ -40,7 +41,7 @@ impl LedgerConfig {
             .expect("could not seek file");
         (
             Self {
-                initial_sce_ledger_path: initial_ledger.path().to_path_buf(),
+                initial_ledger_path: initial_ledger.path().to_path_buf(),
                 disk_ledger_path: disk_ledger.path().to_path_buf(),
                 address_bytes_size: ADDRESS_SIZE_BYTES,
                 max_key_length: MAX_DATASTORE_KEY_LENGTH,

@@ -39,7 +39,7 @@ pub struct SelectionSettings {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct LedgerSettings {
-    pub initial_sce_ledger_path: PathBuf,
+    pub initial_ledger_path: PathBuf,
     pub disk_ledger_path: PathBuf,
     pub final_history_length: usize,
 }

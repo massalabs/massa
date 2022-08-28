@@ -60,11 +60,13 @@
 // ```
 //
 
+#[cfg(any(not(feature = "testing"), feature = "sandbox"))]
 pub mod default;
-pub mod default_testing;
-
 #[cfg(any(not(feature = "testing"), feature = "sandbox"))]
 pub use default::*;
+
+#[cfg(all(feature = "testing", not(feature = "sandbox")))]
+pub mod default_testing;
 #[cfg(all(feature = "testing", not(feature = "sandbox")))]
 pub use default_testing::*;
 

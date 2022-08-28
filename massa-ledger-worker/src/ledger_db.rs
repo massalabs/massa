@@ -4,8 +4,8 @@
 
 use massa_ledger_exports::*;
 use massa_models::{
-    address::Address,
-    amount::{Amount, AmountDeserializer, AmountSerializer},
+    address::{Address, ADDRESS_SIZE_BYTES},
+    amount::AmountSerializer,
     error::ModelsError,
     serialization::{VecU8Deserializer, VecU8Serializer},
     slot::{Slot, SlotSerializer},
@@ -23,7 +23,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 #[cfg(feature = "testing")]
-use massa_models::AmountDeserializer;
+use massa_models::amount::{Amount, AmountDeserializer};
 
 const LEDGER_CF: &str = "ledger";
 const METADATA_CF: &str = "metadata";
@@ -49,11 +49,12 @@ pub enum LedgerSubEntry {
 /// Contains a RocksDB DB instance
 pub(crate) struct LedgerDB {
     db: DB,
+    thread_count: u8,
     amount_serializer: AmountSerializer,
     slot_serializer: SlotSerializer,
     max_datastore_key_length: u8,
     ledger_part_size_message_bytes: u64,
-    address_bytes_size: usize,
+    #[cfg(feature = "testing")]
     amount_deserializer: AmountDeserializer,
 }
 
@@ -93,9 +94,9 @@ impl LedgerDB {
     /// * path: path to the desired disk ledger db directory
     pub fn new(
         path: PathBuf,
+        thread_count: u8,
         max_datastore_key_length: u8,
         ledger_part_size_message_bytes: u64,
-        address_bytes_size: usize,
     ) -> Self {
         let mut db_opts = Options::default();
         db_opts.create_if_missing(true);
@@ -113,11 +114,12 @@ impl LedgerDB {
 
         LedgerDB {
             db,
+            thread_count,
             amount_serializer: AmountSerializer::new(),
             slot_serializer: SlotSerializer::new(),
             max_datastore_key_length,
-            address_bytes_size,
             ledger_part_size_message_bytes,
+            #[cfg(feature = "testing")]
             amount_deserializer: AmountDeserializer::new(
                 Bound::Included(Amount::MIN),
                 Bound::Included(Amount::MAX),
@@ -125,15 +127,18 @@ impl LedgerDB {
         }
     }
 
-    /// Set the initial disk ledger
+    /// Loads the initial disk ledger
     ///
     /// # Arguments
-    /// * initial_ledger: initial entries to put in the disk
-    pub fn set_initial_ledger(&mut self, initial_ledger: HashMap<Address, LedgerEntry>) {
+    pub fn load_initial_ledger(&mut self, initial_ledger: HashMap<Address, LedgerEntry>) {
         let mut batch = WriteBatch::default();
         for (address, entry) in initial_ledger {
             self.put_entry(&address, entry, &mut batch);
         }
+        self.set_metadata(
+            Slot::new(0, self.thread_count.saturating_sub(1)),
+            &mut batch,
+        );
         self.write_batch(batch);
     }
 
@@ -277,7 +282,7 @@ impl LedgerDB {
                 IteratorMode::From(data_prefix!(addr), Direction::Forward),
             )
             .flatten()
-            .map(|(key, _)| key.split_at(self.address_bytes_size + 1).1.to_vec())
+            .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec())
             .collect()
     }
 
@@ -521,9 +526,7 @@ mod tests {
     use super::LedgerDB;
     use crate::ledger_db::LedgerSubEntry;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
-    use massa_models::{
-        config::default_testing::ADDRESS_SIZE_BYTES, Address, Amount, AmountDeserializer,
-    };
+    use massa_models::{address::ADDRESS_SIZE_BYTES, Address, Amount, AmountDeserializer};
     use massa_serialization::{DeserializeError, Deserializer};
     use massa_signature::KeyPair;
     use rocksdb::WriteBatch;

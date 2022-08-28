@@ -26,8 +26,8 @@
     stats_time_window_duration = 30000
 
 [ledger]
-    # path to the initial smart contract balance ledger
-    initial_sce_ledger_path = "base_config/initial_sce_ledger.json"
+    # path to the initial ledger
+    initial_ledger_path = "base_config/initial_ledger.json"
     # path to the disk ledger db directory
     disk_ledger_path = "storage/ledger/rocks_db"
     # length of the changes history. Higher values allow bootstrapping nodes with slower connections
@@ -58,8 +58,6 @@
     ledger_flush_interval = 10000
     # whether to overwrite the ledger at start
     ledger_reset_at_startup = true
-    # path to the initial consensus balance ledger
-    initial_ledger_path = "base_config/initial_ledger.json"
 
     # max milliseconds to wait while sending an event before dropping it
     max_send_wait = 0

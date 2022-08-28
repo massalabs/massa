@@ -74,30 +74,3 @@ pub struct ProtocolConfig {
     /// Maximum size in bytes of all serialized operations size in a block
     pub max_serialized_operations_size_per_block: usize,
 }
-
-impl ProtocolConfig {
-    fn from(
-        settings: ProtocolSettings,
-        thread_count: u8,
-        max_serialized_operations_size_per_block: usize,
-    ) -> Self {
-        Self {
-            thread_count,
-            ask_block_timeout: settings.ask_block_timeout,
-            max_known_blocks_size: settings.max_known_blocks_size,
-            max_node_known_blocks_size: settings.max_node_known_blocks_size,
-            max_node_wanted_blocks_size: settings.max_node_wanted_blocks_size,
-            max_known_ops_size: settings.max_known_ops_size,
-            max_node_known_ops_size: settings.max_node_known_ops_size,
-            max_known_endorsements_size: settings.max_known_endorsements_size,
-            max_node_known_endorsements_size: settings.max_node_known_endorsements_size,
-            max_simultaneous_ask_blocks_per_node: settings.max_simultaneous_ask_blocks_per_node,
-            max_send_wait: settings.max_send_wait,
-            operation_batch_buffer_capacity: settings.operation_batch_buffer_capacity,
-            operation_batch_proc_period: settings.operation_batch_proc_period,
-            asked_operations_pruning_period: settings.asked_operations_pruning_period,
-            max_operations_per_message: settings.max_operations_per_message,
-            max_serialized_operations_size_per_block,
-        }
-    }
-}

@@ -23,27 +23,30 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
+use massa_models::address::Address;
 use massa_models::config::default::{
-    ADDRESS_SIZE_BYTES, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT,
-    END_TIMESTAMP, GENESIS_KEY, GENESIS_TIMESTAMP, INITIAL_DRAW_SEED,
-    LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
-    MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
-    MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-    MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
-    MAX_DATASTORE_VALUE_LENGTH, MAX_DATA_ASYNC_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE,
-    MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT, MAX_MESSAGE_SIZE,
-    MAX_OPERATIONS_PER_BLOCK, MAX_PARAMETERS_SIZE, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
-    ROLL_PRICE, T0, THREAD_COUNT, VERSION,
+    BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY,
+    GENESIS_TIMESTAMP, INITIAL_DRAW_SEED, LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH,
+    MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
+    MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
+    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT,
+    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DATA_ASYNC_MESSAGE,
+    MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK,
+    MAX_LEDGER_CHANGES_COUNT, MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK, MAX_PARAMETERS_SIZE,
+    NETWORK_CONTROLLER_CHANNEL_SIZE, NETWORK_EVENT_CHANNEL_SIZE, OPERATION_VALIDITY_PERIODS,
+    PERIODS_PER_CYCLE, ROLL_PRICE, T0, THREAD_COUNT, VERSION,
 };
-use massa_models::config::{ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, CHANNEL_SIZE};
-use massa_models::Address;
+use massa_models::config::{
+    ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, CHANNEL_SIZE, MAX_SERIALIZED_OPERATIONS_SIZE_PER_BLOCK,
+    POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+};
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
 use massa_pool_exports::{PoolConfig, PoolController};
 use massa_pool_worker::start_pool;
 use massa_pos_exports::{SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
-use massa_protocol_exports::ProtocolManager;
+use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 use massa_protocol_worker::start_protocol_controller;
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -87,11 +90,11 @@ async fn launch(
 
     // init final state
     let ledger_config = LedgerConfig {
-        initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path.clone(),
+        thread_count: THREAD_COUNT,
+        initial_ledger_path: SETTINGS.ledger.initial_ledger_path.clone(),
         disk_ledger_path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_ledger_part_size: LEDGER_PART_SIZE_MESSAGE_BYTES,
-        address_bytes_size: ADDRESS_SIZE_BYTES,
     };
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
@@ -231,12 +234,14 @@ async fn launch(
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameters_size: MAX_PARAMETERS_SIZE,
+        controller_channel_size: NETWORK_CONTROLLER_CHANNEL_SIZE,
+        event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
     };
 
     // launch network controller
     let (network_command_sender, network_event_receiver, network_manager, private_key, node_id) =
         start_network_controller(
-            &network_config, // TODO: get rid of this clone() ... see #1277
+            &network_config,
             Establisher::new(),
             bootstrap_state.compensation_millis,
             bootstrap_state.peers,
@@ -269,6 +274,7 @@ async fn launch(
         operation_validity_period: OPERATION_VALIDITY_PERIODS,
         periods_per_cycle: PERIODS_PER_CYCLE,
         stats_time_window_duration: SETTINGS.execution.stats_time_window_duration,
+        max_miss_ratio: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
     };
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,
@@ -291,9 +297,29 @@ async fn launch(
     let pool_manager: Box<dyn PoolController> = Box::new(pool_controller.clone());
 
     // launch protocol controller
+    let protocol_config = ProtocolConfig {
+        thread_count: THREAD_COUNT,
+        ask_block_timeout: SETTINGS.protocol.ask_block_timeout,
+        max_known_blocks_size: SETTINGS.protocol.max_known_blocks_size,
+        max_node_known_blocks_size: SETTINGS.protocol.max_node_known_blocks_size,
+        max_node_wanted_blocks_size: SETTINGS.protocol.max_node_wanted_blocks_size,
+        max_known_ops_size: SETTINGS.protocol.max_known_ops_size,
+        max_node_known_ops_size: SETTINGS.protocol.max_node_known_ops_size,
+        max_known_endorsements_size: SETTINGS.protocol.max_known_endorsements_size,
+        max_node_known_endorsements_size: SETTINGS.protocol.max_node_known_endorsements_size,
+        max_simultaneous_ask_blocks_per_node: SETTINGS
+            .protocol
+            .max_simultaneous_ask_blocks_per_node,
+        max_send_wait: SETTINGS.protocol.max_send_wait,
+        operation_batch_buffer_capacity: SETTINGS.protocol.operation_batch_buffer_capacity,
+        operation_batch_proc_period: SETTINGS.protocol.operation_batch_proc_period,
+        asked_operations_pruning_period: SETTINGS.protocol.asked_operations_pruning_period,
+        max_operations_per_message: SETTINGS.protocol.max_operations_per_message,
+        max_serialized_operations_size_per_block: MAX_SERIALIZED_OPERATIONS_SIZE_PER_BLOCK,
+    };
     let (protocol_command_sender, protocol_event_receiver, protocol_manager) =
         start_protocol_controller(
-            SETTINGS.protocol.into(),
+            protocol_config,
             network_command_sender.clone(),
             network_event_receiver,
             pool_manager.clone(),

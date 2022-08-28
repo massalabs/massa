@@ -24,62 +24,26 @@ use std::ops::Bound::Included;
 #[derive(Debug)]
 pub struct FinalLedger {
     /// ledger configuration
-    pub(crate) _config: LedgerConfig,
+    pub(crate) config: LedgerConfig,
     /// ledger tree, sorted by address
     pub(crate) sorted_ledger: LedgerDB,
 }
 
-/// Macro used to shorten file error returns
-macro_rules! init_file_error {
-    ($st:expr, $cfg:ident) => {
-        |err| {
-            LedgerError::FileError(format!(
-                "error $st initial ledger file {}: {}",
-                $cfg.initial_sce_ledger_path
-                    .to_str()
-                    .unwrap_or("(non-utf8 path)"),
-                err
-            ))
-        }
-    };
-}
-pub(crate) use init_file_error;
-
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
     pub fn new(config: LedgerConfig) -> Result<Self, LedgerError> {
-        // load the ledger tree from file
-        let initial_ledger: HashMap<Address, LedgerEntry> =
-            serde_json::from_str::<HashMap<Address, Amount>>(
-                &std::fs::read_to_string(&config.initial_sce_ledger_path)
-                    .map_err(init_file_error!("loading", config))?,
-            )
-            .map_err(init_file_error!("parsing", config))?
-            .into_iter()
-            .map(|(addr, amount)| {
-                (
-                    addr,
-                    LedgerEntry {
-                        parallel_balance: amount,
-                        ..Default::default()
-                    },
-                )
-            })
-            .collect();
-
         // create and initialize the disk ledger
-        let mut sorted_ledger = LedgerDB::new(
+        let sorted_ledger = LedgerDB::new(
             config.disk_ledger_path.clone(),
+            config.thread_count,
             config.max_key_length,
             config.max_ledger_part_size,
-            config.address_bytes_size,
         );
-        sorted_ledger.set_initial_ledger(initial_ledger);
 
         // generate the final ledger
         Ok(FinalLedger {
             sorted_ledger,
-            _config: config,
+            config,
         })
     }
 }
@@ -88,6 +52,35 @@ impl LedgerController for FinalLedger {
     /// Allows applying `LedgerChanges` to the final ledger
     fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
         self.sorted_ledger.apply_changes(changes, slot);
+    }
+
+    /// Loads ledger from file
+    fn load_initial_ledger(&mut self) -> Result<(), LedgerError> {
+        // load the ledger tree from file
+        let initial_ledger: HashMap<Address, LedgerEntry> = serde_json::from_str(
+            &std::fs::read_to_string(&self.config.initial_ledger_path).map_err(|err| {
+                LedgerError::FileError(format!(
+                    "error loading initial ledger file {}: {}",
+                    self.config
+                        .initial_ledger_path
+                        .to_str()
+                        .unwrap_or("(non-utf8 path)"),
+                    err
+                ))
+            })?,
+        )
+        .map_err(|err| {
+            LedgerError::FileError(format!(
+                "error parsing initial ledger file {}: {}",
+                self.config
+                    .initial_ledger_path
+                    .to_str()
+                    .unwrap_or("(non-utf8 path)"),
+                err
+            ))
+        })?;
+        self.sorted_ledger.load_initial_ledger(initial_ledger);
+        Ok(())
     }
 
     /// Gets the sequential balance of a ledger entry

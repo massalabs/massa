@@ -20,7 +20,7 @@ pub fn create_final_ledger(
         100000,
         ADDRESS_SIZE_BYTES,
     );
-    db.set_initial_ledger(initial_ledger.unwrap_or_default());
+    db.load_initial_ledger(initial_ledger.unwrap_or_default());
     FinalLedger {
         _config: config,
         sorted_ledger: db,

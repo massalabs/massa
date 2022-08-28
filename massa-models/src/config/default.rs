@@ -186,6 +186,10 @@ pub const MAX_ENDORSEMENTS_PER_MESSAGE: u32 = 1024;
 pub const NODE_SEND_CHANNEL_SIZE: usize = 1024;
 /// max duplex buffer size
 pub const MAX_DUPLEX_BUFFER_SIZE: usize = 1024;
+/// network controller communication channel size
+pub const NETWORK_CONTROLLER_CHANNEL_SIZE: usize = 1024;
+/// network event channel size
+pub const NETWORK_EVENT_CHANNEL_SIZE: usize = 1024;
 
 //
 // Divers constants

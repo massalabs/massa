@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use massa_models::address::Address;
 use serde::{Deserialize, Serialize};
 
@@ -18,8 +16,4 @@ pub struct SelectorConfig {
     pub genesis_address: Address,
     /// communication channel length
     pub channel_size: usize,
-    /// initial rolls path
-    pub initial_rolls_path: PathBuf,
-    /// initial draw seed
-    pub initial_draw_seed: String,
 }

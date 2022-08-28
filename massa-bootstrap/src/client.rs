@@ -392,9 +392,14 @@ pub async fn get_state(
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
         // init final state
         {
-            let final_state_guard = final_state.write();
+            let mut final_state_guard = final_state.write();
             // load ledger from initial ledger file
-            final_state_guard.ledger.load_initial();
+            final_state_guard
+                .ledger
+                .load_initial_ledger()
+                .map_err(|err| {
+                    BootstrapError::GeneralError(format!("could not load initial ledger: {}", err))
+                })?;
             // create the initial cycle of PoS cycle_history
             final_state_guard.pos_state.create_initial_cycle();
         }
