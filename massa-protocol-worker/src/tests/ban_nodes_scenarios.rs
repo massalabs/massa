@@ -2,7 +2,7 @@
 
 use super::tools::protocol_test;
 use massa_models::prehash::PreHashSet;
-use massa_models::{BlockId, Slot};
+use massa_models::{block::BlockId, slot::Slot};
 use massa_network_exports::{BlockInfoReply, NetworkCommand};
 use massa_pool_exports::test_exports::MockPoolControllerMessage;
 use massa_protocol_exports::tests::tools;

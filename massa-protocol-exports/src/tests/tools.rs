@@ -240,7 +240,7 @@ pub fn create_protocol_config() -> ProtocolConfig {
         max_node_known_blocks_size: 100,
         max_node_wanted_blocks_size: 100,
         max_simultaneous_ask_blocks_per_node: 10,
-        max_send_wait: MassaTime::from(100),
+        max_send_wait: MassaTime::from_millis(100),
         max_known_ops_size: 1000,
         max_node_known_ops_size: 1000,
         max_known_endorsements_size: 1000,
@@ -313,7 +313,7 @@ pub async fn assert_banned_nodes(
     mut nodes: Vec<NodeId>,
     network_controller: &mut MockNetworkController,
 ) {
-    let timer = sleep(MassaTime::from(5000).into());
+    let timer = sleep(MassaTime::from_millis(5000).into());
     tokio::pin!(timer);
     loop {
         tokio::select! {

@@ -24,7 +24,7 @@ use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
 use massa_models::address::Address;
-use massa_models::config::default::{
+use massa_models::config::constants::{
     BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY,
     GENESIS_TIMESTAMP, INITIAL_DRAW_SEED, LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH,
     MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
@@ -37,8 +37,8 @@ use massa_models::config::default::{
     PERIODS_PER_CYCLE, ROLL_PRICE, T0, THREAD_COUNT, VERSION,
 };
 use massa_models::config::{
-    ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, CHANNEL_SIZE, MAX_SERIALIZED_OPERATIONS_SIZE_PER_BLOCK,
-    POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+    ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, CHANNEL_SIZE, DELTA_F0,
+    MAX_SERIALIZED_OPERATIONS_SIZE_PER_BLOCK, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
 };
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
@@ -57,7 +57,6 @@ use structopt::StructOpt;
 use tokio::signal;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
-#[cfg(not(feature = "instrument"))]
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 
 mod settings;
@@ -80,7 +79,7 @@ async fn launch(
 ) {
     info!("Node version : {}", *VERSION);
     if let Some(end) = *END_TIMESTAMP {
-        if MassaTime::now().expect("could not get now time") > end {
+        if MassaTime::now(0).expect("could not get now time") > end {
             panic!("This episode has come to an end, please get the latest testnet node version to continue");
         }
     }
@@ -329,7 +328,44 @@ async fn launch(
         .expect("could not start protocol controller");
 
     // init consensus configuration
-    let consensus_config = ConsensusConfig::from(&SETTINGS.consensus);
+    let consensus_config = ConsensusConfig {
+        genesis_timestamp: *GENESIS_TIMESTAMP,
+        end_timestamp: *END_TIMESTAMP,
+        thread_count: THREAD_COUNT,
+        t0: T0,
+        genesis_key: GENESIS_KEY.clone(),
+        staking_keys_path: SETTINGS.consensus.staking_keys_path.clone(),
+        max_discarded_blocks: SETTINGS.consensus.max_discarded_blocks,
+        future_block_processing_max_periods: SETTINGS.consensus.future_block_processing_max_periods,
+        max_future_processing_blocks: SETTINGS.consensus.max_future_processing_blocks,
+        max_dependency_blocks: SETTINGS.consensus.max_dependency_blocks,
+        delta_f0: DELTA_F0,
+        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+        max_operations_fill_attempts: SETTINGS.consensus.max_operations_fill_attempts,
+        max_block_size: MAX_BLOCK_SIZE,
+        operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        pos_draw_cached_cycles: SETTINGS.consensus.pos_draw_cached_cycles,
+        pos_miss_rate_deactivation_threshold: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+        ledger_path: SETTINGS.consensus.ledger_path.clone(),
+        ledger_cache_capacity: SETTINGS.consensus.ledger_cache_capacity,
+        ledger_flush_interval: SETTINGS.consensus.ledger_flush_interval,
+        ledger_reset_at_startup: SETTINGS.consensus.ledger_reset_at_startup,
+        initial_ledger_path: SETTINGS.consensus.initial_ledger_path.clone(),
+        block_reward: BLOCK_REWARD,
+        operation_batch_size: SETTINGS.consensus.operation_batch_size,
+        initial_rolls_path: SETTINGS.consensus.initial_rolls_path.clone(),
+        initial_draw_seed: INITIAL_DRAW_SEED.to_string(),
+        roll_price: ROLL_PRICE,
+        stats_timespan: SETTINGS.consensus.stats_timespan,
+        max_send_wait: SETTINGS.consensus.max_send_wait,
+        force_keep_final_periods: SETTINGS.consensus.force_keep_final_periods,
+        endorsement_count: ENDORSEMENT_COUNT,
+        block_db_prune_interval: SETTINGS.consensus.block_db_prune_interval,
+        max_item_return_count: SETTINGS.consensus.max_item_return_count,
+        max_gas_per_block: MAX_GAS_PER_BLOCK,
+        channel_size: CHANNEL_SIZE,
+    };
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
@@ -543,18 +579,11 @@ fn load_wallet(password: Option<String>, path: &Path) -> anyhow::Result<Arc<RwLo
     )?)))
 }
 
-/// To instrument `massa-node` with `tokio-console` run
-/// ```shell
-/// RUSTFLAGS="--cfg tokio_unstable" cargo run --bin massa-node --features instrument
-/// ```
 #[paw::main]
 #[tokio::main]
 async fn main(args: Args) -> anyhow::Result<()> {
     use tracing_subscriber::prelude::*;
     // spawn the console server in the background, returning a `Layer`:
-    #[cfg(feature = "instrument")]
-    let tracing_layer = console_subscriber::spawn();
-    #[cfg(not(feature = "instrument"))]
     let tracing_layer = tracing_subscriber::fmt::layer()
         .with_filter(match SETTINGS.logging.level {
             4 => LevelFilter::TRACE,

@@ -3,8 +3,8 @@
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
 use super::tools::protocol_test;
+use massa_models::block::BlockId;
 use massa_models::prehash::{PreHashMap, PreHashSet};
-use massa_models::BlockId;
 use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{

@@ -1754,7 +1754,6 @@ dependencies = [
  "massa_cipher",
  "massa_execution_exports",
  "massa_graph",
- "massa_logging",
  "massa_models",
  "massa_pool_exports",
  "massa_pos_exports",
@@ -1768,7 +1767,6 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -3577,7 +3575,6 @@ dependencies = [
  "signal-hook-registry",
  "socket2",
  "tokio-macros",
- "tracing",
  "winapi",
 ]
 

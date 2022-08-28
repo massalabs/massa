@@ -9,7 +9,7 @@ use std::{
 };
 
 use massa_hash::Hash;
-use massa_models::{api::IndexedSlot, Address, Slot};
+use massa_models::{address::Address, api::IndexedSlot, slot::Slot};
 
 use crate::{PosResult, Selection, SelectorController};
 

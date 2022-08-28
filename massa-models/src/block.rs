@@ -690,9 +690,9 @@ impl std::fmt::Display for BlockHeader {
 mod test {
     use super::*;
     use crate::{
+        config::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT},
+        endorsement::Endorsement,
         endorsement::EndorsementSerializer,
-        node_configuration::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK},
-        Endorsement,
     };
     use massa_serialization::DeserializeError;
     use massa_signature::KeyPair;

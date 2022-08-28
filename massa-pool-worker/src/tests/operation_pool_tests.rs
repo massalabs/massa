@@ -22,8 +22,12 @@ use super::tools::{create_some_operations, operation_pool_test};
 use crate::operation_pool::OperationPool;
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_models::{
-    prehash::PreHashMap, wrapped::WrappedContent, Address, Amount, Operation, OperationSerializer,
-    OperationType, Slot, WrappedOperation,
+    address::Address,
+    amount::Amount,
+    operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
+    prehash::PreHashMap,
+    slot::Slot,
+    wrapped::WrappedContent,
 };
 use massa_pool_exports::PoolConfig;
 use massa_signature::KeyPair;

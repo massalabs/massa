@@ -70,7 +70,7 @@ impl TestFactory {
         }
 
         accounts.insert(producer_address, producer_keypair.clone());
-        factory_config.t0 = MassaTime::from(400);
+        factory_config.t0 = MassaTime::from_millis(400);
         factory_config.genesis_timestamp = factory_config
             .genesis_timestamp
             .checked_sub(factory_config.t0)
@@ -110,7 +110,7 @@ impl TestFactory {
         operations: Option<Vec<WrappedOperation>>,
         endorsements: Option<Vec<WrappedEndorsement>>,
     ) -> (BlockId, Storage) {
-        let now = MassaTime::now().expect("could not get current time");
+        let now = MassaTime::now(0).expect("could not get current time");
         let next_slot_instant = get_next_slot_instant(
             self.factory_config.genesis_timestamp,
             self.factory_config.thread_count,
@@ -160,7 +160,7 @@ impl TestFactory {
             _ => panic!("unexpected message"),
         }
         self.pool_receiver
-            .wait_command(MassaTime::from(100), |command| match command {
+            .wait_command(MassaTime::from_millis(100), |command| match command {
                 MockPoolControllerMessage::GetBlockEndorsements {
                     block_id: _,
                     slot: _,
@@ -182,7 +182,7 @@ impl TestFactory {
             .unwrap();
 
         self.pool_receiver
-            .wait_command(MassaTime::from(100), |command| match command {
+            .wait_command(MassaTime::from_millis(100), |command| match command {
                 MockPoolControllerMessage::GetBlockOperations {
                     slot: _,
                     response_tx,

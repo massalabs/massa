@@ -43,9 +43,6 @@ opt-level = 3 # Speed-up the CI
 
 # # Features
 #
-# * instrument: enable tracing, based on tokio-tracing.
-#
-#
 # * testing: enable some tests specific exports.
 # Usage: add testing = ["massa_crate/testing", ...] to dev-dependencies to use test specific functions avaible in massa-crate.
 # Do not add as a regular dependency. Never.

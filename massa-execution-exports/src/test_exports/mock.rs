@@ -8,10 +8,11 @@ use crate::{
 };
 use massa_ledger_exports::LedgerEntry;
 use massa_models::{
-    api::EventFilter, output_event::SCOutputEvent, prehash::PreHashSet, Address, Amount, BlockId,
-    OperationId, Slot,
+    address::Address, amount::Amount, api::EventFilter, block::BlockId, operation::OperationId,
+    output_event::SCOutputEvent, prehash::PreHashSet, slot::Slot, stats::ExecutionStats,
 };
 use massa_storage::Storage;
+use massa_time::MassaTime;
 use std::{
     collections::{BTreeMap, HashMap},
     sync::{
@@ -102,6 +103,17 @@ impl MockExecutionController {
 /// a response from that channel is read and returned as return value.
 /// See the documentation of `ExecutionController` for details on each function.
 impl ExecutionController for MockExecutionController {
+    /// Get execution statistics
+    fn get_stats(&self) -> ExecutionStats {
+        ExecutionStats {
+            time_window_start: MassaTime::now(0).unwrap(),
+            time_window_end: MassaTime::now(0).unwrap(),
+            final_block_count: 0,
+            final_executed_operations_count: 0,
+            active_cursor: Slot::new(0, 0),
+        }
+    }
+
     fn update_blockclique_status(
         &self,
         finalized_blocks: HashMap<Slot, (BlockId, Storage)>,

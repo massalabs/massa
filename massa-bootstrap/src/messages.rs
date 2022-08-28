@@ -240,8 +240,8 @@ impl BootstrapServerMessageDeserializer {
         Self {
             message_id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             time_deserializer: MassaTimeDeserializer::new((
-                Included(MassaTime::from(0)),
-                Included(MassaTime::from(u64::MAX)),
+                Included(MassaTime::from_millis(0)),
+                Included(MassaTime::from_millis(u64::MAX)),
             )),
             version_deserializer: VersionDeserializer::new(),
             peers_deserializer: BootstrapPeersDeserializer::new(max_advertise_length),

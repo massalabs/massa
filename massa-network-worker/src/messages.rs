@@ -515,7 +515,7 @@ impl Deserializer<Message> for MessageDeserializer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use massa_models::config::default_testing::{
+    use massa_models::config::{
         ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
         MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
         MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_PARAMETERS_SIZE, THREAD_COUNT,

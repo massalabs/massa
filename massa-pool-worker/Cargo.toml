@@ -23,7 +23,4 @@ massa_execution_exports = { path = "../massa-execution-exports", features = [ "t
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
-instrument = [
-    "massa_models/instrument",
-]
 testing = ["massa_pool_exports/testing", "massa_execution_exports/testing"]

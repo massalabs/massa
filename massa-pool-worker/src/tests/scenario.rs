@@ -18,10 +18,10 @@ use std::time::Duration;
 use crate::tests::tools::create_some_operations;
 use crate::tests::tools::pool_test;
 use massa_execution_exports::test_exports::MockExecutionControllerMessage as ControllerMsg;
+use massa_models::address::Address;
+use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
-use massa_models::Address;
-use massa_models::OperationId;
-use massa_models::Slot;
+use massa_models::slot::Slot;
 use massa_pool_exports::PoolConfig;
 use massa_signature::KeyPair;
 

@@ -8,7 +8,7 @@ use crate::{FinalState, FinalStateConfig};
 use massa_async_pool::{AsyncPool, AsyncPoolConfig};
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
-use massa_models::Slot;
+use massa_models::slot::Slot;
 use massa_pos_exports::PoSFinalState;
 
 impl FinalState {

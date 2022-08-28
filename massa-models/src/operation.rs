@@ -1262,7 +1262,7 @@ impl Deserializer<Vec<WrappedOperation>> for OperationsDeserializer {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::default::{
+    use crate::config::{
         MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
     };
 

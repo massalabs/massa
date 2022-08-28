@@ -446,7 +446,7 @@ async fn manage_bootstrap(
     let write_timeout: std::time::Duration = bootstrap_config.write_timeout.into();
 
     // Sync clocks.
-    let server_time = MassaTime::compensated_now(compensation_millis)?;
+    let server_time = MassaTime::now(compensation_millis)?;
 
     match tokio::time::timeout(
         write_timeout,

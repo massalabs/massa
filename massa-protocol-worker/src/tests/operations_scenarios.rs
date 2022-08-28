@@ -4,7 +4,7 @@
 
 use super::tools::{protocol_test, protocol_test_with_storage};
 use massa_models::prehash::PreHashMap;
-use massa_models::{self, Address, Amount, Slot};
+use massa_models::{self, address::Address, amount::Amount, slot::Slot};
 use massa_models::{operation::OperationId, prehash::PreHashSet};
 use massa_network_exports::{BlockInfoReply, NetworkCommand};
 use massa_pool_exports::test_exports::MockPoolControllerMessage;

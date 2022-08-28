@@ -23,9 +23,9 @@ async fn test_queueing() {
     let cfg = ConsensusConfig {
         future_block_processing_max_periods: 50,
         // to avoid timing problems for blocks in the future
-        genesis_timestamp: MassaTime::now()
+        genesis_timestamp: MassaTime::now(0)
             .unwrap()
-            .saturating_sub(MassaTime::from(32000).checked_mul(1000).unwrap()),
+            .saturating_sub(MassaTime::from_millis(32000).checked_mul(1000).unwrap()),
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
 
@@ -160,9 +160,9 @@ async fn test_doubles() {
     let cfg = ConsensusConfig {
         future_block_processing_max_periods: 50,
         // to avoid timing problems for blocks in the future
-        genesis_timestamp: MassaTime::now()
+        genesis_timestamp: MassaTime::now(0)
             .unwrap()
-            .saturating_sub(MassaTime::from(32000).checked_mul(1000).unwrap()),
+            .saturating_sub(MassaTime::from_millis(32000).checked_mul(1000).unwrap()),
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
 
@@ -265,9 +265,9 @@ async fn test_double_staking() {
     let cfg = ConsensusConfig {
         future_block_processing_max_periods: 50,
         // to avoid timing problems for blocks in the future
-        genesis_timestamp: MassaTime::now()
+        genesis_timestamp: MassaTime::now(0)
             .unwrap()
-            .saturating_sub(MassaTime::from(32000).checked_mul(1000).unwrap()),
+            .saturating_sub(MassaTime::from_millis(32000).checked_mul(1000).unwrap()),
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
     let mut storage = Storage::default();
@@ -407,9 +407,9 @@ async fn test_test_parents() {
     let cfg = ConsensusConfig {
         future_block_processing_max_periods: 50,
         // to avoid timing problems for blocks in the future
-        genesis_timestamp: MassaTime::now()
+        genesis_timestamp: MassaTime::now(0)
             .unwrap()
-            .saturating_sub(MassaTime::from(32000).checked_mul(1000).unwrap()),
+            .saturating_sub(MassaTime::from_millis(32000).checked_mul(1000).unwrap()),
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
 

@@ -3,9 +3,7 @@
 use massa_models::{
     address::Address,
     amount::Amount,
-    config::default_testing::{
-        LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_DATASTORE_KEY_LENGTH, THREAD_COUNT,
-    },
+    config::{LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_DATASTORE_KEY_LENGTH, THREAD_COUNT},
 };
 use std::collections::BTreeMap;
 use std::io::Seek;
@@ -43,9 +41,9 @@ impl LedgerConfig {
             Self {
                 initial_ledger_path: initial_ledger.path().to_path_buf(),
                 disk_ledger_path: disk_ledger.path().to_path_buf(),
-                address_bytes_size: ADDRESS_SIZE_BYTES,
                 max_key_length: MAX_DATASTORE_KEY_LENGTH,
                 max_ledger_part_size: LEDGER_PART_SIZE_MESSAGE_BYTES,
+                thread_count: THREAD_COUNT,
             },
             initial_ledger,
             disk_ledger,

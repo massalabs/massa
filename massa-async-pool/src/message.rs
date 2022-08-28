@@ -457,7 +457,7 @@ mod tests {
     use massa_models::{
         address::Address,
         amount::Amount,
-        config::{default::MAX_DATA_ASYNC_MESSAGE, THREAD_COUNT},
+        config::{MAX_DATA_ASYNC_MESSAGE, THREAD_COUNT},
         slot::Slot,
     };
     use std::str::FromStr;

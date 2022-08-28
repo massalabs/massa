@@ -92,7 +92,7 @@ async fn test_bootstrap_server() {
             final_state_client_clone,
             remote_establisher,
             Version::from_str("TEST.1.2").unwrap(),
-            MassaTime::now().unwrap().saturating_sub(1000.into()),
+            MassaTime::now(0).unwrap().saturating_sub(1000.into()),
             None,
         )
         .await

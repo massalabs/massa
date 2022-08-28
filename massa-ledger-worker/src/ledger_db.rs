@@ -460,7 +460,9 @@ impl LedgerDB {
     /// # Returns
     /// A BTreeMap with the address as key and the balance as value
     #[cfg(feature = "testing")]
-    pub fn get_every_address(&self) -> std::collections::BTreeMap<Address, massa_models::Amount> {
+    pub fn get_every_address(
+        &self,
+    ) -> std::collections::BTreeMap<Address, massa_models::amount::Amount> {
         use massa_models::address::AddressDeserializer;
         use massa_serialization::DeserializeError;
 
@@ -513,7 +515,7 @@ impl LedgerDB {
             .flatten()
             .map(|(key, data)| {
                 (
-                    key.split_at(self.address_bytes_size + 1).1.to_vec(),
+                    key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec(),
                     data.to_vec(),
                 )
             })
@@ -526,7 +528,10 @@ mod tests {
     use super::LedgerDB;
     use crate::ledger_db::LedgerSubEntry;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
-    use massa_models::{address::ADDRESS_SIZE_BYTES, Address, Amount, AmountDeserializer};
+    use massa_models::{
+        address::Address,
+        amount::{Amount, AmountDeserializer},
+    };
     use massa_serialization::{DeserializeError, Deserializer};
     use massa_signature::KeyPair;
     use rocksdb::WriteBatch;
@@ -554,12 +559,7 @@ mod tests {
 
         // write data
         let temp_dir = TempDir::new().unwrap();
-        let mut db = LedgerDB::new(
-            temp_dir.path().to_path_buf(),
-            255,
-            1_000_000,
-            ADDRESS_SIZE_BYTES,
-        );
+        let mut db = LedgerDB::new(temp_dir.path().to_path_buf(), 32, 255, 1_000_000);
         let mut batch = WriteBatch::default();
         db.put_entry(&addr, entry, &mut batch);
         db.update_entry(&addr, entry_update, &mut batch);

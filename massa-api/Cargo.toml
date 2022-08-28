@@ -30,13 +30,3 @@ massa_serialization = { path = "../massa-serialization"}
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_wallet = { path = "../massa-wallet" }
-
-# for more information on what are the following features used for, see the cargo.toml at workspace level
-[features]
-instrument = [
-    "tokio/tracing",
-    "massa_consensus_exports/instrument",
-    "massa_graph/instrument",
-    "massa_models/instrument",
-    "massa_network_exports/instrument",
-]

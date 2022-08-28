@@ -218,7 +218,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         bind: Some("0.0.0.0:31244".parse().unwrap()),
         connect_timeout: 200.into(),
         retry_delay: 200.into(),
-        max_ping: MassaTime::from(500),
+        max_ping: MassaTime::from_millis(500),
         read_timeout: 1000.into(),
         write_timeout: 1000.into(),
         read_error_timeout: 200.into(),

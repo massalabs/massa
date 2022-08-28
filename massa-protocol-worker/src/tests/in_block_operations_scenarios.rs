@@ -4,7 +4,10 @@ use super::tools::protocol_test;
 use massa_hash::Hash;
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
-    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, Slot,
+    address::Address,
+    amount::Amount,
+    block::{Block, BlockHeader, BlockHeaderSerializer, BlockSerializer},
+    slot::Slot,
 };
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::tests::tools::{

@@ -47,8 +47,6 @@ pub enum ConsensusError {
     PoolError(#[from] massa_pool_exports::PoolError),
     /// io error {0}
     IOError(#[from] std::io::Error),
-    /// serde error
-    SerdeError(#[from] serde_json::Error),
     /// missing block {0}
     MissingBlock(String),
     /// block creation error {0}

@@ -54,7 +54,7 @@
 //         block_reward: Amount::default(),
 //         roll_price: Amount::from_str("1000").unwrap(),
 //         operation_validity_periods: 100,
-//         genesis_timestamp: MassaTime::now().unwrap().saturating_add(init_time),
+//         genesis_timestamp: MassaTime::now(0).unwrap().saturating_add(init_time),
 //         ..Default::default()
 //     };
 //     // define addresses use for the test
@@ -494,7 +494,6 @@
 //     let mut cfg = ConsensusConfig {
 //         block_reward: Amount::default(),
 //         delta_f0: 3,
-//         disable_block_creation: false,
 //         operation_validity_periods: 10,
 //         max_block_size: 500,
 //         max_operations_per_block: 5000,
@@ -526,7 +525,7 @@
 //     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
 
 //     let init_time: MassaTime = 1000.into();
-//     cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(init_time);
+//     cfg.genesis_timestamp = MassaTime::now(0).unwrap().saturating_add(init_time);
 //     let storage: Storage = Default::default();
 //     // launch consensus controller
 //     let selector_config = SelectorConfig {
@@ -819,7 +818,7 @@
 //     };
 //     let (_selector_manager, selector_controller) =
 //         start_selector_worker(selector_config, VecDeque::new()).unwrap();
-//     cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(300.into());
+//     cfg.genesis_timestamp = MassaTime::now(0).unwrap().saturating_add(300.into());
 
 //     // launch consensus controller
 //     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =

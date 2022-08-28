@@ -70,7 +70,7 @@ async fn test_inter_cycle_batch_finalization() {
         future_block_processing_max_periods: 10,
         roll_price,
         t0,
-        genesis_timestamp: MassaTime::now().unwrap().saturating_add(warmup_time),
+        genesis_timestamp: MassaTime::now(0).unwrap().saturating_add(warmup_time),
         ..ConsensusConfig::default_with_staking_keys_and_ledger(
             &[staking_key.clone()],
             &initial_ledger,

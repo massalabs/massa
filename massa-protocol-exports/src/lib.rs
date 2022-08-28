@@ -14,7 +14,7 @@ pub use protocol_controller::{
     BlocksResults, ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
     ProtocolManagementCommand, ProtocolManager,
 };
-pub use settings::{ProtocolConfig, ProtocolSettings};
+pub use settings::ProtocolConfig;
 
 /// TODO: Add only if test. Removed the configuration test because don't work if running cargo test on an other sub-crate.
 pub mod tests;

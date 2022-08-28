@@ -40,9 +40,9 @@ lazy_static::lazy_static! {
     /// Time in milliseconds when the blockclique started.
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
-            MassaTime::now()
+            MassaTime::now(0)
                 .unwrap()
-                .saturating_add(MassaTime::from(1000 * 10))
+                .saturating_add(MassaTime::from_millis(1000 * 10))
         )
     } else {
         1659434400000.into()  // Tuesday, August 2, 2022 10:00:00 UTC
@@ -76,7 +76,7 @@ pub const ROLL_PRICE: Amount = Amount::from_mantissa_scale(100, 0);
 /// Block reward is given for each block creation
 pub const BLOCK_REWARD: Amount = Amount::from_mantissa_scale(3, 1);
 /// Time between the periods in the same thread.
-pub const T0: MassaTime = MassaTime::from(16000);
+pub const T0: MassaTime = MassaTime::from_millis(16000);
 /// Proof of stake seed for the initial draw
 pub const INITIAL_DRAW_SEED: &str = "massa_genesis_seed";
 /// Number of threads

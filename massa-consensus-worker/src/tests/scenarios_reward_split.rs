@@ -33,7 +33,7 @@
 //     let init_time: MassaTime = 1000.into();
 //     let cfg = ConsensusConfig {
 //         endorsement_count: 5,
-//         genesis_timestamp: MassaTime::now().unwrap().saturating_add(init_time),
+//         genesis_timestamp: MassaTime::now(0).unwrap().saturating_add(init_time),
 //         max_block_size: 2000,
 //         max_operations_per_block: 5000,
 //         operation_batch_size: 500,

@@ -278,7 +278,7 @@ impl Endpoints for API<Public> {
         let node_id = self.0.node_id;
         let config = CompactConfig::default();
         let closure = async move || {
-            let now = MassaTime::compensated_now(compensation_millis)?;
+            let now = MassaTime::now(compensation_millis)?;
             let last_slot = get_latest_block_slot_at_timestamp(
                 consensus_settings.thread_count,
                 consensus_settings.t0,
@@ -346,7 +346,7 @@ impl Endpoints for API<Public> {
                 cfg.thread_count,
                 cfg.t0,
                 cfg.genesis_timestamp,
-                MassaTime::compensated_now(compensation_millis)?,
+                MassaTime::now(compensation_millis)?,
             )?
             .unwrap_or_else(|| Slot::new(0, 0))
             .get_cycle(cfg.periods_per_cycle);

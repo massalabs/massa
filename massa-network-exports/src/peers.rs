@@ -257,7 +257,7 @@ impl PeerInfo {
             return now
                 .saturating_sub(last_failure)
                 .saturating_sub(wakeup_interval)
-                > MassaTime::from(0u64);
+                > MassaTime::from_millis(0u64);
         }
         true
     }

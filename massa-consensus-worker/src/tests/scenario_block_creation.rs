@@ -29,7 +29,7 @@ use tokio::time::sleep_until;
 //         LedgerData::new(Amount::from_str("1000").unwrap()),
 //     );
 //     let mut cfg = ConsensusConfig {
-//         genesis_timestamp: MassaTime::now()
+//         genesis_timestamp: MassaTime::now(0)
 //             .unwrap()
 //             .saturating_sub(MassaTime::from(30000)),
 //         ..ConsensusConfig::default_with_staking_keys_and_ledger(&[keypair_1, keypair_2], &ledger)
@@ -141,13 +141,12 @@ use tokio::time::sleep_until;
 //     let mut cfg = ConsensusConfig {
 //         block_reward: Amount::default(),
 //         delta_f0: 3,
-//         disable_block_creation: false,
 //         max_operations_per_block: 50,
 //         operation_validity_periods: 100,
 //         periods_per_cycle,
 //         roll_price: Amount::from_str("1000").unwrap(),
 //         t0,
-//         genesis_timestamp: MassaTime::now()
+//         genesis_timestamp: MassaTime::now(0)
 //             .unwrap()
 //             .checked_sub((t0.to_millis() * periods_per_cycle * 3).into())
 //             .unwrap()
@@ -304,8 +303,7 @@ async fn test_interleaving_block_creation_with_reception() {
     let mut cfg = ConsensusConfig {
         thread_count,
         t0: 1000.into(),
-        genesis_timestamp: MassaTime::now().unwrap().checked_add(1000.into()).unwrap(),
-        disable_block_creation: false,
+        genesis_timestamp: MassaTime::now(0).unwrap().checked_add(1000.into()).unwrap(),
         ..ConsensusConfig::default_with_staking_keys_and_ledger(&[keypair_1], &ledger)
     };
     // init roll count
@@ -446,8 +444,7 @@ async fn test_interleaving_block_creation_with_reception() {
 //     // Increase timestamp a bit to avoid missing the first slot.
 //     let init_time: MassaTime = 1000.into();
 //     let mut cfg = ConsensusConfig {
-//         disable_block_creation: false,
-//         genesis_timestamp: MassaTime::now().unwrap().checked_add(init_time).unwrap(),
+//         genesis_timestamp: MassaTime::now(0).unwrap().checked_add(init_time).unwrap(),
 //         max_operations_per_block: 50,
 //         operation_validity_periods: 10,
 //         t0: 1000.into(),
@@ -618,7 +615,6 @@ async fn test_interleaving_block_creation_with_reception() {
 //         LedgerData::new(Amount::from_str("1000000000").unwrap()),
 //     );
 //     let cfg = ConsensusConfig {
-//         disable_block_creation: false,
 //         endorsement_count: 10,
 //         max_block_size: 2000,
 //         max_operations_per_block: 5000,

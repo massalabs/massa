@@ -53,8 +53,7 @@ use massa_protocol_exports::{ProtocolCommandSender, ProtocolEventReceiver};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
-use serde::{Deserialize, Serialize};
-use std::{default::Default, path::PathBuf, usize};
+use std::{path::PathBuf, usize};
 use tokio::sync::mpsc;
 
 use crate::{
@@ -67,60 +66,9 @@ use crate::test_exports::{
     generate_default_roll_counts_file, generate_ledger_file, generate_staking_keys_file,
 };
 
-/// Consensus configuration
-/// Assumes `thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0`
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct ConsensusSettings {
-    /// Staking keys
-    pub staking_keys_path: PathBuf,
-    /// Maximum number of blocks allowed in discarded blocks.
-    pub max_discarded_blocks: usize,
-    /// If a block is `future_block_processing_max_periods` periods in the future, it is just discarded.
-    pub future_block_processing_max_periods: u64,
-    /// Maximum number of blocks allowed in `FutureIncomingBlocks`.
-    pub max_future_processing_blocks: usize,
-    /// Maximum number of blocks allowed in `DependencyWaitingBlocks`.
-    pub max_dependency_blocks: usize,
-    /// Maximum tries to fill a block with operations
-    pub max_operations_fill_attempts: u32,
-    /// number of cached draw cycles for PoS
-    pub pos_draw_cached_cycles: usize,
-    /// path to ledger db
-    pub ledger_path: PathBuf,
-    /// Cache capacity allowed to the ledger
-    pub ledger_cache_capacity: u64,
-    /// the ledger is flushed to the disk every `ledger_flush_interval`
-    pub ledger_flush_interval: Option<MassaTime>,
-    /// if ledger need a reset at start up
-    pub ledger_reset_at_startup: bool,
-    /// Initial file path that describe the ledger to merge in `ledger_path` after starting
-    pub initial_ledger_path: PathBuf,
-    /// size of an operation batch when creating a block
-    pub operation_batch_size: usize,
-    /// path to the initial rolls
-    pub initial_rolls_path: PathBuf,
-    /// stats time span
-    pub stats_timespan: MassaTime,
-    /// max event send wait
-    pub max_send_wait: MassaTime,
-    /// force keep at least this number of final periods in RAM for each thread
-    pub force_keep_final_periods: u64,
-    /// old blocks are pruned every `block_db_prune_interval`
-    pub block_db_prune_interval: MassaTime,
-    /// max number of items returned while querying
-    pub max_item_return_count: usize,
-    /// If we want to generate blocks.
-    /// Parameter that shouldn't be defined in prod.
-    #[serde(skip, default = "Default::default")]
-    pub disable_block_creation: bool,
-}
-
 /// Consensus full configuration (static + user defined)
 #[derive(Debug)]
 pub struct ConsensusConfig {
-    #[cfg(feature = "testing")]
-    /// temps files
-    pub temp_files: TempFiles,
     /// Time in milliseconds when the blockclique started.
     pub genesis_timestamp: MassaTime,
     /// TESTNET: time when the blockclique is ended.
@@ -191,9 +139,6 @@ pub struct ConsensusConfig {
     pub block_db_prune_interval: MassaTime,
     /// max number of items returned while querying
     pub max_item_return_count: usize,
-    /// If we want to generate blocks.
-    /// Parameter that shouldn't be defined in prod.
-    pub disable_block_creation: bool,
     /// Max gas per block for the execution configuration
     pub max_gas_per_block: u64,
     /// channel size
@@ -217,8 +162,6 @@ pub struct TempFiles {
 impl Clone for ConsensusConfig {
     fn clone(&self) -> Self {
         Self {
-            #[cfg(feature = "testing")]
-            temp_files: TempFiles::default(),
             genesis_timestamp: self.genesis_timestamp,
             end_timestamp: self.end_timestamp,
             thread_count: self.thread_count,
@@ -253,7 +196,6 @@ impl Clone for ConsensusConfig {
             endorsement_count: self.endorsement_count,
             block_db_prune_interval: self.block_db_prune_interval,
             max_item_return_count: self.max_item_return_count,
-            disable_block_creation: self.disable_block_creation,
             max_gas_per_block: self.max_gas_per_block,
             channel_size: self.channel_size,
         }
@@ -320,174 +262,6 @@ pub struct ConsensusChannels {
     pub selector_controller: Box<dyn SelectorController>,
 }
 
-impl From<&ConsensusSettings> for ConsensusConfig {
-    fn from(settings: &ConsensusSettings) -> Self {
-        #[cfg(feature = "testing")]
-        /// If the feature `testing` is activated we force the unit
-        /// test values to be used for a default initialization.
-        use massa_models::config::default_testing::*;
-        #[cfg(not(feature = "testing"))]
-        use massa_models::config::*;
-        ConsensusConfig {
-            #[cfg(feature = "testing")]
-            temp_files: TempFiles::default(), // No need to clone
-            genesis_timestamp: *GENESIS_TIMESTAMP,
-            end_timestamp: *END_TIMESTAMP,
-            thread_count: THREAD_COUNT,
-            t0: T0,
-            genesis_key: GENESIS_KEY.clone(),
-            staking_keys_path: settings.staking_keys_path.clone(),
-            max_discarded_blocks: settings.max_discarded_blocks,
-            future_block_processing_max_periods: settings.future_block_processing_max_periods,
-            max_future_processing_blocks: settings.max_future_processing_blocks,
-            max_dependency_blocks: settings.max_dependency_blocks,
-            delta_f0: DELTA_F0,
-            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-            max_operations_fill_attempts: settings.max_operations_fill_attempts,
-            max_block_size: MAX_BLOCK_SIZE,
-            operation_validity_periods: OPERATION_VALIDITY_PERIODS,
-            periods_per_cycle: PERIODS_PER_CYCLE,
-            pos_draw_cached_cycles: settings.pos_draw_cached_cycles,
-            pos_miss_rate_deactivation_threshold: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
-            ledger_path: settings.ledger_path.clone(),
-            ledger_cache_capacity: settings.ledger_cache_capacity,
-            ledger_flush_interval: settings.ledger_flush_interval,
-            ledger_reset_at_startup: settings.ledger_reset_at_startup,
-            initial_ledger_path: settings.initial_ledger_path.clone(),
-            block_reward: BLOCK_REWARD,
-            operation_batch_size: settings.operation_batch_size,
-            initial_rolls_path: settings.initial_rolls_path.clone(),
-            initial_draw_seed: INITIAL_DRAW_SEED.to_string(),
-            roll_price: ROLL_PRICE,
-            stats_timespan: settings.stats_timespan,
-            max_send_wait: settings.max_send_wait,
-            force_keep_final_periods: settings.force_keep_final_periods,
-            endorsement_count: ENDORSEMENT_COUNT,
-            block_db_prune_interval: settings.block_db_prune_interval,
-            max_item_return_count: settings.max_item_return_count,
-            disable_block_creation: settings.disable_block_creation,
-            max_gas_per_block: MAX_GAS_PER_BLOCK,
-            channel_size: CHANNEL_SIZE,
-        }
-    }
-}
-
-impl From<ConsensusSettings> for ConsensusConfig {
-    fn from(settings: ConsensusSettings) -> Self {
-        #[cfg(feature = "testing")]
-        /// If the feature `testing` is activated we force the unit
-        /// test values to be used for a default initialization.
-        use massa_models::config::default_testing::*;
-        #[cfg(not(feature = "testing"))]
-        use massa_models::config::*;
-        ConsensusConfig {
-            #[cfg(feature = "testing")]
-            temp_files: Default::default(),
-            genesis_timestamp: *GENESIS_TIMESTAMP,
-            end_timestamp: *END_TIMESTAMP,
-            thread_count: THREAD_COUNT,
-            t0: T0,
-            genesis_key: GENESIS_KEY.clone(),
-            staking_keys_path: settings.staking_keys_path,
-            max_discarded_blocks: settings.max_discarded_blocks,
-            future_block_processing_max_periods: settings.future_block_processing_max_periods,
-            max_future_processing_blocks: settings.max_future_processing_blocks,
-            max_dependency_blocks: settings.max_dependency_blocks,
-            delta_f0: DELTA_F0,
-            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-            max_operations_fill_attempts: settings.max_operations_fill_attempts,
-            max_block_size: MAX_BLOCK_SIZE,
-            operation_validity_periods: OPERATION_VALIDITY_PERIODS,
-            periods_per_cycle: PERIODS_PER_CYCLE,
-            pos_draw_cached_cycles: settings.pos_draw_cached_cycles,
-            pos_miss_rate_deactivation_threshold: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
-            ledger_path: settings.ledger_path,
-            ledger_cache_capacity: settings.ledger_cache_capacity,
-            ledger_flush_interval: settings.ledger_flush_interval,
-            ledger_reset_at_startup: settings.ledger_reset_at_startup,
-            initial_ledger_path: settings.initial_ledger_path,
-            block_reward: BLOCK_REWARD,
-            operation_batch_size: settings.operation_batch_size,
-            initial_rolls_path: settings.initial_rolls_path,
-            initial_draw_seed: INITIAL_DRAW_SEED.to_string(),
-            roll_price: ROLL_PRICE,
-            stats_timespan: settings.stats_timespan,
-            max_send_wait: settings.max_send_wait,
-            force_keep_final_periods: settings.force_keep_final_periods,
-            endorsement_count: ENDORSEMENT_COUNT,
-            block_db_prune_interval: settings.block_db_prune_interval,
-            max_item_return_count: settings.max_item_return_count,
-            disable_block_creation: settings.disable_block_creation,
-            max_gas_per_block: MAX_GAS_PER_BLOCK,
-            channel_size: CHANNEL_SIZE,
-        }
-    }
-}
-
-/// Defining the default consensus configuration for both
-/// testing and not testing.
-///
-/// Use the feature testing to load mocked default variable
-/// This is default variable but the configuration is a dynamic
-/// configuration passed as dependencies with no particular lifetime
-#[cfg(feature = "testing")]
-impl Default for ConsensusSettings {
-    fn default() -> Self {
-        /// If the feature `testing` is activated we force the unit
-        /// test values to be used for a default initialization.
-        use massa_models::config::default_testing::*;
-        Self {
-            staking_keys_path: Default::default(),
-            max_discarded_blocks: MAX_DISCARDED_BLOCKS,
-            future_block_processing_max_periods: FUTURE_BLOCK_PROCESSING_MAX_PERIODS,
-            max_future_processing_blocks: MAX_FUTURE_PROCESSING_BLOCK,
-            max_dependency_blocks: MAX_DEPENDENCY_BLOCK,
-            max_operations_fill_attempts: MAX_OPERATION_FILL_ATTEMPTS,
-            pos_draw_cached_cycles: POS_DRAW_CACHED_CYCLE,
-            ledger_path: Default::default(),
-            ledger_cache_capacity: LEDGER_CACHE_CAPACITY,
-            ledger_flush_interval: *LEDGER_FLUSH_INTERVAL,
-            ledger_reset_at_startup: LEDGER_RESET_AT_STARTUP,
-            initial_ledger_path: Default::default(),
-            operation_batch_size: OPERATION_BATCH_SIZE,
-            initial_rolls_path: Default::default(),
-            stats_timespan: *STATS_TIMESPAN,
-            max_send_wait: *MAX_SEND_WAIT,
-            force_keep_final_periods: FORCE_KEEP_FINAL_PERIOD,
-            block_db_prune_interval: *BLOCK_DB_PRUNE_INTERVAL,
-            max_item_return_count: MAX_ITEM_RETURN_COUNT,
-            disable_block_creation: DISABLE_BLOCK_CREATION,
-        }
-    }
-}
-
-#[cfg(feature = "testing")]
-impl From<&std::path::Path> for ConsensusConfig {
-    /// Utility trait used in tests to get a full consensus configuration from an initial ledger path
-    fn from(initial_ledger_path: &std::path::Path) -> Self {
-        let mut staking_keys = Vec::new();
-        for _ in 0..2 {
-            staking_keys.push(KeyPair::generate());
-        }
-        ConsensusSettings {
-            staking_keys_path: generate_staking_keys_file(&staking_keys)
-                .path()
-                .to_path_buf(),
-            ledger_path: tempfile::tempdir()
-                .expect("cannot create temp dir")
-                .path()
-                .to_path_buf(),
-            initial_ledger_path: initial_ledger_path.to_path_buf(),
-            initial_rolls_path: tempfile::tempdir()
-                .expect("cannot create temp dir")
-                .path()
-                .to_path_buf(),
-            ..Default::default()
-        }
-        .into()
-    }
-}
-
 #[cfg(feature = "testing")]
 ///
 /// Create the default value of `ConsensusConfig`.
@@ -517,28 +291,25 @@ impl From<&std::path::Path> for ConsensusConfig {
 ///
 impl Default for ConsensusConfig {
     fn default() -> Self {
-        use massa_models::config::default_testing::*;
+        use massa_models::config::*;
         let tempdir = tempfile::tempdir().expect("cannot create temp dir for the ledger path");
         let path_buf = tempdir.path().to_path_buf();
         Self {
-            temp_files: TempFiles {
-                temp_dir: vec![tempdir],
-                temp_files: vec![],
-            },
             // reset genesis timestamp because we are in test mode that can take a while to process
-            genesis_timestamp: MassaTime::now().expect("Impossible to reset the timestamp in test"),
+            genesis_timestamp: MassaTime::now(0)
+                .expect("Impossible to reset the timestamp in test"),
             end_timestamp: *END_TIMESTAMP,
             thread_count: THREAD_COUNT,
             t0: T0,
             genesis_key: GENESIS_KEY.clone(),
             staking_keys_path: Default::default(),
-            max_discarded_blocks: MAX_DISCARDED_BLOCKS,
-            future_block_processing_max_periods: FUTURE_BLOCK_PROCESSING_MAX_PERIODS,
-            max_future_processing_blocks: MAX_FUTURE_PROCESSING_BLOCK,
-            max_dependency_blocks: MAX_DEPENDENCY_BLOCK,
+            max_discarded_blocks: 100,
+            future_block_processing_max_periods: 2,
+            max_future_processing_blocks: 10,
+            max_dependency_blocks: 100,
             delta_f0: DELTA_F0,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-            max_operations_fill_attempts: MAX_OPERATION_FILL_ATTEMPTS,
+            max_operations_fill_attempts: 100,
             max_block_size: MAX_BLOCK_SIZE,
             operation_validity_periods: OPERATION_VALIDITY_PERIODS,
             periods_per_cycle: PERIODS_PER_CYCLE,
@@ -560,7 +331,6 @@ impl Default for ConsensusConfig {
             endorsement_count: ENDORSEMENT_COUNT,
             block_db_prune_interval: *BLOCK_DB_PRUNE_INTERVAL,
             max_item_return_count: MAX_ITEM_RETURN_COUNT,
-            disable_block_creation: DISABLE_BLOCK_CREATION,
             max_gas_per_block: MAX_GAS_PER_BLOCK,
             channel_size: CHANNEL_SIZE,
         }
@@ -587,10 +357,6 @@ impl ConsensusConfig {
             initial_ledger_path: ledger_file.path().to_path_buf(),
             staking_keys_path: staking_file.path().to_path_buf(),
             initial_rolls_path: rolls_file.path().to_path_buf(),
-            temp_files: TempFiles {
-                temp_files: vec![ledger_file, staking_file, rolls_file],
-                temp_dir: vec![],
-            },
             ..Default::default()
         }
     }
@@ -604,10 +370,6 @@ impl ConsensusConfig {
             initial_ledger_path: ledger_file.path().to_path_buf(),
             staking_keys_path: staking_file.path().to_path_buf(),
             initial_rolls_path: rolls_file.path().to_path_buf(),
-            temp_files: TempFiles {
-                temp_files: vec![ledger_file, staking_file, rolls_file],
-                temp_dir: vec![],
-            },
             ..Default::default()
         }
     }
@@ -616,7 +378,7 @@ impl ConsensusConfig {
     pub fn default_with_staking_keys_and_ledger(
         staking_keys: &[KeyPair],
         ledger: &std::collections::HashMap<
-            massa_models::Address,
+            massa_models::address::Address,
             massa_models::ledger_models::LedgerData,
         >,
     ) -> Self {
@@ -627,10 +389,6 @@ impl ConsensusConfig {
             initial_ledger_path: ledger_file.path().to_path_buf(),
             staking_keys_path: staking_file.path().to_path_buf(),
             initial_rolls_path: rolls_file.path().to_path_buf(),
-            temp_files: TempFiles {
-                temp_files: vec![ledger_file, staking_file, rolls_file],
-                temp_dir: vec![],
-            },
             ..Default::default()
         }
     }

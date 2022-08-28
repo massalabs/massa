@@ -1,8 +1,9 @@
 use std::collections::{HashMap, VecDeque};
 
 use massa_models::{
-    config::default_testing::{CHANNEL_SIZE, ENDORSEMENT_COUNT, PERIODS_PER_CYCLE},
-    Address, Slot, THREAD_COUNT,
+    address::Address,
+    config::{CHANNEL_SIZE, ENDORSEMENT_COUNT, PERIODS_PER_CYCLE, THREAD_COUNT},
+    slot::Slot,
 };
 use massa_signature::KeyPair;
 

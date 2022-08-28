@@ -94,7 +94,7 @@ pub fn get_current_latest_block_slot(
         thread_count,
         t0,
         genesis_timestamp,
-        MassaTime::compensated_now(clock_compensation)?,
+        MassaTime::now(clock_compensation)?,
     )
 }
 

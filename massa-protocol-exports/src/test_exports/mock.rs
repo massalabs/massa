@@ -4,7 +4,10 @@ use crate::{
     protocol_controller::ProtocolEventReceiver, ProtocolCommand, ProtocolCommandSender,
     ProtocolEvent,
 };
-use massa_models::{BlockId, Slot, WrappedHeader};
+use massa_models::{
+    block::{BlockId, WrappedHeader},
+    slot::Slot,
+};
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use tokio::{sync::mpsc, time::sleep};

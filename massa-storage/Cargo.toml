@@ -16,5 +16,4 @@ massa_factory_exports = { path = "../massa-factory-exports" }
 massa_signature = { path = "../massa-signature" }
 
 [features]
-instrument = ["massa_models/instrument"]
 testing = ["massa_factory_exports/testing"]
