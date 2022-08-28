@@ -6,9 +6,9 @@ use crate::ExecutionConfig;
 use massa_models::config::*;
 use massa_time::MassaTime;
 
-impl ExecutionConfig {
+impl Default for ExecutionConfig {
     /// default config used for testing
-    pub fn testing_default() -> Self {
+    fn default() -> Self {
         Self {
             readonly_queue_length: 100,
             max_final_events: 1000,
