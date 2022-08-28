@@ -7,12 +7,13 @@ use crate::protocol_worker::ProtocolWorker;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
+    block::{Block, WrappedBlock},
+    block::{BlockId, BlockSerializer},
     node::NodeId,
-    prehash::{BuildMap, Set},
+    operation::{OperationId, WrappedOperation},
+    prehash::{CapacityAllocator, PreHashSet},
     wrapped::{Id, Wrapped},
-    BlockId, BlockSerializer, OperationId, WrappedOperation,
 };
-use massa_models::{Block, WrappedBlock};
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkEvent, ReplyForBlocksInfo};
 use massa_protocol_exports::{ProtocolError, ProtocolEvent};
 use massa_serialization::Serializer;
@@ -201,7 +202,10 @@ impl ProtocolWorker {
     }
 
     /// Return the sum of all operation's serialized sizes in the Set<Id>
-    fn get_total_operations_size(storage: &Storage, operation_ids: &Set<OperationId>) -> usize {
+    fn get_total_operations_size(
+        storage: &Storage,
+        operation_ids: &PreHashSet<OperationId>,
+    ) -> usize {
         let op_reader = storage.read_operations();
         let mut total: usize = 0;
         operation_ids.iter().for_each(|id| {
@@ -235,7 +239,8 @@ impl ProtocolWorker {
         operation_ids: Vec<OperationId>,
     ) -> Result<(), ProtocolError> {
         // All operation ids sent into a set
-        let mut operation_ids_set: Set<OperationId> = operation_ids.iter().cloned().collect();
+        let mut operation_ids_set: PreHashSet<OperationId> =
+            operation_ids.iter().cloned().collect();
 
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
@@ -283,7 +288,7 @@ impl ProtocolWorker {
             }
 
             // Update ask block
-            let mut set = Set::<BlockId>::with_capacity_and_hasher(1, BuildMap::default());
+            let mut set = PreHashSet::<BlockId>::with_capacity(1);
             set.insert(block_id);
             self.stop_asking_blocks(set)?;
 
@@ -324,7 +329,7 @@ impl ProtocolWorker {
 
         let wanted_operation_ids = match self.block_wishlist.get(&block_id) {
             Some((AskForBlocksInfo::Operations(ids), Some(_))) => {
-                ids.clone().into_iter().collect::<Set<OperationId>>()
+                ids.clone().into_iter().collect::<PreHashSet<OperationId>>()
             }
             _ => return Ok(()),
         };
@@ -337,7 +342,7 @@ impl ProtocolWorker {
             }
         };
 
-        let mut received_ids: Set<OperationId> = Default::default();
+        let mut received_ids: PreHashSet<OperationId> = Default::default();
         let mut full_op_size = info.operations_size;
 
         // Ban the node if:
@@ -347,7 +352,8 @@ impl ProtocolWorker {
         // - full operations serialized size overflow
         for op in operations.iter() {
             full_op_size = full_op_size.saturating_add(op.serialized_size());
-            if op.thread != info.header.content.slot.thread
+            let op_thread = op.creator_address.get_thread(self.config.thread_count);
+            if op_thread != info.header.content.slot.thread
                 || !received_ids.insert(op.id)
                 || full_op_size > self.config.max_serialized_operations_size_per_block
             {
@@ -376,7 +382,6 @@ impl ProtocolWorker {
             signature: info.header.signature,
             creator_public_key: info.header.creator_public_key,
             creator_address: info.header.creator_address,
-            thread: info.header.thread,
             id: block_id,
             content: block,
             serialized_data: content_serialized,
@@ -401,7 +406,7 @@ impl ProtocolWorker {
         .await;
 
         // Update ask block
-        let mut set = Set::<BlockId>::with_capacity_and_hasher(1, BuildMap::default());
+        let mut set = PreHashSet::<BlockId>::with_capacity(1);
         set.insert(block_id);
         self.stop_asking_blocks(set)
     }

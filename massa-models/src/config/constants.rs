@@ -15,7 +15,7 @@
 //! (`default_testing.rs`) But as for the current file you shouldn't modify it.
 use std::str::FromStr;
 
-use crate::{Amount, Version};
+use crate::{amount::Amount, version::Version};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
@@ -40,9 +40,9 @@ lazy_static::lazy_static! {
     /// Time in milliseconds when the blockclique started.
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
-            MassaTime::now()
+            MassaTime::now(0)
                 .unwrap()
-                .saturating_add(MassaTime::from(1000 * 10))
+                .saturating_add(MassaTime::from_millis(1000 * 10))
         )
     } else {
         1659434400000.into()  // Tuesday, August 2, 2022 10:00:00 UTC
@@ -76,7 +76,7 @@ pub const ROLL_PRICE: Amount = Amount::from_mantissa_scale(100, 0);
 /// Block reward is given for each block creation
 pub const BLOCK_REWARD: Amount = Amount::from_mantissa_scale(3, 1);
 /// Time between the periods in the same thread.
-pub const T0: MassaTime = MassaTime::from(16000);
+pub const T0: MassaTime = MassaTime::from_millis(16000);
 /// Proof of stake seed for the initial draw
 pub const INITIAL_DRAW_SEED: &str = "massa_genesis_seed";
 /// Number of threads
@@ -167,6 +167,13 @@ pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 /// Max size of the printed error
 pub const MAX_BOOTSTRAP_ERROR_LENGTH: u32 = 10000;
 
+// Protocol constants
+
+/// Controller channel size
+pub const PROTOCOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
+/// Event channel size
+pub const PROTOCOL_EVENT_CHANNEL_SIZE: usize = 1024;
+
 // ***********************
 // Constants used for execution module (injected from ConsensusConfig)
 //
@@ -186,28 +193,14 @@ pub const MAX_ENDORSEMENTS_PER_MESSAGE: u32 = 1024;
 pub const NODE_SEND_CHANNEL_SIZE: usize = 1024;
 /// max duplex buffer size
 pub const MAX_DUPLEX_BUFFER_SIZE: usize = 1024;
-
-//
-// Divers constants
-//
-
-/// address size
-pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
-/// Safe to import, amount decimal factor
-pub const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
-/// block id size
-pub const BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
-/// endorsement id size
-pub const ENDORSEMENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
-/// operation id size
-pub const OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
-/// operation id prefix size
-pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;
-/// slot as a key size
-pub const SLOT_KEY_SIZE: usize = 9;
-
-/// Size of the event id hash used in execution module, safe to import
-pub const EVENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+/// network controller communication channel size
+pub const NETWORK_CONTROLLER_CHANNEL_SIZE: usize = 1024;
+/// network event channel size
+pub const NETWORK_EVENT_CHANNEL_SIZE: usize = 1024;
+/// network node command channel size
+pub const NETWORK_NODE_COMMAND_CHANNEL_SIZE: usize = 1024;
+/// network node event channel size
+pub const NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = 1024;
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]

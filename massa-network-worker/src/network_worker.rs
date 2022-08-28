@@ -12,7 +12,7 @@ use crate::{
 };
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_logging::massa_trace;
-use massa_models::{constants::CHANNEL_SIZE, node::NodeId, Version};
+use massa_models::{node::NodeId, version::Version};
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, Establisher, HandshakeErrorType, Listener,
     NetworkCommand, NetworkConfig, NetworkConnectionErrorType, NetworkError, NetworkEvent,
@@ -104,7 +104,8 @@ impl NetworkWorker {
     ) -> NetworkWorker {
         let self_node_id = NodeId(keypair.get_public_key());
 
-        let (node_event_tx, node_event_rx) = mpsc::channel::<NodeEvent>(CHANNEL_SIZE);
+        let (node_event_tx, node_event_rx) =
+            mpsc::channel::<NodeEvent>(cfg.node_event_channel_size);
         let max_wait_event = cfg.max_send_wait.to_duration();
         NetworkWorker {
             cfg,
@@ -387,7 +388,7 @@ impl NetworkWorker {
 
                         // spawn node_controller_fn
                         let (node_command_tx, node_command_rx) =
-                            mpsc::channel::<NodeCommand>(CHANNEL_SIZE);
+                            mpsc::channel::<NodeCommand>(self.cfg.node_command_channel_size);
                         let node_event_tx_clone = self.event.clone_node_sender();
                         let cfg_copy = self.cfg.clone();
                         let storage = self.storage.clone_without_refs();

@@ -1,4 +1,8 @@
-use massa_models::{Address, Amount, OperationId, WrappedOperation};
+use massa_models::{
+    address::Address,
+    amount::Amount,
+    operation::{OperationId, WrappedOperation},
+};
 use num::rational::Ratio;
 use std::cmp::Reverse;
 use std::ops::RangeInclusive;
@@ -39,6 +43,7 @@ impl OperationInfo {
         op: &WrappedOperation,
         operation_validity_periods: u64,
         roll_price: Amount,
+        thread_count: u8,
     ) -> Self {
         OperationInfo {
             id: op.id,
@@ -47,7 +52,7 @@ impl OperationInfo {
             max_gas: op.get_gas_usage(),
             creator_address: op.creator_address,
             fee: op.get_total_fee(),
-            thread: op.thread,
+            thread: op.creator_address.get_thread(thread_count),
             validity_period_range: op.get_validity_range(operation_validity_periods),
             max_sequential_spending: op.get_max_sequential_spending(roll_price),
         }

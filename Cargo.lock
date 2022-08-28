@@ -1754,7 +1754,6 @@ dependencies = [
  "massa_cipher",
  "massa_execution_exports",
  "massa_graph",
- "massa_logging",
  "massa_models",
  "massa_pool_exports",
  "massa_pos_exports",
@@ -1762,13 +1761,11 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
- "num",
  "serde 1.0.144",
  "serde_json",
  "tempfile",
  "thiserror",
  "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -1807,6 +1804,7 @@ dependencies = [
  "massa_models",
  "massa_storage",
  "massa_time",
+ "num",
  "thiserror",
 ]
 
@@ -1828,6 +1826,7 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
+ "num",
  "parking_lot 0.12.1",
  "rand 0.8.5",
  "rand_xoshiro",
@@ -2065,16 +2064,13 @@ dependencies = [
 name = "massa_pool_worker"
 version = "0.1.0"
 dependencies = [
- "lazy_static",
  "massa_execution_exports",
  "massa_hash",
  "massa_models",
  "massa_pool_exports",
  "massa_signature",
  "massa_storage",
- "massa_time",
  "num",
- "serial_test 0.9.0",
 ]
 
 [[package]]
@@ -3575,7 +3571,6 @@ dependencies = [
  "signal-hook-registry",
  "socket2",
  "tokio-macros",
- "tracing",
  "winapi",
 ]
 

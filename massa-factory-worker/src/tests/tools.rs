@@ -9,8 +9,9 @@ use massa_factory_exports::{
     test_exports::create_empty_block, FactoryChannels, FactoryConfig, FactoryManager,
 };
 use massa_models::{
-    constants::ENDORSEMENT_COUNT, prehash::Map, test_exports::get_next_slot_instant, Address,
-    BlockId, Slot, WrappedEndorsement, WrappedOperation,
+    address::Address, block::BlockId, config::ENDORSEMENT_COUNT, endorsement::WrappedEndorsement,
+    operation::WrappedOperation, prehash::PreHashMap, slot::Slot,
+    test_exports::get_next_slot_instant,
 };
 use massa_pool_exports::test_exports::{
     MockPoolController, MockPoolControllerMessage, PoolEventReceiver,
@@ -60,7 +61,7 @@ impl TestFactory {
             MockProtocolController::new();
         let producer_keypair = default_keypair;
         let producer_address = Address::from_public_key(&producer_keypair.get_public_key());
-        let mut accounts = Map::default();
+        let mut accounts = PreHashMap::default();
 
         let mut genesis_blocks = vec![];
         for i in 0..factory_config.thread_count {
@@ -70,7 +71,7 @@ impl TestFactory {
         }
 
         accounts.insert(producer_address, producer_keypair.clone());
-        factory_config.t0 = MassaTime::from(400);
+        factory_config.t0 = MassaTime::from_millis(400);
         factory_config.genesis_timestamp = factory_config
             .genesis_timestamp
             .checked_sub(factory_config.t0)
@@ -110,7 +111,7 @@ impl TestFactory {
         operations: Option<Vec<WrappedOperation>>,
         endorsements: Option<Vec<WrappedEndorsement>>,
     ) -> (BlockId, Storage) {
-        let now = MassaTime::now().expect("could not get current time");
+        let now = MassaTime::now(0).expect("could not get current time");
         let next_slot_instant = get_next_slot_instant(
             self.factory_config.genesis_timestamp,
             self.factory_config.thread_count,
@@ -160,7 +161,7 @@ impl TestFactory {
             _ => panic!("unexpected message"),
         }
         self.pool_receiver
-            .wait_command(MassaTime::from(100), |command| match command {
+            .wait_command(MassaTime::from_millis(100), |command| match command {
                 MockPoolControllerMessage::GetBlockEndorsements {
                     block_id: _,
                     slot: _,
@@ -182,7 +183,7 @@ impl TestFactory {
             .unwrap();
 
         self.pool_receiver
-            .wait_command(MassaTime::from(100), |command| match command {
+            .wait_command(MassaTime::from_millis(100), |command| match command {
                 MockPoolControllerMessage::GetBlockOperations {
                     slot: _,
                     response_tx,

@@ -1,6 +1,8 @@
 use crate::{
-    prehash::{Map, Set},
-    Address, BlockId, Slot,
+    address::Address,
+    block::BlockId,
+    prehash::{PreHashMap, PreHashSet},
+    slot::Slot,
 };
 
 use serde::{Deserialize, Serialize};
@@ -16,9 +18,9 @@ pub struct ActiveBlock {
     pub parents: Vec<(BlockId, u64)>,
     /// one `HashMap<Block id, period>` per thread (blocks that need to be kept)
     /// Children reference that block as a parent
-    pub children: Vec<Map<BlockId, u64>>,
+    pub children: Vec<PreHashMap<BlockId, u64>>,
     /// Blocks id that have this block as an ancestor
-    pub descendants: Set<BlockId>,
+    pub descendants: PreHashSet<BlockId>,
     /// for example has its fitness reached the given threshold
     pub is_final: bool,
     /// Slot of the block.

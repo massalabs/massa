@@ -1,5 +1,5 @@
 use massa_consensus_exports::ConsensusCommandSender;
-use massa_models::Block;
+use massa_models::block::Block;
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolCommandSender;

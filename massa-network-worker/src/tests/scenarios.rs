@@ -14,14 +14,19 @@ use crate::{
 use enum_map::enum_map;
 use enum_map::EnumMap;
 use massa_hash::Hash;
-use massa_models::constants::default_testing::{
+use massa_models::config::{
     ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
     MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
     MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_PARAMETERS_SIZE,
     THREAD_COUNT,
 };
-use massa_models::EndorsementSerializer;
-use massa_models::{node::NodeId, wrapped::WrappedContent, BlockId, Endorsement, Slot};
+use massa_models::{
+    block::BlockId,
+    endorsement::{Endorsement, EndorsementSerializer},
+    node::NodeId,
+    slot::Slot,
+    wrapped::WrappedContent,
+};
 use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
 use massa_network_exports::{
     AskForBlocksInfo, BlockInfoReply, ConnectionClosureReason, ConnectionId, HandshakeErrorType,
@@ -631,8 +636,8 @@ async fn test_advertised_and_wakeup_interval() {
         banned: false,
     }]);
     let network_conf = NetworkConfig {
-        wakeup_interval: MassaTime::from(500),
-        connect_timeout: MassaTime::from(2000),
+        wakeup_interval: MassaTime::from_millis(500),
+        connect_timeout: MassaTime::from_millis(2000),
         ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
 

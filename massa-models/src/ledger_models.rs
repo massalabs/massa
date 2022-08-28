@@ -1,9 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::{
+    address::{Address, AddressDeserializer},
+    amount::{Amount, AmountDeserializer, AmountSerializer},
+    error::ModelsError,
     error::ModelsResult as Result,
-    prehash::{Map, Set},
-    Address, AddressDeserializer, Amount, AmountDeserializer, AmountSerializer, ModelsError,
+    prehash::{PreHashMap, PreHashSet},
 };
 use core::usize;
 use massa_serialization::{
@@ -315,7 +317,7 @@ impl LedgerChange {
 
 /// Map an address to a `LedgerChange`
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct LedgerChanges(pub Map<Address, LedgerChange>);
+pub struct LedgerChanges(pub PreHashMap<Address, LedgerChange>);
 
 /// Basic serializer for `LedgerChanges`
 pub struct LedgerChangesSerializer {
@@ -432,7 +434,7 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
 
 impl LedgerChanges {
     /// addresses that are impacted by these ledger changes
-    pub fn get_involved_addresses(&self) -> Set<Address> {
+    pub fn get_involved_addresses(&self) -> PreHashSet<Address> {
         self.0.keys().copied().collect()
     }
 
@@ -466,7 +468,7 @@ impl LedgerChanges {
 
     /// merge another ledger changes into self, overwriting existing data
     /// addresses that are in not other are removed from self
-    pub fn sync_from(&mut self, addrs: &Set<Address>, mut other: LedgerChanges) {
+    pub fn sync_from(&mut self, addrs: &PreHashSet<Address>, mut other: LedgerChanges) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {
                 self.0.insert(*addr, new_val);
@@ -478,7 +480,7 @@ impl LedgerChanges {
 
     /// clone subset
     #[must_use]
-    pub fn clone_subset(&self, addrs: &Set<Address>) -> Self {
+    pub fn clone_subset(&self, addrs: &PreHashSet<Address>) -> Self {
         LedgerChanges(
             self.0
                 .iter()

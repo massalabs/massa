@@ -3,7 +3,7 @@
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
 use super::tools::protocol_test_with_storage;
-use massa_models::{self, Address, Slot};
+use massa_models::{self, address::Address, slot::Slot};
 use massa_network_exports::{AskForBlocksInfo, NetworkCommand, ReplyForBlocksInfo};
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::ProtocolConfig;

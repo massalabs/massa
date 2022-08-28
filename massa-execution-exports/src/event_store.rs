@@ -97,7 +97,7 @@ impl EventStore {
 #[test]
 fn test_prune() {
     use massa_models::output_event::{EventExecutionContext, SCOutputEvent};
-    use massa_models::Slot;
+    use massa_models::slot::Slot;
 
     let mut store = EventStore(VecDeque::new());
     for i in 0..10 {

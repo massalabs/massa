@@ -6,15 +6,15 @@ use crate::types::ExecutionOutput;
 use crate::types::ReadOnlyExecutionRequest;
 use crate::ExecutionAddressInfo;
 use crate::ExecutionError;
+use massa_models::address::Address;
+use massa_models::amount::Amount;
 use massa_models::api::EventFilter;
+use massa_models::block::BlockId;
+use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::Set;
+use massa_models::prehash::PreHashSet;
+use massa_models::slot::Slot;
 use massa_models::stats::ExecutionStats;
-use massa_models::Address;
-use massa_models::Amount;
-use massa_models::BlockId;
-use massa_models::OperationId;
-use massa_models::Slot;
 use massa_storage::Storage;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -79,7 +79,11 @@ pub trait ExecutionController: Send + Sync {
     ) -> Result<ExecutionOutput, ExecutionError>;
 
     /// List which operations inside the provided list were not executed
-    fn unexecuted_ops_among(&self, ops: &Set<OperationId>, thread: u8) -> Set<OperationId>;
+    fn unexecuted_ops_among(
+        &self,
+        ops: &PreHashSet<OperationId>,
+        thread: u8,
+    ) -> PreHashSet<OperationId>;
 
     /// Gets infos about a batch of addresses
     fn get_addresses_infos(&self, addresses: &[Address]) -> Vec<ExecutionAddressInfo>;

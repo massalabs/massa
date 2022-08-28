@@ -28,7 +28,7 @@
 //         t0: 1000.into(),
 //         operation_validity_periods: 10,
 //         max_operations_per_block: 50,
-//         genesis_timestamp: MassaTime::now()
+//         genesis_timestamp: MassaTime::now(0)
 //             .unwrap()
 //             .saturating_sub(MassaTime::from(32000).checked_mul(4).unwrap())
 //             .saturating_add(300.into()),

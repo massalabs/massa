@@ -8,7 +8,7 @@
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
 use massa_ledger_exports::{Applicable, LedgerChanges};
-use massa_models::{constants::default::MAX_DATASTORE_KEY_LENGTH, Address, Amount};
+use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -30,6 +30,9 @@ pub(crate) struct SpeculativeLedger {
 
     /// list of ledger changes that were applied to this `SpeculativeLedger` since its creation
     added_changes: LedgerChanges,
+
+    /// max datastore key length
+    max_datastore_key_length: u8,
 }
 
 impl SpeculativeLedger {
@@ -41,11 +44,13 @@ impl SpeculativeLedger {
     pub fn new(
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
+        max_datastore_key_length: u8,
     ) -> Self {
         SpeculativeLedger {
             final_state,
             added_changes: Default::default(),
             active_history,
+            max_datastore_key_length,
         }
     }
 
@@ -351,10 +356,10 @@ impl SpeculativeLedger {
 
         // check key correctness
         let key_length = key.len();
-        if key_length == 0 || key_length > MAX_DATASTORE_KEY_LENGTH as usize {
+        if key_length == 0 || key_length > self.max_datastore_key_length as usize {
             return Err(ExecutionError::RuntimeError(format!(
-                "key length is {}, but it must be in [0..{}]",
-                key_length, MAX_DATASTORE_KEY_LENGTH
+                "key length is {}, but it must be in [0..={}]",
+                key_length, self.max_datastore_key_length
             )));
         }
 

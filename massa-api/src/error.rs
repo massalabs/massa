@@ -4,7 +4,7 @@ use displaydoc::Display;
 use massa_consensus_exports::error::ConsensusError;
 use massa_execution_exports::ExecutionError;
 use massa_hash::MassaHashError;
-use massa_models::ModelsError;
+use massa_models::error::ModelsError;
 use massa_network_exports::NetworkError;
 use massa_pool_exports::PoolError;
 use massa_protocol_exports::ProtocolError;

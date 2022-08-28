@@ -2,9 +2,11 @@
 
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_models::{
+    block::BlockId,
+    endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement},
+    slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
     wrapped::WrappedContent,
-    BlockId, Endorsement, EndorsementSerializer, Slot, WrappedEndorsement,
 };
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -57,7 +59,7 @@ impl EndorsementFactoryWorker {
     /// Extra safety against double-production caused by clock adjustments (this is the role of the previous_slot parameter).
     fn get_next_slot(&self, previous_slot: Option<Slot>) -> (Slot, Instant) {
         // get delayed time
-        let shifted_now = MassaTime::compensated_now(self.cfg.clock_compensation_millis)
+        let shifted_now = MassaTime::now(self.cfg.clock_compensation_millis)
             .expect("could not get current time")
             .saturating_sub(self.half_t0);
 

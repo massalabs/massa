@@ -5,7 +5,12 @@
 use massa_models::address::AddressDeserializer;
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::slot::{SlotDeserializer, SlotSerializer};
-use massa_models::{Address, Amount, Slot, VecU8Deserializer, VecU8Serializer};
+use massa_models::{
+    address::Address,
+    amount::Amount,
+    serialization::{VecU8Deserializer, VecU8Serializer},
+    slot::Slot,
+};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -450,8 +455,10 @@ mod tests {
 
     use crate::{AsyncMessage, AsyncMessageDeserializer, AsyncMessageSerializer};
     use massa_models::{
-        constants::{default::MAX_DATA_ASYNC_MESSAGE, THREAD_COUNT},
-        Address, Amount, Slot,
+        address::Address,
+        amount::Amount,
+        config::{MAX_DATA_ASYNC_MESSAGE, THREAD_COUNT},
+        slot::Slot,
     };
     use std::str::FromStr;
 

@@ -1,6 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{BlockId, EndorsementId, OperationId, Slot};
+use massa_models::{
+    block::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
+};
 use massa_pool_exports::PoolController;
 use massa_storage::Storage;
 

@@ -79,10 +79,12 @@ impl EventSender {
 pub mod event_impl {
     use crate::network_worker::NetworkWorker;
     use massa_logging::massa_trace;
-    use massa_models::WrappedOperation;
     use massa_models::{
-        node::NodeId, operation::OperationPrefixIds, wrapped::Id, BlockId, WrappedEndorsement,
-        WrappedHeader,
+        block::{BlockId, WrappedHeader},
+        endorsement::WrappedEndorsement,
+        node::NodeId,
+        operation::{OperationPrefixIds, WrappedOperation},
+        wrapped::Id,
     };
     use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NodeCommand};
     use massa_network_exports::{NetworkError, NetworkEvent};

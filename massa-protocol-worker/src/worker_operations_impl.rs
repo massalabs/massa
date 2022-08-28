@@ -14,9 +14,8 @@ use crate::protocol_worker::ProtocolWorker;
 use massa_logging::massa_trace;
 use massa_models::{
     node::NodeId,
-    operation::OperationPrefixIds,
-    prehash::{BuildMap, Set},
-    WrappedOperation,
+    operation::{OperationPrefixIds, WrappedOperation},
+    prehash::{CapacityAllocator, PreHashSet},
 };
 use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
@@ -64,10 +63,8 @@ impl ProtocolWorker {
         op_batch: OperationPrefixIds,
         node_id: NodeId,
     ) -> Result<(), ProtocolError> {
-        let mut ask_set =
-            OperationPrefixIds::with_capacity_and_hasher(op_batch.len(), BuildMap::default());
-        let mut future_set =
-            OperationPrefixIds::with_capacity_and_hasher(op_batch.len(), BuildMap::default());
+        let mut ask_set = OperationPrefixIds::with_capacity(op_batch.len());
+        let mut future_set = OperationPrefixIds::with_capacity(op_batch.len());
         // exactitude isn't important, we want to have a now for that function call
         let now = Instant::now();
         let mut count_reask = 0;
@@ -201,7 +198,7 @@ impl ProtocolWorker {
         node_id: NodeId,
         op_pre_ids: OperationPrefixIds,
     ) -> Result<(), ProtocolError> {
-        let mut req_operation_ids = Set::default();
+        let mut req_operation_ids = PreHashSet::default();
         for prefix in op_pre_ids {
             if let Some(op_id) = self.checked_operations.get(&prefix) {
                 req_operation_ids.insert(*op_id);

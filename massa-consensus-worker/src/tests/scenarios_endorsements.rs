@@ -1,7 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::{
-    wrapped::WrappedContent, Amount, BlockId, Endorsement, EndorsementSerializer, Slot,
+    amount::Amount,
+    block::BlockId,
+    endorsement::{Endorsement, EndorsementSerializer},
+    slot::Slot,
+    wrapped::WrappedContent,
 };
 use massa_signature::KeyPair;
 use massa_storage::Storage;
@@ -27,7 +31,7 @@ async fn test_endorsement_check() {
         block_reward: Amount::default(),
         delta_f0: 3,
         endorsement_count: 1,
-        genesis_timestamp: MassaTime::now().unwrap().saturating_add(300.into()),
+        genesis_timestamp: MassaTime::now(0).unwrap().saturating_add(300.into()),
         operation_validity_periods: 100,
         periods_per_cycle: 2,
         roll_price: Amount::from_str("1000").unwrap(),

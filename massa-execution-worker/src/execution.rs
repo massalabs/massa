@@ -22,10 +22,14 @@ use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::Set;
+use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
-use massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
-use massa_models::{Amount, Slot};
+use massa_models::{
+    address::Address,
+    block::BlockId,
+    operation::{OperationId, OperationType, WrappedOperation},
+};
+use massa_models::{amount::Amount, slot::Slot};
 use massa_pos_exports::SelectorController;
 use massa_sc_runtime::Interface;
 use massa_storage::Storage;
@@ -87,6 +91,7 @@ impl ExecutionState {
 
         // Create an empty placeholder execution context, with shared atomic access
         let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
+            config.clone(),
             final_state.clone(),
             active_history.clone(),
         )));
@@ -286,7 +291,7 @@ impl ExecutionState {
         let sender_addr = operation.creator_address;
 
         // get the thread to which the operation belongs
-        let op_thread = operation.thread;
+        let op_thread = sender_addr.get_thread(self.config.thread_count);
 
         // check block/op thread compatibility
         if op_thread != block_slot.thread {
@@ -424,13 +429,7 @@ impl ExecutionState {
         }];
 
         // try to sell the rolls
-        if let Err(err) = context.try_sell_rolls(
-            &seller_addr,
-            *roll_count,
-            self.config.periods_per_cycle,
-            self.config.thread_count,
-            self.config.roll_price,
-        ) {
+        if let Err(err) = context.try_sell_rolls(&seller_addr, *roll_count) {
             return Err(ExecutionError::RollSellError(format!(
                 "{} failed to sell {} rolls: {}",
                 seller_addr, roll_count, err
@@ -855,6 +854,7 @@ impl ExecutionState {
     ) -> ExecutionOutput {
         // Create a new execution context for the whole active slot
         let mut execution_context = ExecutionContext::active_slot(
+            self.config.clone(),
             slot,
             opt_block.as_ref().map(|(b_id, _)| *b_id),
             self.final_state.clone(),
@@ -1025,11 +1025,7 @@ impl ExecutionState {
         }
 
         // Finish slot and return the execution output
-        context_guard!(self).settle_slot(
-            self.config.periods_per_cycle,
-            self.config.thread_count,
-            self.config.roll_price,
-        )
+        context_guard!(self).settle_slot()
     }
 
     /// Runs a read-only execution request.
@@ -1057,6 +1053,7 @@ impl ExecutionState {
 
         // create a readonly execution context
         let execution_context = ExecutionContext::readonly(
+            self.config.clone(),
             slot,
             req.max_gas,
             req.simulated_gas_price,
@@ -1101,11 +1098,7 @@ impl ExecutionState {
         }
 
         // return the execution output
-        Ok(context_guard!(self).settle_slot(
-            self.config.periods_per_cycle,
-            self.config.thread_count,
-            self.config.roll_price,
-        ))
+        Ok(context_guard!(self).settle_slot())
     }
 
     /// Gets a parallel balance both at the latest final and candidate executed slots
@@ -1275,7 +1268,11 @@ impl ExecutionState {
     }
 
     /// List which operations inside the provided list were not executed
-    pub fn unexecuted_ops_among(&self, ops: &Set<OperationId>, thread: u8) -> Set<OperationId> {
+    pub fn unexecuted_ops_among(
+        &self,
+        ops: &PreHashSet<OperationId>,
+        thread: u8,
+    ) -> PreHashSet<OperationId> {
         let mut ops = ops.clone();
 
         if ops.is_empty() {

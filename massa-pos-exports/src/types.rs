@@ -5,11 +5,13 @@ use std::collections::{BTreeMap, VecDeque};
 use bitvec::prelude::*;
 use massa_hash::Hash;
 use massa_models::{
+    address::{Address, AddressDeserializer},
+    amount::{Amount, AmountDeserializer, AmountSerializer},
     api::IndexedSlot,
-    constants::{POS_MISS_RATE_DEACTIVATION_THRESHOLD, THREAD_COUNT},
-    prehash::Map,
-    Address, AddressDeserializer, Amount, AmountDeserializer, AmountSerializer, BitVecDeserializer,
-    BitVecSerializer, ModelsError, Slot, SlotDeserializer, SlotSerializer,
+    error::ModelsError,
+    prehash::PreHashMap,
+    serialization::{BitVecDeserializer, BitVecSerializer},
+    slot::{Slot, SlotDeserializer, SlotSerializer},
 };
 use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
@@ -52,11 +54,19 @@ pub struct PoSFinalState {
     pub initial_rolls: BTreeMap<Address, u64>,
     /// initial seeds, used for negative cycle lookback (cycles -2, -1 in that order)
     pub initial_seeds: Vec<Hash>,
+    /// amount deserializer
+    pub amount_deserializer: AmountDeserializer,
+    /// slot deserializer
+    pub slot_deserializer: SlotDeserializer,
+    /// deserializer
+    pub deferred_credit_length_deserializer: U64VarIntDeserializer,
+    /// address deserializer
+    pub address_deserializer: AddressDeserializer,
 }
 
 #[derive(Debug, Default, Clone)]
 /// Structure containing all the PoS deferred credits information
-pub struct DeferredCredits(pub BTreeMap<Slot, Map<Address, Amount>>);
+pub struct DeferredCredits(pub BTreeMap<Slot, PreHashMap<Address, Amount>>);
 
 impl DeferredCredits {
     /// Extends the current DeferredCredits with another but accumulates the addresses and amounts
@@ -321,30 +331,30 @@ impl PoSFinalState {
         if part.is_empty() {
             return Ok(None);
         }
-        let amount_deser = AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
-        let slot_deser = SlotDeserializer::new(
-            (Included(u64::MIN), Included(u64::MAX)),
-            (Included(0), Excluded(THREAD_COUNT)),
-        );
-        let u64_deser = U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX));
-        let address_deser = AddressDeserializer::new();
         let (rest, credits) = context(
             "deferred_credits",
             length_count(
                 context("deferred_credits length", |input| {
-                    u64_deser.deserialize(input)
+                    self.deferred_credit_length_deserializer.deserialize(input)
                 }),
                 tuple((
                     context("slot", |input| {
-                        slot_deser.deserialize::<DeserializeError>(input)
+                        self.slot_deserializer
+                            .deserialize::<DeserializeError>(input)
                     }),
                     context(
                         "credits",
                         length_count(
-                            context("credits length", |input| u64_deser.deserialize(input)),
+                            context("credits length", |input| {
+                                self.deferred_credit_length_deserializer.deserialize(input)
+                            }),
                             tuple((
-                                context("address", |input| address_deser.deserialize(input)),
-                                context("amount", |input| amount_deser.deserialize(input)),
+                                context("address", |input| {
+                                    self.address_deserializer.deserialize(input)
+                                }),
+                                context("amount", |input| {
+                                    self.amount_deserializer.deserialize(input)
+                                }),
                             )),
                         ),
                     ),
@@ -383,7 +393,7 @@ pub struct CycleInfo {
     /// random seed bits of all slots in the cycle so far
     pub rng_seed: BitVec<u8>,
     /// Per-address production statistics
-    pub production_stats: Map<Address, ProductionStats>,
+    pub production_stats: PreHashMap<Address, ProductionStats>,
 }
 
 /// Block production statistic
@@ -397,13 +407,12 @@ pub struct ProductionStats {
 
 impl ProductionStats {
     /// Check if the production stats are above the required percentage
-    pub fn satisfying(&self) -> bool {
+    pub fn is_satisfying(&self, max_miss_ratio: &Ratio<u64>) -> bool {
         let opportunities_count = self.block_success_count + self.block_failure_count;
         if opportunities_count == 0 {
             return true;
         }
-        Ratio::new(self.block_failure_count, opportunities_count)
-            <= *POS_MISS_RATE_DEACTIVATION_THRESHOLD
+        &Ratio::new(self.block_failure_count, opportunities_count) <= max_miss_ratio
     }
 
     /// Increment a production stat struct with another
@@ -424,10 +433,10 @@ pub struct PoSChanges {
     pub seed_bits: BitVec<u8>,
 
     /// new roll counts for addresses (can be 0 to remove the address from the registry)
-    pub roll_changes: Map<Address, u64>,
+    pub roll_changes: PreHashMap<Address, u64>,
 
     /// updated production statistics
-    pub production_stats: Map<Address, ProductionStats>,
+    pub production_stats: PreHashMap<Address, ProductionStats>,
 
     /// set deferred credits indexed by target slot (can be set to 0 to cancel some, in case of slash)
     /// ordered structure to ensure slot iteration order is deterministic
@@ -545,20 +554,14 @@ pub struct PoSChangesDeserializer {
     deferred_credits_deserializer: DeferredCreditsDeserializer,
 }
 
-impl Default for PoSChangesDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl PoSChangesDeserializer {
     /// Create a new `PoSChanges` Deserializer
-    pub fn new() -> PoSChangesDeserializer {
+    pub fn new(thread_count: u8) -> PoSChangesDeserializer {
         PoSChangesDeserializer {
             bit_vec_deserializer: BitVecDeserializer::new(),
             roll_changes_deserializer: RollChangesDeserializer::new(),
             production_stats_deserializer: ProductionStatsDeserializer::new(),
-            deferred_credits_deserializer: DeferredCreditsDeserializer::new(),
+            deferred_credits_deserializer: DeferredCreditsDeserializer::new(thread_count),
         }
     }
 }
@@ -603,11 +606,11 @@ impl RollChangesDeserializer {
     }
 }
 
-impl Deserializer<Map<Address, u64>> for RollChangesDeserializer {
+impl Deserializer<PreHashMap<Address, u64>> for RollChangesDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Map<Address, u64>, E> {
+    ) -> IResult<&'a [u8], PreHashMap<Address, u64>, E> {
         context(
             "Failed RollChanges deserialization",
             length_count(
@@ -639,11 +642,11 @@ impl ProductionStatsDeserializer {
     }
 }
 
-impl Deserializer<Map<Address, ProductionStats>> for ProductionStatsDeserializer {
+impl Deserializer<PreHashMap<Address, ProductionStats>> for ProductionStatsDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Map<Address, ProductionStats>, E> {
+    ) -> IResult<&'a [u8], PreHashMap<Address, ProductionStats>, E> {
         context(
             "Failed ProductionStats deserialization",
             length_count(
@@ -682,12 +685,12 @@ struct DeferredCreditsDeserializer {
 }
 
 impl DeferredCreditsDeserializer {
-    fn new() -> DeferredCreditsDeserializer {
+    fn new(thread_count: u8) -> DeferredCreditsDeserializer {
         DeferredCreditsDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(THREAD_COUNT)),
+                (Included(0), Excluded(thread_count)),
             ),
             credit_deserializer: CreditDeserializer::new(),
         }
@@ -735,11 +738,11 @@ impl CreditDeserializer {
     }
 }
 
-impl Deserializer<Map<Address, Amount>> for CreditDeserializer {
+impl Deserializer<PreHashMap<Address, Amount>> for CreditDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Map<Address, Amount>, E> {
+    ) -> IResult<&'a [u8], PreHashMap<Address, Amount>, E> {
         context(
             "Failed Credit deserialization",
             length_count(

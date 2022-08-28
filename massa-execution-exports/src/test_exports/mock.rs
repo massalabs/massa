@@ -8,10 +8,11 @@ use crate::{
 };
 use massa_ledger_exports::LedgerEntry;
 use massa_models::{
-    api::EventFilter, output_event::SCOutputEvent, prehash::Set, Address, Amount, BlockId,
-    OperationId, Slot,
+    address::Address, amount::Amount, api::EventFilter, block::BlockId, operation::OperationId,
+    output_event::SCOutputEvent, prehash::PreHashSet, slot::Slot, stats::ExecutionStats,
 };
 use massa_storage::Storage;
+use massa_time::MassaTime;
 use std::{
     collections::{BTreeMap, HashMap},
     sync::{
@@ -59,11 +60,11 @@ pub enum MockExecutionControllerMessage {
     /// Unexecuted operation among call
     UnexecutedOpsAmong {
         /// operation ids
-        ops: Set<OperationId>,
+        ops: PreHashSet<OperationId>,
         /// thread
         thread: u8,
         /// response channel
-        response_tx: mpsc::Sender<Set<OperationId>>,
+        response_tx: mpsc::Sender<PreHashSet<OperationId>>,
     },
     /// Get final and candidate sequencial balances by addresses
     GetFinalAndCandidateSequentialBalances {
@@ -102,6 +103,17 @@ impl MockExecutionController {
 /// a response from that channel is read and returned as return value.
 /// See the documentation of `ExecutionController` for details on each function.
 impl ExecutionController for MockExecutionController {
+    /// Get execution statistics
+    fn get_stats(&self) -> ExecutionStats {
+        ExecutionStats {
+            time_window_start: MassaTime::now(0).unwrap(),
+            time_window_end: MassaTime::now(0).unwrap(),
+            final_block_count: 0,
+            final_executed_operations_count: 0,
+            active_cursor: Slot::new(0, 0),
+        }
+    }
+
     fn update_blockclique_status(
         &self,
         finalized_blocks: HashMap<Slot, (BlockId, Storage)>,
@@ -143,7 +155,9 @@ impl ExecutionController for MockExecutionController {
         ) {
             println!("mock error {err}");
         }
-        response_rx.recv_timeout(Duration::from_millis(50)).unwrap()
+        response_rx
+            .recv_timeout(Duration::from_millis(100))
+            .unwrap()
     }
 
     fn get_final_and_active_data_entry(
@@ -174,7 +188,11 @@ impl ExecutionController for MockExecutionController {
         response_rx.recv().unwrap()
     }
 
-    fn unexecuted_ops_among(&self, ops: &Set<OperationId>, thread: u8) -> Set<OperationId> {
+    fn unexecuted_ops_among(
+        &self,
+        ops: &PreHashSet<OperationId>,
+        thread: u8,
+    ) -> PreHashSet<OperationId> {
         let (response_tx, response_rx) = mpsc::channel();
         if let Err(err) =
             self.0
@@ -188,7 +206,9 @@ impl ExecutionController for MockExecutionController {
         {
             println!("mock error {err}");
         }
-        response_rx.recv_timeout(Duration::from_millis(50)).unwrap()
+        response_rx
+            .recv_timeout(Duration::from_millis(100))
+            .unwrap()
     }
 
     fn clone_box(&self) -> Box<dyn ExecutionController> {

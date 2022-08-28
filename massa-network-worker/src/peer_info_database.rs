@@ -154,7 +154,7 @@ pub(crate) fn cleanup_peers(
 
     // sort and truncate inactive banned peers
     // forget about old banned peers
-    let ban_limit = MassaTime::compensated_now(clock_compensation)?.saturating_sub(ban_timeout);
+    let ban_limit = MassaTime::now(clock_compensation)?.saturating_sub(ban_timeout);
     banned_peers.retain(|p| p.last_failure.map_or(false, |v| v >= ban_limit));
     banned_peers.sort_unstable_by_key(|&p| (std::cmp::Reverse(p.last_failure), p.last_alive));
     banned_peers.truncate(cfg.max_banned_peers);
@@ -474,7 +474,7 @@ impl PeerInfoDatabase {
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
             })?
-            .last_alive = Some(MassaTime::compensated_now(self.clock_compensation)?);
+            .last_alive = Some(MassaTime::now(self.clock_compensation)?);
         self.request_dump()
     }
 
@@ -492,7 +492,7 @@ impl PeerInfoDatabase {
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
             })?
-            .last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
+            .last_failure = Some(MassaTime::now(self.clock_compensation)?);
         self.request_dump()
     }
 
@@ -508,7 +508,7 @@ impl PeerInfoDatabase {
             .peers
             .entry(ip)
             .or_insert_with(|| PeerInfo::new(ip, false));
-        peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
+        peer.last_failure = Some(MassaTime::now(self.clock_compensation)?);
         if !peer.banned {
             peer.banned = true;
             if !peer.is_active() {
@@ -643,7 +643,7 @@ impl PeerInfoDatabase {
             peer.advertised = true; // we just connected to it. Assume advertised.
 
             if peer.banned {
-                peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
+                peer.last_failure = Some(MassaTime::now(self.clock_compensation)?);
                 if !peer.is_active() && peer.peer_type == Default::default() {
                     self.update()?;
                 }
@@ -687,7 +687,7 @@ impl PeerInfoDatabase {
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 ))?;
             peer.active_out_connection_attempts -= 1;
-            peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
+            peer.last_failure = Some(MassaTime::now(self.clock_compensation)?);
             let pt = peer.peer_type;
             if !peer.is_active() && peer.peer_type == PeerType::Standard {
                 self.update()?;
@@ -747,7 +747,7 @@ impl PeerInfoDatabase {
             // is there a attempt slot available
             if peer.banned {
                 massa_trace!("in_connection_refused_peer_banned", {"ip": peer.ip});
-                peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
+                peer.last_failure = Some(MassaTime::now(self.clock_compensation)?);
                 self.request_dump()?;
                 return Err(NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::BannedPeerTryingToConnect(ip),
@@ -854,7 +854,7 @@ impl PeerInfoDatabase {
         cfg: &PeerTypeConnectionConfig,
     ) -> Result<Vec<IpAddr>, NetworkError> {
         let available_slots = count.get_available_out_connection_attempts(cfg);
-        let now = MassaTime::compensated_now(self.clock_compensation)?;
+        let now = MassaTime::now(self.clock_compensation)?;
         let f = move |p: &&PeerInfo| {
             if p.peer_type != peer_type || !p.advertised || p.is_active() || p.banned {
                 return false;

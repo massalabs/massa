@@ -1,6 +1,6 @@
 use std::{fs::File, io::Seek, str::FromStr};
 
-use massa_models::{rolls::RollCounts, Address, THREAD_COUNT};
+use massa_models::{address::Address, config::THREAD_COUNT, rolls::RollCounts};
 use tempfile::NamedTempFile;
 
 pub fn get_initial_rolls() -> NamedTempFile {

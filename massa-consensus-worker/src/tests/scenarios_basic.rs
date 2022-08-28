@@ -4,7 +4,7 @@ use super::tools;
 use crate::tests::block_factory::BlockFactory;
 use massa_consensus_exports::ConsensusConfig;
 use massa_hash::Hash;
-use massa_models::{BlockId, Slot};
+use massa_models::{block::BlockId, slot::Slot};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use serial_test::serial;

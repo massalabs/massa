@@ -9,8 +9,8 @@ use crate::messages::{
 use async_speed_limit::clock::StandardClock;
 use async_speed_limit::{Limiter, Resource};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
-use massa_models::Version;
-use massa_models::{DeserializeMinBEInt, SerializeMinBEInt, VersionSerializer};
+use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
+use massa_models::version::{Version, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
@@ -149,7 +149,7 @@ impl BootstrapClientBinder {
             self.max_bootstrap_async_pool_changes,
             self.max_data_async_message,
             self.max_ledger_changes_count,
-            self.max_datastore_key_length as u64,
+            self.max_datastore_key_length,
             self.max_datastore_value_length,
             self.max_datastore_entry_count,
             self.max_function_name_length,

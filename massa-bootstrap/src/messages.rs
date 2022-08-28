@@ -6,9 +6,13 @@ use massa_graph::{
     BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
 };
 use massa_ledger_exports::{KeyDeserializer, KeySerializer};
+use massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
 use massa_models::slot::SlotDeserializer;
-use massa_models::{slot::SlotSerializer, Slot, Version};
-use massa_models::{VecU8Deserializer, VecU8Serializer, VersionDeserializer, VersionSerializer};
+use massa_models::{
+    slot::Slot,
+    slot::SlotSerializer,
+    version::{Version, VersionDeserializer, VersionSerializer},
+};
 use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
 use massa_serialization::{
     Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
@@ -121,7 +125,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
     /// use massa_bootstrap::{BootstrapServerMessage, BootstrapServerMessageSerializer};
     /// use massa_serialization::Serializer;
     /// use massa_time::MassaTime;
-    /// use massa_models::Version;
+    /// use massa_models::version::Version;
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
@@ -226,7 +230,7 @@ impl BootstrapServerMessageDeserializer {
         max_async_pool_changes: u64,
         max_data_async_message: u64,
         max_ledger_changes_count: u64,
-        max_datastore_key_length: u64,
+        max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
         max_function_name_length: u16,
@@ -236,8 +240,8 @@ impl BootstrapServerMessageDeserializer {
         Self {
             message_id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             time_deserializer: MassaTimeDeserializer::new((
-                Included(MassaTime::from(0)),
-                Included(MassaTime::from(u64::MAX)),
+                Included(MassaTime::from_millis(0)),
+                Included(MassaTime::from_millis(u64::MAX)),
             )),
             version_deserializer: VersionDeserializer::new(),
             peers_deserializer: BootstrapPeersDeserializer::new(max_advertise_length),
@@ -281,11 +285,11 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     /// use massa_bootstrap::{BootstrapServerMessage, BootstrapServerMessageSerializer, BootstrapServerMessageDeserializer};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_time::MassaTime;
-    /// use massa_models::Version;
+    /// use massa_models::version::Version;
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
-    /// let message_deserializer = BootstrapServerMessageDeserializer::new(16, 10, 100, 100, 1000, 1000, 1000, 1000, 1000, 1000, 100000, 10000, 10000, 10000, 100000);
+    /// let message_deserializer = BootstrapServerMessageDeserializer::new(16, 10, 100, 100, 1000, 1000, 1000, 1000, 1000, 255, 100000, 10000, 10000, 10000, 100000);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),
     ///    version: Version::from_str("TEST.1.0").unwrap(),
@@ -485,7 +489,7 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
     /// use massa_bootstrap::{BootstrapClientMessage, BootstrapClientMessageSerializer};
     /// use massa_serialization::Serializer;
     /// use massa_time::MassaTime;
-    /// use massa_models::Version;
+    /// use massa_models::version::Version;
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapClientMessageSerializer::new();
@@ -558,7 +562,7 @@ pub struct BootstrapClientMessageDeserializer {
 
 impl BootstrapClientMessageDeserializer {
     /// Creates a new `BootstrapClientMessageDeserializer`
-    pub fn new(thread_count: u8, max_datastore_key_length: u64) -> Self {
+    pub fn new(thread_count: u8, max_datastore_key_length: u8) -> Self {
         Self {
             id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             slot_deserializer: SlotDeserializer::new(
@@ -586,11 +590,11 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
     /// use massa_bootstrap::{BootstrapClientMessage, BootstrapClientMessageSerializer, BootstrapClientMessageDeserializer};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_time::MassaTime;
-    /// use massa_models::Version;
+    /// use massa_models::version::Version;
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapClientMessageSerializer::new();
-    /// let message_deserializer = BootstrapClientMessageDeserializer::new(32, 100000);
+    /// let message_deserializer = BootstrapClientMessageDeserializer::new(32, 255);
     /// let bootstrap_server_message = BootstrapClientMessage::AskBootstrapPeers;
     /// let mut message_serialized = Vec::new();
     /// message_serializer.serialize(&bootstrap_server_message, &mut message_serialized).unwrap();

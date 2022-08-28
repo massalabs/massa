@@ -6,7 +6,7 @@
 use crate::active_history::ActiveHistory;
 use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncPool, AsyncPoolChanges};
 use massa_final_state::FinalState;
-use massa_models::Slot;
+use massa_models::slot::Slot;
 use parking_lot::RwLock;
 use std::sync::Arc;
 

@@ -10,7 +10,7 @@ use crate::{
 };
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_ledger_exports::{LedgerChanges, LedgerController};
-use massa_models::{constants::THREAD_COUNT, Address, Slot};
+use massa_models::{address::Address, slot::Slot};
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use std::collections::VecDeque;
 
@@ -47,6 +47,7 @@ impl FinalState {
         let pos_state = PoSFinalState::new(
             &config.initial_seed_string,
             &config.initial_rolls_path,
+            config.thread_count,
             selector,
         )
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
@@ -137,7 +138,7 @@ impl FinalState {
         let pos_slot = if !self.changes_history.is_empty() {
             // Safe because we checked that there is changes just above.
             let index = last_slot
-                .slots_since(&self.changes_history[0].0, THREAD_COUNT)
+                .slots_since(&self.changes_history[0].0, self.config.thread_count)
                 .map_err(|_| {
                     FinalStateError::LedgerError("Last slot is overflowing history.".to_string())
                 })?;
@@ -207,7 +208,7 @@ mod tests {
     use crate::StateChanges;
     use massa_async_pool::test_exports::get_random_message;
     use massa_ledger_exports::SetUpdateOrDelete;
-    use massa_models::{Address, Slot};
+    use massa_models::{address::Address, slot::Slot};
     use massa_signature::KeyPair;
 
     fn get_random_address() -> Address {

@@ -5,9 +5,9 @@
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
-use massa_models::prehash::Set;
+use massa_models::prehash::PreHashSet;
 use massa_models::timeslots;
-use massa_models::{BlockId, Slot};
+use massa_models::{block::BlockId, slot::Slot};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -180,7 +180,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         // slot 1 is in the past
-        genesis_timestamp: MassaTime::now().unwrap().saturating_sub(2000.into()),
+        genesis_timestamp: MassaTime::now(0).unwrap().saturating_sub(2000.into()),
         future_block_processing_max_periods: 3,
         max_future_processing_blocks: 5,
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
@@ -300,7 +300,7 @@ async fn test_too_many_blocks_in_the_future() {
         delta_f0: 1000,
         future_block_processing_max_periods: 100,
         // slot 1 is in the past
-        genesis_timestamp: MassaTime::now().unwrap().saturating_sub(2000.into()),
+        genesis_timestamp: MassaTime::now(0).unwrap().saturating_sub(2000.into()),
         max_future_processing_blocks: 2,
         t0: 1000.into(),
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
@@ -412,9 +412,9 @@ async fn test_dep_in_back_order() {
 
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        genesis_timestamp: MassaTime::now()
+        genesis_timestamp: MassaTime::now(0)
             .unwrap()
-            .saturating_sub(MassaTime::from(1000).checked_mul(1000).unwrap()),
+            .saturating_sub(MassaTime::from_millis(1000).checked_mul(1000).unwrap()),
         t0: 1000.into(),
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
@@ -494,7 +494,7 @@ async fn test_dep_in_back_order() {
             validate_wishlist(
                 &mut protocol_controller,
                 vec![t0s1.id, t1s1.id].into_iter().collect(),
-                Set::<BlockId>::default(),
+                PreHashSet::<BlockId>::default(),
                 500,
             )
             .await;
@@ -514,7 +514,7 @@ async fn test_dep_in_back_order() {
             validate_propagate_block(&mut protocol_controller, t0s1.id, 500).await;
             validate_wishlist(
                 &mut protocol_controller,
-                Set::<BlockId>::default(),
+                PreHashSet::<BlockId>::default(),
                 vec![t0s1.id].into_iter().collect(),
                 500,
             )
@@ -577,7 +577,7 @@ async fn test_dep_in_back_order() {
             validate_propagate_block_in_list(&mut protocol_controller, &integrated, 1000).await;
             validate_wishlist(
                 &mut protocol_controller,
-                Set::<BlockId>::default(),
+                PreHashSet::<BlockId>::default(),
                 vec![t1s2.id].into_iter().collect(),
                 500,
             )
@@ -603,9 +603,9 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     .unwrap();*/
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        genesis_timestamp: MassaTime::now()
+        genesis_timestamp: MassaTime::now(0)
             .unwrap()
-            .saturating_sub(MassaTime::from(1000).checked_mul(1000).unwrap()),
+            .saturating_sub(MassaTime::from_millis(1000).checked_mul(1000).unwrap()),
         max_dependency_blocks: 2,
         t0: 1000.into(),
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
@@ -675,7 +675,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
             validate_wishlist(
                 &mut protocol_controller,
                 vec![t0s1.id, t1s1.id].into_iter().collect(),
-                Set::<BlockId>::default(),
+                PreHashSet::<BlockId>::default(),
                 500,
             )
             .await;
@@ -694,7 +694,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
             validate_propagate_block(&mut protocol_controller, t0s1.id, 500).await;
             validate_wishlist(
                 &mut protocol_controller,
-                Set::<BlockId>::default(),
+                PreHashSet::<BlockId>::default(),
                 vec![t0s1.id].into_iter().collect(),
                 500,
             )
@@ -729,7 +729,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
             .await;
             validate_wishlist(
                 &mut protocol_controller,
-                Set::<BlockId>::default(),
+                PreHashSet::<BlockId>::default(),
                 vec![t1s1.id].into_iter().collect(),
                 500,
             )
@@ -756,9 +756,9 @@ async fn test_add_block_that_depends_on_invalid_block() {
     .unwrap();*/
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        genesis_timestamp: MassaTime::now()
+        genesis_timestamp: MassaTime::now(0)
             .unwrap()
-            .saturating_sub(MassaTime::from(1000).checked_mul(1000).unwrap()),
+            .saturating_sub(MassaTime::from_millis(1000).checked_mul(1000).unwrap()),
         max_dependency_blocks: 7,
         t0: 1000.into(),
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)

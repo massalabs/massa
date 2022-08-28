@@ -1,4 +1,4 @@
-use massa_models::Address;
+use massa_models::address::Address;
 use serde::{Deserialize, Serialize};
 
 /// Configuration of selector thread

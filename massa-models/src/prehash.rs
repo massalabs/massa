@@ -13,30 +13,30 @@ pub trait PreHashed {}
 /// A `Hasher` for `PreHashed` keys that is faster because it avoids re-hashing hashes but simply truncates them.
 /// Note: when truncating, it takes the last 8 bytes of the key instead of the first 8 bytes.
 /// This is done to circumvent biases induced by first-byte manipulations in addresses related to the thread assignment process
-pub struct PreHashedMap<T: PreHashed> {
+pub struct HashMapper<T: PreHashed> {
     source: PhantomData<T>,
     hash: u64,
 }
 
-/// Default implementation for `PreHashedMap` (zero hash)
-impl<T: PreHashed> Default for PreHashedMap<T> {
+/// Default implementation for `HashMapper` (zero hash)
+impl<T: PreHashed> Default for HashMapper<T> {
     fn default() -> Self {
-        PreHashedMap {
+        HashMapper {
             source: Default::default(),
             hash: Default::default(),
         }
     }
 }
 
-/// `Hasher` implementation for `PreHashedMap`
-impl<T: PreHashed> Hasher for PreHashedMap<T> {
+/// `Hasher` implementation for `HashMapper`
+impl<T: PreHashed> Hasher for HashMapper<T> {
     /// finish the hashing process and return the truncated `u64` hash
     #[inline]
     fn finish(&self) -> u64 {
         self.hash
     }
 
-    /// write the bytes of a `PreHashed` key into the `PreHashedMap`
+    /// write the bytes of a `PreHashed` key into the `HashMapper`
     /// Panics if `bytes.len()` is strictly lower than 8
     /// Note: the truncated `u64` is completely overwritten by the last 8 items of "bytes" at every call
     #[inline]
@@ -50,13 +50,33 @@ impl<T: PreHashed> Hasher for PreHashedMap<T> {
     }
 }
 
-/// `BuildHasherDefault` specialization for `PreHashedMap`
-pub type BuildMap<T> = BuildHasherDefault<PreHashedMap<T>>;
+/// `BuildHasherDefault` specialization for `HashMapper`
+pub type BuildHashMapper<T> = BuildHasherDefault<HashMapper<T>>;
 
 /// `HashMap` specialization for `PreHashed` keys
 /// This hashmap is about 2x faster than the default `HashMap`
-pub type Map<K, V> = HashMap<K, V, BuildMap<K>>;
+pub type PreHashMap<K, V> = HashMap<K, V, BuildHashMapper<K>>;
 
 /// `HashSet` specialization for `PreHashed` keys
 /// This hashset is about 2x faster than the default `HashSet`
-pub type Set<T> = HashSet<T, BuildMap<T>>;
+pub type PreHashSet<T> = HashSet<T, BuildHashMapper<T>>;
+
+/// Trait allowing preallocations
+pub trait CapacityAllocator {
+    /// pre-allocate with a given capacity
+    fn with_capacity(capacity: usize) -> Self;
+}
+
+impl<K: PreHashed, V> CapacityAllocator for PreHashMap<K, V> {
+    /// pre-allocate with a given capacity
+    fn with_capacity(capacity: usize) -> Self {
+        PreHashMap::with_capacity_and_hasher(capacity, BuildHashMapper::default())
+    }
+}
+
+impl<K: PreHashed> CapacityAllocator for PreHashSet<K> {
+    /// pre-allocate with a given capacity
+    fn with_capacity(capacity: usize) -> Self {
+        PreHashSet::with_capacity_and_hasher(capacity, BuildHashMapper::default())
+    }
+}

@@ -76,6 +76,14 @@ pub struct NetworkConfig {
     pub max_function_name_length: u16,
     /// Maximum size of parameters in call sc
     pub max_parameters_size: u32,
+    /// Controller channel size
+    pub controller_channel_size: usize,
+    /// Event channel size
+    pub event_channel_size: usize,
+    /// Node command channel size
+    pub node_command_channel_size: usize,
+    /// Node event channel size
+    pub node_event_channel_size: usize,
 }
 
 /// Connection configuration for a peer type
@@ -96,11 +104,12 @@ pub mod tests {
     use crate::NetworkConfig;
     use crate::{test_exports::tools::get_temp_keypair_file, PeerType};
     use enum_map::enum_map;
-    use massa_models::constants::default_testing::{
-        BASE_NETWORK_CONTROLLER_IP, ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH,
-        MAX_ASK_BLOCKS_PER_MESSAGE, MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE,
-        MAX_FUNCTION_NAME_LENGTH, MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_MESSAGE,
-        MAX_PARAMETERS_SIZE, THREAD_COUNT,
+    use massa_models::config::{
+        ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
+        MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
+        MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_MESSAGE, MAX_PARAMETERS_SIZE,
+        NETWORK_CONTROLLER_CHANNEL_SIZE, NETWORK_EVENT_CHANNEL_SIZE,
+        NETWORK_NODE_COMMAND_CHANNEL_SIZE, NETWORK_NODE_EVENT_CHANNEL_SIZE, THREAD_COUNT,
     };
     use massa_time::MassaTime;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -130,20 +139,20 @@ pub mod tests {
                 bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
                 routable_ip: Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
                 protocol_port: 0,
-                connect_timeout: MassaTime::from(180_000),
-                wakeup_interval: MassaTime::from(10_000),
+                connect_timeout: MassaTime::from_millis(180_000),
+                wakeup_interval: MassaTime::from_millis(10_000),
                 peers_file: std::path::PathBuf::new(),
                 max_in_connections_per_ip: 2,
                 max_idle_peers: 3,
                 max_banned_peers: 3,
-                peers_file_dump_interval: MassaTime::from(10_000),
-                message_timeout: MassaTime::from(5000u64),
-                ask_peer_list_interval: MassaTime::from(50000u64),
+                peers_file_dump_interval: MassaTime::from_millis(10_000),
+                message_timeout: MassaTime::from_millis(5000u64),
+                ask_peer_list_interval: MassaTime::from_millis(50000u64),
                 keypair_file: std::path::PathBuf::new(),
-                max_send_wait: MassaTime::from(100),
-                ban_timeout: MassaTime::from(100_000_000),
+                max_send_wait: MassaTime::from_millis(100),
+                ban_timeout: MassaTime::from_millis(100_000_000),
                 initial_peers_file: std::path::PathBuf::new(),
-                peer_list_send_timeout: MassaTime::from(500),
+                peer_list_send_timeout: MassaTime::from_millis(500),
                 max_in_connection_overflow: 2,
                 peer_types_config,
                 max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
@@ -159,6 +168,10 @@ pub mod tests {
                 max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
                 max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
                 max_parameters_size: MAX_PARAMETERS_SIZE,
+                controller_channel_size: NETWORK_CONTROLLER_CHANNEL_SIZE,
+                event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
+                node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
+                node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
             }
         }
     }
@@ -185,22 +198,22 @@ pub mod tests {
             };
             Self {
                 bind: format!("0.0.0.0:{}", port).parse().unwrap(),
-                routable_ip: Some(BASE_NETWORK_CONTROLLER_IP),
+                routable_ip: Some(format!("200.200.200.200:{}", port).parse().unwrap()),
                 protocol_port: port,
-                connect_timeout: MassaTime::from(3000),
+                connect_timeout: MassaTime::from_millis(3000),
                 peers_file: peers_file.to_path_buf(),
-                wakeup_interval: MassaTime::from(3000),
+                wakeup_interval: MassaTime::from_millis(3000),
                 max_in_connections_per_ip: 100,
                 max_idle_peers: 100,
                 max_banned_peers: 100,
-                peers_file_dump_interval: MassaTime::from(30000),
-                message_timeout: MassaTime::from(5000u64),
-                ask_peer_list_interval: MassaTime::from(50000u64),
+                peers_file_dump_interval: MassaTime::from_millis(30000),
+                message_timeout: MassaTime::from_millis(5000u64),
+                ask_peer_list_interval: MassaTime::from_millis(50000u64),
                 keypair_file: get_temp_keypair_file().path().to_path_buf(),
-                max_send_wait: MassaTime::from(100),
-                ban_timeout: MassaTime::from(100_000_000),
+                max_send_wait: MassaTime::from_millis(100),
+                ban_timeout: MassaTime::from_millis(100_000_000),
                 initial_peers_file: peers_file.to_path_buf(),
-                peer_list_send_timeout: MassaTime::from(50),
+                peer_list_send_timeout: MassaTime::from_millis(50),
                 max_in_connection_overflow: 10,
                 peer_types_config,
                 max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
@@ -216,6 +229,10 @@ pub mod tests {
                 max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
                 max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
                 max_parameters_size: MAX_PARAMETERS_SIZE,
+                controller_channel_size: NETWORK_CONTROLLER_CHANNEL_SIZE,
+                event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
+                node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
+                node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
             }
         }
     }

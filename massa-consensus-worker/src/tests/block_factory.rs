@@ -7,9 +7,11 @@
 use super::tools::{validate_notpropagate_block, validate_propagate_block};
 use massa_hash::Hash;
 use massa_models::{
+    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock},
+    endorsement::WrappedEndorsement,
+    operation::WrappedOperation,
+    slot::Slot,
     wrapped::{Id, WrappedContent},
-    Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, Slot, WrappedBlock,
-    WrappedEndorsement, WrappedOperation,
 };
 use massa_protocol_exports::test_exports::MockProtocolController;
 use massa_signature::KeyPair;

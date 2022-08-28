@@ -8,10 +8,15 @@ use massa_models::api::{
 };
 use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
 use massa_models::node::NodeId;
-use massa_models::prehash::Map;
+use massa_models::prehash::PreHashMap;
 use massa_models::timeslots::get_current_latest_block_slot;
 use massa_models::{
-    Address, Amount, BlockId, EndorsementId, Operation, OperationId, OperationType, Slot,
+    address::Address,
+    amount::Amount,
+    block::BlockId,
+    endorsement::EndorsementId,
+    operation::{Operation, OperationId, OperationType},
+    slot::Slot,
 };
 use massa_sdk::Client;
 use massa_signature::KeyPair;
@@ -295,7 +300,7 @@ impl Display for ExtendedWalletEntry {
 /// Aggregation of the local, with some useful information as the balance, etc
 /// to be printed by the client.
 #[derive(Debug, Serialize)]
-pub struct ExtendedWallet(Map<Address, ExtendedWalletEntry>);
+pub struct ExtendedWallet(PreHashMap<Address, ExtendedWalletEntry>);
 
 impl ExtendedWallet {
     /// Reorganize everything into an extended wallet
@@ -800,8 +805,9 @@ impl Command {
                 };
                 let mut res = "".to_string();
                 if let Some(e) = end {
-                    let (days, hours, mins, secs) =
-                        e.saturating_sub(MassaTime::now()?).days_hours_mins_secs()?; // compensation milliseconds is zero
+                    let (days, hours, mins, secs) = e
+                        .saturating_sub(MassaTime::now(0)?)
+                        .days_hours_mins_secs()?; // compensation milliseconds is zero
 
                     let _ = write!(res, "{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs);
                 } else {

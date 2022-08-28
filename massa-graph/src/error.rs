@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 use displaydoc::Display;
 use massa_execution_exports::ExecutionError;
-use massa_models::ModelsError;
+use massa_models::error::ModelsError;
 use std::array::TryFromSliceError;
 use thiserror::Error;
 

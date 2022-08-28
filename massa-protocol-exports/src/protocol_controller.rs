@@ -6,10 +6,14 @@ use crate::error::ProtocolError;
 use massa_logging::massa_trace;
 
 use massa_models::{
-    prehash::{Map, Set},
-    Slot,
+    block::{BlockId, WrappedHeader},
+    endorsement::EndorsementId,
+    operation::OperationId,
 };
-use massa_models::{BlockId, EndorsementId, OperationId, WrappedHeader};
+use massa_models::{
+    prehash::{PreHashMap, PreHashSet},
+    slot::Slot,
+};
 use massa_network_exports::NetworkEventReceiver;
 use massa_storage::Storage;
 use serde::Serialize;
@@ -46,7 +50,7 @@ pub enum ProtocolEvent {
 /// )
 /// ```
 pub type BlocksResults =
-    Map<BlockId, Option<(Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
+    PreHashMap<BlockId, Option<(Option<PreHashSet<OperationId>>, Option<Vec<EndorsementId>>)>>;
 
 /// Commands that protocol worker can process
 #[derive(Debug)]
@@ -63,9 +67,9 @@ pub enum ProtocolCommand {
     /// Wish list delta
     WishlistDelta {
         /// add to wish list
-        new: Set<BlockId>,
+        new: PreHashSet<BlockId>,
         /// remove from wish list
-        remove: Set<BlockId>,
+        remove: PreHashSet<BlockId>,
     },
     /// Propagate operations (send batches)
     /// note: Set<OperationId> are replaced with OperationPrefixIds
@@ -119,8 +123,8 @@ impl ProtocolCommandSender {
     /// update the block wish list
     pub async fn send_wishlist_delta(
         &mut self,
-        new: Set<BlockId>,
-        remove: Set<BlockId>,
+        new: PreHashSet<BlockId>,
+        remove: PreHashSet<BlockId>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.send_wishlist_delta", { "new": new, "remove": remove });
         self.0

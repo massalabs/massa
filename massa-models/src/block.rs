@@ -1,13 +1,12 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::constants::BLOCK_ID_SIZE_BYTES;
-use crate::node_configuration::THREAD_COUNT;
 use crate::prehash::PreHashed;
 use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
 use crate::{
-    Address, Endorsement, EndorsementDeserializer, ModelsError, OperationId,
-    OperationIdsDeserializer, OperationIdsSerializer, Slot, SlotDeserializer, SlotSerializer,
-    WrappedEndorsement, WrappedOperation,
+    endorsement::{Endorsement, EndorsementDeserializer, WrappedEndorsement},
+    error::ModelsError,
+    operation::{OperationId, OperationIdsDeserializer, OperationIdsSerializer, WrappedOperation},
+    slot::{Slot, SlotDeserializer, SlotSerializer},
 };
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
@@ -30,7 +29,8 @@ use std::fmt::Formatter;
 use std::ops::Bound::{Excluded, Included};
 use std::str::FromStr;
 
-const BLOCK_ID_STRING_PREFIX: &str = "BLO";
+/// Size in bytes of a serialized block ID
+const BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
 /// block id
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
@@ -50,43 +50,20 @@ impl Id for BlockId {
 
 impl std::fmt::Display for BlockId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if cfg!(feature = "hash-prefix") {
-            write!(f, "{}-{}", BLOCK_ID_STRING_PREFIX, self.0.to_bs58_check())
-        } else {
-            write!(f, "{}", self.0.to_bs58_check())
-        }
+        write!(f, "{}", self.0.to_bs58_check())
     }
 }
 
 impl std::fmt::Debug for BlockId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if cfg!(feature = "hash-prefix") {
-            write!(f, "{}-{}", BLOCK_ID_STRING_PREFIX, self.0.to_bs58_check())
-        } else {
-            write!(f, "{}", self.0.to_bs58_check())
-        }
+        write!(f, "{}", self.0.to_bs58_check())
     }
 }
 
 impl FromStr for BlockId {
     type Err = ModelsError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if cfg!(feature = "hash-prefix") {
-            let v: Vec<_> = s.split('-').collect();
-            if v.len() != 2 {
-                // assume there is no prefix
-                Ok(BlockId(Hash::from_str(s)?))
-            } else if v[0] != BLOCK_ID_STRING_PREFIX {
-                Err(ModelsError::WrongPrefix(
-                    BLOCK_ID_STRING_PREFIX.to_string(),
-                    v[0].to_string(),
-                ))
-            } else {
-                Ok(BlockId(Hash::from_str(v[1])?))
-            }
-        } else {
-            Ok(BlockId(Hash::from_str(s)?))
-        }
+        Ok(BlockId(Hash::from_str(s)?))
     }
 }
 
@@ -135,18 +112,14 @@ impl WrappedContent for Block {
     fn new_wrapped<SC: Serializer<Self>, U: Id>(
         content: Self,
         content_serializer: SC,
-        keypair: &KeyPair,
+        _keypair: &KeyPair,
     ) -> Result<Wrapped<Self, U>, ModelsError> {
-        let public_key = keypair.get_public_key();
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&content, &mut content_serialized)?;
-        let creator_address = Address::from_public_key(&public_key);
-
         Ok(Wrapped {
             signature: content.header.signature,
-            creator_public_key: public_key,
-            creator_address,
-            thread: creator_address.get_thread(THREAD_COUNT),
+            creator_public_key: content.header.creator_public_key,
+            creator_address: content.header.creator_address,
             id: U::new(content.header.id.hash()),
             content,
             serialized_data: content_serialized,
@@ -181,7 +154,6 @@ impl WrappedContent for Block {
                 signature: content.header.signature,
                 creator_public_key: content.header.creator_public_key,
                 creator_address: content.header.creator_address,
-                thread: content.header.thread,
                 id: U::new(content.header.id.hash()),
                 content,
                 serialized_data: buffer[..buffer.len() - rest.len()].to_vec(),
@@ -392,9 +364,8 @@ impl WrappedBlock {
     }
 
     /// true if given operation is included in the block
-    /// may fail if computing an id of an operation in the block
-    pub fn contains_operation(&self, op: WrappedOperation) -> Result<bool, ModelsError> {
-        Ok(self.content.operations.contains(&op.id))
+    pub fn contains_operation(&self, op: WrappedOperation) -> bool {
+        self.content.operations.contains(&op.id)
     }
 
     /// returns the fitness of the block
@@ -555,6 +526,7 @@ pub struct BlockHeaderDeserializer {
     endorsement_deserializer: WrappedDeserializer<Endorsement, EndorsementDeserializer>,
     length_endorsements_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
+    thread_count: u8,
 }
 
 impl BlockHeaderDeserializer {
@@ -574,6 +546,7 @@ impl BlockHeaderDeserializer {
                 Included(endorsement_count),
             ),
             hash_deserializer: HashDeserializer::new(),
+            thread_count,
         }
     }
 }
@@ -647,7 +620,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                                         .deserialize(input)
                                         .map(|(rest, hash)| (rest, BlockId(hash)))
                                 }),
-                                THREAD_COUNT as usize,
+                                self.thread_count as usize,
                             ),
                         ),
                     )),
@@ -717,9 +690,9 @@ impl std::fmt::Display for BlockHeader {
 mod test {
     use super::*;
     use crate::{
+        config::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT},
+        endorsement::Endorsement,
         endorsement::EndorsementSerializer,
-        node_configuration::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK},
-        Endorsement,
     };
     use massa_serialization::DeserializeError;
     use massa_signature::KeyPair;

@@ -1,8 +1,10 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::{
-    prehash::{BuildMap, Set},
-    BlockId, EndorsementId, Slot,
+    block::BlockId,
+    endorsement::EndorsementId,
+    prehash::{CapacityAllocator, PreHashSet},
+    slot::Slot,
 };
 use massa_pool_exports::PoolConfig;
 use massa_storage::Storage;
@@ -53,7 +55,7 @@ impl EndorsementPool {
         self.last_cs_final_periods = final_cs_periods.to_vec();
 
         // remove old endorsements
-        let mut removed: Set<EndorsementId> = Default::default();
+        let mut removed: PreHashSet<EndorsementId> = Default::default();
         for thread in 0..self.config.thread_count {
             while let Some((&(target_slot, index, block_id), &endo_id)) =
                 self.endorsements_sorted[thread as usize].first_key_value()
@@ -78,8 +80,8 @@ impl EndorsementPool {
             .copied()
             .collect::<Vec<_>>();
 
-        let mut added = Set::with_capacity_and_hasher(items.len(), BuildMap::default());
-        let mut removed = Set::with_capacity_and_hasher(items.len(), BuildMap::default());
+        let mut added = PreHashSet::with_capacity(items.len());
+        let mut removed = PreHashSet::with_capacity(items.len());
 
         // add items to pool
         {
@@ -161,7 +163,8 @@ impl EndorsementPool {
 
         // setup endorsement storage
         let mut endo_storage = self.storage.clone_without_refs();
-        let claim_endos: Set<EndorsementId> = endo_ids.iter().filter_map(|&opt| opt).collect();
+        let claim_endos: PreHashSet<EndorsementId> =
+            endo_ids.iter().filter_map(|&opt| opt).collect();
         let claimed_endos = endo_storage.claim_endorsement_refs(&claim_endos);
         if claimed_endos.len() != claim_endos.len() {
             panic!("could not claim all endorsements from storage");

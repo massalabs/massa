@@ -13,7 +13,7 @@ use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
-use massa_models::constants::default_testing::{
+use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH,
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT,
@@ -21,12 +21,16 @@ use massa_models::constants::default_testing::{
     MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK,
     MAX_PARAMETERS_SIZE, THREAD_COUNT,
 };
-use massa_models::prehash::Map;
+use massa_models::prehash::PreHashMap;
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
-    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, Endorsement, Slot,
+    address::Address,
+    amount::Amount,
+    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId},
+    endorsement::Endorsement,
+    slot::Slot,
 };
-use massa_models::{BlockSerializer, EndorsementSerializer};
+use massa_models::{block::BlockSerializer, endorsement::EndorsementSerializer};
 use massa_network_exports::{BootstrapPeers, NetworkCommand};
 use massa_pos_exports::{CycleInfo, DeferredCredits, PoSChanges, PoSFinalState, ProductionStats};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -77,12 +81,12 @@ fn get_random_pos_cycles_info(
     r_limit: u64,
 ) -> (
     BTreeMap<Address, u64>,
-    Map<Address, ProductionStats>,
+    PreHashMap<Address, ProductionStats>,
     BitVec<u8>,
 ) {
     let mut rng = rand::thread_rng();
     let mut roll_counts = BTreeMap::default();
-    let mut production_stats = Map::default();
+    let mut production_stats = PreHashMap::default();
     let mut rng_seed: BitVec<u8> = BitVec::default();
 
     for i in 0u64..(r_limit / 2) {
@@ -104,7 +108,7 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
     let mut deferred_credits = DeferredCredits::default();
 
     for i in 0u64..r_limit {
-        let mut credits = Map::default();
+        let mut credits = PreHashMap::default();
         for j in 0u64..(r_limit / 2) {
             credits.insert(get_random_address(), Amount::from_raw(j));
         }
@@ -153,7 +157,7 @@ fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
 }
 
 /// generates a random bootstrap state for the final state
-pub fn get_random_final_state_bootstrap(thread_count: u8, pos: PoSFinalState) -> FinalState {
+pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
     let mut rng = rand::thread_rng();
     let r_limit: u64 = rng.gen_range(25..50);
 
@@ -167,7 +171,7 @@ pub fn get_random_final_state_bootstrap(thread_count: u8, pos: PoSFinalState) ->
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
 
-    let slot = Slot::new(0, rng.gen_range(0..thread_count));
+    let slot = Slot::new(0, rng.gen_range(0..THREAD_COUNT));
     let final_ledger = create_final_ledger(Some(sorted_ledger), Default::default());
     let async_pool = create_async_pool(Default::default(), messages);
     let mut changes_history = VecDeque::new();
@@ -218,7 +222,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         bind: Some("0.0.0.0:31244".parse().unwrap()),
         connect_timeout: 200.into(),
         retry_delay: 200.into(),
-        max_ping: MassaTime::from(500),
+        max_ping: MassaTime::from_millis(500),
         read_timeout: 1000.into(),
         write_timeout: 1000.into(),
         read_error_timeout: 200.into(),
@@ -317,7 +321,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
             header: BlockHeader::new_wrapped(
                 BlockHeader {
                     slot: Slot::new(1, 1),
-                    parents: vec![get_dummy_block_id("p1"), get_dummy_block_id("p2")],
+                    parents: vec![get_dummy_block_id("p1"); THREAD_COUNT as usize],
                     operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
                     endorsements: vec![
                         Endorsement::new_wrapped(
@@ -356,10 +360,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
     // TODO: We currently lost information. Need to use shared storage
     let block1 = ExportActiveBlock {
         block,
-        parents: vec![
-            (get_dummy_block_id("b1"), 4777),
-            (get_dummy_block_id("b2"), 8870),
-        ],
+        parents: vec![(get_dummy_block_id("b1"), 4777); THREAD_COUNT as usize],
         is_final: true,
         operations: Default::default(),
     };
@@ -371,7 +372,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
     let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();
     let bootstrapable_graph_deserializer = BootstrapableGraphDeserializer::new(
         THREAD_COUNT,
-        9,
+        ENDORSEMENT_COUNT,
         MAX_BOOTSTRAP_BLOCKS,
         MAX_DATASTORE_VALUE_LENGTH,
         MAX_FUNCTION_NAME_LENGTH,

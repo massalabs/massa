@@ -490,7 +490,7 @@ async fn test_get_advertisable_peer_ips() {
         default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 23)));
     banned_host1.peer_type = PeerType::Bootstrap;
     banned_host1.banned = true;
-    banned_host1.last_alive = Some(MassaTime::now().unwrap().checked_sub(1000.into()).unwrap());
+    banned_host1.last_alive = Some(MassaTime::now(0).unwrap().checked_sub(1000.into()).unwrap());
     peers.insert(banned_host1.ip, banned_host1);
     // peer not advertised, not return
     let mut connected_peers1 =
@@ -500,22 +500,22 @@ async fn test_get_advertisable_peer_ips() {
     // peer Ok, return
     let mut connected_peers2 =
         default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 13)));
-    connected_peers2.last_alive = Some(MassaTime::now().unwrap().checked_sub(800.into()).unwrap());
+    connected_peers2.last_alive = Some(MassaTime::now(0).unwrap().checked_sub(800.into()).unwrap());
     connected_peers2.last_failure =
-        Some(MassaTime::now().unwrap().checked_sub(1000.into()).unwrap());
+        Some(MassaTime::now(0).unwrap().checked_sub(1000.into()).unwrap());
     peers.insert(connected_peers2.ip, connected_peers2);
     // peer Ok, connected return
     let mut connected_peers1 =
         default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 17)));
     connected_peers1.active_out_connections = 1;
-    connected_peers1.last_alive = Some(MassaTime::now().unwrap().checked_sub(900.into()).unwrap());
+    connected_peers1.last_alive = Some(MassaTime::now(0).unwrap().checked_sub(900.into()).unwrap());
     peers.insert(connected_peers1.ip, connected_peers1);
     // peer failure before alive but to early. return
     let mut connected_peers2 =
         default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 14)));
-    connected_peers2.last_alive = Some(MassaTime::now().unwrap().checked_sub(800.into()).unwrap());
+    connected_peers2.last_alive = Some(MassaTime::now(0).unwrap().checked_sub(800.into()).unwrap());
     connected_peers2.last_failure =
-        Some(MassaTime::now().unwrap().checked_sub(2000.into()).unwrap());
+        Some(MassaTime::now(0).unwrap().checked_sub(2000.into()).unwrap());
     peers.insert(connected_peers2.ip, connected_peers2);
 
     let wakeup_interval = network_settings.wakeup_interval;
@@ -576,21 +576,22 @@ async fn test_get_out_connection_candidate_ips() {
     let mut connected_peers2 =
         default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
     connected_peers2.last_failure =
-        Some(MassaTime::now().unwrap().checked_sub(900.into()).unwrap());
+        Some(MassaTime::now(0).unwrap().checked_sub(900.into()).unwrap());
     peers.insert(connected_peers2.ip, connected_peers2);
 
     // peer failure before alive but too early. return
     let mut connected_peers2 =
         default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 13)));
-    connected_peers2.last_alive = Some(MassaTime::now().unwrap().checked_sub(900.into()).unwrap());
+    connected_peers2.last_alive = Some(MassaTime::now(0).unwrap().checked_sub(900.into()).unwrap());
     connected_peers2.last_failure =
-        Some(MassaTime::now().unwrap().checked_sub(1000.into()).unwrap());
+        Some(MassaTime::now(0).unwrap().checked_sub(1000.into()).unwrap());
     peers.insert(connected_peers2.ip, connected_peers2);
 
     // peer alive no failure. return
     let mut connected_peers1 =
         default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 14)));
-    connected_peers1.last_alive = Some(MassaTime::now().unwrap().checked_sub(1000.into()).unwrap());
+    connected_peers1.last_alive =
+        Some(MassaTime::now(0).unwrap().checked_sub(1000.into()).unwrap());
     peers.insert(connected_peers1.ip, connected_peers1);
 
     // peer banned not return.
@@ -598,24 +599,33 @@ async fn test_get_out_connection_candidate_ips() {
         default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 23)));
     banned_host1.peer_type = PeerType::Bootstrap;
     banned_host1.banned = true;
-    banned_host1.last_alive = Some(MassaTime::now().unwrap().checked_sub(1000.into()).unwrap());
+    banned_host1.last_alive = Some(MassaTime::now(0).unwrap().checked_sub(1000.into()).unwrap());
     peers.insert(banned_host1.ip, banned_host1);
 
     // peer failure after alive not too early. return
     let mut connected_peers2 =
         default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 15)));
-    connected_peers2.last_alive =
-        Some(MassaTime::now().unwrap().checked_sub(12000.into()).unwrap());
-    connected_peers2.last_failure =
-        Some(MassaTime::now().unwrap().checked_sub(11000.into()).unwrap());
+    connected_peers2.last_alive = Some(
+        MassaTime::now(0)
+            .unwrap()
+            .checked_sub(12000.into())
+            .unwrap(),
+    );
+    connected_peers2.last_failure = Some(
+        MassaTime::now(0)
+            .unwrap()
+            .checked_sub(11000.into())
+            .unwrap(),
+    );
     peers.insert(connected_peers2.ip, connected_peers2);
 
     // peer failure after alive too early. not return
     let mut connected_peers2 =
         default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 16)));
-    connected_peers2.last_alive = Some(MassaTime::now().unwrap().checked_sub(2000.into()).unwrap());
+    connected_peers2.last_alive =
+        Some(MassaTime::now(0).unwrap().checked_sub(2000.into()).unwrap());
     connected_peers2.last_failure =
-        Some(MassaTime::now().unwrap().checked_sub(1000.into()).unwrap());
+        Some(MassaTime::now(0).unwrap().checked_sub(1000.into()).unwrap());
     peers.insert(connected_peers2.ip, connected_peers2);
 
     // peer Ok, connected, not return
@@ -691,16 +701,17 @@ async fn test_cleanup_peers() {
     .unwrap();
     assert!(peers.is_empty());
 
-    let now = MassaTime::now().unwrap();
+    let now = MassaTime::now(0).unwrap();
 
     let mut connected_peers1 =
         default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
-    connected_peers1.last_alive = Some(MassaTime::now().unwrap().checked_sub(1000.into()).unwrap());
+    connected_peers1.last_alive =
+        Some(MassaTime::now(0).unwrap().checked_sub(1000.into()).unwrap());
     peers.insert(connected_peers1.ip, connected_peers1);
 
     let mut connected_peers2 =
         default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
-    connected_peers2.last_alive = Some(MassaTime::now().unwrap().checked_sub(900.into()).unwrap());
+    connected_peers2.last_alive = Some(MassaTime::now(0).unwrap().checked_sub(900.into()).unwrap());
     let same_connected_peer = connected_peers2;
 
     let non_global =
@@ -733,7 +744,8 @@ async fn test_cleanup_peers() {
 
     advertised_host1.advertised = true;
     advertised_host1.active_out_connections = 0;
-    advertised_host1.last_alive = Some(MassaTime::now().unwrap().checked_sub(1000.into()).unwrap());
+    advertised_host1.last_alive =
+        Some(MassaTime::now(0).unwrap().checked_sub(1000.into()).unwrap());
     let mut advertised_host2 =
         default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 36)));
     advertised_host2.peer_type = PeerType::Standard;
@@ -846,11 +858,21 @@ impl From<u32> for PeerInfoDatabase {
                 },
                 last_alive: match i % 4 {
                     0 => None,
-                    _ => Some(MassaTime::now().unwrap().checked_sub(50000.into()).unwrap()),
+                    _ => Some(
+                        MassaTime::now(0)
+                            .unwrap()
+                            .checked_sub(50000.into())
+                            .unwrap(),
+                    ),
                 },
                 last_failure: match i % 5 {
                     0 => None,
-                    _ => Some(MassaTime::now().unwrap().checked_sub(60000.into()).unwrap()),
+                    _ => Some(
+                        MassaTime::now(0)
+                            .unwrap()
+                            .checked_sub(60000.into())
+                            .unwrap(),
+                    ),
                 },
                 advertised: (ip[2] % 2) == 0,
                 active_out_connection_attempts: 0,

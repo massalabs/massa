@@ -12,13 +12,19 @@ use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
 use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 use massa_async_pool::{AsyncMessage, AsyncMessageId};
-use massa_execution_exports::{EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement};
+use massa_execution_exports::{
+    EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
+};
 use massa_final_state::{ExecutedOps, FinalState, StateChanges};
 use massa_ledger_exports::LedgerChanges;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::{
+    address::Address,
+    amount::Amount,
+    block::BlockId,
+    operation::OperationId,
     output_event::{EventExecutionContext, SCOutputEvent},
-    Address, Amount, BlockId, OperationId, Slot,
+    slot::Slot,
 };
 use massa_pos_exports::PoSChanges;
 use parking_lot::RwLock;
@@ -63,6 +69,9 @@ pub(crate) struct ExecutionContextSnapshot {
 /// passed to the VM to interact with during bytecode execution (through ABIs),
 /// and read after execution to gather results.
 pub(crate) struct ExecutionContext {
+    /// config
+    config: ExecutionConfig,
+
     /// speculative ledger state,
     /// as seen after everything that happened so far in the context
     speculative_ledger: SpeculativeLedger,
@@ -127,11 +136,16 @@ impl ExecutionContext {
     /// # returns
     /// A new (empty) `ExecutionContext` instance
     pub(crate) fn new(
+        config: ExecutionConfig,
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
         ExecutionContext {
-            speculative_ledger: SpeculativeLedger::new(final_state.clone(), active_history.clone()),
+            speculative_ledger: SpeculativeLedger::new(
+                final_state.clone(),
+                active_history.clone(),
+                config.max_datastore_key_length,
+            ),
             speculative_async_pool: SpeculativeAsyncPool::new(
                 final_state.clone(),
                 active_history.clone(),
@@ -153,6 +167,7 @@ impl ExecutionContext {
             events: Default::default(),
             unsafe_rng: Xoshiro256PlusPlus::from_seed([0u8; 32]),
             origin_operation_id: Default::default(),
+            config,
         }
     }
 
@@ -224,6 +239,7 @@ impl ExecutionContext {
     /// # returns
     /// A `ExecutionContext` instance ready for a read-only execution
     pub(crate) fn readonly(
+        config: ExecutionConfig,
         slot: Slot,
         max_gas: u64,
         gas_price: Amount,
@@ -254,7 +270,7 @@ impl ExecutionContext {
             stack: call_stack,
             read_only: true,
             unsafe_rng,
-            ..ExecutionContext::new(final_state, active_history)
+            ..ExecutionContext::new(config, final_state, active_history)
         }
     }
 
@@ -289,6 +305,7 @@ impl ExecutionContext {
     /// # returns
     /// A `ExecutionContext` instance
     pub(crate) fn active_slot(
+        config: ExecutionConfig,
         slot: Slot,
         opt_block_id: Option<BlockId>,
         final_state: Arc<RwLock<FinalState>>,
@@ -314,7 +331,7 @@ impl ExecutionContext {
             slot,
             opt_block_id,
             unsafe_rng,
-            ..ExecutionContext::new(final_state, active_history)
+            ..ExecutionContext::new(config, final_state, active_history)
         }
     }
 
@@ -627,17 +644,14 @@ impl ExecutionContext {
         &mut self,
         seller_addr: &Address,
         roll_count: u64,
-        periods_per_cycle: u64,
-        thread_count: u8,
-        roll_price: Amount,
     ) -> Result<(), ExecutionError> {
         self.speculative_roll_state.try_sell_rolls(
             seller_addr,
             self.slot,
             roll_count,
-            periods_per_cycle,
-            thread_count,
-            roll_price,
+            self.config.periods_per_cycle,
+            self.config.thread_count,
+            self.config.roll_price,
         )
     }
 
@@ -681,12 +695,7 @@ impl ExecutionContext {
     ///
     /// This is used to get the output of an execution before discarding the context.
     /// Note that we are not taking self by value to consume it because the context is shared.
-    pub fn settle_slot(
-        &mut self,
-        periods_per_cycle: u64,
-        thread_count: u8,
-        roll_price: Amount,
-    ) -> ExecutionOutput {
+    pub fn settle_slot(&mut self) -> ExecutionOutput {
         let slot = self.slot;
 
         // settle emitted async messages and reimburse the senders of deleted messages
@@ -699,12 +708,16 @@ impl ExecutionContext {
         self.execute_deferred_credits(&slot);
 
         // if the current slot is last in cycle check the production stats and act accordingly
-        if self.slot.is_last_of_cycle(periods_per_cycle, thread_count) {
+        if self
+            .slot
+            .is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count)
+        {
             self.speculative_roll_state.settle_production_stats(
                 &slot,
-                periods_per_cycle,
-                thread_count,
-                roll_price,
+                self.config.periods_per_cycle,
+                self.config.thread_count,
+                self.config.roll_price,
+                self.config.max_miss_ratio,
             );
         }
 

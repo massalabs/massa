@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use massa_cipher::encrypt;
 use massa_models::{
+    address::Address,
     ledger_models::LedgerData,
     rolls::{RollCounts, RollUpdate, RollUpdates},
-    Address,
 };
 use massa_signature::KeyPair;
 use tempfile::NamedTempFile;

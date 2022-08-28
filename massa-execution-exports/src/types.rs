@@ -4,7 +4,10 @@
 
 use crate::event_store::EventStore;
 use massa_final_state::StateChanges;
-use massa_models::{address::ExecutionAddressCycleInfo, Address, Amount, BlockId, Slot};
+use massa_models::{
+    address::Address, address::ExecutionAddressCycleInfo, amount::Amount, block::BlockId,
+    slot::Slot,
+};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Execution info about an address

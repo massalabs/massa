@@ -2,8 +2,9 @@
 
 //! This module provides the structures used to provide configuration parameters to the Execution system
 
-use massa_models::Amount;
+use massa_models::amount::Amount;
 use massa_time::MassaTime;
+use num::rational::Ratio;
 
 /// Execution module configuration
 #[derive(Debug, Clone)]
@@ -38,4 +39,8 @@ pub struct ExecutionConfig {
     pub periods_per_cycle: u64,
     /// duration of the statistics time window
     pub stats_time_window_duration: MassaTime,
+    /// Max miss ratio for auto roll sell
+    pub max_miss_ratio: Ratio<u64>,
+    /// Max size of a datastore key
+    pub max_datastore_key_length: u8,
 }

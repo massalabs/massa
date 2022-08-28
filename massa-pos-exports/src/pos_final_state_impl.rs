@@ -1,7 +1,17 @@
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{
+    collections::BTreeMap,
+    ops::Bound::{Excluded, Included},
+    path::PathBuf,
+};
 
 use massa_hash::Hash;
-use massa_models::{prehash::Map, Address, Amount, Slot};
+use massa_models::{
+    address::{Address, AddressDeserializer},
+    amount::{Amount, AmountDeserializer},
+    prehash::PreHashMap,
+    slot::{Slot, SlotDeserializer},
+};
+use massa_serialization::U64VarIntDeserializer;
 
 use crate::{
     CycleInfo, PoSChanges, PoSFinalState, PosError, PosResult, ProductionStats, SelectorController,
@@ -12,6 +22,7 @@ impl PoSFinalState {
     pub fn new(
         initial_seed_string: &String,
         initial_rolls_path: &PathBuf,
+        thread_count: u8,
         selector: Box<dyn SelectorController>,
     ) -> Result<Self, PosError> {
         // load get initial rolls from file
@@ -26,12 +37,27 @@ impl PoSFinalState {
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
+        // Deserializers
+        let amount_deserializer =
+            AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
+        let slot_deserializer = SlotDeserializer::new(
+            (Included(u64::MIN), Included(u64::MAX)),
+            (Included(0), Excluded(thread_count)),
+        );
+        let deferred_credit_length_deserializer =
+            U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)); // TODO define a max here
+        let address_deserializer = AddressDeserializer::new();
+
         Ok(Self {
             cycle_history: Default::default(),
             deferred_credits: Default::default(),
             selector,
             initial_rolls,
             initial_seeds,
+            amount_deserializer,
+            slot_deserializer,
+            deferred_credit_length_deserializer,
+            address_deserializer,
         })
     }
 
@@ -262,7 +288,7 @@ impl PoSFinalState {
     }
 
     /// Retrives every deferred credit of the given slot
-    pub fn get_deferred_credits_at(&self, slot: &Slot) -> Map<Address, Amount> {
+    pub fn get_deferred_credits_at(&self, slot: &Slot) -> PreHashMap<Address, Amount> {
         self.deferred_credits
             .0
             .get(slot)
@@ -271,7 +297,10 @@ impl PoSFinalState {
     }
 
     /// Retrives the productions statistics for all addresses on a given cycle
-    pub fn get_all_production_stats(&self, cycle: u64) -> Option<&Map<Address, ProductionStats>> {
+    pub fn get_all_production_stats(
+        &self,
+        cycle: u64,
+    ) -> Option<&PreHashMap<Address, ProductionStats>> {
         self.get_cycle_index(cycle)
             .map(|idx| &self.cycle_history[idx].production_stats)
     }
