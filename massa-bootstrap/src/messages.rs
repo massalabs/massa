@@ -125,7 +125,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
     /// use massa_bootstrap::{BootstrapServerMessage, BootstrapServerMessageSerializer};
     /// use massa_serialization::Serializer;
     /// use massa_time::MassaTime;
-    /// use massa_models::Version;
+    /// use massa_models::version::Version;
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
@@ -285,7 +285,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     /// use massa_bootstrap::{BootstrapServerMessage, BootstrapServerMessageSerializer, BootstrapServerMessageDeserializer};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_time::MassaTime;
-    /// use massa_models::Version;
+    /// use massa_models::version::Version;
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
@@ -489,7 +489,7 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
     /// use massa_bootstrap::{BootstrapClientMessage, BootstrapClientMessageSerializer};
     /// use massa_serialization::Serializer;
     /// use massa_time::MassaTime;
-    /// use massa_models::Version;
+    /// use massa_models::version::Version;
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapClientMessageSerializer::new();
@@ -590,7 +590,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
     /// use massa_bootstrap::{BootstrapClientMessage, BootstrapClientMessageSerializer, BootstrapClientMessageDeserializer};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_time::MassaTime;
-    /// use massa_models::Version;
+    /// use massa_models::version::Version;
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapClientMessageSerializer::new();

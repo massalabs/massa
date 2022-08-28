@@ -55,13 +55,13 @@ pub struct PoSFinalState {
     /// initial seeds, used for negative cycle lookback (cycles -2, -1 in that order)
     pub initial_seeds: Vec<Hash>,
     /// amount deserializer
-    pub(crate) amount_deserializer: AmountDeserializer,
+    pub amount_deserializer: AmountDeserializer,
     /// slot deserializer
-    pub(crate) slot_deserializer: SlotDeserializer,
+    pub slot_deserializer: SlotDeserializer,
     /// deserializer
-    pub(crate) deferred_credit_length_deserializer: U64VarIntDeserializer,
+    pub deferred_credit_length_deserializer: U64VarIntDeserializer,
     /// address deserializer
-    pub(crate) address_deserializer: AddressDeserializer,
+    pub address_deserializer: AddressDeserializer,
 }
 
 #[derive(Debug, Default, Clone)]

@@ -157,7 +157,7 @@ fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
 }
 
 /// generates a random bootstrap state for the final state
-pub fn get_random_final_state_bootstrap(thread_count: u8, pos: PoSFinalState) -> FinalState {
+pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
     let mut rng = rand::thread_rng();
     let r_limit: u64 = rng.gen_range(25..50);
 
@@ -171,7 +171,7 @@ pub fn get_random_final_state_bootstrap(thread_count: u8, pos: PoSFinalState) ->
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
 
-    let slot = Slot::new(0, rng.gen_range(0..thread_count));
+    let slot = Slot::new(0, rng.gen_range(0..THREAD_COUNT));
     let final_ledger = create_final_ledger(Some(sorted_ledger), Default::default());
     let async_pool = create_async_pool(Default::default(), messages);
     let mut changes_history = VecDeque::new();
@@ -321,7 +321,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
             header: BlockHeader::new_wrapped(
                 BlockHeader {
                     slot: Slot::new(1, 1),
-                    parents: vec![get_dummy_block_id("p1"), get_dummy_block_id("p2")],
+                    parents: vec![get_dummy_block_id("p1"); THREAD_COUNT as usize],
                     operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
                     endorsements: vec![
                         Endorsement::new_wrapped(
@@ -360,10 +360,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
     // TODO: We currently lost information. Need to use shared storage
     let block1 = ExportActiveBlock {
         block,
-        parents: vec![
-            (get_dummy_block_id("b1"), 4777),
-            (get_dummy_block_id("b2"), 8870),
-        ],
+        parents: vec![(get_dummy_block_id("b1"), 4777); THREAD_COUNT as usize],
         is_final: true,
         operations: Default::default(),
     };
@@ -375,7 +372,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
     let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();
     let bootstrapable_graph_deserializer = BootstrapableGraphDeserializer::new(
         THREAD_COUNT,
-        9,
+        ENDORSEMENT_COUNT,
         MAX_BOOTSTRAP_BLOCKS,
         MAX_DATASTORE_VALUE_LENGTH,
         MAX_FUNCTION_NAME_LENGTH,
