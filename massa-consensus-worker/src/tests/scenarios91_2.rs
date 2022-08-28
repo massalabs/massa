@@ -4,7 +4,7 @@ use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
 use massa_hash::Hash;
-use massa_models::Slot;
+use massa_models::slot::Slot;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;

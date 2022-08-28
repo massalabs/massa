@@ -15,11 +15,14 @@ use massa_graph::{export_active_block::ExportActiveBlock, BlockGraphExport, Boot
 use massa_hash::Hash;
 use massa_models::prehash::PreHashMap;
 use massa_models::{
+    address::Address,
+    amount::Amount,
+    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock},
+    endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement},
+    operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
     prehash::PreHashSet,
+    slot::Slot,
     wrapped::{Id, WrappedContent},
-    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer,
-    Endorsement, EndorsementSerializer, Operation, OperationSerializer, OperationType, Slot,
-    WrappedBlock, WrappedEndorsement, WrappedOperation,
 };
 use massa_pos_exports::{SelectorConfig, SelectorController};
 use massa_pos_worker::start_selector_worker;

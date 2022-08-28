@@ -155,7 +155,9 @@ impl ExecutionController for MockExecutionController {
         ) {
             println!("mock error {err}");
         }
-        response_rx.recv_timeout(Duration::from_millis(50)).unwrap()
+        response_rx
+            .recv_timeout(Duration::from_millis(100))
+            .unwrap()
     }
 
     fn get_final_and_active_data_entry(
@@ -204,7 +206,9 @@ impl ExecutionController for MockExecutionController {
         {
             println!("mock error {err}");
         }
-        response_rx.recv_timeout(Duration::from_millis(50)).unwrap()
+        response_rx
+            .recv_timeout(Duration::from_millis(100))
+            .unwrap()
     }
 
     fn clone_box(&self) -> Box<dyn ExecutionController> {

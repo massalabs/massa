@@ -2,7 +2,9 @@
 
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
-use massa_models::{ledger_models::LedgerData, Address, Amount, BlockId, Slot};
+use massa_models::{
+    address::Address, amount::Amount, block::BlockId, ledger_models::LedgerData, slot::Slot,
+};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
@@ -68,7 +70,6 @@ async fn test_inter_cycle_batch_finalization() {
         max_future_processing_blocks: 10,
         max_dependency_blocks: 10,
         future_block_processing_max_periods: 10,
-        roll_price,
         t0,
         genesis_timestamp: MassaTime::now(0).unwrap().saturating_add(warmup_time),
         ..ConsensusConfig::default_with_staking_keys_and_ledger(

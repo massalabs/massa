@@ -108,7 +108,8 @@ pub mod tests {
         ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
         MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
         MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_MESSAGE, MAX_PARAMETERS_SIZE,
-        NETWORK_CONTROLLER_CHANNEL_SIZE, NETWORK_EVENT_CHANNEL_SIZE, THREAD_COUNT,
+        NETWORK_CONTROLLER_CHANNEL_SIZE, NETWORK_EVENT_CHANNEL_SIZE,
+        NETWORK_NODE_COMMAND_CHANNEL_SIZE, NETWORK_NODE_EVENT_CHANNEL_SIZE, THREAD_COUNT,
     };
     use massa_time::MassaTime;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -169,6 +170,8 @@ pub mod tests {
                 max_parameters_size: MAX_PARAMETERS_SIZE,
                 controller_channel_size: NETWORK_CONTROLLER_CHANNEL_SIZE,
                 event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
+                node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
+                node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
             }
         }
     }
@@ -228,6 +231,8 @@ pub mod tests {
                 max_parameters_size: MAX_PARAMETERS_SIZE,
                 controller_channel_size: NETWORK_CONTROLLER_CHANNEL_SIZE,
                 event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
+                node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
+                node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
             }
         }
     }

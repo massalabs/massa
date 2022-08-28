@@ -1,7 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::{
-    wrapped::WrappedContent, Amount, BlockId, Endorsement, EndorsementSerializer, Slot,
+    amount::Amount,
+    block::BlockId,
+    endorsement::{Endorsement, EndorsementSerializer},
+    slot::Slot,
+    wrapped::WrappedContent,
 };
 use massa_signature::KeyPair;
 use massa_storage::Storage;

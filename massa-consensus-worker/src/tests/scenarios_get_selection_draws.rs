@@ -7,7 +7,7 @@ use massa_consensus_exports::test_exports::{
 use massa_consensus_exports::ConsensusConfig;
 
 use massa_models::ledger_models::LedgerData;
-use massa_models::{Amount, Slot};
+use massa_models::{amount::Amount, slot::Slot};
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;

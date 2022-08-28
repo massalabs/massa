@@ -2,7 +2,7 @@
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
-use massa_models::Slot;
+use massa_models::slot::Slot;
 use massa_signature::KeyPair;
 use serial_test::serial;
 

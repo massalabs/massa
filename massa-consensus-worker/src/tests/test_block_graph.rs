@@ -5,8 +5,10 @@ use massa_graph::{
 };
 use massa_hash::Hash;
 use massa_models::{
-    wrapped::WrappedContent, Block, BlockHeader, BlockHeaderSerializer, BlockSerializer,
-    Endorsement, EndorsementSerializer, Slot, WrappedBlock,
+    block::{Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, WrappedBlock},
+    endorsement::{Endorsement, EndorsementSerializer},
+    slot::Slot,
+    wrapped::WrappedContent,
 };
 
 use massa_serialization::{DeserializeError, Deserializer, Serializer};

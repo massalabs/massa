@@ -7,7 +7,7 @@ use massa_consensus_exports::ConsensusConfig;
 
 use massa_models::prehash::PreHashSet;
 use massa_models::timeslots;
-use massa_models::{BlockId, Slot};
+use massa_models::{block::BlockId, slot::Slot};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;

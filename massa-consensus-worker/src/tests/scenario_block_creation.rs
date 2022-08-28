@@ -6,7 +6,7 @@ use massa_consensus_exports::test_exports::generate_roll_counts_file;
 use massa_consensus_exports::ConsensusConfig;
 use massa_models::ledger_models::LedgerData;
 use massa_models::rolls::{RollCounts, RollUpdate, RollUpdates};
-use massa_models::{Amount, Slot};
+use massa_models::{amount::Amount, slot::Slot};
 use massa_protocol_exports::ProtocolCommand;
 use massa_time::MassaTime;
 use serial_test::serial;

@@ -9,6 +9,9 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerConfig, LedgerError};
 use massa_ledger_worker::FinalLedger;
+use massa_models::config::{
+    ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, MAX_ASYNC_POOL_LENGTH, MAX_DATA_ASYNC_MESSAGE,
+};
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
     api::EventFilter,
@@ -55,11 +58,14 @@ fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir
     let ledger = FinalLedger::new(ledger_config.clone()).expect("could not init final ledger");
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
+        part_size_message_bytes: ASYNC_POOL_PART_SIZE_MESSAGE_BYTES,
+        max_data_async_message: MAX_DATA_ASYNC_MESSAGE,
+        thread_count: THREAD_COUNT,
     };
     let cfg = FinalStateConfig {
         ledger_config,
         async_pool_config,
-        final_history_length: FINAL_HISTORY_LENGTH,
+        final_history_length: 128,
         thread_count: THREAD_COUNT,
         initial_rolls_path: file.path().to_path_buf(),
         initial_seed_string: "".to_string(),

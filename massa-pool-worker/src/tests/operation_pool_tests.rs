@@ -79,11 +79,8 @@ fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
 fn test_pool() {
     let (execution_controller, _execution_receiver) = MockExecutionController::new_with_receiver();
     let pool_config = PoolConfig::default();
-    let mut pool = OperationPool::init(
-        pool_config.clone(),
-        &Default::default(),
-        execution_controller,
-    );
+    let storage_base = Storage::default();
+    let mut pool = OperationPool::init(pool_config.clone(), &storage_base, execution_controller);
     // generate (id, transactions, range of validity) by threads
     let mut thread_tx_lists = vec![Vec::new(); pool_config.thread_count as usize];
     for i in 0..18 {
@@ -95,14 +92,14 @@ fn test_pool() {
 
         let mut ops = PreHashMap::default();
         ops.insert(id, op.clone());
-        let mut storage = Storage::default();
+        let mut storage = storage_base.clone_without_refs();
         storage.store_operations(ops.values().cloned().collect());
         pool.add_operations(storage);
         //TODO: compare
         // assert_eq!(storage.get_op_refs(), &Set::<OperationId>::default());
 
         // duplicate
-        let mut storage = Storage::default();
+        let mut storage = storage_base.clone_without_refs();
         storage.store_operations(ops.values().cloned().collect());
         pool.add_operations(storage);
         //TODO: compare
@@ -119,7 +116,7 @@ fn test_pool() {
     }
 
     // checks ops are the expected ones for thread 0 and 1 and various periods
-    for thread in 0u8..=1 {
+    for thread in 0u8..pool_config.thread_count {
         for period in 0u64..70 {
             let target_slot = Slot::new(period, thread);
             let max_count = 3;
@@ -152,7 +149,7 @@ fn test_pool() {
     }
 
     // checks ops are the expected ones for thread 0 and 1 and various periods
-    for thread in 0u8..=1 {
+    for thread in 0u8..pool_config.thread_count {
         for period in 0u64..70 {
             let target_slot = Slot::new(period, thread);
             let max_count = 4;
