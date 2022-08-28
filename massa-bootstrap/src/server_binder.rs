@@ -181,7 +181,7 @@ impl BootstrapServerBinder {
         // deserialize message
         let (_, msg) = BootstrapClientMessageDeserializer::new(
             self.thread_count,
-            self.max_datastore_key_length as u64,
+            self.max_datastore_key_length,
         )
         .deserialize::<DeserializeError>(&msg_bytes)
         .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;

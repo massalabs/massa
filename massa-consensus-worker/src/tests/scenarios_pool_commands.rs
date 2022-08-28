@@ -243,7 +243,6 @@
 //         t0: 1000.into(),
 //         genesis_timestamp: MassaTime::now(0).unwrap().checked_sub(1000.into()).unwrap(),
 //         delta_f0: 2,
-//         operation_batch_size: 1,
 //         ..ConsensusConfig::default_with_paths()
 //     };
 //     // define addresses use for the test
@@ -334,7 +333,6 @@
 //         t0: 1000.into(),
 //         genesis_timestamp: MassaTime::now(0).unwrap().checked_sub(1000.into()).unwrap(),
 //         delta_f0: 2,
-//         operation_batch_size: 10,
 //         ..ConsensusConfig::default_with_paths()
 //     };
 //     // define addresses use for the test

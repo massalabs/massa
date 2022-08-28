@@ -149,7 +149,7 @@ impl BootstrapClientBinder {
             self.max_bootstrap_async_pool_changes,
             self.max_data_async_message,
             self.max_ledger_changes_count,
-            self.max_datastore_key_length as u64,
+            self.max_datastore_key_length,
             self.max_datastore_value_length,
             self.max_datastore_entry_count,
             self.max_function_name_length,

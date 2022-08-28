@@ -230,7 +230,7 @@ impl BootstrapServerMessageDeserializer {
         max_async_pool_changes: u64,
         max_data_async_message: u64,
         max_ledger_changes_count: u64,
-        max_datastore_key_length: u64,
+        max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
         max_function_name_length: u16,
@@ -562,7 +562,7 @@ pub struct BootstrapClientMessageDeserializer {
 
 impl BootstrapClientMessageDeserializer {
     /// Creates a new `BootstrapClientMessageDeserializer`
-    pub fn new(thread_count: u8, max_datastore_key_length: u64) -> Self {
+    pub fn new(thread_count: u8, max_datastore_key_length: u8) -> Self {
         Self {
             id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             slot_deserializer: SlotDeserializer::new(

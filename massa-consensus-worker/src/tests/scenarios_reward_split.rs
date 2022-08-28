@@ -36,7 +36,6 @@
 //         genesis_timestamp: MassaTime::now(0).unwrap().saturating_add(init_time),
 //         max_block_size: 2000,
 //         max_operations_per_block: 5000,
-//         operation_batch_size: 500,
 //         operation_validity_periods: 10,
 //         periods_per_cycle: 3,
 //         t0: 500.into(),

@@ -91,6 +91,7 @@ impl ExecutionState {
 
         // Create an empty placeholder execution context, with shared atomic access
         let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
+            config.clone(),
             final_state.clone(),
             active_history.clone(),
         )));
@@ -428,13 +429,7 @@ impl ExecutionState {
         }];
 
         // try to sell the rolls
-        if let Err(err) = context.try_sell_rolls(
-            &seller_addr,
-            *roll_count,
-            self.config.periods_per_cycle,
-            self.config.thread_count,
-            self.config.roll_price,
-        ) {
+        if let Err(err) = context.try_sell_rolls(&seller_addr, *roll_count) {
             return Err(ExecutionError::RollSellError(format!(
                 "{} failed to sell {} rolls: {}",
                 seller_addr, roll_count, err
@@ -859,6 +854,7 @@ impl ExecutionState {
     ) -> ExecutionOutput {
         // Create a new execution context for the whole active slot
         let mut execution_context = ExecutionContext::active_slot(
+            self.config.clone(),
             slot,
             opt_block.as_ref().map(|(b_id, _)| *b_id),
             self.final_state.clone(),
@@ -1029,12 +1025,7 @@ impl ExecutionState {
         }
 
         // Finish slot and return the execution output
-        context_guard!(self).settle_slot(
-            self.config.periods_per_cycle,
-            self.config.thread_count,
-            self.config.roll_price,
-            self.config.max_miss_ratio,
-        )
+        context_guard!(self).settle_slot()
     }
 
     /// Runs a read-only execution request.
@@ -1062,6 +1053,7 @@ impl ExecutionState {
 
         // create a readonly execution context
         let execution_context = ExecutionContext::readonly(
+            self.config.clone(),
             slot,
             req.max_gas,
             req.simulated_gas_price,
@@ -1106,12 +1098,7 @@ impl ExecutionState {
         }
 
         // return the execution output
-        Ok(context_guard!(self).settle_slot(
-            self.config.periods_per_cycle,
-            self.config.thread_count,
-            self.config.roll_price,
-            self.config.max_miss_ratio,
-        ))
+        Ok(context_guard!(self).settle_slot())
     }
 
     /// Gets a parallel balance both at the latest final and candidate executed slots

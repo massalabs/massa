@@ -274,6 +274,7 @@ async fn launch(
         periods_per_cycle: PERIODS_PER_CYCLE,
         stats_time_window_duration: SETTINGS.execution.stats_time_window_duration,
         max_miss_ratio: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
     };
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,
@@ -596,8 +597,7 @@ async fn main(args: Args) -> anyhow::Result<()> {
     }));
 
     // load or create wallet, asking for password if necessary
-
-    let node_wallet = load_wallet(args.password, &SETTINGS.consensus.staking_keys_path)?;
+    let node_wallet = load_wallet(args.password, &SETTINGS.factory.staking_wallet_path)?;
 
     loop {
         let (

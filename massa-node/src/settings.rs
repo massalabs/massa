@@ -91,7 +91,10 @@ pub struct BootstrapSettings {
 /// Factory settings
 #[derive(Debug, Deserialize, Clone)]
 pub struct FactorySettings {
+    /// Initial delay
     pub initial_delay: MassaTime,
+    /// Staking wallet file
+    pub staking_wallet_path: PathBuf,
 }
 
 /// Pool configuration, read from a file configuration
@@ -131,8 +134,6 @@ pub struct Settings {
 /// Assumes `thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0`
 #[derive(Debug, Deserialize, Clone)]
 pub struct ConsensusSettings {
-    /// Staking keys
-    pub staking_keys_path: PathBuf,
     /// Maximum number of blocks allowed in discarded blocks.
     pub max_discarded_blocks: usize,
     /// If a block is `future_block_processing_max_periods` periods in the future, it is just discarded.
@@ -141,24 +142,6 @@ pub struct ConsensusSettings {
     pub max_future_processing_blocks: usize,
     /// Maximum number of blocks allowed in `DependencyWaitingBlocks`.
     pub max_dependency_blocks: usize,
-    /// Maximum tries to fill a block with operations
-    pub max_operations_fill_attempts: u32,
-    /// number of cached draw cycles for PoS
-    pub pos_draw_cached_cycles: usize,
-    /// path to ledger db
-    pub ledger_path: PathBuf,
-    /// Cache capacity allowed to the ledger
-    pub ledger_cache_capacity: u64,
-    /// the ledger is flushed to the disk every `ledger_flush_interval`
-    pub ledger_flush_interval: Option<MassaTime>,
-    /// if ledger need a reset at start up
-    pub ledger_reset_at_startup: bool,
-    /// Initial file path that describe the ledger to merge in `ledger_path` after starting
-    pub initial_ledger_path: PathBuf,
-    /// size of an operation batch when creating a block
-    pub operation_batch_size: usize,
-    /// path to the initial rolls
-    pub initial_rolls_path: PathBuf,
     /// stats time span
     pub stats_timespan: MassaTime,
     /// max event send wait

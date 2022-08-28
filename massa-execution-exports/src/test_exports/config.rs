@@ -28,6 +28,7 @@ impl Default for ExecutionConfig {
             t0: 10.into(),
             stats_time_window_duration: MassaTime::from_millis(30000),
             max_miss_ratio: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+            max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         }
     }
 }

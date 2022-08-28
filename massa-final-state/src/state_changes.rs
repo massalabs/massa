@@ -123,7 +123,7 @@ impl StateChangesDeserializer {
         max_async_pool_changes: u64,
         max_data_async_message: u64,
         max_ledger_changes_count: u64,
-        max_datastore_key_length: u64,
+        max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
     ) -> Self {

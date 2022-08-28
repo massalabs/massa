@@ -103,7 +103,7 @@ pub struct DatastoreUpdateDeserializer {
 impl DatastoreUpdateDeserializer {
     /// Creates a new `DatastoreUpdateDeserializer`
     pub fn new(
-        max_datastore_key_length: u64,
+        max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
     ) -> Self {
@@ -114,7 +114,7 @@ impl DatastoreUpdateDeserializer {
             ),
             key_deserializer: VecU8Deserializer::new(
                 Included(u64::MIN),
-                Included(max_datastore_key_length),
+                Included(max_datastore_key_length as u64),
             ),
             value_deserializer: SetOrDeleteDeserializer::new(VecU8Deserializer::new(
                 Included(u64::MIN),
@@ -244,7 +244,7 @@ pub struct LedgerEntryUpdateDeserializer {
 impl LedgerEntryUpdateDeserializer {
     /// Creates a new `LedgerEntryUpdateDeserializer`
     pub fn new(
-        max_datastore_key_length: u64,
+        max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
     ) -> Self {
@@ -430,7 +430,7 @@ impl LedgerChangesDeserializer {
     /// Creates a new `LedgerChangesDeserializer`
     pub fn new(
         max_ledger_changes_count: u64,
-        max_datastore_key_length: u64,
+        max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
     ) -> Self {

@@ -424,7 +424,7 @@ impl LedgerDB {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let vec_u8_deserializer =
             VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
-        let key_deserializer = KeyDeserializer::new(self.max_datastore_key_length as u64);
+        let key_deserializer = KeyDeserializer::new(self.max_datastore_key_length);
         let mut last_key = Rc::new(None);
         let mut batch = WriteBatch::default();
 
