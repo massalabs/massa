@@ -38,7 +38,9 @@ use massa_models::config::constants::{
 };
 use massa_models::config::{
     ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, CHANNEL_SIZE, DELTA_F0,
-    MAX_SERIALIZED_OPERATIONS_SIZE_PER_BLOCK, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+    MAX_SERIALIZED_OPERATIONS_SIZE_PER_BLOCK, NETWORK_NODE_COMMAND_CHANNEL_SIZE,
+    NETWORK_NODE_EVENT_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+    PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE,
 };
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
@@ -107,7 +109,7 @@ async fn launch(
         ledger_config: ledger_config.clone(),
         periods_per_cycle: PERIODS_PER_CYCLE,
         initial_seed_string: INITIAL_DRAW_SEED.into(),
-        initial_rolls_path: SETTINGS.consensus.initial_rolls_path.clone(),
+        initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
         async_pool_config,
     };
 
@@ -235,6 +237,8 @@ async fn launch(
         max_parameters_size: MAX_PARAMETERS_SIZE,
         controller_channel_size: NETWORK_CONTROLLER_CHANNEL_SIZE,
         event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
+        node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
+        node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
     };
 
     // launch network controller
@@ -316,6 +320,8 @@ async fn launch(
         asked_operations_pruning_period: SETTINGS.protocol.asked_operations_pruning_period,
         max_operations_per_message: SETTINGS.protocol.max_operations_per_message,
         max_serialized_operations_size_per_block: MAX_SERIALIZED_OPERATIONS_SIZE_PER_BLOCK,
+        controller_channel_size: PROTOCOL_CONTROLLER_CHANNEL_SIZE,
+        event_channel_size: PROTOCOL_EVENT_CHANNEL_SIZE,
     };
     let (protocol_command_sender, protocol_event_receiver, protocol_manager) =
         start_protocol_controller(

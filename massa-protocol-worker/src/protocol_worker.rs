@@ -7,7 +7,6 @@ use massa_logging::massa_trace;
 
 use massa_models::{
     block::{BlockHeaderSerializer, BlockId, WrappedHeader},
-    config::CHANNEL_SIZE,
     endorsement::{EndorsementId, EndorsementSerializer, WrappedEndorsement},
     node::NodeId,
     operation::OperationPrefixId,
@@ -60,8 +59,9 @@ pub async fn start_protocol_controller(
     debug!("starting protocol controller");
 
     // launch worker
-    let (controller_event_tx, event_rx) = mpsc::channel::<ProtocolEvent>(CHANNEL_SIZE);
-    let (command_tx, controller_command_rx) = mpsc::channel::<ProtocolCommand>(CHANNEL_SIZE);
+    let (controller_event_tx, event_rx) = mpsc::channel::<ProtocolEvent>(config.event_channel_size);
+    let (command_tx, controller_command_rx) =
+        mpsc::channel::<ProtocolCommand>(config.controller_channel_size);
     let (manager_tx, controller_manager_rx) = mpsc::channel::<ProtocolManagementCommand>(1);
     let pool_controller = pool_controller.clone();
     let join_handle = tokio::spawn(async move {

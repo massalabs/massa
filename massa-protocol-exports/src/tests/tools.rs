@@ -251,6 +251,8 @@ pub fn create_protocol_config() -> ProtocolConfig {
         max_operations_per_message: 1024,
         thread_count: 32,
         max_serialized_operations_size_per_block: 1024,
+        controller_channel_size: 1024,
+        event_channel_size: 1024,
     }
 }
 

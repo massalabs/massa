@@ -59,7 +59,7 @@ use crate::{
 };
 
 /// Consensus full configuration (static + user defined)
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ConsensusConfig {
     /// Time in milliseconds when the blockclique started.
     pub genesis_timestamp: MassaTime,
@@ -101,47 +101,6 @@ pub struct ConsensusConfig {
     pub max_gas_per_block: u64,
     /// channel size
     pub channel_size: usize,
-}
-
-#[cfg(feature = "testing")]
-#[derive(Default, Debug)]
-/// In testing mode if you create a configuration with temporary files
-/// we need to keep inside this structure the `TempDir` and
-/// `NamedTempFile` here since the end of the test.
-/// We don't need to move or clone, only the main configuration need that and
-/// the var is never used.
-pub struct TempFiles {
-    /// Doesn't drop temporary file on testing
-    pub temp_files: Vec<tempfile::NamedTempFile>,
-    /// Doesn't drop temporary directory on testing
-    pub temp_dir: Vec<tempfile::TempDir>,
-}
-
-impl Clone for ConsensusConfig {
-    fn clone(&self) -> Self {
-        Self {
-            genesis_timestamp: self.genesis_timestamp,
-            end_timestamp: self.end_timestamp,
-            thread_count: self.thread_count,
-            t0: self.t0,
-            genesis_key: self.genesis_key.clone(),
-            max_discarded_blocks: self.max_discarded_blocks,
-            future_block_processing_max_periods: self.future_block_processing_max_periods,
-            max_future_processing_blocks: self.max_future_processing_blocks,
-            max_dependency_blocks: self.max_dependency_blocks,
-            delta_f0: self.delta_f0,
-            operation_validity_periods: self.operation_validity_periods,
-            periods_per_cycle: self.periods_per_cycle,
-            stats_timespan: self.stats_timespan,
-            max_send_wait: self.max_send_wait,
-            force_keep_final_periods: self.force_keep_final_periods,
-            endorsement_count: self.endorsement_count,
-            block_db_prune_interval: self.block_db_prune_interval,
-            max_item_return_count: self.max_item_return_count,
-            max_gas_per_block: self.max_gas_per_block,
-            channel_size: self.channel_size,
-        }
-    }
 }
 
 impl From<&ConsensusConfig> for GraphConfig {

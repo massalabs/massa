@@ -80,6 +80,10 @@ pub struct NetworkConfig {
     pub controller_channel_size: usize,
     /// Event channel size
     pub event_channel_size: usize,
+    /// Node command channel size
+    pub node_command_channel_size: usize,
+    /// Node event channel size
+    pub node_event_channel_size: usize,
 }
 
 /// Connection configuration for a peer type

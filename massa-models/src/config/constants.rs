@@ -167,6 +167,13 @@ pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 /// Max size of the printed error
 pub const MAX_BOOTSTRAP_ERROR_LENGTH: u32 = 10000;
 
+// Protocol constants
+
+/// Controller channel size
+pub const PROTOCOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
+/// Event channel size
+pub const PROTOCOL_EVENT_CHANNEL_SIZE: usize = 1024;
+
 // ***********************
 // Constants used for execution module (injected from ConsensusConfig)
 //
@@ -190,13 +197,10 @@ pub const MAX_DUPLEX_BUFFER_SIZE: usize = 1024;
 pub const NETWORK_CONTROLLER_CHANNEL_SIZE: usize = 1024;
 /// network event channel size
 pub const NETWORK_EVENT_CHANNEL_SIZE: usize = 1024;
-
-//
-// Divers constants
-//
-
-/// Safe to import, amount decimal factor
-pub const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
+/// network node command channel size
+pub const NETWORK_NODE_COMMAND_CHANNEL_SIZE: usize = 1024;
+/// network node event channel size
+pub const NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = 1024;
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]
