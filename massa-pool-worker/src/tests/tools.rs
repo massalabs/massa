@@ -12,10 +12,12 @@ use massa_models::{
     endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement},
     operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
     slot::Slot,
+    wrapped::WrappedContent,
 };
 use massa_pool_exports::{PoolConfig, PoolController};
 use massa_signature::{KeyPair, PublicKey};
 use massa_storage::Storage;
+use std::str::FromStr;
 use std::sync::mpsc::Receiver;
 
 /// Tooling to create a transaction with an expire periods

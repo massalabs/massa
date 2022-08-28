@@ -8,7 +8,6 @@ edition = "2021"
 
 [dependencies]
 displaydoc = "0.2"
-num = { version = "0.4", features = ["serde"] }
 thiserror = "1.0"
 tokio = { version = "1.20", features = ["full"] }
 tempfile = { version = "3.3", optional = true }    # use with testing feature

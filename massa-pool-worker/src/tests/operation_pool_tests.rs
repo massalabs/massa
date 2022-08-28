@@ -17,7 +17,6 @@
 //! latest period given his own thread. All operation which doesn't fit these
 //! requirements are "irrelevant"
 //!
-use super::config::POOL_CONFIG;
 use super::tools::{create_some_operations, operation_pool_test};
 use crate::operation_pool::OperationPool;
 use massa_execution_exports::test_exports::MockExecutionController;
@@ -32,11 +31,9 @@ use massa_models::{
 use massa_pool_exports::PoolConfig;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
-use serial_test::serial;
 use std::str::FromStr;
 
 #[test]
-#[serial_test::serial]
 fn test_add_operation() {
     operation_pool_test(PoolConfig::default(), |mut operation_pool, mut storage| {
         storage.store_operations(create_some_operations(10, &KeyPair::generate(), 2));
@@ -49,7 +46,6 @@ fn test_add_operation() {
 /// # Initilization
 /// Init an
 #[test]
-#[serial_test::serial]
 fn test_add_irrelevant_operation() {
     let pool_config = PoolConfig::default();
     let thread_count = pool_config.thread_count;
@@ -80,16 +76,20 @@ fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
 
 /// TODO refacto old tests
 #[test]
-#[serial]
 fn test_pool() {
     let (execution_controller, _execution_receiver) = MockExecutionController::new_with_receiver();
-    let mut pool = OperationPool::init(*POOL_CONFIG, &Default::default(), execution_controller);
+    let pool_config = PoolConfig::default();
+    let mut pool = OperationPool::init(
+        pool_config.clone(),
+        &Default::default(),
+        execution_controller,
+    );
     // generate (id, transactions, range of validity) by threads
-    let mut thread_tx_lists = vec![Vec::new(); POOL_CONFIG.thread_count as usize];
+    let mut thread_tx_lists = vec![Vec::new(); pool_config.thread_count as usize];
     for i in 0..18 {
         let fee = 40 + i;
         let expire_period: u64 = 40 + i;
-        let start_period = expire_period.saturating_sub(POOL_CONFIG.operation_validity_periods);
+        let start_period = expire_period.saturating_sub(pool_config.operation_validity_periods);
         let op = get_transaction(expire_period, fee);
         let id = op.verify_integrity().unwrap();
 
@@ -108,13 +108,14 @@ fn test_pool() {
         //TODO: compare
         //assert_eq!(storage.get_op_refs(), &ops.keys().copied().collect::<Set<OperationId>>());
 
-        thread_tx_lists[op.thread as usize].push((op, start_period..=expire_period));
+        let op_thread = op.creator_address.get_thread(pool_config.thread_count);
+        thread_tx_lists[op_thread as usize].push((op, start_period..=expire_period));
     }
 
     // sort from bigger fee to smaller and truncate
     for lst in thread_tx_lists.iter_mut() {
         lst.reverse();
-        lst.truncate(POOL_CONFIG.max_operation_pool_size_per_thread as usize);
+        lst.truncate(pool_config.max_operation_pool_size_per_thread as usize);
     }
 
     // checks ops are the expected ones for thread 0 and 1 and various periods
@@ -145,7 +146,7 @@ fn test_pool() {
     // op ending before or at period 45 won't appear in the block due to incompatible validity range
     // we don't keep them as expected ops
     let final_period = 45u64;
-    pool.notify_final_cs_periods(&vec![final_period; POOL_CONFIG.thread_count as usize]);
+    pool.notify_final_cs_periods(&vec![final_period; pool_config.thread_count as usize]);
     for lst in thread_tx_lists.iter_mut() {
         lst.retain(|(op, _)| op.content.expire_period > final_period);
     }
@@ -187,7 +188,8 @@ fn test_pool() {
         pool.add_operations(storage);
         //TODO: compare
         //assert_eq!(storage.get_op_refs(), &Set::<OperationId>::default());
-        let (ids, _) = pool.get_block_operations(&Slot::new(expire_period - 1, op.thread));
+        let op_thread = op.creator_address.get_thread(pool_config.thread_count);
+        let (ids, _) = pool.get_block_operations(&Slot::new(expire_period - 1, op_thread));
         assert!(ids.is_empty());
     }
 }

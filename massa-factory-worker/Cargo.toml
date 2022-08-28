@@ -27,7 +27,12 @@ massa_pool_exports = { path = "../massa-pool-exports" }
 
 [dev-dependencies]
 serial_test = "0.9"
-massa_protocol_exports = { path = "../massa-protocol-exports" }
+massa_protocol_exports = { path = "../massa-protocol-exports", features=["testing"] }
+massa_factory_exports = { path = "../massa-factory-exports", features=["testing"]  }
+massa_wallet = { path = "../massa-wallet", features=["testing"]  }
+massa_pos_exports = { path = "../massa-pos-exports", features=["testing"]  }
+massa_consensus_exports = { path = "../massa-consensus-exports", features=["testing"]  }
+massa_pool_exports = { path = "../massa-pool-exports", features=["testing"]  }
 
 [features]
 sandbox = []

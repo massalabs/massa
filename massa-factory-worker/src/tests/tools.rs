@@ -9,8 +9,9 @@ use massa_factory_exports::{
     test_exports::create_empty_block, FactoryChannels, FactoryConfig, FactoryManager,
 };
 use massa_models::{
-    config::ENDORSEMENT_COUNT, prehash::PreHashMap, test_exports::get_next_slot_instant, Address,
-    BlockId, Slot, WrappedEndorsement, WrappedOperation,
+    address::Address, block::BlockId, config::ENDORSEMENT_COUNT, endorsement::WrappedEndorsement,
+    operation::WrappedOperation, prehash::PreHashMap, slot::Slot,
+    test_exports::get_next_slot_instant,
 };
 use massa_pool_exports::test_exports::{
     MockPoolController, MockPoolControllerMessage, PoolEventReceiver,

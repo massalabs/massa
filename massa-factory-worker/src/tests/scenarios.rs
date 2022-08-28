@@ -1,15 +1,14 @@
-use std::str::FromStr;
-
+use super::TestFactory;
 use massa_models::{
-    wrapped::WrappedContent, Amount, Operation, OperationSerializer, OperationType,
+    amount::Amount,
+    operation::{Operation, OperationSerializer, OperationType},
+    wrapped::WrappedContent,
 };
 use massa_signature::KeyPair;
-
-use super::TestFactory;
+use std::str::FromStr;
 
 /// Creates a basic empty block with the factory.
 #[test]
-#[serial_test::serial]
 fn basic_creation() {
     let keypair = KeyPair::generate();
     let mut test_factory = TestFactory::new(&keypair);
@@ -19,7 +18,6 @@ fn basic_creation() {
 
 /// Creates a block with a roll buy operation in it.
 #[test]
-#[serial_test::serial]
 fn basic_creation_with_operation() {
     let keypair = KeyPair::generate();
     let mut test_factory = TestFactory::new(&keypair);
@@ -41,7 +39,6 @@ fn basic_creation_with_operation() {
 
 /// Creates a block with a multiple operations in it.
 #[test]
-#[serial_test::serial]
 fn basic_creation_with_multiple_operations() {
     let keypair = KeyPair::generate();
     let mut test_factory = TestFactory::new(&keypair);

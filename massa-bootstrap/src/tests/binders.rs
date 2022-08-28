@@ -6,7 +6,7 @@ use crate::{
     client_binder::BootstrapClientBinder, server_binder::BootstrapServerBinder,
     tests::tools::get_bootstrap_config, BootstrapPeers,
 };
-use massa_models::config::default_testing::{
+use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH,
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT,
@@ -14,7 +14,7 @@ use massa_models::config::default_testing::{
     MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK,
     MAX_PARAMETERS_SIZE, THREAD_COUNT,
 };
-use massa_models::Version;
+use massa_models::version::Version;
 use massa_signature::KeyPair;
 use serial_test::serial;
 use tokio::io::duplex;

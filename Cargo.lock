@@ -1761,7 +1761,6 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
- "num",
  "serde 1.0.144",
  "serde_json",
  "tempfile",
@@ -2065,16 +2064,13 @@ dependencies = [
 name = "massa_pool_worker"
 version = "0.1.0"
 dependencies = [
- "lazy_static",
  "massa_execution_exports",
  "massa_hash",
  "massa_models",
  "massa_pool_exports",
  "massa_signature",
  "massa_storage",
- "massa_time",
  "num",
- "serial_test 0.9.0",
 ]
 
 [[package]]

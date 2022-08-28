@@ -44,7 +44,6 @@ use massa_signature::KeyPair;
 /// The block operation storage builded for all threads is expected to have the
 /// same length than those added previously.
 #[test]
-#[serial_test::serial]
 fn test_simple_get_operations() {
     pool_test(
         PoolConfig::default(),
@@ -139,7 +138,6 @@ fn launch_basic_get_block_operation_execution_mock(
 /// The block operation storage builded for all threads is expected to have
 /// only 5 operations.
 #[test]
-#[serial_test::serial]
 fn test_get_operations_overflow() {
     static OP_LEN: usize = 10;
     static MAX_OP_LEN: usize = 5;

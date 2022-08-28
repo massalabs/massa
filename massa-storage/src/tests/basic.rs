@@ -1,6 +1,6 @@
 use crate::Storage;
 use massa_factory_exports::test_exports::create_empty_block;
-use massa_models::{prehash::PreHashSet, Slot};
+use massa_models::{prehash::PreHashSet, slot::Slot};
 use massa_signature::KeyPair;
 
 #[test]

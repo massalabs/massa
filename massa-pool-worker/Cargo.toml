@@ -13,11 +13,8 @@ massa_pool_exports = { path = "../massa-pool-exports" }
 massa_execution_exports = { path = "../massa-execution-exports" }
 
 [dev-dependencies]
-serial_test = "0.9"
-lazy_static = "1.4"
 massa_signature = { path = "../massa-signature" }
 massa_hash = { path = "../massa-hash" }
-massa_time = { path = "../massa-time" }
 massa_pool_exports = { path = "../massa-pool-exports", features = [ "testing" ] }
 massa_execution_exports = { path = "../massa-execution-exports", features = [ "testing" ] }
 

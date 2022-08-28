@@ -13,7 +13,7 @@ use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
-use massa_models::config::default_testing::{
+use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH,
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT,
@@ -24,9 +24,13 @@ use massa_models::config::default_testing::{
 use massa_models::prehash::PreHashMap;
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
-    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, Endorsement, Slot,
+    address::Address,
+    amount::Amount,
+    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId},
+    endorsement::Endorsement,
+    slot::Slot,
 };
-use massa_models::{BlockSerializer, EndorsementSerializer};
+use massa_models::{block::BlockSerializer, endorsement::EndorsementSerializer};
 use massa_network_exports::{BootstrapPeers, NetworkCommand};
 use massa_pos_exports::{CycleInfo, DeferredCredits, PoSChanges, PoSFinalState, ProductionStats};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};

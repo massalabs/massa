@@ -1,11 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 #![allow(clippy::assertions_on_constants)]
-
-use massa_models::amount::Amount;
 use massa_signature::KeyPair;
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, usize};
 
 /// Graph configuration
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -28,12 +25,6 @@ pub struct GraphConfig {
     pub operation_validity_periods: u64,
     /// cycle duration in periods
     pub periods_per_cycle: u64,
-    /// Initial file path that describe the ledger to merge in `ledger_path` after starting
-    pub initial_ledger_path: PathBuf,
-    /// Reward for the creation of a block
-    pub block_reward: Amount,
-    /// Price of a roll inside the network
-    pub roll_price: Amount,
     /// force keep at least this number of final periods in RAM for each thread
     pub force_keep_final_periods: u64,
     /// target number of endorsement per block
