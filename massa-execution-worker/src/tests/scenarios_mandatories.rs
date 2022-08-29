@@ -60,25 +60,18 @@ fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir
     };
     let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
         .expect("could not start selector controller");
-    Ok((
-        Arc::new(RwLock::new(
-            FinalState::new(cfg, Box::new(ledger), selector_controller).unwrap(),
-        )),
-        tempfile,
-        tempdir,
-    ))
+    let final_state = FinalState::new(cfg, Box::new(ledger), selector_controller.clone()).unwrap();
+    Ok((Arc::new(RwLock::new(final_state)), tempfile, tempdir))
 }
 
 #[test]
 #[serial]
 fn test_execution_shutdown() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(SelectorConfig::default()).unwrap();
-    let (mut manager, _) = start_execution_worker(
+    let (mut manager, _controller) = start_execution_worker(
         ExecutionConfig::default(),
-        sample_state,
-        selector_controller,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
     );
     manager.stop();
 }
@@ -87,12 +80,10 @@ fn test_execution_shutdown() {
 #[serial]
 fn test_sending_command() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(SelectorConfig::default()).unwrap();
     let (mut manager, controller) = start_execution_worker(
         ExecutionConfig::default(),
-        sample_state,
-        selector_controller,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
     );
     controller.update_blockclique_status(Default::default(), Default::default());
     manager.stop();
@@ -102,12 +93,10 @@ fn test_sending_command() {
 #[serial]
 fn test_sending_read_only_execution_command() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(SelectorConfig::default()).unwrap();
     let (mut manager, controller) = start_execution_worker(
         ExecutionConfig::default(),
-        sample_state,
-        selector_controller,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
     );
     controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
@@ -143,10 +132,11 @@ fn test_nested_call_gas_usage() {
     // init the storage
     let mut storage = Storage::default();
     // start the execution worker
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(SelectorConfig::default()).unwrap();
-    let (mut manager, controller) =
-        start_execution_worker(exec_cfg, sample_state, selector_controller);
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
     // get random keypair
     let (_, keypair) = get_random_address_full();
     // load bytecode you can check the source code of the
@@ -249,10 +239,11 @@ fn send_and_receive_async_message() {
     // init the storage
     let mut storage = Storage::default();
     // start the execution worker
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(SelectorConfig::default()).unwrap();
-    let (mut manager, controller) =
-        start_execution_worker(exec_cfg, sample_state, selector_controller);
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load send_message bytecode you can check the source code of the
@@ -273,8 +264,8 @@ fn send_and_receive_async_message() {
     );
     controller.update_blockclique_status(finalized_blocks, Default::default());
 
-    // sleep for 300ms to reach the message execution period
-    std::thread::sleep(Duration::from_millis(300));
+    // sleep for 2secs to reach the message execution period
+    std::thread::sleep(Duration::from_secs(2));
 
     // retrieve events emitted by smart contracts
     let events = controller.get_filtered_sc_output_event(EventFilter {
@@ -303,10 +294,11 @@ pub fn send_and_receive_transaction() {
     // init the storage
     let mut storage = Storage::default();
     // start the execution worker
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(SelectorConfig::default()).unwrap();
-    let (mut manager, controller) =
-        start_execution_worker(exec_cfg, sample_state, selector_controller);
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
     // generate the addresses
     let (_addr, sender_keypair) = get_random_address_full();
     let (recipient_address, _keypair) = get_random_address_full();
@@ -353,10 +345,11 @@ fn generate_events() {
     };
     let mut storage: Storage = Default::default();
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(SelectorConfig::default()).unwrap();
-    let (mut manager, controller) =
-        start_execution_worker(exec_cfg, sample_state, selector_controller);
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
 
     let (sender_address, keypair) = get_random_address_full();
     let event_test_data = include_bytes!("./wasm/event_test.wasm");
