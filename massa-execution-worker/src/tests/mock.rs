@@ -1,20 +1,17 @@
-use std::{fs::File, io::Seek, str::FromStr};
+use std::{collections::BTreeMap, fs::File, io::Seek};
 
-use massa_models::{address::Address, config::THREAD_COUNT, rolls::RollCounts};
+use massa_models::address::Address;
 use tempfile::NamedTempFile;
+
+use super::scenarios_mandatories::get_random_address;
 
 pub fn get_initial_rolls() -> NamedTempFile {
     let file = NamedTempFile::new().unwrap();
-    let mut rolls = Vec::new();
-    for _ in 0..THREAD_COUNT {
-        let mut rolls_per_thread = RollCounts::new();
-        rolls_per_thread.0.insert(
-            Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
-            2,
-        );
-        rolls.push(rolls_per_thread);
+    let mut rolls: BTreeMap<Address, u64> = BTreeMap::new();
+    for _ in 0..8 {
+        rolls.insert(get_random_address(), 2);
     }
-    serde_json::to_writer_pretty::<&File, Vec<RollCounts>>(file.as_file(), &rolls)
+    serde_json::to_writer_pretty::<&File, BTreeMap<Address, u64>>(file.as_file(), &rolls)
         .expect("unable to write ledger file");
     file.as_file()
         .seek(std::io::SeekFrom::Start(0))
