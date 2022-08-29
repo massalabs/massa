@@ -2,7 +2,7 @@
 
 //! Here are happening handshakes.
 
-use crate::messages::{MessageDeserializer, MessageSerializer};
+use crate::messages::MessageDeserializer;
 
 use super::{
     binders::{ReadBinder, WriteBinder},
@@ -27,7 +27,6 @@ use massa_network_exports::{
     throw_handshake_error as throw, ConnectionId, HandshakeErrorType, NetworkError, ReadHalf,
     WriteHalf,
 };
-use massa_serialization::Serializer;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use rand::{rngs::StdRng, RngCore, SeedableRng};

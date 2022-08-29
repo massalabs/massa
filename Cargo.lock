@@ -2035,7 +2035,6 @@ dependencies = [
  "massa_network_exports",
  "massa_serialization",
  "massa_signature",
- "massa_storage",
  "massa_time",
  "nom 7.1.1",
  "num_enum",

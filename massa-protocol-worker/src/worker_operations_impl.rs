@@ -204,14 +204,17 @@ impl ProtocolWorker {
                 req_operation_ids.insert(*op_id);
             }
         }
-        {
-            // retain only the ones we already have
-            let ops = self.storage.read_operations();
-            req_operation_ids.retain(|op_id| ops.contains(op_id));
+        let ops: Vec<WrappedOperation> = {
+            let stored_ops = self.storage.read_operations();
+            req_operation_ids
+                .iter()
+                .filter_map(|id| stored_ops.get(id))
+                .cloned()
+                .collect()
         };
-        if !req_operation_ids.is_empty() {
+        if !ops.is_empty() {
             self.network_command_sender
-                .send_operations(node_id, req_operation_ids.into_iter().collect())
+                .send_operations(node_id, ops)
                 .await?;
         }
         Ok(())

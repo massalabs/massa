@@ -6,6 +6,6 @@
 /// tracing with some context
 macro_rules! massa_trace {
     ($evt:expr, $params:tt) => {
-        tracing::info!("massa:{}:{}", $evt, serde_json::json!($params));
+        tracing::trace!("massa:{}:{}", $evt, serde_json::json!($params));
     };
 }

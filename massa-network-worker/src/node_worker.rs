@@ -2,24 +2,18 @@
 
 use super::{
     binders::{ReadBinder, WriteBinder},
-    messages::{BlockInfoType, Message, MessageSerializer, MessageTypeId},
+    messages::Message,
 };
 use itertools::Itertools;
 use massa_logging::massa_trace;
-use massa_models::block::BlockId;
 use massa_models::{
     config::{MAX_ENDORSEMENTS_PER_MESSAGE, NODE_SEND_CHANNEL_SIZE},
     node::NodeId,
-    operation::{OperationId, OperationIdsSerializer},
-    wrapped::{Id, WrappedSerializer},
+    wrapped::Id,
 };
 use massa_network_exports::{
     ConnectionClosureReason, NetworkConfig, NetworkError, NodeCommand, NodeEvent, NodeEventType,
-    ReplyForBlocksInfo,
 };
-use massa_serialization::{SerializeError, Serializer, U32VarIntSerializer};
-use massa_storage::Storage;
-use massa_time::MassaTime;
 use tokio::{
     sync::mpsc,
     sync::mpsc::{
@@ -45,8 +39,6 @@ pub struct NodeWorker {
     node_command_rx: mpsc::Receiver<NodeCommand>,
     /// Channel to send node events.
     node_event_tx: mpsc::Sender<NodeEvent>,
-    /// Shared storage.
-    storage: Storage,
 }
 
 impl NodeWorker {
@@ -67,7 +59,6 @@ impl NodeWorker {
         socket_writer: WriteBinder,
         node_command_rx: mpsc::Receiver<NodeCommand>,
         node_event_tx: mpsc::Sender<NodeEvent>,
-        storage: Storage,
     ) -> NodeWorker {
         NodeWorker {
             cfg,
@@ -76,7 +67,6 @@ impl NodeWorker {
             socket_writer_opt: Some(socket_writer),
             node_command_rx,
             node_event_tx,
-            storage,
         }
     }
 
@@ -136,13 +126,13 @@ impl NodeWorker {
         })?;
         let write_timeout = self.cfg.message_timeout;
         let node_id_copy = self.node_id;
-        let storage = self.storage.clone_without_refs();
-        let u32_serializer = U32VarIntSerializer::new();
         let node_writer_handle = tokio::spawn(async move {
             loop {
                 match writer_command_rx.recv().await {
                     Some(to_send) => {
-                        match timeout(write_timeout.to_duration(), socket_writer.send(&to_send)).await {
+                        match timeout(write_timeout.to_duration(), socket_writer.send(&to_send))
+                            .await
+                        {
                             Err(_err) => {
                                 massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv.send.timeout", {
                                     "node": node_id_copy,
@@ -298,9 +288,9 @@ impl NodeWorker {
                                 break;
                             }
                         },
-                        Some(NodeCommand::SendBlockHeader(block_id)) => {
-                            massa_trace!("node_worker.run_loop. send Message::BlockHeader", {"hash": block_id, "node": self.node_id});
-                            if self.try_send_to_node(&writer_command_tx, Message::BlockHeader(block_id)).is_err() {
+                        Some(NodeCommand::SendBlockHeader(header)) => {
+                            massa_trace!("node_worker.run_loop. send Message::BlockHeader", {"hash": header.id, "node": self.node_id});
+                            if self.try_send_to_node(&writer_command_tx, Message::BlockHeader(header)).is_err() {
                                 break;
                             }
                         },
@@ -324,8 +314,7 @@ impl NodeWorker {
                         },
                         Some(NodeCommand::SendOperations(operations)) => {
                             massa_trace!("node_worker.run_loop. send Message::SendOperations", {"node": self.node_id, "operations": operations});
-                            let ops: Vec<OperationId> = operations.into_iter().collect();
-                            for chunk in ops.chunks(self.cfg.max_operations_per_message as usize) {
+                            for chunk in operations.chunks(self.cfg.max_operations_per_message as usize) {
                                 if self.try_send_to_node(&writer_command_tx, Message::Operations(chunk.to_vec())).is_err() {
                                     break 'select_loop;
                                 }

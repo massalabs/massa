@@ -10,10 +10,10 @@ use massa_models::{
     serialization::{DeserializeMinBEInt, SerializeMinBEInt},
 };
 use massa_network_exports::{NetworkError, ReadHalf, WriteHalf};
+use massa_serialization::Serializer;
 use massa_serialization::{DeserializeError, Deserializer};
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use massa_serialization::Serializer;
 
 /// Used to serialize and send data.
 pub struct WriteBinder {
@@ -43,7 +43,7 @@ impl WriteBinder {
     pub async fn send(&mut self, msg: &Message) -> Result<u64, NetworkError> {
         //        massa_trace!("binder.send", { "msg": msg });
         let mut buf = Vec::new();
-        MessageSerializer::new().serialize(&msg, &mut buf)?;
+        MessageSerializer::new().serialize(msg, &mut buf)?;
         let msg_size: u32 = buf
             .len()
             .try_into()
@@ -173,7 +173,6 @@ impl ReadBinder {
             .message_deserializer
             .deserialize::<DeserializeError>(&self.buf)
             .map_err(|err| {
-                panic!("deserialization error: {:?}, input: {:#?}", err, &self.buf);
                 NetworkError::ModelsError(ModelsError::DeserializeError(err.to_string()))
             })?;
 
