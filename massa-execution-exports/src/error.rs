@@ -27,6 +27,9 @@ pub enum ExecutionError {
     /// RollSell error: {0}
     RollSellError(String),
 
+    /// Transaction error: {0}
+    TransactionError(String),
+
     /// Block gas error: {0}
     BlockGasError(String),
 
