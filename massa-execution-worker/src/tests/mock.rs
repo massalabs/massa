@@ -19,11 +19,11 @@ pub fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
     let keypair_0 =
         KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let addr_0 = Address::from_public_key(&keypair_0.get_public_key());
-    rolls.insert(addr_0, 1_000_000);
+    rolls.insert(addr_0, 100);
     ledger.insert(
         addr_0,
         LedgerEntry {
-            sequential_balance: Amount::from_str("100_000").unwrap(),
+            sequential_balance: Amount::from_str("300_000").unwrap(),
             ..Default::default()
         },
     );
@@ -31,11 +31,11 @@ pub fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
     let keypair_1 =
         KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let addr_1 = Address::from_public_key(&keypair_1.get_public_key());
-    rolls.insert(addr_1, 1_000_000);
+    rolls.insert(addr_1, 100);
     ledger.insert(
         addr_1,
         LedgerEntry {
-            sequential_balance: Amount::from_str("100_000").unwrap(),
+            sequential_balance: Amount::from_str("300_000").unwrap(),
             ..Default::default()
         },
     );

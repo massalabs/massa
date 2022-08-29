@@ -246,8 +246,6 @@ fn send_and_receive_async_message() {
     // get a sample final state
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
 
-    dbg!(sample_state.read().ledger.get_every_address());
-
     // init the storage
     let mut storage = Storage::default();
     // start the execution worker
@@ -261,7 +259,6 @@ fn send_and_receive_async_message() {
     // following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/send_message.wasm");
     // create the block contaning the smart contract execution operation
-
     let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(vec![operation], Slot::new(1, 0)).unwrap();
