@@ -709,6 +709,30 @@ impl ProtocolWorker {
         // check if this header was already verified
         let now = Instant::now();
         if let Some(block_info) = self.checked_headers.get(&block_id) {
+            if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
+                node_info.insert_known_blocks(
+                    &header.content.parents,
+                    true,
+                    now,
+                    self.config.max_node_known_blocks_size,
+                );
+                node_info.insert_known_blocks(
+                    &[block_id],
+                    true,
+                    now,
+                    self.config.max_node_known_blocks_size,
+                );
+                node_info.insert_known_endorsements(
+                    block_info.endorsements.keys().copied().collect(),
+                    self.config.max_node_known_endorsements_size,
+                );
+                if let Some(operations) = block_info.operations.as_ref() {
+                    node_info.insert_known_ops(
+                        operations.iter().cloned().collect(),
+                        self.config.max_node_known_ops_size,
+                    );
+                }
+            }
             return Ok(Some((block_id, block_info.endorsements.clone(), false)));
         }
 
