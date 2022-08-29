@@ -60,7 +60,9 @@ fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir
     };
     let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
         .expect("could not start selector controller");
-    let final_state = FinalState::new(cfg, Box::new(ledger), selector_controller.clone()).unwrap();
+    let mut final_state =
+        FinalState::new(cfg, Box::new(ledger), selector_controller.clone()).unwrap();
+    final_state.compute_initial_draws().unwrap();
     Ok((Arc::new(RwLock::new(final_state)), tempfile, tempdir))
 }
 
@@ -124,7 +126,7 @@ fn test_sending_read_only_execution_command() {
 fn test_nested_call_gas_usage() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
-        t0: 1000.into(),
+        t0: 100.into(),
         ..ExecutionConfig::default()
     };
     // get a sample final state
@@ -138,7 +140,7 @@ fn test_nested_call_gas_usage() {
         sample_state.read().pos_state.selector.clone(),
     );
     // get random keypair
-    let (_, keypair) = get_random_address_full();
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load bytecode you can check the source code of the
     // following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/nested_call.wasm");
@@ -156,8 +158,6 @@ fn test_nested_call_gas_usage() {
         (block.id, storage.clone()),
     );
     controller.update_blockclique_status(finalized_blocks.clone(), Default::default());
-
-    // sleep for 300ms to reach the message execution period
     std::thread::sleep(Duration::from_millis(10));
     // retrieve events emitted by smart contracts
     let events = controller.get_filtered_sc_output_event(EventFilter {
@@ -191,7 +191,7 @@ fn test_nested_call_gas_usage() {
         (block.id, storage.clone()),
     );
     controller.update_blockclique_status(finalized_blocks, Default::default());
-    std::thread::sleep(Duration::from_millis(300));
+    std::thread::sleep(Duration::from_millis(10));
     // Get the events that give us the gas usage (refer to source in ts) without fetching the first slot because it emit a event with an address.
     let events = controller.get_filtered_sc_output_event(EventFilter {
         start: Some(Slot::new(1, 1)),
@@ -229,7 +229,7 @@ fn send_and_receive_async_message() {
     // setup the period duration and the maximum gas for
     // asynchronous messages execution
     let exec_cfg = ExecutionConfig {
-        t0: 1000.into(),
+        t0: 100.into(),
         max_async_gas: 100_000,
         ..ExecutionConfig::default()
     };
@@ -263,9 +263,8 @@ fn send_and_receive_async_message() {
         (block.id, storage.clone()),
     );
     controller.update_blockclique_status(finalized_blocks, Default::default());
-
-    // sleep for 2secs to reach the message execution period
-    std::thread::sleep(Duration::from_secs(2));
+    // sleep for 100ms to reach the message execution period
+    std::thread::sleep(Duration::from_millis(100));
 
     // retrieve events emitted by smart contracts
     let events = controller.get_filtered_sc_output_event(EventFilter {
@@ -340,7 +339,7 @@ fn generate_events() {
     // Compile the `./wasm_tests` and generate a block with `event_test.wasm`
     // as data. Then we check if we get an event as expected.
     let exec_cfg = ExecutionConfig {
-        t0: 1000.into(),
+        t0: 100.into(),
         ..ExecutionConfig::default()
     };
     let mut storage: Storage = Default::default();
@@ -351,7 +350,8 @@ fn generate_events() {
         sample_state.read().pos_state.selector.clone(),
     );
 
-    let (sender_address, keypair) = get_random_address_full();
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    let sender_address = Address::from_public_key(&keypair.get_public_key());
     let event_test_data = include_bytes!("./wasm/event_test.wasm");
     let operation = create_execute_sc_operation(&keypair, event_test_data).unwrap();
     storage.store_operations(vec![operation.clone()]);

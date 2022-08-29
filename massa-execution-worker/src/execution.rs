@@ -377,7 +377,6 @@ impl ExecutionState {
                 self.execute_transaction_op(&operation.content.op, sender_addr)
             }
         };
-        dbg!(execution_result.is_ok());
 
         {
             // lock execution context
