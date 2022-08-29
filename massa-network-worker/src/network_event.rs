@@ -132,7 +132,7 @@ pub mod event_impl {
     ) -> Result<(), NetworkError> {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedBlockHeader",
-            {"hash": header.id.hash(), "header": header, "node": from}
+            {"hash": header.id.get_hash(), "header": header, "node": from}
         );
         if let Err(err) = worker
             .event

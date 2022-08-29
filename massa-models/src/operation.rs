@@ -82,8 +82,8 @@ impl Id for OperationId {
         OperationId(hash)
     }
 
-    fn hash(&self) -> Hash {
-        self.0
+    fn get_hash(&self) -> &Hash {
+        &self.0
     }
 }
 
@@ -755,14 +755,6 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
             }
         })
         .parse(buffer)
-    }
-}
-
-impl WrappedOperation {
-    /// Verifies the signature and integrity of the operation and computes operation ID
-    pub fn verify_integrity(&self) -> Result<OperationId, ModelsError> {
-        self.verify_signature(OperationSerializer::new(), &self.creator_public_key)?;
-        Ok(self.id)
     }
 }
 

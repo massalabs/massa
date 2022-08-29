@@ -843,7 +843,7 @@ impl Endpoints for API<Public> {
                 })
                 .map(|op| match op {
                     Ok(operation) => {
-                        operation.verify_integrity()?;
+                        operation.verify_signature()?;
                         Ok(operation)
                     }
                     Err(e) => Err(e),

@@ -38,10 +38,10 @@ where
 
 /// Used by signed structure
 pub trait Id {
-    /// new id from hash
+    /// New id from hash
     fn new(hash: Hash) -> Self;
-    /// Get the hash
-    fn hash(&self) -> Hash;
+    /// Get a reference to the underlying hash
+    fn get_hash(&self) -> &Hash;
 }
 
 /// Trait that define a structure that can be wrapped.
@@ -138,7 +138,7 @@ where
         writeln!(f, "Signature: {}", self.signature)?;
         writeln!(f, "Creator pubkey: {}", self.creator_public_key)?;
         writeln!(f, "Creator address: {}", self.creator_address)?;
-        writeln!(f, "Id: {}", self.id.hash())?;
+        writeln!(f, "Id: {}", self.id.get_hash())?;
         writeln!(f, "{}", self.content)?;
         Ok(())
     }
@@ -150,18 +150,10 @@ where
     U: Id,
 {
     /// check if self has been signed by public key
-    pub fn verify_signature<SC: Serializer<T>>(
-        &self,
-        content_serializer: SC,
-        public_key: &PublicKey,
-    ) -> Result<(), ModelsError> {
-        let mut content_serialized = Vec::new();
-        content_serializer.serialize(&self.content, &mut content_serialized)?;
-        let mut hash_data = Vec::new();
-        hash_data.extend(self.creator_public_key.to_bytes());
-        hash_data.extend(content_serialized.clone());
-        let hash = Hash::compute_from(&hash_data);
-        Ok(public_key.verify_signature(&hash, &self.signature)?)
+    pub fn verify_signature(&self) -> Result<(), ModelsError> {
+        Ok(self
+            .creator_public_key
+            .verify_signature(self.id.get_hash(), &self.signature)?)
     }
 
     /// get full serialized size
