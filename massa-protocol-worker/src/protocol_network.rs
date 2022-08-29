@@ -300,6 +300,13 @@ impl ProtocolWorker {
                     Some(block_storage),
                 ),
             );
+
+            // If the block is empty, go straight to processing the full block info.
+            if operation_ids.is_empty() {
+                return self
+                    .on_block_full_operations_received(from_node_id, block_id, Default::default())
+                    .await;
+            }
         } else {
             let _ = self.ban_node(&from_node_id).await;
         }

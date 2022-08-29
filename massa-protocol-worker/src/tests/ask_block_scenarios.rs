@@ -134,6 +134,107 @@ async fn test_full_ask_block_workflow() {
 
 #[tokio::test]
 #[serial]
+async fn test_empty_block() {
+    // start
+    let protocol_config = &tools::PROTOCOL_CONFIG;
+
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    mut protocol_event_receiver,
+                    mut protocol_command_sender,
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
+            let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
+                .await
+                .pop()
+                .unwrap();
+            let node_b = tools::create_and_connect_nodes(1, &mut network_controller)
+                .await
+                .pop()
+                .unwrap();
+            let _node_c = tools::create_and_connect_nodes(1, &mut network_controller)
+                .await
+                .pop()
+                .unwrap();
+
+            // 2. Create a block coming from node 0.
+            let block = tools::create_block(&node_a.keypair);
+            let hash_1 = block.id;
+            // end set up
+
+            // Send header via node_a
+            network_controller
+                .send_header(node_a.id, block.content.header.clone())
+                .await;
+
+            // send wishlist
+            protocol_command_sender
+                .send_wishlist_delta(
+                    vec![hash_1].into_iter().collect(),
+                    PreHashSet::<BlockId>::default(),
+                )
+                .await
+                .unwrap();
+
+            // assert it was asked to node A, then B
+            assert_hash_asked_to_node(hash_1, node_a.id, &mut network_controller).await;
+            assert_hash_asked_to_node(hash_1, node_b.id, &mut network_controller).await;
+
+            // node B replied with the block
+            network_controller
+                .send_block_info(
+                    node_b.id,
+                    vec![(block.id, BlockInfoReply::Info(Default::default()))],
+                )
+                .await;
+
+            // 7. Make sure protocol did not send additional ask for block commands.
+            let ask_for_block_cmd_filter = |cmd| match cmd {
+                cmd @ NetworkCommand::AskForBlocks { .. } => Some(cmd),
+                _ => None,
+            };
+
+            let got_more_commands = network_controller
+                .wait_command(100.into(), ask_for_block_cmd_filter)
+                .await;
+            assert!(
+                got_more_commands.is_none(),
+                "unexpected command {:?}",
+                got_more_commands
+            );
+
+            // Protocol sends expected block to consensus.
+            loop {
+                match protocol_event_receiver.wait_event().await.unwrap() {
+                    ProtocolEvent::ReceivedBlock {
+                        slot,
+                        block_id,
+                        storage,
+                    } => {
+                        assert_eq!(slot, block.content.header.content.slot);
+                        assert_eq!(block_id, block.id);
+                        let received_block = storage.read_blocks().get(&block_id).cloned().unwrap();
+                        assert_eq!(received_block.content.operations, block.content.operations);
+                        break;
+                    }
+                    _evt => continue,
+                };
+            }
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                protocol_pool_event_receiver,
+            )
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[serial]
 async fn test_someone_knows_it() {
     // start
     let protocol_config = &tools::PROTOCOL_CONFIG;
