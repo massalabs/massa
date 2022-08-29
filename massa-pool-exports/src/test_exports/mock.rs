@@ -120,9 +120,6 @@ impl PoolEventReceiver {
                 m
             }
         };
-        if msg.is_none() {
-            panic!("unexpected message")
-        }
         msg
     }
 }
