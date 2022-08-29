@@ -252,7 +252,7 @@ fn send_and_receive_async_message() {
     // setup the period duration and the maximum gas for
     // asynchronous messages execution
     let exec_cfg = ExecutionConfig {
-        t0: 100.into(),
+        t0: 1000.into(),
         max_async_gas: 100_000,
         ..ExecutionConfig::default()
     };
@@ -308,7 +308,7 @@ fn send_and_receive_async_message() {
 pub fn send_and_receive_transaction() {
     // setup the period duration and the maximum gas for
     let exec_cfg = ExecutionConfig {
-        t0: 100.into(),
+        t0: 1000.into(),
         ..ExecutionConfig::default()
     };
     // get a sample final state
@@ -362,7 +362,7 @@ fn generate_events() {
     // Compile the `./wasm_tests` and generate a block with `event_test.wasm`
     // as data. Then we check if we get an event as expected.
     let exec_cfg = ExecutionConfig {
-        t0: 100.into(),
+        t0: 1000.into(),
         ..ExecutionConfig::default()
     };
     let mut storage: Storage = Default::default();
