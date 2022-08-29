@@ -33,8 +33,8 @@ impl Id for EndorsementId {
         EndorsementId(hash)
     }
 
-    fn hash(&self) -> Hash {
-        self.0
+    fn get_hash(&self) -> &Hash {
+        &self.0
     }
 }
 

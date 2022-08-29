@@ -35,8 +35,8 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
 
             let operation_2 = tools::create_operation_with_expire_period(&creator_node.keypair, 1);
 
-            let expected_operation_id_1 = operation_1.verify_integrity().unwrap();
-            let expected_operation_id_2 = operation_2.verify_integrity().unwrap();
+            let expected_operation_id_1 = operation_1.id;
+            let expected_operation_id_2 = operation_2.id;
 
             // 3. Send operation to protocol.
             network_controller
@@ -65,19 +65,11 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
             // Check that the operations come with their serialized representations.
             assert_eq!(
                 expected_operation_id_1,
-                ops_reader
-                    .get(&expected_operation_id_1)
-                    .unwrap()
-                    .verify_integrity()
-                    .unwrap()
+                ops_reader.get(&expected_operation_id_1).unwrap().id
             );
             assert_eq!(
                 expected_operation_id_2,
-                ops_reader
-                    .get(&expected_operation_id_2)
-                    .unwrap()
-                    .verify_integrity()
-                    .unwrap()
+                ops_reader.get(&expected_operation_id_2).unwrap().id
             );
 
             (
@@ -168,7 +160,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
                 _ => Some(MockPoolControllerMessage::Any),
             });
 
-            let expected_operation_id = operation.verify_integrity().unwrap();
+            let expected_operation_id = operation.id;
 
             let mut ops: PreHashSet<OperationId> = PreHashSet::default();
             ops.insert(expected_operation_id);
@@ -240,7 +232,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // wait for things to settle
             tokio::time::sleep(Duration::from_millis(250)).await;
 
-            let expected_operation_id = operation.verify_integrity().unwrap();
+            let expected_operation_id = operation.id;
 
             let mut ops: PreHashSet<OperationId> = PreHashSet::default();
             ops.insert(expected_operation_id);
@@ -588,7 +580,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
             }) {
                 None => panic!("Protocol did not send operations to pool."),
                 Some(MockPoolControllerMessage::AddOperations { operations }) => {
-                    let expected_id = operation.verify_integrity().unwrap();
+                    let expected_id = operation.id;
                     let op_refs = operations.get_op_refs();
                     assert!(op_refs.contains(&expected_id));
                     assert_eq!(op_refs.len(), 1);
@@ -598,8 +590,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
                         ops_reader
                             .get(&expected_id)
                             .unwrap()
-                            .verify_integrity()
-                            .unwrap()
+                            .id;
                     );
                 }
                 Some(_) => panic!("Unexpected protocol pool event."),
@@ -635,7 +626,7 @@ async fn test_protocol_ask_operations_on_batch_received() {
             // 1. Create an operation
             let operation = tools::create_operation_with_expire_period(&creator_node.keypair, 1);
 
-            let expected_operation_id = operation.verify_integrity().unwrap();
+            let expected_operation_id = operation.id;
             // 3. Send operation batch to protocol.
             network_controller
                 .send_operation_batch(
@@ -691,7 +682,7 @@ async fn test_protocol_on_ask_operations() {
             // 1. Create an operation
             let operation = tools::create_operation_with_expire_period(&creator_node.keypair, 1);
 
-            let expected_operation_id = operation.verify_integrity().unwrap();
+            let expected_operation_id = operation.id;
 
             // 2. Send operation
             network_controller

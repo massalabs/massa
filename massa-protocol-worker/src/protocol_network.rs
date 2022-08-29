@@ -263,7 +263,7 @@ impl ProtocolWorker {
         };
         let mut total_hash: Vec<u8> = vec![];
         operation_ids.iter().for_each(|op_id| {
-            let op_hash = op_id.hash().into_bytes();
+            let op_hash = op_id.get_hash().into_bytes();
             total_hash.extend(op_hash);
         });
 

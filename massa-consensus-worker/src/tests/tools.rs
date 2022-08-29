@@ -540,7 +540,7 @@ pub fn create_block_with_operations(
 ) -> WrappedBlock {
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
-            [acc, v.id.hash().to_bytes().to_vec()].concat()
+            [acc, v.id.get_hash().to_bytes().to_vec()].concat()
         })[..],
     );
 
@@ -579,7 +579,7 @@ pub fn create_block_with_operations_and_endorsements(
 ) -> WrappedBlock {
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
-            [acc, v.id.hash().to_bytes().to_vec()].concat()
+            [acc, v.id.get_hash().to_bytes().to_vec()].concat()
         })[..],
     );
 

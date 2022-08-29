@@ -443,7 +443,7 @@ impl PublicKey {
         signature: &Signature,
     ) -> Result<(), MassaSignatureError> {
         self.0.verify(hash.to_bytes(), &signature.0).map_err(|err| {
-            MassaSignatureError::SignatureError(format!("Signature failed: {}", err))
+            MassaSignatureError::SignatureError(format!("Signature verification failed: {}", err))
         })
     }
 

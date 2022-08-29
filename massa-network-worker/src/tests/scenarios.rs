@@ -176,7 +176,7 @@ async fn test_node_worker_operations_message() {
 
     // Create transaction.
     let transaction = get_transaction(50, 10);
-    let ref_id = transaction.verify_integrity().unwrap();
+    let ref_id = transaction.id;
 
     // Add to storage.
     storage.store_operations(vec![transaction.clone()]);
@@ -1108,7 +1108,7 @@ async fn test_operation_messages() {
 
             // Send transaction message from connected peer
             let transaction = get_transaction(50, 10);
-            let ref_id = transaction.verify_integrity().unwrap();
+            let ref_id = transaction.id;
             let mut message_serialized = Vec::new();
             message_serializer
                 .serialize(
@@ -1130,15 +1130,13 @@ async fn test_operation_messages() {
                 .await
             {
                 assert_eq!(operations.len(), 1);
-                assert!(operations[0].verify_integrity().is_ok());
-                assert_eq!(operations[0].verify_integrity().unwrap(), ref_id);
                 assert_eq!(node, conn1_id);
             } else {
                 panic!("Timeout while waiting for received operations event");
             }
 
             let transaction2 = get_transaction(10, 50);
-            let ref_id2 = transaction2.verify_integrity().unwrap();
+            let ref_id2 = transaction2.id;
 
             // Add to storage.
             storage.store_operations(vec![transaction2]);
@@ -1160,8 +1158,7 @@ async fn test_operation_messages() {
                         let evt = evt.unwrap().unwrap().1;
                         if let Message::Operations(op) = evt {
                             assert_eq!(op.len(), 1);
-                            assert!(op[0].verify_integrity().is_ok());
-                            assert_eq!(op[0].verify_integrity().unwrap(), ref_id2);
+                            assert_eq!(op[0].id, ref_id2);
                             break;
                         }
                     },
