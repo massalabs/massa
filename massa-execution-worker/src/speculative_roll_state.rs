@@ -401,13 +401,11 @@ impl SpeculativeRollState {
         }
 
         // on overflow, accumulate added changes
-        if overflow {
+        if overflow && cur_slot.get_cycle(periods_per_cycle) == cycle {
             let last_slot_of_target_cycle =
                 Slot::new_last_of_cycle(cycle, periods_per_cycle, thread_count)
                     .expect("could not get last slot of cycle");
-            if cur_slot.get_cycle(periods_per_cycle) == cycle
-                && cur_slot <= &last_slot_of_target_cycle
-            {
+            if cur_slot <= &last_slot_of_target_cycle {
                 for (addr, stats) in &self.added_changes.production_stats {
                     accumulated_stats
                         .entry(*addr)
