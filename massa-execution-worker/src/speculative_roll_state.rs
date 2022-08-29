@@ -376,24 +376,16 @@ impl SpeculativeRollState {
         cur_slot: &Slot,
     ) -> (PreHashMap<Address, ProductionStats>, bool) {
         let mut accumulated_stats: PreHashMap<Address, ProductionStats> = Default::default();
-
-        // search in added stats
-        if cur_slot.get_cycle(periods_per_cycle) == cycle {
-            for (addr, stats) in &self.added_changes.production_stats {
-                accumulated_stats
-                    .entry(*addr)
-                    .and_modify(|cur| cur.extend(stats))
-                    .or_insert_with(|| *stats);
-            }
-        }
+        let mut underflow;
+        let mut overflow;
 
         // search in active history
-        let global_overflow;
         {
             let hist = self.active_history.read();
-            let (range, underflow, overflow) =
+            let (range, loc_underflow, loc_overflow) =
                 hist.find_cycle_indices(cycle, periods_per_cycle, thread_count);
-            global_overflow = overflow;
+            underflow = loc_underflow;
+            overflow = loc_overflow;
             for idx in range {
                 for (addr, stats) in &hist.0[idx]
                     .state_changes
@@ -406,25 +398,39 @@ impl SpeculativeRollState {
                         .or_insert_with(|| *stats);
                 }
             }
-            if !underflow {
-                // no need to search in finals
-                return (accumulated_stats, !overflow);
+        }
+
+        // on overflow, accumulate added changes
+        if overflow {
+            let last_slot_of_target_cycle =
+                Slot::new_last_of_cycle(cycle, periods_per_cycle, thread_count)
+                    .expect("could not get last slot of cycle");
+            if cur_slot == &last_slot_of_target_cycle {
+                for (addr, stats) in &self.added_changes.production_stats {
+                    accumulated_stats
+                        .entry(*addr)
+                        .and_modify(|cur| cur.extend(stats))
+                        .or_insert_with(|| *stats);
+                }
+                overflow = false;
             }
         }
 
-        // acccumulate final state
-        let final_state = self.final_state.read();
-        if let Some(final_stats) = final_state.pos_state.get_all_production_stats(cycle) {
-            for (addr, stats) in final_stats {
-                accumulated_stats
-                    .entry(*addr)
-                    .and_modify(|cur| cur.extend(stats))
-                    .or_insert_with(|| *stats);
+        // on underflow, accumulate final state
+        if underflow {
+            let final_state = self.final_state.read();
+            if let Some(final_stats) = final_state.pos_state.get_all_production_stats(cycle) {
+                for (addr, stats) in final_stats {
+                    accumulated_stats
+                        .entry(*addr)
+                        .and_modify(|cur| cur.extend(stats))
+                        .or_insert_with(|| *stats);
+                }
+                underflow = false;
             }
-            (accumulated_stats, !global_overflow)
-        } else {
-            (accumulated_stats, false)
         }
+
+        (accumulated_stats, underflow || overflow)
     }
 
     /// Get the deferred credits of `slot`.
