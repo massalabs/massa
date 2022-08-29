@@ -171,7 +171,7 @@ impl ReadBinder {
             .message_deserializer
             .deserialize::<DeserializeError>(&self.buf)
             .map_err(|err| {
-                panic!("deserialization error: {:?}, input: {}", err, &self.buf);
+                panic!("deserialization error: {:?}, input: {:#?}", err, &self.buf);
                 NetworkError::ModelsError(ModelsError::DeserializeError(err.to_string()))
             })?;
 
