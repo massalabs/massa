@@ -26,16 +26,10 @@ use massa_signature::KeyPair;
 use massa_storage::Storage;
 use parking_lot::RwLock;
 use serial_test::serial;
-use std::{
-    cmp::Reverse,
-    collections::{BTreeMap, HashMap},
-    str::FromStr,
-    sync::Arc,
-    time::Duration,
-};
+use std::{cmp::Reverse, collections::HashMap, str::FromStr, sync::Arc, time::Duration};
 use tempfile::{NamedTempFile, TempDir};
 
-use super::mock::get_initial_rolls;
+use super::mock::get_initials;
 
 /// Same as `get_random_address()` and return `keypair` associated
 /// to the address.
@@ -44,17 +38,9 @@ pub fn get_random_address_full() -> (Address, KeyPair) {
     (Address::from_public_key(&keypair.get_public_key()), keypair)
 }
 
-/// Get a randomized address
-pub fn get_random_address() -> Address {
-    get_random_address_full().0
-}
-
 fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir), LedgerError> {
-    let mut initial: BTreeMap<Address, Amount> = Default::default();
-    initial.insert(get_random_address(), Amount::from_str("129").unwrap());
-    initial.insert(get_random_address(), Amount::from_str("878").unwrap());
-    let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&initial);
-    let file = get_initial_rolls();
+    let (rolls_file, ledger) = get_initials();
+    let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&ledger);
     let ledger = FinalLedger::new(ledger_config.clone()).expect("could not init final ledger");
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
@@ -67,7 +53,7 @@ fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir
         async_pool_config,
         final_history_length: 128,
         thread_count: THREAD_COUNT,
-        initial_rolls_path: file.path().to_path_buf(),
+        initial_rolls_path: rolls_file.path().to_path_buf(),
         initial_seed_string: "".to_string(),
         periods_per_cycle: 10,
     };
