@@ -142,11 +142,13 @@ impl SpeculativeLedger {
         to_addr: Option<Address>,
         amount: Amount,
     ) -> Result<(), ExecutionError> {
+        dbg!(amount, from_addr, to_addr);
         // init empty ledger changes
         let mut changes = LedgerChanges::default();
 
         // simulate spending coins from sender address (if any)
         if let Some(from_addr) = from_addr {
+            dbg!(self.get_sequential_balance(&from_addr));
             let new_balance = self
                 .get_sequential_balance(&from_addr)
                 .ok_or_else(|| ExecutionError::RuntimeError("source address not found".into()))?

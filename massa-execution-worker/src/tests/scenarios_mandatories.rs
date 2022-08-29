@@ -7,7 +7,7 @@ use massa_execution_exports::{
 };
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
-use massa_ledger_exports::{LedgerConfig, LedgerError};
+use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerError};
 use massa_ledger_worker::FinalLedger;
 use massa_models::config::{
     ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, MAX_ASYNC_POOL_LENGTH, MAX_DATA_ASYNC_MESSAGE,
@@ -41,7 +41,8 @@ pub fn get_random_address_full() -> (Address, KeyPair) {
 fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir), LedgerError> {
     let (rolls_file, ledger) = get_initials();
     let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&ledger);
-    let ledger = FinalLedger::new(ledger_config.clone()).expect("could not init final ledger");
+    let mut ledger = FinalLedger::new(ledger_config.clone()).expect("could not init final ledger");
+    ledger.load_initial_ledger().unwrap();
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
         part_size_message_bytes: ASYNC_POOL_PART_SIZE_MESSAGE_BYTES,
@@ -245,6 +246,8 @@ fn send_and_receive_async_message() {
     // get a sample final state
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
 
+    dbg!(sample_state.read().ledger.get_every_address());
+
     // init the storage
     let mut storage = Storage::default();
     // start the execution worker
@@ -393,7 +396,7 @@ fn create_execute_sc_operation(
     let op = OperationType::ExecuteSC {
         data: data.to_vec(),
         max_gas: 100_000,
-        coins: Amount::from_raw(200_000),
+        coins: Amount::from_str("10").unwrap(),
         gas_price: Amount::from_mantissa_scale(1, 0),
     };
     let op = Operation::new_wrapped(

@@ -377,6 +377,7 @@ impl ExecutionState {
                 self.execute_transaction_op(&operation.content.op, sender_addr)
             }
         };
+        dbg!(execution_result.clone());
 
         {
             // lock execution context
@@ -552,6 +553,7 @@ impl ExecutionState {
         operation: &OperationType,
         sender_addr: Address,
     ) -> Result<(), ExecutionError> {
+        dbg!("execute_executesc_op");
         // process ExecuteSC operations only
         let (bytecode, max_gas, coins) = match &operation {
             OperationType::ExecuteSC {
