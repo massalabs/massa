@@ -151,12 +151,16 @@ impl ProtocolCommandSender {
     }
 
     /// propagate endorsements to connected node
-    pub fn propagate_endorsements(&mut self, endorsements: Storage) -> Result<(), ProtocolError> {
+    pub async fn propagate_endorsements(
+        &mut self,
+        endorsements: Storage,
+    ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_endorsements", {
             "endorsements": endorsements.get_endorsement_refs()
         });
         self.0
-            .blocking_send(ProtocolCommand::PropagateEndorsements(endorsements))
+            .send(ProtocolCommand::PropagateEndorsements(endorsements))
+            .await
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_endorsements command send error".into())
             })

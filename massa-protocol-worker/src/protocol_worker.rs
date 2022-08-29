@@ -99,6 +99,7 @@ pub async fn start_protocol_controller(
 }
 
 /// Info about a block we've seen
+#[derive(Debug, Clone)]
 pub(crate) struct BlockInfo {
     /// Endorsements contained in the block header.
     pub(crate) endorsements: PreHashMap<EndorsementId, u32>,
@@ -708,30 +709,6 @@ impl ProtocolWorker {
         // check if this header was already verified
         let now = Instant::now();
         if let Some(block_info) = self.checked_headers.get(&block_id) {
-            if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-                node_info.insert_known_blocks(
-                    &header.content.parents,
-                    true,
-                    now,
-                    self.config.max_node_known_blocks_size,
-                );
-                node_info.insert_known_blocks(
-                    &[block_id],
-                    true,
-                    now,
-                    self.config.max_node_known_blocks_size,
-                );
-                node_info.insert_known_endorsements(
-                    block_info.endorsements.keys().copied().collect(),
-                    self.config.max_node_known_endorsements_size,
-                );
-                if let Some(operations) = block_info.operations.as_ref() {
-                    node_info.insert_known_ops(
-                        operations.iter().cloned().collect(),
-                        self.config.max_node_known_ops_size,
-                    );
-                }
-            }
             return Ok(Some((block_id, block_info.endorsements.clone(), false)));
         }
 
@@ -792,12 +769,10 @@ impl ProtocolWorker {
             }
         }
 
+        let block_info = BlockInfo::new(endorsement_ids.clone(), header.clone());
         if self
             .checked_headers
-            .insert(
-                block_id,
-                BlockInfo::new(endorsement_ids.clone(), header.clone()),
-            )
+            .insert(block_id, block_info.clone())
             .is_none()
         {
             self.prune_checked_headers();
@@ -816,6 +791,16 @@ impl ProtocolWorker {
                 now,
                 self.config.max_node_known_blocks_size,
             );
+            node_info.insert_known_endorsements(
+                block_info.endorsements.keys().copied().collect(),
+                self.config.max_node_known_endorsements_size,
+            );
+            if let Some(operations) = block_info.operations.as_ref() {
+                node_info.insert_known_ops(
+                    operations.iter().cloned().collect(),
+                    self.config.max_node_known_ops_size,
+                );
+            }
             massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": source_node_id,"block_id":block_id, "header": header});
             return Ok(Some((block_id, endorsement_ids, true)));
         }

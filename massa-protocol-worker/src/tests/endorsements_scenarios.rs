@@ -147,6 +147,7 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
             storage.store_endorsements(vec![endorsement]);
             protocol_command_sender
                 .propagate_endorsements(storage)
+                .await
                 .unwrap();
 
             loop {
@@ -221,6 +222,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             storage.store_endorsements(vec![endorsement]);
             protocol_command_sender
                 .propagate_endorsements(storage)
+                .await
                 .unwrap();
 
             loop {
@@ -299,6 +301,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             storage.store_endorsements(vec![endorsement]);
             protocol_command_sender
                 .propagate_endorsements(storage)
+                .await
                 .unwrap();
 
             match network_controller
@@ -375,6 +378,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             storage.store_endorsements(vec![endorsement]);
             protocol_command_sender
                 .propagate_endorsements(storage)
+                .await
                 .unwrap();
 
             match network_controller
@@ -459,6 +463,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             storage.store_endorsements(vec![endorsement]);
             protocol_command_sender
                 .propagate_endorsements(storage)
+                .await
                 .unwrap();
 
             match network_controller
@@ -471,8 +476,9 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 Some(NetworkCommand::SendEndorsements { node, endorsements }) => {
                     let id = endorsements[0].id;
                     assert_eq!(id, endorsement_id);
-                    assert_eq!(nodes[0].id, node);
-                    panic!("Unexpected propagated of endorsement.");
+                    if nodes[0].id == node {
+                        panic!("Unexpected propagated of endorsement.");
+                    }
                 }
                 None => {}
                 Some(cmd) => panic!("Unexpected network command.{:?}", cmd),
