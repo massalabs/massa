@@ -412,7 +412,7 @@ impl SpeculativeRollState {
                         .and_modify(|cur| cur.extend(stats))
                         .or_insert_with(|| *stats);
                 }
-                if cur_slot >= &last_slot_of_target_cycle {
+                if cur_slot == &last_slot_of_target_cycle {
                     overflow = false;
                 }
             }
