@@ -11,6 +11,7 @@ use massa_models::{
 };
 use massa_network_exports::{NetworkError, ReadHalf, WriteHalf};
 use massa_serialization::{DeserializeError, Deserializer};
+use tracing::info;
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -171,6 +172,7 @@ impl ReadBinder {
             .message_deserializer
             .deserialize::<DeserializeError>(&self.buf)
             .map_err(|err| {
+                panic("deserialization error: {:?}, input: {}", err, &self.buf);
                 NetworkError::ModelsError(ModelsError::DeserializeError(err.to_string()))
             })?;
 
