@@ -11,6 +11,7 @@
 use crate::active_history::{ActiveHistory, HistorySearchResult};
 use crate::context::ExecutionContext;
 use crate::interface_impl::InterfaceImpl;
+use crate::stats::ExecutionStatsCounter;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
@@ -21,9 +22,14 @@ use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::Set;
-use massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
-use massa_models::{Amount, Slot};
+use massa_models::prehash::PreHashSet;
+use massa_models::stats::ExecutionStats;
+use massa_models::{
+    address::Address,
+    block::BlockId,
+    operation::{OperationId, OperationType, WrappedOperation},
+};
+use massa_models::{amount::Amount, slot::Slot};
 use massa_pos_exports::SelectorController;
 use massa_sc_runtime::Interface;
 use massa_storage::Storage;
@@ -62,6 +68,8 @@ pub(crate) struct ExecutionState {
     execution_context: Arc<Mutex<ExecutionContext>>,
     // execution interface allowing the VM runtime to access the Massa context
     execution_interface: Box<dyn Interface>,
+    // execution statistics
+    stats_counter: ExecutionStatsCounter,
 }
 
 impl ExecutionState {
@@ -83,6 +91,7 @@ impl ExecutionState {
 
         // Create an empty placeholder execution context, with shared atomic access
         let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
+            config.clone(),
             final_state.clone(),
             active_history.clone(),
         )));
@@ -95,7 +104,6 @@ impl ExecutionState {
 
         // build the execution state
         ExecutionState {
-            config,
             final_state,
             execution_context,
             execution_interface,
@@ -106,7 +114,17 @@ impl ExecutionState {
             // no active slots executed yet: set active_cursor to the last final block
             active_cursor: last_final_slot,
             final_cursor: last_final_slot,
+            stats_counter: ExecutionStatsCounter::new(
+                config.stats_time_window_duration,
+                config.clock_compensation,
+            ),
+            config,
         }
+    }
+
+    /// Get execution statistics
+    pub fn get_stats(&self) -> ExecutionStats {
+        self.stats_counter.get_stats(self.active_cursor)
     }
 
     /// Gets out the first (oldest) execution history item, removing it from history.
@@ -121,16 +139,24 @@ impl ExecutionState {
     /// The newly applied final output should be from the slot just after the last executed final slot
     ///
     /// # Arguments
-    /// * `exec_ou`t: execution output to apply
-    pub fn apply_final_execution_output(&mut self, exec_out: ExecutionOutput) {
+    /// * `exec_out`: execution output to apply
+    pub fn apply_final_execution_output(&mut self, mut exec_out: ExecutionOutput) {
         if self.final_cursor >= exec_out.slot {
             panic!("attempting to apply a final execution output at or before the current final_cursor");
+        }
+
+        // count stats
+        if exec_out.block_id.is_some() {
+            self.stats_counter.register_final_blocks(1);
+            self.stats_counter
+                .register_final_executed_operations(exec_out.state_changes.executed_ops.len());
         }
 
         // apply state changes to the final ledger
         self.final_state
             .write()
             .finalize(exec_out.slot, exec_out.state_changes);
+
         // update the final ledger's slot
         self.final_cursor = exec_out.slot;
 
@@ -141,6 +167,7 @@ impl ExecutionState {
         }
 
         // append generated events to the final event store
+        exec_out.events.finalize();
         self.final_events.extend(exec_out.events);
         self.final_events.prune(self.config.max_final_events);
     }
@@ -264,7 +291,7 @@ impl ExecutionState {
         let sender_addr = operation.creator_address;
 
         // get the thread to which the operation belongs
-        let op_thread = operation.thread;
+        let op_thread = sender_addr.get_thread(self.config.thread_count);
 
         // check block/op thread compatibility
         if op_thread != block_slot.thread {
@@ -402,13 +429,7 @@ impl ExecutionState {
         }];
 
         // try to sell the rolls
-        if let Err(err) = context.try_sell_rolls(
-            &seller_addr,
-            *roll_count,
-            self.config.periods_per_cycle,
-            self.config.thread_count,
-            self.config.roll_price,
-        ) {
+        if let Err(err) = context.try_sell_rolls(&seller_addr, *roll_count) {
             return Err(ExecutionError::RollSellError(format!(
                 "{} failed to sell {} rolls: {}",
                 seller_addr, roll_count, err
@@ -833,6 +854,7 @@ impl ExecutionState {
     ) -> ExecutionOutput {
         // Create a new execution context for the whole active slot
         let mut execution_context = ExecutionContext::active_slot(
+            self.config.clone(),
             slot,
             opt_block.as_ref().map(|(b_id, _)| *b_id),
             self.final_state.clone(),
@@ -1003,11 +1025,7 @@ impl ExecutionState {
         }
 
         // Finish slot and return the execution output
-        context_guard!(self).settle_slot(
-            self.config.periods_per_cycle,
-            self.config.thread_count,
-            self.config.roll_price,
-        )
+        context_guard!(self).settle_slot()
     }
 
     /// Runs a read-only execution request.
@@ -1035,6 +1053,7 @@ impl ExecutionState {
 
         // create a readonly execution context
         let execution_context = ExecutionContext::readonly(
+            self.config.clone(),
             slot,
             req.max_gas,
             req.simulated_gas_price,
@@ -1079,11 +1098,7 @@ impl ExecutionState {
         }
 
         // return the execution output
-        Ok(context_guard!(self).settle_slot(
-            self.config.periods_per_cycle,
-            self.config.thread_count,
-            self.config.roll_price,
-        ))
+        Ok(context_guard!(self).settle_slot())
     }
 
     /// Gets a parallel balance both at the latest final and candidate executed slots
@@ -1201,15 +1216,19 @@ impl ExecutionState {
     ///
     /// By default it returns an empty map.
     pub fn get_cycle_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64> {
-        let lookback_cycle = cycle.saturating_sub(3);
+        let lookback_cycle = cycle.checked_sub(3);
         let final_state = self.final_state.read();
-        let lookback_cycle_index = match final_state.pos_state.get_cycle_index(lookback_cycle) {
-            Some(v) => v,
-            None => Default::default(),
-        };
-        final_state.pos_state.cycle_history[lookback_cycle_index]
-            .roll_counts
-            .clone()
+        if let Some(lookback_cycle) = lookback_cycle {
+            let lookback_cycle_index = match final_state.pos_state.get_cycle_index(lookback_cycle) {
+                Some(v) => v,
+                None => Default::default(),
+            };
+            final_state.pos_state.cycle_history[lookback_cycle_index]
+                .roll_counts
+                .clone()
+        } else {
+            final_state.pos_state.initial_rolls.clone()
+        }
     }
 
     /// Gets execution events optionally filtered by:
@@ -1218,37 +1237,42 @@ impl ExecutionState {
     /// * emitter address
     /// * original caller address
     /// * operation id
+    /// * event state (final, candidate or both)
     pub fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
-        match filter.candidate {
+        match filter.is_final {
             Some(true) => self
+                .final_events
+                .get_filtered_sc_output_events(&filter)
+                .into_iter()
+                .collect(),
+            Some(false) => self
                 .active_history
                 .read()
                 .0
                 .iter()
-                .flat_map(|item| item.events.get_filtered_sc_output_event(&filter))
-                .collect(),
-            Some(false) => self
-                .final_events
-                .get_filtered_sc_output_event(&filter)
-                .into_iter()
+                .flat_map(|item| item.events.get_filtered_sc_output_events(&filter))
                 .collect(),
             None => self
                 .final_events
-                .get_filtered_sc_output_event(&filter)
+                .get_filtered_sc_output_events(&filter)
                 .into_iter()
                 .chain(
                     self.active_history
                         .read()
                         .0
                         .iter()
-                        .flat_map(|item| item.events.get_filtered_sc_output_event(&filter)),
+                        .flat_map(|item| item.events.get_filtered_sc_output_events(&filter)),
                 )
                 .collect(),
         }
     }
 
     /// List which operations inside the provided list were not executed
-    pub fn unexecuted_ops_among(&self, ops: &Set<OperationId>, thread: u8) -> Set<OperationId> {
+    pub fn unexecuted_ops_among(
+        &self,
+        ops: &PreHashSet<OperationId>,
+        thread: u8,
+    ) -> PreHashSet<OperationId> {
         let mut ops = ops.clone();
 
         if ops.is_empty() {

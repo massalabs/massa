@@ -1,6 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::Amount;
+use massa_models::amount::Amount;
 use serde::{Deserialize, Serialize};
 
 /// Pool configuration

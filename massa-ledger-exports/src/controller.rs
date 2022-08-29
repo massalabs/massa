@@ -1,12 +1,15 @@
-use massa_models::{Address, Amount, ModelsError, Slot};
+use massa_models::{address::Address, amount::Amount, error::ModelsError, slot::Slot};
 use std::collections::BTreeSet;
 use std::fmt::Debug;
 
-use crate::LedgerChanges;
+use crate::{LedgerChanges, LedgerError};
 
 pub trait LedgerController: Send + Sync + Debug {
     /// Allows applying `LedgerChanges` to the final ledger
     fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot);
+
+    /// Loads ledger from file
+    fn load_initial_ledger(&mut self) -> Result<(), LedgerError>;
 
     /// Gets the sequential balance of a ledger entry
     ///

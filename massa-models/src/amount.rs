@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::constants::AMOUNT_DECIMAL_FACTOR;
-use crate::ModelsError;
+use crate::error::ModelsError;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use massa_serialization::{U64VarIntDeserializer, U64VarIntSerializer};
 use nom::error::{context, ContextError, ParseError};
@@ -11,6 +10,9 @@ use serde::de::Unexpected;
 use std::fmt;
 use std::ops::Bound;
 use std::str::FromStr;
+
+/// decimal factor for the internal representation
+pub const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
 
 /// A structure representing a decimal Amount of coins with safe operations
 /// this allows ensuring that there is never an uncontrolled overflow or precision loss

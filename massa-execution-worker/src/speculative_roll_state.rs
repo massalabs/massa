@@ -1,16 +1,18 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::active_history::ActiveHistory;
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
 use massa_models::address::ExecutionAddressCycleInfo;
-use massa_models::{prehash::Map, Address, Amount, BlockId, Slot};
+use massa_models::{
+    address::Address, amount::Amount, block::BlockId, prehash::PreHashMap, slot::Slot,
+};
 use massa_pos_exports::{PoSChanges, ProductionStats};
+use num::rational::Ratio;
 use parking_lot::RwLock;
 use std::collections::hash_map::Entry::Occupied;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
-
-use crate::active_history::ActiveHistory;
 
 /// Speculative state of the rolls
 #[allow(dead_code)]
@@ -136,7 +138,7 @@ impl SpeculativeRollState {
             .deferred_credits
             .0
             .entry(target_slot)
-            .or_insert_with(Map::default);
+            .or_insert_with(PreHashMap::default);
         credit.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
 
         Ok(())
@@ -179,6 +181,7 @@ impl SpeculativeRollState {
         periods_per_cycle: u64,
         thread_count: u8,
         roll_price: Amount,
+        max_miss_ratio: Ratio<u64>,
     ) {
         let cycle = slot.get_cycle(periods_per_cycle);
 
@@ -204,10 +207,10 @@ impl SpeculativeRollState {
             .deferred_credits
             .0
             .entry(target_slot)
-            .or_insert_with(Map::default);
+            .or_insert_with(PreHashMap::default);
 
         for (addr, stats) in production_stats {
-            if !stats.satisfying() {
+            if !stats.is_satisfying(&max_miss_ratio) {
                 if let Occupied(mut entry) = self.added_changes.roll_changes.entry(addr) {
                     if let Some(amount) = roll_price.checked_mul_u64(*entry.get()) {
                         credits.insert(addr, amount);
@@ -371,8 +374,8 @@ impl SpeculativeRollState {
         periods_per_cycle: u64,
         thread_count: u8,
         cur_slot: &Slot,
-    ) -> (Map<Address, ProductionStats>, bool) {
-        let mut accumulated_stats: Map<Address, ProductionStats> = Default::default();
+    ) -> (PreHashMap<Address, ProductionStats>, bool) {
+        let mut accumulated_stats: PreHashMap<Address, ProductionStats> = Default::default();
 
         // search in added stats
         if cur_slot.get_cycle(periods_per_cycle) == cycle {
@@ -428,7 +431,7 @@ impl SpeculativeRollState {
     ///
     /// # Arguments
     /// * `slot`: associated slot of the deferred credits to be executed
-    pub fn get_deferred_credits(&mut self, slot: &Slot) -> Map<Address, Amount> {
+    pub fn get_deferred_credits(&mut self, slot: &Slot) -> PreHashMap<Address, Amount> {
         // NOTE:
         // There is no need to sum the credits for similar entries between
         // the final state and the active history.

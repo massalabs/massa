@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 
 use massa_async_pool::AsyncPool;
 use massa_ledger_exports::LedgerController;
-use massa_models::Slot;
+use massa_models::slot::Slot;
 use massa_pos_exports::PoSFinalState;
 
 use crate::{ExecutedOps, FinalState, FinalStateConfig, StateChanges};

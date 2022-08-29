@@ -56,9 +56,9 @@ The production of a block `B` at slot `S` happens in steps:
 * define `sequential_balance_cache: Map<Address, Amount> = Default::default()` which is a cache of sequential balances
 * define `excluded_ops: Set<OperationId>` which is the list of operations to exclude
 * pre-fill`excluded_ops` by asking the `execution` execution module for the list of operations that have been executed previously in `B`'s thread
-* define `start_time = MassaTime::now()` which is the time when we started producing the block
+* define `start_time = MassaTime::now(0)` which is the time when we started producing the block
 * loop:
-  * if `MassaTime::now().saturating_sub(start_time) > MAX_BLOCK_PRODUCTION_MILLIS`, it means we have spent too much time in this loop => break loop
+  * if `MassaTime::now(0).saturating_sub(start_time) > MAX_BLOCK_PRODUCTION_MILLIS`, it means we have spent too much time in this loop => break loop
   * ask pool for a sorted batch of operations (best to worst) given the slot `S`, `remaining_gas`, `remaining_space`, `excluded_ops`
   * if the obtained batch is empty, break loop
   * extend `excluded_ops` with the obtained batch

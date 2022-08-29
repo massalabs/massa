@@ -8,11 +8,12 @@ use massa_models::node::NodeId;
 use massa_models::operation::OperationSerializer;
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
-    Address, Amount, Block, BlockHeader, BlockId, BlockSerializer, Slot, WrappedBlock,
-    WrappedEndorsement, WrappedOperation,
-};
-use massa_models::{
-    BlockHeaderSerializer, Endorsement, EndorsementSerializer, Operation, OperationType,
+    address::Address,
+    amount::Amount,
+    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock},
+    endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement},
+    operation::{Operation, OperationType, WrappedOperation},
+    slot::Slot,
 };
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand};
 use massa_signature::KeyPair;
@@ -239,7 +240,7 @@ pub fn create_protocol_config() -> ProtocolConfig {
         max_node_known_blocks_size: 100,
         max_node_wanted_blocks_size: 100,
         max_simultaneous_ask_blocks_per_node: 10,
-        max_send_wait: MassaTime::from(100),
+        max_send_wait: MassaTime::from_millis(100),
         max_known_ops_size: 1000,
         max_node_known_ops_size: 1000,
         max_known_endorsements_size: 1000,
@@ -250,6 +251,8 @@ pub fn create_protocol_config() -> ProtocolConfig {
         max_operations_per_message: 1024,
         thread_count: 32,
         max_serialized_operations_size_per_block: 1024,
+        controller_channel_size: 1024,
+        event_channel_size: 1024,
     }
 }
 
@@ -312,7 +315,7 @@ pub async fn assert_banned_nodes(
     mut nodes: Vec<NodeId>,
     network_controller: &mut MockNetworkController,
 ) {
-    let timer = sleep(MassaTime::from(5000).into());
+    let timer = sleep(MassaTime::from_millis(5000).into());
     tokio::pin!(timer);
     loop {
         tokio::select! {

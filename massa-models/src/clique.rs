@@ -17,15 +17,15 @@ use nom::sequence::tuple;
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 
-use crate::prehash::Set;
-use crate::BlockId;
+use crate::block::BlockId;
+use crate::prehash::PreHashSet;
 use std::ops::Bound::{Excluded, Included};
 
 /// Mutually compatible blocks in the graph
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Clique {
     /// the block ids of the blocks in that clique
-    pub block_ids: Set<BlockId>,
+    pub block_ids: PreHashSet<BlockId>,
     /// Fitness used to compute finality
     /// Depends on descendants and endorsement count
     pub fitness: u64,

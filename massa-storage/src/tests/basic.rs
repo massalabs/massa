@@ -1,6 +1,6 @@
 use crate::Storage;
 use massa_factory_exports::test_exports::create_empty_block;
-use massa_models::{prehash::Set, Slot};
+use massa_models::{prehash::PreHashSet, slot::Slot};
 use massa_signature::KeyPair;
 
 #[test]
@@ -29,7 +29,7 @@ fn test_double_insert() {
         let blocks = storage.read_blocks();
         blocks.get(&block.id).unwrap();
     };
-    let mut ids = Set::default();
+    let mut ids = PreHashSet::default();
     ids.insert(block.id);
     storage.drop_block_refs(&ids);
     {

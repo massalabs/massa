@@ -1,6 +1,6 @@
 use massa_models::{
-    address::AddressDeserializer, constants::ADDRESS_SIZE_BYTES, Address, VecU8Deserializer,
-    VecU8Serializer,
+    address::{Address, AddressDeserializer, ADDRESS_SIZE_BYTES},
+    serialization::{VecU8Deserializer, VecU8Serializer},
 };
 use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
 use nom::error::{ContextError, ParseError};
@@ -121,12 +121,12 @@ pub struct KeyDeserializer {
 
 impl KeyDeserializer {
     /// Creates a new `KeyDeserializer`
-    pub fn new(max_datastore_key_length: u64) -> Self {
+    pub fn new(max_datastore_key_length: u8) -> Self {
         Self {
             address_deserializer: AddressDeserializer::new(),
             datastore_key_deserializer: VecU8Deserializer::new(
                 Included(u64::MIN),
-                Included(max_datastore_key_length),
+                Included(max_datastore_key_length as u64),
             ),
         }
     }

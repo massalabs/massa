@@ -19,7 +19,7 @@
 //     let cfg = ConsensusConfig {
 //         t0: 1000.into(),
 //         thread_count: 1,
-//         genesis_timestamp: MassaTime::now().unwrap().checked_add(1000.into()).unwrap(),
+//         genesis_timestamp: MassaTime::now(0).unwrap().checked_add(1000.into()).unwrap(),
 //         ..ConsensusConfig::default_with_paths()
 //     };
 
@@ -34,7 +34,7 @@
 //                     consensus_event_receiver| {
 //             let slot_notification_filter = |cmd| match cmd {
 //                 massa_pool::PoolCommand::UpdateCurrentSlot(slot) => {
-//                     Some((slot, MassaTime::now().unwrap()))
+//                     Some((slot, MassaTime::now(0).unwrap()))
 //                 }
 //                 _ => None,
 //             };
@@ -93,7 +93,6 @@
 //     let cfg = ConsensusConfig {
 //         t0: 1000.into(),
 //         delta_f0: 2,
-//         disable_block_creation: false,
 //         ..ConsensusConfig::default_with_paths()
 //     };
 
@@ -151,7 +150,7 @@
 //     let cfg = ConsensusConfig {
 //         t0: 1000.into(),
 //         delta_f0: 2,
-//         genesis_timestamp: MassaTime::now().unwrap(),
+//         genesis_timestamp: MassaTime::now(0).unwrap(),
 //         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
 //     };
 
@@ -242,10 +241,8 @@
 // async fn test_max_attempts_get_operations() {
 //     let cfg = ConsensusConfig {
 //         t0: 1000.into(),
-//         genesis_timestamp: MassaTime::now().unwrap().checked_sub(1000.into()).unwrap(),
+//         genesis_timestamp: MassaTime::now(0).unwrap().checked_sub(1000.into()).unwrap(),
 //         delta_f0: 2,
-//         disable_block_creation: false,
-//         operation_batch_size: 1,
 //         ..ConsensusConfig::default_with_paths()
 //     };
 //     // define addresses use for the test
@@ -334,10 +331,8 @@
 // async fn test_max_batch_size_get_operations() {
 //     let cfg = ConsensusConfig {
 //         t0: 1000.into(),
-//         genesis_timestamp: MassaTime::now().unwrap().checked_sub(1000.into()).unwrap(),
+//         genesis_timestamp: MassaTime::now(0).unwrap().checked_sub(1000.into()).unwrap(),
 //         delta_f0: 2,
-//         disable_block_creation: false,
-//         operation_batch_size: 10,
 //         ..ConsensusConfig::default_with_paths()
 //     };
 //     // define addresses use for the test

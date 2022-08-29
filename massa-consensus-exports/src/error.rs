@@ -2,7 +2,7 @@
 use displaydoc::Display;
 use massa_execution_exports::ExecutionError;
 use massa_graph::error::GraphError;
-use massa_models::ModelsError;
+use massa_models::error::ModelsError;
 use massa_protocol_exports::ProtocolError;
 use thiserror::Error;
 
@@ -47,8 +47,6 @@ pub enum ConsensusError {
     PoolError(#[from] massa_pool_exports::PoolError),
     /// io error {0}
     IOError(#[from] std::io::Error),
-    /// serde error
-    SerdeError(#[from] serde_json::Error),
     /// missing block {0}
     MissingBlock(String),
     /// block creation error {0}

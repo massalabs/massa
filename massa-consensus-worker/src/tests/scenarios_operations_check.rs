@@ -35,7 +35,7 @@
 //         t0: 1000.into(),
 //         future_block_processing_max_periods: 50,
 //         operation_validity_periods: 10,
-//         genesis_timestamp: MassaTime::now().unwrap().saturating_sub(10000.into()),
+//         genesis_timestamp: MassaTime::now(0).unwrap().saturating_sub(10000.into()),
 //         endorsement_count: 0,
 //         ..ConsensusConfig::default_with_staking_keys_and_ledger(&[keypair_1.clone()], &ledger)
 //     };
@@ -148,7 +148,7 @@
 //         future_block_processing_max_periods: 50,
 //         operation_validity_periods: 10,
 //         genesis_key: keypair_1.clone(),
-//         genesis_timestamp: MassaTime::now().unwrap().saturating_sub(10000.into()),
+//         genesis_timestamp: MassaTime::now(0).unwrap().saturating_sub(10000.into()),
 //         endorsement_count: 0,
 //         ..ConsensusConfig::default_with_staking_keys_and_ledger(&staking_keys, &ledger)
 //     };

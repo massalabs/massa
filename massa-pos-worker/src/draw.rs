@@ -1,6 +1,6 @@
 use crate::CycleDraws;
 use massa_hash::Hash;
-use massa_models::{Address, Slot};
+use massa_models::{address::Address, slot::Slot};
 use massa_pos_exports::{PosError, PosResult, Selection, SelectorConfig};
 use rand::{distributions::Distribution, SeedableRng};
 use rand_distr::WeightedAliasIndex;

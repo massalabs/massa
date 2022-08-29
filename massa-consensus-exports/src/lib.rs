@@ -6,12 +6,10 @@
 #![feature(int_roundings)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-#[macro_use]
-extern crate massa_logging;
 
 pub use consensus_controller::{ConsensusCommandSender, ConsensusEventReceiver, ConsensusManager};
 pub use error::ConsensusError;
-pub use settings::{ConsensusConfig, ConsensusSettings};
+pub use settings::ConsensusConfig;
 
 mod consensus_controller;
 

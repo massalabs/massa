@@ -4,7 +4,9 @@
 //! Used to detect operation reuse.
 
 use massa_models::{
-    prehash::Map, OperationId, OperationIdDeserializer, Slot, SlotDeserializer, SlotSerializer,
+    operation::{OperationId, OperationIdDeserializer},
+    prehash::PreHashMap,
+    slot::{Slot, SlotDeserializer, SlotSerializer},
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -19,9 +21,19 @@ use std::ops::Bound::{Excluded, Included};
 
 /// A structure to list and prune previously executed operations
 #[derive(Debug, Default, Clone)]
-pub struct ExecutedOps(Map<OperationId, Slot>);
+pub struct ExecutedOps(PreHashMap<OperationId, Slot>);
 
 impl ExecutedOps {
+    /// returns the number of executed operations
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Check is there is no executed ops
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     /// extends with another ExecutedOps
     pub fn extend(&mut self, other: ExecutedOps) {
         self.0.extend(other.0);

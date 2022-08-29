@@ -1,7 +1,8 @@
 use massa_hash::Hash;
 use massa_models::{
-    wrapped::WrappedContent, Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, Slot,
-    WrappedBlock,
+    block::{Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, WrappedBlock},
+    slot::Slot,
+    wrapped::WrappedContent,
 };
 use massa_signature::KeyPair;
 

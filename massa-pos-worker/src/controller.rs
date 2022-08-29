@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 
 use crate::{Command, DrawCachePtr};
 use massa_hash::Hash;
-use massa_models::{api::IndexedSlot, Address, Slot};
+use massa_models::{address::Address, api::IndexedSlot, slot::Slot};
 use massa_pos_exports::{PosError, PosResult, Selection, SelectorController, SelectorManager};
 use std::sync::mpsc::SyncSender;
 use tracing::{info, warn};

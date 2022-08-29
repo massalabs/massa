@@ -2,8 +2,11 @@
 
 use massa_execution_exports::ExecutionController;
 use massa_models::{
-    prehash::{BuildMap, Map, Set},
-    Address, Amount, OperationId, Slot,
+    address::Address,
+    amount::Amount,
+    operation::OperationId,
+    prehash::{CapacityAllocator, PreHashMap, PreHashSet},
+    slot::Slot,
 };
 use massa_pool_exports::PoolConfig;
 use massa_storage::Storage;
@@ -16,7 +19,7 @@ pub struct OperationPool {
     config: PoolConfig,
 
     /// operations map
-    operations: Map<OperationId, OperationInfo>,
+    operations: PreHashMap<OperationId, OperationInfo>,
 
     /// operations sorted by decreasing quality, per thread
     sorted_ops_per_thread: Vec<BTreeSet<PoolOperationCursor>>,
@@ -67,7 +70,7 @@ impl OperationPool {
         self.last_cs_final_periods = final_cs_periods.to_vec();
 
         // prune old ops
-        let mut removed_ops: Set<_> = Default::default();
+        let mut removed_ops: PreHashSet<_> = Default::default();
         while let Some((expire_slot, op_id)) = self.ops_per_expiration.first().copied() {
             if expire_slot.period > self.last_cs_final_periods[expire_slot.thread as usize] {
                 break;
@@ -88,18 +91,10 @@ impl OperationPool {
     }
 
     /// Checks if an operation is relevant according to its thread and period validity range
-    fn is_operation_relevant(&self, op_info: &OperationInfo) -> bool {
+    pub(crate) fn is_operation_relevant(&self, op_info: &OperationInfo) -> bool {
         // too old
-        if *op_info.validity_period_range.end()
-            <= self.last_cs_final_periods[op_info.thread as usize]
-        {
-            return false;
-        }
-
-        // validity not started yet
-        //TODO eliminate ops whose validity hasn't started yet
-
-        true
+        *op_info.validity_period_range.end() > self.last_cs_final_periods[op_info.thread as usize]
+        // todo check if validity not started yet
     }
 
     /// Add a list of operations to the pool
@@ -110,8 +105,8 @@ impl OperationPool {
             .copied()
             .collect::<Vec<_>>();
 
-        let mut added = Set::with_capacity_and_hasher(items.len(), BuildMap::default());
-        let mut removed = Set::with_capacity_and_hasher(items.len(), BuildMap::default());
+        let mut added = PreHashSet::with_capacity(items.len());
+        let mut removed = PreHashSet::with_capacity(items.len());
 
         // add items to pool
         {
@@ -123,6 +118,7 @@ impl OperationPool {
                     ),
                     self.config.operation_validity_periods,
                     self.config.roll_price,
+                    self.config.thread_count,
                 );
                 if !self.is_operation_relevant(&op_info) {
                     continue;
@@ -182,7 +178,7 @@ impl OperationPool {
         // init remaining gas
         let mut remaining_gas = self.config.max_block_gas;
         // cache of sequential balances
-        let mut sequential_balance_cache: Map<Address, Amount> = Default::default();
+        let mut sequential_balance_cache: PreHashMap<Address, Amount> = Default::default();
 
         // iterate over pool operations in the right thread, from best to worst
         for cursor in self.sorted_ops_per_thread[slot.thread as usize].iter() {
@@ -221,11 +217,14 @@ impl OperationPool {
                 .entry(op_info.creator_address)
                 .or_insert_with(|| {
                     self.execution_controller
-                        .get_final_and_candidate_sequential_balances(&[op_info.creator_address])[0]
+                        .get_final_and_candidate_sequential_balances(&[op_info.creator_address])
+                        .get(0)
+                        .unwrap_or(&(None, None))
                         .1
                         .unwrap_or_default()
                 });
-            if *creator_seq_balance < op_info.max_sequential_spending {
+
+            if *creator_seq_balance < op_info.fee {
                 continue;
             }
 
@@ -245,7 +244,7 @@ impl OperationPool {
 
         // generate storage
         let mut res_storage = self.storage.clone_without_refs();
-        let claim_ops: Set<OperationId> = op_ids.iter().copied().collect();
+        let claim_ops: PreHashSet<OperationId> = op_ids.iter().copied().collect();
         let claimed_ops = res_storage.claim_operation_refs(&claim_ops);
         if claimed_ops.len() != claim_ops.len() {
             panic!("could not claim all operations from storage");

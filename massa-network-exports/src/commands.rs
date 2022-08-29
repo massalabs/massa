@@ -71,8 +71,12 @@
 
 use crate::{BootstrapPeers, ConnectionClosureReason, Peers};
 use massa_models::{
-    composite::PubkeySig, node::NodeId, operation::OperationPrefixIds, stats::NetworkStats,
-    BlockId, OperationId, WrappedEndorsement, WrappedHeader, WrappedOperation,
+    block::{BlockId, WrappedHeader},
+    composite::PubkeySig,
+    endorsement::WrappedEndorsement,
+    node::NodeId,
+    operation::{OperationId, OperationPrefixIds, WrappedOperation},
+    stats::NetworkStats,
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::IpAddr};

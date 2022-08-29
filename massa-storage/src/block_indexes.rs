@@ -1,8 +1,12 @@
 use std::{collections::hash_map, collections::HashMap};
 
 use massa_models::{
-    prehash::{Map, Set},
-    Address, BlockId, EndorsementId, OperationId, Slot, WrappedBlock,
+    address::Address,
+    block::{BlockId, WrappedBlock},
+    endorsement::EndorsementId,
+    operation::OperationId,
+    prehash::{PreHashMap, PreHashSet},
+    slot::Slot,
 };
 
 /// Container for all blocks and different indexes.
@@ -10,15 +14,15 @@ use massa_models::{
 #[derive(Default)]
 pub struct BlockIndexes {
     /// Blocks structure container
-    blocks: Map<BlockId, WrappedBlock>,
+    blocks: PreHashMap<BlockId, WrappedBlock>,
     /// Structure mapping creators with the created blocks
-    index_by_creator: Map<Address, Set<BlockId>>,
+    index_by_creator: PreHashMap<Address, PreHashSet<BlockId>>,
     /// Structure mapping slot with their block id
-    index_by_slot: HashMap<Slot, Set<BlockId>>,
+    index_by_slot: HashMap<Slot, PreHashSet<BlockId>>,
     /// Structure mapping operation id with ids of blocks they are contained in
-    index_by_op: Map<OperationId, Set<BlockId>>,
+    index_by_op: PreHashMap<OperationId, PreHashSet<BlockId>>,
     /// Structure mapping endorsement id with ids of blocks they are contained in
-    index_by_endorsement: Map<EndorsementId, Set<BlockId>>,
+    index_by_endorsement: PreHashMap<EndorsementId, PreHashSet<BlockId>>,
 }
 
 impl BlockIndexes {
@@ -124,7 +128,7 @@ impl BlockIndexes {
     ///
     /// Returns:
     /// - a reference to the block ids created by the address
-    pub fn get_blocks_created_by(&self, address: &Address) -> Option<&Set<BlockId>> {
+    pub fn get_blocks_created_by(&self, address: &Address) -> Option<&PreHashSet<BlockId>> {
         self.index_by_creator.get(address)
     }
 
@@ -134,7 +138,7 @@ impl BlockIndexes {
     ///
     /// Returns:
     /// - the block ids of the blocks at the slot if any, None otherwise
-    pub fn get_blocks_by_slot(&self, slot: &Slot) -> Option<&Set<BlockId>> {
+    pub fn get_blocks_by_slot(&self, slot: &Slot) -> Option<&PreHashSet<BlockId>> {
         self.index_by_slot.get(slot)
     }
 
@@ -144,7 +148,7 @@ impl BlockIndexes {
     ///
     /// Returns:
     /// - the block ids containing the operation if any, None otherwise
-    pub fn get_blocks_by_operation(&self, id: &OperationId) -> Option<&Set<BlockId>> {
+    pub fn get_blocks_by_operation(&self, id: &OperationId) -> Option<&PreHashSet<BlockId>> {
         self.index_by_op.get(id)
     }
 
@@ -154,7 +158,7 @@ impl BlockIndexes {
     ///
     /// Returns:
     /// - the block ids containing the endorsement if any, None otherwise
-    pub fn get_blocks_by_endorsement(&self, id: &EndorsementId) -> Option<&Set<BlockId>> {
+    pub fn get_blocks_by_endorsement(&self, id: &EndorsementId) -> Option<&PreHashSet<BlockId>> {
         self.index_by_endorsement.get(id)
     }
 }

@@ -24,8 +24,12 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
-    composite::PubkeySig, node::NodeId, operation::OperationPrefixIds, stats::NetworkStats,
-    BlockId, OperationId, WrappedEndorsement,
+    block::BlockId,
+    composite::PubkeySig,
+    endorsement::WrappedEndorsement,
+    node::NodeId,
+    operation::{OperationId, OperationPrefixIds},
+    stats::NetworkStats,
 };
 use massa_network_exports::{
     AskForBlocksInfo, BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError,

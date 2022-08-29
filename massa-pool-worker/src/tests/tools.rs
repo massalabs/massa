@@ -1,37 +1,81 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use super::mock_protocol_controller::MockProtocolController;
-use crate::start_pool;
-use futures::Future;
-use massa_execution_exports::test_exports::MockExecutionController;
+use crate::{operation_pool::OperationPool, start_pool};
+use massa_execution_exports::test_exports::{
+    MockExecutionController, MockExecutionControllerMessage,
+};
 use massa_hash::Hash;
 use massa_models::{
-    wrapped::WrappedContent, Address, Amount, BlockId, Endorsement, EndorsementSerializer,
-    Operation, OperationSerializer, OperationType, Slot, WrappedEndorsement, WrappedOperation,
+    address::Address,
+    amount::Amount,
+    block::BlockId,
+    endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement},
+    operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
+    slot::Slot,
+    wrapped::WrappedContent,
 };
 use massa_pool_exports::{PoolConfig, PoolController};
 use massa_signature::{KeyPair, PublicKey};
 use massa_storage::Storage;
 use std::str::FromStr;
+use std::sync::mpsc::Receiver;
 
-pub async fn pool_test<F, V>(cfg: &'static PoolConfig, test: F)
+/// Tooling to create a transaction with an expire periods
+/// TODO move tooling in a dedicated module
+pub fn create_operation_with_expire_period(
+    keypair: &KeyPair,
+    expire_period: u64,
+) -> WrappedOperation {
+    let recv_keypair = KeyPair::generate();
+
+    let op = OperationType::Transaction {
+        recipient_address: Address::from_public_key(&recv_keypair.get_public_key()),
+        amount: Amount::default(),
+    };
+    let content = Operation {
+        fee: Amount::default(),
+        op,
+        expire_period,
+    };
+    Operation::new_wrapped(content, OperationSerializer::new(), keypair).unwrap()
+}
+
+/// Return `n` wrapped operations
+pub fn create_some_operations(
+    n: usize,
+    keypair: &KeyPair,
+    expire_period: u64,
+) -> Vec<WrappedOperation> {
+    (0..n)
+        .map(|_| create_operation_with_expire_period(keypair, expire_period))
+        .collect()
+}
+
+pub fn pool_test<F>(cfg: PoolConfig, test: F)
 where
-    F: FnOnce(MockProtocolController, Box<dyn PoolController>, Storage) -> V,
-    V: Future<Output = (MockProtocolController, Box<dyn PoolController>, Storage)>,
+    F: FnOnce(Box<dyn PoolController>, Receiver<MockExecutionControllerMessage>, Storage),
 {
     let storage: Storage = Default::default();
 
-    let (protocol_controller, _protocol_command_sender, _protocol_pool_event_receiver) =
-        MockProtocolController::new();
+    let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
+    let pool_controller = start_pool(cfg, &storage, execution_controller);
 
-    let (execution_controller, _execution_receiver) = MockExecutionController::new_with_receiver();
-    let pool_controller = start_pool(*cfg, &storage, execution_controller);
-
-    let (_protocol_controller, _pool_controller, _storage) =
-        test(protocol_controller, Box::new(pool_controller), storage).await;
+    test(Box::new(pool_controller), execution_receiver, storage)
 }
 
-pub fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
+pub fn operation_pool_test<F>(cfg: PoolConfig, test: F)
+where
+    F: FnOnce(OperationPool, Storage),
+{
+    let (execution_controller, _) = MockExecutionController::new_with_receiver();
+    let storage = Storage::default();
+    test(
+        OperationPool::init(cfg, &storage.clone_without_refs(), execution_controller),
+        storage,
+    )
+}
+
+pub fn _get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
     let sender_keypair = KeyPair::generate();
 
     let op = OperationType::Transaction {
@@ -47,7 +91,7 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
 }
 
 /// Creates an endorsement for use in pool tests.
-pub fn create_endorsement(slot: Slot) -> WrappedEndorsement {
+pub fn _create_endorsement(slot: Slot) -> WrappedEndorsement {
     let sender_keypair = KeyPair::generate();
 
     let content = Endorsement {
@@ -58,7 +102,7 @@ pub fn create_endorsement(slot: Slot) -> WrappedEndorsement {
     Endorsement::new_wrapped(content, EndorsementSerializer::new(), &sender_keypair).unwrap()
 }
 
-pub fn get_transaction_with_addresses(
+pub fn _get_transaction_with_addresses(
     expire_period: u64,
     fee: u64,
     sender_keypair: &KeyPair,
@@ -76,7 +120,7 @@ pub fn get_transaction_with_addresses(
     Operation::new_wrapped(content, OperationSerializer::new(), sender_keypair).unwrap()
 }
 
-pub fn create_executesc(
+pub fn _create_executesc(
     expire_period: u64,
     fee: u64,
     max_gas: u64,

@@ -4,9 +4,7 @@
 use std::path::PathBuf;
 
 use enum_map::EnumMap;
-use massa_consensus_exports::ConsensusSettings;
-use massa_models::constants::build_massa_settings;
-use massa_protocol_exports::ProtocolSettings;
+use massa_models::config::build_massa_settings;
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use serde::Deserialize;
@@ -28,6 +26,7 @@ pub struct ExecutionSettings {
     pub max_final_events: usize,
     pub readonly_queue_length: usize,
     pub cursor_delay: MassaTime,
+    pub stats_time_window_duration: MassaTime,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -38,7 +37,7 @@ pub struct SelectionSettings {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct LedgerSettings {
-    pub initial_sce_ledger_path: PathBuf,
+    pub initial_ledger_path: PathBuf,
     pub disk_ledger_path: PathBuf,
     pub final_history_length: usize,
 }
@@ -92,7 +91,10 @@ pub struct BootstrapSettings {
 /// Factory settings
 #[derive(Debug, Deserialize, Clone)]
 pub struct FactorySettings {
+    /// Initial delay
     pub initial_delay: MassaTime,
+    /// Staking wallet file
+    pub staking_wallet_path: PathBuf,
 }
 
 /// Pool configuration, read from a file configuration
@@ -126,6 +128,64 @@ pub struct Settings {
     pub ledger: LedgerSettings,
     pub selector: SelectionSettings,
     pub factory: FactorySettings,
+}
+
+/// Consensus configuration
+/// Assumes `thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0`
+#[derive(Debug, Deserialize, Clone)]
+pub struct ConsensusSettings {
+    /// Maximum number of blocks allowed in discarded blocks.
+    pub max_discarded_blocks: usize,
+    /// If a block is `future_block_processing_max_periods` periods in the future, it is just discarded.
+    pub future_block_processing_max_periods: u64,
+    /// Maximum number of blocks allowed in `FutureIncomingBlocks`.
+    pub max_future_processing_blocks: usize,
+    /// Maximum number of blocks allowed in `DependencyWaitingBlocks`.
+    pub max_dependency_blocks: usize,
+    /// stats time span
+    pub stats_timespan: MassaTime,
+    /// max event send wait
+    pub max_send_wait: MassaTime,
+    /// force keep at least this number of final periods in RAM for each thread
+    pub force_keep_final_periods: u64,
+    /// old blocks are pruned every `block_db_prune_interval`
+    pub block_db_prune_interval: MassaTime,
+    /// max number of items returned while querying
+    pub max_item_return_count: usize,
+}
+
+/// Protocol Configuration, read from toml user config file
+#[derive(Debug, Deserialize, Clone, Copy)]
+pub struct ProtocolSettings {
+    /// after `ask_block_timeout` milliseconds we try to ask a block to another node
+    pub ask_block_timeout: MassaTime,
+    /// max known blocks of current nodes we keep in memory (by node)
+    pub max_known_blocks_size: usize,
+    /// max known blocks of foreign nodes we keep in memory (by node)
+    pub max_node_known_blocks_size: usize,
+    /// max wanted blocks per node kept in memory
+    pub max_node_wanted_blocks_size: usize,
+    /// max known operations current node kept in memory
+    pub max_known_ops_size: usize,
+    /// max known operations of foreign nodes we keep in memory (by node)
+    pub max_node_known_ops_size: usize,
+    /// max known endorsements by our node that we kept in memory
+    pub max_known_endorsements_size: usize,
+    /// max known endorsements of foreign nodes we keep in memory (by node)
+    pub max_node_known_endorsements_size: usize,
+    /// we ask for the same block `max_simultaneous_ask_blocks_per_node` times at the same time
+    pub max_simultaneous_ask_blocks_per_node: usize,
+    /// Max wait time for sending a Network or Node event.
+    pub max_send_wait: MassaTime,
+    /// Maximum number of batches in the memory buffer.
+    /// Dismiss the new batches if overflow
+    pub operation_batch_buffer_capacity: usize,
+    /// Start processing batches in the buffer each `operation_batch_proc_period` in millisecond
+    pub operation_batch_proc_period: MassaTime,
+    /// All operations asked are prune each `operation_asked_pruning_period` millisecond
+    pub asked_operations_pruning_period: MassaTime,
+    /// Maximum of operations sent in one message.
+    pub max_operations_per_message: u64,
 }
 
 #[cfg(test)]

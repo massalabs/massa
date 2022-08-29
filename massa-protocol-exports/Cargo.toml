@@ -28,10 +28,5 @@ massa_storage = { path = "../massa-storage" }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
-instrument = [
-    "tokio/tracing",
-    "massa_models/instrument",
-    "massa_network_exports/instrument",
-]
 sandbox = ["massa_models/sandbox"]
 testing = ["futures"]

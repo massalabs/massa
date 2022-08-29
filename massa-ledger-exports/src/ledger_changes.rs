@@ -8,10 +8,10 @@ use crate::types::{
     SetOrKeepDeserializer, SetOrKeepSerializer, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
     SetUpdateOrDeleteSerializer,
 };
-use massa_models::address::AddressDeserializer;
-use massa_models::amount::{AmountDeserializer, AmountSerializer};
-use massa_models::{prehash::Map, Address, Amount};
-use massa_models::{VecU8Deserializer, VecU8Serializer};
+use massa_models::address::{Address, AddressDeserializer};
+use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
+use massa_models::prehash::PreHashMap;
+use massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -103,7 +103,7 @@ pub struct DatastoreUpdateDeserializer {
 impl DatastoreUpdateDeserializer {
     /// Creates a new `DatastoreUpdateDeserializer`
     pub fn new(
-        max_datastore_key_length: u64,
+        max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
     ) -> Self {
@@ -114,7 +114,7 @@ impl DatastoreUpdateDeserializer {
             ),
             key_deserializer: VecU8Deserializer::new(
                 Included(u64::MIN),
-                Included(max_datastore_key_length),
+                Included(max_datastore_key_length as u64),
             ),
             value_deserializer: SetOrDeleteDeserializer::new(VecU8Deserializer::new(
                 Included(u64::MIN),
@@ -244,7 +244,7 @@ pub struct LedgerEntryUpdateDeserializer {
 impl LedgerEntryUpdateDeserializer {
     /// Creates a new `LedgerEntryUpdateDeserializer`
     pub fn new(
-        max_datastore_key_length: u64,
+        max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
     ) -> Self {
@@ -330,6 +330,7 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
 impl Applicable<LedgerEntryUpdate> for LedgerEntryUpdate {
     /// extends the `LedgerEntryUpdate` with another one
     fn apply(&mut self, update: LedgerEntryUpdate) {
+        self.sequential_balance.apply(update.sequential_balance);
         self.parallel_balance.apply(update.parallel_balance);
         self.bytecode.apply(update.bytecode);
         self.datastore.extend(update.datastore);
@@ -338,7 +339,9 @@ impl Applicable<LedgerEntryUpdate> for LedgerEntryUpdate {
 
 /// represents a list of changes to multiple ledger entries
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct LedgerChanges(pub Map<Address, SetUpdateOrDelete<LedgerEntry, LedgerEntryUpdate>>);
+pub struct LedgerChanges(
+    pub PreHashMap<Address, SetUpdateOrDelete<LedgerEntry, LedgerEntryUpdate>>,
+);
 
 /// `LedgerChanges` serializer
 pub struct LedgerChangesSerializer {
@@ -427,7 +430,7 @@ impl LedgerChangesDeserializer {
     /// Creates a new `LedgerChangesDeserializer`
     pub fn new(
         max_ledger_changes_count: u64,
-        max_datastore_key_length: u64,
+        max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
     ) -> Self {

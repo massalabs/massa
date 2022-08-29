@@ -6,8 +6,8 @@
 //! Same as for wanted/known blocks, we remember here in cache which node asked
 //! for operations and which operations he seem to already know.
 
-use massa_models::prehash::{BuildMap, Map, Set};
-use massa_models::{BlockId, EndorsementId, OperationId};
+use massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet};
+use massa_models::{block::BlockId, endorsement::EndorsementId, operation::OperationId};
 use massa_protocol_exports::ProtocolConfig;
 use std::collections::VecDeque;
 use tokio::time::Instant;
@@ -18,17 +18,17 @@ use tokio::time::Instant;
 pub(crate) struct NodeInfo {
     /// The blocks the node "knows about",
     /// defined as the one the node propagated headers to us for.
-    pub(crate) known_blocks: Map<BlockId, (bool, Instant)>,
+    pub(crate) known_blocks: PreHashMap<BlockId, (bool, Instant)>,
     /// Blocks we asked that node for
-    pub asked_blocks: Map<BlockId, Instant>,
+    pub asked_blocks: PreHashMap<BlockId, Instant>,
     /// Instant when the node was added
     pub connection_instant: Instant,
     /// all known operations
-    known_operations: Set<OperationId>,
+    known_operations: PreHashSet<OperationId>,
     /// Same as `known_operations` but sorted for a premature optimization :-)
     known_operations_queue: VecDeque<OperationId>,
     /// all known endorsements
-    known_endorsements: Set<EndorsementId>,
+    known_endorsements: PreHashSet<EndorsementId>,
     /// Same as `known_endorsements` but sorted for a premature optimization :-)
     known_endorsements_queue: VecDeque<EndorsementId>,
 }
@@ -37,22 +37,17 @@ impl NodeInfo {
     /// Creates empty node info
     pub fn new(pool_settings: &ProtocolConfig) -> NodeInfo {
         NodeInfo {
-            known_blocks: Map::with_capacity_and_hasher(
-                pool_settings.max_node_known_blocks_size,
-                BuildMap::default(),
-            ),
+            known_blocks: PreHashMap::with_capacity(pool_settings.max_node_known_blocks_size),
             asked_blocks: Default::default(),
             connection_instant: Instant::now(),
-            known_operations: Set::<OperationId>::with_capacity_and_hasher(
+            known_operations: PreHashSet::<OperationId>::with_capacity(
                 pool_settings.max_node_known_ops_size.saturating_add(1),
-                BuildMap::default(),
             ),
             known_operations_queue: VecDeque::with_capacity(
                 pool_settings.max_node_known_ops_size.saturating_add(1),
             ),
-            known_endorsements: Set::<EndorsementId>::with_capacity_and_hasher(
+            known_endorsements: PreHashSet::<EndorsementId>::with_capacity(
                 pool_settings.max_node_known_endorsements_size,
-                BuildMap::default(),
             ),
             known_endorsements_queue: VecDeque::with_capacity(
                 pool_settings.max_node_known_endorsements_size,
@@ -123,7 +118,7 @@ impl NodeInfo {
         self.known_endorsements.contains(endorsement_id)
     }
 
-    pub fn insert_known_ops(&mut self, ops: Set<OperationId>, max_ops_nb: usize) {
+    pub fn insert_known_ops(&mut self, ops: PreHashSet<OperationId>, max_ops_nb: usize) {
         for operation_id in ops.into_iter() {
             if self.known_operations.insert(operation_id) {
                 self.known_operations_queue.push_back(operation_id);

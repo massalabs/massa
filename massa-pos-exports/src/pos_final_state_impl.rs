@@ -1,7 +1,17 @@
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{
+    collections::BTreeMap,
+    ops::Bound::{Excluded, Included},
+    path::PathBuf,
+};
 
 use massa_hash::Hash;
-use massa_models::{prehash::Map, Address, Amount, Slot};
+use massa_models::{
+    address::{Address, AddressDeserializer},
+    amount::{Amount, AmountDeserializer},
+    prehash::PreHashMap,
+    slot::{Slot, SlotDeserializer},
+};
+use massa_serialization::U64VarIntDeserializer;
 
 use crate::{
     CycleInfo, PoSChanges, PoSFinalState, PosError, PosResult, ProductionStats, SelectorController,
@@ -12,6 +22,7 @@ impl PoSFinalState {
     pub fn new(
         initial_seed_string: &String,
         initial_rolls_path: &PathBuf,
+        thread_count: u8,
         selector: Box<dyn SelectorController>,
     ) -> Result<Self, PosError> {
         // load get initial rolls from file
@@ -22,9 +33,20 @@ impl PoSFinalState {
         )
         .map_err(|err| PosError::RollsFileLoadingError(format!("error opening file: {}", err)))?;
 
-        // Seeds used as the initial seeds for negative cycles (-2 and -1 respecrively)
+        // Seeds used as the initial seeds for negative cycles (-2 and -1 respectively)
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
+
+        // Deserializers
+        let amount_deserializer =
+            AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
+        let slot_deserializer = SlotDeserializer::new(
+            (Included(u64::MIN), Included(u64::MAX)),
+            (Included(0), Excluded(thread_count)),
+        );
+        let deferred_credit_length_deserializer =
+            U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)); // TODO define a max here
+        let address_deserializer = AddressDeserializer::new();
 
         Ok(Self {
             cycle_history: Default::default(),
@@ -32,7 +54,25 @@ impl PoSFinalState {
             selector,
             initial_rolls,
             initial_seeds,
+            amount_deserializer,
+            slot_deserializer,
+            deferred_credit_length_deserializer,
+            address_deserializer,
         })
+    }
+
+    /// Create the initial cycle based off the initial rolls.
+    ///
+    /// This should be called only if bootstrap did not happen.
+    pub fn create_initial_cycle(&mut self) {
+        self.cycle_history.push_back(CycleInfo {
+            cycle: 0,
+            // TODO: Feed with genesis block hashes
+            rng_seed: Default::default(),
+            production_stats: Default::default(),
+            roll_counts: self.initial_rolls.clone(),
+            complete: false,
+        });
     }
 
     /// Sends the current draw inputs (initial or bootstrapped) to the selector.
@@ -115,6 +155,7 @@ impl PoSFinalState {
             if info.cycle != cycle {
                 self.cycle_history.push_back(CycleInfo {
                     cycle,
+                    roll_counts: info.roll_counts.clone(),
                     ..Default::default()
                 });
                 // add 1 for the current cycle and 1 for bootstrap safety
@@ -125,6 +166,7 @@ impl PoSFinalState {
         } else {
             self.cycle_history.push_back(CycleInfo {
                 cycle,
+                roll_counts: self.initial_rolls.clone(),
                 ..Default::default()
             });
         }
@@ -229,20 +271,24 @@ impl PoSFinalState {
     /// Retrieves the amount of rolls a given address has at a given cycle
     pub fn get_address_active_rolls(&self, addr: &Address, cycle: u64) -> Option<u64> {
         // get lookback cycle index
-        let lookback_cycle = cycle.saturating_sub(3);
-        let lookback_index = match self.get_cycle_index(lookback_cycle) {
-            Some(idx) => idx,
-            None => return None,
-        };
-        // get rolls
-        self.cycle_history[lookback_index]
-            .roll_counts
-            .get(addr)
-            .cloned()
+        let lookback_cycle = cycle.checked_sub(3);
+        if let Some(lookback_cycle) = lookback_cycle {
+            let lookback_index = match self.get_cycle_index(lookback_cycle) {
+                Some(idx) => idx,
+                None => return None,
+            };
+            // get rolls
+            self.cycle_history[lookback_index]
+                .roll_counts
+                .get(addr)
+                .cloned()
+        } else {
+            self.initial_rolls.get(addr).cloned()
+        }
     }
 
     /// Retrives every deferred credit of the given slot
-    pub fn get_deferred_credits_at(&self, slot: &Slot) -> Map<Address, Amount> {
+    pub fn get_deferred_credits_at(&self, slot: &Slot) -> PreHashMap<Address, Amount> {
         self.deferred_credits
             .0
             .get(slot)
@@ -251,7 +297,10 @@ impl PoSFinalState {
     }
 
     /// Retrives the productions statistics for all addresses on a given cycle
-    pub fn get_all_production_stats(&self, cycle: u64) -> Option<&Map<Address, ProductionStats>> {
+    pub fn get_all_production_stats(
+        &self,
+        cycle: u64,
+    ) -> Option<&PreHashMap<Address, ProductionStats>> {
         self.get_cycle_index(cycle)
             .map(|idx| &self.cycle_history[idx].production_stats)
     }

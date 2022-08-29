@@ -12,9 +12,8 @@ serde_json = "1.0"
 tracing = "0.1"
 
 [dev-dependencies]
-massa_factory_exports = { path = "../massa-factory-exports" }
+massa_factory_exports = { path = "../massa-factory-exports", features=["testing"] }
 massa_signature = { path = "../massa-signature" }
 
 [features]
-instrument = ["massa_models/instrument"]
 testing = ["massa_factory_exports/testing"]

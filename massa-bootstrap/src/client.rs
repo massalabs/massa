@@ -3,7 +3,7 @@ use std::{net::SocketAddr, sync::Arc, time::Duration};
 use massa_final_state::FinalState;
 use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
-use massa_models::Version;
+use massa_models::version::Version;
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use nom::AsBytes;
@@ -160,7 +160,7 @@ async fn bootstrap_from_server(
     };
 
     // handshake
-    let send_time_uncompensated = MassaTime::now()?;
+    let send_time_uncompensated = MassaTime::now(0)?;
     // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     match tokio::time::timeout(cfg.write_timeout.into(), client.handshake(our_version)).await {
         Err(_) => {
@@ -175,7 +175,7 @@ async fn bootstrap_from_server(
     }
 
     // compute ping
-    let ping = MassaTime::now()?.saturating_sub(send_time_uncompensated);
+    let ping = MassaTime::now(0)?.saturating_sub(send_time_uncompensated);
     if ping > cfg.max_ping {
         return Err(BootstrapError::GeneralError(
             "bootstrap ping too high".into(),
@@ -211,7 +211,7 @@ async fn bootstrap_from_server(
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
     };
 
-    let recv_time_uncompensated = MassaTime::now()?;
+    let recv_time_uncompensated = MassaTime::now(0)?;
 
     // compute ping
     let ping = recv_time_uncompensated.saturating_sub(send_time_uncompensated);
@@ -386,11 +386,24 @@ pub async fn get_state(
     end_timestamp: Option<MassaTime>,
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
-    let now = MassaTime::now()?;
+    let now = MassaTime::now(0)?;
     // if we are before genesis, do not bootstrap
     if now < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
-        return Ok(GlobalBootstrapState::new(final_state.clone()));
+        // init final state
+        {
+            let mut final_state_guard = final_state.write();
+            // load ledger from initial ledger file
+            final_state_guard
+                .ledger
+                .load_initial_ledger()
+                .map_err(|err| {
+                    BootstrapError::GeneralError(format!("could not load initial ledger: {}", err))
+                })?;
+            // create the initial cycle of PoS cycle_history
+            final_state_guard.pos_state.create_initial_cycle();
+        }
+        return Ok(GlobalBootstrapState::new(final_state));
     }
     // we are after genesis => bootstrap
     massa_trace!("bootstrap.lib.get_state.init_from_others", {});
@@ -414,7 +427,7 @@ pub async fn get_state(
     loop {
         for (addr, pub_key) in shuffled_list.iter() {
             if let Some(end) = end_timestamp {
-                if MassaTime::now().expect("could not get now time") > end {
+                if MassaTime::now(0).expect("could not get now time") > end {
                     panic!("This episode has come to an end, please get the latest testnet node version to continue");
                 }
             }

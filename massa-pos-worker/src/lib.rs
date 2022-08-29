@@ -8,7 +8,7 @@ mod draw;
 mod worker;
 
 use massa_hash::Hash;
-use massa_models::{Address, Slot};
+use massa_models::{address::Address, slot::Slot};
 use massa_pos_exports::{PosResult, Selection};
 
 use parking_lot::{Condvar, Mutex, RwLock, RwLockReadGuard};

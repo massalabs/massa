@@ -2,8 +2,8 @@
 
 use massa_graph::{BlockGraphExport, BootstrapableGraph};
 use massa_models::api::BlockGraphStatus;
+use massa_models::{block::BlockId, slot::Slot};
 use massa_models::{clique::Clique, stats::ConsensusStats};
-use massa_models::{BlockId, Slot};
 use massa_protocol_exports::ProtocolEventReceiver;
 use massa_storage::Storage;
 use std::collections::VecDeque;
@@ -37,7 +37,6 @@ impl ConsensusCommandSender {
         slot_end: Option<Slot>,
     ) -> Result<BlockGraphExport> {
         let (response_tx, response_rx) = oneshot::channel::<BlockGraphExport>();
-        massa_trace!("consensus.consensus_controller.get_block_graph_status", {});
         self.0
             .send(ConsensusCommand::GetBlockGraphStatus {
                 slot_start,
@@ -61,7 +60,6 @@ impl ConsensusCommandSender {
     ///
     pub async fn get_cliques(&self) -> Result<Vec<Clique>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel::<Vec<Clique>>();
-        massa_trace!("consensus.consensus_controller.get_cliques", {});
         self.0
             .send(ConsensusCommand::GetCliques(response_tx))
             .await
@@ -86,7 +84,6 @@ impl ConsensusCommandSender {
         ids: &[BlockId],
     ) -> Result<Vec<BlockGraphStatus>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel::<Vec<BlockGraphStatus>>();
-        massa_trace!("consensus.consensus_controller.get_block_statuses", {});
         self.0
             .send(ConsensusCommand::GetBlockStatuses {
                 ids: ids.to_vec(),
@@ -108,7 +105,6 @@ impl ConsensusCommandSender {
     /// get bootstrap snapshot
     pub async fn get_bootstrap_state(&self) -> Result<BootstrapableGraph, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel::<BootstrapableGraph>();
-        massa_trace!("consensus.consensus_controller.get_bootstrap_state", {});
         self.0
             .send(ConsensusCommand::GetBootstrapState(response_tx))
             .await
@@ -127,7 +123,6 @@ impl ConsensusCommandSender {
     /// get best parents
     pub fn get_best_parents(&self) -> Result<Vec<(BlockId, u64)>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel::<Vec<(BlockId, u64)>>();
-        massa_trace!("consensus.consensus_controller.get_best_parents", {});
         self.0
             .blocking_send(ConsensusCommand::GetBestParents { response_tx })
             .map_err(|_| {
@@ -148,10 +143,6 @@ impl ConsensusCommandSender {
         slot: Slot,
     ) -> Result<Option<BlockId>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
-        massa_trace!(
-            "consensus.consensus_controller.get_blockclique_block_at_slot",
-            { "slot": slot }
-        );
         self.0
             .blocking_send(ConsensusCommand::GetBlockcliqueBlockAtSlot { slot, response_tx })
             .map_err(|_| {
@@ -169,7 +160,6 @@ impl ConsensusCommandSender {
     /// get current consensus stats
     pub async fn get_stats(&self) -> Result<ConsensusStats, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
-        massa_trace!("consensus.consensus_controller.get_stats", {});
         self.0
             .send(ConsensusCommand::GetStats(response_tx))
             .await
@@ -193,9 +183,6 @@ impl ConsensusCommandSender {
         block_storage: Storage,
     ) -> Result<(), ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
-        massa_trace!("consensus.consensus_controller.send_block", {
-            "block_id": block_id
-        });
         self.0
             .blocking_send(ConsensusCommand::SendBlock {
                 block_id,
@@ -252,7 +239,6 @@ impl ConsensusManager {
         self,
         consensus_event_receiver: ConsensusEventReceiver,
     ) -> Result<ProtocolEventReceiver, ConsensusError> {
-        massa_trace!("consensus.consensus_controller.stop", {});
         drop(self.manager_tx);
         let _remaining_events = consensus_event_receiver.drain().await;
         let protocol_event_receiver = self.join_handle.await??;

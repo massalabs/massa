@@ -6,15 +6,19 @@ use crate::error::ProtocolError;
 use massa_logging::massa_trace;
 
 use massa_models::{
-    prehash::{Map, Set},
-    Slot,
+    block::{BlockId, WrappedHeader},
+    endorsement::EndorsementId,
+    operation::OperationId,
 };
-use massa_models::{BlockId, EndorsementId, OperationId, WrappedHeader};
+use massa_models::{
+    prehash::{PreHashMap, PreHashSet},
+    slot::Slot,
+};
 use massa_network_exports::NetworkEventReceiver;
 use massa_storage::Storage;
 use serde::Serialize;
 use tokio::{sync::mpsc, task::JoinHandle};
-use tracing::debug;
+use tracing::{debug, info};
 
 /// Possible types of events that can happen.
 #[allow(clippy::large_enum_variant)]
@@ -46,7 +50,7 @@ pub enum ProtocolEvent {
 /// )
 /// ```
 pub type BlocksResults =
-    Map<BlockId, Option<(Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
+    PreHashMap<BlockId, Option<(Option<PreHashSet<OperationId>>, Option<Vec<EndorsementId>>)>>;
 
 /// Commands that protocol worker can process
 #[derive(Debug)]
@@ -63,14 +67,14 @@ pub enum ProtocolCommand {
     /// Wish list delta
     WishlistDelta {
         /// add to wish list
-        new: Set<BlockId>,
+        new: PreHashSet<BlockId>,
         /// remove from wish list
-        remove: Set<BlockId>,
+        remove: PreHashSet<BlockId>,
     },
     /// Propagate operations (send batches)
     /// note: Set<OperationId> are replaced with OperationPrefixIds
     ///       by the controller
-    PropagateOperations(Set<OperationId>),
+    PropagateOperations(Storage),
     /// Propagate endorsements
     PropagateEndorsements(Storage),
 }
@@ -119,8 +123,8 @@ impl ProtocolCommandSender {
     /// update the block wish list
     pub async fn send_wishlist_delta(
         &mut self,
-        new: Set<BlockId>,
-        remove: Set<BlockId>,
+        new: PreHashSet<BlockId>,
+        remove: PreHashSet<BlockId>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.send_wishlist_delta", { "new": new, "remove": remove });
         self.0
@@ -134,15 +138,12 @@ impl ProtocolCommandSender {
     /// Propagate a batch of operation ids (from pool).
     ///
     /// note: Full `OperationId` is replaced by a `OperationPrefixId` later by the worker.
-    pub async fn propagate_operations(
-        &mut self,
-        operation_ids: Set<OperationId>,
-    ) -> Result<(), ProtocolError> {
+    pub async fn propagate_operations(&mut self, operations: Storage) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_operations", {
-            "operations": operation_ids
+            "operations": operations.get_op_refs()
         });
         self.0
-            .send(ProtocolCommand::PropagateOperations(operation_ids))
+            .send(ProtocolCommand::PropagateOperations(operations))
             .await
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_operation command send error".into())
@@ -216,9 +217,11 @@ impl ProtocolManager {
         protocol_event_receiver: ProtocolEventReceiver,
         //protocol_pool_event_receiver: ProtocolPoolEventReceiver,
     ) -> Result<NetworkEventReceiver, ProtocolError> {
+        info!("stopping protocol controller...");
         drop(self.manager_tx);
         let _remaining_events = protocol_event_receiver.drain().await;
         let network_event_receiver = self.join_handle.await??;
+        info!("protocol controller stopped");
         Ok(network_event_receiver)
     }
 }

@@ -1,15 +1,13 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::constants::OPERATION_ID_SIZE_BYTES;
-use crate::node_configuration::OPERATION_ID_PREFIX_SIZE_BYTES;
-use crate::prehash::{PreHashed, Set};
+use crate::prehash::{PreHashSet, PreHashed};
 use crate::serialization::StringDeserializer;
-
 use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
-use crate::{Address, Amount, ModelsError};
 use crate::{
-    AddressDeserializer, AmountDeserializer, AmountSerializer, StringSerializer, VecU8Deserializer,
-    VecU8Serializer,
+    address::{Address, AddressDeserializer},
+    amount::{Amount, AmountDeserializer, AmountSerializer},
+    error::ModelsError,
+    serialization::{StringSerializer, VecU8Deserializer, VecU8Serializer},
 };
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
@@ -31,7 +29,11 @@ use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::{ops::Bound::Included, ops::RangeInclusive, str::FromStr};
 
-const OPERATION_ID_STRING_PREFIX: &str = "OPE";
+/// Size in bytes of the serialized operation ID
+pub const OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+
+/// Size in bytes of the serialized operation ID prefix
+pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;
 
 /// operation id
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
@@ -43,83 +45,32 @@ pub struct OperationPrefixId([u8; OPERATION_ID_PREFIX_SIZE_BYTES]);
 
 impl std::fmt::Display for OperationId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if cfg!(feature = "hash-prefix") {
-            write!(
-                f,
-                "{}-{}",
-                OPERATION_ID_STRING_PREFIX,
-                self.0.to_bs58_check()
-            )
-        } else {
-            write!(f, "{}", self.0.to_bs58_check())
-        }
+        write!(f, "{}", self.0.to_bs58_check())
     }
 }
 
 impl std::fmt::Debug for OperationId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if cfg!(feature = "hash-prefix") {
-            write!(
-                f,
-                "{}-{}",
-                OPERATION_ID_STRING_PREFIX,
-                self.0.to_bs58_check()
-            )
-        } else {
-            write!(f, "{}", self.0.to_bs58_check())
-        }
+        write!(f, "{}", self.0.to_bs58_check())
     }
 }
 
 impl std::fmt::Display for OperationPrefixId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if cfg!(feature = "hash-prefix") {
-            write!(
-                f,
-                "{}-{}",
-                OPERATION_ID_STRING_PREFIX,
-                bs58::encode(self.0.as_bytes()).into_string()
-            )
-        } else {
-            write!(f, "{}", bs58::encode(self.0.as_bytes()).into_string())
-        }
+        write!(f, "{}", bs58::encode(self.0.as_bytes()).into_string())
     }
 }
 
 impl std::fmt::Debug for OperationPrefixId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if cfg!(feature = "hash-prefix") {
-            write!(
-                f,
-                "{}-{}",
-                OPERATION_ID_STRING_PREFIX,
-                bs58::encode(self.0.as_bytes()).into_string()
-            )
-        } else {
-            write!(f, "{}", bs58::encode(self.0.as_bytes()).into_string())
-        }
+        write!(f, "{}", bs58::encode(self.0.as_bytes()).into_string())
     }
 }
 
 impl FromStr for OperationId {
     type Err = ModelsError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if cfg!(feature = "hash-prefix") {
-            let v: Vec<_> = s.split('-').collect();
-            if v.len() != 2 {
-                // assume there is no prefix
-                Ok(OperationId(Hash::from_str(s)?))
-            } else if v[0] != OPERATION_ID_STRING_PREFIX {
-                Err(ModelsError::WrongPrefix(
-                    OPERATION_ID_STRING_PREFIX.to_string(),
-                    v[0].to_string(),
-                ))
-            } else {
-                Ok(OperationId(Hash::from_str(v[1])?))
-            }
-        } else {
-            Ok(OperationId(Hash::from_str(s)?))
-        }
+        Ok(OperationId(Hash::from_str(s)?))
     }
 }
 
@@ -817,6 +768,7 @@ impl WrappedOperation {
 
 impl WrappedOperation {
     /// get the range of periods during which an operation is valid
+    /// Range: (op.expire_period - cfg.operation_validity_period) -> op.expire_period (included)
     pub fn get_validity_range(&self, operation_validity_period: u64) -> RangeInclusive<u64> {
         let start = self
             .content
@@ -859,8 +811,8 @@ impl WrappedOperation {
     }
 
     /// get the addresses that are involved in this operation from a ledger point of view
-    pub fn get_ledger_involved_addresses(&self) -> Set<Address> {
-        let mut res = Set::<Address>::default();
+    pub fn get_ledger_involved_addresses(&self) -> PreHashSet<Address> {
+        let mut res = PreHashSet::<Address>::default();
         let emitter_address = Address::from_public_key(&self.creator_public_key);
         res.insert(emitter_address);
         match &self.content.op {
@@ -882,7 +834,7 @@ impl WrappedOperation {
     /// Gets the maximal amount of sequential coins that may be spent by this operation (incl. fee)
     pub fn get_max_sequential_spending(&self, roll_price: Amount) -> Amount {
         // compute the max amount of sequential coins spent outside of the fees
-        let max_nonfee_seq_spending = match &self.content.op {
+        let max_non_fee_seq_spending = match &self.content.op {
             OperationType::Transaction { amount, .. } => *amount,
             OperationType::RollBuy { roll_count } => roll_price.saturating_mul_u64(*roll_count),
             OperationType::RollSell { .. } => Amount::zero(),
@@ -893,12 +845,12 @@ impl WrappedOperation {
         };
 
         // add all fees and return
-        max_nonfee_seq_spending.saturating_add(self.get_total_fee())
+        max_non_fee_seq_spending.saturating_add(self.get_total_fee())
     }
 
     /// get the addresses that are involved in this operation from a rolls point of view
-    pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
-        let mut res = Set::<Address>::default();
+    pub fn get_roll_involved_addresses(&self) -> Result<PreHashSet<Address>, ModelsError> {
+        let mut res = PreHashSet::<Address>::default();
         match self.content.op {
             OperationType::Transaction { .. } => {}
             OperationType::RollBuy { .. } => {
@@ -915,7 +867,7 @@ impl WrappedOperation {
 }
 
 /// Set of operation id's prefix
-pub type OperationPrefixIds = Set<OperationPrefixId>;
+pub type OperationPrefixIds = PreHashSet<OperationPrefixId>;
 
 /// Serializer for `Vec<OperationId>`
 pub struct OperationIdsSerializer {
@@ -1310,7 +1262,7 @@ impl Deserializer<Vec<WrappedOperation>> for OperationsDeserializer {
 
 #[cfg(test)]
 mod tests {
-    use crate::node_configuration::default::{
+    use crate::config::{
         MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
     };
 

@@ -5,14 +5,16 @@ use std::sync::{
     Arc, Mutex,
 };
 
-use massa_models::{BlockId, EndorsementId, OperationId, Slot};
+use massa_models::{
+    block::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
+};
 use massa_storage::Storage;
 use massa_time::MassaTime;
 
 use crate::PoolController;
 
 /// Test tool to mock pool controller responses
-pub struct PoolEventReceiver(Receiver<MockPoolControllerMessage>);
+pub struct PoolEventReceiver(pub Receiver<MockPoolControllerMessage>);
 
 /// List of possible messages you can receive from the mock
 /// Each variant corresponds to a unique method in `PoolController`,

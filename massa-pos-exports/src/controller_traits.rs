@@ -8,9 +8,9 @@ use std::collections::BTreeMap;
 use crate::PosResult;
 use crate::Selection;
 use massa_hash::Hash;
+use massa_models::address::Address;
 use massa_models::api::IndexedSlot;
-use massa_models::Address;
-use massa_models::Slot;
+use massa_models::slot::Slot;
 
 #[cfg(feature = "testing")]
 use std::collections::{HashMap, VecDeque};

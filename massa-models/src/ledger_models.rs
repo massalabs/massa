@@ -1,9 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::{
+    address::{Address, AddressDeserializer},
+    amount::{Amount, AmountDeserializer, AmountSerializer},
+    error::ModelsError,
     error::ModelsResult as Result,
-    prehash::{Map, Set},
-    Address, AddressDeserializer, Amount, AmountDeserializer, AmountSerializer, ModelsError,
+    prehash::{PreHashMap, PreHashSet},
 };
 use core::usize;
 use massa_serialization::{
@@ -315,7 +317,7 @@ impl LedgerChange {
 
 /// Map an address to a `LedgerChange`
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct LedgerChanges(pub Map<Address, LedgerChange>);
+pub struct LedgerChanges(pub PreHashMap<Address, LedgerChange>);
 
 /// Basic serializer for `LedgerChanges`
 pub struct LedgerChangesSerializer {
@@ -432,7 +434,7 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
 
 impl LedgerChanges {
     /// addresses that are impacted by these ledger changes
-    pub fn get_involved_addresses(&self) -> Set<Address> {
+    pub fn get_involved_addresses(&self) -> PreHashSet<Address> {
         self.0.keys().copied().collect()
     }
 
@@ -466,7 +468,7 @@ impl LedgerChanges {
 
     /// merge another ledger changes into self, overwriting existing data
     /// addresses that are in not other are removed from self
-    pub fn sync_from(&mut self, addrs: &Set<Address>, mut other: LedgerChanges) {
+    pub fn sync_from(&mut self, addrs: &PreHashSet<Address>, mut other: LedgerChanges) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {
                 self.0.insert(*addr, new_val);
@@ -478,7 +480,7 @@ impl LedgerChanges {
 
     /// clone subset
     #[must_use]
-    pub fn clone_subset(&self, addrs: &Set<Address>) -> Self {
+    pub fn clone_subset(&self, addrs: &PreHashSet<Address>) -> Self {
         LedgerChanges(
             self.0
                 .iter()
@@ -490,57 +492,6 @@ impl LedgerChanges {
                     }
                 })
                 .collect(),
-        )
-    }
-
-    /// add reward related changes
-    pub fn add_reward(
-        &mut self,
-        creator: Address,
-        endorsers: Vec<Address>,
-        parent_creator: Address,
-        reward: Amount,
-        endorsement_count: u32,
-    ) -> Result<()> {
-        let endorsers_count = endorsers.len() as u64;
-        let third = reward
-            .checked_div_u64(3 * (1 + (endorsement_count as u64)))
-            .ok_or(ModelsError::AmountOverflowError)?;
-        for ed in endorsers {
-            self.apply(
-                &parent_creator,
-                &LedgerChange {
-                    balance_delta: third,
-                    balance_increment: true,
-                },
-            )?;
-            self.apply(
-                &ed,
-                &LedgerChange {
-                    balance_delta: third,
-                    balance_increment: true,
-                },
-            )?;
-        }
-        let total_credited = third
-            .checked_mul_u64(2 * endorsers_count)
-            .ok_or(ModelsError::AmountOverflowError)?;
-        // here we credited only parent_creator and ed for every endorsement
-        // total_credited now contains the total amount already credited
-
-        let expected_credit = reward
-            .checked_mul_u64(1 + endorsers_count)
-            .ok_or(ModelsError::AmountOverflowError)?
-            .checked_div_u64(1 + (endorsement_count as u64))
-            .ok_or(ModelsError::AmountOverflowError)?;
-        // here expected_credit contains the expected amount that should be credited in total
-        // the difference between expected_credit and total_credited is sent to the block creator
-        self.apply(
-            &creator,
-            &LedgerChange {
-                balance_delta: expected_credit.saturating_sub(total_credited),
-                balance_increment: true,
-            },
         )
     }
 }

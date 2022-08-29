@@ -23,27 +23,32 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
-use massa_models::constants::default::{
-    ADDRESS_SIZE_BYTES, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT,
-    END_TIMESTAMP, GENESIS_KEY, GENESIS_TIMESTAMP, INITIAL_DRAW_SEED,
-    LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
-    MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
-    MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-    MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
-    MAX_DATASTORE_VALUE_LENGTH, MAX_DATA_ASYNC_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE,
-    MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT, MAX_MESSAGE_SIZE,
-    MAX_OPERATIONS_PER_BLOCK, MAX_PARAMETERS_SIZE, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
-    ROLL_PRICE, T0, THREAD_COUNT, VERSION,
+use massa_models::address::Address;
+use massa_models::config::constants::{
+    BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY,
+    GENESIS_TIMESTAMP, INITIAL_DRAW_SEED, LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH,
+    MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
+    MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
+    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT,
+    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DATA_ASYNC_MESSAGE,
+    MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK,
+    MAX_LEDGER_CHANGES_COUNT, MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK, MAX_PARAMETERS_SIZE,
+    NETWORK_CONTROLLER_CHANNEL_SIZE, NETWORK_EVENT_CHANNEL_SIZE, OPERATION_VALIDITY_PERIODS,
+    PERIODS_PER_CYCLE, ROLL_PRICE, T0, THREAD_COUNT, VERSION,
 };
-use massa_models::constants::CHANNEL_SIZE;
-use massa_models::Address;
+use massa_models::config::{
+    ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, CHANNEL_SIZE, DELTA_F0,
+    MAX_SERIALIZED_OPERATIONS_SIZE_PER_BLOCK, NETWORK_NODE_COMMAND_CHANNEL_SIZE,
+    NETWORK_NODE_EVENT_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+    PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE,
+};
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
 use massa_pool_exports::{PoolConfig, PoolController};
 use massa_pool_worker::start_pool;
 use massa_pos_exports::{SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
-use massa_protocol_exports::ProtocolManager;
+use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 use massa_protocol_worker::start_protocol_controller;
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -54,7 +59,6 @@ use structopt::StructOpt;
 use tokio::signal;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
-#[cfg(not(feature = "instrument"))]
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 
 mod settings;
@@ -77,7 +81,7 @@ async fn launch(
 ) {
     info!("Node version : {}", *VERSION);
     if let Some(end) = *END_TIMESTAMP {
-        if MassaTime::now().expect("could not get now time") > end {
+        if MassaTime::now(0).expect("could not get now time") > end {
             panic!("This episode has come to an end, please get the latest testnet node version to continue");
         }
     }
@@ -87,14 +91,17 @@ async fn launch(
 
     // init final state
     let ledger_config = LedgerConfig {
-        initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path.clone(),
+        thread_count: THREAD_COUNT,
+        initial_ledger_path: SETTINGS.ledger.initial_ledger_path.clone(),
         disk_ledger_path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_ledger_part_size: LEDGER_PART_SIZE_MESSAGE_BYTES,
-        address_bytes_size: ADDRESS_SIZE_BYTES,
     };
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
+        thread_count: THREAD_COUNT,
+        part_size_message_bytes: ASYNC_POOL_PART_SIZE_MESSAGE_BYTES,
+        max_data_async_message: MAX_DATA_ASYNC_MESSAGE,
     };
     let final_state_config = FinalStateConfig {
         final_history_length: SETTINGS.ledger.final_history_length,
@@ -102,7 +109,7 @@ async fn launch(
         ledger_config: ledger_config.clone(),
         periods_per_cycle: PERIODS_PER_CYCLE,
         initial_seed_string: INITIAL_DRAW_SEED.into(),
-        initial_rolls_path: SETTINGS.consensus.initial_rolls_path.clone(),
+        initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
         async_pool_config,
     };
 
@@ -228,12 +235,16 @@ async fn launch(
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameters_size: MAX_PARAMETERS_SIZE,
+        controller_channel_size: NETWORK_CONTROLLER_CHANNEL_SIZE,
+        event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
+        node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
+        node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
     };
 
     // launch network controller
     let (network_command_sender, network_event_receiver, network_manager, private_key, node_id) =
         start_network_controller(
-            &network_config, // TODO: get rid of this clone() ... see #1277
+            &network_config,
             Establisher::new(),
             bootstrap_state.compensation_millis,
             bootstrap_state.peers,
@@ -265,6 +276,9 @@ async fn launch(
         endorsement_count: ENDORSEMENT_COUNT as u64,
         operation_validity_period: OPERATION_VALIDITY_PERIODS,
         periods_per_cycle: PERIODS_PER_CYCLE,
+        stats_time_window_duration: SETTINGS.execution.stats_time_window_duration,
+        max_miss_ratio: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
     };
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,
@@ -287,9 +301,31 @@ async fn launch(
     let pool_manager: Box<dyn PoolController> = Box::new(pool_controller.clone());
 
     // launch protocol controller
+    let protocol_config = ProtocolConfig {
+        thread_count: THREAD_COUNT,
+        ask_block_timeout: SETTINGS.protocol.ask_block_timeout,
+        max_known_blocks_size: SETTINGS.protocol.max_known_blocks_size,
+        max_node_known_blocks_size: SETTINGS.protocol.max_node_known_blocks_size,
+        max_node_wanted_blocks_size: SETTINGS.protocol.max_node_wanted_blocks_size,
+        max_known_ops_size: SETTINGS.protocol.max_known_ops_size,
+        max_node_known_ops_size: SETTINGS.protocol.max_node_known_ops_size,
+        max_known_endorsements_size: SETTINGS.protocol.max_known_endorsements_size,
+        max_node_known_endorsements_size: SETTINGS.protocol.max_node_known_endorsements_size,
+        max_simultaneous_ask_blocks_per_node: SETTINGS
+            .protocol
+            .max_simultaneous_ask_blocks_per_node,
+        max_send_wait: SETTINGS.protocol.max_send_wait,
+        operation_batch_buffer_capacity: SETTINGS.protocol.operation_batch_buffer_capacity,
+        operation_batch_proc_period: SETTINGS.protocol.operation_batch_proc_period,
+        asked_operations_pruning_period: SETTINGS.protocol.asked_operations_pruning_period,
+        max_operations_per_message: SETTINGS.protocol.max_operations_per_message,
+        max_serialized_operations_size_per_block: MAX_SERIALIZED_OPERATIONS_SIZE_PER_BLOCK,
+        controller_channel_size: PROTOCOL_CONTROLLER_CHANNEL_SIZE,
+        event_channel_size: PROTOCOL_EVENT_CHANNEL_SIZE,
+    };
     let (protocol_command_sender, protocol_event_receiver, protocol_manager) =
         start_protocol_controller(
-            SETTINGS.protocol.into(),
+            protocol_config,
             network_command_sender.clone(),
             network_event_receiver,
             pool_manager.clone(),
@@ -299,7 +335,28 @@ async fn launch(
         .expect("could not start protocol controller");
 
     // init consensus configuration
-    let consensus_config = ConsensusConfig::from(&SETTINGS.consensus);
+    let consensus_config = ConsensusConfig {
+        genesis_timestamp: *GENESIS_TIMESTAMP,
+        end_timestamp: *END_TIMESTAMP,
+        thread_count: THREAD_COUNT,
+        t0: T0,
+        genesis_key: GENESIS_KEY.clone(),
+        max_discarded_blocks: SETTINGS.consensus.max_discarded_blocks,
+        future_block_processing_max_periods: SETTINGS.consensus.future_block_processing_max_periods,
+        max_future_processing_blocks: SETTINGS.consensus.max_future_processing_blocks,
+        max_dependency_blocks: SETTINGS.consensus.max_dependency_blocks,
+        delta_f0: DELTA_F0,
+        operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        stats_timespan: SETTINGS.consensus.stats_timespan,
+        max_send_wait: SETTINGS.consensus.max_send_wait,
+        force_keep_final_periods: SETTINGS.consensus.force_keep_final_periods,
+        endorsement_count: ENDORSEMENT_COUNT,
+        block_db_prune_interval: SETTINGS.consensus.block_db_prune_interval,
+        max_item_return_count: SETTINGS.consensus.max_item_return_count,
+        max_gas_per_block: MAX_GAS_PER_BLOCK,
+        channel_size: CHANNEL_SIZE,
+    };
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
@@ -513,18 +570,11 @@ fn load_wallet(password: Option<String>, path: &Path) -> anyhow::Result<Arc<RwLo
     )?)))
 }
 
-/// To instrument `massa-node` with `tokio-console` run
-/// ```shell
-/// RUSTFLAGS="--cfg tokio_unstable" cargo run --bin massa-node --features instrument
-/// ```
 #[paw::main]
 #[tokio::main]
 async fn main(args: Args) -> anyhow::Result<()> {
     use tracing_subscriber::prelude::*;
     // spawn the console server in the background, returning a `Layer`:
-    #[cfg(feature = "instrument")]
-    let tracing_layer = console_subscriber::spawn();
-    #[cfg(not(feature = "instrument"))]
     let tracing_layer = tracing_subscriber::fmt::layer()
         .with_filter(match SETTINGS.logging.level {
             4 => LevelFilter::TRACE,
@@ -553,8 +603,7 @@ async fn main(args: Args) -> anyhow::Result<()> {
     }));
 
     // load or create wallet, asking for password if necessary
-
-    let node_wallet = load_wallet(args.password, &SETTINGS.consensus.staking_keys_path)?;
+    let node_wallet = load_wallet(args.password, &SETTINGS.factory.staking_wallet_path)?;
 
     loop {
         let (

@@ -3,7 +3,7 @@
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
-use massa_models::{BlockId, Slot};
+use massa_models::{block::BlockId, slot::Slot};
 use massa_signature::KeyPair;
 use serial_test::serial;
 

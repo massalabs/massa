@@ -1,8 +1,9 @@
 use std::collections::hash_map;
 
 use massa_models::{
-    prehash::{Map, Set},
-    Address, OperationId, WrappedOperation,
+    address::Address,
+    operation::{OperationId, WrappedOperation},
+    prehash::{PreHashMap, PreHashSet},
 };
 
 /// Container for all operations and different indexes.
@@ -10,9 +11,9 @@ use massa_models::{
 #[derive(Default)]
 pub struct OperationIndexes {
     /// Operations structure container
-    operations: Map<OperationId, WrappedOperation>,
+    operations: PreHashMap<OperationId, WrappedOperation>,
     /// Structure mapping creators with the created operations
-    index_by_creator: Map<Address, Set<OperationId>>,
+    index_by_creator: PreHashMap<Address, PreHashSet<OperationId>>,
 }
 
 impl OperationIndexes {
@@ -64,7 +65,7 @@ impl OperationIndexes {
     ///
     /// Returns:
     /// - optional reference to a set of operations created by that address
-    pub fn get_operations_created_by(&self, address: &Address) -> Option<&Set<OperationId>> {
+    pub fn get_operations_created_by(&self, address: &Address) -> Option<&PreHashSet<OperationId>> {
         self.index_by_creator.get(address)
     }
 }

@@ -13,10 +13,10 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest,
 };
 use massa_final_state::FinalState;
-use massa_models::BlockId;
+use massa_models::block::BlockId;
 use massa_models::{
+    slot::Slot,
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
-    Slot,
 };
 use massa_pos_exports::SelectorController;
 use massa_storage::Storage;
@@ -176,7 +176,7 @@ impl ExecutionThread {
     /// The latest slot at or before `now() - self.config.cursor_delay` if there is any,
     /// or None if it falls behind the genesis timestamp.
     fn get_end_active_slot(&self) -> Option<Slot> {
-        let target_time = MassaTime::compensated_now(self.config.clock_compensation)
+        let target_time = MassaTime::now(self.config.clock_compensation)
             .expect("could not read current time")
             .saturating_sub(self.config.cursor_delay);
         get_latest_block_slot_at_timestamp(
@@ -363,7 +363,7 @@ impl ExecutionThread {
         .expect("could not compute block timestamp in VM");
 
         // get the current timestamp minus the cursor delay
-        let end_time = MassaTime::compensated_now(self.config.clock_compensation)
+        let end_time = MassaTime::now(self.config.clock_compensation)
             .expect("could not get current time in VM")
             .saturating_sub(self.config.cursor_delay);
 

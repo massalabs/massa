@@ -19,10 +19,12 @@ mod tests;
 
 use block_indexes::BlockIndexes;
 use endorsement_indexes::EndorsementIndexes;
-use massa_models::prehash::{BuildMap, Map, PreHashed, Set};
+use massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet, PreHashed};
 use massa_models::wrapped::Id;
 use massa_models::{
-    BlockId, EndorsementId, OperationId, WrappedBlock, WrappedEndorsement, WrappedOperation,
+    block::{BlockId, WrappedBlock},
+    endorsement::{EndorsementId, WrappedEndorsement},
+    operation::{OperationId, WrappedOperation},
 };
 use operation_indexes::OperationIndexes;
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
@@ -41,18 +43,18 @@ pub struct Storage {
     endorsements: Arc<RwLock<EndorsementIndexes>>,
 
     /// global block reference counter
-    block_owners: Arc<RwLock<Map<BlockId, usize>>>,
+    block_owners: Arc<RwLock<PreHashMap<BlockId, usize>>>,
     /// global operation reference counter
-    operation_owners: Arc<RwLock<Map<OperationId, usize>>>,
+    operation_owners: Arc<RwLock<PreHashMap<OperationId, usize>>>,
     /// global endorsement reference counter
-    endorsement_owners: Arc<RwLock<Map<EndorsementId, usize>>>,
+    endorsement_owners: Arc<RwLock<PreHashMap<EndorsementId, usize>>>,
 
     /// locally used block references
-    local_used_blocks: Set<BlockId>,
+    local_used_blocks: PreHashSet<BlockId>,
     /// locally used operation references
-    local_used_ops: Set<OperationId>,
+    local_used_ops: PreHashSet<OperationId>,
     /// locally used endorsement references
-    local_used_endorsements: Set<EndorsementId>,
+    local_used_endorsements: PreHashSet<EndorsementId>,
 }
 
 impl Debug for Storage {
@@ -139,9 +141,9 @@ impl Storage {
     /// Panics if some of the refs are not owned by the source.
     pub fn split_off(
         &mut self,
-        blocks: &Set<BlockId>,
-        operations: &Set<OperationId>,
-        endorsements: &Set<EndorsementId>,
+        blocks: &PreHashSet<BlockId>,
+        operations: &PreHashSet<OperationId>,
+        endorsements: &PreHashSet<EndorsementId>,
     ) -> Storage {
         // Make a clone of self, which has no ref ownership.
         let mut res = self.clone_without_refs();
@@ -181,9 +183,9 @@ impl Storage {
 
     /// internal helper to locally claim a reference to an object
     fn internal_claim_refs<IdT: Id + PartialEq + Eq + Hash + PreHashed + Copy>(
-        ids: &Set<IdT>,
-        owners: &mut RwLockWriteGuard<Map<IdT, usize>>,
-        local_used_ids: &mut Set<IdT>,
+        ids: &PreHashSet<IdT>,
+        owners: &mut RwLockWriteGuard<PreHashMap<IdT, usize>>,
+        local_used_ids: &mut PreHashSet<IdT>,
     ) {
         for &id in ids {
             if local_used_ids.insert(id) {
@@ -193,14 +195,14 @@ impl Storage {
     }
 
     /// get the block reference ownership
-    pub fn get_block_refs(&self) -> &Set<BlockId> {
+    pub fn get_block_refs(&self) -> &PreHashSet<BlockId> {
         &self.local_used_blocks
     }
 
     /// Claim block references.
     /// Returns the set of block refs that were found and claimed.
-    pub fn claim_block_refs(&mut self, ids: &Set<BlockId>) -> Set<BlockId> {
-        let mut claimed = Set::with_capacity_and_hasher(ids.len(), BuildMap::default());
+    pub fn claim_block_refs(&mut self, ids: &PreHashSet<BlockId>) -> PreHashSet<BlockId> {
+        let mut claimed = PreHashSet::with_capacity(ids.len());
 
         if ids.is_empty() {
             return claimed;
@@ -218,7 +220,7 @@ impl Storage {
     }
 
     /// Drop block references
-    pub fn drop_block_refs(&mut self, ids: &Set<BlockId>) {
+    pub fn drop_block_refs(&mut self, ids: &PreHashSet<BlockId>) {
         if ids.is_empty() {
             return;
         }
@@ -274,8 +276,11 @@ impl Storage {
 
     /// Claim operation references.
     /// Returns the set of operation refs that were found and claimed.
-    pub fn claim_operation_refs(&mut self, ids: &Set<OperationId>) -> Set<OperationId> {
-        let mut claimed = Set::with_capacity_and_hasher(ids.len(), BuildMap::default());
+    pub fn claim_operation_refs(
+        &mut self,
+        ids: &PreHashSet<OperationId>,
+    ) -> PreHashSet<OperationId> {
+        let mut claimed = PreHashSet::with_capacity(ids.len());
 
         if ids.is_empty() {
             return claimed;
@@ -293,13 +298,13 @@ impl Storage {
     }
 
     /// get the operation reference ownership
-    pub fn get_op_refs(&self) -> &Set<OperationId> {
+    pub fn get_op_refs(&self) -> &PreHashSet<OperationId> {
         &self.local_used_ops
     }
 
     /// Drop local operation references.
     /// Ignores already-absent refs.
-    pub fn drop_operation_refs(&mut self, ids: &Set<OperationId>) {
+    pub fn drop_operation_refs(&mut self, ids: &PreHashSet<OperationId>) {
         if ids.is_empty() {
             return;
         }
@@ -346,7 +351,7 @@ impl Storage {
         }
         let mut op_store = self.operations.write();
         let mut owners = self.operation_owners.write();
-        let ids: Set<OperationId> = operations.iter().map(|op| op.id).collect();
+        let ids: PreHashSet<OperationId> = operations.iter().map(|op| op.id).collect();
         for op in operations {
             op_store.insert(op);
         }
@@ -370,8 +375,11 @@ impl Storage {
 
     /// Claim endorsement references.
     /// Returns the set of operation refs that were found and claimed.
-    pub fn claim_endorsement_refs(&mut self, ids: &Set<EndorsementId>) -> Set<EndorsementId> {
-        let mut claimed = Set::with_capacity_and_hasher(ids.len(), BuildMap::default());
+    pub fn claim_endorsement_refs(
+        &mut self,
+        ids: &PreHashSet<EndorsementId>,
+    ) -> PreHashSet<EndorsementId> {
+        let mut claimed = PreHashSet::with_capacity(ids.len());
 
         if ids.is_empty() {
             return claimed;
@@ -389,13 +397,13 @@ impl Storage {
     }
 
     /// get the endorsement reference ownership
-    pub fn get_endorsement_refs(&self) -> &Set<EndorsementId> {
+    pub fn get_endorsement_refs(&self) -> &PreHashSet<EndorsementId> {
         &self.local_used_endorsements
     }
 
     /// Drop local endorsement references.
     /// Ignores already-absent refs.
-    pub fn drop_endorsement_refs(&mut self, ids: &Set<EndorsementId>) {
+    pub fn drop_endorsement_refs(&mut self, ids: &PreHashSet<EndorsementId>) {
         if ids.is_empty() {
             return;
         }
@@ -442,7 +450,7 @@ impl Storage {
         }
         let mut endo_store = self.endorsements.write();
         let mut owners = self.endorsement_owners.write();
-        let ids: Set<EndorsementId> = endorsements.iter().map(|op| op.id).collect();
+        let ids: PreHashSet<EndorsementId> = endorsements.iter().map(|op| op.id).collect();
         for endorsement in endorsements {
             endo_store.insert(endorsement);
         }

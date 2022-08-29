@@ -23,5 +23,4 @@ massa_signature = { path = "../massa-signature" }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
-instrument = ["massa_models/instrument"]
 testing = ["tempfile", "massa_models/testing"]

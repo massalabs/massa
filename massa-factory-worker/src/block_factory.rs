@@ -3,11 +3,12 @@
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_hash::Hash;
 use massa_models::{
-    prehash::Set,
+    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedHeader},
+    endorsement::WrappedEndorsement,
+    prehash::PreHashSet,
+    slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
     wrapped::WrappedContent,
-    Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, Slot, WrappedEndorsement,
-    WrappedHeader,
 };
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
@@ -54,8 +55,8 @@ impl BlockFactoryWorker {
     /// Extra safety against double-production caused by clock adjustments (this is the role of the previous_slot parameter).
     fn get_next_slot(&self, previous_slot: Option<Slot>) -> (Slot, Instant) {
         // get current absolute time
-        let now = MassaTime::compensated_now(self.cfg.clock_compensation_millis)
-            .expect("could not get current time");
+        let now =
+            MassaTime::now(self.cfg.clock_compensation_millis).expect("could not get current time");
 
         // if it's the first computed slot, add a time shift to prevent double-production on node restart with clock skew
         let base_time = if previous_slot.is_none() {
@@ -86,7 +87,7 @@ impl BlockFactoryWorker {
             }
         }
 
-        // get the tiemstamp of the target slot
+        // get the timestamp of the target slot
         let next_instant = get_block_slot_timestamp(
             self.cfg.thread_count,
             self.cfg.t0,
@@ -155,7 +156,7 @@ impl BlockFactoryWorker {
                 &parents
                     .iter()
                     .map(|(b_id, _)| *b_id)
-                    .collect::<Set<BlockId>>(),
+                    .collect::<PreHashSet<BlockId>>(),
             );
             if claimed_parents.len() != parents.len() {
                 warn!("block factory could claim parents for slot {}", slot);

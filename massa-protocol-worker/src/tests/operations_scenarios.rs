@@ -3,9 +3,9 @@
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
 use super::tools::{protocol_test, protocol_test_with_storage};
-use massa_models::prehash::Map;
-use massa_models::{self, Address, Amount, Slot};
-use massa_models::{operation::OperationId, prehash::Set};
+use massa_models::prehash::PreHashMap;
+use massa_models::{self, address::Address, amount::Amount, slot::Slot};
+use massa_models::{operation::OperationId, prehash::PreHashSet};
 use massa_network_exports::{BlockInfoReply, NetworkCommand};
 use massa_pool_exports::test_exports::MockPoolControllerMessage;
 use massa_protocol_exports::tests::tools;
@@ -170,7 +170,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
 
             let expected_operation_id = operation.verify_integrity().unwrap();
 
-            let mut ops: Set<OperationId> = Set::default();
+            let mut ops: PreHashSet<OperationId> = PreHashSet::default();
             ops.insert(expected_operation_id);
             protocol_command_sender
                 .propagate_operations(ops)
@@ -242,7 +242,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             let expected_operation_id = operation.verify_integrity().unwrap();
 
-            let mut ops: Set<OperationId> = Set::default();
+            let mut ops: PreHashSet<OperationId> = PreHashSet::default();
             ops.insert(expected_operation_id);
 
             // send endorsement to protocol
@@ -314,8 +314,8 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 .await;
 
             // Send the block as search results.
-            let mut results: BlocksResults = Map::default();
-            let mut ops: Set<OperationId> = Set::default();
+            let mut results: BlocksResults = PreHashMap::default();
+            let mut ops: PreHashSet<OperationId> = PreHashSet::default();
             ops.insert(operation_id);
             results.insert(expected_block_id, Some((Some(ops), None)));
 
@@ -324,7 +324,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // Send the endorsement to protocol
             // it should not propagate to the node that already knows about it
             // because of the previously integrated block.
-            let mut ops = Set::default();
+            let mut ops = PreHashSet::default();
             ops.insert(operation_id);
             protocol_command_sender
                 .propagate_operations(ops)
@@ -414,7 +414,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // Send the operation to protocol
             // it should not propagate to the node that already knows about it
             // because of the previously received header.
-            let mut ops = Set::default();
+            let mut ops = PreHashSet::default();
             ops.insert(operation_id);
             protocol_command_sender
                 .propagate_operations(ops)
@@ -507,7 +507,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             // Send the operation to protocol
             // it should propagate to the node because it isn't in the block.
-            let mut ops = Set::default();
+            let mut ops = PreHashSet::default();
             ops.insert(operation_id_2);
             protocol_command_sender
                 .propagate_operations(ops)

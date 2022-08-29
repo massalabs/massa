@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! Build here the default client settings from the configuration file toml
-use massa_models::constants::build_massa_settings;
+use massa_models::config::build_massa_settings;
 use massa_time::MassaTime;
 use serde::Deserialize;
 use std::{net::IpAddr, path::PathBuf};

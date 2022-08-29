@@ -2,17 +2,18 @@
 
 use massa_hash::HashDeserializer;
 use massa_models::{
-    array_from_slice,
-    constants::HANDSHAKE_RANDOMNESS_SIZE_BYTES,
-    operation::OperationPrefixIds,
+    block::{BlockHeader, BlockHeaderDeserializer, BlockId, WrappedHeader},
+    config::HANDSHAKE_RANDOMNESS_SIZE_BYTES,
+    endorsement::{Endorsement, EndorsementDeserializer, WrappedEndorsement},
     operation::{
-        OperationIdsDeserializer, OperationIdsSerializer, OperationPrefixIdsDeserializer,
-        OperationPrefixIdsSerializer, OperationsDeserializer, OperationsSerializer,
+        OperationIdsDeserializer, OperationIdsSerializer, OperationPrefixIds,
+        OperationPrefixIdsDeserializer, OperationPrefixIdsSerializer, OperationsDeserializer,
+        OperationsSerializer, WrappedOperation,
     },
+    serialization::array_from_slice,
+    serialization::{IpAddrDeserializer, IpAddrSerializer},
+    version::{Version, VersionDeserializer, VersionSerializer},
     wrapped::{WrappedDeserializer, WrappedSerializer},
-    BlockHeader, BlockHeaderDeserializer, BlockId, Endorsement, EndorsementDeserializer,
-    IpAddrDeserializer, IpAddrSerializer, Version, VersionDeserializer, VersionSerializer,
-    WrappedEndorsement, WrappedHeader, WrappedOperation,
 };
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply};
 use massa_serialization::{
@@ -514,7 +515,7 @@ impl Deserializer<Message> for MessageDeserializer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use massa_models::constants::default_testing::{
+    use massa_models::config::{
         ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
         MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
         MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_PARAMETERS_SIZE, THREAD_COUNT,

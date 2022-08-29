@@ -13,8 +13,11 @@ use massa_hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
-    Address, Amount, BlockId, Operation, OperationSerializer, OperationType, Version,
-    WrappedOperation,
+    address::Address,
+    amount::Amount,
+    block::BlockId,
+    operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
+    version::Version,
 };
 use massa_network_exports::test_exports::mock_establisher::{self, MockEstablisherInterface};
 use massa_network_exports::{

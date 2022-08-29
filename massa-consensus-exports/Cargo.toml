@@ -8,18 +8,15 @@ edition = "2021"
 
 [dependencies]
 displaydoc = "0.2"
-num = { version = "0.4", features = ["serde"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
 thiserror = "1.0"
 tokio = { version = "1.20", features = ["full"] }
-tracing = "0.1"
 tempfile = { version = "3.3", optional = true }    # use with testing feature
+serde = { version = "1.0", features = ["derive"], optional = true }    # use with testing feature
+serde_json = { version = "1.0", optional = true }    # use with testing feature
 # custom modules
 massa_cipher = { path = "../massa-cipher" }
 massa_execution_exports = { path = "../massa-execution-exports" }
 massa_graph = { path = "../massa-graph" }
-massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
 massa_pool_exports = { path = "../massa-pool-exports" }
 massa_pos_exports = { path = "../massa-pos-exports" }
@@ -33,12 +30,6 @@ massa_models = { path = "../massa-models", features = ["testing"] }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
-instrument = [
-    "tokio/tracing",
-    "massa_graph/instrument",
-    "massa_models/instrument",
-    "massa_protocol_exports/instrument",
-]
 sandbox = [ "massa_protocol_exports/sandbox" ]
 testing = [
     "massa_models/testing",
@@ -46,4 +37,6 @@ testing = [
     "massa_pool_exports/testing",
     "massa_protocol_exports/testing",
     "tempfile",
+    "serde",
+    "serde_json"
 ]

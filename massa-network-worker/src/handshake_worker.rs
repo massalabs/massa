@@ -12,15 +12,15 @@ use futures::future::try_join;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
-    constants::{
-        default::{MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE},
+    config::{
+        constants::{MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE},
         ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_MESSAGE_SIZE,
         MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
     },
-    Version,
+    version::Version,
 };
 use massa_models::{
-    constants::{MAX_ASK_BLOCKS_PER_MESSAGE, MAX_OPERATIONS_PER_MESSAGE},
+    config::{MAX_ASK_BLOCKS_PER_MESSAGE, MAX_OPERATIONS_PER_MESSAGE},
     node::NodeId,
 };
 use massa_network_exports::{

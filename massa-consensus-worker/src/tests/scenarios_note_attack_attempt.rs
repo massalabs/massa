@@ -8,7 +8,7 @@ use massa_consensus_exports::settings::ConsensusChannels;
 use massa_consensus_exports::ConsensusConfig;
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_hash::Hash;
-use massa_models::{Address, BlockId, Slot};
+use massa_models::{address::Address, block::BlockId, slot::Slot};
 use massa_pos_exports::SelectorConfig;
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::test_exports::MockProtocolController;

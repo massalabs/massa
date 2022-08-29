@@ -5,7 +5,7 @@
 use massa_time::MassaTime;
 use std::convert::TryInto;
 
-use crate::{ModelsError, Slot};
+use crate::{error::ModelsError, slot::Slot};
 
 /// Counts the number of slots in a slot range [a, b)
 ///
@@ -94,7 +94,7 @@ pub fn get_current_latest_block_slot(
         thread_count,
         t0,
         genesis_timestamp,
-        MassaTime::compensated_now(clock_compensation)?,
+        MassaTime::now(clock_compensation)?,
     )
 }
 

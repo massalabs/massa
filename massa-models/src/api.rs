@@ -1,13 +1,14 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::address::ExecutionAddressCycleInfo;
+use crate::endorsement::{EndorsementId, WrappedEndorsement};
 use crate::ledger_models::LedgerData;
 use crate::node::NodeId;
-use crate::stats::{ConsensusStats, NetworkStats};
-use crate::WrappedEndorsement;
-use crate::WrappedOperation;
+use crate::operation::{OperationId, WrappedOperation};
+use crate::stats::{ConsensusStats, ExecutionStats, NetworkStats};
 use crate::{
-    Address, Amount, Block, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
+    address::Address, amount::Amount, block::Block, block::BlockId, config::CompactConfig,
+    slot::Slot, version::Version,
 };
 use massa_signature::{PublicKey, Signature};
 use massa_time::MassaTime;
@@ -51,6 +52,8 @@ pub struct NodeStatus {
     pub pool_stats: (usize, usize),
     /// network stats
     pub network_stats: NetworkStats,
+    /// execution stats
+    pub execution_stats: ExecutionStats,
     /// compact configuration
     pub config: CompactConfig,
 }
@@ -299,6 +302,8 @@ impl AddressInfo {
                 .last()
                 .and_then(|c| c.active_rolls)
                 .unwrap_or_default(),
+            final_rolls: self.final_roll_count,
+            candidate_rolls: self.candidate_roll_count,
             final_sequential_balance: self.final_sequential_balance,
             candidate_sequential_balance: self.candidate_sequential_balance,
             final_parallel_balance: self.final_parallel_balance,
@@ -329,6 +334,10 @@ pub struct CompactAddressInfo {
     pub address: Address,
     /// the thread it is
     pub thread: u8,
+    /// candidate rolls
+    pub candidate_rolls: u64,
+    /// final rolls
+    pub final_rolls: u64,
     /// active rolls
     pub active_rolls: u64,
     /// final sequential balance
@@ -354,7 +363,11 @@ impl std::fmt::Display for CompactAddressInfo {
             "\tParallel balance: final={}, candidate={}",
             self.final_parallel_balance, self.candidate_parallel_balance
         )?;
-        writeln!(f, "\tActive rolls:\n{}", self.active_rolls)?;
+        writeln!(
+            f,
+            "\tRolls: active={}, final={}, candidate={}",
+            self.active_rolls, self.final_rolls, self.candidate_rolls
+        )?;
         Ok(())
     }
 }
@@ -544,10 +557,10 @@ pub struct EventFilter {
     pub original_operation_id: Option<OperationId>,
     /// optional event status
     ///
-    /// Some(true) means candidate
-    /// Some(false) means final
+    /// Some(true) means final
+    /// Some(false) means candidate
     /// None means final _and_ candidate
-    pub candidate: Option<bool>,
+    pub is_final: Option<bool>,
 }
 
 /// read only bytecode execution request

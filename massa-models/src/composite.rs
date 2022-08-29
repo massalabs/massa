@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::prehash::Map;
-use crate::{Address, BlockId, WrappedOperation};
+use crate::prehash::PreHashMap;
+use crate::{address::Address, block::BlockId, operation::WrappedOperation};
 use massa_signature::{PublicKey, Signature};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
@@ -40,7 +40,7 @@ pub struct OperationSearchResult {
     /// true if in pool
     pub in_pool: bool,
     /// maps block id to index on the operation in the block and if it's final
-    pub in_blocks: Map<BlockId, (usize, bool)>,
+    pub in_blocks: PreHashMap<BlockId, (usize, bool)>,
     /// operation status
     pub status: OperationSearchResultStatus,
 }
@@ -62,7 +62,7 @@ pub struct StakersCycleProductionStats {
     pub is_final: bool,
     /// map address to produced valid block count and not valid but expected block count
     /// really a re arranged `[crate::address::AddressCycleProductionStats]`
-    pub ok_nok_counts: Map<Address, (u64, u64)>,
+    pub ok_nok_counts: PreHashMap<Address, (u64, u64)>,
 }
 
 /// just a public key and a signature it has produced
