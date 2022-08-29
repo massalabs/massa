@@ -305,6 +305,59 @@ fn send_and_receive_async_message() {
 
 #[test]
 #[serial]
+pub fn send_and_receive_transaction() {
+    // setup the period duration and the maximum gas for
+    let exec_cfg = ExecutionConfig {
+        t0: 10.into(),
+        ..ExecutionConfig::default()
+    };
+    // get a sample final state
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+    // init the storage
+    let mut storage = Storage::default();
+    // start the execution worker
+    let (_selector_manager, selector_controller) =
+        start_selector_worker(SelectorConfig::default()).unwrap();
+    let (mut manager, controller) =
+        start_execution_worker(exec_cfg, sample_state, selector_controller);
+    // generate the addresses
+    let (_addr, sender_keypair) = get_random_address_full();
+    let (recipient_address, _keypair) = get_random_address_full();
+    // create the operation
+    let operation = Operation::new_wrapped(
+        Operation {
+            fee: Amount::zero(),
+            expire_period: 10,
+            op: OperationType::Transaction {
+                recipient_address,
+                amount: Amount::from_raw(42),
+            },
+        },
+        OperationSerializer::new(),
+        &sender_keypair,
+    )
+    .unwrap();
+    // create the block contaning the transaction operation
+    storage.store_operations(vec![operation.clone()]);
+    let block = create_block(vec![operation], Slot::new(1, 0)).unwrap();
+    // store the block in storage
+    storage.store_block(block.clone());
+    // set our block as a final block so the transaction is processed
+    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
+    finalized_blocks.insert(
+        block.content.header.content.slot,
+        (block.id, storage.clone()),
+    );
+    controller.update_blockclique_status(finalized_blocks, Default::default());
+    // TODO: assert here
+
+    // stop the execution controller
+    manager.stop();
+}
+
+#[test]
+#[serial]
 fn generate_events() {
     // Compile the `./wasm_tests` and generate a block with `event_test.wasm`
     // as data. Then we check if we get an event as expected.
