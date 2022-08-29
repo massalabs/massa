@@ -27,7 +27,7 @@ use std::{
 };
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
-use tracing::{debug, trace, warn};
+use tracing::{debug, trace, warn, info};
 
 /// Real job is done by network worker
 pub struct NetworkWorker {
@@ -241,6 +241,7 @@ impl NetworkWorker {
                     if let Some((connection_id, _)) = self
                         .active_nodes
                         .remove(&node_id) {
+                        info!("AURELIEN:1 node {} closed, reason: {:?}", node_id, reason);
                         massa_trace!("protocol channel closed", {"node_id": node_id});
                         self.connection_closed(connection_id, reason).await?;
                     }
