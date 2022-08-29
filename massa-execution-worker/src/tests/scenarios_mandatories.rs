@@ -266,8 +266,8 @@ fn send_and_receive_async_message() {
         start_selector_worker(SelectorConfig::default()).unwrap();
     let (mut manager, controller) =
         start_execution_worker(exec_cfg, sample_state, selector_controller);
-    // get random keypair
-    let (_, keypair) = get_random_address_full();
+    // keypair associated to thread 0
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load send_message bytecode you can check the source code of the
     // following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/send_message.wasm");
@@ -406,8 +406,8 @@ fn create_execute_sc_operation(
 ) -> Result<WrappedOperation, ExecutionError> {
     let op = OperationType::ExecuteSC {
         data: data.to_vec(),
-        max_gas: u64::MAX,
-        coins: Amount::from_raw(u64::MAX),
+        max_gas: 100_000,
+        coins: Amount::from_raw(200_000),
         gas_price: Amount::from_mantissa_scale(1, 0),
     };
     let op = Operation::new_wrapped(
