@@ -25,7 +25,7 @@ impl Default for ExecutionConfig {
             // reset genesis timestamp because we are in test mode that can take a while to process
             genesis_timestamp: MassaTime::now(0)
                 .expect("Impossible to reset the timestamp in test"),
-            t0: 10.into(),
+            t0: 64.into(),
             stats_time_window_duration: MassaTime::from_millis(30000),
             max_miss_ratio: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
