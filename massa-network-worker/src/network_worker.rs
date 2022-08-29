@@ -27,7 +27,7 @@ use std::{
 };
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
-use tracing::{debug, trace, warn, info};
+use tracing::{debug, info, trace, warn};
 
 /// Real job is done by network worker
 pub struct NetworkWorker {
@@ -733,13 +733,9 @@ impl NetworkWorker {
                             max_parameters_size,
                         ),
                     );
-                    let mut serialized_message = Vec::new();
-                    MessageSerializer::new()
-                        .serialize(&msg, &mut serialized_message)
-                        .unwrap();
                     match tokio::time::timeout(
                         timeout,
-                        futures::future::try_join(writer.send(&serialized_message), reader.next()),
+                        futures::future::try_join(writer.send(&msg), reader.next()),
                     )
                     .await
                     {

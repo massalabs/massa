@@ -130,17 +130,12 @@ impl HandshakeWorker {
         StdRng::from_entropy().fill_bytes(&mut self_random_bytes);
         let self_random_hash = Hash::compute_from(&self_random_bytes);
         // send handshake init future
-        let send_init_msg = Message::HandshakeInitiation {
+        let msg = Message::HandshakeInitiation {
             public_key: self.self_node_id.0,
             random_bytes: self_random_bytes,
             version: self.version,
         };
-        let mut bytes_vec: Vec<u8> = Vec::new();
-        let message_serializer = MessageSerializer::new();
-        message_serializer
-            .serialize(&send_init_msg, &mut bytes_vec)
-            .unwrap();
-        let send_init_fut = self.writer.send(&bytes_vec);
+        let send_init_fut = self.writer.send(&msg);
 
         // receive handshake init future
         let recv_init_fut = self.reader.next();
@@ -181,14 +176,10 @@ impl HandshakeWorker {
         let self_signature = self.keypair.sign(&other_random_hash)?;
 
         // send handshake reply future
-        let send_reply_msg = Message::HandshakeReply {
+        let msg = Message::HandshakeReply {
             signature: self_signature,
         };
-        let mut bytes_vec: Vec<u8> = Vec::new();
-        message_serializer
-            .serialize(&send_reply_msg, &mut bytes_vec)
-            .unwrap();
-        let send_reply_fut = self.writer.send(&bytes_vec);
+        let send_reply_fut = self.writer.send(&msg);
 
         // receive handshake reply future
         let recv_reply_fut = self.reader.next();
