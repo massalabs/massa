@@ -432,7 +432,7 @@ impl SpeculativeRollState {
             }
         }
 
-        (accumulated_stats, underflow || overflow)
+        (accumulated_stats, !underflow && !overflow)
     }
 
     /// Get the deferred credits of `slot`.
