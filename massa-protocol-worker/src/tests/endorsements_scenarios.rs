@@ -147,7 +147,6 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
             storage.store_endorsements(vec![endorsement]);
             protocol_command_sender
                 .propagate_endorsements(storage)
-                .await
                 .unwrap();
 
             loop {
@@ -222,7 +221,6 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             storage.store_endorsements(vec![endorsement]);
             protocol_command_sender
                 .propagate_endorsements(storage)
-                .await
                 .unwrap();
 
             loop {
@@ -301,7 +299,6 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             storage.store_endorsements(vec![endorsement]);
             protocol_command_sender
                 .propagate_endorsements(storage)
-                .await
                 .unwrap();
 
             match network_controller
@@ -378,7 +375,6 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             storage.store_endorsements(vec![endorsement]);
             protocol_command_sender
                 .propagate_endorsements(storage)
-                .await
                 .unwrap();
 
             match network_controller
@@ -463,7 +459,6 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             storage.store_endorsements(vec![endorsement]);
             protocol_command_sender
                 .propagate_endorsements(storage)
-                .await
                 .unwrap();
 
             match network_controller
