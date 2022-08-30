@@ -273,8 +273,6 @@ impl ProtocolWorker {
         });
 
         // Check operation_list against expected operations hash from header.
-        info!("AURELIEN: Merkle root1: {:#?}", info.header.content.operation_merkle_root);
-        info!("AURELIEN: Merkle root2: {:#?}", Hash::compute_from(&total_hash));
         if info.header.content.operation_merkle_root == Hash::compute_from(&total_hash) {
             // Add the ops of info.
             info.operations = Some(operation_ids.clone());
