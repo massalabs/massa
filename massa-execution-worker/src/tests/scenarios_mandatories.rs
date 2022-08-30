@@ -63,6 +63,7 @@ fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir
     let mut final_state =
         FinalState::new(cfg, Box::new(ledger), selector_controller.clone()).unwrap();
     final_state.compute_initial_draws().unwrap();
+    final_state.pos_state.create_initial_cycle();
     Ok((Arc::new(RwLock::new(final_state)), tempfile, tempdir))
 }
 
@@ -388,7 +389,7 @@ pub fn roll_buy() {
     controller.update_blockclique_status(finalized_blocks, Default::default());
     std::thread::sleep(Duration::from_millis(10));
     // check roll count of the buyer address
-    assert_eq!(sample_state.read().pos_state.get_rolls_for(&address), 10);
+    assert_eq!(sample_state.read().pos_state.get_rolls_for(&address), 110);
     // stop the execution controller
     manager.stop();
 }
