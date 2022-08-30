@@ -33,7 +33,6 @@ use std::hash::Hash;
 use std::{collections::hash_map, sync::Arc};
 
 /// A storage system for objects (blocks, operations...), shared by various components.
-#[derive(Default)]
 pub struct Storage {
     /// global block storage
     blocks: Arc<RwLock<BlockIndexes>>,
@@ -94,6 +93,24 @@ impl Clone for Storage {
 }
 
 impl Storage {
+    /// Creates a new `Storage` instance. Must be called only one time in the execution:
+    /// - In the main for the node
+    /// - At the top of the test in tests
+    /// All others instances of Storage mush cloned from this one suing `clone()` or `clone_without_refs()`.
+    pub fn create_root() -> Storage {
+        Storage {
+            blocks: Default::default(),
+            operations: Default::default(),
+            endorsements: Default::default(),
+            block_owners: Default::default(),
+            operation_owners: Default::default(),
+            endorsement_owners: Default::default(),
+            local_used_blocks: Default::default(),
+            local_used_ops: Default::default(),
+            local_used_endorsements: Default::default(),
+        }
+    }
+
     /// Clones the object to a new one that has no references
     pub fn clone_without_refs(&self) -> Self {
         Self {

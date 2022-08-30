@@ -31,7 +31,7 @@ async fn test_unsorted_block() {
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
 
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
 
     consensus_without_pool_test(
         cfg.clone(),
@@ -186,7 +186,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
 
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
 
     consensus_without_pool_test(
         cfg.clone(),
@@ -306,7 +306,7 @@ async fn test_too_many_blocks_in_the_future() {
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
 
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
 
     consensus_without_pool_test(
         cfg.clone(),
@@ -419,7 +419,7 @@ async fn test_dep_in_back_order() {
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
 
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
     consensus_without_pool_test(
         cfg.clone(),
         async move |mut protocol_controller,
@@ -611,7 +611,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
     tokio::time::sleep(Duration::from_millis(1000)).await;
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
 
     consensus_without_pool_test(
         cfg.clone(),
@@ -763,7 +763,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
         t0: 1000.into(),
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
 
     consensus_without_pool_test(
         cfg.clone(),

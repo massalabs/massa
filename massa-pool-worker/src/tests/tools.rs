@@ -68,7 +68,7 @@ where
     F: FnOnce(OperationPool, Storage),
 {
     let (execution_controller, _) = MockExecutionController::new_with_receiver();
-    let storage = Storage::default();
+    let storage = Storage::create_root();
     test(
         OperationPool::init(cfg, &storage.clone_without_refs(), execution_controller),
         storage,

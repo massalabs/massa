@@ -75,7 +75,7 @@ async fn test_block_not_processed_multiple_times() {
         future_block_processing_max_periods: 50,
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
 
     tools::consensus_without_pool_test(
         cfg.clone(),
@@ -200,7 +200,7 @@ async fn test_double_staking_does_not_propagate() {
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
 
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
 
     tools::consensus_without_pool_test(
         cfg.clone(),

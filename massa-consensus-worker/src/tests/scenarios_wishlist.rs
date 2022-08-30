@@ -77,7 +77,7 @@ async fn test_wishlist_delta_remove() {
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
 
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
 
     consensus_without_pool_test(
         cfg.clone(),

@@ -75,7 +75,7 @@ impl BlockFactory {
         )
         .unwrap();
 
-        let mut storage = Storage::default();
+        let mut storage = Storage::create_root();
         let id = block.id;
         let slot = block.content.header.content.slot;
         storage.store_block(block.clone());

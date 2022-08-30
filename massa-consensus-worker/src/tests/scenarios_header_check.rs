@@ -65,7 +65,7 @@ async fn test_consensus_does_not_ask_for_block() {
         future_block_processing_max_periods: 50,
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
 
     consensus_without_pool_test(
         cfg.clone(),

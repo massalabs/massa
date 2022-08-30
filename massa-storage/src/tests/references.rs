@@ -5,7 +5,7 @@ use massa_signature::KeyPair;
 
 #[test]
 fn test_clone() {
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
     let slot = Slot::new(0, 0);
     let block = create_empty_block(&KeyPair::generate(), &slot);
 
@@ -18,7 +18,7 @@ fn test_clone() {
 
 #[test]
 fn test_clone_without_ref() {
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
     let slot = Slot::new(0, 0);
     let block = create_empty_block(&KeyPair::generate(), &slot);
 
@@ -30,7 +30,7 @@ fn test_clone_without_ref() {
 
 #[test]
 fn test_retrieve_all_ref_dropped() {
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
     let slot = Slot::new(0, 0);
     let block = create_empty_block(&KeyPair::generate(), &slot);
 
@@ -55,7 +55,7 @@ fn test_retrieve_all_ref_dropped() {
 
 #[test]
 fn test_retrieve_all_ref_dropped_automatically() {
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
     let slot = Slot::new(0, 0);
     let block = create_empty_block(&KeyPair::generate(), &slot);
 

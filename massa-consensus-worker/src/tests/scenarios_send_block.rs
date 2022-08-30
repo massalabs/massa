@@ -19,7 +19,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
         future_block_processing_max_periods: 50,
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
 
     consensus_without_pool_test(
         cfg.clone(),

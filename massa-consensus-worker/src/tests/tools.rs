@@ -267,7 +267,7 @@ pub async fn create_and_test_block(
     let block = create_block(cfg, slot, best_parents, creator);
     let block_id = block.id;
     let slot = block.content.header.content.slot;
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
     if trace {
         info!("create block:{}", block.id);
     }

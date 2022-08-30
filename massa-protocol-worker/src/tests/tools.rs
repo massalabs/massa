@@ -41,7 +41,7 @@ where
         network_command_sender,
         network_event_receiver,
         pool_controller,
-        Storage::default(),
+        Storage::create_root(),
     )
     .await
     .expect("could not start protocol controller");
@@ -90,7 +90,7 @@ where
     let (network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
     let (pool_controller, mock_pool_receiver) = MockPoolController::new_with_receiver();
-    let storage = Storage::default();
+    let storage = Storage::create_root();
     // start protocol controller
     let (protocol_command_sender, protocol_event_receiver, protocol_manager) =
         start_protocol_controller(
