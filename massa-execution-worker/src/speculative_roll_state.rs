@@ -10,7 +10,6 @@ use massa_models::{
 use massa_pos_exports::{PoSChanges, ProductionStats};
 use num::rational::Ratio;
 use parking_lot::RwLock;
-use std::collections::hash_map::Entry::Occupied;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
@@ -214,11 +213,22 @@ impl SpeculativeRollState {
 
         for (addr, stats) in production_stats {
             if !stats.is_satisfying(&max_miss_ratio) {
-                if let Occupied(mut entry) = self.added_changes.roll_changes.entry(addr) {
-                    if let Some(amount) = roll_price.checked_mul_u64(*entry.get()) {
-                        credits.insert(addr, amount);
-                    }
-                    *entry.get_mut() = 0;
+                let roll_count = self
+                    .added_changes
+                    .roll_changes
+                    .entry(addr)
+                    .or_insert_with(|| {
+                        self.active_history
+                            .read()
+                            .fetch_roll_count(&addr)
+                            .unwrap_or_else(|| {
+                                self.final_state.read().pos_state.get_rolls_for(&addr)
+                            })
+                    });
+                if let Some(amount) = roll_price.checked_mul_u64(*roll_count) {
+                    // dbg!(&target_slot, &addr, &roll_count, &amount);
+                    credits.insert(addr, amount);
+                    *roll_count = 0;
                 }
             }
         }
