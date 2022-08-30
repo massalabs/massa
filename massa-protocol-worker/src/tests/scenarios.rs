@@ -281,9 +281,9 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
                     })
                     .await
                 {
-                    Some(NetworkCommand::SendBlockHeader { node, block_id }) => {
+                    Some(NetworkCommand::SendBlockHeader { node, header }) => {
                         assert!(expected_headers.remove(&node));
-                        assert_eq!(block_id, ref_hash);
+                        assert_eq!(header.id, ref_hash);
                     }
                     _ => panic!("Unexpected or no network command."),
                 };

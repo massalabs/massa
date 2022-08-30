@@ -585,13 +585,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
                     assert!(op_refs.contains(&expected_id));
                     assert_eq!(op_refs.len(), 1);
                     let ops_reader = operations.read_operations();
-                    assert_eq!(
-                        expected_id,
-                        ops_reader
-                            .get(&expected_id)
-                            .unwrap()
-                            .id;
-                    );
+                    assert_eq!(expected_id, ops_reader.get(&expected_id).unwrap().id);
                 }
                 Some(_) => panic!("Unexpected protocol pool event."),
             }
