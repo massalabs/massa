@@ -1,7 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::tools::protocol_test;
+use massa_hash::Hash;
+use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
+use massa_models::wrapped::Id;
 use massa_models::{block::BlockId, slot::Slot};
 use massa_network_exports::{BlockInfoReply, NetworkCommand};
 use massa_pool_exports::test_exports::MockPoolControllerMessage;
@@ -31,8 +34,8 @@ async fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
             // 1. Create a block coming from one node.
             let mut block = tools::create_block(&creator_node.keypair);
 
-            // 2. Change the slot.
-            block.content.header.content.slot = Slot::new(1, 1);
+            // 2. Change the id.
+            block.content.header.id = BlockId::new(Hash::compute_from(&"invalid".as_bytes()));
 
             // 3. Send header to protocol.
             network_controller
@@ -86,8 +89,8 @@ async fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
             let mut operation =
                 tools::create_operation_with_expire_period(&creator_node.keypair, 1);
 
-            // 2. Change the validity period.
-            operation.content.expire_period += 10;
+            // 2. Change the id
+            operation.id = OperationId::new(Hash::compute_from(&"invalid".as_bytes()));
 
             // 3. Send block to protocol.
             network_controller
@@ -266,7 +269,7 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
             // New keypair to avoid getting same block id
             let keypair = KeyPair::generate();
             let mut block = tools::create_block(&keypair);
-            block.content.header.content.slot = Slot::new(1, 1);
+            block.content.header.id = BlockId::new(Hash::compute_from(&"invalid".as_bytes()));
             network_controller
                 .send_header(creator_node.id, block.content.header)
                 .await;
@@ -333,7 +336,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
 
             // 3. Get one node banned.
             let mut bad_block = tools::create_block(&nodes[1].keypair);
-            bad_block.content.header.content.slot = Slot::new(1, 1);
+            bad_block.content.header.id = BlockId::new(Hash::compute_from(&"invalid".as_bytes()));
             network_controller
                 .send_header(nodes[1].id, bad_block.content.header.clone())
                 .await;
@@ -514,7 +517,7 @@ async fn test_protocol_removes_banned_node_on_disconnection() {
 
             // Get the node banned.
             let mut block = tools::create_block(&creator_node.keypair);
-            block.content.header.content.slot = Slot::new(1, 1);
+            block.content.header.id = BlockId::new(Hash::compute_from(&"invalid".as_bytes()));
             network_controller
                 .send_header(creator_node.id, block.content.header)
                 .await;
