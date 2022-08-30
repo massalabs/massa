@@ -87,7 +87,7 @@ async fn launch(
     }
 
     // Storage shared by multiple components.
-    let shared_storage: Storage = Default::default();
+    let shared_storage: Storage = Storage::create_root();
 
     // init final state
     let ledger_config = LedgerConfig {

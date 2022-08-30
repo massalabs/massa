@@ -55,7 +55,7 @@ impl TestFactory {
         let (consensus_controller, consensus_command_sender, _consensus_event_receiver) =
             MockConsensusController::new_with_receiver();
         let (pool_controller, pool_receiver) = MockPoolController::new_with_receiver();
-        let mut storage = Storage::default();
+        let mut storage = Storage::create_root();
         let mut factory_config = FactoryConfig::default();
         let (_protocol_controller, protocol_command_sender, _protocol_event_receiver) =
             MockProtocolController::new();
@@ -174,7 +174,7 @@ impl TestFactory {
                         response_tx.send((ids, self.storage.clone())).unwrap();
                         Some(())
                     } else {
-                        response_tx.send((vec![], Storage::default())).unwrap();
+                        response_tx.send((vec![], Storage::create_root())).unwrap();
                         Some(())
                     }
                 }
@@ -195,7 +195,7 @@ impl TestFactory {
                         response_tx.send((ids, storage.clone())).unwrap();
                         Some(())
                     } else {
-                        response_tx.send((vec![], Storage::default())).unwrap();
+                        response_tx.send((vec![], Storage::create_root())).unwrap();
                         Some(())
                     }
                 }

@@ -154,7 +154,7 @@ fn test_nested_call_gas_usage() {
     // get a sample final state
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
     // init the storage
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
     // start the execution worker
     let (_selector_manager, selector_controller) =
         start_selector_worker(SelectorConfig::default()).unwrap();
@@ -202,7 +202,7 @@ fn test_nested_call_gas_usage() {
     )
     .unwrap();
     // Init new storage for this block
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(vec![operation], Slot::new(1, 1)).unwrap();
     // store the block in storage
@@ -260,7 +260,7 @@ fn send_and_receive_async_message() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
 
     // init the storage
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
     // start the execution worker
     let (_selector_manager, selector_controller) =
         start_selector_worker(SelectorConfig::default()).unwrap();

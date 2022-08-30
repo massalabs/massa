@@ -48,7 +48,7 @@ async fn test_endorsement_check() {
         generate_default_roll_counts_file(vec![keypair_1.clone(), keypair_2.clone()]);
     cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
 
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
     consensus_without_pool_test(
         cfg.clone(),
         async move |mut protocol_controller,

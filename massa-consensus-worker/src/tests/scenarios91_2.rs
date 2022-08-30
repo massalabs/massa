@@ -270,7 +270,7 @@ async fn test_double_staking() {
             .saturating_sub(MassaTime::from_millis(32000).checked_mul(1000).unwrap()),
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
 
     consensus_without_pool_test(
         cfg.clone(),

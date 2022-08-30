@@ -5,7 +5,7 @@ use massa_signature::KeyPair;
 
 #[test]
 fn test_block_index_slot() {
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
     let slot = Slot::new(0, 0);
     let block = create_empty_block(&KeyPair::generate(), &slot);
 
@@ -18,7 +18,7 @@ fn test_block_index_slot() {
 
 #[test]
 fn test_block_index_by_creator() {
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
     let slot = Slot::new(0, 0);
     let keypair = KeyPair::generate();
     let block = create_empty_block(&keypair, &slot);
@@ -34,7 +34,7 @@ fn test_block_index_by_creator() {
 
 #[test]
 fn test_block_fail_find() {
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
     let slot = Slot::new(0, 0);
     let keypair = KeyPair::generate();
     let keypair2 = KeyPair::generate();

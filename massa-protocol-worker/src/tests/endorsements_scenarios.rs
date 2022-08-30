@@ -148,7 +148,7 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
 
             let mut sender = protocol_command_sender.clone();
             thread::spawn(move || {
-                let mut storage = Storage::default();
+                let mut storage = Storage::create_root();
                 storage.store_endorsements(vec![endorsement]);
                 sender.propagate_endorsements(storage).unwrap();
             });
@@ -223,7 +223,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // it should propagate it to nodes that don't know about it
             let mut sender = protocol_command_sender.clone();
             thread::spawn(move || {
-                let mut storage = Storage::default();
+                let mut storage = Storage::create_root();
                 storage.store_endorsements(vec![endorsement]);
                 sender.propagate_endorsements(storage).unwrap();
             });
@@ -303,7 +303,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // because of the previously received header.
             let mut sender = protocol_command_sender.clone();
             thread::spawn(move || {
-                let mut storage = Storage::default();
+                let mut storage = Storage::create_root();
                 storage.store_endorsements(vec![endorsement]);
                 sender.propagate_endorsements(storage).unwrap();
             });
@@ -381,7 +381,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // because of the previously integrated block.
             let mut sender = protocol_command_sender.clone();
             thread::spawn(move || {
-                let mut storage = Storage::default();
+                let mut storage = Storage::create_root();
                 storage.store_endorsements(vec![endorsement]);
                 sender.propagate_endorsements(storage).unwrap();
             });
@@ -466,7 +466,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // because of the previously received header.
             let mut sender = protocol_command_sender.clone();
             thread::spawn(move || {
-                let mut storage = Storage::default();
+                let mut storage = Storage::create_root();
                 storage.store_endorsements(vec![endorsement]);
                 sender.propagate_endorsements(storage).unwrap();
             });
