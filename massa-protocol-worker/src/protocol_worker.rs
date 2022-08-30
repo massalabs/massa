@@ -318,11 +318,7 @@ impl ProtocolWorker {
                     "protocol.protocol_worker.process_command.integrated_block.begin",
                     { "block_id": block_id }
                 );
-                {
-                    let integrated_blocks = storage.read_blocks();
-                    self.storage
-                        .store_block(integrated_blocks.get(&block_id).unwrap().clone());
-                }
+                self.storage.extend(storage);
                 let header = {
                     let blocks = self.storage.read_blocks();
                     blocks

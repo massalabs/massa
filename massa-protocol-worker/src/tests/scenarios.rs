@@ -2,7 +2,7 @@
 
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
-use super::tools::protocol_test;
+use super::tools::{protocol_test, protocol_test_with_storage};
 use massa_models::block::BlockId;
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_network_exports::NetworkCommand;
@@ -11,7 +11,6 @@ use massa_protocol_exports::{
     tests::tools::{create_and_connect_nodes, create_block, wait_protocol_event},
     BlocksResults, ProtocolEvent,
 };
-use massa_storage::Storage;
 use serial_test::serial;
 use std::collections::HashSet;
 
@@ -114,13 +113,14 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
 #[serial]
 async fn test_protocol_sends_blocks_when_asked_for() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
-    protocol_test(
+    protocol_test_with_storage(
         protocol_config,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
-                    protocol_pool_event_receiver| {
+                    protocol_pool_event_receiver,
+                    mut storage| {
             let send_block_info_cmd_filter = |cmd| match cmd {
                 cmd @ NetworkCommand::SendBlockInfo { .. } => Some(cmd),
                 _ => None,
@@ -138,7 +138,6 @@ async fn test_protocol_sends_blocks_when_asked_for() {
             let expected_hash = block.id;
 
             // Add to storage, integrate.
-            let mut storage = Storage::default();
             storage.store_block(block.clone());
             protocol_command_sender
                 .integrated_block(expected_hash, storage.clone())
@@ -199,16 +198,16 @@ async fn test_protocol_sends_blocks_when_asked_for() {
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header_to_others() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
-    protocol_test(
+    protocol_test_with_storage(
         protocol_config,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
-                    protocol_pool_event_receiver| {
+                    protocol_pool_event_receiver,
+                    mut storage| {
             // Create 4 nodes.
             let nodes = create_and_connect_nodes(4, &mut network_controller).await;
             let (node_a, node_b, node_c, node_d) = (
@@ -252,8 +251,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
                 .send_ask_for_block(node_b.id, vec![(ref_hash, Default::default())])
                 .await;
 
-            // TODO: Add block in storage
-            let storage = Storage::default();
+            storage.store_block(ref_block.clone());
             // 5. Propagate header.
             let _op_ids = ref_block.content.operations.clone();
             protocol_command_sender
@@ -263,14 +261,12 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
 
             // 6. Check that protocol propagates the header to the right nodes.
             // node_a created the block and should receive nothing
-            // node_b asked for the block and should receive the full block
+            // node_b asked for the block and should also receive the header
             // node_c did nothing, it should receive the header
             // node_d was disconnected, so nothing should be send to it
             let mut expected_headers = HashSet::new();
             expected_headers.insert(node_c.id);
-
-            let mut expected_full_blocks = HashSet::new();
-            expected_full_blocks.insert(node_b.id);
+            expected_headers.insert(node_b.id);
 
             loop {
                 // TODO: rewrite with block info.
@@ -285,10 +281,10 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
                         assert!(expected_headers.remove(&node));
                         assert_eq!(header.id, ref_hash);
                     }
-                    _ => panic!("Unexpected or no network command."),
+                    _ => panic!("Unexpected or network command."),
                 };
 
-                if expected_headers.is_empty() && expected_full_blocks.is_empty() {
+                if expected_headers.is_empty() {
                     break;
                 }
             }
