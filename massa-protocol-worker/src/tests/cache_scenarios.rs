@@ -49,7 +49,7 @@ async fn test_noting_block_does_not_panic_with_zero_max_node_known_blocks_size()
 
             // Add block to storage.
             storage.store_block(block.clone());
-            
+
             // Add Operation to storage.
             storage.store_operations(vec![operation.clone()]);
 

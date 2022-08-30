@@ -6,7 +6,7 @@ use crate::error::ProtocolError;
 use massa_logging::massa_trace;
 
 use massa_models::{
-    block::{BlockId, WrappedHeader},
+    block::{BlockHeader, BlockId, WrappedHeader},
     endorsement::EndorsementId,
     operation::OperationId,
 };
@@ -56,7 +56,7 @@ pub type BlocksResults =
 #[derive(Debug)]
 pub enum ProtocolCommand {
     /// Notify block integration of a given block.
-    IntegratedBlock {
+    PropagateBlock {
         /// block id
         block_id: BlockId,
         /// block storage
@@ -64,11 +64,11 @@ pub enum ProtocolCommand {
     },
     /// A block, or it's header, amounted to an attempted attack.
     AttackBlockDetected(BlockId),
-    /// Wish list delta
-    WishlistDelta {
-        /// add to wish list
-        new: PreHashSet<BlockId>,
-        /// remove from wish list
+    /// List of blocks to add/remove to retrieval list
+    BlockWishListDelta {
+        /// list of blocks to add to wishlist (with header if available)
+        add: PreHashMap<BlockId, Option<WrappedHeader>>,
+        /// list of blocks to remove from wishlist
         remove: PreHashSet<BlockId>,
     },
     /// Propagate operations (send batches)
@@ -102,7 +102,7 @@ impl ProtocolCommandSender {
             "block_id": block_id
         });
         self.0
-            .send(ProtocolCommand::IntegratedBlock { block_id, storage })
+            .send(ProtocolCommand::PropagateBlock { block_id, storage })
             .await
             .map_err(|_| ProtocolError::ChannelError("block_integrated command send error".into()))
     }
@@ -123,12 +123,12 @@ impl ProtocolCommandSender {
     /// update the block wish list
     pub async fn send_wishlist_delta(
         &mut self,
-        new: PreHashSet<BlockId>,
+        add: PreHashMap<BlockId, Option<WrappedHeader>>,
         remove: PreHashSet<BlockId>,
     ) -> Result<(), ProtocolError> {
-        massa_trace!("protocol.command_sender.send_wishlist_delta", { "new": new, "remove": remove });
+        massa_trace!("protocol.command_sender.send_wishlist_delta", { "add": add, "remove": remove });
         self.0
-            .send(ProtocolCommand::WishlistDelta { new, remove })
+            .send(ProtocolCommand::BlockWishListDelta { add, remove })
             .await
             .map_err(|_| {
                 ProtocolError::ChannelError("send_wishlist_delta command send error".into())

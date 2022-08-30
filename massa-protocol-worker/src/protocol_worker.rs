@@ -1,10 +1,12 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::checked_operations::CheckedOperations;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 
 use massa_logging::massa_trace;
 
+use massa_models::block::Block;
+use massa_models::cache::{HashCacheMap, HashCacheSet};
+use massa_models::endorsement::Endorsement;
 use massa_models::{
     block::{BlockId, WrappedHeader},
     endorsement::{EndorsementId, WrappedEndorsement},
@@ -22,15 +24,13 @@ use massa_protocol_exports::{
 
 use massa_storage::Storage;
 use massa_time::TimeError;
-use std::collections::{HashMap, HashSet};
+use std::collections::{hash_map, HashMap, HashSet};
 use tokio::{
     sync::mpsc,
     sync::mpsc::error::SendTimeoutError,
     time::{sleep, sleep_until, Instant, Sleep},
 };
 use tracing::{debug, error, info, warn};
-
-// TODO connect protocol to pool so that it sends ops and endorsements
 
 /// start a new `ProtocolController` from a `ProtocolConfig`
 /// - generate keypair
@@ -98,37 +98,38 @@ pub async fn start_protocol_controller(
     ))
 }
 
-/// Info about a block we've seen
-#[derive(Debug, Clone)]
-pub(crate) struct BlockInfo {
-    /// Endorsements contained in the block header.
-    pub(crate) endorsements: PreHashMap<EndorsementId, u32>,
-    /// Operations contained in the block,
-    /// if we've received them already, and none otherwise.
-    pub(crate) operations: Option<Vec<OperationId>>,
-    /// The header of the block.
-    pub(crate) header: WrappedHeader,
-    /// Full operations size in bytes
-    pub(crate) operations_size: usize,
-}
-
-impl BlockInfo {
-    fn new(endorsements: PreHashMap<EndorsementId, u32>, header: WrappedHeader) -> Self {
-        BlockInfo {
-            endorsements,
-            operations: None,
-            header,
-            operations_size: 0,
-        }
-    }
+/// An enum determining the status of block retrieval
+enum BlockRetrievalStatus {
+    /// Operation list being queried
+    QueryingOpList {
+        /// block header
+        header: WrappedHeader,
+        /// node being queried
+        queried_node: NodeId,
+        /// timestamp of the query
+        timestamp: Instant,
+    },
+    /// Operation list being queried
+    QueryingOperations {
+        /// block header
+        header: WrappedHeader,
+        /// ordered operation list
+        operation_ids: Vec<OperationId>,
+        /// storage with referencing endorsements and already-available operations
+        block_storage: Storage,
+        /// node being queried
+        queried_node: NodeId,
+        /// timestamp of the query
+        timestamp: Instant,
+    },
 }
 
 /// protocol worker
 pub struct ProtocolWorker {
     /// Protocol configuration.
-    pub(crate) config: ProtocolConfig,
+    config: ProtocolConfig,
     /// Associated network command sender.
-    pub(crate) network_command_sender: NetworkCommandSender,
+    network_command_sender: NetworkCommandSender,
     /// Associated network event receiver.
     network_event_receiver: NetworkEventReceiver,
     /// Channel to send protocol events to the controller.
@@ -139,23 +140,31 @@ pub struct ProtocolWorker {
     controller_command_rx: mpsc::Receiver<ProtocolCommand>,
     /// Channel to send management commands to the controller.
     controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
-    /// Ids of active nodes mapped to node info.
-    pub(crate) active_nodes: HashMap<NodeId, NodeInfo>,
-    /// List of wanted blocks,
-    /// with the info representing their state withint the as_block workflow.
-    pub(crate) block_wishlist: PreHashMap<BlockId, (AskForBlocksInfo, Option<Storage>)>,
-    /// List of processed endorsements
-    checked_endorsements: PreHashSet<EndorsementId>,
-    /// List of processed operations
-    pub(crate) checked_operations: CheckedOperations,
-    /// List of processed headers
-    pub(crate) checked_headers: PreHashMap<BlockId, BlockInfo>,
-    /// List of ids of operations that we asked to the nodes
-    pub(crate) asked_operations: HashMap<OperationPrefixId, (Instant, Vec<NodeId>)>,
-    /// Buffer for operations that we want later
-    pub(crate) op_batch_buffer: OperationBatchBuffer,
     /// Shared storage.
-    pub(crate) storage: Storage,
+    storage: Storage,
+
+    /// Ids of active nodes mapped to node info.
+    active_nodes: HashMap<NodeId, NodeInfo>,
+
+    /// Cache of retrieved endorsements
+    retrieved_endorsements_cache: HashCacheSet<BlockId>,
+
+    /// List of blocks required for retrieval (must keep retrying)
+    block_wishlist: PreHashMap<BlockId, Option<WrappedHeader>>,
+    /// List of wanted blocks and their retrieval status
+    block_retrieval: PreHashMap<BlockId, BlockRetrievalStatus>,
+    /// Cache of retrieved blocks (mapped to the list od endorsements/operations in the block)
+    retrieved_blocks_cache:
+        HashCacheMap<BlockId, (PreHashSet<EndorsementId>, PreHashSet<OperationId>)>,
+
+    /// Cache of retrieved operations
+    retrieved_ops_cache: HashCacheSet<OperationId>,
+    /// Cache map of operation prefixes
+    operation_prefix_cache: HashCacheMap<OperationPrefixId, OperationId>,
+    /// List of ids of operations that we asked to the nodes
+    asked_operations: HashMap<OperationPrefixId, (Instant, Vec<NodeId>)>,
+    /// Buffer for operations that we want later
+    op_batch_buffer: OperationBatchBuffer,
 }
 
 /// channels used by the protocol worker
@@ -202,10 +211,12 @@ impl ProtocolWorker {
             controller_command_rx,
             controller_manager_rx,
             active_nodes: Default::default(),
+            retrieved_endorsements_cache: HashCacheSet::new(config.max_known_endorsements_size),
+            operation_prefix_cache: HashCacheMap::new(config.max_known_ops_size),
             block_wishlist: Default::default(),
-            checked_endorsements: Default::default(),
-            checked_operations: Default::default(),
-            checked_headers: Default::default(),
+            block_retrieval: Default::default(),
+            retrieved_blocks_cache: HashCacheMap::new(config.max_known_blocks_size),
+            retrieved_ops_cache: HashCacheSet::new(config.max_known_ops_size),
             asked_operations: Default::default(),
             op_batch_buffer: OperationBatchBuffer::with_capacity(
                 config.operation_batch_buffer_capacity,
@@ -214,6 +225,7 @@ impl ProtocolWorker {
         }
     }
 
+    /// Emit an event
     pub(crate) async fn send_protocol_event(&self, event: ProtocolEvent) {
         let result = self
             .controller_event_tx
@@ -244,7 +256,6 @@ impl ProtocolWorker {
     /// Consensus work is managed here.
     /// It's mostly a `tokio::select!` within a loop.
     pub async fn run_loop(mut self) -> Result<NetworkEventReceiver, ProtocolError> {
-        // TODO: Config variable for the moment 10000 (prune) (100 seconds)
         let operation_prune_timer = sleep(self.config.asked_operations_pruning_period.into());
         tokio::pin!(operation_prune_timer);
         let block_ask_timer = sleep(self.config.ask_block_timeout.into());
@@ -307,176 +318,221 @@ impl ProtocolWorker {
         Ok(self.network_event_receiver)
     }
 
+    /// propagate a block
+    async fn propagate_block(
+        &mut self,
+        block_id: &BlockId,
+        storage: Storage,
+    ) -> Result<(), ProtocolError> {
+        massa_trace!(
+            "protocol.protocol_worker.process_command.integrated_block.begin",
+            { "block_id": block_id }
+        );
+
+        // mark that we know the block
+        self.retrieved_blocks_cache.insert(*block_id);
+
+        // retrieve header
+        let header = {
+            let blocks = self.storage.read_blocks();
+            blocks
+                .get(&block_id)
+                .map(|block| block.content.header.clone())
+                .ok_or_else(|| {
+                    ProtocolError::ContainerInconsistencyError(format!(
+                        "header of id {} not found.",
+                        block_id
+                    ))
+                })?
+        };
+
+        // Note that we drop the storage here for simplicity for now, and just not send things we don't have.
+        // In the future we could keep it during the whole propagation process to ensure we have everything in store.
+
+        for (node_id, node_info) in self.active_nodes.iter_mut() {
+            if node_info.known_blocks.contains(block_id) {
+                // this node already knows about that block
+                continue;
+            }
+            massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "node": node_id, "block_id": block_id});
+            // announce header to that node
+            self.network_command_sender
+                .send_block_header(*node_id, header.clone())
+                .await
+                .map_err(|_| {
+                    ProtocolError::ChannelError(
+                        "send block header network command send failed".into(),
+                    )
+                })?;
+        }
+        massa_trace!(
+            "protocol.protocol_worker.process_command.integrated_block.end",
+            {}
+        );
+
+        Ok(())
+    }
+
+    /// ban all nodes that have an attack block
+    async fn ban_nodes_having_block(&mut self, block_id: &BlockId) -> Result<(), ProtocolError> {
+        massa_trace!(
+            "protocol.protocol_worker.process_command.attack_block_detected.begin",
+            { "block_id": block_id }
+        );
+        let to_ban: Vec<NodeId> = self
+            .active_nodes
+            .iter()
+            .filter(|(_, info)| info.known_blocks.contains(block_id))
+            .map(|(id, _)| *id)
+            .collect();
+        for id in to_ban {
+            massa_trace!("protocol.protocol_worker.process_command.attack_block_detected.ban_node", { "node": id, "block_id": block_id });
+            self.ban_node(&id).await?;
+        }
+        massa_trace!(
+            "protocol.protocol_worker.process_command.attack_block_detected.end",
+            {}
+        );
+        Ok(())
+    }
+
+    /// Propagate operations to nodes that don't already have them
+    async fn propagate_ops(&mut self, storage: Storage) -> Resutl<(), ProtocolError> {
+        let operation_ids = storage.get_op_refs();
+        massa_trace!(
+            "protocol.protocol_worker.process_command.propagate_operations.begin",
+            { "operation_ids": operation_ids }
+        );
+
+        // mark us as having those ops
+        operation_ids
+            .iter()
+            .for_each(|id| self.retrieved_ops_cache.insert(*id));
+
+        // For now we drop storage here for simplicity, and simply don't propagate missing ops.
+        // In the future we might keep it until propagation finishes.
+
+        for (node_id, node_info) in self.active_nodes.iter_mut() {
+            // add to node knowledge, list all those the node didn't have
+            let prefixes_to_announce: Vec<_> = operation_ids
+                .iter()
+                .filter(|id| node_info.known_operations.insert(*id))
+                .map(|id| id.into_prefix())
+                .collect();
+            if !prefixes_to_announce.is_empty() {
+                self.network_command_sender
+                    .send_operations_batch(*node_id, prefixes_to_announce)
+                    .await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Propagate endorsments to nodes that don't have it yet
+    async fn propagate_endorsements(&mut self, storage: Storage) -> Result<(), ProtocolError> {
+        let endorsement_ids = storage.get_endorsement_refs();
+        massa_trace!(
+            "protocol.protocol_worker.process_command.propagate_endorsements.begin",
+            { "endorsement_ids": endorsement_ids }
+        );
+
+        // mark us as having those endorsements
+        endorsement_ids
+            .iter()
+            .for_each(|id| self.retrieved_endorsements_cache.insert(*id));
+
+        // For now we drop storage here for simplicity, and simply don't propagate missing endorsements.
+        // In the future we might keep it until propagation finishes.
+
+        for (node_id, node_info) in self.active_nodes.iter_mut() {
+            // add to node knowledge, list all those the node didn't have
+            let endorsements_to_propagate: Vec<_> = {
+                let store = storage.read_endorsements();
+                endorsement_ids
+                    .iter()
+                    .filter(|id| node_info.known_endorsements.insert(*id))
+                    .filter_map(|id| store.get(id))
+                    .cloned()
+                    .collect()
+            };
+            if !endorsements_to_propagate.is_empty() {
+                self.network_command_sender
+                    .send_endorsements(*node_id, endorsements_to_propagate)
+                    .await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// updates block wishlist
+    async fn update_block_wishlist(
+        &mut self,
+        add: PreHashMap<BlockId, Option<WrappedHeader>>,
+        remove: PreHashSet<BlockId>,
+    ) -> Result<(), ProtocolError> {
+        massa_trace!(
+            "protocol.protocol_worker.process_command.retreive_blocks.begin",
+            { "add": add, "remove": remove }
+        );
+
+        // add new entires
+        for (id, opt_header) in add {
+            let cur_entry = self.block_wishlist.entry(key).or_insert(opt_header);
+            if cur_entry.is_none() && opt_header.is_some() {
+                *cur_entry = opt_header;
+            }
+        }
+
+        // remove entries that are not needed anymore
+        remove
+            .into_iter()
+            .for_each(|id| self.block_wishlist.remove(&id));
+
+        // update ask block process
+        self.update_ask_block(timer).await?;
+        massa_trace!(
+            "protocol.protocol_worker.process_command.retreive_blocks.end",
+            {}
+        );
+
+        Ok(())
+    }
+
+    /// process incoming command
     async fn process_command(
         &mut self,
         cmd: ProtocolCommand,
         timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, storage } => {
-                massa_trace!(
-                    "protocol.protocol_worker.process_command.integrated_block.begin",
-                    { "block_id": block_id }
-                );
-                self.storage.extend(storage);
-                let header = {
-                    let blocks = self.storage.read_blocks();
-                    blocks
-                        .get(&block_id)
-                        .map(|block| block.content.header.clone())
-                        .ok_or_else(|| {
-                            ProtocolError::ContainerInconsistencyError(format!(
-                                "header of id {} not found.",
-                                block_id
-                            ))
-                        })?
-                };
-                for (node_id, node_info) in self.active_nodes.iter_mut() {
-                    // node that isn't asking for that block
-                    let cond = node_info.get_known_block(&block_id);
-                    // if we don't know if that node knows that hash or if we know it doesn't
-                    if !cond.map_or_else(|| false, |v| v.0) {
-                        massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "node": node_id, "block_id": block_id});
-                        self.network_command_sender
-                            .send_block_header(*node_id, header.clone())
-                            .await
-                            .map_err(|_| {
-                                ProtocolError::ChannelError(
-                                    "send block header network command send failed".into(),
-                                )
-                            })?;
-                    } else {
-                        massa_trace!("protocol.protocol_worker.process_command.integrated_block.do_not_send", { "node": node_id, "block_id": block_id });
-                    }
-                }
-                massa_trace!(
-                    "protocol.protocol_worker.process_command.integrated_block.end",
-                    {}
-                );
+            ProtocolCommand::PropagateBlock { block_id, storage } => {
+                // Propagate block to all nodes that don't have it
+                self.propagate_block(&block_id, storage).await?;
             }
             ProtocolCommand::AttackBlockDetected(block_id) => {
-                // Ban all the nodes that sent us this object.
-                massa_trace!(
-                    "protocol.protocol_worker.process_command.attack_block_detected.begin",
-                    { "block_id": block_id }
-                );
-                let to_ban: Vec<NodeId> = self
-                    .active_nodes
-                    .iter()
-                    .filter_map(|(id, info)| match info.get_known_block(&block_id) {
-                        Some((true, _)) => Some(*id),
-                        _ => None,
-                    })
-                    .collect();
-                for id in to_ban.iter() {
-                    massa_trace!("protocol.protocol_worker.process_command.attack_block_detected.ban_node", { "node": id, "block_id": block_id });
-                    self.ban_node(id).await?;
-                }
-                massa_trace!(
-                    "protocol.protocol_worker.process_command.attack_block_detected.end",
-                    {}
-                );
+                // Ban all the nodes that have a block.
+                self.ban_nodes_having_block(&block_id).await?;
             }
-            ProtocolCommand::WishlistDelta { new, remove } => {
-                massa_trace!("protocol.protocol_worker.process_command.wishlist_delta.begin", { "new": new, "remove": remove });
-                self.stop_asking_blocks(remove)?;
-                for block in new.into_iter() {
-                    self.block_wishlist
-                        .insert(block, (AskForBlocksInfo::Info, None));
-                }
-                self.update_ask_block(timer).await?;
-                massa_trace!(
-                    "protocol.protocol_worker.process_command.wishlist_delta.end",
-                    {}
-                );
+            ProtocolCommand::BlockWishListDelta { add, remove } => {
+                // update block wishlist
+                self.update_block_wishlist(add, remove).await?;
             }
-            ProtocolCommand::PropagateOperations(operations) => {
-                let operation_ids = operations.get_op_refs().clone();
-                massa_trace!(
-                    "protocol.protocol_worker.process_command.propagate_operations.begin",
-                    { "operation_ids": operation_ids }
-                );
-                self.storage.extend(operations);
-                for id in operation_ids.iter() {
-                    self.checked_operations.insert(id);
-                }
-                for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_ops: PreHashSet<OperationId> = operation_ids
-                        .iter()
-                        .filter(|id| !node_info.knows_op(id))
-                        .copied()
-                        .collect();
-                    node_info.insert_known_ops(
-                        new_ops.iter().cloned().collect(),
-                        self.config.max_node_known_ops_size,
-                    );
-                    if !new_ops.is_empty() {
-                        self.network_command_sender
-                            .send_operations_batch(
-                                *node,
-                                new_ops.iter().map(|id| id.into_prefix()).collect(),
-                            )
-                            .await?;
-                    }
-                }
+            ProtocolCommand::PropagateOperations(storage) => {
+                // propagate ops to nodes that don't have them yet
+                self.propagate_ops(storage).await?;
             }
             ProtocolCommand::PropagateEndorsements(endorsements) => {
-                massa_trace!(
-                    "protocol.protocol_worker.process_command.propagate_endorsements.begin",
-                    { "endorsements": endorsements.get_endorsement_refs() }
-                );
-                for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_endorsements: PreHashMap<EndorsementId, WrappedEndorsement> = {
-                        let endorsements_reader = endorsements.read_endorsements();
-                        endorsements
-                            .get_endorsement_refs()
-                            .iter()
-                            .filter_map(|id| {
-                                if node_info.knows_endorsement(id) {
-                                    return None;
-                                }
-                                Some((*id, endorsements_reader.get(id).cloned().unwrap()))
-                            })
-                            .collect()
-                    };
-                    node_info.insert_known_endorsements(
-                        new_endorsements.keys().copied().collect(),
-                        self.config.max_node_known_endorsements_size,
-                    );
-                    let to_send = new_endorsements
-                        .into_iter()
-                        .map(|(_, op)| op)
-                        .collect::<Vec<_>>();
-                    if !to_send.is_empty() {
-                        self.network_command_sender
-                            .send_endorsements(*node, to_send)
-                            .await?;
-                    }
-                }
+                // propagate endorsements to nodes that don't have them yet
+                self.propagate_endorsements(storage).await?;
             }
         }
         massa_trace!("protocol.protocol_worker.process_command.end", {});
         Ok(())
     }
 
-    /// Remove the given blocks from the local wishlist
-    pub(crate) fn stop_asking_blocks(
-        &mut self,
-        remove_hashes: PreHashSet<BlockId>,
-    ) -> Result<(), ProtocolError> {
-        massa_trace!("protocol.protocol_worker.stop_asking_blocks", {
-            "remove": remove_hashes
-        });
-        for node_info in self.active_nodes.values_mut() {
-            node_info
-                .asked_blocks
-                .retain(|h, _| !remove_hashes.contains(h));
-        }
-        self.block_wishlist
-            .retain(|h, _| !remove_hashes.contains(h));
-        Ok(())
-    }
-
+    /// Update the status of the block retrieval process
     pub(crate) async fn update_ask_block(
         &mut self,
         ask_block_timer: &mut std::pin::Pin<&mut Sleep>,
@@ -490,175 +546,51 @@ impl ProtocolWorker {
             .checked_add(self.config.ask_block_timeout.into())
             .ok_or(TimeError::TimeOverflowError)?;
 
-        // list blocks to re-ask and gather candidate nodes to ask from
-        let mut candidate_nodes: PreHashMap<BlockId, Vec<_>> = Default::default();
-        let mut ask_block_list: HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>> =
-            Default::default();
-
-        // list blocks to re-ask and from whom
-        for (hash, required_info) in self.block_wishlist.iter() {
-            let mut needs_ask = true;
-
-            for (node_id, node_info) in self.active_nodes.iter_mut() {
-                // map to remove the borrow on asked_blocks. Otherwise can't call insert_known_blocks
-                let ask_time_opt = node_info.asked_blocks.get(hash).copied();
-                let (timeout_at_opt, timed_out) = if let Some(ask_time) = ask_time_opt {
-                    let t = ask_time
-                        .checked_add(self.config.ask_block_timeout.into())
-                        .ok_or(TimeError::TimeOverflowError)?;
-                    (Some(t), t <= now)
-                } else {
-                    (None, false)
-                };
-                let knows_block = node_info.get_known_block(hash);
-
-                // check if the node recently told us it doesn't have the block
-                if let Some((false, info_time)) = knows_block {
-                    let info_expires = info_time
-                        .checked_add(self.config.ask_block_timeout.into())
-                        .ok_or(TimeError::TimeOverflowError)?;
-                    if info_expires > now {
-                        next_tick = std::cmp::min(next_tick, info_expires);
-                        continue; // ignore candidate node
+        // check process status and accumulate node load (numbe rof blocks being asked to that node)
+        let mut node_load: HashMap<NodeId, usize> =
+            self.active_nodes.keys().map(|id| (*id, 0)).collect();
+        let block_ids: Vec<_> = self.block_retrieval.keys().copied().collect();
+        for block_id in block_ids {
+            let mut entry = match self.block_retrieval.entry(block_id) {
+                hash_map::Entry::Vacant(_) => continue,
+                hash_map::Entry::Occupied(mut occ) => occ
+            };
+            match entry.get() {
+                /// Operation list being queried
+                QueryingOpList {
+                    queried_node,
+                    timestamp,
+                    ..
+                } => {
+                    // check for timeout or node absence
+                    if now.saturating_duration_since(timestamp) > self.config.ask_block_timeout
+                        || !self.active_nodes.contains_key(queried_node)
+                    {
+                        if let Some(node_info) = self.active_nodes.get_mut(queried_node) {
+                            // mark the node as not having the block
+                            node_info.known_blocks.remove(&block_id);
+                        }
+                        
+                    } else {
+                        // update node load
+                        let load = node_load.get_mut(queried_node).unwrap();
+                        *load = load.saturating_add(1);
                     }
                 }
-
-                let candidate = match (timed_out, timeout_at_opt, knows_block) {
-                    // not asked yet
-                    (_, None, knowledge) => match knowledge {
-                        Some((true, _)) => (0u8, None),
-                        None => (1u8, None),
-                        Some((false, _)) => (2u8, None),
-                    },
-                    // not timed out yet (note: recent DONTHAVBLOCK checked before the match)
-                    (false, Some(timeout_at), _) => {
-                        next_tick = std::cmp::min(next_tick, timeout_at);
-                        needs_ask = false; // no need to re ask
-                        continue; // not a candidate
-                    }
-                    // timed out, supposed to have it
-                    (true, Some(timeout_at), Some((true, info_time))) => {
-                        if info_time < &timeout_at {
-                            // info less recent than timeout: mark as not having it
-                            node_info.insert_known_blocks(
-                                &[*hash],
-                                false,
-                                timeout_at,
-                                self.config.max_node_known_blocks_size,
-                            );
-                            (2u8, ask_time_opt)
-                        } else {
-                            // told us it has it after a timeout: good candidate again
-                            (0u8, ask_time_opt)
-                        }
-                    }
-                    // timed out, supposed to not have it
-                    (true, Some(timeout_at), Some((false, info_time))) => {
-                        if info_time < &timeout_at {
-                            // info less recent than timeout: update info time
-                            node_info.insert_known_blocks(
-                                &[*hash],
-                                false,
-                                timeout_at,
-                                self.config.max_node_known_blocks_size,
-                            );
-                        }
-                        (2u8, ask_time_opt)
-                    }
-                    // timed out but don't know if has it: mark as not having it
-                    (true, Some(timeout_at), None) => {
-                        node_info.insert_known_blocks(
-                            &[*hash],
-                            false,
-                            timeout_at,
-                            self.config.max_node_known_blocks_size,
-                        );
-                        (2u8, ask_time_opt)
-                    }
-                };
-
-                // add candidate node
-                candidate_nodes.entry(*hash).or_insert_with(Vec::new).push((
-                    candidate,
-                    *node_id,
-                    required_info,
-                ));
-            }
-
-            // remove if doesn't need to be asked
-            if !needs_ask {
-                candidate_nodes.remove(hash);
-            }
-        }
-
-        // count active block requests per node
-        let mut active_block_req_count: HashMap<NodeId, usize> = self
-            .active_nodes
-            .iter()
-            .map(|(node_id, node_info)| {
-                (
-                    *node_id,
-                    node_info
-                        .asked_blocks
-                        .iter()
-                        .filter(|(_h, ask_t)| {
-                            ask_t
-                                .checked_add(self.config.ask_block_timeout.into())
-                                .map_or(false, |timeout_t| timeout_t > now)
-                        })
-                        .count(),
-                )
-            })
-            .collect();
-
-        for (hash, criteria) in candidate_nodes.into_iter() {
-            // find the best node
-            if let Some((_knowledge, best_node, required_info)) = criteria
-                .into_iter()
-                .filter(|(_knowledge, node_id, _)| {
-                    // filter out nodes with too many active block requests
-                    *active_block_req_count.get(node_id).unwrap_or(&0)
-                        <= self.config.max_simultaneous_ask_blocks_per_node
-                })
-                .min_by_key(|(knowledge, node_id, _)| {
-                    (
-                        *knowledge,                                                 // block knowledge
-                        *active_block_req_count.get(node_id).unwrap_or(&0), // active requests
-                        self.active_nodes.get(node_id).unwrap().connection_instant, // node age (will not panic, already checked)
-                        *node_id,                                                   // node ID
-                    )
-                })
-            {
-                let info = self.active_nodes.get_mut(&best_node).unwrap(); // will not panic, already checked
-                info.asked_blocks.insert(hash, now);
-                if let Some(cnt) = active_block_req_count.get_mut(&best_node) {
-                    *cnt += 1; // increase the number of actively asked blocks
+                /// Operations being queried
+                BlockRetrievalStatus::QueryingOperations {
+                    header,
+                    operation_ids,
+                    block_storage,
+                    queried_node,
+                    timestamp,
+                } => {
+                    // TODO if timeout or node absent mark node as not knowing it, remove from status
                 }
-
-                ask_block_list
-                    .entry(best_node)
-                    .or_insert_with(Vec::new)
-                    .push((hash, required_info.0.clone()));
-
-                let timeout_at = now
-                    .checked_add(self.config.ask_block_timeout.into())
-                    .ok_or(TimeError::TimeOverflowError)?;
-                next_tick = std::cmp::min(next_tick, timeout_at);
             }
         }
 
-        // send AskBlockEvents
-        if !ask_block_list.is_empty() {
-            //massa_trace!("protocol.protocol_worker.update_ask_block", {
-            //    "list": ask_block_list
-            //});
-            self.network_command_sender
-                .ask_for_block_list(ask_block_list)
-                .await
-                .map_err(|_| {
-                    ProtocolError::ChannelError("ask for block node command send failed".into())
-                })?;
-        }
+        TODO
 
         // reset timer
         ask_block_timer.set(sleep_until(next_tick));
@@ -839,29 +771,6 @@ impl ProtocolWorker {
             return Ok(Some((block_id, endorsement_ids, true)));
         }
         Ok(None)
-    }
-
-    /// Prune `checked_endorsements` if it is too large
-    fn prune_checked_endorsements(&mut self) {
-        if self.checked_endorsements.len() > self.config.max_known_endorsements_size {
-            let ids = self.checked_endorsements.drain();
-            self.storage.drop_endorsement_refs(&ids.collect());
-        }
-    }
-
-    /// Prune `checked_operations` if it has grown too large.
-    fn prune_checked_operations(&mut self) {
-        if self.checked_operations.len() > self.config.max_known_ops_size {
-            let ids = self.checked_operations.clear();
-            self.storage.drop_operation_refs(&ids);
-        }
-    }
-
-    /// Prune `checked_headers` if it is too large
-    fn prune_checked_headers(&mut self) {
-        if self.checked_headers.len() > self.config.max_known_blocks_size {
-            self.checked_headers.clear();
-        }
     }
 
     /// Checks operations, caching knowledge of valid ones.

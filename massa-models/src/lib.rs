@@ -6,6 +6,7 @@
 #![feature(bound_map)]
 #![feature(int_roundings)]
 #![feature(iter_intersperse)]
+#![feature(map_try_insert)]
 
 extern crate lazy_static;
 
@@ -19,6 +20,8 @@ pub mod amount;
 pub mod api;
 /// block-related sturctures
 pub mod block;
+/// ID cache
+pub mod cache;
 /// clique
 pub mod clique;
 /// various structures

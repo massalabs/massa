@@ -82,7 +82,7 @@ pub async fn validate_notpropagate_block(
 ) -> bool {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock {
+            ProtocolCommand::PropagateBlock {
                 block_id,
                 storage: _,
             } => Some(block_id),
@@ -103,7 +103,7 @@ pub async fn validate_notpropagate_block_in_list(
 ) -> bool {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock {
+            ProtocolCommand::PropagateBlock {
                 block_id,
                 storage: _,
             } => Some(block_id),
@@ -123,7 +123,7 @@ pub async fn validate_propagate_block_in_list(
 ) -> BlockId {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock {
+            ProtocolCommand::PropagateBlock {
                 block_id,
                 storage: _,
             } => Some(block_id),
@@ -209,7 +209,7 @@ pub async fn validate_propagate_block(
 ) {
     protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock {
+            ProtocolCommand::PropagateBlock {
                 block_id,
                 storage: _,
             } => {

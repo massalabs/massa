@@ -357,7 +357,7 @@ async fn test_interleaving_block_creation_with_reception() {
                     // wait block propagation
                     let (header, id) = protocol_controller
                         .wait_command(cfg.t0.saturating_add(300.into()), |cmd| match cmd {
-                            ProtocolCommand::IntegratedBlock { block_id, storage } => {
+                            ProtocolCommand::PropagateBlock { block_id, storage } => {
                                 let block = storage
                                     .read_blocks()
                                     .get(&block_id)
