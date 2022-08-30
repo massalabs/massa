@@ -156,16 +156,19 @@ impl SpeculativeRollState {
         slot: Slot,
         block_id: Option<BlockId>,
     ) {
-        if let Some(production_stats) = self.added_changes.production_stats.get_mut(creator) {
-            if let Some(id) = block_id {
-                production_stats.block_success_count =
-                    production_stats.block_success_count.saturating_add(1);
-                self.added_changes.seed_bits.push(id.get_first_bit());
-            } else {
-                production_stats.block_failure_count =
-                    production_stats.block_failure_count.saturating_add(1);
-                self.added_changes.seed_bits.push(slot.get_first_bit());
-            }
+        let production_stats = self
+            .added_changes
+            .production_stats
+            .entry(*creator)
+            .or_default();
+        if let Some(id) = block_id {
+            production_stats.block_success_count =
+                production_stats.block_success_count.saturating_add(1);
+            self.added_changes.seed_bits.push(id.get_first_bit());
+        } else {
+            production_stats.block_failure_count =
+                production_stats.block_failure_count.saturating_add(1);
+            self.added_changes.seed_bits.push(slot.get_first_bit());
         }
     }
 
