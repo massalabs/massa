@@ -298,8 +298,9 @@ pub fn send_and_receive_transaction() {
         sample_state.clone(),
         sample_state.read().pos_state.selector.clone(),
     );
-    // generate the addresses
-    let (_addr, sender_keypair) = get_random_address_full();
+    // generate the sender_keypair and recipient_address
+    let sender_keypair =
+        KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let (recipient_address, _keypair) = get_random_address_full();
     // create the operation
     let operation = Operation::new_wrapped(
@@ -308,7 +309,7 @@ pub fn send_and_receive_transaction() {
             expire_period: 10,
             op: OperationType::Transaction {
                 recipient_address,
-                amount: Amount::from_raw(42),
+                amount: Amount::from_str("100").unwrap(),
             },
         },
         OperationSerializer::new(),
@@ -327,8 +328,16 @@ pub fn send_and_receive_transaction() {
         (block.id, storage.clone()),
     );
     controller.update_blockclique_status(finalized_blocks, Default::default());
-    // TODO: assert here
-
+    std::thread::sleep(Duration::from_millis(10));
+    // check recipient sequential balance
+    assert_eq!(
+        sample_state
+            .read()
+            .ledger
+            .get_sequential_balance(&recipient_address)
+            .unwrap(),
+        Amount::from_str("100").unwrap()
+    );
     // stop the execution controller
     manager.stop();
 }
