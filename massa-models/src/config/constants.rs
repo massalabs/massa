@@ -135,7 +135,7 @@ pub const MAX_ROLLS_UPDATE_LENGTH: u64 = u64::MAX;
 /// Maximum length of rolls_counts in thread cycle
 pub const MAX_ROLLS_COUNTS_LENGTH: u64 = u64::MAX;
 /// max size of all serialized operations in bytes in a block
-pub const MAX_SERIALIZED_OPERATIONS_SIZE_PER_BLOCK: usize = 2 ^ 10;
+pub const MAX_SERIALIZED_OPERATIONS_SIZE_PER_BLOCK: usize = usize::MAX;
 /// Maximum length of production_stats in thread cycle
 pub const MAX_PRODUCTION_STATS_LENGTH: u64 = u64::MAX;
 // ***********************
