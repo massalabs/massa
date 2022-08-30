@@ -148,7 +148,7 @@ fn test_nested_call_gas_usage() {
     // create the block containing the smart contract execution operation
     let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
     storage.store_operations(vec![operation.clone()]);
-    let block = create_block(vec![operation], Slot::new(1, 0)).unwrap();
+    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
 
@@ -182,7 +182,7 @@ fn test_nested_call_gas_usage() {
     // Init new storage for this block
     let mut storage = Storage::default();
     storage.store_operations(vec![operation.clone()]);
-    let block = create_block(vec![operation], Slot::new(1, 1)).unwrap();
+    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 1)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
     // set our block as a final block so the message is sent
@@ -252,7 +252,7 @@ fn send_and_receive_async_message() {
     // create the block contaning the smart contract execution operation
     let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
     storage.store_operations(vec![operation.clone()]);
-    let block = create_block(vec![operation], Slot::new(1, 0)).unwrap();
+    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
 
@@ -318,7 +318,7 @@ pub fn send_and_receive_transaction() {
     .unwrap();
     // create the block contaning the transaction operation
     storage.store_operations(vec![operation.clone()]);
-    let block = create_block(vec![operation], Slot::new(1, 0)).unwrap();
+    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
     // set our block as a final block so the transaction is processed
@@ -377,7 +377,7 @@ pub fn roll_buy() {
     .unwrap();
     // create the block contaning the roll buy operation
     storage.store_operations(vec![operation.clone()]);
-    let block = create_block(vec![operation], Slot::new(1, 0)).unwrap();
+    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
     // set our block as a final block so the purchase is processed
@@ -388,8 +388,13 @@ pub fn roll_buy() {
     );
     controller.update_blockclique_status(finalized_blocks, Default::default());
     std::thread::sleep(Duration::from_millis(10));
-    // check roll count of the buyer address
-    assert_eq!(sample_state.read().pos_state.get_rolls_for(&address), 110);
+    // check roll count of the buyer address and its sequential balance
+    let sample_read = sample_state.read();
+    assert_eq!(sample_read.pos_state.get_rolls_for(&address), 110);
+    assert_eq!(
+        sample_read.ledger.get_sequential_balance(&address).unwrap(),
+        Amount::from_str("299_000").unwrap()
+    );
     // stop the execution controller
     manager.stop();
 }
@@ -398,7 +403,12 @@ pub fn roll_buy() {
 #[serial]
 pub fn roll_sell() {
     // setup the period duration
-    let exec_cfg = ExecutionConfig::default();
+    let exec_cfg = ExecutionConfig {
+        t0: 10.into(),
+        periods_per_cycle: 2,
+        thread_count: 2,
+        ..Default::default()
+    };
     // get a sample final state
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
 
@@ -426,8 +436,8 @@ pub fn roll_sell() {
     .unwrap();
     // create the block contaning the roll buy operation and a further one
     storage.store_operations(vec![operation.clone()]);
-    let block = create_block(vec![operation], Slot::new(1, 0)).unwrap();
-    let last = create_block(vec![], Slot::new(300, 0)).unwrap();
+    let block = create_block(keypair.clone(), vec![operation], Slot::new(1, 0)).unwrap();
+    let last = create_block(keypair, vec![], Slot::new(1000, 0)).unwrap();
     // store the blocks in storage
     storage.store_block(block.clone());
     storage.store_block(last.clone());
@@ -439,7 +449,8 @@ pub fn roll_sell() {
     );
     finalized_blocks.insert(last.content.header.content.slot, (last.id, storage.clone()));
     controller.update_blockclique_status(finalized_blocks, Default::default());
-    std::thread::sleep(Duration::from_millis(10));
+    // wait long
+    std::thread::sleep(Duration::from_millis(100));
     // check roll count and balance of the seller address
     let sample_read = sample_state.read();
     assert_eq!(sample_read.pos_state.get_rolls_for(&address), 90);
@@ -473,7 +484,7 @@ fn generate_events() {
     let event_test_data = include_bytes!("./wasm/event_test.wasm");
     let operation = create_execute_sc_operation(&keypair, event_test_data).unwrap();
     storage.store_operations(vec![operation.clone()]);
-    let block = create_block(vec![operation], Slot::new(1, 0)).unwrap();
+    let block = create_block(keypair, vec![operation], Slot::new(1, 0)).unwrap();
     let slot = block.content.header.content.slot;
 
     storage.store_block(block.clone());
@@ -555,11 +566,10 @@ fn create_call_sc_operation(
 ///
 /// Return a result that should be unwrapped in the root `#[test]` routine.
 fn create_block(
+    creator_keypair: KeyPair,
     operations: Vec<WrappedOperation>,
     slot: Slot,
 ) -> Result<WrappedBlock, ExecutionError> {
-    let creator_keypair = KeyPair::generate();
-
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
             [acc, v.serialized_data.clone()].concat()
