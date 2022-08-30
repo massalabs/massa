@@ -332,7 +332,10 @@ impl ProtocolWorker {
         block_id: BlockId,
         operations: Vec<WrappedOperation>,
     ) -> Result<(), ProtocolError> {
-        self.note_operations_from_node(operations.clone(), &from_node_id)?;
+        if self.note_operations_from_node(operations.clone(), &from_node_id).is_err() {
+            let _ = self.ban_node(&from_node_id).await;
+            return Ok(());
+        }
 
         let wanted_operation_ids = match self.block_wishlist.get(&block_id) {
             Some((AskForBlocksInfo::Operations(ids), Some(_))) => {

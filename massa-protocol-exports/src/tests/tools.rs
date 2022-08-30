@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::mock_network_controller::MockNetworkController;
-use crate::protocol_controller::ProtocolEventReceiver;
+use crate::protocol_controller::{ProtocolCommandSender, ProtocolEventReceiver};
 use crate::{ProtocolConfig, ProtocolEvent};
 use massa_hash::Hash;
 use massa_models::node::NodeId;
@@ -15,6 +15,7 @@ use massa_models::{
     operation::{Operation, OperationType, WrappedOperation},
     slot::Slot,
 };
+use massa_models::prehash::PreHashSet;
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -168,14 +169,34 @@ pub async fn send_and_propagate_block(
     valid: bool,
     source_node_id: NodeId,
     protocol_event_receiver: &mut ProtocolEventReceiver,
+    protocol_command_sender: &mut ProtocolCommandSender,
+    operations: Vec<WrappedOperation>,
 ) {
     let expected_hash = block.id;
+    
+    network_controller
+        .send_header(source_node_id, block.content.header.clone())
+        .await;
+        
+        protocol_command_sender
+            .send_wishlist_delta(
+                vec![block.id].into_iter().collect(),
+                PreHashSet::<BlockId>::default(),
+            )
+            .await
+            .unwrap();
 
-    // Send block to protocol.
-    let info = vec![(block.id, BlockInfoReply::Operations(Default::default()))];
+    // Send block info to protocol.
+    let info = vec![(block.id, BlockInfoReply::Info(block.content.operations.clone()))];
     network_controller
         .send_block_info(source_node_id, info)
         .await;
+        
+        // Send full ops. 
+        let info = vec![(block.id, BlockInfoReply::Operations(operations))];
+            network_controller
+                .send_block_info(source_node_id, info)
+                .await;
 
     // Check protocol sends block to consensus.
     let hash = match wait_protocol_event(protocol_event_receiver, 1000.into(), |evt| match evt {
