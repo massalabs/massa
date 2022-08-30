@@ -288,7 +288,6 @@ impl ProtocolWorker {
                 Self::get_total_operations_size(&self.storage, &known_operations);
 
             if info.operations_size > self.config.max_serialized_operations_size_per_block {
-                info!("bad operations size");
                 let _ = self.ban_node(&from_node_id).await;
                 return Ok(());
             }
@@ -314,7 +313,6 @@ impl ProtocolWorker {
                     .await;
             }
         } else {
-            info!("bad merkle root");
             let _ = self.ban_node(&from_node_id).await;
         }
         Ok(())
@@ -343,7 +341,6 @@ impl ProtocolWorker {
             .note_operations_from_node(operations.clone(), &from_node_id)
             .is_err()
         {
-            info!("bad operations full received");
             let _ = self.ban_node(&from_node_id).await;
             return Ok(());
         }
@@ -378,13 +375,11 @@ impl ProtocolWorker {
                 || !received_ids.insert(op.id)
                 || full_op_size > self.config.max_serialized_operations_size_per_block
             {
-                info!("bad operations full 2");
                 let _ = self.ban_node(&from_node_id).await;
                 return Ok(());
             }
         }
         if wanted_operation_ids != received_ids {
-            info!("not all id error");
             let _ = self.ban_node(&from_node_id).await;
             return Ok(());
         }
