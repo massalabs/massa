@@ -12,6 +12,7 @@ use massa_ledger_worker::FinalLedger;
 use massa_models::config::{
     ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, MAX_ASYNC_POOL_LENGTH, MAX_DATA_ASYNC_MESSAGE,
 };
+use massa_models::prehash::PreHashMap;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
     api::EventFilter,
@@ -404,7 +405,7 @@ pub fn roll_buy() {
 pub fn roll_sell() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
-        t0: 10.into(),
+        t0: 2.into(),
         periods_per_cycle: 2,
         thread_count: 2,
         ..Default::default()
@@ -436,27 +437,27 @@ pub fn roll_sell() {
     .unwrap();
     // create the block contaning the roll buy operation and a further one
     storage.store_operations(vec![operation.clone()]);
-    let block = create_block(keypair.clone(), vec![operation], Slot::new(1, 0)).unwrap();
-    let last = create_block(keypair, vec![], Slot::new(1000, 0)).unwrap();
+    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the blocks in storage
     storage.store_block(block.clone());
-    storage.store_block(last.clone());
     // set our blocks as final so the sell and payment are both processed
     let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
     finalized_blocks.insert(
         block.content.header.content.slot,
         (block.id, storage.clone()),
     );
-    finalized_blocks.insert(last.content.header.content.slot, (last.id, storage.clone()));
     controller.update_blockclique_status(finalized_blocks, Default::default());
-    // wait long
-    std::thread::sleep(Duration::from_millis(100));
-    // check roll count and balance of the seller address
+    std::thread::sleep(Duration::from_millis(10));
+    // check roll count and deferred credits of the seller address
     let sample_read = sample_state.read();
+    let mut credits = PreHashMap::default();
+    credits.insert(address, Amount::from_str("1000").unwrap());
     assert_eq!(sample_read.pos_state.get_rolls_for(&address), 90);
     assert_eq!(
-        sample_read.ledger.get_sequential_balance(&address).unwrap(),
-        Amount::from_str("301_000").unwrap()
+        sample_read
+            .pos_state
+            .get_deferred_credits_at(&Slot::new(7, 1)),
+        credits
     );
     // stop the execution controller
     manager.stop();
