@@ -1021,8 +1021,8 @@
                         "description": "Optional operation id",
                         "type": "string"
                     },
-                    "candidate": {
-                        "description": "Optional filter to filter only candidate/final events",
+                    "is_final": {
+                        "description": "Optional filter to filter only candidate or final events",
                         "type": "boolean"
                     }
                 },
@@ -1052,23 +1052,6 @@
                 },
                 "additionalProperties": false
             },
-            "BlockDraw": {
-                "title": "BlockDraw",
-                "required": [
-                    "period",
-                    "thread"
-                ],
-                "type": "object",
-                "properties": {
-                    "period": {
-                        "type": "number"
-                    },
-                    "thread": {
-                        "type": "number"
-                    }
-                },
-                "additionalProperties": false
-            },
             "EndorsementDraw": {
                 "title": "EndorsementDraw",
                 "required": [
@@ -1078,7 +1061,7 @@
                 "type": "object",
                 "properties": {
                     "slot": {
-                        "$ref": "#/components/schemas/BlockDraw"
+                        "$ref": "#/components/schemas/Slot"
                     },
                     "index": {
                         "type": "integer"
@@ -1806,44 +1789,19 @@
                 "title": "SignedOperation",
                 "description": "Signed Operation",
                 "required": [
-                    "content",
+                    "creator_public_key",
+                    "serialized_content",
                     "signature"
                 ],
                 "type": "object",
                 "properties": {
+                    "creator_public_key": {
+                        "type": "string"
+                    },
                     "content": {
-                        "$ref": "#/components/schemas/Operation"
+                        "type": "string"
                     },
                     "signature": {
-                        "type": "string"
-                    }
-                },
-                "additionalProperties": false
-            },
-            "Operation": {
-                "title": "Op",
-                "description": "Operation",
-                "required": [
-                    "sender_public_key",
-                    "fee",
-                    "expire_period",
-                    "op"
-                ],
-                "type": "object",
-                "properties": {
-                    "sender_public_key": {
-                        "description": "Sender Public Key"
-                    },
-                    "fee": {
-                        "description": "The fee they have decided for this operation",
-                        "type": "number"
-                    },
-                    "expire_period": {
-                        "description": "After `expire_period` slot the operation won't be included in a block",
-                        "type": "number"
-                    },
-                    "op": {
-                        "description": "The type specific operation part",
                         "type": "string"
                     }
                 },
@@ -2006,18 +1964,53 @@
                 },
                 "additionalProperties": false
             },
+            "ExecutionAddressCycleInfo": {
+                "title": "ExecutionAddressCycleInfo",
+                "required": [
+                    "cycle",
+                    "is_final",
+                    "ok_count",
+                    "nok_count"
+                ],
+                "type": "object",
+                "properties": {
+                    "cycle": {
+                        "type": "number"
+                    },
+                    "is_final": {
+                        "type": "boolean"
+                    },
+                    "ok_count": {
+                        "type": "number"
+                    },
+                    "nok_count": {
+                        "type": "number"
+                    },
+                    "active_rolls": {
+                        "type": "number"
+                    }
+                }
+            },
             "AddressInfo": {
                 "title": "AddressInfo",
                 "required": [
                     "address",
-                    "block_draws",
-                    "blocks_created",
-                    "endorsement_draws",
-                    "involved_in_endorsements",
-                    "involved_in_operations",
-                    "production_stats",
-                    "rolls",
-                    "ledger_info"
+                    "thread",
+                    "final_parallel_balance",
+                    "final_sequential_balance",
+                    "final_roll_count",
+                    "final_datastore_keys",
+                    "candidate_parallel_balance",
+                    "candidate_sequential_balance",
+                    "candidate_roll_count",
+                    "candidate_datastore_keys",
+                    "deferred_credits",
+                    "next_block_draws",
+                    "next_endorsement_draws",
+                    "created_blocks",
+                    "created_operations",
+                    "created_endorsements",
+                    "cycle_infos"
                 ],
                 "type": "object",
                 "properties": {
@@ -2025,64 +2018,115 @@
                         "$ref": "#/components/schemas/Address",
                         "description": "The address"
                     },
-                    "block_draws": {
-                        "description": "Next slots this address will be selected to create a block",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/BlockDraw"
-                        }
-                    },
-                    "blocks_created": {
-                        "description": "Created blocks ids",
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "endorsement_draws": {
-                        "description": "Next slots this address will be selected to create a endorsement",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/EndorsementDraw"
-                        }
-                    },
-                    "involved_in_endorsements": {
-                        "description": "Endorsements in which this address is involved (endorser, block creator)",
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "involved_in_operations": {
-                        "description": "Operation in which this address is involved (sender or receiver)",
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "production_stats": {
-                        "description": "Stats about block production\nAs many items as cached cycles",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/ProductionStat"
-                        }
-                    },
-                    "rolls": {
-                        "$ref": "#/components/schemas/RollsInfo",
-                        "description": "Rolls amount"
-                    },
-                    "ledger_info": {
-                        "$ref": "#/components/schemas/LedgerInfo",
-                        "description": "Parallel balance info"
-                    },
-                    "final_balance_info": {
-                        "description": "Final sequential balance",
+                    "thread": {
+                        "description": "The thread the address belongs to",
                         "type": "number"
                     },
-                    "candidate_balance_info": {
-                        "description": "Latest sequential balance",
+                    "final_sequential_balance": {
+                        "description": "The final sequential balance",
                         "type": "number"
+                    },
+                    "final_parallel_balance": {
+                        "description": "The final parallel balance",
+                        "type": "number"
+                    },
+                    "final_roll_count": {
+                        "description": "The final roll count",
+                        "type": "number"
+                    },
+                    "final_datastore_keys": {
+                        "description": "The final datastore keys",
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "number"
+                            }
+                        }
+                    },
+                    "candidate_sequential_balance": {
+                        "description": "The candidate sequential balance",
+                        "type": "number"
+                    },
+                    "candidate_parallel_balance": {
+                        "description": "The candidate parallel balance",
+                        "type": "number"
+                    },
+                    "candidate_roll_count": {
+                        "description": "The candidate roll count",
+                        "type": "number"
+                    },
+                    "candidate_datastore_keys": {
+                        "description": "The candidate datastore keys",
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "number"
+                            }
+                        }
+                    },
+                    "deferred_credits": {
+                        "description": "The deferred credits",
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "slot": {
+                                    "type": "object",
+                                    "$ref": "#/components/schemas/Slot"
+                                },
+                                "amount": {
+                                    "type": "number"
+                                }
+                            }
+                        }
+                    },
+                    "next_block_draws": {
+                        "description": "The next block draws",
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "$ref": "#/components/schemas/Slot"
+                        }
+                    },
+                    "next_endorsement_draws": {
+                        "description": "The next endorsement draws",
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "slot": {
+                                    "type": "object",
+                                    "$ref": "#/components/schemas/Slot"
+                                },
+                                "index": {
+                                    "type": "number"
+                                }
+                            }
+                        }
+                    },
+                    "created_blocks": {
+                        "description": "BlockIds of created blocks",
+                        "type": "string"
+                    },
+                    "created_operations": {
+                        "description": "OperationIds of created operations",
+                        "type": "string"
+                    },
+                    "created_endorsements": {
+                        "description": "EndorsementIds of created endorsements",
+                        "type": "string"
+                    },
+                    "cycle_infos": {
+                        "description": "Cycle infos",
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "$ref": "#/components/schemas/ExecutionAddressCycleInfo"
+                        }
                     }
+
                 },
                 "additionalProperties": false
             },
