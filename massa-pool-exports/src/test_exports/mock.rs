@@ -112,17 +112,8 @@ impl PoolEventReceiver {
     {
         let msg = match self.0.recv_timeout(timeout.into()) {
             Ok(msg) => filter_map(msg),
-            Err(_) => {
-                let m = filter_map(MockPoolControllerMessage::Any);
-                if m.is_some() {
-                    panic!("unexpected closure of network command channel.")
-                }
-                m
-            }
+            Err(_) => None,
         };
-        if msg.is_none() {
-            panic!("unexpected message")
-        }
         msg
     }
 }

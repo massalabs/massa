@@ -2,10 +2,10 @@
 
 use super::tools::protocol_test;
 use massa_hash::Hash;
-use massa_models::wrapped::WrappedContent;
+use massa_models::operation::OperationId;
+use massa_models::wrapped::{Id, WrappedContent};
 use massa_models::{
     address::Address,
-    amount::Amount,
     block::{Block, BlockHeader, BlockHeaderSerializer, BlockSerializer},
     slot::Slot,
 };
@@ -16,11 +16,9 @@ use massa_protocol_exports::tests::tools::{
 };
 use massa_signature::KeyPair;
 use serial_test::serial;
-use std::str::FromStr;
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_sends_blocks_with_operations_to_consensus() {
     //         // setup logging
     // stderrlog::new()
@@ -33,7 +31,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
         protocol_config,
         async move |mut network_controller,
                     mut protocol_event_receiver,
-                    protocol_command_sender,
+                    mut protocol_command_sender,
                     protocol_manager,
                     protocol_pool_event_receiver| {
             // Create 1 node.
@@ -51,47 +49,40 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 thread = address.get_thread(2);
             }
 
-            let slot_a = Slot::new(1, 0);
-
             // block with ok operation
             {
                 let op = create_operation_with_expire_period(&keypair, 5);
+                let op_thread = op.creator_address.get_thread(protocol_config.thread_count);
 
-                let block = create_block_with_operations(&creator_node.keypair, slot_a, vec![op]);
-
+                let block = create_block_with_operations(
+                    &creator_node.keypair,
+                    Slot::new(1, op_thread),
+                    vec![op.clone()],
+                );
                 send_and_propagate_block(
                     &mut network_controller,
                     block,
                     true,
                     creator_node.id,
                     &mut protocol_event_receiver,
+                    &mut protocol_command_sender,
+                    vec![op.clone()],
                 )
                 .await;
             }
 
             // block with operation too far in the future
-            {
-                let op = create_operation_with_expire_period(&keypair, 50);
+            // Note: what happened with checking validity periods?
 
-                let block = create_block_with_operations(&creator_node.keypair, slot_a, vec![op]);
-
-                send_and_propagate_block(
-                    &mut network_controller,
-                    block,
-                    false,
-                    creator_node.id,
-                    &mut protocol_event_receiver,
-                )
-                .await;
-            }
             // block with an operation twice
             {
                 let op = create_operation_with_expire_period(&keypair, 5);
+                let op_thread = op.creator_address.get_thread(protocol_config.thread_count);
 
                 let block = create_block_with_operations(
                     &creator_node.keypair,
-                    slot_a,
-                    vec![op.clone(), op],
+                    Slot::new(1, op_thread),
+                    vec![op.clone(), op.clone()],
                 );
 
                 send_and_propagate_block(
@@ -100,18 +91,21 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     false,
                     creator_node.id,
                     &mut protocol_event_receiver,
+                    &mut protocol_command_sender,
+                    vec![op.clone(), op.clone()],
                 )
                 .await;
             }
             // block with wrong merkle root
             {
                 let op = create_operation_with_expire_period(&keypair, 5);
+                let op_thread = op.creator_address.get_thread(protocol_config.thread_count);
                 let block = {
                     let operation_merkle_root = Hash::compute_from("merkle root".as_bytes());
 
                     let header = BlockHeader::new_wrapped(
                         BlockHeader {
-                            slot: slot_a,
+                            slot: Slot::new(1, op_thread),
                             parents: Vec::new(),
                             operation_merkle_root,
                             endorsements: Vec::new(),
@@ -138,6 +132,8 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     false,
                     creator_node.id,
                     &mut protocol_event_receiver,
+                    &mut protocol_command_sender,
+                    vec![op.clone()],
                 )
                 .await;
             }
@@ -145,8 +141,13 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
             // block with operation with wrong signature
             {
                 let mut op = create_operation_with_expire_period(&keypair, 5);
-                op.content.fee = Amount::from_str("10").unwrap();
-                let block = create_block_with_operations(&creator_node.keypair, slot_a, vec![op]);
+                let op_thread = op.creator_address.get_thread(protocol_config.thread_count);
+                op.id = OperationId::new(Hash::compute_from("wrong signature".as_bytes()));
+                let block = create_block_with_operations(
+                    &creator_node.keypair,
+                    Slot::new(1, op_thread),
+                    vec![op.clone()],
+                );
 
                 send_and_propagate_block(
                     &mut network_controller,
@@ -154,16 +155,20 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     false,
                     creator_node.id,
                     &mut protocol_event_receiver,
+                    &mut protocol_command_sender,
+                    vec![op.clone()],
                 )
                 .await;
             }
 
             // block with operation in wrong thread
             {
-                let mut op = create_operation_with_expire_period(&keypair, 5);
-                op.content.fee = Amount::from_str("10").unwrap();
-                let block =
-                    create_block_with_operations(&creator_node.keypair, Slot::new(1, 1), vec![op]);
+                let op = create_operation_with_expire_period(&keypair, 5);
+                let block = create_block_with_operations(
+                    &creator_node.keypair,
+                    Slot::new(1, 1),
+                    vec![op.clone()],
+                );
 
                 send_and_propagate_block(
                     &mut network_controller,
@@ -171,6 +176,8 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     false,
                     creator_node.id,
                     &mut protocol_event_receiver,
+                    &mut protocol_command_sender,
+                    vec![op.clone()],
                 )
                 .await;
             }

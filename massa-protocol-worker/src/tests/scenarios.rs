@@ -2,16 +2,15 @@
 
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
-use super::tools::protocol_test;
+use super::tools::{protocol_test, protocol_test_with_storage};
 use massa_models::block::BlockId;
 use massa_models::prehash::{PreHashMap, PreHashSet};
-use massa_network_exports::NetworkCommand;
+use massa_network_exports::{AskForBlocksInfo, NetworkCommand};
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{
     tests::tools::{create_and_connect_nodes, create_block, wait_protocol_event},
     BlocksResults, ProtocolEvent,
 };
-use massa_storage::Storage;
 use serial_test::serial;
 use std::collections::HashSet;
 
@@ -112,18 +111,18 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_sends_blocks_when_asked_for() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
-    protocol_test(
+    protocol_test_with_storage(
         protocol_config,
         async move |mut network_controller,
                     protocol_event_receiver,
-                    protocol_command_sender,
+                    mut protocol_command_sender,
                     protocol_manager,
-                    protocol_pool_event_receiver| {
-            let send_block_or_header_cmd_filter = |cmd| match cmd {
-                cmd @ NetworkCommand::SendBlockHeader { .. } => Some(cmd),
+                    protocol_pool_event_receiver,
+                    mut storage| {
+            let send_block_info_cmd_filter = |cmd| match cmd {
+                cmd @ NetworkCommand::SendBlockInfo { .. } => Some(cmd),
                 _ => None,
             };
 
@@ -136,8 +135,14 @@ async fn test_protocol_sends_blocks_when_asked_for() {
 
             // 2. Create a block coming from creator_node.
             let block = create_block(&creator_node.keypair);
-
             let expected_hash = block.id;
+
+            // Add to storage, integrate.
+            storage.store_block(block.clone());
+            protocol_command_sender
+                .integrated_block(expected_hash, storage.clone())
+                .await
+                .unwrap();
 
             // 3. Simulate two nodes asking for a block.
             for node in nodes.iter().take(2) {
@@ -156,12 +161,11 @@ async fn test_protocol_sends_blocks_when_asked_for() {
             expecting_block.insert(nodes[1].id);
             loop {
                 match network_controller
-                    .wait_command(1000.into(), send_block_or_header_cmd_filter)
+                    .wait_command(1000.into(), send_block_info_cmd_filter)
                     .await
                 {
-                    // TODO: rewrite with block info
-                    Some(NetworkCommand::SendBlockHeader { .. }) => {
-                        panic!("unexpected header sent");
+                    Some(NetworkCommand::SendBlockInfo { node, .. }) => {
+                        expecting_block.remove(&node);
                     }
                     None => {
                         if expecting_block.is_empty() {
@@ -176,7 +180,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
 
             // 7. Make sure protocol did not send block or header to other nodes.
             let got_more_commands = network_controller
-                .wait_command(100.into(), send_block_or_header_cmd_filter)
+                .wait_command(100.into(), send_block_info_cmd_filter)
                 .await;
             assert!(got_more_commands.is_none());
 
@@ -194,16 +198,16 @@ async fn test_protocol_sends_blocks_when_asked_for() {
 
 #[tokio::test]
 #[serial]
-#[ignore]
-async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header_to_others() {
+async fn test_protocol_propagates_block_to_all_nodes_including_those_who_asked_for_info() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
-    protocol_test(
+    protocol_test_with_storage(
         protocol_config,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
-                    protocol_pool_event_receiver| {
+                    protocol_pool_event_receiver,
+                    mut storage| {
             // Create 4 nodes.
             let nodes = create_and_connect_nodes(4, &mut network_controller).await;
             let (node_a, node_b, node_c, node_d) = (
@@ -243,12 +247,13 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
                 _ => panic!("Unexpected or no protocol event."),
             };
 
+            storage.store_block(ref_block.clone());
+
+            // Now ask for the info on the block.
             network_controller
-                .send_ask_for_block(node_b.id, vec![(ref_hash, Default::default())])
+                .send_ask_for_block(node_b.id, vec![(ref_hash, AskForBlocksInfo::Info)])
                 .await;
 
-            // TODO: Add block in storage
-            let storage = Storage::default();
             // 5. Propagate header.
             let _op_ids = ref_block.content.operations.clone();
             protocol_command_sender
@@ -258,32 +263,38 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
 
             // 6. Check that protocol propagates the header to the right nodes.
             // node_a created the block and should receive nothing
-            // node_b asked for the block and should receive the full block
+            // node_b asked for the info and should receive the header
             // node_c did nothing, it should receive the header
             // node_d was disconnected, so nothing should be send to it
             let mut expected_headers = HashSet::new();
             expected_headers.insert(node_c.id);
+            expected_headers.insert(node_b.id);
 
-            let mut expected_full_blocks = HashSet::new();
-            expected_full_blocks.insert(node_b.id);
+            let mut expected_info = HashSet::new();
+            expected_info.insert(node_b.id);
 
             loop {
-                // TODO: rewrite with block info.
                 match network_controller
                     .wait_command(1000.into(), |cmd| match cmd {
                         cmd @ NetworkCommand::SendBlockHeader { .. } => Some(cmd),
+                        cmd @ NetworkCommand::SendBlockInfo { .. } => Some(cmd),
                         _ => None,
                     })
                     .await
                 {
-                    Some(NetworkCommand::SendBlockHeader { node, block_id }) => {
+                    Some(NetworkCommand::SendBlockHeader { node, header }) => {
                         assert!(expected_headers.remove(&node));
-                        assert_eq!(block_id, ref_hash);
+                        assert_eq!(header.id, ref_hash);
                     }
-                    _ => panic!("Unexpected or no network command."),
+                    Some(NetworkCommand::SendBlockInfo { node, mut info }) => {
+                        assert!(expected_info.remove(&node));
+                        let asked = info.pop().unwrap();
+                        assert_eq!(asked.0, ref_hash);
+                    }
+                    _ => panic!("Unexpected or network command."),
                 };
 
-                if expected_headers.is_empty() && expected_full_blocks.is_empty() {
+                if expected_headers.is_empty() && expected_info.is_empty() {
                     break;
                 }
             }
@@ -301,7 +312,146 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
 
 #[tokio::test]
 #[serial]
-#[ignore]
+async fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_only_header_to_others()
+{
+    let protocol_config = &tools::PROTOCOL_CONFIG;
+    protocol_test_with_storage(
+        protocol_config,
+        async move |mut network_controller,
+                    mut protocol_event_receiver,
+                    mut protocol_command_sender,
+                    protocol_manager,
+                    protocol_pool_event_receiver,
+                    mut storage| {
+            // Create 4 nodes.
+            let nodes = create_and_connect_nodes(4, &mut network_controller).await;
+            let (node_a, node_b, node_c, node_d) = (
+                nodes[0].clone(),
+                nodes[1].clone(),
+                nodes[2].clone(),
+                nodes[3].clone(),
+            );
+
+            let creator_node = node_a.clone();
+
+            // 1. Close one connection.
+            network_controller.close_connection(node_d.id).await;
+
+            // 2. Create a block coming from one node.
+            let ref_block = create_block(&creator_node.keypair);
+
+            // 3. Send header to protocol.
+            network_controller
+                .send_header(creator_node.id, ref_block.content.header.clone())
+                .await;
+
+            // node[1] asks for that block
+
+            // Check protocol sends header to consensus.
+            let (ref_hash, _) = match wait_protocol_event(
+                &mut protocol_event_receiver,
+                1000.into(),
+                |evt| match evt {
+                    evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+                    _ => None,
+                },
+            )
+            .await
+            {
+                Some(ProtocolEvent::ReceivedBlockHeader { block_id, header }) => (block_id, header),
+                _ => panic!("Unexpected or no protocol event."),
+            };
+
+            storage.store_block(ref_block.clone());
+            // 5. Propagate header.
+            let _op_ids = ref_block.content.operations.clone();
+            protocol_command_sender
+                .integrated_block(ref_hash, storage)
+                .await
+                .expect("Failed to ask for block.");
+
+            // 6. Check that protocol propagates the header to the right nodes.
+            // node_a created the block and should receive nothing
+            // node_b asked for the block and should receive the full block
+            // node_c did nothing, it should receive the header
+            // node_d was disconnected, so nothing should be send to it
+            let mut expected_headers = HashSet::new();
+            expected_headers.insert(node_c.id);
+            expected_headers.insert(node_b.id);
+
+            let mut expected_full_blocks = HashSet::new();
+            expected_full_blocks.insert(node_b.id);
+
+            loop {
+                match network_controller
+                    .wait_command(1000.into(), |cmd| match cmd {
+                        cmd @ NetworkCommand::SendBlockHeader { .. } => Some(cmd),
+                        cmd @ NetworkCommand::SendBlockInfo { .. } => Some(cmd),
+                        _ => None,
+                    })
+                    .await
+                {
+                    Some(NetworkCommand::SendBlockHeader { node, header }) => {
+                        assert!(expected_headers.remove(&node));
+                        assert_eq!(header.id, ref_hash);
+                    }
+                    Some(NetworkCommand::SendBlockInfo { .. }) => {
+                        panic!("Unpexpected sending of block info");
+                    }
+                    _ => panic!("Unexpected or network command."),
+                };
+
+                if expected_headers.is_empty() {
+                    break;
+                }
+            }
+
+            // Now ask for the full block.
+            network_controller
+                .send_ask_for_block(
+                    node_b.id,
+                    vec![(ref_hash, AskForBlocksInfo::Operations(vec![]))],
+                )
+                .await;
+
+            loop {
+                match network_controller
+                    .wait_command(1000.into(), |cmd| match cmd {
+                        cmd @ NetworkCommand::SendBlockHeader { .. } => Some(cmd),
+                        cmd @ NetworkCommand::SendBlockInfo { .. } => Some(cmd),
+                        _ => None,
+                    })
+                    .await
+                {
+                    Some(NetworkCommand::SendBlockHeader { .. }) => {
+                        panic!("Unexpected sending of header.");
+                    }
+                    Some(NetworkCommand::SendBlockInfo { node, mut info }) => {
+                        assert!(expected_full_blocks.remove(&node));
+                        let asked = info.pop().unwrap();
+                        assert_eq!(asked.0, ref_hash);
+                    }
+                    _ => panic!("Unexpected or network command."),
+                };
+
+                if expected_full_blocks.is_empty() {
+                    break;
+                }
+            }
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                protocol_pool_event_receiver,
+            )
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[serial]
 async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
 

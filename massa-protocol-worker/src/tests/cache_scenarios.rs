@@ -4,7 +4,7 @@
 
 use super::tools::protocol_test_with_storage;
 use massa_models::{self, address::Address, slot::Slot};
-use massa_network_exports::{AskForBlocksInfo, NetworkCommand, ReplyForBlocksInfo};
+use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand};
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::ProtocolConfig;
 use serial_test::serial;
@@ -49,6 +49,9 @@ async fn test_noting_block_does_not_panic_with_zero_max_node_known_blocks_size()
 
             // Add block to storage.
             storage.store_block(block.clone());
+            
+            // Add Operation to storage.
+            storage.store_operations(vec![operation.clone()]);
 
             // Have the second node ask for the operations.
             let needed_ops = vec![operation.id].into_iter().collect();
@@ -76,9 +79,9 @@ async fn test_noting_block_does_not_panic_with_zero_max_node_known_blocks_size()
                 .unwrap();
 
             assert_eq!(block_id, block.id);
-            if let ReplyForBlocksInfo::Operations(ops) = info {
-                assert!(ops.contains(&operation.id));
-                assert_eq!(ops.len(), 1);
+            if let BlockInfoReply::Operations(mut ops) = info {
+                assert_eq!(ops.pop().unwrap().id, operation.id);
+                assert!(ops.is_empty());
             } else {
                 panic!("Unexpected block info.");
             }

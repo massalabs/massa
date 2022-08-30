@@ -305,6 +305,13 @@ impl ProtocolWorker {
                     Some(block_storage),
                 ),
             );
+
+            // If the block is empty, go straight to processing the full block info.
+            if operation_ids.is_empty() {
+                return self
+                    .on_block_full_operations_received(from_node_id, block_id, Default::default())
+                    .await;
+            }
         } else {
             let _ = self.ban_node(&from_node_id).await;
         }
@@ -330,7 +337,13 @@ impl ProtocolWorker {
         block_id: BlockId,
         operations: Vec<WrappedOperation>,
     ) -> Result<(), ProtocolError> {
-        self.note_operations_from_node(operations.clone(), &from_node_id)?;
+        if self
+            .note_operations_from_node(operations.clone(), &from_node_id)
+            .is_err()
+        {
+            let _ = self.ban_node(&from_node_id).await;
+            return Ok(());
+        }
 
         let wanted_operation_ids = match self.block_wishlist.get(&block_id) {
             Some((AskForBlocksInfo::Operations(ids), Some(_))) => {
