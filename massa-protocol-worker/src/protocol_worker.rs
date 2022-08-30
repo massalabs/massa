@@ -318,6 +318,18 @@ impl ProtocolWorker {
                     { "block_id": block_id }
                 );
                 self.storage.extend(storage);
+                let header = {
+                    let blocks = self.storage.read_blocks();
+                    blocks
+                        .get(&block_id)
+                        .map(|block| block.content.header.clone())
+                        .ok_or_else(|| {
+                            ProtocolError::ContainerInconsistencyError(format!(
+                                "header of id {} not found.",
+                                block_id
+                            ))
+                        })?
+                };
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     // node that isn't asking for that block
                     let cond = node_info.get_known_block(&block_id);
@@ -325,7 +337,7 @@ impl ProtocolWorker {
                     if !cond.map_or_else(|| false, |v| v.0) {
                         massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "node": node_id, "block_id": block_id});
                         self.network_command_sender
-                            .send_block_header(*node_id, block_id)
+                            .send_block_header(*node_id, header.clone())
                             .await
                             .map_err(|_| {
                                 ProtocolError::ChannelError(

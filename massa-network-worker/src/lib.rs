@@ -18,7 +18,6 @@ use massa_network_exports::{
     NetworkEvent, NetworkEventReceiver, NetworkManagementCommand, NetworkManager,
 };
 use massa_signature::KeyPair;
-use massa_storage::Storage;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
@@ -44,7 +43,6 @@ pub async fn start_network_controller(
     mut establisher: Establisher,
     clock_compensation: i64,
     initial_peers: Option<BootstrapPeers>,
-    storage: Storage,
     version: Version,
 ) -> Result<
     (
@@ -124,7 +122,6 @@ pub async fn start_network_controller(
                 controller_event_tx,
                 controller_manager_rx,
             },
-            storage,
             version,
         )
         .run_loop()

@@ -84,19 +84,20 @@ use tokio::sync::oneshot;
 
 /// network command
 #[derive(Clone, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum NodeCommand {
     /// Send given peer list to node.
     SendPeerList(Vec<IpAddr>),
     /// Send the header of a block to a node.
-    SendBlockHeader(BlockId),
+    SendBlockHeader(WrappedHeader),
     /// Ask for info on a list of blocks.
     AskForBlocks(Vec<(BlockId, AskForBlocksInfo)>),
     /// Reply with info on a list of blocks.
-    ReplyForBlocks(Vec<(BlockId, ReplyForBlocksInfo)>),
+    ReplyForBlocks(Vec<(BlockId, BlockInfoReply)>),
     /// Close the node worker.
     Close(ConnectionClosureReason),
     /// Send full Operations (send to a node that previously asked for)
-    SendOperations(Vec<OperationId>),
+    SendOperations(Vec<WrappedOperation>),
     /// Send a batch of operation ids
     SendOperationAnnouncements(OperationPrefixIds),
     /// Ask for a set of operations
@@ -146,19 +147,9 @@ pub enum AskForBlocksInfo {
     Operations(Vec<OperationId>),
 }
 
-/// Reply with the info about a block.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ReplyForBlocksInfo {
-    /// The info about the block is required(list of operations ids).
-    Info(Vec<OperationId>),
-    /// The actual operations required.
-    Operations(Vec<OperationId>),
-    /// Block not found
-    NotFound,
-}
-
 /// Commands that the worker can execute
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum NetworkCommand {
     /// Ask for a block to a node.
     AskForBlocks {
@@ -170,14 +161,14 @@ pub enum NetworkCommand {
         /// to node id
         node: NodeId,
         /// block id
-        info: Vec<(BlockId, ReplyForBlocksInfo)>,
+        info: Vec<(BlockId, BlockInfoReply)>,
     },
     /// Send a header to a node.
     SendBlockHeader {
         /// to node id
         node: NodeId,
         /// block id
-        block_id: BlockId,
+        header: WrappedHeader,
     },
     /// `(PeerInfo, Vec <(NodeId, bool)>) peer info + list` of associated Id nodes in connection out (true)
     GetPeers(oneshot::Sender<Peers>),
@@ -216,7 +207,7 @@ pub enum NetworkCommand {
         /// to node id
         node: NodeId,
         /// operations
-        operations: Vec<OperationId>,
+        operations: Vec<WrappedOperation>,
     },
     /// Send operation ids batch to a node
     SendOperationAnnouncements {

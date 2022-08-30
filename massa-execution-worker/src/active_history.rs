@@ -20,6 +20,7 @@ pub enum HistorySearchResult<T> {
 }
 
 /// Result of the search for a slot index in history
+#[derive(Debug)]
 pub enum SlotIndexPosition {
     /// out of bounds in the past
     Past,
@@ -257,7 +258,7 @@ impl ActiveHistory {
             // cycle ends before history starts
             (_, SlotIndexPosition::Past) => (0..0, true, false),
 
-            // the history is stricly icluded within the cycle
+            // the history is strictly included within the cycle
             (SlotIndexPosition::Past, SlotIndexPosition::Future) => (0..self.0.len(), true, true),
 
             // cycle begins before and ends during history
