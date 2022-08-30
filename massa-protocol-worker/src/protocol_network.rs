@@ -364,7 +364,7 @@ impl ProtocolWorker {
         let mut full_op_size = info.operations_size;
 
         // Ban the node if:
-        // - thread incorect for an operation
+        // - thread incorrect for an operation
         // - wanted operations doesn't match
         // - duplicated operation
         // - full operations serialized size overflow
