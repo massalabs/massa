@@ -226,8 +226,7 @@ fn test_nested_call_gas_usage() {
 #[test]
 #[serial]
 fn send_and_receive_async_message() {
-    // setup the period duration and the maximum gas for
-    // asynchronous messages execution
+    // setup the period duration and the maximum gas for asynchronous messages execution
     let exec_cfg = ExecutionConfig {
         t0: 100.into(),
         max_async_gas: 100_000,
@@ -282,7 +281,7 @@ fn send_and_receive_async_message() {
 #[test]
 #[serial]
 pub fn send_and_receive_transaction() {
-    // setup the period duration and the maximum gas for
+    // setup the period duration
     let exec_cfg = ExecutionConfig {
         t0: 1000.into(),
         ..ExecutionConfig::default()
@@ -338,6 +337,58 @@ pub fn send_and_receive_transaction() {
             .unwrap(),
         Amount::from_str("100").unwrap()
     );
+    // stop the execution controller
+    manager.stop();
+}
+
+#[test]
+#[serial]
+pub fn roll_buy() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig {
+        t0: 1000.into(),
+        ..ExecutionConfig::default()
+    };
+    // get a sample final state
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+    // init the storage
+    let mut storage = Storage::default();
+    // start the execution worker
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
+    // generate the keypair and its corresponding address
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    let address = Address::from_public_key(&keypair.get_public_key());
+    // create the operation
+    let operation = Operation::new_wrapped(
+        Operation {
+            fee: Amount::zero(),
+            expire_period: 10,
+            op: OperationType::RollBuy { roll_count: 10 },
+        },
+        OperationSerializer::new(),
+        &keypair,
+    )
+    .unwrap();
+    // create the block contaning the roll buy operation
+    storage.store_operations(vec![operation.clone()]);
+    let block = create_block(vec![operation], Slot::new(1, 0)).unwrap();
+    // store the block in storage
+    storage.store_block(block.clone());
+    // set our block as a final block so the purchase is processed
+    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
+    finalized_blocks.insert(
+        block.content.header.content.slot,
+        (block.id, storage.clone()),
+    );
+    controller.update_blockclique_status(finalized_blocks, Default::default());
+    std::thread::sleep(Duration::from_millis(10));
+    // check roll count of the buyer address
+    assert_eq!(sample_state.read().pos_state.get_rolls_for(&address), 10);
     // stop the execution controller
     manager.stop();
 }
