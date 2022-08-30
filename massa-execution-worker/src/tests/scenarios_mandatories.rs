@@ -435,12 +435,12 @@ pub fn roll_sell() {
         &keypair,
     )
     .unwrap();
-    // create the block contaning the roll buy operation and a further one
+    // create the block contaning the roll buy operation
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
-    // store the blocks in storage
+    // store the block in storage
     storage.store_block(block.clone());
-    // set our blocks as final so the sell and payment are both processed
+    // set the block as final so the sell and credits are processed
     let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
     finalized_blocks.insert(
         block.content.header.content.slot,
@@ -453,6 +453,45 @@ pub fn roll_sell() {
     let mut credits = PreHashMap::default();
     credits.insert(address, Amount::from_str("1000").unwrap());
     assert_eq!(sample_read.pos_state.get_rolls_for(&address), 90);
+    assert_eq!(
+        sample_read
+            .pos_state
+            .get_deferred_credits_at(&Slot::new(7, 1)),
+        credits
+    );
+    // stop the execution controller
+    manager.stop();
+}
+
+#[test]
+#[serial]
+pub fn roll_slash() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig {
+        t0: 2.into(),
+        periods_per_cycle: 2,
+        thread_count: 2,
+        ..Default::default()
+    };
+    // get a sample final state and make selections
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+    // start the execution worker
+    let (mut manager, _) = start_execution_worker(
+        exec_cfg,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
+    // generate the keypair and its corresponding address
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    let address = Address::from_public_key(&keypair.get_public_key());
+    // sleep to get slashed on missed blocks
+    std::thread::sleep(Duration::from_millis(10));
+    // check roll count and deferred credits of the slashed address
+    let sample_read = sample_state.read();
+    let mut credits = PreHashMap::default();
+    credits.insert(address, Amount::from_str("10_000").unwrap());
+    // assert_eq!(sample_read.pos_state.get_rolls_for(&address), 0);
     assert_eq!(
         sample_read
             .pos_state
