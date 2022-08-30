@@ -273,6 +273,8 @@ impl ProtocolWorker {
         });
 
         // Check operation_list against expected operations hash from header.
+        info!("AURELIEN: Merkle root1: {:#?}", info.header.content.operation_merkle_root);
+        info!("AURELIEN: Merkle root2: {:#?}", Hash::compute_from(&total_hash));
         if info.header.content.operation_merkle_root == Hash::compute_from(&total_hash) {
             // Add the ops of info.
             info.operations = Some(operation_ids.clone());
@@ -288,6 +290,7 @@ impl ProtocolWorker {
                 Self::get_total_operations_size(&self.storage, &known_operations);
 
             if info.operations_size > self.config.max_serialized_operations_size_per_block {
+                info!("bad operations size");
                 let _ = self.ban_node(&from_node_id).await;
                 return Ok(());
             }
@@ -313,6 +316,7 @@ impl ProtocolWorker {
                     .await;
             }
         } else {
+            info!("bad merkle root");
             let _ = self.ban_node(&from_node_id).await;
         }
         Ok(())
@@ -341,6 +345,7 @@ impl ProtocolWorker {
             .note_operations_from_node(operations.clone(), &from_node_id)
             .is_err()
         {
+            info!("bad operations full received");
             let _ = self.ban_node(&from_node_id).await;
             return Ok(());
         }
@@ -364,7 +369,7 @@ impl ProtocolWorker {
         let mut full_op_size = info.operations_size;
 
         // Ban the node if:
-        // - thread incorect for an operation
+        // - thread incorrect for an operation
         // - wanted operations doesn't match
         // - duplicated operation
         // - full operations serialized size overflow
@@ -375,11 +380,13 @@ impl ProtocolWorker {
                 || !received_ids.insert(op.id)
                 || full_op_size > self.config.max_serialized_operations_size_per_block
             {
+                info!("bad operations full 2");
                 let _ = self.ban_node(&from_node_id).await;
                 return Ok(());
             }
         }
         if wanted_operation_ids != received_ids {
+            info!("not all id error");
             let _ = self.ban_node(&from_node_id).await;
             return Ok(());
         }
