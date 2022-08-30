@@ -14,7 +14,7 @@ use massa_models::{
     prehash::{CapacityAllocator, PreHashSet},
     wrapped::{Id, Wrapped},
 };
-use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkEvent, ReplyForBlocksInfo};
+use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkEvent};
 use massa_protocol_exports::{ProtocolError, ProtocolEvent};
 use massa_serialization::Serializer;
 use massa_storage::Storage;
@@ -168,12 +168,12 @@ impl ProtocolWorker {
                 Some(wrapped_block) => wrapped_block.content.operations.clone(),
                 None => {
                     // let the node know we don't have the block.
-                    all_blocks_info.push((*hash, ReplyForBlocksInfo::NotFound));
+                    all_blocks_info.push((*hash, BlockInfoReply::NotFound));
                     continue;
                 }
             };
             let block_info = match info_wanted {
-                AskForBlocksInfo::Info => ReplyForBlocksInfo::Info(operations_ids),
+                AskForBlocksInfo::Info => BlockInfoReply::Info(operations_ids),
                 AskForBlocksInfo::Operations(op_ids) => {
                     // Mark the node as having the block.
                     node_info.insert_known_blocks(
@@ -183,12 +183,17 @@ impl ProtocolWorker {
                         self.config.max_node_known_blocks_size,
                     );
 
-                    // Send only the missing operations.
-                    let needed_ops = operations_ids
-                        .into_iter()
-                        .filter(|id| op_ids.contains(id))
-                        .collect();
-                    ReplyForBlocksInfo::Operations(needed_ops)
+                    // Send only the missing operations that is in storage.
+                    let needed_ops = {
+                        let operations = self.storage.read_operations();
+                        operations_ids
+                            .into_iter()
+                            .filter(|id| op_ids.contains(id))
+                            .filter_map(|id| operations.get(&id))
+                            .cloned()
+                            .collect()
+                    };
+                    BlockInfoReply::Operations(needed_ops)
                 }
             };
             all_blocks_info.push((*hash, block_info));
@@ -263,7 +268,7 @@ impl ProtocolWorker {
         };
         let mut total_hash: Vec<u8> = vec![];
         operation_ids.iter().for_each(|op_id| {
-            let op_hash = op_id.hash().into_bytes();
+            let op_hash = op_id.get_hash().into_bytes();
             total_hash.extend(op_hash);
         });
 

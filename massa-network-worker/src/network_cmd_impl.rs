@@ -24,16 +24,16 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
-    block::BlockId,
+    block::{BlockId, WrappedHeader},
     composite::PubkeySig,
     endorsement::WrappedEndorsement,
     node::NodeId,
-    operation::{OperationId, OperationPrefixIds},
+    operation::{OperationPrefixIds, WrappedOperation},
     stats::NetworkStats,
 };
 use massa_network_exports::{
-    AskForBlocksInfo, BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError,
-    NodeCommand, Peer, Peers, ReplyForBlocksInfo,
+    AskForBlocksInfo, BlockInfoReply, BootstrapPeers, ConnectionClosureReason, ConnectionId,
+    NetworkError, NodeCommand, Peer, Peers,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -175,15 +175,15 @@ pub async fn on_node_ban_by_ids_cmd(
 pub async fn on_send_block_header_cmd(
     worker: &mut NetworkWorker,
     node: NodeId,
-    block_id: BlockId,
+    header: WrappedHeader,
 ) -> Result<(), NetworkError> {
-    massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"block_id": block_id, "node": node});
+    massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"block_id": header.id, "node": node});
     worker
         .event
         .forward(
             node,
             worker.active_nodes.get(&node),
-            NodeCommand::SendBlockHeader(block_id),
+            NodeCommand::SendBlockHeader(header),
         )
         .await;
     Ok(())
@@ -212,7 +212,7 @@ pub async fn on_ask_for_block_cmd(
 pub async fn on_send_block_info_cmd(
     worker: &mut NetworkWorker,
     node: NodeId,
-    info: Vec<(BlockId, ReplyForBlocksInfo)>,
+    info: Vec<(BlockId, BlockInfoReply)>,
 ) -> Result<(), NetworkError> {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::SendBlockInfo",
@@ -355,7 +355,7 @@ pub async fn on_get_stats_cmd(
 pub async fn on_send_operations_cmd(
     worker: &mut NetworkWorker,
     to_node: NodeId,
-    operations: Vec<OperationId>,
+    operations: Vec<WrappedOperation>,
 ) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::SendOperations",

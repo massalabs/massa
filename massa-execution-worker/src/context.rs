@@ -704,7 +704,7 @@ impl ExecutionContext {
             self.cancel_async_message(&msg);
         }
 
-        // execute the deferred credites comming from roll sells
+        // execute the deferred credits coming from roll sells
         self.execute_deferred_credits(&slot);
 
         // if the current slot is last in cycle check the production stats and act accordingly

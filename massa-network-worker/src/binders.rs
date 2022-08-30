@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! `Flexbuffer` layer between raw data and our objects.
-use crate::messages::MessageDeserializer;
+use crate::messages::{MessageDeserializer, MessageSerializer};
 
 use super::messages::Message;
 use async_speed_limit::{clock::StandardClock, Limiter, Resource};
@@ -10,6 +10,7 @@ use massa_models::{
     serialization::{DeserializeMinBEInt, SerializeMinBEInt},
 };
 use massa_network_exports::{NetworkError, ReadHalf, WriteHalf};
+use massa_serialization::Serializer;
 use massa_serialization::{DeserializeError, Deserializer};
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -39,19 +40,20 @@ impl WriteBinder {
     ///
     /// # Argument
     /// * `buf`: data to transmit.
-    pub async fn send(&mut self, buf: &[u8]) -> Result<u64, NetworkError> {
+    pub async fn send(&mut self, msg: &Message) -> Result<u64, NetworkError> {
         //        massa_trace!("binder.send", { "msg": msg });
+        let mut buf = Vec::new();
+        MessageSerializer::new().serialize(msg, &mut buf)?;
         let msg_size: u32 = buf
             .len()
             .try_into()
             .map_err(|_| NetworkError::GeneralProtocolError("message too long".into()))?;
-
         self.write_half
             .write_all(&msg_size.to_be_bytes_min(self.max_message_size)?[..])
             .await?;
 
         // send message
-        self.write_half.write_all(buf).await?;
+        self.write_half.write_all(&buf).await?;
 
         let res_index = self.message_index;
         self.message_index += 1;

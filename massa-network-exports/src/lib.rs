@@ -6,7 +6,7 @@
 
 pub use commands::{
     AskForBlocksInfo, BlockInfoReply, NetworkCommand, NetworkEvent, NetworkManagementCommand,
-    NodeCommand, NodeEvent, NodeEventType, ReplyForBlocksInfo,
+    NodeCommand, NodeEvent, NodeEventType,
 };
 
 pub use common::{ConnectionClosureReason, ConnectionId};

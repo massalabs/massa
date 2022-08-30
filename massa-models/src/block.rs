@@ -43,8 +43,8 @@ impl Id for BlockId {
         BlockId(hash)
     }
 
-    fn hash(&self) -> Hash {
-        self.0
+    fn get_hash(&self) -> &Hash {
+        &self.0
     }
 }
 
@@ -120,7 +120,7 @@ impl WrappedContent for Block {
             signature: content.header.signature,
             creator_public_key: content.header.creator_public_key,
             creator_address: content.header.creator_address,
-            id: U::new(content.header.id.hash()),
+            id: U::new(*content.header.id.get_hash()),
             content,
             serialized_data: content_serialized,
         })
@@ -154,7 +154,7 @@ impl WrappedContent for Block {
                 signature: content.header.signature,
                 creator_public_key: content.header.creator_public_key,
                 creator_address: content.header.creator_address,
-                id: U::new(content.header.id.hash()),
+                id: U::new(*content.header.id.get_hash()),
                 content,
                 serialized_data: buffer[..buffer.len() - rest.len()].to_vec(),
             },

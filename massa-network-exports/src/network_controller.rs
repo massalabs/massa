@@ -1,16 +1,16 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::{
-    commands::{AskForBlocksInfo, NetworkManagementCommand, ReplyForBlocksInfo},
+    commands::{AskForBlocksInfo, NetworkManagementCommand},
     error::NetworkError,
-    BootstrapPeers, NetworkCommand, NetworkEvent, Peers,
+    BlockInfoReply, BootstrapPeers, NetworkCommand, NetworkEvent, Peers,
 };
 use massa_models::{
-    block::BlockId,
+    block::{BlockId, WrappedHeader},
     composite::PubkeySig,
     endorsement::WrappedEndorsement,
     node::NodeId,
-    operation::{OperationId, OperationPrefixIds},
+    operation::{OperationPrefixIds, WrappedOperation},
     stats::NetworkStats,
 };
 use std::{
@@ -88,7 +88,7 @@ impl NetworkCommandSender {
     pub async fn send_block_info(
         &self,
         node: NodeId,
-        info: Vec<(BlockId, ReplyForBlocksInfo)>,
+        info: Vec<(BlockId, BlockInfoReply)>,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendBlockInfo { node, info })
@@ -120,10 +120,10 @@ impl NetworkCommandSender {
     pub async fn send_block_header(
         &self,
         node: NodeId,
-        block_id: BlockId,
+        header: WrappedHeader,
     ) -> Result<(), NetworkError> {
         self.0
-            .send(NetworkCommand::SendBlockHeader { node, block_id })
+            .send(NetworkCommand::SendBlockHeader { node, header })
             .await
             .map_err(|_| {
                 NetworkError::ChannelError("could not send SendBlockHeader command".into())
@@ -177,7 +177,7 @@ impl NetworkCommandSender {
     pub async fn send_operations(
         &self,
         node: NodeId,
-        operations: Vec<OperationId>,
+        operations: Vec<WrappedOperation>,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendOperations { node, operations })

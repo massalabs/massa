@@ -88,7 +88,7 @@ fn test_pool() {
         let expire_period: u64 = 40 + i;
         let start_period = expire_period.saturating_sub(pool_config.operation_validity_periods);
         let op = get_transaction(expire_period, fee);
-        let id = op.verify_integrity().unwrap();
+        let id = op.id;
 
         let mut ops = PreHashMap::default();
         ops.insert(id, op.clone());

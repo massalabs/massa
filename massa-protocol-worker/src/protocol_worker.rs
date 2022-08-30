@@ -6,11 +6,11 @@ use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use massa_logging::massa_trace;
 
 use massa_models::{
-    block::{BlockHeaderSerializer, BlockId, WrappedHeader},
-    endorsement::{EndorsementId, EndorsementSerializer, WrappedEndorsement},
+    block::{BlockId, WrappedHeader},
+    endorsement::{EndorsementId, WrappedEndorsement},
     node::NodeId,
     operation::OperationPrefixId,
-    operation::{OperationId, OperationSerializer, WrappedOperation},
+    operation::{OperationId, WrappedOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
 };
 use massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEventReceiver};
@@ -323,7 +323,18 @@ impl ProtocolWorker {
                     self.storage
                         .store_block(integrated_blocks.get(&block_id).unwrap().clone());
                 }
-
+                let header = {
+                    let blocks = self.storage.read_blocks();
+                    blocks
+                        .get(&block_id)
+                        .map(|block| block.content.header.clone())
+                        .ok_or_else(|| {
+                            ProtocolError::ContainerInconsistencyError(format!(
+                                "header of id {} not found.",
+                                block_id
+                            ))
+                        })?
+                };
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     // node that isn't asking for that block
                     let cond = node_info.get_known_block(&block_id);
@@ -331,7 +342,7 @@ impl ProtocolWorker {
                     if !cond.map_or_else(|| false, |v| v.0) {
                         massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "node": node_id, "block_id": block_id});
                         self.network_command_sender
-                            .send_block_header(*node_id, block_id)
+                            .send_block_header(*node_id, header.clone())
                             .await
                             .map_err(|_| {
                                 ProtocolError::ChannelError(
@@ -766,9 +777,7 @@ impl ProtocolWorker {
         }
 
         // check header signature
-        if let Err(err) =
-            header.verify_signature(BlockHeaderSerializer::new(), &header.creator_public_key)
-        {
+        if let Err(err) = header.verify_signature() {
             massa_trace!("protocol.protocol_worker.check_header.err_signature", { "header": header, "err": format!("{}", err)});
             return Ok(None);
         };
@@ -887,9 +896,7 @@ impl ProtocolWorker {
             // Check operation signature only if not already checked.
             if self.checked_operations.insert(&operation_id) {
                 // check signature if the operation wasn't in `checked_operation`
-                operation
-                    .verify_signature(OperationSerializer::new(), &operation.creator_public_key)?;
-
+                operation.verify_signature()?;
                 new_operations.insert(operation_id, operation);
             };
         }
@@ -948,10 +955,7 @@ impl ProtocolWorker {
             }
             // check endorsement signature if not already checked
             if self.checked_endorsements.insert(endorsement_id) {
-                endorsement.verify_signature(
-                    EndorsementSerializer::new(),
-                    &endorsement.creator_public_key,
-                )?;
+                endorsement.verify_signature()?;
                 new_endorsements.insert(endorsement_id, endorsement);
             }
         }
