@@ -2,10 +2,10 @@
 
 use super::tools::protocol_test;
 use massa_hash::Hash;
-use massa_models::wrapped::WrappedContent;
+use massa_models::operation::OperationId;
+use massa_models::wrapped::{Id, WrappedContent};
 use massa_models::{
     address::Address,
-    amount::Amount,
     block::{Block, BlockHeader, BlockHeaderSerializer, BlockSerializer},
     slot::Slot,
 };
@@ -16,7 +16,6 @@ use massa_protocol_exports::tests::tools::{
 };
 use massa_signature::KeyPair;
 use serial_test::serial;
-use std::str::FromStr;
 
 #[tokio::test]
 #[serial]
@@ -143,7 +142,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
             {
                 let mut op = create_operation_with_expire_period(&keypair, 5);
                 let op_thread = op.creator_address.get_thread(protocol_config.thread_count);
-                op.content.fee = Amount::from_str("10").unwrap();
+                op.id = OperationId::new(Hash::compute_from("wrong signature".as_bytes()));
                 let block = create_block_with_operations(
                     &creator_node.keypair,
                     Slot::new(1, op_thread),
