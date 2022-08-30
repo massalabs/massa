@@ -6,6 +6,7 @@ use crate::{ProtocolConfig, ProtocolEvent};
 use massa_hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::operation::OperationSerializer;
+use massa_models::prehash::PreHashSet;
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
     address::Address,
@@ -15,7 +16,6 @@ use massa_models::{
     operation::{Operation, OperationType, WrappedOperation},
     slot::Slot,
 };
-use massa_models::prehash::PreHashSet;
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -173,30 +173,33 @@ pub async fn send_and_propagate_block(
     operations: Vec<WrappedOperation>,
 ) {
     let expected_hash = block.id;
-    
+
     network_controller
         .send_header(source_node_id, block.content.header.clone())
         .await;
-        
-        protocol_command_sender
-            .send_wishlist_delta(
-                vec![block.id].into_iter().collect(),
-                PreHashSet::<BlockId>::default(),
-            )
-            .await
-            .unwrap();
+
+    protocol_command_sender
+        .send_wishlist_delta(
+            vec![block.id].into_iter().collect(),
+            PreHashSet::<BlockId>::default(),
+        )
+        .await
+        .unwrap();
 
     // Send block info to protocol.
-    let info = vec![(block.id, BlockInfoReply::Info(block.content.operations.clone()))];
+    let info = vec![(
+        block.id,
+        BlockInfoReply::Info(block.content.operations.clone()),
+    )];
     network_controller
         .send_block_info(source_node_id, info)
         .await;
-        
-        // Send full ops. 
-        let info = vec![(block.id, BlockInfoReply::Operations(operations))];
-            network_controller
-                .send_block_info(source_node_id, info)
-                .await;
+
+    // Send full ops.
+    let info = vec![(block.id, BlockInfoReply::Operations(operations))];
+    network_controller
+        .send_block_info(source_node_id, info)
+        .await;
 
     // Check protocol sends block to consensus.
     let hash = match wait_protocol_event(protocol_event_receiver, 1000.into(), |evt| match evt {

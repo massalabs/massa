@@ -318,7 +318,12 @@ impl ProtocolWorker {
                     "protocol.protocol_worker.process_command.integrated_block.begin",
                     { "block_id": block_id }
                 );
-                self.storage.extend(storage);
+                {
+                    let integrated_blocks = storage.read_blocks();
+                    self.storage
+                        .store_block(integrated_blocks.get(&block_id).unwrap().clone());
+                }
+
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     // node that isn't asking for that block
                     let cond = node_info.get_known_block(&block_id);

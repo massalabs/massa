@@ -50,16 +50,16 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 thread = address.get_thread(2);
             }
 
-            let slot_a = Slot::new(1, 0);
-
             // block with ok operation
             {
                 let op = create_operation_with_expire_period(&keypair, 5);
-                let op_thread = op
-                    .creator_address
-                    .get_thread(protocol_config.thread_count);
+                let op_thread = op.creator_address.get_thread(protocol_config.thread_count);
 
-                let block = create_block_with_operations(&creator_node.keypair, Slot::new(1, op_thread), vec![op.clone()]);
+                let block = create_block_with_operations(
+                    &creator_node.keypair,
+                    Slot::new(1, op_thread),
+                    vec![op.clone()],
+                );
                 send_and_propagate_block(
                     &mut network_controller,
                     block,
@@ -67,20 +67,18 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     creator_node.id,
                     &mut protocol_event_receiver,
                     &mut protocol_command_sender,
-                    vec![op.clone()]
+                    vec![op.clone()],
                 )
                 .await;
             }
 
             // block with operation too far in the future
             // Note: what happened with checking validity periods?
-            
+
             // block with an operation twice
             {
                 let op = create_operation_with_expire_period(&keypair, 5);
-                let op_thread = op
-                    .creator_address
-                    .get_thread(protocol_config.thread_count);
+                let op_thread = op.creator_address.get_thread(protocol_config.thread_count);
 
                 let block = create_block_with_operations(
                     &creator_node.keypair,
@@ -95,16 +93,14 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     creator_node.id,
                     &mut protocol_event_receiver,
                     &mut protocol_command_sender,
-                    vec![op.clone(), op.clone()]
+                    vec![op.clone(), op.clone()],
                 )
                 .await;
             }
             // block with wrong merkle root
             {
                 let op = create_operation_with_expire_period(&keypair, 5);
-                let op_thread = op
-                    .creator_address
-                    .get_thread(protocol_config.thread_count);
+                let op_thread = op.creator_address.get_thread(protocol_config.thread_count);
                 let block = {
                     let operation_merkle_root = Hash::compute_from("merkle root".as_bytes());
 
@@ -146,11 +142,13 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
             // block with operation with wrong signature
             {
                 let mut op = create_operation_with_expire_period(&keypair, 5);
-                let op_thread = op
-                    .creator_address
-                    .get_thread(protocol_config.thread_count);
+                let op_thread = op.creator_address.get_thread(protocol_config.thread_count);
                 op.content.fee = Amount::from_str("10").unwrap();
-                let block = create_block_with_operations(&creator_node.keypair, Slot::new(1, op_thread), vec![op.clone()]);
+                let block = create_block_with_operations(
+                    &creator_node.keypair,
+                    Slot::new(1, op_thread),
+                    vec![op.clone()],
+                );
 
                 send_and_propagate_block(
                     &mut network_controller,
@@ -159,7 +157,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     creator_node.id,
                     &mut protocol_event_receiver,
                     &mut protocol_command_sender,
-                    vec![op.clone()]
+                    vec![op.clone()],
                 )
                 .await;
             }
@@ -167,8 +165,11 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
             // block with operation in wrong thread
             {
                 let op = create_operation_with_expire_period(&keypair, 5);
-                let block =
-                    create_block_with_operations(&creator_node.keypair, Slot::new(1, 1), vec![op.clone()]);
+                let block = create_block_with_operations(
+                    &creator_node.keypair,
+                    Slot::new(1, 1),
+                    vec![op.clone()],
+                );
 
                 send_and_propagate_block(
                     &mut network_controller,
@@ -177,7 +178,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     creator_node.id,
                     &mut protocol_event_receiver,
                     &mut protocol_command_sender,
-                    vec![op.clone()]
+                    vec![op.clone()],
                 )
                 .await;
             }
