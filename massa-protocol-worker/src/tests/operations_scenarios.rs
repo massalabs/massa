@@ -4,11 +4,11 @@
 
 use super::tools::{protocol_test, protocol_test_with_storage};
 use massa_models::prehash::PreHashMap;
-use massa_models::{self, address::Address, amount::Amount, slot::Slot};
+use massa_models::{self, block::BlockId, address::Address, amount::Amount, slot::Slot};
 use massa_models::{operation::OperationId, prehash::PreHashSet};
 use massa_network_exports::{BlockInfoReply, NetworkCommand};
 use massa_pool_exports::test_exports::MockPoolControllerMessage;
-use massa_protocol_exports::tests::tools;
+use massa_protocol_exports::tests::tools::{self, assert_hash_asked_to_node};
 use massa_protocol_exports::{BlocksResults, ProtocolEvent};
 use serial_test::serial;
 use std::str::FromStr;
@@ -454,37 +454,70 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                     protocol_pool_event_receiver,
                     mut storage| {
             // Create 3 nodes.
-            let nodes = tools::create_and_connect_nodes(3, &mut network_controller).await;
+            let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
+                .await
+                .pop()
+                .unwrap();
+            let node_b = tools::create_and_connect_nodes(1, &mut network_controller)
+                .await
+                .pop()
+                .unwrap();
+            let node_c = tools::create_and_connect_nodes(1, &mut network_controller)
+                .await
+                .pop()
+                .unwrap();
 
-            let address = Address::from_public_key(&nodes[0].id.0);
-            let thread = address.get_thread(2);
-
-            let operation = tools::create_operation_with_expire_period(&nodes[0].keypair, 1);
-
-            let operation_2 = tools::create_operation_with_expire_period(&nodes[0].keypair, 1);
-            let operation_id_2 = operation_2.id;
-
-            let mut block = tools::create_block_with_operations(
-                &nodes[0].keypair,
-                Slot::new(1, thread),
-                vec![operation.clone()],
-            );
+                let op_1 = tools::create_operation_with_expire_period(&node_a.keypair, 5);
+                let op_2 = tools::create_operation_with_expire_period(&node_a.keypair, 5);
+                let op_thread = op_1
+                    .creator_address
+                    .get_thread(protocol_config.thread_count);
+                let mut block = tools::create_block_with_operations(
+                    &node_a.keypair,
+                    Slot::new(1, op_thread),
+                    vec![op_1.clone()],
+                );
 
             // Change the root operation hash
-            block.content.operations = vec![operation_2.clone()]
+            block.content.operations = vec![op_2.clone()]
                 .into_iter()
                 .map(|op| op.id)
                 .collect();
+            
+                // Send header via node_a
+                network_controller
+                    .send_header(node_a.id, block.content.header.clone())
+                    .await;
+
+                // Send wishlist
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![block.id].into_iter().collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .await
+                    .unwrap();
+
+                // assert it was asked to node A, then B, then C.
+                assert_hash_asked_to_node(block.id, node_a.id, &mut network_controller).await;
+                assert_hash_asked_to_node(block.id, node_b.id, &mut network_controller).await;
+                assert_hash_asked_to_node(block.id, node_c.id, &mut network_controller).await;
 
             // Node 2 sends block, not resulting in operations and endorsements noted in block info,
             // because of the invalid root hash.
+            network_controller
+                .send_block_info(
+                    node_b.id,
+                    vec![(block.id, BlockInfoReply::Info(vec![op_1.id, op_2.id]))],
+                )
+                .await;
 
             // Node 3 sends block, resulting in operations and endorsements noted in block info.
-            // TODO: rewrite with block info.
-
-            // Node 1 sends header, but the block is empty.
             network_controller
-                .send_header(nodes[0].id, block.content.header.clone())
+                .send_block_info(
+                    node_c.id,
+                    vec![(block.id, BlockInfoReply::Info(vec![op_1.id, op_2.id]))],
+                )
                 .await;
 
             // Wait for the event to be sure that the node is connected.
@@ -498,7 +531,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             // Send the operation to protocol
             // it should propagate to the node because it isn't in the block.
-            storage.store_operations(vec![operation.clone()]);
+            storage.store_operations(vec![op_2.clone()]);
             protocol_command_sender
                 .propagate_operations(storage)
                 .await
@@ -513,8 +546,8 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             {
                 Some(NetworkCommand::SendOperationAnnouncements { to_node, batch }) => {
                     assert_eq!(batch.len(), 1);
-                    assert!(batch.contains(&operation_id_2.prefix()));
-                    assert_eq!(nodes[0].id, to_node);
+                    assert!(batch.contains(&op_2.id.prefix()));
+                    assert_eq!(node_a.id, to_node);
                 }
                 None => panic!("Operation not propagated."),
                 Some(cmd) => panic!("Unexpected network command.{:?}", cmd),
