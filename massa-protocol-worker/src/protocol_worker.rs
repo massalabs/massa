@@ -4,7 +4,7 @@ use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 
 use massa_logging::massa_trace;
 
-use massa_models::block::Block;
+use massa_models::block::{self, Block};
 use massa_models::cache::{HashCacheMap, HashCacheSet};
 use massa_models::endorsement::Endorsement;
 use massa_models::{
@@ -24,7 +24,8 @@ use massa_protocol_exports::{
 
 use massa_storage::Storage;
 use massa_time::TimeError;
-use std::collections::{hash_map, HashMap, HashSet};
+use rand::{thread_rng, Rng};
+use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use tokio::{
     sync::mpsc,
     sync::mpsc::error::SendTimeoutError,
@@ -99,72 +100,121 @@ pub async fn start_protocol_controller(
 }
 
 /// An enum determining the status of block retrieval
-enum BlockRetrievalStatus {
-    /// Operation list being queried
-    QueryingOpList {
-        /// block header
-        header: WrappedHeader,
+pub(crate) enum BlockRetrievalStatus {
+    ///
+    Input {
+        /// Header if available
+        opt_header: Option<WrappedHeader>,
+    },
+    /// Querying the header
+    QueryingHeader {
         /// node being queried
         queried_node: NodeId,
         /// timestamp of the query
         timestamp: Instant,
     },
-    /// Operation list being queried
-    QueryingOperations {
+    /// Querying the op list
+    QueryingOpList {
         /// block header
         header: WrappedHeader,
-        /// ordered operation list
-        operation_ids: Vec<OperationId>,
-        /// storage with referencing endorsements and already-available operations
+        /// block storage referencing the endorsements
         block_storage: Storage,
         /// node being queried
         queried_node: NodeId,
         /// timestamp of the query
         timestamp: Instant,
     },
+    /// Querying operations
+    QueryingOps {
+        /// block header
+        header: WrappedHeader,
+        /// ordered operation list
+        operation_ids: Vec<OperationId>,
+        /// block storage referencing endorsements and already-available operations
+        block_storage: Storage,
+        /// node being queried
+        queried_node: NodeId,
+        /// timestamp of the query
+        timestamp: Instant,
+    },
+    /// Got the full block
+    FullyRetrieved {
+        /// Block slot
+        slot: Slot,
+        /// Block storage referencing endorsements, operations and the block itself
+        block_storage: Storage,
+    },
+    /// The block was discovered to be invalid while retrieving it
+    InvalidBlock { reason: String },
+}
+
+impl BlockRetrievalStatus {
+    /// gets the query timestamp and queried node ID if any
+    pub fn get_query_info(&self) -> Option<(Instant, NodeId)> {
+        match &self {
+            BlockRetrievalStatus::Input { .. } => None,
+            BlockRetrievalStatus::QueryingHeader {
+                timestamp,
+                queried_node,
+                ..
+            } => Some((*timestamp, *queried_node)),
+            BlockRetrievalStatus::QueryingOpList {
+                timestamp,
+                queried_node,
+                ..
+            } => Some((*timestamp, *queried_node)),
+            BlockRetrievalStatus::QueryingOps {
+                timestamp,
+                queried_node,
+                ..
+            } => Some((*timestamp, *queried_node)),
+            BlockRetrievalStatus::FullyRetrieved { .. } => None,
+            BlockRetrievalStatus::InvalidBlock { .. } => None,
+        }
+    }
 }
 
 /// protocol worker
 pub struct ProtocolWorker {
     /// Protocol configuration.
-    config: ProtocolConfig,
+    pub(crate) config: ProtocolConfig,
     /// Associated network command sender.
-    network_command_sender: NetworkCommandSender,
+    pub(crate) network_command_sender: NetworkCommandSender,
     /// Associated network event receiver.
-    network_event_receiver: NetworkEventReceiver,
+    pub(crate) network_event_receiver: NetworkEventReceiver,
     /// Channel to send protocol events to the controller.
-    controller_event_tx: mpsc::Sender<ProtocolEvent>,
+    pub(crate) controller_event_tx: mpsc::Sender<ProtocolEvent>,
     /// Channel to send protocol pool events to the controller.
-    pool_controller: Box<dyn PoolController>,
+    pub(crate) pool_controller: Box<dyn PoolController>,
     /// Channel receiving commands from the controller.
-    controller_command_rx: mpsc::Receiver<ProtocolCommand>,
+    pub(crate) controller_command_rx: mpsc::Receiver<ProtocolCommand>,
     /// Channel to send management commands to the controller.
-    controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
+    pub(crate) controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
     /// Shared storage.
-    storage: Storage,
+    pub(crate) storage: Storage,
 
     /// Ids of active nodes mapped to node info.
-    active_nodes: HashMap<NodeId, NodeInfo>,
+    pub(crate) active_nodes: HashMap<NodeId, NodeInfo>,
 
     /// Cache of retrieved endorsements
-    retrieved_endorsements_cache: HashCacheSet<BlockId>,
+    pub(crate) retrieved_endorsements_cache: HashCacheSet<BlockId>,
 
     /// List of blocks required for retrieval (must keep retrying)
-    block_wishlist: PreHashMap<BlockId, Option<WrappedHeader>>,
-    /// List of wanted blocks and their retrieval status
-    block_retrieval: PreHashMap<BlockId, BlockRetrievalStatus>,
+    pub(crate) block_wishlist: PreHashMap<BlockId, BlockRetrievalStatus>,
+    /// List of failed block asks
+    pub(crate) failed_block_asks: VecDeque<(BlockId, NodeId, Instant)>,
     /// Cache of retrieved blocks (mapped to the list od endorsements/operations in the block)
-    retrieved_blocks_cache:
+    pub(crate) retrieved_blocks_cache:
         HashCacheMap<BlockId, (PreHashSet<EndorsementId>, PreHashSet<OperationId>)>,
 
     /// Cache of retrieved operations
-    retrieved_ops_cache: HashCacheSet<OperationId>,
+    pub(crate) retrieved_ops_cache: HashCacheSet<OperationId>,
     /// Cache map of operation prefixes
-    operation_prefix_cache: HashCacheMap<OperationPrefixId, OperationId>,
+    pub(crate) operation_prefix_cache: HashCacheMap<OperationPrefixId, OperationId>,
     /// List of ids of operations that we asked to the nodes
-    asked_operations: HashMap<OperationPrefixId, (Instant, Vec<NodeId>)>,
+    pub(crate) asked_operations: HashMap<OperationPrefixId, (Instant, Vec<NodeId>)>,
     /// Buffer for operations that we want later
-    op_batch_buffer: OperationBatchBuffer,
+    pub(crate) op_batch_buffer: OperationBatchBuffer,
 }
 
 /// channels used by the protocol worker
@@ -214,7 +264,7 @@ impl ProtocolWorker {
             retrieved_endorsements_cache: HashCacheSet::new(config.max_known_endorsements_size),
             operation_prefix_cache: HashCacheMap::new(config.max_known_ops_size),
             block_wishlist: Default::default(),
-            block_retrieval: Default::default(),
+            failed_block_asks: Default::default(),
             retrieved_blocks_cache: HashCacheMap::new(config.max_known_blocks_size),
             retrieved_ops_cache: HashCacheSet::new(config.max_known_ops_size),
             asked_operations: Default::default(),
@@ -226,21 +276,26 @@ impl ProtocolWorker {
     }
 
     /// Emit an event
-    pub(crate) async fn send_protocol_event(&self, event: ProtocolEvent) {
+    pub(crate) async fn send_protocol_event(
+        &self,
+        event: ProtocolEvent,
+    ) -> Result<(), ProtocolEvent> {
         let result = self
             .controller_event_tx
             .send_timeout(event, self.config.max_send_wait.to_duration())
             .await;
         match result {
-            Ok(()) => {}
+            Ok(()) => Ok(()),
             Err(SendTimeoutError::Closed(event)) => {
                 warn!(
                     "Failed to send ProtocolEvent due to channel closure: {:?}.",
-                    event
+                    &event
                 );
+                Err(event)
             }
             Err(SendTimeoutError::Timeout(event)) => {
-                warn!("Failed to send ProtocolEvent due to timeout: {:?}.", event);
+                warn!("Failed to send ProtocolEvent due to timeout: {:?}.", &event);
+                Err(event)
             }
         }
     }
@@ -348,7 +403,6 @@ impl ProtocolWorker {
 
         // Note that we drop the storage here for simplicity for now, and just not send things we don't have.
         // In the future we could keep it during the whole propagation process to ensure we have everything in store.
-
         for (node_id, node_info) in self.active_nodes.iter_mut() {
             if node_info.known_blocks.contains(block_id) {
                 // this node already knows about that block
@@ -477,7 +531,7 @@ impl ProtocolWorker {
             { "add": add, "remove": remove }
         );
 
-        // add new entires
+        // add new entries
         for (id, opt_header) in add {
             let cur_entry = self.block_wishlist.entry(key).or_insert(opt_header);
             if cur_entry.is_none() && opt_header.is_some() {
@@ -532,72 +586,6 @@ impl ProtocolWorker {
         Ok(())
     }
 
-    /// Update the status of the block retrieval process
-    pub(crate) async fn update_ask_block(
-        &mut self,
-        ask_block_timer: &mut std::pin::Pin<&mut Sleep>,
-    ) -> Result<(), ProtocolError> {
-        massa_trace!("protocol.protocol_worker.update_ask_block.begin", {});
-
-        let now = Instant::now();
-
-        // init timer
-        let mut next_tick = now
-            .checked_add(self.config.ask_block_timeout.into())
-            .ok_or(TimeError::TimeOverflowError)?;
-
-        // check process status and accumulate node load (numbe rof blocks being asked to that node)
-        let mut node_load: HashMap<NodeId, usize> =
-            self.active_nodes.keys().map(|id| (*id, 0)).collect();
-        let block_ids: Vec<_> = self.block_retrieval.keys().copied().collect();
-        for block_id in block_ids {
-            let mut entry = match self.block_retrieval.entry(block_id) {
-                hash_map::Entry::Vacant(_) => continue,
-                hash_map::Entry::Occupied(mut occ) => occ
-            };
-            match entry.get() {
-                /// Operation list being queried
-                QueryingOpList {
-                    queried_node,
-                    timestamp,
-                    ..
-                } => {
-                    // check for timeout or node absence
-                    if now.saturating_duration_since(timestamp) > self.config.ask_block_timeout
-                        || !self.active_nodes.contains_key(queried_node)
-                    {
-                        if let Some(node_info) = self.active_nodes.get_mut(queried_node) {
-                            // mark the node as not having the block
-                            node_info.known_blocks.remove(&block_id);
-                        }
-                        
-                    } else {
-                        // update node load
-                        let load = node_load.get_mut(queried_node).unwrap();
-                        *load = load.saturating_add(1);
-                    }
-                }
-                /// Operations being queried
-                BlockRetrievalStatus::QueryingOperations {
-                    header,
-                    operation_ids,
-                    block_storage,
-                    queried_node,
-                    timestamp,
-                } => {
-                    // TODO if timeout or node absent mark node as not knowing it, remove from status
-                }
-            }
-        }
-
-        TODO
-
-        // reset timer
-        ask_block_timer.set(sleep_until(next_tick));
-
-        Ok(())
-    }
-
     /// Ban a node.
     pub(crate) async fn ban_node(&mut self, node_id: &NodeId) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.ban_node", { "node": node_id });
@@ -606,6 +594,8 @@ impl ProtocolWorker {
             .node_ban_by_ids(vec![*node_id])
             .await
             .map_err(|_| ProtocolError::ChannelError("Ban node command send failed".into()))?;
+        // a node was removed: update ask block
+        self.update_ask_block().await?;
         Ok(())
     }
 
