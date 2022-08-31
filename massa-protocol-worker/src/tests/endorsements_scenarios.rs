@@ -15,7 +15,6 @@ use std::time::Duration;
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
@@ -116,7 +115,6 @@ async fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() 
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_propagates_endorsements_to_active_nodes() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
@@ -260,7 +258,6 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_block_integration(
 ) {
     let protocol_config = &tools::PROTOCOL_CONFIG;
@@ -339,7 +336,6 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_get_block_results(
 ) {
     let protocol_config = &tools::PROTOCOL_CONFIG;
