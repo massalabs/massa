@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::start_execution_worker;
+use crate::{controller, start_execution_worker};
 use massa_async_pool::AsyncPoolConfig;
 use massa_execution_exports::{
     ExecutionConfig, ExecutionError, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
@@ -477,26 +477,23 @@ pub fn roll_slash() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
 
     // start the execution worker
-    let (mut manager, _) = start_execution_worker(
+    let (mut manager, controller) = start_execution_worker(
         exec_cfg,
         sample_state.clone(),
         sample_state.read().pos_state.selector.clone(),
     );
-    // generate the keypair and its corresponding address
+    // sleep to get slashed on missed blocks and reach the reimbursment
+    std::thread::sleep(Duration::from_millis(100));
+    // get the initial selection address
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
-    // sleep to get slashed on missed blocks
-    std::thread::sleep(Duration::from_millis(10));
-    // check roll count and deferred credits of the slashed address
-    let sample_read = sample_state.read();
-    let mut credits = PreHashMap::default();
-    credits.insert(address, Amount::from_str("10_000").unwrap());
-    // assert_eq!(sample_read.pos_state.get_rolls_for(&address), 0);
+    // check its balances
     assert_eq!(
-        sample_read
-            .pos_state
-            .get_deferred_credits_at(&Slot::new(7, 1)),
-        credits
+        controller.get_final_and_candidate_sequential_balances(&[address]),
+        vec![(
+            Some(Amount::from_str("300_000").unwrap()),
+            Some(Amount::from_str("310_000").unwrap())
+        )]
     );
     // stop the execution controller
     manager.stop();

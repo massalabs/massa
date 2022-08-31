@@ -217,7 +217,6 @@ impl SpeculativeRollState {
                 let owned_count = self.get_rolls(&addr);
                 if owned_count != 0 {
                     if let Some(amount) = roll_price.checked_mul_u64(owned_count) {
-                        // dbg!(&target_slot, &addr, &owned_count, &amount);
                         target_credits.insert(addr, amount);
                         self.added_changes
                             .roll_changes
