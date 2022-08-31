@@ -362,10 +362,6 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             );
             let expected_block_id = block.id;
 
-            network_controller
-                .send_ask_for_block(nodes[0].id, vec![(expected_block_id, Default::default())])
-                .await;
-
             // Send the header,
             // this should note the node as knowing about the endorsement.
             network_controller
