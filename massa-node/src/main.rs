@@ -37,8 +37,7 @@ use massa_models::config::constants::{
     PERIODS_PER_CYCLE, ROLL_PRICE, T0, THREAD_COUNT, VERSION,
 };
 use massa_models::config::{
-    ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, CHANNEL_SIZE, DELTA_F0,
-    NETWORK_NODE_COMMAND_CHANNEL_SIZE,
+    ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, CHANNEL_SIZE, DELTA_F0, NETWORK_NODE_COMMAND_CHANNEL_SIZE,
     NETWORK_NODE_EVENT_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
     PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE,
 };
@@ -318,7 +317,7 @@ async fn launch(
         operation_batch_proc_period: SETTINGS.protocol.operation_batch_proc_period,
         asked_operations_pruning_period: SETTINGS.protocol.asked_operations_pruning_period,
         max_operations_per_message: SETTINGS.protocol.max_operations_per_message,
-        max_serialized_operations_size_per_block: MAX_BLOCK_SIZE,
+        max_serialized_operations_size_per_block: MAX_BLOCK_SIZE as usize,
         controller_channel_size: PROTOCOL_CONTROLLER_CHANNEL_SIZE,
         event_channel_size: PROTOCOL_EVENT_CHANNEL_SIZE,
     };
