@@ -4,7 +4,7 @@
 
 use super::tools::{protocol_test, protocol_test_with_storage};
 use massa_models::prehash::PreHashMap;
-use massa_models::{self, address::Address, amount::Amount, block::BlockId, slot::Slot};
+use massa_models::{self, block::BlockId, address::Address, amount::Amount, slot::Slot};
 use massa_models::{operation::OperationId, prehash::PreHashSet};
 use massa_network_exports::{BlockInfoReply, NetworkCommand};
 use massa_pool_exports::test_exports::MockPoolControllerMessage;
@@ -467,38 +467,41 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 .pop()
                 .unwrap();
 
-            let op_1 = tools::create_operation_with_expire_period(&node_a.keypair, 5);
-            let op_2 = tools::create_operation_with_expire_period(&node_a.keypair, 5);
-            let op_thread = op_1
-                .creator_address
-                .get_thread(protocol_config.thread_count);
-            let mut block = tools::create_block_with_operations(
-                &node_a.keypair,
-                Slot::new(1, op_thread),
-                vec![op_1.clone()],
-            );
+                let op_1 = tools::create_operation_with_expire_period(&node_a.keypair, 5);
+                let op_2 = tools::create_operation_with_expire_period(&node_a.keypair, 5);
+                let op_thread = op_1
+                    .creator_address
+                    .get_thread(protocol_config.thread_count);
+                let mut block = tools::create_block_with_operations(
+                    &node_a.keypair,
+                    Slot::new(1, op_thread),
+                    vec![op_1.clone()],
+                );
 
             // Change the root operation hash
-            block.content.operations = vec![op_2.clone()].into_iter().map(|op| op.id).collect();
+            block.content.operations = vec![op_2.clone()]
+                .into_iter()
+                .map(|op| op.id)
+                .collect();
+            
+                // Send header via node_a
+                network_controller
+                    .send_header(node_a.id, block.content.header.clone())
+                    .await;
 
-            // Send header via node_a
-            network_controller
-                .send_header(node_a.id, block.content.header.clone())
-                .await;
+                // Send wishlist
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![block.id].into_iter().collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .await
+                    .unwrap();
 
-            // Send wishlist
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![block.id].into_iter().collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .await
-                .unwrap();
-
-            // assert it was asked to node A, then B, then C.
-            assert_hash_asked_to_node(block.id, node_a.id, &mut network_controller).await;
-            assert_hash_asked_to_node(block.id, node_b.id, &mut network_controller).await;
-            assert_hash_asked_to_node(block.id, node_c.id, &mut network_controller).await;
+                // assert it was asked to node A, then B, then C.
+                assert_hash_asked_to_node(block.id, node_a.id, &mut network_controller).await;
+                assert_hash_asked_to_node(block.id, node_b.id, &mut network_controller).await;
+                assert_hash_asked_to_node(block.id, node_c.id, &mut network_controller).await;
 
             // Node 2 sends block, not resulting in operations and endorsements noted in block info,
             // because of the invalid root hash.
