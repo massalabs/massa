@@ -2,14 +2,13 @@
 /// This file defines testing tools related to the configuration
 use massa_models::{
     address::Address,
-    amount::Amount,
     config::{LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_DATASTORE_KEY_LENGTH, THREAD_COUNT},
 };
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::io::Seek;
 use tempfile::{NamedTempFile, TempDir};
 
-use crate::LedgerConfig;
+use crate::{LedgerConfig, LedgerEntry};
 
 /// Default value of `LedgerConfig` used for tests
 impl Default for LedgerConfig {
@@ -28,7 +27,7 @@ impl Default for LedgerConfig {
 
 impl LedgerConfig {
     /// get ledger and ledger configuration
-    pub fn sample(ledger: &BTreeMap<Address, Amount>) -> (Self, NamedTempFile, TempDir) {
+    pub fn sample(ledger: &HashMap<Address, LedgerEntry>) -> (Self, NamedTempFile, TempDir) {
         let initial_ledger = NamedTempFile::new().expect("cannot create temp file");
         let disk_ledger = TempDir::new().expect("cannot create temp directory");
         serde_json::to_writer_pretty(initial_ledger.as_file(), &ledger)

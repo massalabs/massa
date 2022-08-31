@@ -137,7 +137,7 @@ impl PoSFinalState {
     ///     set complete=true for cycle C in the history
     ///     compute the seed hash and notifies the PoSDrawer for cycle C+3
     ///
-    pub fn settle_slot(
+    pub fn apply_changes(
         &mut self,
         changes: PoSChanges,
         slot: Slot,

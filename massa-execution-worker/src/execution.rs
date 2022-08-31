@@ -497,7 +497,7 @@ impl ExecutionState {
     /// Will panic if called with another operation type
     ///
     /// # Arguments
-    /// * `operation`: the `WrappedOperation` to process, must be an `RollBuy`
+    /// * `operation`: the `WrappedOperation` to process, must be a `Transaction`
     /// * `operation_id`: ID of the operation
     /// * `sender_addr`: address of the sender
     pub fn execute_transaction_op(
@@ -525,16 +525,16 @@ impl ExecutionState {
             owned_addresses: vec![sender_addr],
         }];
 
-        // spend `roll_price` * `roll_count` sequential coins from the buyer
+        // send `roll_price` * `roll_count` sequential coins from the sender to the recipient
         if let Err(err) = context.transfer_sequential_coins(
             Some(sender_addr),
             Some(*recipient_address),
             *amount,
             false,
         ) {
-            return Err(ExecutionError::RollBuyError(format!(
-                "{} failed to send {} coins to {}: {}",
-                sender_addr, amount, recipient_address, err
+            return Err(ExecutionError::TransactionError(format!(
+                "transfer of {} coins from {} to {} failed: {}",
+                amount, sender_addr, recipient_address, err
             )));
         }
 
