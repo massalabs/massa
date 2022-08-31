@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::{controller, start_execution_worker};
+use crate::start_execution_worker;
 use massa_async_pool::AsyncPoolConfig;
 use massa_execution_exports::{
     ExecutionConfig, ExecutionError, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
@@ -448,7 +448,7 @@ pub fn roll_sell() {
     );
     controller.update_blockclique_status(finalized_blocks, Default::default());
     std::thread::sleep(Duration::from_millis(10));
-    // check roll count and deferred credits of the seller address
+    // check roll count deferred credits and candidate balance of the seller address
     let sample_read = sample_state.read();
     let mut credits = PreHashMap::default();
     credits.insert(address, Amount::from_str("1000").unwrap());
@@ -459,13 +459,20 @@ pub fn roll_sell() {
             .get_deferred_credits_at(&Slot::new(7, 1)),
         credits
     );
+    assert_eq!(
+        controller.get_final_and_candidate_sequential_balances(&[address]),
+        vec![(
+            Some(Amount::from_str("300_000").unwrap()),
+            Some(Amount::from_str("309_000").unwrap())
+        )]
+    );
     // stop the execution controller
     manager.stop();
 }
 
 #[test]
 #[serial]
-pub fn roll_slash() {
+pub fn missed_blocks_roll_slash() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
         t0: 2.into(),
