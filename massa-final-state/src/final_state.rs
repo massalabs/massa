@@ -104,7 +104,7 @@ impl FinalState {
             .apply_changes_unchecked(&changes.async_pool_changes);
         self.pos_state
             .apply_changes(
-                dbg!(changes.roll_state_changes.clone()),
+                changes.roll_state_changes.clone(),
                 self.slot,
                 self.config.periods_per_cycle,
                 self.config.thread_count,
