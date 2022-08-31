@@ -347,7 +347,7 @@ impl ProtocolWorker {
 
         let wanted_operation_ids = match self.block_wishlist.get(&block_id) {
             Some((AskForBlocksInfo::Operations(ids), Some(_))) => {
-                ids.clone().into_iter().collect::<PreHashSet<OperationId>>()
+                ids.iter().cloned().collect::<PreHashSet<OperationId>>()
             }
             _ => return Ok(()),
         };
@@ -360,26 +360,18 @@ impl ProtocolWorker {
             }
         };
 
-        let mut received_ids: PreHashSet<OperationId> = Default::default();
-        let mut full_op_size = info.operations_size;
-
         // Ban the node if:
-        // - thread incorrect for an operation
-        // - wanted operations doesn't match
-        // - duplicated operation
+        // - mismatch with wanted operations
         // - full operations serialized size overflow
-        for op in operations.iter() {
-            full_op_size = full_op_size.saturating_add(op.serialized_size());
-            let op_thread = op.creator_address.get_thread(self.config.thread_count);
-            if op_thread != info.header.content.slot.thread
-                || !received_ids.insert(op.id)
-                || full_op_size > self.config.max_serialized_operations_size_per_block
-            {
-                let _ = self.ban_node(&from_node_id).await;
-                return Ok(());
-            }
-        }
-        if wanted_operation_ids != received_ids {
+        let full_op_size: usize = info.operations_size
+            + operations
+                .iter()
+                .map(|op| op.serialized_size())
+                .sum::<usize>();
+        let received_ids: PreHashSet<OperationId> = operations.iter().map(|op| op.id).collect();
+        if full_op_size > self.config.max_serialized_operations_size_per_block
+            || wanted_operation_ids != received_ids
+        {
             let _ = self.ban_node(&from_node_id).await;
             return Ok(());
         }
@@ -391,7 +383,7 @@ impl ProtocolWorker {
         };
 
         let mut content_serialized = Vec::new();
-        BlockSerializer::new() // todo : usage of constants would avoid a lot of instanciations
+        BlockSerializer::new() // todo : keep the serializer in the struct to avoid recreating it
             .serialize(&block, &mut content_serialized)
             .unwrap();
 
@@ -424,9 +416,7 @@ impl ProtocolWorker {
         .await;
 
         // Update ask block
-        let mut set = PreHashSet::<BlockId>::with_capacity(1);
-        set.insert(block_id);
-        self.stop_asking_blocks(set)
+        self.stop_asking_blocks(vec![block_id].into_iter().collect())
     }
 
     async fn on_block_info_received(

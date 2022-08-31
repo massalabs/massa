@@ -318,9 +318,8 @@ impl ProtocolWorker {
                     "protocol.protocol_worker.process_command.integrated_block.begin",
                     { "block_id": block_id }
                 );
-                self.storage.extend(storage);
                 let header = {
-                    let blocks = self.storage.read_blocks();
+                    let blocks = storage.read_blocks();
                     blocks
                         .get(&block_id)
                         .map(|block| block.content.header.clone())
@@ -390,13 +389,12 @@ impl ProtocolWorker {
                     {}
                 );
             }
-            ProtocolCommand::PropagateOperations(operations) => {
-                let operation_ids = operations.get_op_refs().clone();
+            ProtocolCommand::PropagateOperations(storage) => {
+                let operation_ids = storage.get_op_refs();
                 massa_trace!(
                     "protocol.protocol_worker.process_command.propagate_operations.begin",
                     { "operation_ids": operation_ids }
                 );
-                self.storage.extend(operations);
                 for id in operation_ids.iter() {
                     self.checked_operations.insert(id);
                 }
@@ -844,16 +842,14 @@ impl ProtocolWorker {
     /// Prune `checked_endorsements` if it is too large
     fn prune_checked_endorsements(&mut self) {
         if self.checked_endorsements.len() > self.config.max_known_endorsements_size {
-            let ids = self.checked_endorsements.drain();
-            self.storage.drop_endorsement_refs(&ids.collect());
+            self.checked_endorsements.clear();
         }
     }
 
     /// Prune `checked_operations` if it has grown too large.
     fn prune_checked_operations(&mut self) {
         if self.checked_operations.len() > self.config.max_known_ops_size {
-            let ids = self.checked_operations.clear();
-            self.storage.drop_operation_refs(&ids);
+            self.checked_operations.clear();
         }
     }
 
