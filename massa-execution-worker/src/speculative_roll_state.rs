@@ -227,9 +227,11 @@ impl SpeculativeRollState {
                 }
             }
         }
-        let mut credits = DeferredCredits::default();
-        credits.0.insert(target_slot, target_credits);
-        self.added_changes.deferred_credits.nested_extend(credits);
+        if !target_credits.is_empty() {
+            let mut credits = DeferredCredits::default();
+            credits.0.insert(target_slot, target_credits);
+            self.added_changes.deferred_credits.nested_extend(credits);
+        }
     }
 
     /// Get deferred credits of an address starting from a given slot
