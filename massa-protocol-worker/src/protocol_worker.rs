@@ -860,7 +860,8 @@ impl ProtocolWorker {
     /// Prune `checked_headers` if it is too large
     fn prune_checked_headers(&mut self) {
         if self.checked_headers.len() > self.config.max_known_blocks_size {
-            self.checked_headers.clear();
+            self.checked_headers
+                .drain_filter(|id, _| !self.block_wishlist.contains_key(id));
         }
     }
 
