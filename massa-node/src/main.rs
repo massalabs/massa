@@ -317,7 +317,7 @@ async fn launch(
         operation_batch_proc_period: SETTINGS.protocol.operation_batch_proc_period,
         asked_operations_pruning_period: SETTINGS.protocol.asked_operations_pruning_period,
         max_operations_per_message: SETTINGS.protocol.max_operations_per_message,
-        max_serialized_operations_size_per_block: MAX_BLOCK_SIZE,
+        max_serialized_operations_size_per_block: MAX_BLOCK_SIZE as usize,
         controller_channel_size: PROTOCOL_CONTROLLER_CHANNEL_SIZE,
         event_channel_size: PROTOCOL_EVENT_CHANNEL_SIZE,
     };
