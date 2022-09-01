@@ -282,7 +282,6 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 Slot::new(1, thread),
                 vec![endorsement.clone()],
             );
-            let expected_block_id = block.id;
 
             // Send the header,
             // this should note the node as knowing about the endorsement.
@@ -355,7 +354,6 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 Slot::new(1, thread),
                 vec![endorsement.clone()],
             );
-            let expected_block_id = block.id;
 
             // Send the header,
             // this should note the node as knowing about the endorsement.
