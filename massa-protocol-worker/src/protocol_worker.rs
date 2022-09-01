@@ -380,17 +380,10 @@ impl ProtocolWorker {
                 massa_trace!("protocol.protocol_worker.process_command.wishlist_delta.begin", { "new": new, "remove": remove });
                 self.remove_asked_blocks_of_node(remove)?;
                 for (block_id, header) in new.into_iter() {
-                    if let Some(header) = header {
-                        self.block_wishlist.insert(
-                            block_id,
-                            BlockInfo::new(Some(header), self.storage.clone_without_refs()),
-                        );
-                    } else {
-                        self.block_wishlist.insert(
-                            block_id,
-                            BlockInfo::new(None, self.storage.clone_without_refs()),
-                        );
-                    }
+                    self.block_wishlist.insert(
+                        block_id,
+                        BlockInfo::new(header, self.storage.clone_without_refs()),
+                    );
                 }
                 self.update_ask_block(timer).await?;
                 massa_trace!(

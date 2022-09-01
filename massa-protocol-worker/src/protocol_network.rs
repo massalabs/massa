@@ -8,7 +8,7 @@ use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
     block::{Block, WrappedBlock},
-    block::{BlockId, BlockSerializer},
+    block::{BlockId, BlockSerializer, WrappedHeader},
     node::NodeId,
     operation::{OperationId, WrappedOperation},
     prehash::{CapacityAllocator, PreHashSet},
@@ -225,6 +225,35 @@ impl ProtocolWorker {
         total
     }
 
+    /// On block header received from a node.
+    /// If the header is new, we propagate it to the consensus.
+    /// We pass the state of block_wishlist ot ask for information about the block.
+    async fn on_block_header_received(
+        &mut self,
+        from_node_id: NodeId,
+        block_id: BlockId,
+        header: WrappedHeader,
+    ) -> Result<(), ProtocolError> {
+        if let Some((block_id, is_new)) = self.note_header_from_node(&header, &from_node_id).await?
+        {
+            if is_new {
+                self.send_protocol_event(ProtocolEvent::ReceivedBlockHeader {
+                    block_id,
+                    header: header.clone(),
+                })
+                .await;
+            }
+        }
+
+        // Update ask block
+        let mut set = PreHashSet::<BlockId>::with_capacity(1);
+        set.insert(block_id);
+        self.remove_asked_blocks_of_node(set)?;
+        // Remove consensus will ask for the rest
+        self.block_wishlist.remove(&block_id);
+        Ok(())
+    }
+
     /// On block information received, manage when we get a list of operations.
     /// Ask for the missing operations that are not in the `checked_operations` cache variable.
     ///
@@ -423,11 +452,9 @@ impl ProtocolWorker {
     ) -> Result<(), ProtocolError> {
         match info {
             BlockInfoReply::Header(header) => {
-                // TODO: Speak with damir. The block header is sent to census which will send us a new wishlist with the header into.
-                // So don't need to call ask_from_block with an updated wishlist because it will be already done by consensus and will be a double
-                self.note_header_from_node(&header, &from_node_id)
+                // Verify and Send it consensus
+                self.on_block_header_received(from_node_id, block_id, header)
                     .await
-                    .map(|_| ())
             }
             BlockInfoReply::Info(operation_list) => {
                 // Ask for missing operations ids and print a warning if there is no header for
