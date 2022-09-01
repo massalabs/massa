@@ -140,6 +140,8 @@ pub struct NodeEvent(pub NodeId, pub NodeEventType);
 /// Ask for the info about a block.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub enum AskForBlocksInfo {
+    /// Ask header
+    Header,
     /// The info about the block is required(list of operations ids).
     #[default]
     Info,
@@ -232,6 +234,8 @@ pub enum NetworkCommand {
 /// A node replied with info about a block.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BlockInfoReply {
+    /// Header
+    Header(WrappedHeader),
     /// The info about the block is required(list of operations ids).
     Info(Vec<OperationId>),
     /// The actual operations required.
