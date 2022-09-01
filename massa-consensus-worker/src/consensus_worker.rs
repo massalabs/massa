@@ -514,8 +514,20 @@ impl ConsensusWorker {
     fn prune_stats(&mut self) -> Result<()> {
         let start_time =
             MassaTime::now(self.clock_compensation)?.saturating_sub(self.stats_history_timespan);
-        self.final_block_stats.retain(|(t, _, _)| t >= &start_time);
-        self.stale_block_stats.retain(|t| t >= &start_time);
+        while let Some((t, _, _)) = self.final_block_stats.front() {
+            if t < &start_time {
+                self.final_block_stats.pop_front();
+            } else {
+                break;
+            }
+        }
+        while let Some(t) = self.stale_block_stats.front() {
+            if t < &start_time {
+                self.stale_block_stats.pop_front();
+            } else {
+                break;
+            }
+        }
         Ok(())
     }
 
