@@ -6,13 +6,10 @@ use massa_consensus_exports::{
     ConsensusConfig,
 };
 use massa_graph::{BlockGraph, BlockGraphExport};
-use massa_models::stats::ConsensusStats;
 use massa_models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
 use massa_models::{address::Address, block::BlockId, slot::Slot};
-use massa_models::{
-    block::WrappedHeader,
-    prehash::{PreHashMap, PreHashSet},
-};
+use massa_models::{block::WrappedHeader, prehash::PreHashMap};
+use massa_models::{prehash::PreHashSet, stats::ConsensusStats};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
 use massa_time::MassaTime;
 use std::{cmp::max, collections::HashSet, collections::VecDeque};
@@ -590,8 +587,18 @@ impl ConsensusWorker {
 
         // notify protocol of block wishlist
         let new_wishlist = self.block_db.get_block_wishlist()?;
-        let new_blocks = &new_wishlist - &self.wishlist;
-        let remove_blocks = &self.wishlist - &new_wishlist;
+        let new_blocks: PreHashMap<BlockId, Option<WrappedHeader>> = new_wishlist
+            .clone()
+            .into_iter()
+            .filter(|(id, _)| !self.wishlist.contains_key(id))
+            .collect();
+        let remove_blocks: PreHashSet<BlockId> = self
+            .wishlist
+            .clone()
+            .into_iter()
+            .filter(|(id, _)| !new_wishlist.contains_key(id))
+            .map(|(id, _)| id)
+            .collect();
         if !new_blocks.is_empty() || !remove_blocks.is_empty() {
             massa_trace!("consensus.consensus_worker.block_db_changed.send_wishlist_delta", { "new": new_wishlist, "remove": remove_blocks });
             self.channels
