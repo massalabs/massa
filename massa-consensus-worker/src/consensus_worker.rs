@@ -588,16 +588,21 @@ impl ConsensusWorker {
         // notify protocol of block wishlist
         let new_wishlist = self.block_db.get_block_wishlist()?;
         let new_blocks: PreHashMap<BlockId, Option<WrappedHeader>> = new_wishlist
-            .clone()
-            .into_iter()
-            .filter(|(id, _)| !self.wishlist.contains_key(id))
+            .iter()
+            .filter_map(|(id, header)| if !self.wishlist.contains_key(id) {
+                Some((*id, header.clone()))
+            } else {
+                None
+            })
             .collect();
         let remove_blocks: PreHashSet<BlockId> = self
             .wishlist
-            .clone()
-            .into_iter()
-            .filter(|(id, _)| !new_wishlist.contains_key(id))
-            .map(|(id, _)| id)
+            .iter()
+            .filter_map(|(id, _)| if !new_wishlist.contains_key(id) {
+                Some(*id)
+            } else {
+                None
+            })
             .collect();
         if !new_blocks.is_empty() || !remove_blocks.is_empty() {
             massa_trace!("consensus.consensus_worker.block_db_changed.send_wishlist_delta", { "new": new_wishlist, "remove": remove_blocks });

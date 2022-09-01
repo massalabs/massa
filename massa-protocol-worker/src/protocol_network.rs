@@ -234,23 +234,24 @@ impl ProtocolWorker {
         block_id: BlockId,
         header: WrappedHeader,
     ) -> Result<(), ProtocolError> {
-        if let Some((block_id, is_new)) = self.note_header_from_node(&header, &from_node_id).await?
-        {
-            if is_new {
-                self.send_protocol_event(ProtocolEvent::ReceivedBlockHeader {
-                    block_id,
-                    header: header.clone(),
-                })
-                .await;
+        if let Some(info) = self.block_wishlist.get(&block_id) {
+            if info.header.is_some() {
+                let _ = self.ban_node(&from_node_id).await;
+                return Ok(());
             }
+        }
+        if self.note_header_from_node(&header, &from_node_id).await.is_err() {
+            let _ = self.ban_node(&from_node_id).await;
+            return Ok(())
+        };
+        if let Some(info) = self.block_wishlist.get_mut(&block_id) {
+            info.header = Some(header);
         }
 
         // Update ask block
         let mut set = PreHashSet::<BlockId>::with_capacity(1);
         set.insert(block_id);
         self.remove_asked_blocks_of_node(set)?;
-        // Remove consensus will ask for the rest
-        self.block_wishlist.remove(&block_id);
         Ok(())
     }
 
@@ -290,14 +291,21 @@ impl ProtocolWorker {
         let info = if let Some(info) = self.block_wishlist.get_mut(&block_id) {
             info
         } else {
+            let _ = self.ban_node(&from_node_id).await;
             return Ok(());
         };
 
         let header = if let Some(header) = &info.header {
             header
         } else {
+            let _ = self.ban_node(&from_node_id).await;
             return Ok(());
         };
+
+        if info.operation_ids.is_some() {
+            let _ = self.ban_node(&from_node_id).await;
+            return Ok(());
+        }
 
         let mut total_hash: Vec<u8> = vec![];
         operation_ids.iter().for_each(|op_id| {
@@ -357,6 +365,26 @@ impl ProtocolWorker {
         block_id: BlockId,
         operations: Vec<WrappedOperation>,
     ) -> Result<(), ProtocolError> {
+        let info = if let Some(info) = self.block_wishlist.get(&block_id) {
+            info.clone()
+        } else {
+            let _ = self.ban_node(&from_node_id).await;
+            return Ok(());
+        };
+
+        let header = if let Some(header) = &info.header {
+            header
+        } else {
+            let _ = self.ban_node(&from_node_id).await;
+            return Ok(());
+        };
+        let block_operation_ids = if let Some(operations) = &info.operation_ids {
+            operations
+        } else {
+            let _ = self.ban_node(&from_node_id).await;
+            return Ok(());
+        };
+
         if self
             .note_operations_from_node(operations.clone(), &from_node_id)
             .is_err()
@@ -364,22 +392,6 @@ impl ProtocolWorker {
             let _ = self.ban_node(&from_node_id).await;
             return Ok(());
         }
-
-        let info = if let Some(info) = self.block_wishlist.get(&block_id) {
-            info.clone()
-        } else {
-            return Ok(());
-        };
-        let header = if let Some(header) = &info.header {
-            header
-        } else {
-            return Ok(());
-        };
-        let block_operation_ids = if let Some(operations) = &info.operation_ids {
-            operations
-        } else {
-            return Ok(());
-        };
 
         // Ban the node if:
         // - mismatch with asked operations (asked operations are the one that are not in storage) + operations already in storage and block operations
