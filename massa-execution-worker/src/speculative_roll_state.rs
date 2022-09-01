@@ -64,7 +64,7 @@ impl SpeculativeRollState {
         self.added_changes
             .roll_changes
             .get(addr)
-            .map(|v| *v)
+            .copied()
             .unwrap_or_else(|| {
                 self.active_history
                     .read()

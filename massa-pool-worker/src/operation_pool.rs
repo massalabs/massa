@@ -213,16 +213,22 @@ impl OperationPool {
             }
 
             // check sequential balance
-            let creator_seq_balance = sequential_balance_cache
-                .entry(op_info.creator_address)
-                .or_insert_with(|| {
-                    self.execution_controller
-                        .get_final_and_candidate_sequential_balances(&[op_info.creator_address])
-                        .get(0)
-                        .unwrap_or(&(None, None))
-                        .1
-                        .unwrap_or_default()
-                });
+            let creator_seq_balance =
+                if let Some(amount) = sequential_balance_cache.get_mut(&op_info.creator_address) {
+                    amount
+                } else if let Some(final_amount) = self
+                    .execution_controller
+                    .get_final_and_candidate_sequential_balances(&[op_info.creator_address])
+                    .get(0)
+                    .unwrap_or(&(None, None))
+                    .1
+                {
+                    sequential_balance_cache
+                        .entry(op_info.creator_address)
+                        .or_insert(final_amount)
+                } else {
+                    continue;
+                };
 
             if *creator_seq_balance < op_info.fee {
                 continue;
