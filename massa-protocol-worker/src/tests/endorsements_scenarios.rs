@@ -13,7 +13,7 @@ use serial_test::serial;
 use std::thread;
 use std::time::Duration;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[serial]
 async fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
@@ -113,7 +113,7 @@ async fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() 
     .await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[serial]
 async fn test_protocol_propagates_endorsements_to_active_nodes() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
@@ -137,9 +137,9 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
                 .await;
             pool_event_receiver.wait_command(1000.into(), |evt| match evt {
                 MockPoolControllerMessage::AddEndorsements { .. } => {
-                    panic!("Protocol send invalid endorsements.")
+                    Some(MockPoolControllerMessage::Any)
                 }
-                _ => Some(MockPoolControllerMessage::Any),
+                _ => panic!("Unexpected or no protocol pool event."),
             });
 
             let expected_endorsement_id = endorsement.id;
@@ -180,7 +180,7 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
     .await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[serial]
 async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
@@ -204,9 +204,9 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 .await;
             pool_event_receiver.wait_command(1000.into(), |evt| match evt {
                 MockPoolControllerMessage::AddEndorsements { .. } => {
-                    panic!("Protocol send invalid endorsements.")
+                    Some(MockPoolControllerMessage::Any)
                 }
-                _ => Some(MockPoolControllerMessage::Any),
+                _ => panic!("Unexpected or no protocol pool event."),
             });
 
             // create and connect a node that does not know about the endorsement
@@ -256,7 +256,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
     .await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[serial]
 async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_block_integration(
 ) {
@@ -329,7 +329,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
     .await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[serial]
 async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_get_block_results(
 ) {
