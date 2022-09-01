@@ -233,6 +233,7 @@ pub enum NetworkCommand {
 
 /// A node replied with info about a block.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::large_enum_variant)]
 pub enum BlockInfoReply {
     /// Header
     Header(WrappedHeader),

@@ -500,22 +500,14 @@ impl ProtocolWorker {
             } else if block_info.operation_ids.is_none() {
                 AskForBlocksInfo::Info
             } else {
-                let already_stored_operations = block_info.storage.claim_operation_refs(
-                    &block_info
-                        .operation_ids
-                        .clone()
-                        .unwrap()
-                        .into_iter()
-                        .collect(),
-                );
+                let already_stored_operations = block_info.storage.get_op_refs();
                 AskForBlocksInfo::Operations(
                     block_info
                         .operation_ids
                         .clone()
                         .unwrap()
-                        .iter()
-                        .filter(|&id| !already_stored_operations.contains(id))
-                        .cloned()
+                        .into_iter()
+                        .filter(|id| !already_stored_operations.contains(id))
                         .collect(),
                 )
             };
