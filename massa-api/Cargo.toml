@@ -12,7 +12,7 @@ jsonrpc-derive = "18.0"
 jsonrpc-http-server = "18.0"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
-tokio = { version = "1.20", features = ["full"] }
+tokio = { version = "1.21", features = ["full"] }
 tracing = "0.1"
 itertools = "0.10"
 parking_lot = "0.12"

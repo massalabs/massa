@@ -9,7 +9,7 @@ edition = "2021"
 [dependencies]
 displaydoc = "0.2"
 thiserror = "1.0"
-tokio = { version = "1.20", features = ["full"] }
+tokio = { version = "1.21", features = ["full"] }
 tempfile = { version = "3.3", optional = true }    # use with testing feature
 serde = { version = "1.0", features = ["derive"], optional = true }    # use with testing feature
 serde_json = { version = "1.0", optional = true }    # use with testing feature
