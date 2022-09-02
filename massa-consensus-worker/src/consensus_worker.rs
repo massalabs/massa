@@ -589,19 +589,23 @@ impl ConsensusWorker {
         let new_wishlist = self.block_db.get_block_wishlist()?;
         let new_blocks: PreHashMap<BlockId, Option<WrappedHeader>> = new_wishlist
             .iter()
-            .filter_map(|(id, header)| if !self.wishlist.contains_key(id) {
-                Some((*id, header.clone()))
-            } else {
-                None
+            .filter_map(|(id, header)| {
+                if !self.wishlist.contains_key(id) {
+                    Some((*id, header.clone()))
+                } else {
+                    None
+                }
             })
             .collect();
         let remove_blocks: PreHashSet<BlockId> = self
             .wishlist
             .iter()
-            .filter_map(|(id, _)| if !new_wishlist.contains_key(id) {
-                Some(*id)
-            } else {
-                None
+            .filter_map(|(id, _)| {
+                if !new_wishlist.contains_key(id) {
+                    Some(*id)
+                } else {
+                    None
+                }
             })
             .collect();
         if !new_blocks.is_empty() || !remove_blocks.is_empty() {

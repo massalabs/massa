@@ -240,9 +240,13 @@ impl ProtocolWorker {
                 return Ok(());
             }
         }
-        if self.note_header_from_node(&header, &from_node_id).await.is_err() {
+        if self
+            .note_header_from_node(&header, &from_node_id)
+            .await
+            .is_err()
+        {
             let _ = self.ban_node(&from_node_id).await;
-            return Ok(())
+            return Ok(());
         };
         if let Some(info) = self.block_wishlist.get_mut(&block_id) {
             info.header = Some(header);
