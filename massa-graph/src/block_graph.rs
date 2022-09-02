@@ -2575,8 +2575,8 @@ impl BlockGraph {
     }
 
     /// get the current block wish list, including the operations hash.
-    pub fn get_block_wishlist(&self) -> Result<PreHashSet<BlockId>> {
-        let mut wishlist = PreHashSet::<BlockId>::default();
+    pub fn get_block_wishlist(&self) -> Result<PreHashMap<BlockId, Option<WrappedHeader>>> {
+        let mut wishlist = PreHashMap::<BlockId, Option<WrappedHeader>>::default();
         for block_id in self.waiting_for_dependencies_index.iter() {
             if let Some(BlockStatus::WaitingForDependencies {
                 unsatisfied_dependencies,
@@ -2584,15 +2584,18 @@ impl BlockGraph {
             }) = self.block_statuses.get(block_id)
             {
                 for unsatisfied_h in unsatisfied_dependencies.iter() {
-                    if let Some(BlockStatus::WaitingForDependencies {
-                        header_or_block: HeaderOrBlock::Block { .. },
-                        ..
-                    }) = self.block_statuses.get(unsatisfied_h)
-                    {
-                        // the full block is already available
-                        continue;
+                    match self.block_statuses.get(unsatisfied_h) {
+                        Some(BlockStatus::WaitingForDependencies {
+                            header_or_block: HeaderOrBlock::Header(header),
+                            ..
+                        }) => {
+                            wishlist.insert(header.id, Some(header.clone()));
+                        }
+                        None => {
+                            wishlist.insert(*unsatisfied_h, None);
+                        }
+                        _ => {}
                     }
-                    wishlist.insert(*unsatisfied_h);
                 }
             }
         }

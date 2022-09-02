@@ -67,7 +67,7 @@ pub enum ProtocolCommand {
     /// Wish list delta
     WishlistDelta {
         /// add to wish list
-        new: PreHashSet<BlockId>,
+        new: PreHashMap<BlockId, Option<WrappedHeader>>,
         /// remove from wish list
         remove: PreHashSet<BlockId>,
     },
@@ -123,7 +123,7 @@ impl ProtocolCommandSender {
     /// update the block wish list
     pub async fn send_wishlist_delta(
         &mut self,
-        new: PreHashSet<BlockId>,
+        new: PreHashMap<BlockId, Option<WrappedHeader>>,
         remove: PreHashSet<BlockId>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.send_wishlist_delta", { "new": new, "remove": remove });

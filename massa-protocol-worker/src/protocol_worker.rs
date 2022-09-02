@@ -101,23 +101,23 @@ pub async fn start_protocol_controller(
 /// Info about a block we've seen
 #[derive(Debug, Clone)]
 pub(crate) struct BlockInfo {
-    /// Endorsements contained in the block header.
-    pub(crate) endorsements: PreHashMap<EndorsementId, u32>,
-    /// Operations contained in the block,
-    /// if we've received them already, and none otherwise.
-    pub(crate) operations: Option<Vec<OperationId>>,
     /// The header of the block.
-    pub(crate) header: WrappedHeader,
+    pub(crate) header: Option<WrappedHeader>,
+    /// Operations ids. None if not received yet
+    pub(crate) operation_ids: Option<Vec<OperationId>>,
+    /// Operations and endorsements contained in the block,
+    /// if we've received them already, and none otherwise.
+    pub(crate) storage: Storage,
     /// Full operations size in bytes
     pub(crate) operations_size: usize,
 }
 
 impl BlockInfo {
-    fn new(endorsements: PreHashMap<EndorsementId, u32>, header: WrappedHeader) -> Self {
+    fn new(header: Option<WrappedHeader>, storage: Storage) -> Self {
         BlockInfo {
-            endorsements,
-            operations: None,
             header,
+            operation_ids: None,
+            storage,
             operations_size: 0,
         }
     }
@@ -142,14 +142,14 @@ pub struct ProtocolWorker {
     /// Ids of active nodes mapped to node info.
     pub(crate) active_nodes: HashMap<NodeId, NodeInfo>,
     /// List of wanted blocks,
-    /// with the info representing their state withint the as_block workflow.
-    pub(crate) block_wishlist: PreHashMap<BlockId, (AskForBlocksInfo, Option<Storage>)>,
+    /// with the info representing their state with in the as_block workflow.
+    pub(crate) block_wishlist: PreHashMap<BlockId, BlockInfo>,
     /// List of processed endorsements
     checked_endorsements: PreHashSet<EndorsementId>,
     /// List of processed operations
     pub(crate) checked_operations: CheckedOperations,
     /// List of processed headers
-    pub(crate) checked_headers: PreHashMap<BlockId, BlockInfo>,
+    pub(crate) checked_headers: PreHashMap<BlockId, WrappedHeader>,
     /// List of ids of operations that we asked to the nodes
     pub(crate) asked_operations: HashMap<OperationPrefixId, (Instant, Vec<NodeId>)>,
     /// Buffer for operations that we want later
@@ -378,10 +378,12 @@ impl ProtocolWorker {
             }
             ProtocolCommand::WishlistDelta { new, remove } => {
                 massa_trace!("protocol.protocol_worker.process_command.wishlist_delta.begin", { "new": new, "remove": remove });
-                self.stop_asking_blocks(remove)?;
-                for block in new.into_iter() {
-                    self.block_wishlist
-                        .insert(block, (AskForBlocksInfo::Info, None));
+                self.remove_asked_blocks_of_node(remove)?;
+                for (block_id, header) in new.into_iter() {
+                    self.block_wishlist.insert(
+                        block_id,
+                        BlockInfo::new(header, self.storage.clone_without_refs()),
+                    );
                 }
                 self.update_ask_block(timer).await?;
                 massa_trace!(
@@ -458,11 +460,11 @@ impl ProtocolWorker {
     }
 
     /// Remove the given blocks from the local wishlist
-    pub(crate) fn stop_asking_blocks(
+    pub(crate) fn remove_asked_blocks_of_node(
         &mut self,
         remove_hashes: PreHashSet<BlockId>,
     ) -> Result<(), ProtocolError> {
-        massa_trace!("protocol.protocol_worker.stop_asking_blocks", {
+        massa_trace!("protocol.protocol_worker.remove_asked_blocks_of_node", {
             "remove": remove_hashes
         });
         for node_info in self.active_nodes.values_mut() {
@@ -470,8 +472,6 @@ impl ProtocolWorker {
                 .asked_blocks
                 .retain(|h, _| !remove_hashes.contains(h));
         }
-        self.block_wishlist
-            .retain(|h, _| !remove_hashes.contains(h));
         Ok(())
     }
 
@@ -494,7 +494,23 @@ impl ProtocolWorker {
             Default::default();
 
         // list blocks to re-ask and from whom
-        for (hash, required_info) in self.block_wishlist.iter() {
+        for (hash, block_info) in self.block_wishlist.iter_mut() {
+            let required_info = if block_info.header.is_none() {
+                AskForBlocksInfo::Header
+            } else if block_info.operation_ids.is_none() {
+                AskForBlocksInfo::Info
+            } else {
+                let already_stored_operations = block_info.storage.get_op_refs();
+                AskForBlocksInfo::Operations(
+                    block_info
+                        .operation_ids
+                        .clone()
+                        .unwrap()
+                        .into_iter()
+                        .filter(|id| !already_stored_operations.contains(id))
+                        .collect(),
+                )
+            };
             let mut needs_ask = true;
 
             for (node_id, node_info) in self.active_nodes.iter_mut() {
@@ -579,7 +595,7 @@ impl ProtocolWorker {
                 candidate_nodes.entry(*hash).or_insert_with(Vec::new).push((
                     candidate,
                     *node_id,
-                    required_info,
+                    required_info.clone(),
                 ));
             }
 
@@ -636,7 +652,7 @@ impl ProtocolWorker {
                 ask_block_list
                     .entry(best_node)
                     .or_insert_with(Vec::new)
-                    .push((hash, required_info.0.clone()));
+                    .push((hash, required_info.clone()));
 
                 let timeout_at = now
                     .checked_add(self.config.ask_block_timeout.into())
@@ -696,7 +712,7 @@ impl ProtocolWorker {
         &mut self,
         header: &WrappedHeader,
         source_node_id: &NodeId,
-    ) -> Result<Option<(BlockId, PreHashMap<EndorsementId, u32>, bool)>, ProtocolError> {
+    ) -> Result<Option<(BlockId, bool)>, ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
 
         // check header integrity
@@ -718,7 +734,7 @@ impl ProtocolWorker {
 
         // check if this header was already verified
         let now = Instant::now();
-        if let Some(block_info) = self.checked_headers.get(&block_id) {
+        if let Some(block_header) = self.checked_headers.get(&block_id) {
             if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
                 node_info.insert_known_blocks(
                     &header.content.parents,
@@ -733,20 +749,19 @@ impl ProtocolWorker {
                     self.config.max_node_known_blocks_size,
                 );
                 node_info.insert_known_endorsements(
-                    block_info.endorsements.keys().copied().collect(),
+                    block_header
+                        .content
+                        .endorsements
+                        .iter()
+                        .map(|e| e.id)
+                        .collect(),
                     self.config.max_node_known_endorsements_size,
                 );
-                if let Some(operations) = block_info.operations.as_ref() {
-                    node_info.insert_known_ops(
-                        operations.iter().cloned().collect(),
-                        self.config.max_node_known_ops_size,
-                    );
-                }
             }
-            return Ok(Some((block_id, block_info.endorsements.clone(), false)));
+            return Ok(Some((block_id, false)));
         }
 
-        let (endorsement_ids, endorsements_reused) = match self.note_endorsements_from_node(
+        let (_endorsement_ids, endorsements_reused) = match self.note_endorsements_from_node(
             header.content.endorsements.clone(),
             source_node_id,
             false,
@@ -801,10 +816,9 @@ impl ProtocolWorker {
             }
         }
 
-        let block_info = BlockInfo::new(endorsement_ids.clone(), header.clone());
         if self
             .checked_headers
-            .insert(block_id, block_info.clone())
+            .insert(block_id, header.clone())
             .is_none()
         {
             self.prune_checked_headers();
@@ -824,17 +838,11 @@ impl ProtocolWorker {
                 self.config.max_node_known_blocks_size,
             );
             node_info.insert_known_endorsements(
-                block_info.endorsements.keys().copied().collect(),
+                header.content.endorsements.iter().map(|e| e.id).collect(),
                 self.config.max_node_known_endorsements_size,
             );
-            if let Some(operations) = block_info.operations.as_ref() {
-                node_info.insert_known_ops(
-                    operations.iter().cloned().collect(),
-                    self.config.max_node_known_ops_size,
-                );
-            }
             massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": source_node_id,"block_id":block_id, "header": header});
-            return Ok(Some((block_id, endorsement_ids, true)));
+            return Ok(Some((block_id, true)));
         }
         Ok(None)
     }
