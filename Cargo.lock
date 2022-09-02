@@ -1664,6 +1664,7 @@ dependencies = [
  "massa_storage",
  "massa_time",
  "massa_wallet",
+ "parking_lot 0.12.1",
  "serde 1.0.144",
  "thiserror",
  "tokio",
@@ -2070,6 +2071,7 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "num",
+ "parking_lot 0.12.1",
 ]
 
 [[package]]
@@ -2087,6 +2089,7 @@ dependencies = [
  "massa_time",
  "nom 7.1.1",
  "num",
+ "parking_lot 0.12.1",
  "serde 1.0.144",
  "serde_json",
  "thiserror",

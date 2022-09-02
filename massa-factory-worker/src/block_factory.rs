@@ -12,8 +12,9 @@ use massa_models::{
 };
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
+use parking_lot::RwLock;
 use std::{
-    sync::{mpsc, Arc, RwLock},
+    sync::{mpsc, Arc},
     thread,
     time::Instant,
 };
@@ -131,7 +132,7 @@ impl BlockFactoryWorker {
         };
 
         // check if the block producer address is handled by the wallet
-        let block_producer_keypair_ref = self.wallet.read().expect("could not lock wallet");
+        let block_producer_keypair_ref = self.wallet.read();
         let block_producer_keypair = if let Some(kp) =
             block_producer_keypair_ref.find_associated_keypair(&block_producer_addr)
         {

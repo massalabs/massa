@@ -1,5 +1,6 @@
+use parking_lot::RwLock;
 use std::{
-    sync::{mpsc::Receiver, Arc, RwLock},
+    sync::{mpsc::Receiver, Arc},
     thread::sleep,
     time::Duration,
 };

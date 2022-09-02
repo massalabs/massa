@@ -1,10 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use parking_lot::Mutex;
 use std::{
     collections::{BTreeMap, HashMap, VecDeque},
     sync::{
         mpsc::{self, Receiver},
-        Arc, Mutex,
+        Arc,
     },
 };
 
@@ -95,7 +96,6 @@ impl SelectorController for MockSelectorController {
     ) -> PosResult<()> {
         self.0
             .lock()
-            .unwrap()
             .send(MockSelectorControllerMessage::FeedCycle {
                 cycle,
                 lookback_rolls,
@@ -114,7 +114,6 @@ impl SelectorController for MockSelectorController {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
             .lock()
-            .unwrap()
             .send(MockSelectorControllerMessage::GetEntireSelection { response_tx })
             .unwrap();
         response_rx.recv().unwrap()
@@ -124,7 +123,6 @@ impl SelectorController for MockSelectorController {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
             .lock()
-            .unwrap()
             .send(MockSelectorControllerMessage::WaitForDraws { cycle, response_tx })
             .unwrap();
         response_rx.recv().unwrap()
@@ -139,7 +137,6 @@ impl SelectorController for MockSelectorController {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
             .lock()
-            .unwrap()
             .send(MockSelectorControllerMessage::GetAddressSelections {
                 address: *address,
                 start,
@@ -154,7 +151,6 @@ impl SelectorController for MockSelectorController {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
             .lock()
-            .unwrap()
             .send(MockSelectorControllerMessage::GetProducer { slot, response_tx })
             .unwrap();
         response_rx.recv().unwrap()
@@ -164,7 +160,6 @@ impl SelectorController for MockSelectorController {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
             .lock()
-            .unwrap()
             .send(MockSelectorControllerMessage::GetSelection { slot, response_tx })
             .unwrap();
         response_rx.recv().unwrap()
