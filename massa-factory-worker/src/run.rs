@@ -1,6 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::sync::{mpsc, Arc, RwLock};
+use parking_lot::RwLock;
+use std::sync::{mpsc, Arc};
 
 use crate::{
     block_factory::BlockFactoryWorker, endorsement_factory::EndorsementFactoryWorker,

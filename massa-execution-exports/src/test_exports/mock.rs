@@ -13,11 +13,12 @@ use massa_models::{
 };
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use parking_lot::Mutex;
 use std::{
     collections::{BTreeMap, HashMap},
     sync::{
         mpsc::{self, Receiver},
-        Arc, Mutex,
+        Arc,
     },
     time::Duration,
 };

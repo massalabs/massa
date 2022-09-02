@@ -3,7 +3,8 @@ use crate::{controller_impl::PoolControllerImpl, endorsement_pool::EndorsementPo
 use massa_execution_exports::ExecutionController;
 use massa_pool_exports::PoolConfig;
 use massa_storage::Storage;
-use std::sync::{Arc, RwLock};
+use parking_lot::RwLock;
+use std::sync::Arc;
 
 /// Starts the pool system and returns a controller
 pub fn start_pool(

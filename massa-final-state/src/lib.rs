@@ -37,8 +37,8 @@
 #![warn(unused_crate_dependencies)]
 #![feature(hash_drain_filter)]
 #![feature(map_first_last)]
-#![feature(let_chains)]
 #![feature(async_closure)]
+#![feature(let_chains)]
 
 mod config;
 mod error;

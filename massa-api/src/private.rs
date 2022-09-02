@@ -31,8 +31,9 @@ use massa_network_exports::NetworkCommandSender;
 use massa_signature::KeyPair;
 use massa_wallet::Wallet;
 
+use parking_lot::RwLock;
 use std::net::{IpAddr, SocketAddr};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 impl API<Private> {
     /// generate a new private API
@@ -88,9 +89,7 @@ impl Endpoints for API<Private> {
     fn add_staking_secret_keys(&self, keys: Vec<KeyPair>) -> BoxFuture<Result<(), ApiError>> {
         let node_wallet = self.0.node_wallet.clone();
         let closure = async move || {
-            let mut w_wallet = node_wallet
-                .write()
-                .expect("w-lock wallet unexpectedly failed");
+            let mut w_wallet = node_wallet.write();
             w_wallet.add_keypairs(keys)?;
             Ok(())
         };
@@ -114,9 +113,7 @@ impl Endpoints for API<Private> {
     fn remove_staking_addresses(&self, addresses: Vec<Address>) -> BoxFuture<Result<(), ApiError>> {
         let node_wallet = self.0.node_wallet.clone();
         let closure = async move || {
-            let mut w_wallet = node_wallet
-                .write()
-                .expect("w-lock wallet unexpectedly failed");
+            let mut w_wallet = node_wallet.write();
             w_wallet.remove_addresses(&addresses)?;
             Ok(())
         };
@@ -125,12 +122,7 @@ impl Endpoints for API<Private> {
 
     fn get_staking_addresses(&self) -> BoxFuture<Result<PreHashSet<Address>, ApiError>> {
         let node_wallet = self.0.node_wallet.clone();
-        let closure = async move || {
-            Ok(node_wallet
-                .write()
-                .expect("r-lock wallet unexpectedly failed")
-                .get_wallet_address_list())
-        };
+        let closure = async move || Ok(node_wallet.write().get_wallet_address_list());
         Box::pin(closure())
     }
 
