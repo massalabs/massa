@@ -142,23 +142,31 @@ impl OperationPool {
         }
 
         // prune excess operations
-        self.sorted_ops_per_thread.iter_mut().for_each(|ops| {
-            while ops.len() > self.config.max_operation_pool_size_per_thread {
-                // the unrap below won't panic because the loop condition tests for non-emptines of self.operations
-                let cursor = ops.pop_last().unwrap();
-                let op_info = self
-                    .operations
-                    .remove(&cursor.get_id())
-                    .expect("the operation should be in self.operations at this point");
-                let end_slot = Slot::new(*op_info.validity_period_range.end(), op_info.thread);
-                if !self.ops_per_expiration.remove(&(end_slot, op_info.id)) {
-                    panic!("the operation should be in self.ops_per_expiration at this point");
+        self.sorted_ops_per_thread
+            .iter_mut()
+            .enumerate()
+            .for_each(|(thread_id, ops)| {
+                println!(
+                    "AURELIEN POOL: Size pool thread {}: {}",
+                    thread_id,
+                    ops.len()
+                );
+                while ops.len() > self.config.max_operation_pool_size_per_thread {
+                    // the unrap below won't panic because the loop condition tests for non-emptines of self.operations
+                    let cursor = ops.pop_last().unwrap();
+                    let op_info = self
+                        .operations
+                        .remove(&cursor.get_id())
+                        .expect("the operation should be in self.operations at this point");
+                    let end_slot = Slot::new(*op_info.validity_period_range.end(), op_info.thread);
+                    if !self.ops_per_expiration.remove(&(end_slot, op_info.id)) {
+                        panic!("the operation should be in self.ops_per_expiration at this point");
+                    }
+                    if !added.remove(&op_info.id) {
+                        removed.insert(op_info.id);
+                    }
                 }
-                if !added.remove(&op_info.id) {
-                    removed.insert(op_info.id);
-                }
-            }
-        });
+            });
 
         // take ownership on added ops
         self.storage.extend(ops_storage.split_off(
@@ -195,16 +203,28 @@ impl OperationPool {
 
             // exclude ops for which the block slot is outside of their validity range
             if !op_info.validity_period_range.contains(&slot.period) {
+                println!(
+                    "AURELIEN POOL: get_block_operations: op {} not valid anymore",
+                    op_info.id
+                );
                 continue;
             }
 
             // exclude ops that are too large
             if op_info.size > remaining_space {
+                println!(
+                    "AURELIEN POOL: get_block_operations: op {}, block don't have space",
+                    op_info.id
+                );
                 continue;
             }
 
             // exclude ops that require too much gas
             if op_info.max_gas > remaining_gas {
+                println!(
+                    "AURELIEN POOL: get_block_operations: op {}, too much gas",
+                    op_info.id
+                );
                 continue;
             }
 
@@ -215,6 +235,10 @@ impl OperationPool {
                 .unexecuted_ops_among(&vec![op_info.id].into_iter().collect(), slot.thread)
                 .is_empty()
             {
+                println!(
+                    "AURELIEN POOL: get_block_operations: op {}, operation unexecuted",
+                    op_info.id
+                );
                 continue;
             }
 

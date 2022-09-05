@@ -45,8 +45,6 @@ pub struct ConsensusWorker {
     stats_desync_detection_timespan: MassaTime,
     /// time at which the node was launched (used for desynchronization detection)
     launch_time: MassaTime,
-    /// endorsed slots cache
-    endorsed_slots: HashSet<Slot>,
 }
 
 impl ConsensusWorker {
@@ -152,7 +150,6 @@ impl ConsensusWorker {
             stats_history_timespan: max(stats_desync_detection_timespan, cfg.stats_timespan),
             cfg,
             launch_time: MassaTime::now(clock_compensation)?,
-            endorsed_slots: HashSet::new(),
         })
     }
 
@@ -626,10 +623,10 @@ impl ConsensusWorker {
             .collect();
         // if changed...
         if self.latest_final_periods != latest_final_periods {
-            // discard endorsed slots cache
-            self.endorsed_slots
-                .retain(|s| s.period >= latest_final_periods[s.thread as usize]);
-
+            // signal initial state to pool
+            self.channels
+                .pool_command_sender
+                .notify_final_cs_periods(&latest_final_periods);
             // update final periods
             self.latest_final_periods = latest_final_periods;
         }
