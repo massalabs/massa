@@ -157,7 +157,9 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
             // send wishlist
             protocol_command_sender
                 .send_wishlist_delta(
-                    vec![block.id].into_iter().collect(),
+                    vec![(block.id, Some(block.content.header))]
+                        .into_iter()
+                        .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
                 .await
@@ -271,14 +273,16 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
             let mut block = tools::create_block(&keypair);
             block.content.header.id = BlockId::new(Hash::compute_from(&"invalid".as_bytes()));
             network_controller
-                .send_header(creator_node.id, block.content.header)
+                .send_header(creator_node.id, block.content.header.clone())
                 .await;
             tools::assert_banned_nodes(vec![creator_node.id], &mut network_controller).await;
 
             // 5. Ask for block.
             protocol_command_sender
                 .send_wishlist_delta(
-                    vec![expected_hash].into_iter().collect(),
+                    vec![(expected_hash, Some(block.content.header.clone()))]
+                        .into_iter()
+                        .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
                 .await

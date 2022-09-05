@@ -490,7 +490,9 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // Send wishlist
             protocol_command_sender
                 .send_wishlist_delta(
-                    vec![block.id].into_iter().collect(),
+                    vec![(block.id, Some(block.content.header))]
+                        .into_iter()
+                        .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
                 .await
