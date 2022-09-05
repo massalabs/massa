@@ -47,7 +47,7 @@ impl Serializer<Slot> for SlotSerializer {
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::Serializer;
-    /// use massa_models::{Slot, SlotSerializer};
+    /// use massa_models::slot::{Slot, SlotSerializer};
     ///
     /// let slot: Slot = Slot::new(1, 3);
     /// let mut serialized = Vec::new();
@@ -84,7 +84,7 @@ impl Deserializer<Slot> for SlotDeserializer {
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{Slot, SlotSerializer, SlotDeserializer};
+    /// use massa_models::slot::{Slot, SlotSerializer, SlotDeserializer};
     ///
     /// let slot: Slot = Slot::new(1, 3);
     /// let mut serialized = Vec::new();
@@ -229,7 +229,7 @@ impl Slot {
     ///
     /// ## Example
     /// ```rust
-    /// # use massa_models::Slot;
+    /// # use massa_models::slot::Slot;
     /// let slot = Slot::new(10,5);
     /// let key = slot.to_bytes_key();
     /// let res = Slot::from_bytes_key(&key);
@@ -246,7 +246,7 @@ impl Slot {
     ///
     /// ## Example
     /// ```rust
-    /// # use massa_models::Slot;
+    /// # use massa_models::slot::Slot;
     /// let slot = Slot::new(10,5);
     /// let key = slot.to_bytes_key();
     /// let res = Slot::from_bytes_key(&key);
@@ -263,7 +263,7 @@ impl Slot {
     ///
     /// ## Example
     /// ```rust
-    /// # use massa_models::Slot;
+    /// # use massa_models::slot::Slot;
     /// let slot = Slot::new(10,5);
     /// assert_eq!(slot.get_next_slot(5).unwrap(), Slot::new(11, 0))
     /// ```

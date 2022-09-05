@@ -38,7 +38,7 @@ impl Amount {
     /// Used for constant initialization.
     ///
     /// ```
-    /// # use massa_models::Amount;
+    /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
     /// let amount_1: Amount = Amount::from_str("0.042").unwrap();
     /// let amount_2: Amount = Amount::from_mantissa_scale(42, 3);
@@ -93,7 +93,7 @@ impl Amount {
 
     /// safely subtract another amount from self, returning None on underflow
     /// ```
-    /// # use massa_models::Amount;
+    /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
     /// let amount_1 : Amount = Amount::from_str("42").unwrap();
     /// let amount_2 : Amount = Amount::from_str("7").unwrap();
@@ -106,7 +106,7 @@ impl Amount {
 
     /// safely add self to another amount, returning None on overflow
     /// ```
-    /// # use massa_models::Amount;
+    /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
     /// let amount_1 : Amount = Amount::from_str("42").unwrap();
     /// let amount_2 : Amount = Amount::from_str("7").unwrap();
@@ -119,7 +119,7 @@ impl Amount {
 
     /// safely multiply self with a `u64`, returning None on overflow
     /// ```
-    /// # use massa_models::Amount;
+    /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
     /// let amount_1 : Amount = Amount::from_str("42").unwrap();
     /// let res : Amount = amount_1.checked_mul_u64(7).unwrap();
@@ -131,7 +131,7 @@ impl Amount {
 
     /// safely multiply self with a `u64`, saturating the result on overflow
     /// ```
-    /// # use massa_models::Amount;
+    /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
     /// let amount_1 : Amount = Amount::from_str("42").unwrap();
     /// let res : Amount = amount_1.saturating_mul_u64(7);
@@ -144,7 +144,7 @@ impl Amount {
 
     /// safely divide self by a `u64`, returning None if the factor is zero
     /// ```
-    /// # use massa_models::Amount;
+    /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
     /// let amount_1 : Amount = Amount::from_str("42").unwrap();
     /// let res : Amount = amount_1.checked_div_u64(7).unwrap();
@@ -158,7 +158,7 @@ impl Amount {
 /// display an Amount in decimal string form (like "10.33")
 ///
 /// ```
-/// # use massa_models::Amount;
+/// # use massa_models::amount::Amount;
 /// # use std::str::FromStr;
 /// let value = Amount::from_str("11.111").unwrap();
 /// assert_eq!(format!("{}", value), "11.111")
@@ -186,7 +186,7 @@ impl fmt::Debug for Amount {
 /// or if the conversion would cause an overflow, underflow or precision loss
 ///
 /// ```
-/// # use massa_models::Amount;
+/// # use massa_models::amount::Amount;
 /// # use std::str::FromStr;
 /// assert!(Amount::from_str("11.1").is_ok());
 /// assert!(Amount::from_str("11.1111111111111111111111").is_err());
@@ -245,7 +245,7 @@ impl Default for AmountSerializer {
 impl Serializer<Amount> for AmountSerializer {
     /// ## Example
     /// ```
-    /// use massa_models::{Amount, AmountSerializer};
+    /// use massa_models::amount::{Amount, AmountSerializer};
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
     /// use std::ops::Bound::Included;
@@ -280,7 +280,7 @@ impl AmountDeserializer {
 impl Deserializer<Amount> for AmountDeserializer {
     /// ## Example
     /// ```
-    /// use massa_models::{Amount, AmountSerializer, AmountDeserializer};
+    /// use massa_models::amount::{Amount, AmountSerializer, AmountDeserializer};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
     /// use std::ops::Bound::Included;

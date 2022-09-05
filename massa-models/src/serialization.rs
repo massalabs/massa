@@ -145,7 +145,7 @@ impl IpAddrSerializer {
 
 impl Serializer<IpAddr> for IpAddrSerializer {
     /// ```
-    /// use massa_models::{Address, Amount, Slot, IpAddrSerializer};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot, serialization::IpAddrSerializer};
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
     /// use std::net::{IpAddr, Ipv4Addr};
@@ -183,7 +183,7 @@ impl IpAddrDeserializer {
 
 impl Deserializer<IpAddr> for IpAddrDeserializer {
     /// ```
-    /// use massa_models::{Address, Amount, Slot, IpAddrSerializer, IpAddrDeserializer};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot, serialization::{IpAddrSerializer, IpAddrDeserializer}};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
     /// use std::net::{IpAddr, Ipv4Addr};
@@ -250,7 +250,7 @@ impl Serializer<Vec<u8>> for VecU8Serializer {
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::Serializer;
-    /// use massa_models::VecU8Serializer;
+    /// use massa_models::serialization::VecU8Serializer;
     ///
     /// let vec = vec![1, 2, 3];
     /// let mut buffer = Vec::new();
@@ -285,7 +285,7 @@ impl Deserializer<Vec<u8>> for VecU8Deserializer {
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{VecU8Serializer, VecU8Deserializer};
+    /// use massa_models::serialization::{VecU8Serializer, VecU8Deserializer};
     ///
     /// let vec = vec![1, 2, 3];
     /// let mut serialized = Vec::new();

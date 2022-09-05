@@ -233,7 +233,7 @@ impl Default for OperationSerializer {
 impl Serializer<Operation> for OperationSerializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{Amount, Address, OperationType, OperationSerializer, Operation};
+    /// use massa_models::{amount::Amount, address::Address, operation::{OperationType, OperationSerializer, Operation}};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
@@ -292,7 +292,7 @@ impl OperationDeserializer {
 impl Deserializer<Operation> for OperationDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{Amount, Address, OperationType, OperationSerializer, Operation, OperationDeserializer};
+    /// use massa_models::{amount::Amount, address::Address, operation::{OperationType, OperationSerializer, Operation, OperationDeserializer}};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
@@ -489,7 +489,7 @@ impl Default for OperationTypeSerializer {
 impl Serializer<OperationType> for OperationTypeSerializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{OperationTypeSerializer, OperationTypeDeserializer, Address, Amount, OperationType};
+    /// use massa_models::{operation::{OperationTypeSerializer, OperationTypeDeserializer,OperationType}, address::Address, amount::Amount};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use std::str::FromStr;
@@ -610,7 +610,7 @@ impl OperationTypeDeserializer {
 impl Deserializer<OperationType> for OperationTypeDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{OperationTypeSerializer, OperationTypeDeserializer, Address, Amount, OperationType};
+    /// use massa_models::{operation::{OperationTypeSerializer, OperationTypeDeserializer, OperationType}, address::Address, amount::Amount};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use std::str::FromStr;
@@ -884,7 +884,7 @@ impl Default for OperationIdsSerializer {
 impl Serializer<Vec<OperationId>> for OperationIdsSerializer {
     /// ## Example:
     /// ```
-    /// use massa_models::{OperationId, OperationIdsSerializer};
+    /// use massa_models::operation::{OperationId, OperationIdsSerializer};
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
     ///
@@ -934,7 +934,7 @@ impl OperationIdsDeserializer {
 impl Deserializer<Vec<OperationId>> for OperationIdsDeserializer {
     /// ## Example:
     /// ```
-    /// use massa_models::{OperationId, OperationIdsSerializer, OperationIdsDeserializer};
+    /// use massa_models::operation::{OperationId, OperationIdsSerializer, OperationIdsDeserializer};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
     ///
@@ -981,7 +981,7 @@ impl OperationPrefixIdDeserializer {
 impl Deserializer<OperationPrefixId> for OperationPrefixIdDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{OperationPrefixId, OperationPrefixIds, OperationPrefixIdsSerializer, constants::OPERATION_ID_PREFIX_SIZE_BYTES};
+    /// use massa_models::operation::{OperationPrefixId, OperationPrefixIds, OperationPrefixIdsSerializer, OPERATION_ID_PREFIX_SIZE_BYTES};
     /// use massa_serialization::Serializer;
     ///
     /// let mut op_prefixes = OperationPrefixIds::default();
@@ -1043,7 +1043,7 @@ impl OperationPrefixIdsDeserializer {
 impl Deserializer<OperationPrefixIds> for OperationPrefixIdsDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{OperationPrefixId, OperationPrefixIds, OperationPrefixIdsSerializer, OperationPrefixIdsDeserializer, constants::OPERATION_ID_PREFIX_SIZE_BYTES};
+    /// use massa_models::{operation::{OperationPrefixId, OperationPrefixIds, OperationPrefixIdsSerializer, OperationPrefixIdsDeserializer, OPERATION_ID_PREFIX_SIZE_BYTES}};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
     /// let mut op_prefixes = OperationPrefixIds::default();
@@ -1139,7 +1139,7 @@ impl Default for OperationsSerializer {
 impl Serializer<Vec<WrappedOperation>> for OperationsSerializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{WrappedOperation, wrapped::WrappedContent, OperationSerializer, Address, Amount, Operation, OperationType, OperationsSerializer};
+    /// use massa_models::{operation::{WrappedOperation, Operation, OperationType, OperationsSerializer, OperationSerializer}, wrapped::WrappedContent, address::Address, amount::Amount};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
@@ -1206,7 +1206,7 @@ impl OperationsDeserializer {
 impl Deserializer<Vec<WrappedOperation>> for OperationsDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{WrappedOperation, wrapped::WrappedContent, OperationSerializer, Address, Amount, Operation, OperationType, OperationsSerializer, OperationsDeserializer};
+    /// use massa_models::{operation::{WrappedOperation, Operation, OperationType, OperationsSerializer, OperationsDeserializer, OperationSerializer}, wrapped::WrappedContent, address::Address, amount::Amount};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
