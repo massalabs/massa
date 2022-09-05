@@ -455,6 +455,31 @@ async fn launch(
             }
         })
         .expect("could not spawn block factory worker thread");
+    #[cfg(feature = "deadlock_detection")]
+    {
+        // only for #[cfg]
+        use parking_lot::deadlock;
+        use std::thread;
+        use std::time::Duration;
+        // Create a background thread which checks for deadlocks every 10s
+        let handler2 = thread::spawn(move || loop {
+            thread::sleep(Duration::from_secs(10));
+            let deadlocks = deadlock::check_deadlock();
+            println!("deadlocks check");
+            if deadlocks.is_empty() {
+                continue;
+            }
+
+            println!("{} deadlocks detected", deadlocks.len());
+            for (i, threads) in deadlocks.iter().enumerate() {
+                println!("Deadlock #{}", i);
+                for t in threads {
+                    println!("Thread Id {:#?}", t.thread_id());
+                    println!("{:#?}", t.backtrace());
+                }
+            }
+        });
+    }
     (
         consensus_event_receiver,
         bootstrap_manager,
