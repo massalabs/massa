@@ -319,8 +319,8 @@ impl Storage {
                 for b_id in orphaned_ids {
                     blocks.remove(&b_id);
                 }
+                println!("AURELIEN: storage drop_block_refs WRITE blocks END");
             }
-            println!("AURELIEN: storage drop_block_refs WRITE blocks END");
         }
         println!("AURELIEN: storage drop_block_refs WRITE block_owners END");
     }
@@ -421,8 +421,8 @@ impl Storage {
                 for id in orphaned_ids {
                     ops.remove(&id);
                 }
+                println!("AURELIEN: storage drop_operation_refs WRITE operations END");
             }
-            println!("AURELIEN: storage drop_operation_refs WRITE operations END");
             println!("AURELIEN: storage drop_operation_refs WRITE operation_owners END");
         }
     }
@@ -537,8 +537,8 @@ impl Storage {
                 for id in orphaned_ids {
                     endos.remove(&id);
                 }
+                println!("AURELIEN: storage drop_endorsement_refs WRITE endorsements END");
             }
-            println!("AURELIEN: storage drop_endorsement_refs WRITE endorsements END");
         }
         println!("AURELIEN: storage drop_endorsement_refs WRITE endorsement_owners END");
     }
