@@ -597,6 +597,7 @@ async fn main(args: Args) -> anyhow::Result<()> {
     // and then shutdown.
     let default_panic = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
+        print!("AURELIEN: info = {:?}", info);
         default_panic(info);
         std::process::exit(1);
     }));
