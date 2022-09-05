@@ -22,7 +22,7 @@ massa_time = { path = "../massa-time" }
 [dev-dependencies]
 serial_test = "0.9"
 #tempfile = "3.3"
-parking_lot = {version = "0.12" }
+parking_lot = { version = "0.12", features = ["deadlock_detection", "nightly"] }
 massa_models = { path = "../massa-models", features = ["testing"] }
 massa_execution_exports = { path = "../massa-execution-exports", features = [
     "testing",
