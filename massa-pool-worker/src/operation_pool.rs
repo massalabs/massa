@@ -160,7 +160,7 @@ impl OperationPool {
                     ops.len()
                 );
                 while ops.len() > self.config.max_operation_pool_size_per_thread {
-                    // the unrap below won't panic because the loop condition tests for non-emptines of self.operations
+                    // the unwrap below won't panic because the loop condition tests for non-emptines of self.operations
                     let cursor = ops.pop_last().unwrap();
                     let op_info = self
                         .operations
@@ -170,9 +170,7 @@ impl OperationPool {
                     if !self.ops_per_expiration.remove(&(end_slot, op_info.id)) {
                         panic!("the operation should be in self.ops_per_expiration at this point");
                     }
-                    if !added.remove(&op_info.id) {
-                        removed.insert(op_info.id);
-                    }
+                    removed.insert(op_info.id);
                 }
             });
 
@@ -185,7 +183,7 @@ impl OperationPool {
 
         // drop removed ops from storage
         if !removed.is_empty() {
-            // println!("AURELIEN: Removed len = {}", removed.len());
+            println!("DEBUG: Size operation pool removed = {}", removed.len());
         }
         self.storage.drop_operation_refs(&removed);
     }

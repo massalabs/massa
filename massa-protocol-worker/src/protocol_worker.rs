@@ -400,6 +400,7 @@ impl ProtocolWorker {
                     "protocol.protocol_worker.process_command.propagate_operations.begin",
                     { "operation_ids": operation_ids }
                 );
+                self.prune_checked_operations();
                 for id in operation_ids.iter() {
                     self.checked_operations.insert(id);
                 }
