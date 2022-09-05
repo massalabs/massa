@@ -119,21 +119,19 @@ impl Storage {
     }
 
     /// TEST
-    pub fn print_test(&self) -> Self {
-        let res = self.clone_without_refs();
+    pub fn print_test(&self) {
         println!(
             "DEBUG: size blocks_owners = {:#?}",
-            res.block_owners.read().len()
+            self.block_owners.read().len()
         );
         println!(
             "DEBUG: size operations_owners = {:#?}",
-            res.operation_owners.read().len()
+            self.operation_owners.read().len()
         );
         println!(
             "DEBUG: size endorsements_owners = {:#?}",
-            res.endorsement_owners.read().len()
+            self.endorsement_owners.read().len()
         );
-        res
     }
 
     /// Clones the object to a new one that has no references

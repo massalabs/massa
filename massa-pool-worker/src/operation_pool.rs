@@ -87,6 +87,9 @@ impl OperationPool {
             removed_ops.insert(op_id);
         }
 
+        if !removed_ops.is_empty() {
+            println!("DEBUG: Size operation pool removed2 = {}", removed_ops.len());
+        }
         // notify storage that pool has lost references to removed_ops
         self.storage.drop_operation_refs(&removed_ops);
     }
@@ -175,11 +178,7 @@ impl OperationPool {
             });
 
         // take ownership on added ops
-        self.storage.extend(ops_storage.split_off(
-            &Default::default(),
-            &added,
-            &Default::default(),
-        ));
+        self.storage.claim_operation_refs(ops_storage.get_op_refs());
 
         // drop removed ops from storage
         if !removed.is_empty() {
