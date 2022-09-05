@@ -319,7 +319,7 @@ impl ProtocolWorker {
                     { "block_id": block_id }
                 );
                 let header = {
-                    println!("AURELIEN: process command START");
+                    println!("AURELIEN: process_command READ blocks START");
                     let blocks = storage.read_blocks();
                     blocks
                         .get(&block_id)
@@ -331,7 +331,7 @@ impl ProtocolWorker {
                             ))
                         })?
                 };
-                println!("AURELIEN: process command END");
+                println!("AURELIEN: process_command READ blocks END");
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     // node that isn't asking for that block
                     let cond = node_info.get_known_block(&block_id);
@@ -429,6 +429,7 @@ impl ProtocolWorker {
                 );
                 for (node, node_info) in self.active_nodes.iter_mut() {
                     let new_endorsements: PreHashMap<EndorsementId, WrappedEndorsement> = {
+                        println!("AURELIEN: process_command READ endorsements START");
                         let endorsements_reader = endorsements.read_endorsements();
                         endorsements
                             .get_endorsement_refs()
@@ -441,6 +442,7 @@ impl ProtocolWorker {
                             })
                             .collect()
                     };
+                    println!("AURELIEN: process_command READ endorsements END");
                     node_info.insert_known_endorsements(
                         new_endorsements.keys().copied().collect(),
                         self.config.max_node_known_endorsements_size,
@@ -496,20 +498,22 @@ impl ProtocolWorker {
             Default::default();
 
         // list blocks to re-ask and from whom
-        for (hash, block_info) in self.block_wishlist.iter_mut() {
+        for (hash, block_info) in self.block_wishlist.iter() {
             let required_info = if block_info.header.is_none() {
                 AskForBlocksInfo::Header
             } else if block_info.operation_ids.is_none() {
                 AskForBlocksInfo::Info
             } else {
                 let already_stored_operations = block_info.storage.get_op_refs();
+                // Unwrap safety: Check if `operation_ids` is none just above
                 AskForBlocksInfo::Operations(
                     block_info
                         .operation_ids
-                        .clone()
+                        .as_ref()
                         .unwrap()
-                        .into_iter()
+                        .iter()
                         .filter(|id| !already_stored_operations.contains(id))
+                        .copied()
                         .collect(),
                 )
             };

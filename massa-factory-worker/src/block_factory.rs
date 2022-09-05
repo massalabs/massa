@@ -176,6 +176,7 @@ impl BlockFactoryWorker {
         );
         //TODO: Do we want ot populate only with endorsement id in the future ?
         let endorsements: Vec<WrappedEndorsement> = {
+            println!("AURELIEN: process_slot READ endorsements START");
             let endo_read = endo_storage.read_endorsements();
             endorsements_ids
                 .into_iter()
@@ -188,6 +189,7 @@ impl BlockFactoryWorker {
                 })
                 .collect()
         };
+        println!("AURELIEN: process_slot READ endorsements END");
         block_storage.extend(endo_storage);
 
         // gather operations and compute global operations hash

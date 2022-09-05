@@ -447,14 +447,14 @@ async fn launch(
     let api_public_handle = api_public.serve(&SETTINGS.api.bind_public);
     let shared_storage_test = shared_storage.clone();
     let handler = thread::Builder::new()
-    .name("test storage".into())
-    .spawn(move || {
-        while 1 == 1 {
-            std::thread::sleep(std::time::Duration::from_millis(200));
-            shared_storage_test.clone_test();
-        }
-    })
-    .expect("could not spawn block factory worker thread");
+        .name("test storage".into())
+        .spawn(move || {
+            while 1 == 1 {
+                std::thread::sleep(std::time::Duration::from_millis(200));
+                shared_storage_test.clone_test();
+            }
+        })
+        .expect("could not spawn block factory worker thread");
     (
         consensus_event_receiver,
         bootstrap_manager,

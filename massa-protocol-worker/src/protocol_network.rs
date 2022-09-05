@@ -164,7 +164,7 @@ impl ProtocolWorker {
         };
         let mut all_blocks_info = vec![];
         for (hash, info_wanted) in &list {
-            println!("AURELIEN: on_asked_for_blocks_received START");
+            println!("AURELIEN: on_asked_for_blocks_received READ blocks START");
             let (header, operations_ids) = match self.storage.read_blocks().get(hash) {
                 Some(wrapped_block) => (
                     wrapped_block.content.header.clone(),
@@ -173,11 +173,11 @@ impl ProtocolWorker {
                 None => {
                     // let the node know we don't have the block.
                     all_blocks_info.push((*hash, BlockInfoReply::NotFound));
-                    println!("AURELIEN: on_asked_for_blocks_received END");
+                    println!("AURELIEN: on_asked_for_blocks_received READ blocks END");
                     continue;
                 }
             };
-            println!("AURELIEN: on_asked_for_blocks_received END");
+            println!("AURELIEN: on_asked_for_blocks_received READ blocks END");
             let block_info = match info_wanted {
                 AskForBlocksInfo::Header => BlockInfoReply::Header(header),
                 AskForBlocksInfo::Info => BlockInfoReply::Info(operations_ids),
@@ -192,7 +192,7 @@ impl ProtocolWorker {
 
                     // Send only the missing operations that is in storage.
                     let needed_ops = {
-                        println!("AURELIEN: block info START");
+                        println!("AURELIEN: on_asked_for_blocks_received READ operations START");
                         let operations = self.storage.read_operations();
                         operations_ids
                             .into_iter()
@@ -201,7 +201,7 @@ impl ProtocolWorker {
                             .cloned()
                             .collect()
                     };
-                    println!("AURELIEN: block info END");
+                    println!("AURELIEN: on_asked_for_blocks_received READ operations END");
                     BlockInfoReply::Operations(needed_ops)
                 }
             };
@@ -220,7 +220,7 @@ impl ProtocolWorker {
         storage: &Storage,
         operation_ids: &PreHashSet<OperationId>,
     ) -> usize {
-        println!("AURELIEN: operation size START");
+        println!("AURELIEN: get_total_operations_size READ operations START");
         let op_reader = storage.read_operations();
         let mut total: usize = 0;
         operation_ids.iter().for_each(|id| {
@@ -228,7 +228,7 @@ impl ProtocolWorker {
                 total = total.saturating_add(op.serialized_size());
             }
         });
-        println!("AURELIEN: operation size END");
+        println!("AURELIEN: get_total_operations_size READ operations END");
         total
     }
 

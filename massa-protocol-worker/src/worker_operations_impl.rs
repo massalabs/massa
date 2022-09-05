@@ -20,7 +20,7 @@ use massa_models::{
 use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
 use tokio::time::{sleep_until, Instant, Sleep};
-use tracing::{warn, info};
+use tracing::{info, warn};
 
 /// Structure containing a Batch of `operation_ids` we would like to ask
 /// to a `node_id` now or later. Mainly used in protocol and translated into
@@ -205,7 +205,7 @@ impl ProtocolWorker {
             }
         }
         let ops: Vec<WrappedOperation> = {
-            println!("AURELIEN: ask operation START");
+            println!("AURELIEN: on_asked_operations_received READ operations START");
             let stored_ops = self.storage.read_operations();
             req_operation_ids
                 .iter()
@@ -213,7 +213,7 @@ impl ProtocolWorker {
                 .cloned()
                 .collect()
         };
-        println!("AURELIEN: ask operation END");
+        println!("AURELIEN: on_asked_operations_received READ operations END");
         if !ops.is_empty() {
             self.network_command_sender
                 .send_operations(node_id, ops)

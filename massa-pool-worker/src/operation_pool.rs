@@ -10,8 +10,8 @@ use massa_models::{
 };
 use massa_pool_exports::PoolConfig;
 use massa_storage::Storage;
-use tracing::info;
 use std::collections::BTreeSet;
+use tracing::info;
 
 use crate::types::{OperationInfo, PoolOperationCursor};
 
@@ -111,7 +111,7 @@ impl OperationPool {
 
         // add items to pool
         {
-            println!("AURELIEN: add items to pool START");
+            println!("AURELIEN: add_operations READ operations START");
             let ops = ops_storage.read_operations();
             for op_id in items {
                 let op_info = OperationInfo::from_op(
@@ -138,7 +138,7 @@ impl OperationPool {
                     added.insert(op_info.id);
                 }
             }
-            println!("AURELIEN: add items to pool END");
+            println!("AURELIEN: add_operations READ operations END");
         }
 
         // prune excess operations

@@ -50,8 +50,8 @@ use massa_pool_exports::PoolController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use tracing::info;
 use std::net::{IpAddr, SocketAddr};
+use tracing::info;
 
 impl API<Public> {
     /// generate a new public API
@@ -366,10 +366,10 @@ impl Endpoints for API<Public> {
         ops: Vec<OperationId>,
     ) -> BoxFuture<Result<Vec<OperationInfo>, ApiError>> {
         // get the operations and the list of blocks that contain them from storage
-        println!("AURELIEN: get_operations START");
         let storage_info: Vec<(WrappedOperation, PreHashSet<BlockId>)> = {
-            println!("AURELIEN: get_operations closure storage START");
+            println!("AURELIEN: get_operations READ blocks START");
             let read_blocks = self.0.storage.read_blocks();
+            println!("AURELIEN: get_operations READ operations START");
             let read_ops = self.0.storage.read_operations();
             ops.iter()
                 .filter_map(|id| {
@@ -385,7 +385,8 @@ impl Endpoints for API<Public> {
                 })
                 .collect()
         };
-        println!("AURELIEN: get_operations closure storage END");
+        println!("AURELIEN: get_operations READ operations END");
+        println!("AURELIEN: get_operations READ blocks END");
 
         // keep only the ops found in storage
         let ops: Vec<OperationId> = storage_info.iter().map(|(op, _)| op.id).collect();
@@ -442,7 +443,6 @@ impl Endpoints for API<Public> {
                 });
             }
 
-            println!("AURELIEN: get_operations END");
             // return values in the right order
             Ok(res)
         };
@@ -455,8 +455,9 @@ impl Endpoints for API<Public> {
     ) -> BoxFuture<Result<Vec<EndorsementInfo>, ApiError>> {
         // get the endorsements and the list of blocks that contain them from storage
         let storage_info: Vec<(WrappedEndorsement, PreHashSet<BlockId>)> = {
-            println!("AURELIEN: get_endorsements closure storage START");
+            println!("AURELIEN: get_endorsements READ blocks START");
             let read_blocks = self.0.storage.read_blocks();
+            println!("AURELIEN: get_endorsements READ endorsements START");
             let read_endos = self.0.storage.read_endorsements();
             eds.iter()
                 .filter_map(|id| {
@@ -472,7 +473,8 @@ impl Endpoints for API<Public> {
                 })
                 .collect()
         };
-        println!("AURELIEN: get_endorsements closure storage END");
+        println!("AURELIEN: get_endorsements READ endorsements END");
+        println!("AURELIEN: get_endorsements READ blocks END");
 
         // keep only the ops found in storage
         let eds: Vec<EndorsementId> = storage_info.iter().map(|(ed, _)| ed.id).collect();
@@ -541,12 +543,15 @@ impl Endpoints for API<Public> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let storage = self.0.storage.clone_without_refs();
         let closure = async move || {
-            println!("AURELIEN: get_block closure storage START");
+            println!("AURELIEN: get_block READ block START");
             let block = match storage.read_blocks().get(&id).cloned() {
                 Some(b) => b.content,
-                None => return Ok(BlockInfo { id, content: None }),
+                None => {
+                    println!("AURELIEN: get_block READ block END");
+                    return Ok(BlockInfo { id, content: None });
+                }
             };
-            println!("AURELIEN: get_block closure storage END");
+            println!("AURELIEN: get_block READ block END");
 
             let graph_status = consensus_command_sender
                 .get_block_statuses(&[id])
@@ -586,12 +591,12 @@ impl Endpoints for API<Public> {
                 Some(id) => id,
                 None => return Ok(None),
             };
-            println!("AURELIEN: get_blockclique_block_by_slot START");
+            println!("AURELIEN: get_blockclique_block_by_slot READ blocks START");
             let res = storage
                 .read_blocks()
                 .get(&block_id)
                 .map(|b| b.content.clone());
-            println!("AURELIEN: get_blockclique_block_by_slot END");
+            println!("AURELIEN: get_blockclique_block_by_slot READ blocks END");
             Ok(res)
         };
         Box::pin(closure())
@@ -681,7 +686,7 @@ impl Endpoints for API<Public> {
     ) -> BoxFuture<Result<Vec<AddressInfo>, ApiError>> {
         // get info from storage about which blocks the addresses have created
         let created_blocks: Vec<PreHashSet<BlockId>> = {
-            println!("AURELIEN: get_addresses START");
+            println!("AURELIEN: get_addresses READ blocks START");
             let lck = self.0.storage.read_blocks();
             addresses
                 .iter()
@@ -692,11 +697,11 @@ impl Endpoints for API<Public> {
                 })
                 .collect()
         };
-        println!("AURELIEN: get_addresses END");
+        println!("AURELIEN: get_addresses READ blocks END");
 
         // get info from storage about which operations the addresses have created
         let created_operations: Vec<PreHashSet<OperationId>> = {
-            println!("AURELIEN: created_operations START");
+            println!("AURELIEN: get_addresses READ operations START");
             let lck = self.0.storage.read_operations();
             addresses
                 .iter()
@@ -707,10 +712,11 @@ impl Endpoints for API<Public> {
                 })
                 .collect()
         };
-        println!("AURELIEN: created_operations END");
+        println!("AURELIEN: get_addresses READ operations END");
 
         // get info from storage about which endorsements the addresses have created
         let created_endorsements: Vec<PreHashSet<EndorsementId>> = {
+            println!("AURELIEN: get_addresses READ endorsements START");
             let lck = self.0.storage.read_endorsements();
             addresses
                 .iter()
@@ -721,6 +727,7 @@ impl Endpoints for API<Public> {
                 })
                 .collect()
         };
+        println!("AURELIEN: get_addresses READ endorsements END");
 
         // get execution info
         let execution_infos = self.0.execution_controller.get_addresses_infos(&addresses);

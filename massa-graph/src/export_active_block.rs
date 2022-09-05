@@ -22,8 +22,8 @@ use nom::{
 };
 use nom::{error::context, IResult, Parser};
 use serde::{Deserialize, Serialize};
-use tracing::info;
 use std::ops::Bound::Included;
+use tracing::info;
 
 /// Exportable version of `ActiveBlock`
 /// Fields that can be easily recomputed were left out
@@ -43,16 +43,16 @@ impl ExportActiveBlock {
     /// conversion from active block to export active block
     pub fn from_active_block(a_block: &ActiveBlock, storage: &Storage) -> Self {
         // get block
-        println!("AURELIEN: export active block block START");
+        println!("AURELIEN: from_active_block READ blocks START");
         let block = storage
             .read_blocks()
             .get(&a_block.block_id)
             .expect("active block missing in storage")
             .clone();
-        println!("AURELIEN: export active block block END");
+        println!("AURELIEN: from_active_block READ blocks END");
         // get ops
         let operations = {
-            println!("AURELIEN: ExportActiveBlock START");
+            println!("AURELIEN: from_active_block READ operations START");
             let read_ops = storage.read_operations();
             block
                 .content
@@ -66,7 +66,7 @@ impl ExportActiveBlock {
                 })
                 .collect()
         };
-        println!("AURELIEN: ExportActiveBlock END");
+        println!("AURELIEN: from_active_block READ operations END");
 
         // TODO if we deciede that endorsements are separate, also gather endorsements here
 
