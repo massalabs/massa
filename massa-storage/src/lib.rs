@@ -28,6 +28,7 @@ use massa_models::{
 };
 use operation_indexes::OperationIndexes;
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use tracing::info;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::{collections::hash_map, sync::Arc};
@@ -109,6 +110,18 @@ impl Storage {
             local_used_ops: Default::default(),
             local_used_endorsements: Default::default(),
         }
+    }
+
+    /// TEST
+    pub fn clone_test(&self) -> Self {
+        let res = self.clone_without_refs();
+        info!("AURELIEN: Nb arc blocks = {:#?}", Arc::strong_count(&self.blocks));
+        info!("AURELIEN: Nb arc operations = {:#?}", Arc::strong_count(&self.operations));
+        info!("AURELIEN: Nb arc endorsements = {:#?}", Arc::strong_count(&self.endorsements));
+        info!("AURELIEN: Nb arc block_owners = {:#?}", Arc::strong_count(&self.block_owners));
+        info!("AURELIEN: Nb arc ops_owners = {:#?}", Arc::strong_count(&self.operation_owners));
+        info!("AURELIEN: Nb arc endos_owners = {:#?}", Arc::strong_count(&self.endorsement_owners));
+        res
     }
 
     /// Clones the object to a new one that has no references
