@@ -397,6 +397,15 @@ impl ProtocolWorker {
             return Ok(());
         }
 
+        for op in operations.iter() {
+            // check thread
+            let op_thread = op.creator_address.get_thread(self.config.thread_count);
+            if op_thread != header.content.slot.thread {
+                let _ = self.ban_node(&from_node_id).await;
+                return Ok(());
+            }
+        }
+
         // Ban the node if:
         // - mismatch with asked operations (asked operations are the one that are not in storage) + operations already in storage and block operations
         // - full operations serialized size overflow
