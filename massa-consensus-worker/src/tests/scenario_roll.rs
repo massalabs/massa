@@ -526,7 +526,7 @@
 
 //     let init_time: MassaTime = 1000.into();
 //     cfg.genesis_timestamp = MassaTime::now(0).unwrap().saturating_add(init_time);
-//     let storage: Storage = Default::default();
+//     let storage: Storage = Storage::create_root();
 //     // launch consensus controller
 //     let selector_config = SelectorConfig {
 //         initial_rolls_path: cfg.initial_rolls_path.clone(),
@@ -785,7 +785,7 @@
 //         pos_miss_rate_deactivation_threshold: Ratio::new(50, 100),
 //         ..Default::default()
 //     };
-//     let storage: Storage = Default::default();
+//     let storage: Storage = Storage::create_root();
 
 //     // setup addresses
 //     let (address_a0, keypair_a0) = random_address_on_thread(0, cfg.thread_count).into();

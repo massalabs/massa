@@ -292,7 +292,7 @@ pub fn send_and_receive_transaction() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
 
     // init the storage
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
     // start the execution worker
     let (mut manager, controller) = start_execution_worker(
         exec_cfg,
@@ -355,7 +355,7 @@ pub fn roll_buy() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
 
     // init the storage
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
     // start the execution worker
     let (mut manager, controller) = start_execution_worker(
         exec_cfg,
@@ -414,7 +414,7 @@ pub fn roll_sell() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
 
     // init the storage
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
     // start the execution worker
     let (mut manager, controller) = start_execution_worker(
         exec_cfg,
@@ -519,7 +519,7 @@ fn sc_execution_error() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
 
     // init the storage
-    let mut storage = Storage::default();
+    let mut storage = Storage::create_root();
     // start the execution worker
     let (mut manager, controller) = start_execution_worker(
         exec_cfg,
@@ -568,7 +568,7 @@ fn generate_events() {
         t0: 100.into(),
         ..ExecutionConfig::default()
     };
-    let mut storage: Storage = Default::default();
+    let mut storage: Storage = Storage::create_root();
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
     let (mut manager, controller) = start_execution_worker(
         exec_cfg,
@@ -586,8 +586,8 @@ fn generate_events() {
 
     storage.store_block(block.clone());
 
-    let finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
-    let mut blockclique: HashMap<Slot, (BlockId, Storage)> = Default::default();
+    let finalized_blocks: HashMap<Slot, (BlockId, Storage)> = HashMap::new();
+    let mut blockclique: HashMap<Slot, (BlockId, Storage)> = HashMap::new();
 
     blockclique.insert(slot, (block.id, storage.clone()));
 
