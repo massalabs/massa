@@ -43,16 +43,16 @@ impl ExportActiveBlock {
     /// conversion from active block to export active block
     pub fn from_active_block(a_block: &ActiveBlock, storage: &Storage) -> Self {
         // get block
-        info!("AURELIEN: export active block block start");
+        println!("AURELIEN: export active block block START");
         let block = storage
             .read_blocks()
             .get(&a_block.block_id)
             .expect("active block missing in storage")
             .clone();
-        info!("AURELIEN: export active block block end");
+        println!("AURELIEN: export active block block END");
         // get ops
         let operations = {
-            info!("AURELIEN: ExportActiveBlock start");
+            println!("AURELIEN: ExportActiveBlock START");
             let read_ops = storage.read_operations();
             block
                 .content
@@ -66,7 +66,7 @@ impl ExportActiveBlock {
                 })
                 .collect()
         };
-        info!("AURELIEN: ExportActiveBlock end");
+        println!("AURELIEN: ExportActiveBlock END");
 
         // TODO if we deciede that endorsements are separate, also gather endorsements here
 

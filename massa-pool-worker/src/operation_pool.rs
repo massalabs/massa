@@ -111,7 +111,7 @@ impl OperationPool {
 
         // add items to pool
         {
-            info!("AURELIEN: add items to pool start");
+            println!("AURELIEN: add items to pool START");
             let ops = ops_storage.read_operations();
             for op_id in items {
                 let op_info = OperationInfo::from_op(
@@ -138,7 +138,7 @@ impl OperationPool {
                     added.insert(op_info.id);
                 }
             }
-            info!("AURELIEN: add items to pool end");
+            println!("AURELIEN: add items to pool END");
         }
 
         // prune excess operations

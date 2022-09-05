@@ -58,7 +58,7 @@ impl WriteBinder {
 
         let res_index = self.message_index;
         self.message_index += 1;
-        //        massa_trace!("binder.send end", { "index": res_index });
+        //        massa_trace!("binder.send END", { "index": res_index });
         Ok(res_index)
     }
 }

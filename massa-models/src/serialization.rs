@@ -69,7 +69,7 @@ impl DeserializeMinBEInt for u32 {
         let read_bytes = Self::be_bytes_min_length(max_value);
         let skip_bytes = Self::MIN_BE_INT_BASE_SIZE - read_bytes;
         if buffer.len() < read_bytes {
-            return Err(ModelsError::SerializeError("unexpected buffer end".into()));
+            return Err(ModelsError::SerializeError("unexpected buffer END".into()));
         }
         let mut buf = [0u8; Self::MIN_BE_INT_BASE_SIZE];
         buf[skip_bytes..].clone_from_slice(&buffer[..read_bytes]);
@@ -94,7 +94,7 @@ impl DeserializeMinBEInt for u64 {
         let read_bytes = Self::be_bytes_min_length(max_value);
         let skip_bytes = Self::MIN_BE_INT_BASE_SIZE - read_bytes;
         if buffer.len() < read_bytes {
-            return Err(ModelsError::SerializeError("unexpected buffer end".into()));
+            return Err(ModelsError::SerializeError("unexpected buffer END".into()));
         }
         let mut buf = [0u8; Self::MIN_BE_INT_BASE_SIZE];
         buf[skip_bytes..].clone_from_slice(&buffer[..read_bytes]);

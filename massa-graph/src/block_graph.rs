@@ -188,7 +188,7 @@ impl<'a> BlockGraphExport {
                 }
                 BlockStatus::Active { a_block, storage } => {
                     if filter(&a_block.slot) {
-                        info!("AURELIEN: block status graph start");
+                        println!("AURELIEN: block status graph START");
                         let stored_block =
                             storage.read_blocks().get(hash).cloned().ok_or_else(|| {
                                 GraphError::MissingBlock(format!(
@@ -196,7 +196,7 @@ impl<'a> BlockGraphExport {
                                     hash
                                 ))
                             })?;
-                        info!("AURELIEN: block status graph end");
+                        println!("AURELIEN: block status graph END");
                         export.active_blocks.insert(
                             *hash,
                             ExportCompiledBlock {
@@ -976,14 +976,14 @@ impl BlockGraph {
                             block_id
                         )));
                     };
-                info!("AURELIEN: block status incoming graph start");
+                println!("AURELIEN: block status incoming graph START");
                 let stored_block = storage
                     .read_blocks()
                     .get(&block_id)
                     .cloned()
                     .expect("incoming block not found in storage");
                 
-                info!("AURELIEN: block status incoming graph end");
+                println!("AURELIEN: block status incoming graph END");
 
                 match self.check_header(&block_id, &stored_block.content.header, current_slot)? {
                     HeaderCheckOutcome::Proceed {
@@ -1468,7 +1468,7 @@ impl BlockGraph {
                 }
 
                 let parent_id = {
-                    info!("AURELIEN: block graph incompatibility start");
+                    println!("AURELIEN: block graph incompatibility START");
                     self.storage
                         .read_blocks()
                         .get(&cur_b.block_id)
@@ -1483,7 +1483,7 @@ impl BlockGraph {
                         .content
                         .parents[header.content.slot.thread as usize]
                 };
-                info!("AURELIEN: block graph incompatibility end");
+                println!("AURELIEN: block graph incompatibility END");
 
                 // check if the parent in tauB has a strictly lower period number than B's parent in tauB
                 // note: cur_b cannot be genesis at gen > 1
@@ -2242,7 +2242,7 @@ impl BlockGraph {
             let block_slot;
             let block_creator;
             let block_parents;
-            info!("AURELIEN: block graph discarded start");
+            println!("AURELIEN: block graph discarded START");
             {
                 let read_blocks = self.storage.read_blocks();
                 let block = read_blocks.get(&discard_active_h).ok_or_else(|| {
@@ -2255,7 +2255,7 @@ impl BlockGraph {
                 block_creator = block.creator_address;
                 block_parents = block.content.header.content.parents.clone();
             };
-            info!("AURELIEN: block graph discarded end");
+            println!("AURELIEN: block graph discarded END");
 
             let discarded_active = if let Some(BlockStatus::Active {
                 a_block: discarded_active,
@@ -2459,7 +2459,7 @@ impl BlockGraph {
             }) = self.block_statuses.remove(&block_id)
             {
                 self.waiting_for_dependencies_index.remove(&block_id);
-                info!("AURELIEN: block graph discarded2 start");
+                println!("AURELIEN: block graph discarded2 START");
                 let header = match header_or_block {
                     HeaderOrBlock::Header(h) => h,
                     HeaderOrBlock::Block { id: block_id, .. } => self
@@ -2476,7 +2476,7 @@ impl BlockGraph {
                         .header
                         .clone(),
                 };
-                info!("AURELIEN: block graph discarded2 end");
+                println!("AURELIEN: block graph discarded2 END");
                 massa_trace!("consensus.block_graph.prune_waiting_for_dependencies", {"hash": block_id, "reason": reason_opt});
 
                 if let Some(reason) = reason_opt {
@@ -2631,13 +2631,13 @@ impl BlockGraph {
         // List all blocks at this slot.
         // The list should be small: make a copy of it to avoid holding the storage lock.
         let blocks_at_slot = {
-            info!("AURELIEN: block graph block at slot start");
+            println!("AURELIEN: block graph block at slot START");
             let storage_read = self.storage.read_blocks();
             let returned = match storage_read.get_blocks_by_slot(slot) {
                 Some(v) => v.clone(),
                 None => return None,
             };
-            info!("AURELIEN: block graph block at slot end");
+            println!("AURELIEN: block graph block at slot END");
             returned
         };
 

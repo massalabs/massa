@@ -115,12 +115,12 @@ impl Storage {
     /// TEST
     pub fn clone_test(&self) -> Self {
         let res = self.clone_without_refs();
-        info!("AURELIEN: Nb arc blocks = {:#?}", Arc::strong_count(&self.blocks));
-        info!("AURELIEN: Nb arc operations = {:#?}", Arc::strong_count(&self.operations));
-        info!("AURELIEN: Nb arc endorsements = {:#?}", Arc::strong_count(&self.endorsements));
-        info!("AURELIEN: Nb arc block_owners = {:#?}", Arc::strong_count(&self.block_owners));
-        info!("AURELIEN: Nb arc ops_owners = {:#?}", Arc::strong_count(&self.operation_owners));
-        info!("AURELIEN: Nb arc endos_owners = {:#?}", Arc::strong_count(&self.endorsement_owners));
+        println!("AURELIEN: Nb arc blocks = {:#?}", Arc::strong_count(&self.blocks));
+        println!("AURELIEN: Nb arc operations = {:#?}", Arc::strong_count(&self.operations));
+        println!("AURELIEN: Nb arc endorsements = {:#?}", Arc::strong_count(&self.endorsements));
+        println!("AURELIEN: Nb arc block_owners = {:#?}", Arc::strong_count(&self.block_owners));
+        println!("AURELIEN: Nb arc ops_owners = {:#?}", Arc::strong_count(&self.operation_owners));
+        println!("AURELIEN: Nb arc endos_owners = {:#?}", Arc::strong_count(&self.endorsement_owners));
         res
     }
 

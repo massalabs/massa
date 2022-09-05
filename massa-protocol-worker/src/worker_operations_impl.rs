@@ -205,7 +205,7 @@ impl ProtocolWorker {
             }
         }
         let ops: Vec<WrappedOperation> = {
-            info!("AURELIEN: ask operation start");
+            println!("AURELIEN: ask operation START");
             let stored_ops = self.storage.read_operations();
             req_operation_ids
                 .iter()
@@ -213,7 +213,7 @@ impl ProtocolWorker {
                 .cloned()
                 .collect()
         };
-        info!("AURELIEN: ask operation end");
+        println!("AURELIEN: ask operation END");
         if !ops.is_empty() {
             self.network_command_sender
                 .send_operations(node_id, ops)
