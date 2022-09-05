@@ -60,7 +60,7 @@ impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::Serializer;
-    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use std::str::FromStr;
     /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges, AsyncPoolChangesSerializer};
     ///
@@ -137,7 +137,7 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use std::str::FromStr;
     /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges, AsyncPoolChangesSerializer, AsyncPoolChangesDeserializer};
     ///
