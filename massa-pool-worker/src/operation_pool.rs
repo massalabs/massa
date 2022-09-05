@@ -168,6 +168,9 @@ impl OperationPool {
         ));
 
         // drop removed ops from storage
+        if !removed.is_empty() {
+            println!("AURELIEN: Removed len = {}", removed.len());
+        }
         self.storage.drop_operation_refs(&removed);
     }
 

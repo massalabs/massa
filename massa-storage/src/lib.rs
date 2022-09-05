@@ -330,10 +330,10 @@ impl Storage {
     pub fn store_block(&mut self, block: WrappedBlock) {
         let id = block.id;
         {
-            println!("AURELIEN: storage store_block WRITE blocks START");
-            let mut blocks = self.blocks.write();
             println!("AURELIEN: storage store_block WRITE block_owners START");
             let mut owners = self.block_owners.write();
+            println!("AURELIEN: storage store_block WRITE blocks START");
+            let mut blocks = self.blocks.write();
             blocks.insert(block);
             // update local reference counters
             Storage::internal_claim_refs(
@@ -434,10 +434,10 @@ impl Storage {
             return;
         }
         {
-            println!("AURELIEN: storage store_operations WRITE operations START");
-            let mut op_store = self.operations.write();
             println!("AURELIEN: storage store_operations WRITE operation_owners START");
             let mut owners = self.operation_owners.write();
+            println!("AURELIEN: storage store_operations WRITE operations START");
+            let mut op_store = self.operations.write();
             let ids: PreHashSet<OperationId> = operations.iter().map(|op| op.id).collect();
             for op in operations {
                 op_store.insert(op);
@@ -550,10 +550,10 @@ impl Storage {
             return;
         }
         {
-            println!("AURELIEN: storage store_endorsements WRITE endorsements START");
-            let mut endo_store = self.endorsements.write();
             println!("AURELIEN: storage store_endorsements WRITE endorsement_owners START");
             let mut owners = self.endorsement_owners.write();
+            println!("AURELIEN: storage store_endorsements WRITE endorsements START");
+            let mut endo_store = self.endorsements.write();
             let ids: PreHashSet<EndorsementId> = endorsements.iter().map(|op| op.id).collect();
             for endorsement in endorsements {
                 endo_store.insert(endorsement);
