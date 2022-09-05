@@ -186,7 +186,7 @@ impl Default for BlockSerializer {
 impl Serializer<Block> for BlockSerializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{Block, BlockSerializer, BlockId, constants::THREAD_COUNT, Slot, BlockHeader, BlockHeaderSerializer, Endorsement, EndorsementSerializer, wrapped::WrappedContent, prehash::Set};
+    /// use massa_models::{block::{Block, BlockSerializer, BlockId, BlockHeader, BlockHeaderSerializer}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, wrapped::WrappedContent, prehash::PreHashSet};
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
@@ -268,7 +268,7 @@ impl BlockDeserializer {
 impl Deserializer<Block> for BlockDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{Block, BlockSerializer, BlockDeserializer, BlockId, constants::THREAD_COUNT, Slot, BlockHeader, BlockHeaderSerializer, Endorsement, EndorsementSerializer, wrapped::WrappedContent, prehash::Set};
+    /// use massa_models::{block::{Block, BlockSerializer, BlockDeserializer, BlockId,BlockHeader, BlockHeaderSerializer}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, wrapped::WrappedContent, prehash::PreHashSet};
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
@@ -453,7 +453,10 @@ impl Default for BlockHeaderSerializer {
 impl Serializer<BlockHeader> for BlockHeaderSerializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{BlockId, constants::THREAD_COUNT, Slot, BlockHeader, BlockHeaderSerializer, Endorsement, EndorsementSerializer, wrapped::WrappedContent};
+    /// use massa_models::block::{BlockId, BlockHeader, BlockHeaderSerializer};
+    /// use massa_models::endorsement::{Endorsement, EndorsementSerializer};
+    /// use massa_models::wrapped::WrappedContent;
+    /// use massa_models::{config::THREAD_COUNT, slot::Slot};
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::Serializer;
@@ -554,7 +557,9 @@ impl BlockHeaderDeserializer {
 impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{BlockId, constants::THREAD_COUNT, Slot, BlockHeader, BlockHeaderDeserializer, BlockHeaderSerializer, Endorsement, EndorsementSerializer, wrapped::WrappedContent};
+    /// use massa_models::block::{BlockId, BlockHeader, BlockHeaderDeserializer, BlockHeaderSerializer};
+    /// use massa_models::{config::THREAD_COUNT, slot::Slot, wrapped::WrappedContent};
+    /// use massa_models::endorsement::{Endorsement, EndorsementSerializer};
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
