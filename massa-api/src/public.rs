@@ -50,6 +50,7 @@ use massa_pool_exports::PoolController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use tracing::info;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Public> {
@@ -365,7 +366,9 @@ impl Endpoints for API<Public> {
         ops: Vec<OperationId>,
     ) -> BoxFuture<Result<Vec<OperationInfo>, ApiError>> {
         // get the operations and the list of blocks that contain them from storage
+        info!("AURELIEN: get_operations start");
         let storage_info: Vec<(WrappedOperation, PreHashSet<BlockId>)> = {
+            info!("AURELIEN: get_operations start closure storage");
             let read_ops = self.0.storage.read_operations();
             let read_blocks = self.0.storage.read_blocks();
             ops.iter()
@@ -382,6 +385,7 @@ impl Endpoints for API<Public> {
                 })
                 .collect()
         };
+        info!("AURELIEN: get_operations after closure storage");
 
         // keep only the ops found in storage
         let ops: Vec<OperationId> = storage_info.iter().map(|(op, _)| op.id).collect();
@@ -438,6 +442,7 @@ impl Endpoints for API<Public> {
                 });
             }
 
+            info!("AURELIEN: get_operations end");
             // return values in the right order
             Ok(res)
         };
@@ -683,6 +688,7 @@ impl Endpoints for API<Public> {
 
         // get info from storage about which operations the addresses have created
         let created_operations: Vec<PreHashSet<OperationId>> = {
+            info!("AURELIEN: created_operations start");
             let lck = self.0.storage.read_operations();
             addresses
                 .iter()
@@ -693,6 +699,7 @@ impl Endpoints for API<Public> {
                 })
                 .collect()
         };
+        info!("AURELIEN: created_operations end");
 
         // get info from storage about which endorsements the addresses have created
         let created_endorsements: Vec<PreHashSet<EndorsementId>> = {

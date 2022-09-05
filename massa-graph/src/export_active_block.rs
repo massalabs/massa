@@ -22,6 +22,7 @@ use nom::{
 };
 use nom::{error::context, IResult, Parser};
 use serde::{Deserialize, Serialize};
+use tracing::info;
 use std::ops::Bound::Included;
 
 /// Exportable version of `ActiveBlock`
@@ -50,6 +51,7 @@ impl ExportActiveBlock {
 
         // get ops
         let operations = {
+            info!("AURELIEN: ExportActiveBlock start");
             let read_ops = storage.read_operations();
             block
                 .content
@@ -63,6 +65,7 @@ impl ExportActiveBlock {
                 })
                 .collect()
         };
+        info!("AURELIEN: ExportActiveBlock end");
 
         // TODO if we deciede that endorsements are separate, also gather endorsements here
 

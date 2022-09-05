@@ -36,7 +36,7 @@ use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet};
 use std::{collections::HashMap, sync::Arc};
-use tracing::debug;
+use tracing::{debug, info};
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -886,6 +886,7 @@ impl ExecutionState {
 
             // gather all operations
             let operations = {
+                info!("AURELIEN: execution operation start");
                 let ops = block_store.read_operations();
                 stored_block
                     .content
@@ -898,6 +899,7 @@ impl ExecutionState {
                     })
                     .collect::<Vec<_>>()
             };
+            info!("AURELIEN: execution operation end");
 
             // gather all available endorsement creators and target blocks
             let (endorsement_creators, endorsement_targets): &(Vec<Address>, Vec<BlockId>) =

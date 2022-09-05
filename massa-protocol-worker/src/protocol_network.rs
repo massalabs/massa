@@ -189,6 +189,7 @@ impl ProtocolWorker {
 
                     // Send only the missing operations that is in storage.
                     let needed_ops = {
+                        info!("AURELIEN: block info start");
                         let operations = self.storage.read_operations();
                         operations_ids
                             .into_iter()
@@ -197,6 +198,7 @@ impl ProtocolWorker {
                             .cloned()
                             .collect()
                     };
+                    info!("AURELIEN: block info end");
                     BlockInfoReply::Operations(needed_ops)
                 }
             };
@@ -215,6 +217,7 @@ impl ProtocolWorker {
         storage: &Storage,
         operation_ids: &PreHashSet<OperationId>,
     ) -> usize {
+        info!("AURELIEN: operation size start");
         let op_reader = storage.read_operations();
         let mut total: usize = 0;
         operation_ids.iter().for_each(|id| {
@@ -222,6 +225,7 @@ impl ProtocolWorker {
                 total = total.saturating_add(op.serialized_size());
             }
         });
+        info!("AURELIEN: operation size end");
         total
     }
 
