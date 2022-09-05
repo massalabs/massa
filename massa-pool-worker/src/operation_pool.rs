@@ -102,7 +102,7 @@ impl OperationPool {
     }
 
     /// Add a list of operations to the pool
-    pub fn add_operations(&mut self, mut ops_storage: Storage) {
+    pub fn add_operations(&mut self, ops_storage: Storage) {
         let items = ops_storage
             .get_op_refs()
             .iter()
@@ -178,7 +178,7 @@ impl OperationPool {
             });
 
         // take ownership on added ops
-        self.storage.claim_operation_refs(ops_storage.get_op_refs());
+        self.storage.claim_operation_refs(&added);
 
         // drop removed ops from storage
         if !removed.is_empty() {
