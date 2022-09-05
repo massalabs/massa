@@ -369,8 +369,8 @@ impl Endpoints for API<Public> {
         info!("AURELIEN: get_operations start");
         let storage_info: Vec<(WrappedOperation, PreHashSet<BlockId>)> = {
             info!("AURELIEN: get_operations start closure storage");
-            let read_ops = self.0.storage.read_operations();
             let read_blocks = self.0.storage.read_blocks();
+            let read_ops = self.0.storage.read_operations();
             ops.iter()
                 .filter_map(|id| {
                     read_ops.get(id).cloned().map(|op| {
@@ -455,8 +455,8 @@ impl Endpoints for API<Public> {
     ) -> BoxFuture<Result<Vec<EndorsementInfo>, ApiError>> {
         // get the endorsements and the list of blocks that contain them from storage
         let storage_info: Vec<(WrappedEndorsement, PreHashSet<BlockId>)> = {
-            let read_endos = self.0.storage.read_endorsements();
             let read_blocks = self.0.storage.read_blocks();
+            let read_endos = self.0.storage.read_endorsements();
             eds.iter()
                 .filter_map(|id| {
                     read_endos.get(id).cloned().map(|ed| {
