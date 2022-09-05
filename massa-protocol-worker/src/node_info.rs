@@ -24,13 +24,13 @@ pub(crate) struct NodeInfo {
     /// Instant when the node was added
     pub connection_instant: Instant,
     /// all known operations
-    known_operations: PreHashSet<OperationId>,
+    pub known_operations: PreHashSet<OperationId>,
     /// Same as `known_operations` but sorted for a premature optimization :-)
-    known_operations_queue: VecDeque<OperationId>,
+    pub known_operations_queue: VecDeque<OperationId>,
     /// all known endorsements
-    known_endorsements: PreHashSet<EndorsementId>,
+    pub known_endorsements: PreHashSet<EndorsementId>,
     /// Same as `known_endorsements` but sorted for a premature optimization :-)
-    known_endorsements_queue: VecDeque<EndorsementId>,
+    pub known_endorsements_queue: VecDeque<EndorsementId>,
 }
 
 impl NodeInfo {

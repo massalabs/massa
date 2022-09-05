@@ -53,6 +53,10 @@ impl AsyncPool {
                     self.messages.remove(msg_id);
                 }
             }
+            println!(
+                "DEBUG: size async_pool_messages = {:?}",
+                self.messages.len()
+            );
         }
     }
 

@@ -450,8 +450,8 @@ async fn launch(
         .name("test storage".into())
         .spawn(move || {
             while 1 == 1 {
-                std::thread::sleep(std::time::Duration::from_millis(200));
-                shared_storage_test.clone_test();
+                std::thread::sleep(std::time::Duration::from_millis(1000));
+                shared_storage_test.print_test();
             }
         })
         .expect("could not spawn block factory worker thread");

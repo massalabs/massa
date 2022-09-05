@@ -387,6 +387,7 @@ impl ProtocolWorker {
                         BlockInfo::new(header, self.storage.clone_without_refs()),
                     );
                 }
+                println!("DEBUG: size of wishlist: {}", self.block_wishlist.len());
                 self.update_ask_block(timer).await?;
                 massa_trace!(
                     "protocol.protocol_worker.process_command.wishlist_delta.end",
@@ -487,6 +488,38 @@ impl ProtocolWorker {
 
         let now = Instant::now();
 
+        for node in self.active_nodes.iter() {
+            println!(
+                "DEBUG: node {} has {} asked_blocks",
+                node.0,
+                node.1.asked_blocks.len()
+            );
+            println!(
+                "DEBUG: node {} has {} knows_blocks",
+                node.0,
+                node.1.known_blocks.len()
+            );
+            println!(
+                "DEBUG: node {} has {} known_operations",
+                node.0,
+                node.1.known_operations.len()
+            );
+            println!(
+                "DEBUG: node {} has {} known_operations_queue",
+                node.0,
+                node.1.known_operations_queue.len()
+            );
+            println!(
+                "DEBUG: node {} has {} known_endorsements",
+                node.0,
+                node.1.known_endorsements.len()
+            );
+            println!(
+                "DEBUG: node {} has {} known_endorsements_queue",
+                node.0,
+                node.1.known_endorsements_queue.len()
+            );
+        }
         // init timer
         let mut next_tick = now
             .checked_add(self.config.ask_block_timeout.into())
@@ -829,6 +862,10 @@ impl ProtocolWorker {
         {
             self.prune_checked_headers();
         }
+        println!(
+            "DEBUG: Size of checked_headers: {}",
+            self.checked_headers.len()
+        );
 
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
             node_info.insert_known_blocks(
@@ -906,6 +943,10 @@ impl ProtocolWorker {
                 new_operations.insert(operation_id, operation);
             };
         }
+        println!(
+            "DEBUG: Size of checked_operations: {}",
+            self.checked_operations.len()
+        );
 
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
@@ -959,6 +1000,10 @@ impl ProtocolWorker {
             {
                 contains_duplicates = true;
             }
+            println!(
+                "DEBUG: Size of checked_endorsements: {}",
+                self.checked_endorsements.len()
+            );
             // check endorsement signature if not already checked
             if self.checked_endorsements.insert(endorsement_id) {
                 endorsement.verify_signature()?;

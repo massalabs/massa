@@ -142,12 +142,20 @@ impl OperationPool {
         }
 
         // prune excess operations
+        println!(
+            "DEBUG: Size pool operation ops_per_expiration: {}",
+            self.ops_per_expiration.len()
+        );
+        println!(
+            "DEBUG: Size pool operation operations: {}",
+            self.operations.len()
+        );
         self.sorted_ops_per_thread
             .iter_mut()
             .enumerate()
             .for_each(|(thread_id, ops)| {
                 println!(
-                    "AURELIEN POOL: Size pool thread {}: {}",
+                    "DEBUG: Size pool operation sorted_ops_per_thread thread {}: {}",
                     thread_id,
                     ops.len()
                 );

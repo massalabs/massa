@@ -791,6 +791,11 @@ impl BlockGraph {
             },
         }
 
+        println!(
+            "DEBUG: Size of block_statuses: {}",
+            self.block_statuses.len()
+        );
+
         // process
         self.rec_process(to_ack, current_slot)?;
 
