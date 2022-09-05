@@ -624,6 +624,7 @@ impl ConsensusWorker {
         // if changed...
         if self.latest_final_periods != latest_final_periods {
             // signal initial state to pool
+            println!("latest_final_periods changed: {:?}", latest_final_periods);
             self.channels
                 .pool_command_sender
                 .notify_final_cs_periods(&latest_final_periods);

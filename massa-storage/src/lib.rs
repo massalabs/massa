@@ -69,31 +69,31 @@ impl Clone for Storage {
         let mut res = Self::clone_without_refs(self);
 
         // claim one more user of the op refs
-        println!("AURELIEN: storage clone WRITE operation_owners START");
+        // println!("AURELIEN: storage clone WRITE operation_owners START");
         Storage::internal_claim_refs(
             &self.local_used_ops.clone(),
             &mut res.operation_owners.write(),
             &mut res.local_used_ops,
         );
-        println!("AURELIEN: storage clone WRITE operation_owners END");
+        // println!("AURELIEN: storage clone WRITE operation_owners END");
 
         // claim one more user of the block refs
-        println!("AURELIEN: storage clone WRITE block_owners START");
+        // println!("AURELIEN: storage clone WRITE block_owners START");
         Storage::internal_claim_refs(
             &self.local_used_blocks.clone(),
             &mut res.block_owners.write(),
             &mut res.local_used_blocks,
         );
-        println!("AURELIEN: storage clone WRITE block_owners END");
+        // println!("AURELIEN: storage clone WRITE block_owners END");
 
         // claim one more user of the endorsement refs
-        println!("AURELIEN: storage clone WRITE endorsement_owners START");
+        // println!("AURELIEN: storage clone WRITE endorsement_owners START");
         Storage::internal_claim_refs(
             &self.local_used_endorsements.clone(),
             &mut res.endorsement_owners.write(),
             &mut res.local_used_endorsements,
         );
-        println!("AURELIEN: storage clone WRITE endorsement_owners END");
+        // println!("AURELIEN: storage clone WRITE endorsement_owners END");
 
         res
     }
@@ -121,30 +121,30 @@ impl Storage {
     /// TEST
     pub fn clone_test(&self) -> Self {
         let res = self.clone_without_refs();
-        println!(
-            "AURELIEN: Nb arc blocks = {:#?}",
-            Arc::strong_count(&self.blocks)
-        );
-        println!(
-            "AURELIEN: Nb arc operations = {:#?}",
-            Arc::strong_count(&self.operations)
-        );
-        println!(
-            "AURELIEN: Nb arc endorsements = {:#?}",
-            Arc::strong_count(&self.endorsements)
-        );
-        println!(
-            "AURELIEN: Nb arc block_owners = {:#?}",
-            Arc::strong_count(&self.block_owners)
-        );
-        println!(
-            "AURELIEN: Nb arc ops_owners = {:#?}",
-            Arc::strong_count(&self.operation_owners)
-        );
-        println!(
-            "AURELIEN: Nb arc endos_owners = {:#?}",
-            Arc::strong_count(&self.endorsement_owners)
-        );
+        // println!(
+        //     "AURELIEN: Nb arc blocks = {:#?}",
+        //     Arc::strong_count(&self.blocks)
+        // );
+        // println!(
+        //     "AURELIEN: Nb arc operations = {:#?}",
+        //     Arc::strong_count(&self.operations)
+        // );
+        // println!(
+        //     "AURELIEN: Nb arc endorsements = {:#?}",
+        //     Arc::strong_count(&self.endorsements)
+        // );
+        // println!(
+        //     "AURELIEN: Nb arc block_owners = {:#?}",
+        //     Arc::strong_count(&self.block_owners)
+        // );
+        // println!(
+        //     "AURELIEN: Nb arc ops_owners = {:#?}",
+        //     Arc::strong_count(&self.operation_owners)
+        // );
+        // println!(
+        //     "AURELIEN: Nb arc endos_owners = {:#?}",
+        //     Arc::strong_count(&self.endorsement_owners)
+        // );
         res
     }
 
@@ -263,7 +263,7 @@ impl Storage {
         }
 
         let claimed = {
-            println!("AURELIEN: storage claim_block_refs WRITE block_owners START");
+            // println!("AURELIEN: storage claim_block_refs WRITE block_owners START");
             let owners = &mut self.block_owners.write();
 
             // check that all IDs are owned
@@ -274,7 +274,7 @@ impl Storage {
 
             claimed
         };
-        println!("AURELIEN: storage claim_block_refs WRITE block_owners END");
+        // println!("AURELIEN: storage claim_block_refs WRITE block_owners END");
 
         claimed
     }
@@ -284,7 +284,7 @@ impl Storage {
         if ids.is_empty() {
             return;
         }
-        println!("AURELIEN: storage drop_block_refs WRITE block_owners START");
+        // println!("AURELIEN: storage drop_block_refs WRITE block_owners START");
         {
             let mut owners = self.block_owners.write();
             let mut orphaned_ids = Vec::new();
@@ -314,15 +314,15 @@ impl Storage {
             }
             // if there are orphaned objects, remove them from storage
             if !orphaned_ids.is_empty() {
-                println!("AURELIEN: storage drop_block_refs WRITE blocks START");
+                // println!("AURELIEN: storage drop_block_refs WRITE blocks START");
                 let mut blocks = self.blocks.write();
                 for b_id in orphaned_ids {
                     blocks.remove(&b_id);
                 }
-                println!("AURELIEN: storage drop_block_refs WRITE blocks END");
+                // println!("AURELIEN: storage drop_block_refs WRITE blocks END");
             }
         }
-        println!("AURELIEN: storage drop_block_refs WRITE block_owners END");
+        // println!("AURELIEN: storage drop_block_refs WRITE block_owners END");
     }
 
     /// Store a block
@@ -330,9 +330,9 @@ impl Storage {
     pub fn store_block(&mut self, block: WrappedBlock) {
         let id = block.id;
         {
-            println!("AURELIEN: storage store_block WRITE block_owners START");
+            // println!("AURELIEN: storage store_block WRITE block_owners START");
             let mut owners = self.block_owners.write();
-            println!("AURELIEN: storage store_block WRITE blocks START");
+            // println!("AURELIEN: storage store_block WRITE blocks START");
             let mut blocks = self.blocks.write();
             blocks.insert(block);
             // update local reference counters
@@ -342,8 +342,8 @@ impl Storage {
                 &mut self.local_used_blocks,
             );
         }
-        println!("AURELIEN: storage store_block WRITE block_owners END");
-        println!("AURELIEN: storage store_block WRITE blocks END");
+        // println!("AURELIEN: storage store_block WRITE block_owners END");
+        // println!("AURELIEN: storage store_block WRITE blocks END");
     }
 
     /// Claim operation references.
@@ -359,7 +359,7 @@ impl Storage {
         }
 
         let claimed = {
-            println!("AURELIEN: storage claim_operation_refs WRITE operation_owners START");
+            // println!("AURELIEN: storage claim_operation_refs WRITE operation_owners START");
             let owners = &mut self.operation_owners.write();
 
             // check that all IDs are owned
@@ -370,7 +370,7 @@ impl Storage {
 
             claimed
         };
-        println!("AURELIEN: storage claim_operation_refs WRITE operation_owners END");
+        // println!("AURELIEN: storage claim_operation_refs WRITE operation_owners END");
 
         claimed
     }
@@ -387,7 +387,7 @@ impl Storage {
             return;
         }
         {
-            println!("AURELIEN: storage drop_operation_refs WRITE operation_owners START");
+            // println!("AURELIEN: storage drop_operation_refs WRITE operation_owners START");
             let mut owners = self.operation_owners.write();
             let mut orphaned_ids = Vec::new();
             for id in ids {
@@ -416,14 +416,14 @@ impl Storage {
             }
             // if there are orphaned objects, remove them from storage
             if !orphaned_ids.is_empty() {
-                println!("AURELIEN: storage drop_operation_refs WRITE operations START");
+                // println!("AURELIEN: storage drop_operation_refs WRITE operations START");
                 let mut ops = self.operations.write();
                 for id in orphaned_ids {
                     ops.remove(&id);
                 }
-                println!("AURELIEN: storage drop_operation_refs WRITE operations END");
+                // println!("AURELIEN: storage drop_operation_refs WRITE operations END");
             }
-            println!("AURELIEN: storage drop_operation_refs WRITE operation_owners END");
+            // println!("AURELIEN: storage drop_operation_refs WRITE operation_owners END");
         }
     }
 
@@ -434,9 +434,9 @@ impl Storage {
             return;
         }
         {
-            println!("AURELIEN: storage store_operations WRITE operation_owners START");
+            // println!("AURELIEN: storage store_operations WRITE operation_owners START");
             let mut owners = self.operation_owners.write();
-            println!("AURELIEN: storage store_operations WRITE operations START");
+            // println!("AURELIEN: storage store_operations WRITE operations START");
             let mut op_store = self.operations.write();
             let ids: PreHashSet<OperationId> = operations.iter().map(|op| op.id).collect();
             for op in operations {
@@ -444,8 +444,8 @@ impl Storage {
             }
             Storage::internal_claim_refs(&ids, &mut owners, &mut self.local_used_ops);
         }
-        println!("AURELIEN: storage store_operations WRITE operation_owners END");
-        println!("AURELIEN: storage store_operations WRITE operations END");
+        // println!("AURELIEN: storage store_operations WRITE operation_owners END");
+        // println!("AURELIEN: storage store_operations WRITE operations END");
     }
 
     /// Gets a read reference to the operations index
@@ -476,7 +476,7 @@ impl Storage {
         }
 
         let claimed = {
-            println!("AURELIEN: storage claim_endorsement_refs endorsement_owners WRITE START");
+            // println!("AURELIEN: storage claim_endorsement_refs endorsement_owners WRITE START");
             let owners = &mut self.endorsement_owners.write();
 
             // check that all IDs are owned
@@ -487,7 +487,7 @@ impl Storage {
             claimed
         };
 
-        println!("AURELIEN: storage claim_endorsement_refs endorsement_owners WRITE END");
+        // println!("AURELIEN: storage claim_endorsement_refs endorsement_owners WRITE END");
         claimed
     }
 
@@ -503,7 +503,7 @@ impl Storage {
             return;
         }
         {
-            println!("AURELIEN: storage drop_endorsement_refs WRITE endorsement_owners START");
+            // println!("AURELIEN: storage drop_endorsement_refs WRITE endorsement_owners START");
             let mut owners = self.endorsement_owners.write();
             let mut orphaned_ids = Vec::new();
             for id in ids {
@@ -532,15 +532,15 @@ impl Storage {
             }
             // if there are orphaned objects, remove them from storage
             if !orphaned_ids.is_empty() {
-                println!("AURELIEN: storage drop_endorsement_refs WRITE endorsements START");
+                // println!("AURELIEN: storage drop_endorsement_refs WRITE endorsements START");
                 let mut endos = self.endorsements.write();
                 for id in orphaned_ids {
                     endos.remove(&id);
                 }
-                println!("AURELIEN: storage drop_endorsement_refs WRITE endorsements END");
+                // println!("AURELIEN: storage drop_endorsement_refs WRITE endorsements END");
             }
         }
-        println!("AURELIEN: storage drop_endorsement_refs WRITE endorsement_owners END");
+        // println!("AURELIEN: storage drop_endorsement_refs WRITE endorsement_owners END");
     }
 
     /// Store endorsements
@@ -550,9 +550,9 @@ impl Storage {
             return;
         }
         {
-            println!("AURELIEN: storage store_endorsements WRITE endorsement_owners START");
+            // println!("AURELIEN: storage store_endorsements WRITE endorsement_owners START");
             let mut owners = self.endorsement_owners.write();
-            println!("AURELIEN: storage store_endorsements WRITE endorsements START");
+            // println!("AURELIEN: storage store_endorsements WRITE endorsements START");
             let mut endo_store = self.endorsements.write();
             let ids: PreHashSet<EndorsementId> = endorsements.iter().map(|op| op.id).collect();
             for endorsement in endorsements {
@@ -560,8 +560,8 @@ impl Storage {
             }
             Storage::internal_claim_refs(&ids, &mut owners, &mut self.local_used_endorsements);
         }
-        println!("AURELIEN: storage store_endorsements WRITE endorsement_owners END");
-        println!("AURELIEN: storage store_endorsements WRITE endorsements END");
+        // println!("AURELIEN: storage store_endorsements WRITE endorsement_owners END");
+        // println!("AURELIEN: storage store_endorsements WRITE endorsements END");
     }
 }
 

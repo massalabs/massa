@@ -66,6 +66,8 @@ impl EndorsementPool {
                         .remove(&(target_slot, index, block_id))
                         .expect("endorsement should be in endorsements_indexed at this point");
                     removed.insert(endo_id);
+                } else {
+                    break;
                 }
             }
         }
@@ -85,7 +87,7 @@ impl EndorsementPool {
 
         // add items to pool
         {
-            println!("AURELIEN: add_endorsements READ endorsements START");
+            // println!("AURELIEN: add_endorsements READ endorsements START");
             let endo_store = endorsement_storage.read_endorsements();
             for endo_id in items {
                 let endo = endo_store
@@ -116,7 +118,7 @@ impl EndorsementPool {
                     added.insert(endo.id);
                 }
             }
-            println!("AURELIEN: add_endorsements READ endorsements END");
+            // println!("AURELIEN: add_endorsements READ endorsements END");
         }
 
         // prune excess endorsements

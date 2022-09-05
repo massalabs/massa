@@ -111,7 +111,7 @@ impl OperationPool {
 
         // add items to pool
         {
-            println!("AURELIEN: add_operations READ operations START");
+            // println!("AURELIEN: add_operations READ operations START");
             let ops = ops_storage.read_operations();
             for op_id in items {
                 let op_info = OperationInfo::from_op(
@@ -138,7 +138,7 @@ impl OperationPool {
                     added.insert(op_info.id);
                 }
             }
-            println!("AURELIEN: add_operations READ operations END");
+            // println!("AURELIEN: add_operations READ operations END");
         }
 
         // prune excess operations
@@ -177,7 +177,7 @@ impl OperationPool {
 
         // drop removed ops from storage
         if !removed.is_empty() {
-            println!("AURELIEN: Removed len = {}", removed.len());
+            // println!("AURELIEN: Removed len = {}", removed.len());
         }
         self.storage.drop_operation_refs(&removed);
     }
