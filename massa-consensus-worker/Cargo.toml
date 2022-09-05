@@ -22,6 +22,7 @@ massa_time = { path = "../massa-time" }
 [dev-dependencies]
 serial_test = "0.9"
 #tempfile = "3.3"
+parking_lot = {version = "0.12" }
 massa_models = { path = "../massa-models", features = ["testing"] }
 massa_execution_exports = { path = "../massa-execution-exports", features = [
     "testing",
@@ -50,5 +51,5 @@ testing = [
     "massa_execution_exports/testing",
     "massa_models/testing",
     "massa_pool_exports/testing",
-    "massa_protocol_exports/testing",
+    "massa_protocol_exports/testing"
 ]

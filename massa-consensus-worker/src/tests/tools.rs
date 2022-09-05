@@ -152,7 +152,7 @@ pub async fn validate_ask_for_block(
         .await;
     match param {
         Some(new) => {
-            assert!(new.contains(&valid), "not the valid hash asked for");
+            assert!(new.contains_key(&valid), "not the valid hash asked for");
             assert_eq!(new.len(), 1);
             valid
         }
@@ -651,7 +651,7 @@ pub async fn _consensus_pool_test<F, V>(
         ),
     >,
 {
-    let mut storage: Storage = Default::default();
+    let mut storage: Storage = Storage::create_root();
     if let Some(ref graph) = boot_graph {
         for export_block in &graph.final_blocks {
             storage.store_block(export_block.block.clone());
@@ -666,7 +666,7 @@ pub async fn _consensus_pool_test<F, V>(
     let stop_sinks = Arc::new(Mutex::new(false));
     let stop_sinks_clone = stop_sinks.clone();
     let execution_sink = std::thread::spawn(move || {
-        while !*stop_sinks_clone.lock().unwrap() {
+        while !*stop_sinks_clone.lock() {
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
@@ -713,7 +713,7 @@ pub async fn _consensus_pool_test<F, V>(
         .unwrap();
 
     // stop sinks
-    *stop_sinks.lock().unwrap() = true;
+    *stop_sinks.lock() = true;
     execution_sink.join().unwrap();
 }
 
@@ -741,7 +741,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
         ),
     >,
 {
-    let mut storage: Storage = Default::default();
+    let mut storage: Storage = Storage::create_root();
     if let Some(ref graph) = boot_graph {
         for export_block in &graph.final_blocks {
             storage.store_block(export_block.block.clone());
@@ -756,7 +756,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
     let stop_sinks = Arc::new(Mutex::new(false));
     let stop_sinks_clone = stop_sinks.clone();
     let execution_sink = std::thread::spawn(move || {
-        while !*stop_sinks_clone.lock().unwrap() {
+        while !*stop_sinks_clone.lock() {
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
@@ -807,7 +807,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
         .unwrap();
 
     // stop sinks
-    *stop_sinks.lock().unwrap() = true;
+    *stop_sinks.lock() = true;
     selector_manager.stop();
     execution_sink.join().unwrap();
 }
@@ -830,7 +830,7 @@ where
         ),
     >,
 {
-    let storage: Storage = Default::default();
+    let storage: Storage = Storage::create_root();
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
@@ -843,7 +843,7 @@ where
     let stop_sinks = Arc::new(Mutex::new(false));
     let stop_sinks_clone = stop_sinks.clone();
     let execution_sink = std::thread::spawn(move || {
-        while !*stop_sinks_clone.lock().unwrap() {
+        while !*stop_sinks_clone.lock() {
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
@@ -888,7 +888,7 @@ where
         .unwrap();
     selector_manager.stop();
     // stop sinks
-    *stop_sinks.lock().unwrap() = true;
+    *stop_sinks.lock() = true;
     execution_sink.join().unwrap();
 }
 
@@ -912,7 +912,7 @@ where
         ),
     >,
 {
-    let storage: Storage = Default::default();
+    let storage: Storage = Storage::create_root();
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
@@ -922,7 +922,7 @@ where
     let stop_sinks = Arc::new(Mutex::new(false));
     let stop_sinks_clone = stop_sinks.clone();
     let execution_sink = std::thread::spawn(move || {
-        while !*stop_sinks_clone.lock().unwrap() {
+        while !*stop_sinks_clone.lock() {
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
@@ -971,7 +971,7 @@ where
         .unwrap();
     selector_manager.stop();
     // stop sinks
-    *stop_sinks.lock().unwrap() = true;
+    *stop_sinks.lock() = true;
     execution_sink.join().unwrap();
 }
 

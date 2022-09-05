@@ -25,7 +25,6 @@ use massa_network_exports::{
 };
 use massa_serialization::Serializer;
 use massa_signature::KeyPair;
-use massa_storage::Storage;
 use massa_time::MassaTime;
 use std::str::FromStr;
 use std::{
@@ -360,7 +359,6 @@ pub async fn network_test<F, V>(
         NetworkEventReceiver,
         NetworkManager,
         MockEstablisherInterface,
-        Storage,
     ) -> V,
     V: Future<
         Output = (
@@ -373,7 +371,6 @@ pub async fn network_test<F, V>(
 {
     // create establisher
     let (establisher, mock_interface) = mock_establisher::new();
-    let storage: Storage = Default::default();
     // launch network controller
     let (network_event_sender, network_event_receiver, network_manager, _keypair, _node_id) =
         start_network_controller(
@@ -381,7 +378,6 @@ pub async fn network_test<F, V>(
             establisher,
             0,
             None,
-            storage.clone(),
             Version::from_str("TEST.1.2").unwrap(),
         )
         .await
@@ -394,7 +390,6 @@ pub async fn network_test<F, V>(
         network_event_receiver,
         network_manager,
         mock_interface,
-        storage,
     )
     .await;
 

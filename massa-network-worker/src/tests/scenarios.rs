@@ -34,7 +34,6 @@ use massa_network_exports::{
 };
 use massa_serialization::Serializer;
 use massa_signature::KeyPair;
-use massa_storage::Storage;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
@@ -101,7 +100,6 @@ async fn test_node_worker_shutdown() {
 
     let keypair = KeyPair::generate();
     let mock_node_id = NodeId(keypair.get_public_key());
-    let storage: Storage = Default::default();
 
     let node_fn_handle = tokio::spawn(async move {
         NodeWorker::new(
@@ -111,7 +109,6 @@ async fn test_node_worker_shutdown() {
             writer,
             node_command_rx,
             node_event_tx,
-            storage,
         )
         .run_loop()
         .await
@@ -172,14 +169,9 @@ async fn test_node_worker_operations_message() {
 
     let keypair = KeyPair::generate();
     let mock_node_id = NodeId(keypair.get_public_key());
-    let mut storage: Storage = Default::default();
-
     // Create transaction.
     let transaction = get_transaction(50, 10);
     let ref_id = transaction.id;
-
-    // Add to storage.
-    storage.store_operations(vec![transaction.clone()]);
 
     let node_fn_handle = tokio::spawn(async move {
         NodeWorker::new(
@@ -189,7 +181,6 @@ async fn test_node_worker_operations_message() {
             writer,
             node_command_rx,
             node_event_tx,
-            storage,
         )
         .run_loop()
         .await
@@ -252,8 +243,7 @@ async fn test_multiple_connections_to_controller() {
         async move |_network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface,
-                    _storage| {
+                    mut mock_interface| {
             // note: the peers list is empty so the controller will not attempt outgoing connections
 
             // 1) connect peer1 to controller
@@ -367,8 +357,7 @@ async fn test_peer_ban() {
         async move |network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface,
-                    _storage| {
+                    mut mock_interface| {
             // accept connection from controller to peer
             let (conn1_id, conn1_r, conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,
@@ -503,8 +492,7 @@ async fn test_peer_ban_by_ip() {
         async move |network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface,
-                    _storage| {
+                    mut mock_interface| {
             // accept connection from controller to peer
             let (_, conn1_r, conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,
@@ -647,8 +635,7 @@ async fn test_advertised_and_wakeup_interval() {
         async move |_network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface,
-                    _storage| {
+                    mut mock_interface| {
             // 1) open a connection, advertize peer, disconnect
             {
                 let (conn2_id, conn2_r, mut conn2_w) = tools::full_connection_to_controller(
@@ -784,8 +771,7 @@ async fn test_block_not_found() {
         async move |network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface,
-                    _storage| {
+                    mut mock_interface| {
             // accept connection from controller to peer
             let (conn1_id, mut conn1_r, mut conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,
@@ -989,8 +975,7 @@ async fn test_retry_connection_closed() {
         async move |network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface,
-                    _storage| {
+                    mut mock_interface| {
             let (node_id, _read, _write) = tools::full_connection_to_controller(
                 &mut network_event_receiver,
                 &mut mock_interface,
@@ -1091,8 +1076,7 @@ async fn test_operation_messages() {
         async move |network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface,
-                    mut storage| {
+                    mut mock_interface| {
             // accept connection from controller to peer
             let (conn1_id, mut conn1_r, mut conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,
@@ -1137,9 +1121,6 @@ async fn test_operation_messages() {
 
             let transaction2 = get_transaction(10, 50);
             let ref_id2 = transaction2.id;
-
-            // Add to storage.
-            storage.store_operations(vec![transaction2]);
 
             // reply with another transaction
             network_command_sender
@@ -1216,8 +1197,7 @@ async fn test_endorsements_messages() {
         async move |network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface,
-                    _storage| {
+                    mut mock_interface| {
             // accept connection from controller to peer
             let (conn1_id, mut conn1_r, mut conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,

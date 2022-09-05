@@ -26,7 +26,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
 
-    let storage: Storage = Default::default();
+    let storage: Storage = Storage::create_root();
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
@@ -110,7 +110,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
     };
     let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
-    let storage: Storage = Default::default();
+    let storage: Storage = Storage::create_root();
     // launch consensus controller
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(

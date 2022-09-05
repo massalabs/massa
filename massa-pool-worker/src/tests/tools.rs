@@ -55,7 +55,7 @@ pub fn pool_test<F>(cfg: PoolConfig, test: F)
 where
     F: FnOnce(Box<dyn PoolController>, Receiver<MockExecutionControllerMessage>, Storage),
 {
-    let storage: Storage = Default::default();
+    let storage: Storage = Storage::create_root();
 
     let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
     let pool_controller = start_pool(cfg, &storage, execution_controller);
