@@ -455,6 +455,7 @@ impl Endpoints for API<Public> {
     ) -> BoxFuture<Result<Vec<EndorsementInfo>, ApiError>> {
         // get the endorsements and the list of blocks that contain them from storage
         let storage_info: Vec<(WrappedEndorsement, PreHashSet<BlockId>)> = {
+            info!("AURELIEN: get_endorsements start closure storage");
             let read_blocks = self.0.storage.read_blocks();
             let read_endos = self.0.storage.read_endorsements();
             eds.iter()
@@ -471,6 +472,7 @@ impl Endpoints for API<Public> {
                 })
                 .collect()
         };
+        info!("AURELIEN: get_endorsements end closure storage");
 
         // keep only the ops found in storage
         let eds: Vec<EndorsementId> = storage_info.iter().map(|(ed, _)| ed.id).collect();
@@ -539,10 +541,12 @@ impl Endpoints for API<Public> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let storage = self.0.storage.clone_without_refs();
         let closure = async move || {
+            info!("AURELIEN: get_block start closure storage");
             let block = match storage.read_blocks().get(&id).cloned() {
                 Some(b) => b.content,
                 None => return Ok(BlockInfo { id, content: None }),
             };
+            info!("AURELIEN: get_block end closure storage");
 
             let graph_status = consensus_command_sender
                 .get_block_statuses(&[id])
@@ -582,10 +586,12 @@ impl Endpoints for API<Public> {
                 Some(id) => id,
                 None => return Ok(None),
             };
+            info!("AURELIEN: get_blockclique_block_by_slot start");
             let res = storage
                 .read_blocks()
                 .get(&block_id)
                 .map(|b| b.content.clone());
+            info!("AURELIEN: get_blockclique_block_by_slot end");
             Ok(res)
         };
         Box::pin(closure())
@@ -675,6 +681,7 @@ impl Endpoints for API<Public> {
     ) -> BoxFuture<Result<Vec<AddressInfo>, ApiError>> {
         // get info from storage about which blocks the addresses have created
         let created_blocks: Vec<PreHashSet<BlockId>> = {
+            info!("AURELIEN: get_addresses start");
             let lck = self.0.storage.read_blocks();
             addresses
                 .iter()
@@ -685,6 +692,7 @@ impl Endpoints for API<Public> {
                 })
                 .collect()
         };
+        info!("AURELIEN: get_addresses end");
 
         // get info from storage about which operations the addresses have created
         let created_operations: Vec<PreHashSet<OperationId>> = {

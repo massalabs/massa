@@ -319,6 +319,7 @@ impl ProtocolWorker {
                     { "block_id": block_id }
                 );
                 let header = {
+                    info!("AURELIEN: process command start");
                     let blocks = storage.read_blocks();
                     blocks
                         .get(&block_id)
@@ -330,6 +331,7 @@ impl ProtocolWorker {
                             ))
                         })?
                 };
+                info!("AURELIEN: process command end");
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     // node that isn't asking for that block
                     let cond = node_info.get_known_block(&block_id);

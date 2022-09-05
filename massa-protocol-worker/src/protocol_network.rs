@@ -164,6 +164,7 @@ impl ProtocolWorker {
         };
         let mut all_blocks_info = vec![];
         for (hash, info_wanted) in &list {
+            info!("AURELIEN: on_asked_for_blocks_received start");
             let (header, operations_ids) = match self.storage.read_blocks().get(hash) {
                 Some(wrapped_block) => (
                     wrapped_block.content.header.clone(),
@@ -172,9 +173,11 @@ impl ProtocolWorker {
                 None => {
                     // let the node know we don't have the block.
                     all_blocks_info.push((*hash, BlockInfoReply::NotFound));
+                    info!("AURELIEN: on_asked_for_blocks_received end1");
                     continue;
                 }
             };
+            info!("AURELIEN: on_asked_for_blocks_received end2");
             let block_info = match info_wanted {
                 AskForBlocksInfo::Header => BlockInfoReply::Header(header),
                 AskForBlocksInfo::Info => BlockInfoReply::Info(operations_ids),

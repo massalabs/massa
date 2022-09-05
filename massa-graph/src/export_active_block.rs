@@ -43,12 +43,13 @@ impl ExportActiveBlock {
     /// conversion from active block to export active block
     pub fn from_active_block(a_block: &ActiveBlock, storage: &Storage) -> Self {
         // get block
+        info!("AURELIEN: export active block block start");
         let block = storage
             .read_blocks()
             .get(&a_block.block_id)
             .expect("active block missing in storage")
             .clone();
-
+        info!("AURELIEN: export active block block end");
         // get ops
         let operations = {
             info!("AURELIEN: ExportActiveBlock start");

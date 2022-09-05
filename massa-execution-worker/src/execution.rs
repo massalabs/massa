@@ -878,12 +878,14 @@ impl ExecutionState {
         // Check if there is a block at this slot
         if let Some((block_id, block_store)) = opt_block {
             // Retrieve the block from storage
+            info!("AURELIEN: execution stored start");
             let stored_block = block_store
                 .read_blocks()
                 .get(&block_id)
                 .expect("Missing block in storage.")
                 .clone();
 
+            info!("AURELIEN: execution stored end");
             // gather all operations
             let operations = {
                 info!("AURELIEN: execution operation start");
@@ -914,6 +916,7 @@ impl ExecutionState {
 
             // deduce endorsement target block creators
             let endorsement_target_creators = {
+                info!("AURELIEN: execution endorsement start");
                 let blocks = block_store.read_blocks();
                 endorsement_targets
                     .iter()
@@ -925,6 +928,7 @@ impl ExecutionState {
                     })
                     .collect::<Vec<_>>()
             };
+            info!("AURELIEN: execution endorsement end");
 
             // Set remaining block gas
             let mut remaining_block_gas = self.config.max_gas_per_block;
