@@ -86,18 +86,8 @@ impl OperationPool {
             removed_ops.insert(op_id);
         }
 
-        if !removed_ops.is_empty() {
-            println!(
-                "DEBUG: Size operation pool removed2 = {}",
-                removed_ops.len()
-            );
-        }
         // notify storage that pool has lost references to removed_ops
         self.storage.drop_operation_refs(&removed_ops);
-        println!(
-            "DEBUG: STORAGE: Operation pool size local_used_ops2: {}",
-            self.storage.local_used_ops.len()
-        );
     }
 
     /// Checks if an operation is relevant according to its thread and period validity range
@@ -149,50 +139,25 @@ impl OperationPool {
         }
 
         // prune excess operations
-        println!(
-            "DEBUG: Size pool operation ops_per_expiration: {}",
-            self.ops_per_expiration.len()
-        );
-        println!(
-            "DEBUG: Size pool operation operations: {}",
-            self.operations.len()
-        );
-        self.sorted_ops_per_thread
-            .iter_mut()
-            .enumerate()
-            .for_each(|(thread_id, ops)| {
-                println!(
-                    "DEBUG: Size pool operation sorted_ops_per_thread thread {}: {}",
-                    thread_id,
-                    ops.len()
-                );
-                while ops.len() > self.config.max_operation_pool_size_per_thread {
-                    // the unwrap below won't panic because the loop condition tests for non-emptines of self.operations
-                    let cursor = ops.pop_last().unwrap();
-                    let op_info = self
-                        .operations
-                        .remove(&cursor.get_id())
-                        .expect("the operation should be in self.operations at this point");
-                    let end_slot = Slot::new(*op_info.validity_period_range.end(), op_info.thread);
-                    if !self.ops_per_expiration.remove(&(end_slot, op_info.id)) {
-                        panic!("the operation should be in self.ops_per_expiration at this point");
-                    }
-                    removed.insert(op_info.id);
+        self.sorted_ops_per_thread.iter_mut().for_each(|ops| {
+            while ops.len() > self.config.max_operation_pool_size_per_thread {
+                // the unwrap below won't panic because the loop condition tests for non-emptines of self.operations
+                let cursor = ops.pop_last().unwrap();
+                let op_info = self
+                    .operations
+                    .remove(&cursor.get_id())
+                    .expect("the operation should be in self.operations at this point");
+                let end_slot = Slot::new(*op_info.validity_period_range.end(), op_info.thread);
+                if !self.ops_per_expiration.remove(&(end_slot, op_info.id)) {
+                    panic!("the operation should be in self.ops_per_expiration at this point");
                 }
-            });
+                removed.insert(op_info.id);
+            }
+        });
 
-        // take ownership on added ops
+        // take ownership on added ops and clean the removed
         self.storage.claim_operation_refs(&added);
-
-        // drop removed ops from storage
-        if !removed.is_empty() {
-            println!("DEBUG: Size operation pool removed = {}", removed.len());
-        }
         self.storage.drop_operation_refs(&removed);
-        println!(
-            "DEBUG: STORAGE: Operation pool size local_used_ops: {}",
-            self.storage.local_used_ops.len()
-        );
     }
 
     /// get operations for block creation

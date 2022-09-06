@@ -86,14 +86,6 @@ impl EndorsementPool {
         let mut removed = PreHashSet::with_capacity(items.len());
 
         // add items to pool
-        println!(
-            "DEBUG: Size pool endorsements_indexed: {}",
-            self.endorsements_indexed.len()
-        );
-        println!(
-            "DEBUG: Size pool endorsements_sorted: {}",
-            self.endorsements_sorted.len()
-        );
         {
             let endo_store = endorsement_storage.read_endorsements();
             for endo_id in items {

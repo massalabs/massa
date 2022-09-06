@@ -111,22 +111,6 @@ impl Storage {
         }
     }
 
-    /// TEST
-    pub fn print_test(&self) {
-        println!(
-            "DEBUG: size blocks_owners = {:#?}",
-            self.block_owners.read().len()
-        );
-        println!(
-            "DEBUG: size operations_owners = {:#?}",
-            self.operation_owners.read().len()
-        );
-        println!(
-            "DEBUG: size endorsements_owners = {:#?}",
-            self.endorsement_owners.read().len()
-        );
-    }
-
     /// Clones the object to a new one that has no references
     pub fn clone_without_refs(&self) -> Self {
         Self {

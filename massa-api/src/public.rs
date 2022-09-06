@@ -857,10 +857,6 @@ impl Endpoints for API<Public> {
             protocol_sender.propagate_operations(to_send).await?;
             Ok(ids)
         };
-        println!(
-            "DEBUG: STORAGE: API pool size local_used_ops2: {}",
-            self.0.storage.local_used_ops.len()
-        );
         Box::pin(closure())
     }
 
