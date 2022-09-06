@@ -414,10 +414,11 @@ impl ProtocolWorker {
                 .sum::<usize>();
         let block_ids_set = block_operation_ids.clone().into_iter().collect();
         let received_ids: PreHashSet<OperationId> = operations.iter().map(|op| op.id).collect();
-        let mut known_operation_ids = self.storage.claim_operation_refs(&block_ids_set);
-        known_operation_ids.extend(&received_ids);
+        let known_operation_ids = self.storage.claim_operation_refs(&block_ids_set);
+        let mut all_operations_ids = known_operation_ids.clone();
+        all_operations_ids.extend(&received_ids);
         if full_op_size > self.config.max_serialized_operations_size_per_block
-            || known_operation_ids != block_ids_set
+            || all_operations_ids != block_ids_set
         {
             let _ = self.ban_node(&from_node_id).await;
             return Ok(());
@@ -450,6 +451,8 @@ impl ProtocolWorker {
         block_storage.store_block(wrapped_block);
         // add operations to local storage and claim ref
         block_storage.store_operations(operations);
+        block_storage.claim_operation_refs(&known_operation_ids);
+        self.storage.drop_operation_refs(&known_operation_ids);
         // add endorsements to local storage and claim ref
         // TODO change this if we make endorsements separate from block header
         block_storage.store_endorsements(header.content.endorsements.clone());
