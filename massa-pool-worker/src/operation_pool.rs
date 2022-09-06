@@ -88,10 +88,17 @@ impl OperationPool {
         }
 
         if !removed_ops.is_empty() {
-            println!("DEBUG: Size operation pool removed2 = {}", removed_ops.len());
+            println!(
+                "DEBUG: Size operation pool removed2 = {}",
+                removed_ops.len()
+            );
         }
         // notify storage that pool has lost references to removed_ops
         self.storage.drop_operation_refs(&removed_ops);
+        println!(
+            "DEBUG: STORAGE: Operation pool size local_used_ops2: {}",
+            self.storage.local_used_ops.len()
+        );
     }
 
     /// Checks if an operation is relevant according to its thread and period validity range
@@ -185,6 +192,10 @@ impl OperationPool {
             println!("DEBUG: Size operation pool removed = {}", removed.len());
         }
         self.storage.drop_operation_refs(&removed);
+        println!(
+            "DEBUG: STORAGE: Operation pool size local_used_ops: {}",
+            self.storage.local_used_ops.len()
+        );
     }
 
     /// get operations for block creation

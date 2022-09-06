@@ -718,6 +718,10 @@ impl BlockGraph {
                 _ => {}
             },
         }
+        println!(
+            "DEBUG: STORAGE: block graph pool size local_used_ops: {}",
+            self.storage.local_used_ops.len()
+        );
 
         // process
         self.rec_process(to_ack, current_slot)?;

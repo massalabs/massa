@@ -486,7 +486,10 @@ impl ProtocolWorker {
         ask_block_timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.update_ask_block.begin", {});
-
+        println!(
+            "DEBUG: STORAGE: protocol size local_used_ops: {}",
+            self.storage.local_used_ops.len()
+        );
         let now = Instant::now();
 
         for node in self.active_nodes.iter() {

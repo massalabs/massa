@@ -226,7 +226,10 @@ impl BlockFactoryWorker {
         )
         .expect("error while producing block");
         let block_id = block.id;
-
+        println!(
+            "DEBUG: STORAGE: block graph pool size local_used_ops: {}",
+            self.channels.storage.local_used_ops.len()
+        );
         // store block in storage
         block_storage.store_block(block);
 
