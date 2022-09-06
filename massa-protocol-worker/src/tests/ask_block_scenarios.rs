@@ -56,7 +56,9 @@ async fn test_full_ask_block_workflow() {
             // Send wishlist
             protocol_command_sender
                 .send_wishlist_delta(
-                    vec![block.id].into_iter().collect(),
+                    vec![(block.id, Some(block.content.header.clone()))]
+                        .into_iter()
+                        .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
                 .await
@@ -171,7 +173,9 @@ async fn test_empty_block() {
             // send wishlist
             protocol_command_sender
                 .send_wishlist_delta(
-                    vec![hash_1].into_iter().collect(),
+                    vec![(hash_1, Some(block.content.header.clone()))]
+                        .into_iter()
+                        .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
                 .await
@@ -282,7 +286,9 @@ async fn test_someone_knows_it() {
             // send wishlist
             protocol_command_sender
                 .send_wishlist_delta(
-                    vec![hash_1].into_iter().collect(),
+                    vec![(hash_1, Some(block.content.header.clone()))]
+                        .into_iter()
+                        .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
                 .await
@@ -366,7 +372,9 @@ async fn test_dont_want_it_anymore() {
             // send wishlist
             protocol_command_sender
                 .send_wishlist_delta(
-                    vec![hash_1].into_iter().collect(),
+                    vec![(hash_1, Some(block.content.header.clone()))]
+                        .into_iter()
+                        .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
                 .await
@@ -377,10 +385,7 @@ async fn test_dont_want_it_anymore() {
 
             // we don't want it anymore
             protocol_command_sender
-                .send_wishlist_delta(
-                    PreHashSet::<BlockId>::default(),
-                    vec![hash_1].into_iter().collect(),
-                )
+                .send_wishlist_delta(Default::default(), vec![hash_1].into_iter().collect())
                 .await
                 .unwrap();
 
@@ -444,7 +449,9 @@ async fn test_no_one_has_it() {
             // send wishlist
             protocol_command_sender
                 .send_wishlist_delta(
-                    vec![hash_1].into_iter().collect(),
+                    vec![(hash_1, Some(block.content.header.clone()))]
+                        .into_iter()
+                        .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
                 .await
@@ -530,7 +537,12 @@ async fn test_multiple_blocks_without_a_priori() {
             // send wishlist
             protocol_command_sender
                 .send_wishlist_delta(
-                    vec![hash_1, hash_2].into_iter().collect(),
+                    vec![
+                        (hash_1, Some(block_1.content.header.clone())),
+                        (hash_2, Some(block_2.content.header.clone())),
+                    ]
+                    .into_iter()
+                    .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
                 .await

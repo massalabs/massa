@@ -262,7 +262,7 @@ impl ProtocolWorker {
         // Update ask block
         let mut set = PreHashSet::<BlockId>::with_capacity(1);
         set.insert(block_id);
-        self.remove_asked_blocks_of_node(set)?;
+        self.remove_asked_blocks_of_node(&set)?;
         Ok(())
     }
 
@@ -343,7 +343,7 @@ impl ProtocolWorker {
             // Update ask block
             let mut set = PreHashSet::<BlockId>::with_capacity(1);
             set.insert(block_id);
-            self.remove_asked_blocks_of_node(set)?;
+            self.remove_asked_blocks_of_node(&set)?;
 
             // If the block is empty, go straight to processing the full block info.
             if operation_ids.is_empty() {
@@ -464,7 +464,7 @@ impl ProtocolWorker {
 
         // Update ask block
         let remove_hashes = vec![block_id].into_iter().collect();
-        self.remove_asked_blocks_of_node(remove_hashes)
+        self.remove_asked_blocks_of_node(&remove_hashes)
     }
 
     async fn on_block_info_received(

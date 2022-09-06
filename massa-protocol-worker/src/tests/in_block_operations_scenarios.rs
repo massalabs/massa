@@ -71,31 +71,6 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 .await;
             }
 
-            // block with operation too far in the future
-            // Note: what happened with checking validity periods?
-
-            // block with an operation twice
-            {
-                let op = create_operation_with_expire_period(&keypair, 5);
-                let op_thread = op.creator_address.get_thread(protocol_config.thread_count);
-
-                let block = create_block_with_operations(
-                    &creator_node.keypair,
-                    Slot::new(1, op_thread),
-                    vec![op.clone(), op.clone()],
-                );
-
-                send_and_propagate_block(
-                    &mut network_controller,
-                    block,
-                    false,
-                    creator_node.id,
-                    &mut protocol_event_receiver,
-                    &mut protocol_command_sender,
-                    vec![op.clone(), op.clone()],
-                )
-                .await;
-            }
             // block with wrong merkle root
             {
                 let op = create_operation_with_expire_period(&keypair, 5);
@@ -161,26 +136,6 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 .await;
             }
 
-            // block with operation in wrong thread
-            {
-                let op = create_operation_with_expire_period(&keypair, 5);
-                let block = create_block_with_operations(
-                    &creator_node.keypair,
-                    Slot::new(1, 1),
-                    vec![op.clone()],
-                );
-
-                send_and_propagate_block(
-                    &mut network_controller,
-                    block,
-                    false,
-                    creator_node.id,
-                    &mut protocol_event_receiver,
-                    &mut protocol_command_sender,
-                    vec![op.clone()],
-                )
-                .await;
-            }
             (
                 network_controller,
                 protocol_event_receiver,

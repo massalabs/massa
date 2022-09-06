@@ -380,12 +380,18 @@ impl ProtocolWorker {
             }
             ProtocolCommand::WishlistDelta { new, remove } => {
                 massa_trace!("protocol.protocol_worker.process_command.wishlist_delta.begin", { "new": new, "remove": remove });
-                self.remove_asked_blocks_of_node(remove)?;
                 for (block_id, header) in new.into_iter() {
                     self.block_wishlist.insert(
                         block_id,
                         BlockInfo::new(header, self.storage.clone_without_refs()),
                     );
+                }
+                // Remove the knowledge that we asked this block to nodes.
+                self.remove_asked_blocks_of_node(&remove)?;
+                
+                // Remove from the wishlist.
+                for block_id in remove.iter() {
+                    self.block_wishlist.remove(block_id);
                 }
                 self.update_ask_block(timer).await?;
                 massa_trace!(
@@ -466,7 +472,7 @@ impl ProtocolWorker {
     /// Remove the given blocks from the local wishlist
     pub(crate) fn remove_asked_blocks_of_node(
         &mut self,
-        remove_hashes: PreHashSet<BlockId>,
+        remove_hashes: &PreHashSet<BlockId>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.remove_asked_blocks_of_node", {
             "remove": remove_hashes
