@@ -369,7 +369,7 @@ impl ProtocolWorker {
         &mut self,
         from_node_id: NodeId,
         block_id: BlockId,
-        operations: Vec<WrappedOperation>,
+        mut operations: Vec<WrappedOperation>,
     ) -> Result<(), ProtocolError> {
         if self
             .note_operations_from_node(operations.clone(), &from_node_id)
@@ -378,6 +378,7 @@ impl ProtocolWorker {
             let _ = self.ban_node(&from_node_id).await;
             return Ok(());
         }
+
         let protocol_event_full_block = match self.block_wishlist.entry(block_id) {
             Entry::Occupied(mut entry) => {
                 let info = entry.get_mut();
@@ -393,62 +394,70 @@ impl ProtocolWorker {
                     let _ = self.ban_node(&from_node_id).await;
                     return Ok(());
                 };
+                operations.retain(|op| block_operation_ids.contains(&op.id));
+                // add operations to local storage and claim ref
+                info.storage.store_operations(operations);
+                let block_ids_set = block_operation_ids.clone().into_iter().collect();
+                let known_operations = info.storage.claim_operation_refs(&block_ids_set);
+
                 // Ban the node if:
                 // - mismatch with asked operations (asked operations are the one that are not in storage) + operations already in storage and block operations
                 // - full operations serialized size overflow
-                let full_op_size: usize = info.operations_size
-                    + operations
-                        .iter()
-                        .map(|op| op.serialized_size())
-                        .sum::<usize>();
-                let block_ids_set = block_operation_ids.clone().into_iter().collect();
-                let received_ids: PreHashSet<OperationId> =
-                    operations.iter().map(|op| op.id).collect();
-                let known_operation_ids = info.storage.claim_operation_refs(&block_ids_set);
-                let mut all_operations_ids = known_operation_ids.clone();
-                all_operations_ids.extend(&received_ids);
-                if full_op_size > self.config.max_serialized_operations_size_per_block
-                    || all_operations_ids != block_ids_set
-                {
+                let full_op_size: usize = known_operations
+                    .iter()
+                    .map(|id| {
+                        info.storage
+                            .read_operations()
+                            .get(id)
+                            .unwrap()
+                            .serialized_size()
+                    })
+                    .sum();
+                if full_op_size > self.config.max_serialized_operations_size_per_block {
                     let _ = self.ban_node(&from_node_id).await;
-                    return Ok(());
-                }
+                    self.block_wishlist.remove(&block_id);
+                    ProtocolEvent::InvalidBlock { block_id }
+                } else {
+                    if known_operations != block_ids_set {
+                        let _ = self.ban_node(&from_node_id).await;
+                        return Ok(());
+                    }
 
-                // Re-constitute block.
-                let block = Block {
-                    header: header.clone(),
-                    operations: block_operation_ids.clone(),
-                };
+                    // Re-constitute block.
+                    let block = Block {
+                        header: header.clone(),
+                        operations: block_operation_ids.clone(),
+                    };
 
-                let mut content_serialized = Vec::new();
-                BlockSerializer::new() // todo : keep the serializer in the struct to avoid recreating it
-                    .serialize(&block, &mut content_serialized)
-                    .unwrap();
+                    let mut content_serialized = Vec::new();
+                    BlockSerializer::new() // todo : keep the serializer in the struct to avoid recreating it
+                        .serialize(&block, &mut content_serialized)
+                        .unwrap();
 
-                // wrap block
-                let wrapped_block = Wrapped {
-                    signature: header.signature,
-                    creator_public_key: header.creator_public_key,
-                    creator_address: header.creator_address,
-                    id: block_id,
-                    content: block,
-                    serialized_data: content_serialized,
-                };
+                    // wrap block
+                    let wrapped_block = Wrapped {
+                        signature: header.signature,
+                        creator_public_key: header.creator_public_key,
+                        creator_address: header.creator_address,
+                        id: block_id,
+                        content: block,
+                        serialized_data: content_serialized,
+                    };
 
-                // create block storage (without parents)
-                let mut block_storage = entry.remove().storage;
-                // add block to local storage and claim ref
-                block_storage.store_block(wrapped_block.clone());
-                // add operations to local storage and claim ref
-                block_storage.store_operations(operations);
-                // add endorsements to local storage and claim ref
-                // TODO change this if we make endorsements separate from block header
-                block_storage
-                    .store_endorsements(wrapped_block.content.header.content.endorsements.clone());
-                ProtocolEvent::ReceivedBlock {
-                    slot: wrapped_block.content.header.content.slot,
-                    block_id,
-                    storage: block_storage,
+                    // create block storage (without parents)
+                    let mut block_storage = entry.remove().storage;
+                    // add block to local storage and claim ref
+                    block_storage.store_block(wrapped_block.clone());
+                    // add endorsements to local storage and claim ref
+                    // TODO change this if we make endorsements separate from block header
+                    block_storage.store_endorsements(
+                        wrapped_block.content.header.content.endorsements.clone(),
+                    );
+                    ProtocolEvent::ReceivedBlock {
+                        slot: wrapped_block.content.header.content.slot,
+                        block_id,
+                        storage: block_storage,
+                    }
                 }
             }
             Entry::Vacant(_) => {

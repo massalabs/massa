@@ -33,6 +33,11 @@ pub enum ProtocolEvent {
         /// storage instance containing the block and its dependencies (except the parents)
         storage: Storage,
     },
+    /// A message to tell the consensus that a block is invalid
+    InvalidBlock {
+        /// block ID
+        block_id: BlockId,
+    },
     /// A block header with a valid signature has been received.
     ReceivedBlockHeader {
         /// its id
