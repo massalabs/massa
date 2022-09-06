@@ -369,7 +369,7 @@ impl ProtocolWorker {
         block_id: BlockId,
         operations: Vec<WrappedOperation>,
     ) -> Result<(), ProtocolError> {
-        let info = if let Some(info) = self.block_wishlist.get(&block_id) {
+        let mut info = if let Some(info) = self.block_wishlist.get_mut(&block_id) {
             info.clone()
         } else {
             let _ = self.ban_node(&from_node_id).await;
@@ -407,7 +407,7 @@ impl ProtocolWorker {
                 .sum::<usize>();
         let block_ids_set = block_operation_ids.clone().into_iter().collect();
         let received_ids: PreHashSet<OperationId> = operations.iter().map(|op| op.id).collect();
-        let known_operation_ids = self.storage.claim_operation_refs(&block_ids_set);
+        let known_operation_ids = info.storage.claim_operation_refs(&block_ids_set);
         let mut all_operations_ids = known_operation_ids.clone();
         all_operations_ids.extend(&received_ids);
         if full_op_size > self.config.max_serialized_operations_size_per_block
@@ -444,8 +444,6 @@ impl ProtocolWorker {
         block_storage.store_block(wrapped_block);
         // add operations to local storage and claim ref
         block_storage.store_operations(operations);
-        block_storage.claim_operation_refs(&known_operation_ids);
-        self.storage.drop_operation_refs(&known_operation_ids);
         // add endorsements to local storage and claim ref
         // TODO change this if we make endorsements separate from block header
         block_storage.store_endorsements(header.content.endorsements.clone());
