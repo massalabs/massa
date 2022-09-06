@@ -53,7 +53,6 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
-use std::thread;
 use std::{mem, path::PathBuf};
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
@@ -445,16 +444,7 @@ async fn launch(
         shared_storage.clone(),
     );
     let api_public_handle = api_public.serve(&SETTINGS.api.bind_public);
-    let shared_storage_test = shared_storage.clone();
-    let handler = thread::Builder::new()
-        .name("test storage".into())
-        .spawn(move || {
-            while 1 == 1 {
-                std::thread::sleep(std::time::Duration::from_millis(1000));
-                shared_storage_test.print_test();
-            }
-        })
-        .expect("could not spawn block factory worker thread");
+
     #[cfg(feature = "deadlock_detection")]
     {
         // only for #[cfg]
@@ -632,7 +622,6 @@ async fn main(args: Args) -> anyhow::Result<()> {
     // and then shutdown.
     let default_panic = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
-        print!("AURELIEN: info = {:?}", info);
         default_panic(info);
         std::process::exit(1);
     }));

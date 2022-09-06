@@ -319,7 +319,6 @@ impl ProtocolWorker {
                     { "block_id": block_id }
                 );
                 let header = {
-                    // println!("AURELIEN: process_command READ blocks START");
                     let blocks = storage.read_blocks();
                     blocks
                         .get(&block_id)
@@ -331,7 +330,6 @@ impl ProtocolWorker {
                             ))
                         })?
                 };
-                // println!("AURELIEN: process_command READ blocks END");
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     // node that isn't asking for that block
                     let cond = node_info.get_known_block(&block_id);
@@ -431,7 +429,6 @@ impl ProtocolWorker {
                 );
                 for (node, node_info) in self.active_nodes.iter_mut() {
                     let new_endorsements: PreHashMap<EndorsementId, WrappedEndorsement> = {
-                        // println!("AURELIEN: process_command READ endorsements START");
                         let endorsements_reader = endorsements.read_endorsements();
                         endorsements
                             .get_endorsement_refs()
@@ -444,7 +441,6 @@ impl ProtocolWorker {
                             })
                             .collect()
                     };
-                    // println!("AURELIEN: process_command READ endorsements END");
                     node_info.insert_known_endorsements(
                         new_endorsements.keys().copied().collect(),
                         self.config.max_node_known_endorsements_size,

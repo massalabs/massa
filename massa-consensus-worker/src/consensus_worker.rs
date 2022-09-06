@@ -12,7 +12,7 @@ use massa_models::{block::WrappedHeader, prehash::PreHashMap};
 use massa_models::{prehash::PreHashSet, stats::ConsensusStats};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
 use massa_time::MassaTime;
-use std::{cmp::max, collections::HashSet, collections::VecDeque};
+use std::{cmp::max, collections::VecDeque};
 use tokio::time::{sleep, sleep_until, Sleep};
 use tracing::{info, warn};
 

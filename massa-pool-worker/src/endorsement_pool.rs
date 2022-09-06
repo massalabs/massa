@@ -95,7 +95,6 @@ impl EndorsementPool {
             self.endorsements_sorted.len()
         );
         {
-            // println!("AURELIEN: add_endorsements READ endorsements START");
             let endo_store = endorsement_storage.read_endorsements();
             for endo_id in items {
                 let endo = endo_store
@@ -126,7 +125,6 @@ impl EndorsementPool {
                     added.insert(endo.id);
                 }
             }
-            // println!("AURELIEN: add_endorsements READ endorsements END");
         }
 
         // prune excess endorsements
