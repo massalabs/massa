@@ -1184,12 +1184,8 @@ impl BlockGraph {
     ) -> Result<(), GraphError> {
         let reason = DiscardReason::Invalid("invalid".to_string());
         self.maybe_note_attack_attempt(&reason, &block_id);
-        massa_trace!("consensus.block_graph.process.incoming_block.discarded", {"block_id": block_id, "reason": reason});
-        // count stales
-        if reason == DiscardReason::Stale {
-            self.new_stale_blocks
-                .insert(*block_id, (header.creator_address, header.content.slot));
-        }
+        massa_trace!("consensus.block_graph.process.invalid_block", {"block_id": block_id, "reason": reason});
+
         // add to discard
         self.block_statuses.insert(
             *block_id,

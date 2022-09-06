@@ -443,15 +443,16 @@ impl ProtocolWorker {
 
                     // create block storage (without parents)
                     let mut block_storage = entry.remove().storage;
-                    // add block to local storage and claim ref
-                    block_storage.store_block(wrapped_block.clone());
                     // add endorsements to local storage and claim ref
                     // TODO change this if we make endorsements separate from block header
                     block_storage.store_endorsements(
                         wrapped_block.content.header.content.endorsements.clone(),
                     );
+                    let slot = wrapped_block.content.header.content.slot;
+                    // add block to local storage and claim ref
+                    block_storage.store_block(wrapped_block);
                     ProtocolEvent::ReceivedBlock {
-                        slot: wrapped_block.content.header.content.slot,
+                        slot,
                         block_id,
                         storage: block_storage,
                     }
