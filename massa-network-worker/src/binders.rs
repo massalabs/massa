@@ -14,7 +14,6 @@ use massa_serialization::Serializer;
 use massa_serialization::{DeserializeError, Deserializer};
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tracing::log::warn;
 
 /// Used to serialize and send data.
 pub struct WriteBinder {
@@ -174,7 +173,6 @@ impl ReadBinder {
             .message_deserializer
             .deserialize::<DeserializeError>(&self.buf)
             .map_err(|err| {
-                warn!("error deserializing message: {:?}", err);
                 NetworkError::ModelsError(ModelsError::DeserializeError(err.to_string()))
             })?;
 
