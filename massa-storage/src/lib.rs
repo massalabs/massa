@@ -49,11 +49,11 @@ pub struct Storage {
     endorsement_owners: Arc<RwLock<PreHashMap<EndorsementId, usize>>>,
 
     /// locally used block references
-    pub local_used_blocks: PreHashSet<BlockId>,
+    local_used_blocks: PreHashSet<BlockId>,
     /// locally used operation references
-    pub local_used_ops: PreHashSet<OperationId>,
+    local_used_ops: PreHashSet<OperationId>,
     /// locally used endorsement references
-    pub local_used_endorsements: PreHashSet<EndorsementId>,
+    local_used_endorsements: PreHashSet<EndorsementId>,
 }
 
 impl Debug for Storage {

@@ -98,7 +98,7 @@ impl OperationPool {
     }
 
     /// Add a list of operations to the pool
-    pub fn add_operations(&mut self, ops_storage: Storage) {
+    pub fn add_operations(&mut self, mut ops_storage: Storage) {
         let items = ops_storage
             .get_op_refs()
             .iter()
@@ -155,8 +155,19 @@ impl OperationPool {
             }
         });
 
-        // take ownership on added ops and clean the removed
-        self.storage.claim_operation_refs(&added);
+        // This will add the new ops to the storage without taking locks.
+        // It just take the local references from `ops_storage` if they are not in `self.storage` yet.
+        // If the object that are already in storage will stay in ops_storage and `self.storage` and
+        // at the end of the scope ops_storage will be dropped and the reference will be only in `self.storage`
+        // If the object wasn't in `self.storage` the reference will be transferred and so the number of owners doesn't change
+        // and when we will drop `ops_storage` it doesn't have the references anymore and so doesn't drop those objects.
+        self.storage.extend(ops_storage.split_off(
+            &Default::default(),
+            &added,
+            &Default::default(),
+        ));
+
+        // Clean the removed operations from storage.
         self.storage.drop_operation_refs(&removed);
     }
 
