@@ -491,11 +491,12 @@ impl ConsensusWorker {
                     .incoming_header(block_id, header, self.previous_slot)?;
                 self.block_db_changed().await?;
             }
-            ProtocolEvent::InvalidBlock { block_id } => {
+            ProtocolEvent::InvalidBlock { block_id, header } => {
                 massa_trace!(
                     "consensus.consensus_worker.process_protocol_event.invalid_block",
                     { "block_id": block_id }
                 );
+                self.block_db.invalid_block(&block_id, header)?;
                 // Say it to consensus
             }
         }

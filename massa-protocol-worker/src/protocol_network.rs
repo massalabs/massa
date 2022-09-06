@@ -383,7 +383,7 @@ impl ProtocolWorker {
             Entry::Occupied(mut entry) => {
                 let info = entry.get_mut();
                 let header = if let Some(header) = &info.header {
-                    header
+                    header.clone()
                 } else {
                     let _ = self.ban_node(&from_node_id).await;
                     return Ok(());
@@ -403,20 +403,17 @@ impl ProtocolWorker {
                 // Ban the node if:
                 // - mismatch with asked operations (asked operations are the one that are not in storage) + operations already in storage and block operations
                 // - full operations serialized size overflow
-                let full_op_size: usize = known_operations
-                    .iter()
-                    .map(|id| {
-                        info.storage
-                            .read_operations()
-                            .get(id)
-                            .unwrap()
-                            .serialized_size()
-                    })
-                    .sum();
+                let full_op_size: usize = {
+                    let stored_operations = info.storage.read_operations();
+                    known_operations
+                        .iter()
+                        .map(|id| stored_operations.get(id).unwrap().serialized_size())
+                        .sum()
+                };
                 if full_op_size > self.config.max_serialized_operations_size_per_block {
                     let _ = self.ban_node(&from_node_id).await;
                     self.block_wishlist.remove(&block_id);
-                    ProtocolEvent::InvalidBlock { block_id }
+                    ProtocolEvent::InvalidBlock { block_id, header }
                 } else {
                     if known_operations != block_ids_set {
                         let _ = self.ban_node(&from_node_id).await;

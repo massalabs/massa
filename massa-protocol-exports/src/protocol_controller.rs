@@ -37,6 +37,8 @@ pub enum ProtocolEvent {
     InvalidBlock {
         /// block ID
         block_id: BlockId,
+        /// header
+        header: WrappedHeader,
     },
     /// A block header with a valid signature has been received.
     ReceivedBlockHeader {

@@ -1176,6 +1176,36 @@ impl BlockGraph {
         Ok(reprocess)
     }
 
+    /// Mark a block as invalid
+    pub fn invalid_block(
+        &mut self,
+        block_id: &BlockId,
+        header: WrappedHeader,
+    ) -> Result<(), GraphError> {
+        let reason = DiscardReason::Invalid("invalid".to_string());
+        self.maybe_note_attack_attempt(&reason, &block_id);
+        massa_trace!("consensus.block_graph.process.incoming_block.discarded", {"block_id": block_id, "reason": reason});
+        // count stales
+        if reason == DiscardReason::Stale {
+            self.new_stale_blocks
+                .insert(*block_id, (header.creator_address, header.content.slot));
+        }
+        // add to discard
+        self.block_statuses.insert(
+            *block_id,
+            BlockStatus::Discarded {
+                slot: header.content.slot,
+                creator: header.creator_address,
+                parents: header.content.parents.clone(),
+                reason,
+                sequence_number: BlockGraph::new_sequence_number(&mut self.sequence_counter),
+            },
+        );
+        self.discarded_index.insert(*block_id);
+
+        return Ok(());
+    }
+
     /// Note an attack attempt if the discard reason indicates one.
     fn maybe_note_attack_attempt(&mut self, reason: &DiscardReason, hash: &BlockId) {
         massa_trace!("consensus.block_graph.maybe_note_attack_attempt", {"hash": hash, "reason": reason});
