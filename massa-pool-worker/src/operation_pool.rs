@@ -157,8 +157,8 @@ impl OperationPool {
 
         // This will add the new ops to the storage without taking locks.
         // It just take the local references from `ops_storage` if they are not in `self.storage` yet.
-        // If the object that are already in storage will stay in ops_storage and `self.storage` and
-        // at the end of the scope ops_storage will be dropped and the reference will be only in `self.storage`
+        // If the objects are already in `self.storage` the references in ops_storage it will not add them to `self.storage` and
+        // at the end of the scope ops_storage will be dropped and so the references will be only in `self.storage`
         // If the object wasn't in `self.storage` the reference will be transferred and so the number of owners doesn't change
         // and when we will drop `ops_storage` it doesn't have the references anymore and so doesn't drop those objects.
         self.storage.extend(ops_storage.split_off(
