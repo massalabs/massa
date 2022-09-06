@@ -2,12 +2,14 @@
 //!
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::collections::hash_map::Entry;
+
 use crate::node_info::NodeInfo;
 use crate::protocol_worker::ProtocolWorker;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
-    block::{Block, WrappedBlock},
+    block::Block,
     block::{BlockId, BlockSerializer, WrappedHeader},
     node::NodeId,
     operation::{OperationId, WrappedOperation},
@@ -369,26 +371,6 @@ impl ProtocolWorker {
         block_id: BlockId,
         operations: Vec<WrappedOperation>,
     ) -> Result<(), ProtocolError> {
-        let mut info = if let Some(info) = self.block_wishlist.get_mut(&block_id) {
-            info.clone()
-        } else {
-            let _ = self.ban_node(&from_node_id).await;
-            return Ok(());
-        };
-
-        let header = if let Some(header) = &info.header {
-            header
-        } else {
-            let _ = self.ban_node(&from_node_id).await;
-            return Ok(());
-        };
-        let block_operation_ids = if let Some(operations) = &info.operation_ids {
-            operations
-        } else {
-            let _ = self.ban_node(&from_node_id).await;
-            return Ok(());
-        };
-
         if self
             .note_operations_from_node(operations.clone(), &from_node_id)
             .is_err()
@@ -396,65 +378,86 @@ impl ProtocolWorker {
             let _ = self.ban_node(&from_node_id).await;
             return Ok(());
         }
+        let protocol_event_full_block = match self.block_wishlist.entry(block_id) {
+            Entry::Occupied(mut entry) => {
+                let info = entry.get_mut();
+                let header = if let Some(header) = &info.header {
+                    header
+                } else {
+                    let _ = self.ban_node(&from_node_id).await;
+                    return Ok(());
+                };
+                let block_operation_ids = if let Some(operations) = &info.operation_ids {
+                    operations
+                } else {
+                    let _ = self.ban_node(&from_node_id).await;
+                    return Ok(());
+                };
+                // Ban the node if:
+                // - mismatch with asked operations (asked operations are the one that are not in storage) + operations already in storage and block operations
+                // - full operations serialized size overflow
+                let full_op_size: usize = info.operations_size
+                    + operations
+                        .iter()
+                        .map(|op| op.serialized_size())
+                        .sum::<usize>();
+                let block_ids_set = block_operation_ids.clone().into_iter().collect();
+                let received_ids: PreHashSet<OperationId> =
+                    operations.iter().map(|op| op.id).collect();
+                let known_operation_ids = info.storage.claim_operation_refs(&block_ids_set);
+                let mut all_operations_ids = known_operation_ids.clone();
+                all_operations_ids.extend(&received_ids);
+                if full_op_size > self.config.max_serialized_operations_size_per_block
+                    || all_operations_ids != block_ids_set
+                {
+                    let _ = self.ban_node(&from_node_id).await;
+                    return Ok(());
+                }
 
-        // Ban the node if:
-        // - mismatch with asked operations (asked operations are the one that are not in storage) + operations already in storage and block operations
-        // - full operations serialized size overflow
-        let full_op_size: usize = info.operations_size
-            + operations
-                .iter()
-                .map(|op| op.serialized_size())
-                .sum::<usize>();
-        let block_ids_set = block_operation_ids.clone().into_iter().collect();
-        let received_ids: PreHashSet<OperationId> = operations.iter().map(|op| op.id).collect();
-        let known_operation_ids = info.storage.claim_operation_refs(&block_ids_set);
-        let mut all_operations_ids = known_operation_ids.clone();
-        all_operations_ids.extend(&received_ids);
-        if full_op_size > self.config.max_serialized_operations_size_per_block
-            || all_operations_ids != block_ids_set
-        {
-            let _ = self.ban_node(&from_node_id).await;
-            return Ok(());
-        }
+                // Re-constitute block.
+                let block = Block {
+                    header: header.clone(),
+                    operations: block_operation_ids.clone(),
+                };
 
-        // Re-constitute block.
-        let block = Block {
-            header: header.clone(),
-            operations: block_operation_ids.clone(),
+                let mut content_serialized = Vec::new();
+                BlockSerializer::new() // todo : keep the serializer in the struct to avoid recreating it
+                    .serialize(&block, &mut content_serialized)
+                    .unwrap();
+
+                // wrap block
+                let wrapped_block = Wrapped {
+                    signature: header.signature,
+                    creator_public_key: header.creator_public_key,
+                    creator_address: header.creator_address,
+                    id: block_id,
+                    content: block,
+                    serialized_data: content_serialized,
+                };
+
+                // create block storage (without parents)
+                let mut block_storage = entry.remove().storage;
+                // add block to local storage and claim ref
+                block_storage.store_block(wrapped_block.clone());
+                // add operations to local storage and claim ref
+                block_storage.store_operations(operations);
+                // add endorsements to local storage and claim ref
+                // TODO change this if we make endorsements separate from block header
+                block_storage
+                    .store_endorsements(wrapped_block.content.header.content.endorsements.clone());
+                ProtocolEvent::ReceivedBlock {
+                    slot: wrapped_block.content.header.content.slot,
+                    block_id,
+                    storage: block_storage,
+                }
+            }
+            Entry::Vacant(_) => {
+                let _ = self.ban_node(&from_node_id).await;
+                return Ok(());
+            }
         };
-
-        let mut content_serialized = Vec::new();
-        BlockSerializer::new() // todo : keep the serializer in the struct to avoid recreating it
-            .serialize(&block, &mut content_serialized)
-            .unwrap();
-
-        // wrap block
-        let wrapped_block: WrappedBlock = Wrapped {
-            signature: header.signature,
-            creator_public_key: header.creator_public_key,
-            creator_address: header.creator_address,
-            id: block_id,
-            content: block,
-            serialized_data: content_serialized,
-        };
-
-        // create block storage (without parents)
-        let mut block_storage = self.block_wishlist.remove(&block_id).unwrap().storage;
-        // add block to local storage and claim ref
-        block_storage.store_block(wrapped_block);
-        // add operations to local storage and claim ref
-        block_storage.store_operations(operations);
-        // add endorsements to local storage and claim ref
-        // TODO change this if we make endorsements separate from block header
-        block_storage.store_endorsements(header.content.endorsements.clone());
-
         // Send to graph
-        self.send_protocol_event(ProtocolEvent::ReceivedBlock {
-            slot: header.content.slot,
-            block_id,
-            storage: block_storage,
-        })
-        .await;
+        self.send_protocol_event(protocol_event_full_block).await;
 
         // Update ask block
         let remove_hashes = vec![block_id].into_iter().collect();
