@@ -319,7 +319,6 @@ impl ProtocolWorker {
                     { "block_id": block_id }
                 );
                 let header = {
-                    // println!("AURELIEN: process_command READ blocks START");
                     let blocks = storage.read_blocks();
                     blocks
                         .get(&block_id)
@@ -331,7 +330,6 @@ impl ProtocolWorker {
                             ))
                         })?
                 };
-                // println!("AURELIEN: process_command READ blocks END");
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     // node that isn't asking for that block
                     let cond = node_info.get_known_block(&block_id);
@@ -405,6 +403,7 @@ impl ProtocolWorker {
                     "protocol.protocol_worker.process_command.propagate_operations.begin",
                     { "operation_ids": operation_ids }
                 );
+                self.prune_checked_operations();
                 for id in operation_ids.iter() {
                     self.checked_operations.insert(id);
                 }
@@ -435,7 +434,6 @@ impl ProtocolWorker {
                 );
                 for (node, node_info) in self.active_nodes.iter_mut() {
                     let new_endorsements: PreHashMap<EndorsementId, WrappedEndorsement> = {
-                        // println!("AURELIEN: process_command READ endorsements START");
                         let endorsements_reader = endorsements.read_endorsements();
                         endorsements
                             .get_endorsement_refs()
@@ -448,7 +446,6 @@ impl ProtocolWorker {
                             })
                             .collect()
                     };
-                    // println!("AURELIEN: process_command READ endorsements END");
                     node_info.insert_known_endorsements(
                         new_endorsements.keys().copied().collect(),
                         self.config.max_node_known_endorsements_size,
@@ -490,7 +487,6 @@ impl ProtocolWorker {
         ask_block_timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.update_ask_block.begin", {});
-
         let now = Instant::now();
 
         // init timer
@@ -965,6 +961,7 @@ impl ProtocolWorker {
             {
                 contains_duplicates = true;
             }
+
             // check endorsement signature if not already checked
             if self.checked_endorsements.insert(endorsement_id) {
                 endorsement.verify_signature()?;

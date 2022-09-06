@@ -12,7 +12,7 @@ use massa_models::{block::WrappedHeader, prehash::PreHashMap};
 use massa_models::{prehash::PreHashSet, stats::ConsensusStats};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
 use massa_time::MassaTime;
-use std::{cmp::max, collections::HashSet, collections::VecDeque};
+use std::{cmp::max, collections::VecDeque};
 use tokio::time::{sleep, sleep_until, Sleep};
 use tracing::{info, warn};
 
@@ -490,6 +490,14 @@ impl ConsensusWorker {
                 self.block_db
                     .incoming_header(block_id, header, self.previous_slot)?;
                 self.block_db_changed().await?;
+            }
+            ProtocolEvent::InvalidBlock { block_id, header } => {
+                massa_trace!(
+                    "consensus.consensus_worker.process_protocol_event.invalid_block",
+                    { "block_id": block_id }
+                );
+                self.block_db.invalid_block(&block_id, header)?;
+                // Say it to consensus
             }
         }
         Ok(())

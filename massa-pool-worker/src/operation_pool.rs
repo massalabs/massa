@@ -11,7 +11,6 @@ use massa_models::{
 use massa_pool_exports::PoolConfig;
 use massa_storage::Storage;
 use std::collections::BTreeSet;
-use tracing::info;
 
 use crate::types::{OperationInfo, PoolOperationCursor};
 
@@ -111,7 +110,6 @@ impl OperationPool {
 
         // add items to pool
         {
-            // println!("AURELIEN: add_operations READ operations START");
             let ops = ops_storage.read_operations();
             for op_id in items {
                 let op_info = OperationInfo::from_op(
@@ -138,47 +136,38 @@ impl OperationPool {
                     added.insert(op_info.id);
                 }
             }
-            // println!("AURELIEN: add_operations READ operations END");
         }
 
         // prune excess operations
-        self.sorted_ops_per_thread
-            .iter_mut()
-            .enumerate()
-            .for_each(|(thread_id, ops)| {
-                println!(
-                    "AURELIEN POOL: Size pool thread {}: {}",
-                    thread_id,
-                    ops.len()
-                );
-                while ops.len() > self.config.max_operation_pool_size_per_thread {
-                    // the unrap below won't panic because the loop condition tests for non-emptines of self.operations
-                    let cursor = ops.pop_last().unwrap();
-                    let op_info = self
-                        .operations
-                        .remove(&cursor.get_id())
-                        .expect("the operation should be in self.operations at this point");
-                    let end_slot = Slot::new(*op_info.validity_period_range.end(), op_info.thread);
-                    if !self.ops_per_expiration.remove(&(end_slot, op_info.id)) {
-                        panic!("the operation should be in self.ops_per_expiration at this point");
-                    }
-                    if !added.remove(&op_info.id) {
-                        removed.insert(op_info.id);
-                    }
+        self.sorted_ops_per_thread.iter_mut().for_each(|ops| {
+            while ops.len() > self.config.max_operation_pool_size_per_thread {
+                // the unwrap below won't panic because the loop condition tests for non-emptines of self.operations
+                let cursor = ops.pop_last().unwrap();
+                let op_info = self
+                    .operations
+                    .remove(&cursor.get_id())
+                    .expect("the operation should be in self.operations at this point");
+                let end_slot = Slot::new(*op_info.validity_period_range.end(), op_info.thread);
+                if !self.ops_per_expiration.remove(&(end_slot, op_info.id)) {
+                    panic!("the operation should be in self.ops_per_expiration at this point");
                 }
-            });
+                removed.insert(op_info.id);
+            }
+        });
 
-        // take ownership on added ops
+        // This will add the new ops to the storage without taking locks.
+        // It just take the local references from `ops_storage` if they are not in `self.storage` yet.
+        // If the objects are already in `self.storage` the references in ops_storage it will not add them to `self.storage` and
+        // at the end of the scope ops_storage will be dropped and so the references will be only in `self.storage`
+        // If the object wasn't in `self.storage` the reference will be transferred and so the number of owners doesn't change
+        // and when we will drop `ops_storage` it doesn't have the references anymore and so doesn't drop those objects.
         self.storage.extend(ops_storage.split_off(
             &Default::default(),
             &added,
             &Default::default(),
         ));
 
-        // drop removed ops from storage
-        if !removed.is_empty() {
-            // println!("AURELIEN: Removed len = {}", removed.len());
-        }
+        // Clean the removed operations from storage.
         self.storage.drop_operation_refs(&removed);
     }
 

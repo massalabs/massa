@@ -36,7 +36,7 @@ use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet};
 use std::{collections::HashMap, sync::Arc};
-use tracing::{debug, info};
+use tracing::debug;
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -878,17 +878,14 @@ impl ExecutionState {
         // Check if there is a block at this slot
         if let Some((block_id, block_store)) = opt_block {
             // Retrieve the block from storage
-            // println!("AURELIEN: execute_slot READ blocks START");
             let stored_block = block_store
                 .read_blocks()
                 .get(&block_id)
                 .expect("Missing block in storage.")
                 .clone();
 
-            // println!("AURELIEN: execute_slot READ blocks END");
             // gather all operations
             let operations = {
-                // println!("AURELIEN: execute_slot READ operations START");
                 let ops = block_store.read_operations();
                 stored_block
                     .content
@@ -901,7 +898,6 @@ impl ExecutionState {
                     })
                     .collect::<Vec<_>>()
             };
-            // println!("AURELIEN: execute_slot READ operations END");
 
             // gather all available endorsement creators and target blocks
             let (endorsement_creators, endorsement_targets): &(Vec<Address>, Vec<BlockId>) =
@@ -916,7 +912,6 @@ impl ExecutionState {
 
             // deduce endorsement target block creators
             let endorsement_target_creators = {
-                // println!("AURELIEN: execute_slot2 READ blocks START");
                 let blocks = block_store.read_blocks();
                 endorsement_targets
                     .iter()
@@ -928,7 +923,6 @@ impl ExecutionState {
                     })
                     .collect::<Vec<_>>()
             };
-            // println!("AURELIEN: execute_slot2 READ blocks END");
 
             // Set remaining block gas
             let mut remaining_block_gas = self.config.max_gas_per_block;
