@@ -145,6 +145,7 @@ impl BootstrapServer {
 
                 // bootstrap session finished
                 Some(_) = bootstrap_sessions.next() => {
+                    println!("DEBUG: Session finished len = {:#?}", bootstrap_sessions.len());
                     massa_trace!("bootstrap.session.finished", {"active_count": bootstrap_sessions.len()});
                 }
 
