@@ -146,6 +146,10 @@ impl BootstrapServer {
                 // bootstrap session finished
                 Some(_) = bootstrap_sessions.next() => {
                     println!("DEBUG: Session finished len = {:#?}", bootstrap_sessions.len());
+                    if bootstrap_sessions.is_empty() {
+                        println!("DEBUG: Session finished");
+                        bootstrap_sessions.clear();
+                    }
                     massa_trace!("bootstrap.session.finished", {"active_count": bootstrap_sessions.len()});
                 }
 
@@ -209,7 +213,6 @@ impl BootstrapServer {
                     let compensation_millis = self.compensation_millis;
                     let version = self.version;
                     let mut data_graph = self.consensus_command_sender.get_bootstrap_state().await?;
-                    data_graph.final_blocks.extend(data_graph.final_blocks.clone());
                     data_graph.final_blocks.extend(data_graph.final_blocks.clone());
                     data_graph.final_blocks.extend(data_graph.final_blocks.clone());
                     //let data_graph = BootstrapableGraph{final_blocks: Default::default()};
