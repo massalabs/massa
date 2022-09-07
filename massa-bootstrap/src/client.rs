@@ -524,6 +524,7 @@ pub async fn get_state(
                             let _ = tokio::time::timeout(bootstrap_config.write_error_timeout.into(), client.send(&BootstrapClientMessage::BootstrapError { error: e.to_string() })).await;
                         }
                         Ok(()) => {
+                            println!("DEBUG: CLIENT: State slot end bootstrap: {}", global_bootstrap_state.final_state.read().slot);
                             return Ok(global_bootstrap_state)
                         }
                     }

@@ -220,9 +220,10 @@ impl BootstrapServer {
                             match manage_bootstrap(&config, &mut server, data_graph, data_peers, data_execution, compensation_millis, version).await {
                                 Ok(_) => {
                                     info!("bootstrapped peer {}", remote_addr);
-                                    println!("DEBUG: SERVER: Cycle history: {:?}", data_execution_debug.read().pos_state.cycle_history);
-                                    println!("DEBUG: SERVER: Deferred credits: {:?}", data_execution_debug.read().pos_state.deferred_credits);
-                                    println!("DEBUG: SERVER: Initial seeds: {:?}", data_execution_debug.read().pos_state.initial_seeds);
+                                    println!("DEBUG: SERVER: State slot end bootstrap: {}", data_execution_debug.read().slot);
+                                    println!("DEBUG: SERVER: Cycle history end : {:?}", data_execution_debug.read().pos_state.cycle_history);
+                                    println!("DEBUG: SERVER: Deferred credits end: {:?}", data_execution_debug.read().pos_state.deferred_credits);
+                                    println!("DEBUG: SERVER: Initial seeds end: {:?}", data_execution_debug.read().pos_state.initial_seeds);
                                 },
                                 Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
                                 Err(err) => {
@@ -516,6 +517,18 @@ async fn manage_bootstrap(
                         write_timeout,
                     )
                     .await?;
+                    println!(
+                        "DEBUG: SERVER: Cycle history after send : {:?}",
+                        final_state.read().pos_state.cycle_history
+                    );
+                    println!(
+                        "DEBUG: SERVER: Deferred credits after send : {:?}",
+                        final_state.read().pos_state.deferred_credits
+                    );
+                    println!(
+                        "DEBUG: SERVER: Initial seeds after send : {:?}",
+                        final_state.read().pos_state.initial_seeds
+                    );
                 }
                 BootstrapClientMessage::AskConsensusState => {
                     match tokio::time::timeout(
