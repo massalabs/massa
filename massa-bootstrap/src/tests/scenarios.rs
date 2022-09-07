@@ -14,7 +14,11 @@ use crate::{
 };
 use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
 use massa_final_state::{test_exports::assert_eq_final_state, FinalState};
-use massa_models::{config::THREAD_COUNT, slot::Slot, version::Version};
+use massa_models::{
+    config::{PERIODS_PER_CYCLE, THREAD_COUNT},
+    slot::Slot,
+    version::Version,
+};
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
 use massa_pos_exports::{test_exports::assert_eq_pos_selection, PoSFinalState, SelectorConfig};
 use massa_pos_worker::start_selector_worker;
@@ -51,6 +55,7 @@ async fn test_bootstrap_server() {
         PoSFinalState::new(
             &"".to_string(),
             &rolls_path,
+            PERIODS_PER_CYCLE,
             THREAD_COUNT,
             server_selector_controller.clone(),
         )
@@ -77,6 +82,7 @@ async fn test_bootstrap_server() {
         PoSFinalState::new(
             &"".to_string(),
             &rolls_path,
+            PERIODS_PER_CYCLE,
             THREAD_COUNT,
             client_selector_controller.clone(),
         )

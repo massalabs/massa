@@ -47,6 +47,7 @@ impl FinalState {
         let pos_state = PoSFinalState::new(
             &config.initial_seed_string,
             &config.initial_rolls_path,
+            config.periods_per_cycle,
             config.thread_count,
             selector,
         )
@@ -103,12 +104,7 @@ impl FinalState {
         self.async_pool
             .apply_changes_unchecked(&changes.async_pool_changes);
         self.pos_state
-            .apply_changes(
-                changes.roll_state_changes.clone(),
-                self.slot,
-                self.config.periods_per_cycle,
-                self.config.thread_count,
-            )
+            .apply_changes(changes.roll_state_changes.clone(), self.slot)
             .expect("could not settle slot in final state PoS"); //TODO do not panic here: it might just mean that the lookback cycle is not available
         self.executed_ops.extend(changes.executed_ops.clone());
         self.executed_ops.prune(self.slot);
