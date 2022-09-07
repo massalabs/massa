@@ -259,7 +259,10 @@ async fn launch(
         .compute_initial_draws()
         .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
 
-    println!("DEBUG: Compute initial draws client: {:?}", final_state.read().pos_state.selector.get_entire_selection());
+    println!(
+        "DEBUG: Compute initial draws client: {:?}",
+        final_state.read().pos_state.selector.get_entire_selection()
+    );
     // launch execution module
     let execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,

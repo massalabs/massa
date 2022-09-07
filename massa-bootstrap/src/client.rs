@@ -75,11 +75,51 @@ async fn stream_final_state(
                     let last_cycle = write_final_state
                         .pos_state
                         .set_cycle_history_part(pos_cycle_part.as_bytes())?;
-                        println!("DEBUG: received final state pos part cycle = {:#?}", write_final_state.pos_state.cycle_history.back().unwrap().cycle);
-                        println!("DEBUG: received final state pos part seed =  {:#?}", write_final_state.pos_state.cycle_history.back().unwrap().rng_seed);
-                        println!("DEBUG: received final state pos part roll_count =  {:#?}", write_final_state.pos_state.cycle_history.back().unwrap().roll_counts);
-                        println!("DEBUG: received final state pos part complete =  {:#?}", write_final_state.pos_state.cycle_history.back().unwrap().complete);
-                        println!("DEBUG: received final state pos part production stats =  {:#?}", write_final_state.pos_state.cycle_history.back().unwrap().production_stats);
+                    println!(
+                        "DEBUG: received final state pos part cycle = {:#?}",
+                        write_final_state
+                            .pos_state
+                            .cycle_history
+                            .back()
+                            .unwrap()
+                            .cycle
+                    );
+                    println!(
+                        "DEBUG: received final state pos part seed =  {:#?}",
+                        write_final_state
+                            .pos_state
+                            .cycle_history
+                            .back()
+                            .unwrap()
+                            .rng_seed
+                    );
+                    println!(
+                        "DEBUG: received final state pos part roll_count =  {:#?}",
+                        write_final_state
+                            .pos_state
+                            .cycle_history
+                            .back()
+                            .unwrap()
+                            .roll_counts
+                    );
+                    println!(
+                        "DEBUG: received final state pos part complete =  {:#?}",
+                        write_final_state
+                            .pos_state
+                            .cycle_history
+                            .back()
+                            .unwrap()
+                            .complete
+                    );
+                    println!(
+                        "DEBUG: received final state pos part production stats =  {:#?}",
+                        write_final_state
+                            .pos_state
+                            .cycle_history
+                            .back()
+                            .unwrap()
+                            .production_stats
+                    );
                     let last_credits_slot = write_final_state
                         .pos_state
                         .set_deferred_credits_part(pos_credits_part.as_bytes())?;

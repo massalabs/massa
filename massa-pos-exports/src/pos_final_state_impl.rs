@@ -166,7 +166,6 @@ impl PoSFinalState {
         } else {
             self.cycle_history.push_back(CycleInfo {
                 cycle,
-                roll_counts: self.initial_rolls.clone(),
                 ..Default::default()
             });
         }
