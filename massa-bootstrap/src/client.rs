@@ -68,6 +68,7 @@ async fn stream_final_state(
                     slot,
                     final_state_changes,
                 } => {
+                    println!("DEBUG: CLIENT: slot of the bootstrap part: {}", slot);
                     let mut write_final_state = global_bootstrap_state.final_state.write();
                     let last_key = write_final_state.ledger.set_ledger_part(ledger_data)?;
                     let last_last_async_id = write_final_state
