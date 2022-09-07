@@ -207,7 +207,8 @@ impl BootstrapServer {
                     // launch bootstrap
                     let compensation_millis = self.compensation_millis;
                     let version = self.version;
-                    let data_graph = self.consensus_command_sender.get_bootstrap_state().await?;
+                    //let data_graph = self.consensus_command_sender.get_bootstrap_state().await?;
+                    let data_graph = BootstrapableGraph{final_blocks: Default::default()};
                     let data_peers = self.network_command_sender.get_bootstrap_peers().await?;
                     let data_execution = self.final_state.clone();
                     // let (data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
@@ -228,6 +229,7 @@ impl BootstrapServer {
                             }
                         }
                     });
+                    println!("DEBUG: Sessions: {:#?}", bootstrap_sessions.len());
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
                 } else {
                     let mut server = BootstrapServerBinder::new(dplx, self.keypair.clone(), self.bootstrap_config.max_bytes_read_write, self.bootstrap_config.max_bootstrap_message_size, self.bootstrap_config.thread_count, self.bootstrap_config.max_datastore_key_length, self.bootstrap_config.randomness_size_bytes);
