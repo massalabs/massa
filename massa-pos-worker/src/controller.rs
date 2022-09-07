@@ -12,6 +12,7 @@ use massa_pos_exports::{PosError, PosResult, Selection, SelectorController, Sele
 use std::sync::mpsc::SyncSender;
 use tracing::{info, warn};
 
+#[cfg(feature = "testing")]
 use std::collections::{HashMap, VecDeque};
 
 #[derive(Clone)]
@@ -105,7 +106,7 @@ impl SelectorController for SelectorControllerImpl {
         let (_cache_cv, cache_lock) = &*self.cache;
         let cache_guard = cache_lock.read();
         let cache = cache_guard.as_ref().map_err(|err| err.clone())?;
-        //println!("DEBUG: In producer cache: {:#?}", cache.0);
+
         cache
             .get(cycle)
             .and_then(|selections| selections.draws.get(&slot).map(|s| s.producer))
@@ -156,6 +157,7 @@ impl SelectorController for SelectorControllerImpl {
     /// Get every [Selection]
     ///
     /// Only used in tests for post-bootstrap selection matching.
+    #[cfg(feature = "testing")]
     fn get_entire_selection(&self) -> VecDeque<(u64, HashMap<Slot, Selection>)> {
         let (_, lock) = &*self.cache;
         let cache_guard = lock.read();

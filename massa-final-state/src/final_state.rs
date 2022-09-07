@@ -190,17 +190,8 @@ impl FinalState {
                     .extend(async_pool_changes.0);
             }
 
-            println!(
-                "DEBUG: SERVER: final_state.changes_history[x].roll_state_changes = {:?}",
-                changes.roll_state_changes.clone()
-            );
-
             // Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
             if pos_cycle_completion == Some(false) {
-                println!(
-                    "DEBUG: SERVER: retrieving last cycle changes ready for bootstrap: {:?}",
-                    changes.roll_state_changes.clone()
-                );
                 res_changes
                     .roll_state_changes
                     .deferred_credits

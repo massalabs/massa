@@ -110,6 +110,7 @@ impl SelectorController for MockSelectorController {
     /// Only used for testing
     ///
     /// TODO: limit usage
+    #[cfg(feature = "testing")]
     fn get_entire_selection(&self) -> VecDeque<(u64, HashMap<Slot, Selection>)> {
         let (response_tx, response_rx) = mpsc::channel();
         self.0

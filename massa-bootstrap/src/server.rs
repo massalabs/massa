@@ -145,7 +145,6 @@ impl BootstrapServer {
 
                 // bootstrap session finished
                 Some(_) = bootstrap_sessions.next() => {
-                    println!("DEBUG: bootstrap session finished");
                     massa_trace!("bootstrap.session.finished", {"active_count": bootstrap_sessions.len()});
                 }
 
@@ -211,20 +210,12 @@ impl BootstrapServer {
                     let (data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
                     let keypair = self.keypair.clone();
                     let config = self.bootstrap_config.clone();
-                    let data_execution_debug = data_execution.clone();
                     bootstrap_sessions.push(async move {
                         //Socket lifetime
-                        println!("DEBUG: START BOOTSTRAP SESSION");
                         {
                             let mut server = BootstrapServerBinder::new(dplx, keypair, config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes);
                             match manage_bootstrap(&config, &mut server, data_graph, data_peers, data_execution, compensation_millis, version).await {
-                                Ok(_) => {
-                                    info!("bootstrapped peer {}", remote_addr);
-                                    println!("DEBUG: SERVER: State slot end bootstrap: {}", data_execution_debug.read().slot);
-                                    println!("DEBUG: SERVER: Cycle history end : {:?}", data_execution_debug.read().pos_state.cycle_history);
-                                    println!("DEBUG: SERVER: Deferred credits end: {:?}", data_execution_debug.read().pos_state.deferred_credits);
-                                    println!("DEBUG: SERVER: Initial seeds end: {:?}", data_execution_debug.read().pos_state.initial_seeds);
-                                },
+                                Ok(_) => info!("bootstrapped peer {}", remote_addr),
                                 Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
                                 Err(err) => {
                                     debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
@@ -233,7 +224,6 @@ impl BootstrapServer {
                                 },
                             }
                         }
-                        println!("DEBUG: EXIT BOOTSTRAP SESSION");
                     });
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
                 } else {
@@ -517,18 +507,6 @@ async fn manage_bootstrap(
                         write_timeout,
                     )
                     .await?;
-                    println!(
-                        "DEBUG: SERVER: Cycle history after send : {:?}",
-                        final_state.read().pos_state.cycle_history
-                    );
-                    println!(
-                        "DEBUG: SERVER: Deferred credits after send : {:?}",
-                        final_state.read().pos_state.deferred_credits
-                    );
-                    println!(
-                        "DEBUG: SERVER: Initial seeds after send : {:?}",
-                        final_state.read().pos_state.initial_seeds
-                    );
                 }
                 BootstrapClientMessage::AskConsensusState => {
                     match tokio::time::timeout(

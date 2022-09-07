@@ -68,11 +68,6 @@ async fn stream_final_state(
                     slot,
                     final_state_changes,
                 } => {
-                    println!("DEBUG: CLIENT: slot of the bootstrap part: {}", slot);
-                    println!(
-                        "DEBUG: CLIENT: final_state_changes part: {:?}",
-                        final_state_changes
-                    );
                     let mut write_final_state = global_bootstrap_state.final_state.write();
                     let last_key = write_final_state.ledger.set_ledger_part(ledger_data)?;
                     let last_last_async_id = write_final_state
@@ -81,51 +76,6 @@ async fn stream_final_state(
                     let last_cycle = write_final_state
                         .pos_state
                         .set_cycle_history_part(pos_cycle_part.as_bytes())?;
-                    println!(
-                        "DEBUG: received final state pos part cycle = {:#?}",
-                        write_final_state
-                            .pos_state
-                            .cycle_history
-                            .back()
-                            .unwrap()
-                            .cycle
-                    );
-                    println!(
-                        "DEBUG: received final state pos part seed =  {:#?}",
-                        write_final_state
-                            .pos_state
-                            .cycle_history
-                            .back()
-                            .unwrap()
-                            .rng_seed
-                    );
-                    println!(
-                        "DEBUG: received final state pos part roll_count =  {:#?}",
-                        write_final_state
-                            .pos_state
-                            .cycle_history
-                            .back()
-                            .unwrap()
-                            .roll_counts
-                    );
-                    println!(
-                        "DEBUG: received final state pos part complete =  {:#?}",
-                        write_final_state
-                            .pos_state
-                            .cycle_history
-                            .back()
-                            .unwrap()
-                            .complete
-                    );
-                    println!(
-                        "DEBUG: received final state pos part production stats =  {:#?}",
-                        write_final_state
-                            .pos_state
-                            .cycle_history
-                            .back()
-                            .unwrap()
-                            .production_stats
-                    );
                     let last_credits_slot = write_final_state
                         .pos_state
                         .set_deferred_credits_part(pos_credits_part.as_bytes())?;
@@ -373,30 +323,6 @@ async fn bootstrap_from_server(
             }
         };
     }
-    println!(
-        "DEBUG: SERVER: Cycle history: {:?}",
-        global_bootstrap_state
-            .final_state
-            .read()
-            .pos_state
-            .cycle_history
-    );
-    println!(
-        "DEBUG: SERVER: Deferred credits: {:?}",
-        global_bootstrap_state
-            .final_state
-            .read()
-            .pos_state
-            .deferred_credits
-    );
-    println!(
-        "DEBUG: SERVER: Initial seeds: {:?}",
-        global_bootstrap_state
-            .final_state
-            .read()
-            .pos_state
-            .initial_seeds
-    );
     info!("Successful bootstrap");
     Ok(())
 }
@@ -524,7 +450,6 @@ pub async fn get_state(
                             let _ = tokio::time::timeout(bootstrap_config.write_error_timeout.into(), client.send(&BootstrapClientMessage::BootstrapError { error: e.to_string() })).await;
                         }
                         Ok(()) => {
-                            println!("DEBUG: CLIENT: State slot end bootstrap: {}", global_bootstrap_state.final_state.read().slot);
                             return Ok(global_bootstrap_state)
                         }
                     }
