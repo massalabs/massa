@@ -208,8 +208,11 @@ impl BootstrapServer {
                     // launch bootstrap
                     let compensation_millis = self.compensation_millis;
                     let version = self.version;
-                    //let data_graph = self.consensus_command_sender.get_bootstrap_state().await?;
-                    let data_graph = BootstrapableGraph{final_blocks: Default::default()};
+                    let mut data_graph = self.consensus_command_sender.get_bootstrap_state().await?;
+                    data_graph.final_blocks.extend(data_graph.final_blocks.clone());
+                    data_graph.final_blocks.extend(data_graph.final_blocks.clone());
+                    data_graph.final_blocks.extend(data_graph.final_blocks.clone());
+                    //let data_graph = BootstrapableGraph{final_blocks: Default::default()};
                     let data_peers = self.network_command_sender.get_bootstrap_peers().await?;
                     let data_execution = self.final_state.clone();
                     // let (data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
