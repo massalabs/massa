@@ -82,6 +82,7 @@ pub(crate) fn perform_draws(
         if cur_slot == last_slot {
             break;
         }
+        println!("DEBUG: Draw cycle: {:#?} at slot {}", cycle, cur_slot);
         cur_slot = cur_slot.get_next_slot(cfg.thread_count).map_err(|err| {
             PosError::OverflowError(format!("iteration slot overflow in perform_draws: {}", err))
         })?;

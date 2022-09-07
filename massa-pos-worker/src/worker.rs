@@ -55,6 +55,7 @@ impl SelectorThread {
         draws_result: PosResult<CycleDraws>,
     ) -> PosResult<()> {
         // write-lock the cache
+        println!("DEBUG: BEFORE CACHE WRITE LOCK");
         let (cache_cv, cache_lock) = &*self.cache;
         let mut cache_guard = cache_lock.write();
 
@@ -95,6 +96,7 @@ impl SelectorThread {
 
         // notify all waiters
         cache_cv.notify_all();
+        println!("DEBUG: AFTER CACHE WRITE LOCK");
 
         out_result
     }
