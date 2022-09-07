@@ -4,6 +4,7 @@ use std::{
     path::PathBuf,
 };
 
+use bitvec::vec::BitVec;
 use massa_hash::Hash;
 use massa_models::{
     address::{Address, AddressDeserializer},
@@ -64,10 +65,20 @@ impl PoSFinalState {
     /// Create the initial cycle based off the initial rolls.
     ///
     /// This should be called only if bootstrap did not happen.
-    pub fn create_initial_cycle(&mut self) {
+    pub fn create_initial_cycle(&mut self, periods_per_cycle: u64, thread_count: u8) {
+        let mut rng_seed = BitVec::with_capacity(
+            periods_per_cycle
+                .saturating_mul(thread_count as u64)
+                .try_into()
+                .unwrap(),
+        );
+        for _ in 0..thread_count {
+            // assume genesis blocks have a "False" seed bit to avoid passing them around
+            rng_seed.push(false);
+        }
         self.cycle_history.push_back(CycleInfo {
             cycle: 0,
-            rng_seed: Default::default(), // note: genesis hashes do not need to be fed
+            rng_seed,
             production_stats: Default::default(),
             roll_counts: self.initial_rolls.clone(),
             complete: false,
@@ -143,6 +154,11 @@ impl PoSFinalState {
         periods_per_cycle: u64,
         thread_count: u8,
     ) -> PosResult<()> {
+        let slots_per_cycle: usize = periods_per_cycle
+            .saturating_mul(thread_count as u64)
+            .try_into()
+            .unwrap();
+
         // compute the current cycle from the given slot
         let cycle = slot.get_cycle(periods_per_cycle);
 
@@ -158,7 +174,9 @@ impl PoSFinalState {
                 self.cycle_history.push_back(CycleInfo {
                     cycle,
                     roll_counts: info.roll_counts.clone(),
-                    ..Default::default()
+                    rng_seed: BitVec::with_capacity(slots_per_cycle),
+                    production_stats: Default::default(),
+                    complete: false,
                 });
                 // add 1 for the current cycle and 1 for bootstrap safety
                 while self.cycle_history.len() > 6 {
@@ -201,6 +219,12 @@ impl PoSFinalState {
 
             // check for completion
             current.complete = slot.is_last_of_cycle(periods_per_cycle, thread_count);
+            // if the cycle just completed, check that it has the right number of seed bits
+            if current.complete {
+                if current.rng_seed.len() != slots_per_cycle {
+                    panic!("cycle completed with incorrect number of seed bits");
+                }
+            }
             cycle_completed = current.complete;
         }
 
