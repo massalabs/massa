@@ -202,7 +202,22 @@ impl FinalState {
                     "DEBUG: SERVER: retrieving last cycle changes ready for bootstrap: {:?}",
                     changes.roll_state_changes.clone()
                 );
-                res_changes.roll_state_changes = changes.roll_state_changes.clone();
+                res_changes
+                    .roll_state_changes
+                    .deferred_credits
+                    .nested_extend(changes.roll_state_changes.deferred_credits.clone());
+                res_changes
+                    .roll_state_changes
+                    .production_stats
+                    .extend(changes.roll_state_changes.production_stats.clone());
+                res_changes
+                    .roll_state_changes
+                    .roll_changes
+                    .extend(changes.roll_state_changes.roll_changes.clone());
+                res_changes
+                    .roll_state_changes
+                    .seed_bits
+                    .extend(changes.roll_state_changes.seed_bits.clone());
             }
         }
         Ok(res_changes)
