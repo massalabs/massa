@@ -19,7 +19,7 @@ async fn test_wishlist_delta_with_empty_remove() {
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     consensus_without_pool_test(
@@ -74,7 +74,7 @@ async fn test_wishlist_delta_remove() {
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     let mut storage = Storage::create_root();

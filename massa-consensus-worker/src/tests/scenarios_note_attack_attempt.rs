@@ -23,7 +23,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     let storage: Storage = Storage::create_root();
@@ -93,7 +93,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     // mock protocol & pool

@@ -30,7 +30,7 @@ async fn test_ti() {
         genesis_timestamp: MassaTime::now(0)
             .unwrap()
             .saturating_sub(MassaTime::from_millis(32000).checked_mul(1000).unwrap()),
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
     let mut storage = Storage::create_root();
 
@@ -190,7 +190,7 @@ async fn test_gpi() {
         genesis_timestamp: MassaTime::now(0)
             .unwrap()
             .saturating_sub(MassaTime::from_millis(32000).checked_mul(1000).unwrap()),
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     consensus_without_pool_test(
@@ -354,7 +354,7 @@ async fn test_old_stale() {
         genesis_timestamp: MassaTime::now(0)
             .unwrap()
             .saturating_sub(MassaTime::from_millis(32000).checked_mul(1000).unwrap()),
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     consensus_without_pool_test(

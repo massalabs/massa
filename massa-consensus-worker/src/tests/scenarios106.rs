@@ -28,7 +28,7 @@ async fn test_unsorted_block() {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
         max_future_processing_blocks: 10,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     let mut storage = Storage::create_root();
@@ -183,7 +183,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
         genesis_timestamp: MassaTime::now(0).unwrap().saturating_sub(2000.into()),
         future_block_processing_max_periods: 3,
         max_future_processing_blocks: 5,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     let mut storage = Storage::create_root();
@@ -303,7 +303,7 @@ async fn test_too_many_blocks_in_the_future() {
         genesis_timestamp: MassaTime::now(0).unwrap().saturating_sub(2000.into()),
         max_future_processing_blocks: 2,
         t0: 1000.into(),
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     let mut storage = Storage::create_root();
@@ -416,7 +416,7 @@ async fn test_dep_in_back_order() {
             .unwrap()
             .saturating_sub(MassaTime::from_millis(1000).checked_mul(1000).unwrap()),
         t0: 1000.into(),
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     let mut storage = Storage::create_root();
@@ -608,7 +608,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
             .saturating_sub(MassaTime::from_millis(1000).checked_mul(1000).unwrap()),
         max_dependency_blocks: 2,
         t0: 1000.into(),
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
     tokio::time::sleep(Duration::from_millis(1000)).await;
     let mut storage = Storage::create_root();
@@ -761,7 +761,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
             .saturating_sub(MassaTime::from_millis(1000).checked_mul(1000).unwrap()),
         max_dependency_blocks: 7,
         t0: 1000.into(),
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
     let mut storage = Storage::create_root();
 
