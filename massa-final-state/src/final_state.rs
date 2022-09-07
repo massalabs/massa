@@ -30,7 +30,7 @@ pub struct FinalState {
     pub executed_ops: ExecutedOps,
     /// history of recent final state changes, useful for streaming bootstrap
     /// `front = oldest`, `back = newest`
-    pub changes_history: VecDeque<(Slot, StateChanges)>,
+    pub(crate) changes_history: VecDeque<(Slot, StateChanges)>,
 }
 
 impl FinalState {
