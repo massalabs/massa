@@ -68,7 +68,7 @@ pub struct PoSFinalState {
     pub thread_count: u8,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone)]
 /// Structure containing all the PoS deferred credits information
 pub struct DeferredCredits(pub BTreeMap<Slot, PreHashMap<Address, Amount>>);
 
@@ -431,7 +431,7 @@ impl ProductionStats {
 }
 
 /// Recap of all PoS changes
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone)]
 pub struct PoSChanges {
     /// extra block seed bits added
     pub seed_bits: BitVec<u8>,
@@ -448,6 +448,13 @@ pub struct PoSChanges {
 }
 
 impl PoSChanges {
+    /// Check if changes are empty
+    pub fn is_empty(&self) -> bool {
+        self.seed_bits.is_empty()
+            && self.roll_changes.is_empty()
+            && self.production_stats.is_empty()
+            && self.deferred_credits.0.is_empty()
+    }
     /// Extends the current `PosChanges` with another one
     pub fn extend(&mut self, other: PoSChanges) {
         // extend seed bits
