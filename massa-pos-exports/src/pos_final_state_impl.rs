@@ -67,8 +67,7 @@ impl PoSFinalState {
     pub fn create_initial_cycle(&mut self) {
         self.cycle_history.push_back(CycleInfo {
             cycle: 0,
-            // TODO: Feed with genesis block hashes
-            rng_seed: Default::default(),
+            rng_seed: Default::default(), // note: genesis hashes do not need to be fed
             production_stats: Default::default(),
             roll_counts: self.initial_rolls.clone(),
             complete: false,
@@ -151,7 +150,7 @@ impl PoSFinalState {
         // push a new empty CycleInfo at the back of self.cycle_history and set its cycle = C
         // pop_front from cycle_history until front() represents cycle C-4 or later
         // (not C-3 because we might need older endorsement draws on the limit between 2 cycles)
-        if let Some(info) = self.cycle_history.iter().last() {
+        if let Some(info) = self.cycle_history.back() {
             if info.cycle != cycle {
                 self.cycle_history.push_back(CycleInfo {
                     cycle,
@@ -159,7 +158,7 @@ impl PoSFinalState {
                     ..Default::default()
                 });
                 // add 1 for the current cycle and 1 for bootstrap safety
-                while self.cycle_history.len() as u64 > 6 {
+                while self.cycle_history.len() > 6 {
                     self.cycle_history.pop_front();
                 }
             }

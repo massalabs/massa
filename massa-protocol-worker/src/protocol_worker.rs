@@ -386,7 +386,7 @@ impl ProtocolWorker {
                 }
                 // Remove the knowledge that we asked this block to nodes.
                 self.remove_asked_blocks_of_node(&remove)?;
-                
+
                 // Remove from the wishlist.
                 for block_id in remove.iter() {
                     self.block_wishlist.remove(block_id);
