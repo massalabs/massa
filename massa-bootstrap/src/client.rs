@@ -135,7 +135,7 @@ async fn stream_final_state(
                             final_state_changes.roll_state_changes,
                             slot,
                             cfg.periods_per_cycle,
-                            cfg.thread_count
+                            cfg.thread_count,
                         )?;
                     }
                     write_final_state.slot = slot;
@@ -371,6 +371,30 @@ async fn bootstrap_from_server(
             }
         };
     }
+    println!(
+        "DEBUG: SERVER: Cycle history: {:?}",
+        global_bootstrap_state
+            .final_state
+            .read()
+            .pos_state
+            .cycle_history
+    );
+    println!(
+        "DEBUG: SERVER: Deferred credits: {:?}",
+        global_bootstrap_state
+            .final_state
+            .read()
+            .pos_state
+            .deferred_credits
+    );
+    println!(
+        "DEBUG: SERVER: Initial seeds: {:?}",
+        global_bootstrap_state
+            .final_state
+            .read()
+            .pos_state
+            .initial_seeds
+    );
     info!("Successful bootstrap");
     Ok(())
 }

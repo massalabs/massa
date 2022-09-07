@@ -96,7 +96,7 @@ pub const MAX_DATA_ASYNC_MESSAGE: u64 = 1_000_000;
 /// Maximum operation validity period count
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
-pub const PERIODS_PER_CYCLE: u64 = 10;
+pub const PERIODS_PER_CYCLE: u64 = 8;
 /// PoS saved cycles: number of cycles saved in `PoSFinalState`
 pub const POS_SAVED_CYCLES: u64 = 4;
 /// Maximum size batch of data in a part of the ledger

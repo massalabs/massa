@@ -167,6 +167,8 @@ impl PoSFinalState {
             panic!("PoS History shouldn't be empty here.");
         }
 
+        println!("DEBUG: Cycles : {:?}", self.cycle_history);
+
         // update cycle data
         let cycle_completed: bool;
         {

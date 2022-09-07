@@ -220,7 +220,9 @@ impl BootstrapServer {
                             match manage_bootstrap(&config, &mut server, data_graph, data_peers, data_execution, compensation_millis, version).await {
                                 Ok(_) => {
                                     info!("bootstrapped peer {}", remote_addr);
-                                    println!("DEBUG: Compute initial draws client: {:?}", data_execution_debug.read().pos_state.selector.get_entire_selection());
+                                    println!("DEBUG: SERVER: Cycle history: {:?}", data_execution_debug.read().pos_state.cycle_history);
+                                    println!("DEBUG: SERVER: Deferred credits: {:?}", data_execution_debug.read().pos_state.deferred_credits);
+                                    println!("DEBUG: SERVER: Initial seeds: {:?}", data_execution_debug.read().pos_state.initial_seeds);
                                 },
                                 Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
                                 Err(err) => {

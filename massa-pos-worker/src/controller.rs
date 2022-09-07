@@ -93,7 +93,6 @@ impl SelectorController for SelectorControllerImpl {
         let (_cache_cv, cache_lock) = &*self.cache;
         let cache_guard = cache_lock.read();
         let cache = cache_guard.as_ref().map_err(|err| err.clone())?;
-        println!("DEBUG: In selection cache: {:#?}", cache.0);
         cache
             .get(cycle)
             .and_then(|selections| selections.draws.get(&slot).cloned())
@@ -110,7 +109,7 @@ impl SelectorController for SelectorControllerImpl {
         let (_cache_cv, cache_lock) = &*self.cache;
         let cache_guard = cache_lock.read();
         let cache = cache_guard.as_ref().map_err(|err| err.clone())?;
-        println!("DEBUG: In producer cache: {:#?}", cache.0);
+        //println!("DEBUG: In producer cache: {:#?}", cache.0);
         cache
             .get(cycle)
             .and_then(|selections| selections.draws.get(&slot).map(|s| s.producer))
