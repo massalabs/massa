@@ -110,15 +110,15 @@ impl BootstrapServer {
         massa_trace!("bootstrap.lib.run", {});
         let mut listener = self.establisher.get_listener(self.bind).await?;
         let mut bootstrap_sessions = FuturesUnordered::new();
-        let cache_timeout = self.bootstrap_config.cache_duration.to_duration();
-        let mut bootstrap_data: Option<(
-            BootstrapableGraph,
-            BootstrapPeers,
-            Arc<RwLock<FinalState>>,
-        )> = None;
-        let cache_timer = sleep(cache_timeout);
+        //let cache_timeout = self.bootstrap_config.cache_duration.to_duration();
+        // let mut bootstrap_data: Option<(
+        //     BootstrapableGraph,
+        //     BootstrapPeers,
+        //     Arc<RwLock<FinalState>>,
+        // )> = None;
+        //let cache_timer = sleep(cache_timeout);
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
-        tokio::pin!(cache_timer);
+        //tokio::pin!(cache_timer);
         /*
             select! without the "biased" modifier will randomly select the 1st branch to check,
             then will check the next ones in the order they are written.
@@ -138,10 +138,10 @@ impl BootstrapServer {
                 },
 
                 // cache cleanup timeout
-                _ = &mut cache_timer, if bootstrap_data.is_some() => {
-                    massa_trace!("bootstrap.lib.run.cache_unload", {});
-                    bootstrap_data = None;
-                }
+                // _ = &mut cache_timer, if bootstrap_data.is_some() => {
+                //     massa_trace!("bootstrap.lib.run.cache_unload", {});
+                //     bootstrap_data = None;
+                // }
 
                 // bootstrap session finished
                 Some(_) = bootstrap_sessions.next() => {
@@ -190,24 +190,27 @@ impl BootstrapServer {
                     }
 
                     // load cache if absent
-                    if bootstrap_data.is_none() {
-                        massa_trace!("bootstrap.lib.run.select.accept.cache_load.start", {});
+                    // if bootstrap_data.is_none() {
+                    //     massa_trace!("bootstrap.lib.run.select.accept.cache_load.start", {});
 
-                        // Note that all requests are done simultaneously except for the consensus graph that is done after the others.
-                        // This is done to ensure that the execution bootstrap state is older than the consensus state.
-                        // If the consensus state snapshot is older than the execution state snapshot,
-                        //   the execution final ledger will be in the future after bootstrap, which causes an inconsistency.
-                        let peer_boot = self.network_command_sender.get_bootstrap_peers().await?;
-                        let graph_boot = self.consensus_command_sender.get_bootstrap_state().await?;
-                        bootstrap_data = Some((graph_boot, peer_boot, self.final_state.clone()));
-                        cache_timer.set(sleep(cache_timeout));
-                    }
-                    massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
+                    //     // Note that all requests are done simultaneously except for the consensus graph that is done after the others.
+                    //     // This is done to ensure that the execution bootstrap state is older than the consensus state.
+                    //     // If the consensus state snapshot is older than the execution state snapshot,
+                    //     //   the execution final ledger will be in the future after bootstrap, which causes an inconsistency.
+                    //     let peer_boot = self.network_command_sender.get_bootstrap_peers().await?;
+                    //     let graph_boot = self.consensus_command_sender.get_bootstrap_state().await?;
+                    //     bootstrap_data = Some((graph_boot, peer_boot, self.final_state.clone()));
+                    //     cache_timer.set(sleep(cache_timeout));
+                    // }
+                    // massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
 
                     // launch bootstrap
                     let compensation_millis = self.compensation_millis;
                     let version = self.version;
-                    let (data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
+                    let data_graph = self.consensus_command_sender.get_bootstrap_state().await?;
+                    let data_peers = self.network_command_sender.get_bootstrap_peers().await?;
+                    let data_execution = self.final_state.clone();
+                    // let (data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
                     let keypair = self.keypair.clone();
                     let config = self.bootstrap_config.clone();
                     bootstrap_sessions.push(async move {
