@@ -151,7 +151,10 @@ impl PoSFinalState {
         // pop_front from cycle_history until front() represents cycle C-4 or later
         // (not C-3 because we might need older endorsement draws on the limit between 2 cycles)
         if let Some(info) = self.cycle_history.back() {
-            if info.cycle != cycle {
+            if cycle == info.cycle && !info.complete {
+                // extend the last incomplete cycle
+            } else if info.cycle.checked_add(1) == Some(cycle) && info.complete {
+                // the previous cycle is complete, push a new incomplete/empty one to extend
                 self.cycle_history.push_back(CycleInfo {
                     cycle,
                     roll_counts: info.roll_counts.clone(),
@@ -161,6 +164,10 @@ impl PoSFinalState {
                 while self.cycle_history.len() > 6 {
                     self.cycle_history.pop_front();
                 }
+            } else {
+                return Err(PosError::OverflowError(
+                    "invalid cycle sequence in PoS final state".into(),
+                ));
             }
         } else {
             self.cycle_history.push_back(CycleInfo {
