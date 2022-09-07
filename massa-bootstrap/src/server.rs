@@ -148,7 +148,7 @@ impl BootstrapServer {
                     println!("DEBUG: Session finished len = {:#?}", bootstrap_sessions.len());
                     if bootstrap_sessions.is_empty() {
                         println!("DEBUG: Session finished");
-                        bootstrap_sessions.clear();
+                        bootstrap_sessions = FuturesUnordered::new();
                     }
                     massa_trace!("bootstrap.session.finished", {"active_count": bootstrap_sessions.len()});
                 }
