@@ -69,7 +69,10 @@ async fn stream_final_state(
                     final_state_changes,
                 } => {
                     println!("DEBUG: CLIENT: slot of the bootstrap part: {}", slot);
-                    println!("DEBUG: CLIENT: final_state_changes part: {:?}", final_state_changes);
+                    println!(
+                        "DEBUG: CLIENT: final_state_changes part: {:?}",
+                        final_state_changes
+                    );
                     let mut write_final_state = global_bootstrap_state.final_state.write();
                     let last_key = write_final_state.ledger.set_ledger_part(ledger_data)?;
                     let last_last_async_id = write_final_state
@@ -524,6 +527,7 @@ pub async fn get_state(
                             let _ = tokio::time::timeout(bootstrap_config.write_error_timeout.into(), client.send(&BootstrapClientMessage::BootstrapError { error: e.to_string() })).await;
                         }
                         Ok(()) => {
+                            println!("DEBUG: CLIENT: State slot end bootstrap: {}", global_bootstrap_state.final_state.read().slot);
                             return Ok(global_bootstrap_state)
                         }
                     }
