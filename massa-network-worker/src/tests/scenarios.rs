@@ -2,7 +2,7 @@
 
 // To start alone RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1
 use super::tools;
-use crate::messages::{Message, MessageDeserializer, MessageSerializer};
+use crate::messages::{Message, MessageDeserializer};
 use crate::node_worker::NodeWorker;
 use crate::tests::tools::{get_dummy_block_id, get_transaction};
 use crate::NetworkError;
@@ -30,9 +30,8 @@ use massa_models::{
 use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
 use massa_network_exports::{
     AskForBlocksInfo, BlockInfoReply, ConnectionClosureReason, ConnectionId, HandshakeErrorType,
-    PeerInfo, PeerType, ReplyForBlocksInfo,
+    PeerInfo, PeerType,
 };
-use massa_serialization::Serializer;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
@@ -169,9 +168,9 @@ async fn test_node_worker_operations_message() {
 
     let keypair = KeyPair::generate();
     let mock_node_id = NodeId(keypair.get_public_key());
+
     // Create transaction.
     let transaction = get_transaction(50, 10);
-    let ref_id = transaction.id;
 
     let node_fn_handle = tokio::spawn(async move {
         NodeWorker::new(
@@ -189,7 +188,7 @@ async fn test_node_worker_operations_message() {
     // Send operations message.
     node_command_tx
         .send(NodeCommand::SendOperations(
-            vec![ref_id].iter().copied().collect(),
+            vec![transaction].into_iter().collect(),
         ))
         .await
         .unwrap();
@@ -764,7 +763,6 @@ async fn test_block_not_found() {
         ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
 
-    let message_serializer = MessageSerializer::new();
     tools::network_test(
         network_conf.clone(),
         temp_peers_file,
@@ -787,18 +785,7 @@ async fn test_block_not_found() {
 
             // Send ask for block message from connected peer
             let wanted_hash = get_dummy_block_id("default_val");
-            let mut message_serialized = Vec::new();
-            message_serializer
-                .serialize(
-                    &Message::AskForBlocks(vec![(wanted_hash, AskForBlocksInfo::Info)]),
-                    &mut message_serialized
-                ).unwrap();
-            conn1_w
-                .send(
-                    &message_serialized,
-                ).await
-                .expect("Fail to serialize message");
-            conn1_w.send(&message_serialized).await.unwrap();
+            conn1_w.send(&Message::AskForBlocks(vec![(wanted_hash, AskForBlocksInfo::Info)])).await.unwrap();
 
             // assert it is sent to protocol
             if let Some((mut list, node)) =
@@ -817,7 +804,7 @@ async fn test_block_not_found() {
 
             // reply with block not found
             network_command_sender
-                .send_block_info(conn1_id, vec![(wanted_hash,  ReplyForBlocksInfo::NotFound)])
+                .send_block_info(conn1_id, vec![(wanted_hash,  BlockInfoReply::NotFound)])
                 .await
                 .unwrap();
 
@@ -890,28 +877,17 @@ async fn test_block_not_found() {
             }
 
             // test with max_ask_blocks_per_message > 3 sending the message straight to the connection.
-            // the message is rejected by the receiver.
+            // the message is not rejected by the receiver.
             let wanted_hash1 = (get_dummy_block_id("default_val1"), AskForBlocksInfo::Info);
             let wanted_hash2 = (get_dummy_block_id("default_val2"), AskForBlocksInfo::Info);
             let wanted_hash3 = (get_dummy_block_id("default_val3"), AskForBlocksInfo::Info);
             let wanted_hash4 = (get_dummy_block_id("default_val4"), AskForBlocksInfo::Info);
-            let mut message_serialized = Vec::new();
-            message_serializer
-                .serialize(
-                    &Message::AskForBlocks(vec![
+            conn1_w.send(&Message::AskForBlocks(vec![
                         wanted_hash1,
                         wanted_hash2,
                         wanted_hash3,
                         wanted_hash4,
-                    ]),
-                    &mut message_serialized
-                ).unwrap();
-            conn1_w
-                .send(
-                    &message_serialized,
-                ).await
-                .expect("Fail to serialize message");
-            conn1_w.send(&message_serialized).await.unwrap();
+                    ])).await.unwrap();
             // assert it is sent to protocol
             if tools::wait_network_event(
                 &mut network_event_receiver,
@@ -922,7 +898,7 @@ async fn test_block_not_found() {
                 },
             )
             .await
-            .is_some()
+            .is_none()
             {
                 panic!("AskedForBlocks with more max_ask_blocks_per_message forward blocks");
             }
@@ -1069,7 +1045,6 @@ async fn test_operation_messages() {
         ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
 
-    let message_serializer = MessageSerializer::new();
     tools::network_test(
         network_conf.clone(),
         temp_peers_file,
@@ -1092,15 +1067,10 @@ async fn test_operation_messages() {
 
             // Send transaction message from connected peer
             let transaction = get_transaction(50, 10);
-            let ref_id = transaction.id;
-            let mut message_serialized = Vec::new();
-            message_serializer
-                .serialize(
-                    &Message::Operations(vec![transaction.clone()]),
-                    &mut message_serialized,
-                )
-                .expect("Fail to serialize message");
-            conn1_w.send(&message_serialized).await.unwrap();
+            conn1_w
+                .send(&Message::Operations(vec![transaction.clone()]))
+                .await
+                .unwrap();
 
             // assert it is sent to protocol
             if let Some((operations, node)) =
@@ -1124,7 +1094,7 @@ async fn test_operation_messages() {
 
             // reply with another transaction
             network_command_sender
-                .send_operations(conn1_id, vec![ref_id2].iter().copied().collect())
+                .send_operations(conn1_id, vec![transaction2].into_iter().collect())
                 .await
                 .unwrap();
 
@@ -1190,7 +1160,6 @@ async fn test_endorsements_messages() {
         ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
 
-    let message_serializer = MessageSerializer::new();
     tools::network_test(
         network_conf.clone(),
         temp_peers_file,
@@ -1225,14 +1194,10 @@ async fn test_endorsements_messages() {
             )
             .unwrap();
             let ref_id = endorsement.id;
-            let mut message_serialized = Vec::new();
-            message_serializer
-                .serialize(
-                    &Message::Endorsements(vec![endorsement]),
-                    &mut message_serialized,
-                )
-                .expect("Fail to serialize message");
-            conn1_w.send(&message_serialized).await.unwrap();
+            conn1_w
+                .send(&Message::Endorsements(vec![endorsement]))
+                .await
+                .unwrap();
 
             // assert it is sent to protocol
             if let Some((endorsements, node)) =
