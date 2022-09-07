@@ -64,7 +64,7 @@ pub struct PoSFinalState {
     pub address_deserializer: AddressDeserializer,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 /// Structure containing all the PoS deferred credits information
 pub struct DeferredCredits(pub BTreeMap<Slot, PreHashMap<Address, Amount>>);
 
@@ -427,7 +427,7 @@ impl ProductionStats {
 }
 
 /// Recap of all PoS changes
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct PoSChanges {
     /// extra block seed bits added
     pub seed_bits: BitVec<u8>,

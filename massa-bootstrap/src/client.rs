@@ -4,6 +4,7 @@ use massa_final_state::FinalState;
 use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::version::Version;
+use massa_pos_exports::PoSChanges;
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use nom::AsBytes;
@@ -129,6 +130,14 @@ async fn stream_final_state(
                     write_final_state
                         .async_pool
                         .apply_changes_unchecked(&final_state_changes.async_pool_changes);
+                    if final_state_changes.roll_state_changes != PoSChanges::default() {
+                        write_final_state.pos_state.apply_changes(
+                            final_state_changes.roll_state_changes,
+                            slot,
+                            cfg.periods_per_cycle,
+                            cfg.thread_count
+                        )?;
+                    }
                     write_final_state.slot = slot;
                     if let BootstrapClientMessage::AskFinalStatePart {
                         last_key: old_key,

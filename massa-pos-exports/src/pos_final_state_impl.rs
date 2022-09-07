@@ -164,10 +164,7 @@ impl PoSFinalState {
                 }
             }
         } else {
-            self.cycle_history.push_back(CycleInfo {
-                cycle,
-                ..Default::default()
-            });
+            panic!("PoS History shouldn't be empty here.");
         }
 
         // update cycle data
