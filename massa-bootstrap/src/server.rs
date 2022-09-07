@@ -210,12 +210,16 @@ impl BootstrapServer {
                     let (data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
                     let keypair = self.keypair.clone();
                     let config = self.bootstrap_config.clone();
+                    let data_execution_debug = data_execution.clone();
                     bootstrap_sessions.push(async move {
                         //Socket lifetime
                         {
                             let mut server = BootstrapServerBinder::new(dplx, keypair, config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes);
                             match manage_bootstrap(&config, &mut server, data_graph, data_peers, data_execution, compensation_millis, version).await {
-                                Ok(_) => info!("bootstrapped peer {}", remote_addr),
+                                Ok(_) => {
+                                    info!("bootstrapped peer {}", remote_addr);
+                                    println!("DEBUG: Compute initial draws client: {:?}", data_execution_debug.read().pos_state.selector.get_entire_selection());
+                                },
                                 Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
                                 Err(err) => {
                                     debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
