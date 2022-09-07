@@ -1183,7 +1183,7 @@ impl BlockGraph {
         header: WrappedHeader,
     ) -> Result<(), GraphError> {
         let reason = DiscardReason::Invalid("invalid".to_string());
-        self.maybe_note_attack_attempt(&reason, &block_id);
+        self.maybe_note_attack_attempt(&reason, block_id);
         massa_trace!("consensus.block_graph.process.invalid_block", {"block_id": block_id, "reason": reason});
 
         // add to discard
@@ -1192,14 +1192,14 @@ impl BlockGraph {
             BlockStatus::Discarded {
                 slot: header.content.slot,
                 creator: header.creator_address,
-                parents: header.content.parents.clone(),
+                parents: header.content.parents,
                 reason,
                 sequence_number: BlockGraph::new_sequence_number(&mut self.sequence_counter),
             },
         );
         self.discarded_index.insert(*block_id);
 
-        return Ok(());
+        Ok(())
     }
 
     /// Note an attack attempt if the discard reason indicates one.

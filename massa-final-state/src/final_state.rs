@@ -166,7 +166,7 @@ impl FinalState {
                         })
                         .collect(),
                 );
-                res_changes.ledger_changes = ledger_changes;
+                res_changes.ledger_changes.0.extend(ledger_changes.0);
             }
 
             // Get async pool changes that concern ids <= last_id_async_pool
@@ -184,7 +184,10 @@ impl FinalState {
                         })
                         .collect(),
                 );
-                res_changes.async_pool_changes = async_pool_changes;
+                res_changes
+                    .async_pool_changes
+                    .0
+                    .extend(async_pool_changes.0);
             }
 
             println!(

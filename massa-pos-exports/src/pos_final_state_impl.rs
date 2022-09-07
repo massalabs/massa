@@ -218,10 +218,8 @@ impl PoSFinalState {
             // check for completion
             current.complete = slot.is_last_of_cycle(self.periods_per_cycle, self.thread_count);
             // if the cycle just completed, check that it has the right number of seed bits
-            if current.complete {
-                if current.rng_seed.len() != slots_per_cycle {
-                    panic!("cycle completed with incorrect number of seed bits");
-                }
+            if current.complete && current.rng_seed.len() != slots_per_cycle {
+                panic!("cycle completed with incorrect number of seed bits");
             }
             cycle_completed = current.complete;
         }
