@@ -62,6 +62,10 @@ pub struct PoSFinalState {
     pub deferred_credit_length_deserializer: U64VarIntDeserializer,
     /// address deserializer
     pub address_deserializer: AddressDeserializer,
+    /// periods per cycle
+    pub periods_per_cycle: u64,
+    /// thread count
+    pub thread_count: u8,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]

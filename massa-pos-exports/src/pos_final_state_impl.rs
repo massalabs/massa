@@ -4,6 +4,7 @@ use std::{
     path::PathBuf,
 };
 
+use bitvec::vec::BitVec;
 use massa_hash::Hash;
 use massa_models::{
     address::{Address, AddressDeserializer},
@@ -22,6 +23,7 @@ impl PoSFinalState {
     pub fn new(
         initial_seed_string: &String,
         initial_rolls_path: &PathBuf,
+        periods_per_cycle: u64,
         thread_count: u8,
         selector: Box<dyn SelectorController>,
     ) -> Result<Self, PosError> {
@@ -58,6 +60,8 @@ impl PoSFinalState {
             slot_deserializer,
             deferred_credit_length_deserializer,
             address_deserializer,
+            periods_per_cycle,
+            thread_count,
         })
     }
 
@@ -65,9 +69,19 @@ impl PoSFinalState {
     ///
     /// This should be called only if bootstrap did not happen.
     pub fn create_initial_cycle(&mut self) {
+        let mut rng_seed = BitVec::with_capacity(
+            self.periods_per_cycle
+                .saturating_mul(self.thread_count as u64)
+                .try_into()
+                .unwrap(),
+        );
+        for _ in 0..self.thread_count {
+            // assume genesis blocks have a "False" seed bit to avoid passing them around
+            rng_seed.push(false);
+        }
         self.cycle_history.push_back(CycleInfo {
             cycle: 0,
-            rng_seed: Default::default(), // note: genesis hashes do not need to be fed
+            rng_seed,
             production_stats: Default::default(),
             roll_counts: self.initial_rolls.clone(),
             complete: false,
@@ -136,15 +150,15 @@ impl PoSFinalState {
     ///     set complete=true for cycle C in the history
     ///     compute the seed hash and notifies the PoSDrawer for cycle C+3
     ///
-    pub fn apply_changes(
-        &mut self,
-        changes: PoSChanges,
-        slot: Slot,
-        periods_per_cycle: u64,
-        thread_count: u8,
-    ) -> PosResult<()> {
+    pub fn apply_changes(&mut self, changes: PoSChanges, slot: Slot) -> PosResult<()> {
+        let slots_per_cycle: usize = self
+            .periods_per_cycle
+            .saturating_mul(self.thread_count as u64)
+            .try_into()
+            .unwrap();
+
         // compute the current cycle from the given slot
-        let cycle = slot.get_cycle(periods_per_cycle);
+        let cycle = slot.get_cycle(self.periods_per_cycle);
 
         // if cycle C is absent from self.cycle_history:
         // push a new empty CycleInfo at the back of self.cycle_history and set its cycle = C
@@ -158,7 +172,9 @@ impl PoSFinalState {
                 self.cycle_history.push_back(CycleInfo {
                     cycle,
                     roll_counts: info.roll_counts.clone(),
-                    ..Default::default()
+                    rng_seed: BitVec::with_capacity(slots_per_cycle),
+                    production_stats: Default::default(),
+                    complete: false,
                 });
                 // add 1 for the current cycle and 1 for bootstrap safety
                 while self.cycle_history.len() > 6 {
@@ -200,7 +216,13 @@ impl PoSFinalState {
             }
 
             // check for completion
-            current.complete = slot.is_last_of_cycle(periods_per_cycle, thread_count);
+            current.complete = slot.is_last_of_cycle(self.periods_per_cycle, self.thread_count);
+            // if the cycle just completed, check that it has the right number of seed bits
+            if current.complete {
+                if current.rng_seed.len() != slots_per_cycle {
+                    panic!("cycle completed with incorrect number of seed bits");
+                }
+            }
             cycle_completed = current.complete;
         }
 
