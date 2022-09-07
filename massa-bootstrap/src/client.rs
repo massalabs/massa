@@ -84,6 +84,11 @@ async fn stream_final_state(
                     write_final_state
                         .async_pool
                         .apply_changes_unchecked(&final_state_changes.async_pool_changes);
+                    if !final_state_changes.roll_state_changes.is_empty() {
+                        write_final_state
+                            .pos_state
+                            .apply_changes(final_state_changes.roll_state_changes, slot)?;
+                    }
                     write_final_state.slot = slot;
                     if let BootstrapClientMessage::AskFinalStatePart {
                         last_key: old_key,

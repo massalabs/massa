@@ -62,6 +62,10 @@ pub struct PoSFinalState {
     pub deferred_credit_length_deserializer: U64VarIntDeserializer,
     /// address deserializer
     pub address_deserializer: AddressDeserializer,
+    /// periods per cycle
+    pub periods_per_cycle: u64,
+    /// thread count
+    pub thread_count: u8,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -444,6 +448,13 @@ pub struct PoSChanges {
 }
 
 impl PoSChanges {
+    /// Check if changes are empty
+    pub fn is_empty(&self) -> bool {
+        self.seed_bits.is_empty()
+            && self.roll_changes.is_empty()
+            && self.production_stats.is_empty()
+            && self.deferred_credits.0.is_empty()
+    }
     /// Extends the current `PosChanges` with another one
     pub fn extend(&mut self, other: PoSChanges) {
         // extend seed bits

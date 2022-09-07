@@ -168,6 +168,7 @@ async fn launch(
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         thread_count: THREAD_COUNT,
+        periods_per_cycle: PERIODS_PER_CYCLE,
         endorsement_count: ENDORSEMENT_COUNT,
         max_advertise_length: MAX_ADVERTISE_LENGTH,
         max_bootstrap_async_pool_changes: MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,

@@ -260,7 +260,6 @@ pub struct MessageDeserializer {
     endorsements_length_deserializer: U32VarIntDeserializer,
     endorsement_deserializer: WrappedDeserializer<Endorsement, EndorsementDeserializer>,
     operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer,
-    operation_ids_deserializer: OperationIdsDeserializer,
     infos_deserializer: OperationIdsDeserializer,
     ip_addr_deserializer: IpAddrDeserializer,
 }
@@ -315,7 +314,6 @@ impl MessageDeserializer {
             operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer::new(
                 max_operations_per_message,
             ),
-            operation_ids_deserializer: OperationIdsDeserializer::new(max_operations_per_message),
             infos_deserializer: OperationIdsDeserializer::new(max_operations_per_block),
             ip_addr_deserializer: IpAddrDeserializer::new(),
         }
@@ -403,7 +401,7 @@ impl Deserializer<Message> for MessageDeserializer {
                                         }
                                         BlockInfoType::Info => Ok((rest, AskForBlocksInfo::Info)),
                                         BlockInfoType::Operations => self
-                                            .operation_ids_deserializer
+                                            .infos_deserializer
                                             .deserialize(rest)
                                             .map(|(rest, operation_ids)| {
                                                 (rest, AskForBlocksInfo::Operations(operation_ids))

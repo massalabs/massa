@@ -106,6 +106,7 @@ impl SelectorController for SelectorControllerImpl {
         let (_cache_cv, cache_lock) = &*self.cache;
         let cache_guard = cache_lock.read();
         let cache = cache_guard.as_ref().map_err(|err| err.clone())?;
+
         cache
             .get(cycle)
             .and_then(|selections| selections.draws.get(&slot).map(|s| s.producer))

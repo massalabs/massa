@@ -180,8 +180,8 @@ impl BootstrapServer {
                                 massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {"remote_addr": remote_addr});
                                 continue;
                             } else {
-                            // in list, expired
-                            occ.insert(now);
+                                // in list, expired
+                                occ.insert(now);
                             }
                         },
                         hash_map::Entry::Vacant(vac) => {
