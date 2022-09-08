@@ -220,14 +220,15 @@ impl BootstrapServer {
                     let config = self.bootstrap_config.clone();
 
                     bootstrap_sessions.push(async move {
-                        let data_graph = match consensus_command_sender.get_bootstrap_state().await {
+                        let (data_graph, data_peers) = tokio::join!(consensus_command_sender.get_bootstrap_state(), network_command_sender.get_bootstrap_peers());
+                        let data_graph = match data_graph {
                             Ok(v) => v,
                             Err(err) => {
                                 warn!("could not retrieve consensus bootstrap state: {}", err);
                                 return;
                             }
                         };
-                        let data_peers = match network_command_sender.get_bootstrap_peers().await {
+                        let data_peers = match data_peers {
                             Ok(v) => v,
                             Err(err) => {
                                 warn!("could not retrieve bootstrap peers: {}", err);
@@ -434,8 +435,6 @@ async fn manage_bootstrap(
     compensation_millis: i64,
     version: Version,
 ) -> Result<(), BootstrapError> {
-    println!(">>>>>>>>>>>>>>>>>>>>> START");
-
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: std::time::Duration = bootstrap_config.read_error_timeout.into();
 
@@ -555,7 +554,5 @@ async fn manage_bootstrap(
             },
         };
     };
-    println!(">>>>>>>>>>>>>>>>>>>>> FREE");
-
     result
 }
