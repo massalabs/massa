@@ -21,7 +21,7 @@ use serial_test::serial;
 async fn test_invalid_block_notified_as_attack_attempt() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        t0: 1000.into(),
+        t0: 32.into(),
         future_block_processing_max_periods: 50,
         ..ConsensusConfig::default()
     };
@@ -91,7 +91,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
 async fn test_invalid_header_notified_as_attack_attempt() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        t0: 1000.into(),
+        t0: 32.into(),
         future_block_processing_max_periods: 50,
         ..ConsensusConfig::default()
     };

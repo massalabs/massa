@@ -61,7 +61,7 @@ async fn test_consensus_asks_for_block() {
 async fn test_consensus_does_not_ask_for_block() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        t0: 1000.into(),
+        t0: 32.into(),
         future_block_processing_max_periods: 50,
         ..ConsensusConfig::default()
     };
