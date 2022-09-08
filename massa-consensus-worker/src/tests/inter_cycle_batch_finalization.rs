@@ -51,15 +51,6 @@ async fn test_inter_cycle_batch_finalization() {
     let staking_key =
         KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8").unwrap();
     let creator_addr = Address::from_public_key(&staking_key.get_public_key());
-    let roll_price = Amount::from_str("42").unwrap();
-    let initial_ledger = vec![(
-        creator_addr,
-        LedgerData {
-            balance: roll_price, // allows the address to buy 1 roll
-        },
-    )]
-    .into_iter()
-    .collect();
     let warmup_time: MassaTime = 1000.into();
     let margin_time: MassaTime = 300.into();
     let cfg = ConsensusConfig {

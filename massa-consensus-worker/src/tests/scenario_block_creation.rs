@@ -304,7 +304,7 @@ async fn test_interleaving_block_creation_with_reception() {
         thread_count,
         t0: 1000.into(),
         genesis_timestamp: MassaTime::now(0).unwrap().checked_add(1000.into()).unwrap(),
-        ..ConsensusConfig::default_with_staking_keys_and_ledger(&[keypair_1], &ledger)
+        ..ConsensusConfig::default()
     };
     // init roll count
     let mut roll_counts = RollCounts::default();
@@ -316,8 +316,6 @@ async fn test_interleaving_block_creation_with_reception() {
     updates.apply(&address_1, &update).unwrap();
     updates.apply(&address_2, &update).unwrap();
     roll_counts.apply_updates(&updates).unwrap();
-    let temp_roll_file = generate_roll_counts_file(&roll_counts);
-    cfg.initial_rolls_path = temp_roll_file.path().to_path_buf();
 
     tools::consensus_without_pool_with_storage_test(
         cfg.clone(),
