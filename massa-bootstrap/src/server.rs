@@ -13,7 +13,7 @@ use massa_final_state::{FinalState, StateChanges};
 use massa_graph::BootstrapableGraph;
 use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
-use massa_models::{slot::Slot, version::Version};
+use massa_models::{slot::Slot, version::Version, block::BlockId};
 use massa_network_exports::{BootstrapPeers, NetworkCommandSender};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -220,7 +220,10 @@ impl BootstrapServer {
                     let config = self.bootstrap_config.clone();
 
                     bootstrap_sessions.push(async move {
-                        let (data_graph, data_peers) = tokio::join!(consensus_command_sender.get_bootstrap_state(), network_command_sender.get_bootstrap_peers());
+                        //let (_, data_peers, _, _, _) = tokio::join!(consensus_command_sender.get_bootstrap_state(), network_command_sender.get_bootstrap_peers(), consensus_command_sender.get_bootstrap_state(), consensus_command_sender.get_bootstrap_state(), consensus_command_sender.get_bootstrap_state());
+                        //let (data_peers, _, _, _, _, _, _, _, _, _) = tokio::join!(network_command_sender.get_bootstrap_peers(), async { tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await }, async { vec![4u64; 40000000] }, async { vec![4u64; 40000000] },async { vec![4u64; 40000000] }, async { vec![4u64; 40000000] }, async { vec![4u64; 40000000] }, async { vec![4u64; 40000000] }, async { vec![4u64; 40000000] }, async { vec![4u64; 40000000] });
+                        let (data_peers, _, _, _, _, _, _, _, _, _) = tokio::join!(network_command_sender.get_bootstrap_peers(), async { tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await }, consensus_command_sender.get_bootstrap_state(), consensus_command_sender.get_bootstrap_state(), consensus_command_sender.get_bootstrap_state(), consensus_command_sender.get_bootstrap_state(), consensus_command_sender.get_bootstrap_state(), consensus_command_sender.get_bootstrap_state(), consensus_command_sender.get_bootstrap_state(), consensus_command_sender.get_bootstrap_state());
+                        let data_graph: Result<BootstrapableGraph, String> = Ok(BootstrapableGraph {final_blocks: vec![]});
                         let data_graph = match data_graph {
                             Ok(v) => v,
                             Err(err) => {
@@ -487,7 +490,9 @@ async fn manage_bootstrap(
         Ok(Ok(_)) => Ok(()),
     }?;
 
+    //data_graph.final_blocks.clear();
     let result = loop {
+        println!("DEBUG: Write timeout: {:#?}", write_timeout);
         match tokio::time::timeout(bootstrap_config.read_timeout.into(), server.next()).await {
             Err(_) => break Ok(()),
             Ok(Err(e)) => break Err(e),
@@ -533,7 +538,7 @@ async fn manage_bootstrap(
                     match tokio::time::timeout(
                         write_timeout,
                         server.send(BootstrapServerMessage::ConsensusState {
-                            graph: data_graph.clone(),
+                            graph: BootstrapableGraph{final_blocks: vec![]},
                         }),
                     )
                     .await
@@ -547,7 +552,9 @@ async fn manage_bootstrap(
                         Ok(Ok(_)) => Ok(()),
                     }?;
                 }
-                BootstrapClientMessage::BootstrapSuccess => break Ok(()),
+                BootstrapClientMessage::BootstrapSuccess => {
+                    break Ok(())
+                },
                 BootstrapClientMessage::BootstrapError { error } => {
                     break Err(BootstrapError::ReceivedError(error));
                 }

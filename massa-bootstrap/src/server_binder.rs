@@ -115,6 +115,7 @@ impl BootstrapServerBinder {
             }
         };
 
+        println!("DEBUG: Defore write");
         // send signature
         self.duplex.write_all(&sig.to_bytes()).await?;
 
@@ -126,6 +127,7 @@ impl BootstrapServerBinder {
 
         // send message
         self.duplex.write_all(&msg_bytes).await?;
+        println!("DEBUG: End write");
 
         // save prev sig
         self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
