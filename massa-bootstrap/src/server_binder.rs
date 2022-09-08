@@ -40,7 +40,7 @@ impl BootstrapServerBinder {
     /// * limit: limit max bytes per second (up and down)
     pub fn new(
         duplex: Duplex,
-        local_keypair: &KeyPair,
+        local_keypair: KeyPair,
         limit: f64,
         max_bootstrap_message_size: u32,
         thread_count: u8,
@@ -51,7 +51,7 @@ impl BootstrapServerBinder {
         BootstrapServerBinder {
             max_bootstrap_message_size,
             size_field_len,
-            local_keypair: local_keypair.clone(),
+            local_keypair,
             duplex: <Limiter>::new(limit).limit(duplex),
             prev_message: None,
             thread_count,
