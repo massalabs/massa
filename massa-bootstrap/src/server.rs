@@ -533,7 +533,7 @@ async fn manage_bootstrap(
                     match tokio::time::timeout(
                         write_timeout,
                         server.send(BootstrapServerMessage::ConsensusState {
-                            graph: BootstrapableGraph { final_blocks: vec![] },
+                            graph: data_graph.clone(),
                         }),
                     )
                     .await
