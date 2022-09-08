@@ -13,17 +13,8 @@ extern crate massa_logging;
 
 mod consensus_worker;
 mod tools;
-use std::sync::mpsc::SyncSender;
 
-use massa_consensus_exports::ConsensusError;
-use massa_graph::BootstrapableGraph;
 pub use tools::start_consensus_controller;
 
 #[cfg(test)]
 mod tests;
-
-pub(crate) enum Command {
-    GetBootstrapState {
-        response_tx: SyncSender<Result<Vec<u64>, ConsensusError>>,
-    },
-}

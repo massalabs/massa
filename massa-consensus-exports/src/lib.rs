@@ -8,12 +8,10 @@
 #![warn(unused_crate_dependencies)]
 
 pub use consensus_controller::{ConsensusCommandSender, ConsensusEventReceiver, ConsensusManager};
-pub use controller_trait::ConsensusController;
 pub use error::ConsensusError;
 pub use settings::ConsensusConfig;
 
 mod consensus_controller;
-mod controller_trait;
 
 /// consensus errors
 pub mod error;

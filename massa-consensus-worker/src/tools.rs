@@ -1,10 +1,5 @@
-use std::sync::mpsc::{sync_channel, SyncSender};
-
 use crate::consensus_worker::ConsensusWorker;
-use crate::Command;
-use massa_consensus_exports::error::ConsensusResult;
 use massa_consensus_exports::settings::ConsensusConfig;
-use massa_consensus_exports::ConsensusController;
 use massa_consensus_exports::{
     commands::{ConsensusCommand, ConsensusManagementCommand},
     error::{ConsensusError, ConsensusResult as Result},
@@ -16,27 +11,6 @@ use massa_graph::{settings::GraphConfig, BlockGraph, BootstrapableGraph};
 use massa_storage::Storage;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
-use std::sync::mpsc::channel;
-
-pub struct ConsensusControllerImpl {
-    /// input
-    pub(crate) input_mpsc: SyncSender<Command>,
-}
-
-impl ConsensusController for ConsensusControllerImpl {
-    fn export_bootstrap_state(&self) -> ConsensusResult<Vec<u64>> {
-        println!("AURELIEN: Call bootstrap state");
-        let (response_tx, response_rx) = sync_channel(100);
-        self.input_mpsc
-            .send(Command::GetBootstrapState { response_tx })
-            .unwrap();
-
-        let res = response_rx.recv().unwrap();
-        std::mem::drop(response_rx);
-        println!("AURELIEN: Received bootstrap state");
-        res
-    }
-}
 
 /// Creates a new consensus controller.
 ///
@@ -54,8 +28,7 @@ pub async fn start_consensus_controller(
 ) -> Result<(
     ConsensusCommandSender,
     ConsensusEventReceiver,
-    ConsensusManager,
-    Box<dyn ConsensusController>,
+    ConsensusManager
 )> {
     debug!("starting consensus controller");
     massa_trace!(
@@ -89,17 +62,12 @@ pub async fn start_consensus_controller(
         channels.selector_controller.clone(),
     )
     .await?;
-    let (input_sender, input_receiver) = sync_channel(100);
     let (command_tx, command_rx) = mpsc::channel::<ConsensusCommand>(cfg.channel_size);
     let (event_tx, event_rx) = mpsc::channel::<ConsensusEvent>(cfg.channel_size);
     let (manager_tx, manager_rx) = mpsc::channel::<ConsensusManagementCommand>(1);
     let cfg_copy = cfg.clone();
-    let controller = ConsensusControllerImpl {
-        input_mpsc: input_sender,
-    };
     let join_handle = tokio::spawn(async move {
         let res = ConsensusWorker::new(
-            input_receiver,
             cfg_copy,
             ConsensusWorkerChannels {
                 protocol_command_sender: channels.protocol_command_sender,
@@ -134,7 +102,6 @@ pub async fn start_consensus_controller(
         ConsensusManager {
             manager_tx,
             join_handle,
-        },
-        Box::new(controller),
+        }
     ))
 }

@@ -362,7 +362,6 @@ async fn launch(
         consensus_command_sender,
         consensus_event_receiver,
         consensus_manager,
-        consensus_controller,
     ) = start_consensus_controller(
         consensus_config.clone(),
         ConsensusChannels {
@@ -402,7 +401,6 @@ async fn launch(
 
     // launch bootstrap server
     let bootstrap_manager = start_bootstrap_server(
-        consensus_controller,
         consensus_command_sender.clone(),
         network_command_sender.clone(),
         final_state.clone(),

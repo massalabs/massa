@@ -8,7 +8,7 @@ use std::{
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use massa_async_pool::AsyncMessageId;
-use massa_consensus_exports::{ConsensusCommandSender, ConsensusController};
+use massa_consensus_exports::ConsensusCommandSender;
 use massa_final_state::{FinalState, StateChanges};
 use massa_graph::BootstrapableGraph;
 use massa_ledger_exports::get_address_from_key;
@@ -52,7 +52,6 @@ impl BootstrapManager {
 /// start a bootstrap server.
 /// Once your node will be ready, you may want other to bootstrap from you.
 pub async fn start_bootstrap_server(
-    consensus_controller: Box<dyn ConsensusController>,
     consensus_command_sender: ConsensusCommandSender,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
@@ -67,7 +66,6 @@ pub async fn start_bootstrap_server(
         let (manager_tx, manager_rx) = mpsc::channel::<()>(1);
         let join_handle = tokio::spawn(async move {
             BootstrapServer {
-                consensus_controller,
                 consensus_command_sender,
                 network_command_sender,
                 final_state,
@@ -93,7 +91,6 @@ pub async fn start_bootstrap_server(
 }
 
 struct BootstrapServer {
-    consensus_controller: Box<dyn ConsensusController>,
     consensus_command_sender: ConsensusCommandSender,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
@@ -216,8 +213,6 @@ impl BootstrapServer {
                     let compensation_millis = self.compensation_millis;
                     let version = self.version;
                     let consensus_command_sender = self.consensus_command_sender.clone();
-                    //let _ = self.consensus_controller.export_bootstrap_state();
-                    let  data_graph: Result<BootstrapableGraph, String> = Ok(BootstrapableGraph {final_blocks: vec![]});
                     let network_command_sender = self.network_command_sender.clone();
                     let data_execution = self.final_state.clone();
                     // let (data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
@@ -226,8 +221,8 @@ impl BootstrapServer {
 
                     bootstrap_sessions.push(async move {
                         let data_peers = network_command_sender.get_bootstrap_peers().await;
-                        let mut data_graph = consensus_command_sender.get_bootstrap_state().await;
-                        let mut data_graph = match data_graph {
+                        let data_graph = consensus_command_sender.get_bootstrap_state().await;
+                        let data_graph = match data_graph {
                             Ok(v) => v,
                             Err(err) => {
                                 warn!("could not retrieve consensus bootstrap state: {}", err);
@@ -437,7 +432,7 @@ pub async fn send_final_state_stream(
 async fn manage_bootstrap(
     bootstrap_config: &BootstrapConfig,
     server: &mut BootstrapServerBinder,
-    mut data_graph: BootstrapableGraph,
+    data_graph: BootstrapableGraph,
     data_peers: BootstrapPeers,
     final_state: Arc<RwLock<FinalState>>,
     compensation_millis: i64,

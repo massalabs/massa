@@ -7,8 +7,6 @@ use massa_models::{clique::Clique, stats::ConsensusStats};
 use massa_protocol_exports::ProtocolEventReceiver;
 use massa_storage::Storage;
 use std::collections::VecDeque;
-use parking_lot::RwLock;
-use std::sync::Arc;
 
 use tokio::{
     sync::{mpsc, oneshot},
