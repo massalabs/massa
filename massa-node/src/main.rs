@@ -358,22 +358,26 @@ async fn launch(
         channel_size: CHANNEL_SIZE,
     };
     // launch consensus controller
-    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
-        start_consensus_controller(
-            consensus_config.clone(),
-            ConsensusChannels {
-                execution_controller: execution_controller.clone(),
-                protocol_command_sender: protocol_command_sender.clone(),
-                protocol_event_receiver,
-                pool_command_sender: pool_manager.clone(),
-                selector_controller: selector_controller.clone(),
-            },
-            bootstrap_state.graph,
-            shared_storage.clone(),
-            bootstrap_state.compensation_millis,
-        )
-        .await
-        .expect("could not start consensus controller");
+    let (
+        consensus_command_sender,
+        consensus_event_receiver,
+        consensus_manager,
+        consensus_controller,
+    ) = start_consensus_controller(
+        consensus_config.clone(),
+        ConsensusChannels {
+            execution_controller: execution_controller.clone(),
+            protocol_command_sender: protocol_command_sender.clone(),
+            protocol_event_receiver,
+            pool_command_sender: pool_manager.clone(),
+            selector_controller: selector_controller.clone(),
+        },
+        bootstrap_state.graph,
+        shared_storage.clone(),
+        bootstrap_state.compensation_millis,
+    )
+    .await
+    .expect("could not start consensus controller");
 
     // launch factory
     let factory_config = FactoryConfig {
@@ -396,6 +400,7 @@ async fn launch(
 
     // launch bootstrap server
     let bootstrap_manager = start_bootstrap_server(
+        consensus_controller,
         consensus_command_sender.clone(),
         network_command_sender.clone(),
         final_state.clone(),

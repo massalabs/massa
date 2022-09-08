@@ -12,9 +12,12 @@ use massa_models::{block::WrappedHeader, prehash::PreHashMap};
 use massa_models::{prehash::PreHashSet, stats::ConsensusStats};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
 use massa_time::MassaTime;
-use std::{cmp::max, collections::VecDeque};
+use std::time::{Duration, Instant};
+use std::{cmp::max, collections::VecDeque, sync::mpsc::Receiver};
 use tokio::time::{sleep, sleep_until, Sleep};
 use tracing::{info, warn};
+
+use crate::Command;
 
 /// Manages consensus.
 pub struct ConsensusWorker {
@@ -45,6 +48,7 @@ pub struct ConsensusWorker {
     stats_desync_detection_timespan: MassaTime,
     /// time at which the node was launched (used for desynchronization detection)
     launch_time: MassaTime,
+    pub(crate) input_receiver: Receiver<Command>,
 }
 
 impl ConsensusWorker {
@@ -59,6 +63,7 @@ impl ConsensusWorker {
     /// * `controller_event_tx`: Channel sending out consensus events.
     /// * `controller_manager_rx`: Channel receiving consensus management commands.
     pub(crate) async fn new(
+        input_receiver: Receiver<Command>,
         cfg: ConsensusConfig,
         channels: ConsensusWorkerChannels,
         block_db: BlockGraph,
@@ -138,6 +143,7 @@ impl ConsensusWorker {
 
         Ok(ConsensusWorker {
             block_db,
+            input_receiver,
             previous_slot,
             next_slot,
             wishlist: Default::default(),
@@ -213,6 +219,15 @@ impl ConsensusWorker {
                             break;
                         }
                     }
+                    #[allow(clippy::single_match)]
+                    match self.input_receiver.recv_deadline(Instant::now() + Duration::from_millis(100)) {
+                        Ok(Command::GetBootstrapState {
+                            response_tx
+                        }) => {
+                            let _ = response_tx.send(Ok(self.block_db.export_bootstrap_graph()?));
+                        },
+                        Err(_) => ()
+                    };
                     self.slot_tick(&mut next_slot_timer).await?;
                 },
 
