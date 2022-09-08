@@ -570,7 +570,7 @@ impl BlockGraph {
             }
         }
 
-        Ok(BootstrapableGraph { final_blocks: vec![final_blocks.first().unwrap().clone()] })
+        Ok(BootstrapableGraph { final_blocks })
     }
 
     /// Gets latest final blocks (hash, period) for each thread.

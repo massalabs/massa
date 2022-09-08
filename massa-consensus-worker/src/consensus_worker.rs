@@ -220,14 +220,16 @@ impl ConsensusWorker {
                         }
                     }
                     #[allow(clippy::single_match)]
-                    match self.input_receiver.recv_deadline(Instant::now() + Duration::from_millis(100)) {
+                    match self.input_receiver.try_recv() {
                         Ok(Command::GetBootstrapState {
                             response_tx
                         }) => {
-                            let _ = response_tx.send(Ok(self.block_db.export_bootstrap_graph()?));
+                            println!("AURELIEN: Trigger get bootstrap info");
+                            let _ = response_tx.send(self.block_db.export_bootstrap_graph().map_err(|err| ConsensusError::GraphError(err)));
                         },
                         Err(_) => ()
                     };
+                    println!("AURELIEN: slot tick");
                     self.slot_tick(&mut next_slot_timer).await?;
                 },
 
@@ -404,7 +406,7 @@ impl ConsensusWorker {
                     {}
                 );
                 let resp = self.block_db.export_bootstrap_graph()?;
-                if response_tx.send(resp).is_err() {
+                if response_tx.send(Box::new(resp)).await.is_err() {
                     warn!("consensus: could not send GetBootstrapState answer");
                 }
                 Ok(())

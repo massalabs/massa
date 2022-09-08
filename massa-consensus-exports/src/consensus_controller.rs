@@ -7,6 +7,8 @@ use massa_models::{clique::Clique, stats::ConsensusStats};
 use massa_protocol_exports::ProtocolEventReceiver;
 use massa_storage::Storage;
 use std::collections::VecDeque;
+use parking_lot::RwLock;
+use std::sync::Arc;
 
 use tokio::{
     sync::{mpsc, oneshot},
@@ -104,20 +106,20 @@ impl ConsensusCommandSender {
 
     /// get bootstrap snapshot
     pub async fn get_bootstrap_state(&self) -> Result<BootstrapableGraph, ConsensusError> {
-        let (response_tx, response_rx) = oneshot::channel::<BootstrapableGraph>();
+        let (response_tx, mut response_rx) = mpsc::channel::<Box<BootstrapableGraph>>(10);
         self.0
-            .send(ConsensusCommand::GetBootstrapState(response_tx))
-            .await
-            .map_err(|_| {
-                ConsensusError::SendChannelError(
-                    "send error consensus command get_bootstrap_state".into(),
-                )
-            })?;
-        response_rx.await.map_err(|_| {
-            ConsensusError::ReceiveChannelError(
-                "consensus command get_bootstrap_state response read error".to_string(),
+        .send(ConsensusCommand::GetBootstrapState(response_tx))
+        .await
+        .map_err(|_| {
+            ConsensusError::SendChannelError(
+                "send error consensus command get_bootstrap_state".into(),
             )
-        })
+        })?;
+    Ok(*response_rx.recv().await.ok_or_else(|| {
+        ConsensusError::ReceiveChannelError(
+            "consensus command get_bootstrap_state response read error".to_string(),
+        )
+    })?)
     }
 
     /// get best parents

@@ -16,6 +16,7 @@ use massa_graph::{settings::GraphConfig, BlockGraph, BootstrapableGraph};
 use massa_storage::Storage;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
+use std::sync::mpsc::channel;
 
 pub struct ConsensusControllerImpl {
     /// input
@@ -24,12 +25,15 @@ pub struct ConsensusControllerImpl {
 
 impl ConsensusController for ConsensusControllerImpl {
     fn export_bootstrap_state(&self) -> ConsensusResult<BootstrapableGraph> {
-        let (response_tx, response_rx) = sync_channel(1);
+        println!("AURELIEN: Call bootstrap state");
+        let (response_tx, response_rx) = sync_channel(100);
         self.input_mpsc
             .send(Command::GetBootstrapState { response_tx })
             .unwrap();
 
-        response_rx.recv().unwrap()
+        let res = response_rx.recv().unwrap();
+        println!("AURELIEN: Received bootstrap state");
+        res
     }
 }
 
