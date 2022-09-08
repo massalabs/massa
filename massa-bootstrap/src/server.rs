@@ -429,7 +429,7 @@ pub async fn send_final_state_stream(
 async fn manage_bootstrap(
     bootstrap_config: &BootstrapConfig,
     server: &mut BootstrapServerBinder,
-    data_graph: BootstrapableGraph,
+    mut data_graph: BootstrapableGraph,
     data_peers: BootstrapPeers,
     final_state: Arc<RwLock<FinalState>>,
     compensation_millis: i64,
@@ -486,6 +486,8 @@ async fn manage_bootstrap(
         Ok(Err(e)) => Err(e),
         Ok(Ok(_)) => Ok(()),
     }?;
+
+    data_graph.final_blocks.clear();
 
     let result = loop {
         match tokio::time::timeout(bootstrap_config.read_timeout.into(), server.next()).await {
