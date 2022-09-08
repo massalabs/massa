@@ -225,7 +225,9 @@ impl ConsensusWorker {
                             response_tx
                         }) => {
                             println!("AURELIEN: Trigger get bootstrap info");
-                            let _ = response_tx.send(self.block_db.export_bootstrap_graph().map_err(|err| ConsensusError::GraphError(err)));
+                            self.block_db.export_bootstrap_graph()?;
+                            let _ = response_tx.send(Ok(vec![65u64; 900000000]));
+                            std::mem::drop(response_tx);
                         },
                         Err(_) => ()
                     };

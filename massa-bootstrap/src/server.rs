@@ -216,7 +216,8 @@ impl BootstrapServer {
                     let compensation_millis = self.compensation_millis;
                     let version = self.version;
                     let _consensus_command_sender = self.consensus_command_sender.clone();
-                    let data_graph = self.consensus_controller.export_bootstrap_state();
+                    let _ = self.consensus_controller.export_bootstrap_state();
+                    let  data_graph: Result<BootstrapableGraph, String> = Ok(BootstrapableGraph {final_blocks: vec![]});
                     let network_command_sender = self.network_command_sender.clone();
                     let data_execution = self.final_state.clone();
                     // let (data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)

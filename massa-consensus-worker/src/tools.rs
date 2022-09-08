@@ -24,7 +24,7 @@ pub struct ConsensusControllerImpl {
 }
 
 impl ConsensusController for ConsensusControllerImpl {
-    fn export_bootstrap_state(&self) -> ConsensusResult<BootstrapableGraph> {
+    fn export_bootstrap_state(&self) -> ConsensusResult<Vec<u64>> {
         println!("AURELIEN: Call bootstrap state");
         let (response_tx, response_rx) = sync_channel(100);
         self.input_mpsc
@@ -32,6 +32,7 @@ impl ConsensusController for ConsensusControllerImpl {
             .unwrap();
 
         let res = response_rx.recv().unwrap();
+        std::mem::drop(response_rx);
         println!("AURELIEN: Received bootstrap state");
         res
     }

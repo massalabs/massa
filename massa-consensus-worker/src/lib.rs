@@ -24,6 +24,6 @@ mod tests;
 
 pub(crate) enum Command {
     GetBootstrapState {
-        response_tx: SyncSender<Result<BootstrapableGraph, ConsensusError>>,
+        response_tx: SyncSender<Result<Vec<u64>, ConsensusError>>,
     },
 }

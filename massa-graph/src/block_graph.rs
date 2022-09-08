@@ -556,7 +556,7 @@ impl BlockGraph {
             }
             false
         });
-        println!("DEBUG: size blocks: {:#?}", required_final_blocks.len());
+        println!("AURELIEN: size blocks: {:#?}", required_final_blocks.len());
         let mut final_blocks: Vec<ExportActiveBlock> =
             Vec::with_capacity(required_final_blocks.len());
         for b_id in &required_final_blocks {
