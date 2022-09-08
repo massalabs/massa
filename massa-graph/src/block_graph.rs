@@ -393,9 +393,9 @@ impl BlockGraph {
         }
 
         massa_trace!("consensus.block_graph.new", {});
-        if let Some(BootstrapableGraph { final_blocks }) = init {
+        if let Some(BootstrapableGraph { final_blocks }) = &init {
             // load final blocks
-            let final_blocks: Vec<(ActiveBlock, Storage)> = final_blocks
+            let final_blocks: Vec<(ActiveBlock, Storage)> = final_blocks.clone()
                 .into_iter()
                 .map(|export_b| export_b.to_active_block(&storage, cfg.thread_count))
                 .collect::<Result<_, GraphError>>()?;
