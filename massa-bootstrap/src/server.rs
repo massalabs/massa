@@ -215,8 +215,8 @@ impl BootstrapServer {
                     // let (data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
                     let compensation_millis = self.compensation_millis;
                     let version = self.version;
-                    let _consensus_command_sender = self.consensus_command_sender.clone();
-                    let _ = self.consensus_controller.export_bootstrap_state();
+                    let consensus_command_sender = self.consensus_command_sender.clone();
+                    //let _ = self.consensus_controller.export_bootstrap_state();
                     let  data_graph: Result<BootstrapableGraph, String> = Ok(BootstrapableGraph {final_blocks: vec![]});
                     let network_command_sender = self.network_command_sender.clone();
                     let data_execution = self.final_state.clone();
@@ -226,7 +226,8 @@ impl BootstrapServer {
 
                     bootstrap_sessions.push(async move {
                         let data_peers = network_command_sender.get_bootstrap_peers().await;
-                        let data_graph = match data_graph {
+                        let mut data_graph = consensus_command_sender.get_bootstrap_state().await;
+                        let mut data_graph = match data_graph {
                             Ok(v) => v,
                             Err(err) => {
                                 warn!("could not retrieve consensus bootstrap state: {}", err);
@@ -242,7 +243,9 @@ impl BootstrapServer {
                         };
                         let mut server = BootstrapServerBinder::new(dplx, keypair, config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes);
                         match manage_bootstrap(&config, &mut server, data_graph, data_peers, data_execution, compensation_millis, version).await {
-                            Ok(_) => info!("bootstrapped peer {}", remote_addr),
+                            Ok(_) => {
+                                info!("bootstrapped peer {}", remote_addr)
+                            },
                             Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
                             Err(err) => {
                                 debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
@@ -434,7 +437,7 @@ pub async fn send_final_state_stream(
 async fn manage_bootstrap(
     bootstrap_config: &BootstrapConfig,
     server: &mut BootstrapServerBinder,
-    data_graph: BootstrapableGraph,
+    mut data_graph: BootstrapableGraph,
     data_peers: BootstrapPeers,
     final_state: Arc<RwLock<FinalState>>,
     compensation_millis: i64,
@@ -553,6 +556,9 @@ async fn manage_bootstrap(
                     }?;
                 }
                 BootstrapClientMessage::BootstrapSuccess => {
+                    println!("DEBUG: end bootstrap");
+                    //data_graph.final_blocks.clear();
+                    //data_graph.final_blocks.shrink_to_fit();
                     break Ok(())
                 },
                 BootstrapClientMessage::BootstrapError { error } => {

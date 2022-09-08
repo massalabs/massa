@@ -378,9 +378,9 @@ async fn launch(
     )
     .await
     .expect("could not start consensus controller");
-    for _ in 0..10 {
-        println!("AURELIEN: {:#?}", consensus_controller.export_bootstrap_state().unwrap().len());
-    }
+    // for _ in 0..10 {
+    //     println!("AURELIEN: {:#?}", consensus_controller.export_bootstrap_state().unwrap().len());
+    // }
     // launch factory
     let factory_config = FactoryConfig {
         thread_count: THREAD_COUNT,

@@ -57,3 +57,9 @@ mod tests;
 
 #[cfg(feature = "testing")]
 pub mod test_exports;
+
+mod key;
+pub use key::{
+    get_address_from_key, KeyDeserializer, KeySerializer, BYTECODE_IDENT, DATASTORE_IDENT,
+    PAR_BALANCE_IDENT, SEQ_BALANCE_IDENT,
+};
