@@ -11,9 +11,9 @@ use serial_test::serial;
 async fn test_parent_in_the_future() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        t0: 1000.into(),
+        t0: 32.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     consensus_without_pool_test(
@@ -62,9 +62,9 @@ async fn test_parent_in_the_future() {
 async fn test_parents() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        t0: 1000.into(),
+        t0: 32.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     consensus_without_pool_test(
@@ -128,9 +128,9 @@ async fn test_parents() {
 async fn test_parents_in_incompatible_cliques() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        t0: 1000.into(),
+        t0: 32.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     consensus_without_pool_test(

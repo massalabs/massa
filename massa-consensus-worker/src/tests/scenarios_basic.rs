@@ -14,9 +14,9 @@ use serial_test::serial;
 async fn test_old_stale_not_propagated_and_discarded() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        t0: 1000.into(),
+        t0: 32.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     tools::consensus_without_pool_test(
@@ -73,7 +73,7 @@ async fn test_block_not_processed_multiple_times() {
     let cfg = ConsensusConfig {
         t0: 500.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
     let mut storage = Storage::create_root();
 
@@ -143,7 +143,7 @@ async fn test_queuing() {
     let cfg = ConsensusConfig {
         future_block_processing_max_periods: 50,
         t0: 1000.into(),
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     tools::consensus_without_pool_test(
@@ -197,7 +197,7 @@ async fn test_double_staking_does_not_propagate() {
     let cfg = ConsensusConfig {
         future_block_processing_max_periods: 50,
         t0: 1000.into(),
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     let mut storage = Storage::create_root();

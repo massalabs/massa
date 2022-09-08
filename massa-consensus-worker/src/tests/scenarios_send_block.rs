@@ -15,9 +15,9 @@ use serial_test::serial;
 async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        t0: 1000.into(),
+        t0: 32.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
     let mut storage = Storage::create_root();
 
@@ -86,9 +86,9 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
 async fn test_consensus_block_not_found() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        t0: 1000.into(),
+        t0: 32.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     consensus_without_pool_test(

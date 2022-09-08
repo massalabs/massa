@@ -17,7 +17,10 @@ use massa_models::prehash::PreHashMap;
 use massa_models::{
     address::Address,
     amount::Amount,
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock},
+    block::{
+        Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock,
+        WrappedHeader,
+    },
     endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement},
     operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
     prehash::PreHashSet,
@@ -166,6 +169,8 @@ pub async fn validate_wishlist(
     remove: PreHashSet<BlockId>,
     timeout_ms: u64,
 ) {
+    let new: PreHashMap<BlockId, Option<WrappedHeader>> =
+        new.into_iter().map(|id| (id, None)).collect();
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
             ProtocolCommand::WishlistDelta { new, remove } => Some((new, remove)),
@@ -174,7 +179,9 @@ pub async fn validate_wishlist(
         .await;
     match param {
         Some((got_new, got_remove)) => {
-            assert_eq!(new, got_new);
+            for key in got_new.keys() {
+                assert!(new.contains_key(key));
+            }
             assert_eq!(remove, got_remove);
         }
         None => panic!("Wishlist delta not sent for before timeout."),
@@ -193,7 +200,7 @@ pub async fn validate_does_not_ask_for_block(
         })
         .await;
     if let Some(new) = param {
-        if new.contains(hash) {
+        if new.contains_key(hash) {
             panic!("unexpected ask for block {}", hash);
         }
     }
@@ -624,7 +631,8 @@ pub async fn _load_initial_staking_keys(
         return Ok(PreHashMap::default());
     }
     let (_version, data) = decrypt(password, &tokio::fs::read(path).await?)?;
-    serde_json::from_slice::<Vec<KeyPair>>(&data)?
+    serde_json::from_slice::<Vec<KeyPair>>(&data)
+        .unwrap()
         .into_iter()
         .map(|key| Ok((Address::from_public_key(&key.get_public_key()), key)))
         .collect()
@@ -670,7 +678,17 @@ pub async fn _consensus_pool_test<F, V>(
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
-    let selector_config = SelectorConfig::default();
+    let staking_key =
+        KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8").unwrap();
+    let genesis_address = Address::from_public_key(&staking_key.get_public_key());
+    let selector_config = SelectorConfig {
+        max_draw_cache: 12,
+        channel_size: 256,
+        thread_count: 2,
+        endorsement_count: 8,
+        periods_per_cycle: 2,
+        genesis_address,
+    };
     // launch consensus controller
     let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -760,7 +778,17 @@ pub async fn consensus_pool_test_with_storage<F, V>(
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
-    let selector_config = SelectorConfig::default();
+    let staking_key =
+        KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8").unwrap();
+    let genesis_address = Address::from_public_key(&staking_key.get_public_key());
+    let selector_config = SelectorConfig {
+        max_draw_cache: 12,
+        channel_size: 256,
+        thread_count: 2,
+        endorsement_count: 8,
+        periods_per_cycle: 2,
+        genesis_address,
+    };
     let (mut selector_manager, selector_controller) =
         start_selector_worker(selector_config).unwrap();
     // launch consensus controller
@@ -835,7 +863,17 @@ where
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let pool_controller = MockPoolController::new();
-    let selector_config = SelectorConfig::default();
+    let staking_key =
+        KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8").unwrap();
+    let genesis_address = Address::from_public_key(&staking_key.get_public_key());
+    let selector_config = SelectorConfig {
+        max_draw_cache: 12,
+        channel_size: 256,
+        thread_count: 2,
+        endorsement_count: 8,
+        periods_per_cycle: 2,
+        genesis_address,
+    };
     let (mut selector_manager, selector_controller) =
         start_selector_worker(selector_config).unwrap();
     // for now, execution_rx is ignored: clique updates to Execution pile up and are discarded
@@ -926,7 +964,17 @@ where
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
-    let selector_config = SelectorConfig::default();
+    let staking_key =
+        KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8").unwrap();
+    let genesis_address = Address::from_public_key(&staking_key.get_public_key());
+    let selector_config = SelectorConfig {
+        max_draw_cache: 12,
+        channel_size: 256,
+        thread_count: 2,
+        endorsement_count: 8,
+        periods_per_cycle: 2,
+        genesis_address,
+    };
     let (mut selector_manager, selector_controller) =
         start_selector_worker(selector_config).unwrap();
     // launch consensus controller

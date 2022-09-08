@@ -32,7 +32,7 @@
 //             .unwrap()
 //             .saturating_sub(MassaTime::from(32000).checked_mul(4).unwrap())
 //             .saturating_add(300.into()),
-//         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+//         ..ConsensusConfig::default()
 //     };
 //     // define addresses use for the test
 //     // addresses a and b both in thread 0
