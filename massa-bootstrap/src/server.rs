@@ -487,8 +487,6 @@ async fn manage_bootstrap(
         Ok(Ok(_)) => Ok(()),
     }?;
 
-    data_graph.final_blocks.clear();
-
     let result = loop {
         match tokio::time::timeout(bootstrap_config.read_timeout.into(), server.next()).await {
             Err(_) => break Ok(()),
@@ -535,7 +533,7 @@ async fn manage_bootstrap(
                     match tokio::time::timeout(
                         write_timeout,
                         server.send(BootstrapServerMessage::ConsensusState {
-                            graph: data_graph.clone(),
+                            graph: BootstrapableGraph { final_blocks: vec![] },
                         }),
                     )
                     .await
