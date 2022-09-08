@@ -16,6 +16,12 @@ pub struct BootstrapableGraph {
     pub final_blocks: Vec<ExportActiveBlock>,
 }
 
+impl Drop for BootstrapableGraph {
+    fn drop(&mut self) {
+        println!("DEBUG: Drop bootstrapable graph");
+    }
+}
+
 /// Basic serializer for `BootstrapableGraph`
 #[derive(Default)]
 pub struct BootstrapableGraphSerializer {
