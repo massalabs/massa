@@ -151,6 +151,7 @@ impl BootstrapServer {
 
                 // listener
                 Ok((dplx, remote_addr)) = listener.accept() => if bootstrap_sessions.len() < self.bootstrap_config.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))? {
+
                     massa_trace!("bootstrap.lib.run.select.accept", {"remote_addr": remote_addr});
                     let now = Instant::now();
                     let config = self.bootstrap_config.clone();
@@ -211,29 +212,39 @@ impl BootstrapServer {
                     // let (data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
                     let compensation_millis = self.compensation_millis;
                     let version = self.version;
-                    let mut data_graph = self.consensus_command_sender.get_bootstrap_state().await?;
-                    data_graph.final_blocks.extend(data_graph.final_blocks.clone());
-                    data_graph.final_blocks.extend(data_graph.final_blocks.clone());
-                    //let data_graph = BootstrapableGraph{final_blocks: Default::default()};
-                    let data_peers = self.network_command_sender.get_bootstrap_peers().await?;
+                    let consensus_command_sender = self.consensus_command_sender.clone();
+                    let network_command_sender = self.network_command_sender.clone();
                     let data_execution = self.final_state.clone();
                     // let (data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
                     let keypair = self.keypair.clone();
                     let config = self.bootstrap_config.clone();
+
                     bootstrap_sessions.push(async move {
-                        //Socket lifetime
-                        {
-                            let mut server = BootstrapServerBinder::new(dplx, keypair, config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes);
-                            match manage_bootstrap(&config, &mut server, data_graph, data_peers, data_execution, compensation_millis, version).await {
-                                Ok(_) => info!("bootstrapped peer {}", remote_addr),
-                                Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
-                                Err(err) => {
-                                    debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
-                                    // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                                    let _ = tokio::time::timeout(config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: err.to_string() })).await;
-                                },
+                        let data_graph = match consensus_command_sender.get_bootstrap_state().await {
+                            Ok(v) => v,
+                            Err(err) => {
+                                warn!("could not retrieve consensus bootstrap state: {}", err);
+                                return;
                             }
+                        };
+                        let data_peers = match network_command_sender.get_bootstrap_peers().await {
+                            Ok(v) => v,
+                            Err(err) => {
+                                warn!("could not retrieve bootstrap peers: {}", err);
+                                return;
+                            }
+                        };
+                        let mut server = BootstrapServerBinder::new(dplx, keypair, config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes);
+                        match manage_bootstrap(&config, &mut server, data_graph, data_peers, data_execution, compensation_millis, version).await {
+                            Ok(_) => info!("bootstrapped peer {}", remote_addr),
+                            Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
+                            Err(err) => {
+                                debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
+                                // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
+                                let _ = tokio::time::timeout(config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: err.to_string() })).await;
+                            },
                         }
+
                     });
                     println!("DEBUG: Sessions: {:#?}", bootstrap_sessions.len());
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
@@ -423,6 +434,8 @@ async fn manage_bootstrap(
     compensation_millis: i64,
     version: Version,
 ) -> Result<(), BootstrapError> {
+    println!(">>>>>>>>>>>>>>>>>>>>> START");
+
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: std::time::Duration = bootstrap_config.read_error_timeout.into();
 
@@ -475,10 +488,10 @@ async fn manage_bootstrap(
         Ok(Ok(_)) => Ok(()),
     }?;
 
-    loop {
+    let result = loop {
         match tokio::time::timeout(bootstrap_config.read_timeout.into(), server.next()).await {
-            Err(_) => return Ok(()),
-            Ok(Err(e)) => return Err(e),
+            Err(_) => break Ok(()),
+            Ok(Err(e)) => break Err(e),
             Ok(Ok(msg)) => match msg {
                 BootstrapClientMessage::AskBootstrapPeers => {
                     match tokio::time::timeout(
@@ -535,11 +548,14 @@ async fn manage_bootstrap(
                         Ok(Ok(_)) => Ok(()),
                     }?;
                 }
-                BootstrapClientMessage::BootstrapSuccess => return Ok(()),
+                BootstrapClientMessage::BootstrapSuccess => break Ok(()),
                 BootstrapClientMessage::BootstrapError { error } => {
-                    return Err(BootstrapError::ReceivedError(error));
+                    break Err(BootstrapError::ReceivedError(error));
                 }
             },
         };
-    }
+    };
+    println!(">>>>>>>>>>>>>>>>>>>>> FREE");
+
+    result
 }
