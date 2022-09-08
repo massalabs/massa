@@ -50,6 +50,7 @@ async fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
                 match evt {
                     evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
                     evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+                    evt @ ProtocolEvent::InvalidBlock { .. } => Some(evt),
                 }
             })
             .await
@@ -201,6 +202,7 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
                 match evt {
                     evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
                     evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+                    evt @ ProtocolEvent::InvalidBlock { .. } => Some(evt),
                 }
             })
             .await
