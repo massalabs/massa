@@ -556,6 +556,7 @@ impl BlockGraph {
             }
             false
         });
+        println!("DEBUG: size blocks: {:#?}", required_final_blocks.len());
         let mut final_blocks: Vec<ExportActiveBlock> =
             Vec::with_capacity(required_final_blocks.len());
         for b_id in &required_final_blocks {
@@ -569,7 +570,7 @@ impl BlockGraph {
             }
         }
 
-        Ok(BootstrapableGraph { final_blocks })
+        Ok(BootstrapableGraph { final_blocks: vec![final_blocks.first().unwrap().clone()] })
     }
 
     /// Gets latest final blocks (hash, period) for each thread.

@@ -551,7 +551,9 @@ async fn manage_bootstrap(
                         Ok(Ok(_)) => Ok(()),
                     }?;
                 }
-                BootstrapClientMessage::BootstrapSuccess => break Ok(()),
+                BootstrapClientMessage::BootstrapSuccess => {
+                    break Ok(())
+                },
                 BootstrapClientMessage::BootstrapError { error } => {
                     break Err(BootstrapError::ReceivedError(error));
                 }

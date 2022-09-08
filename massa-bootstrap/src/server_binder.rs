@@ -115,6 +115,7 @@ impl BootstrapServerBinder {
             }
         };
 
+        println!("DEBUG: Defore write");
         // send signature
         println!("DEBUG: Start write");
         self.duplex.write_all(&sig.to_bytes()).await?;
