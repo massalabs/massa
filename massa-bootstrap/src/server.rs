@@ -145,7 +145,6 @@ impl BootstrapServer {
 
                 // bootstrap session finished
                 Some(_) = bootstrap_sessions.next() => {
-                    println!("DEBUG: Session finished len = {:#?}", bootstrap_sessions.len());
                     massa_trace!("bootstrap.session.finished", {"active_count": bootstrap_sessions.len()});
                 }
 
@@ -154,14 +153,13 @@ impl BootstrapServer {
 
                     massa_trace!("bootstrap.lib.run.select.accept", {"remote_addr": remote_addr});
                     let now = Instant::now();
-                    let config = self.bootstrap_config.clone();
 
                     // clear IP history if necessary
-                    if self.ip_hist_map.len() > config.ip_list_max_size {
+                    if self.ip_hist_map.len() > self.bootstrap_config.ip_list_max_size {
                         self.ip_hist_map.retain(|_k, v| now.duration_since(*v) <= per_ip_min_interval);
-                        if self.ip_hist_map.len() > config.ip_list_max_size {
+                        if self.ip_hist_map.len() > self.bootstrap_config.ip_list_max_size {
                             // too many IPs are spamming us: clear cache
-                            warn!("high bootstrap load: at least {} different IPs attempted bootstrap in the last {}ms", self.ip_hist_map.len(), config.per_ip_min_interval);
+                            warn!("high bootstrap load: at least {} different IPs attempted bootstrap in the last {}ms", self.ip_hist_map.len(), self.bootstrap_config.per_ip_min_interval);
                             self.ip_hist_map.clear();
                         }
                     }
@@ -170,8 +168,8 @@ impl BootstrapServer {
                     match self.ip_hist_map.entry(remote_addr.ip()) {
                         hash_map::Entry::Occupied(mut occ) => {
                             if now.duration_since(*occ.get()) <= per_ip_min_interval {
-                                let mut server = BootstrapServerBinder::new(dplx, self.keypair.clone(), config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes);
-                                let _ = match tokio::time::timeout(config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
+                                let mut server = BootstrapServerBinder::new(dplx, self.keypair.clone(), self.bootstrap_config.max_bytes_read_write, self.bootstrap_config.max_bootstrap_message_size, self.bootstrap_config.thread_count, self.bootstrap_config.max_datastore_key_length, self.bootstrap_config.randomness_size_bytes);
+                                let _ = match tokio::time::timeout(self.bootstrap_config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
                                     error:
                                     format!("Your last bootstrap on this server was {:#?} ago and you have to wait {:#?} before retrying.", occ.get().elapsed(), per_ip_min_interval.saturating_sub(occ.get().elapsed()))
                                 })).await {
@@ -220,8 +218,7 @@ impl BootstrapServer {
                     let config = self.bootstrap_config.clone();
 
                     bootstrap_sessions.push(async move {
-                        let data_peers = network_command_sender.get_bootstrap_peers().await;
-                        let data_graph = consensus_command_sender.get_bootstrap_state().await;
+                        let (data_peers, data_graph) = tokio::join!(network_command_sender.get_bootstrap_peers(), consensus_command_sender.get_bootstrap_state());
                         let data_graph = match data_graph {
                             Ok(v) => v,
                             Err(err) => {
@@ -250,7 +247,6 @@ impl BootstrapServer {
                         }
 
                     });
-                    println!("DEBUG: Sessions: {:#?}", bootstrap_sessions.len());
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
                 } else {
                     let config = self.bootstrap_config.clone();
@@ -550,12 +546,7 @@ async fn manage_bootstrap(
                         Ok(Ok(_)) => Ok(()),
                     }?;
                 }
-                BootstrapClientMessage::BootstrapSuccess => {
-                    println!("DEBUG: end bootstrap");
-                    //data_graph.final_blocks.clear();
-                    //data_graph.final_blocks.shrink_to_fit();
-                    break Ok(())
-                },
+                BootstrapClientMessage::BootstrapSuccess => break Ok(()),
                 BootstrapClientMessage::BootstrapError { error } => {
                     break Err(BootstrapError::ReceivedError(error));
                 }

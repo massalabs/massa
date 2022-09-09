@@ -393,10 +393,9 @@ impl BlockGraph {
         }
 
         massa_trace!("consensus.block_graph.new", {});
-        if let Some(BootstrapableGraph { final_blocks }) = &init {
+        if let Some(BootstrapableGraph { final_blocks }) = init {
             // load final blocks
             let final_blocks: Vec<(ActiveBlock, Storage)> = final_blocks
-                .clone()
                 .into_iter()
                 .map(|export_b| export_b.to_active_block(&storage, cfg.thread_count))
                 .collect::<Result<_, GraphError>>()?;
@@ -545,7 +544,6 @@ impl BlockGraph {
 
     /// export full graph in a bootstrap compatible version
     pub fn export_bootstrap_graph(&self) -> Result<BootstrapableGraph> {
-        println!("AURELIEN: exporting bootstrap graph");
         let mut required_final_blocks: PreHashSet<_> = self.list_required_active_blocks()?;
         required_final_blocks.retain(|b_id| {
             if let Some(BlockStatus::Active { a_block, .. }) = self.block_statuses.get(b_id) {
@@ -556,7 +554,6 @@ impl BlockGraph {
             }
             false
         });
-        println!("AURELIEN: size blocks: {:#?}", required_final_blocks.len());
         let mut final_blocks: Vec<ExportActiveBlock> =
             Vec::with_capacity(required_final_blocks.len());
         for b_id in &required_final_blocks {

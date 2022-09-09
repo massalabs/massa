@@ -1750,7 +1750,6 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
- "parking_lot",
  "serde_json",
  "tempfile",
  "thiserror",
