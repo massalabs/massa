@@ -1948,6 +1948,7 @@ dependencies = [
 name = "massa_ledger_worker"
 version = "0.1.0"
 dependencies = [
+ "massa_hash",
  "massa_ledger_exports",
  "massa_models",
  "massa_serialization",

@@ -2,6 +2,7 @@
 
 //! Module to interact with the disk ledger
 
+use massa_hash::Hash;
 use massa_ledger_exports::*;
 use massa_models::{
     address::{Address, ADDRESS_SIZE_BYTES},
@@ -220,7 +221,14 @@ impl LedgerDB {
             )
             .unwrap();
         // sequential balance
+        let mut key = seq_balance_key!(addr);
+        key.extend(bytes_sequential_balance.clone());
+
         batch.put_cf(handle, seq_balance_key!(addr), bytes_sequential_balance);
+
+        let ledger_hash = Hash::compute_from(b"");
+        let new_hash = Hash::compute_from(&key);
+        let _update = ledger_hash ^ new_hash;
 
         // parallel balance
         batch.put_cf(handle, par_balance_key!(addr), bytes_parallel_balance);
