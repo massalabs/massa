@@ -49,9 +49,9 @@ Now that the npm project is created, install the `as-pect` and `massa-sc-std` de
 
 .. code-block:: shell
 
-   npm install --save-dev @as-pect/cli massa-sc-std massa-sc-scripts
+   npm install --save-dev assemblyscript@0.19.22 @massalabs/massa-sc-std@4.0.2 massa-sc-scripts@4.0.3 json-as@0.2.6 visitor-as@0.8
 
-You have now installed AssemblyScript and as-pect modules. The first one will be used to generate bytecode from AssemblyScript code and the second one will let you perform unit tests.
+You have now installed AssemblyScript. The first one will be used to generate bytecode from AssemblyScript code.
 
 .. note::
     * Massa smart contract module (massa-sc-std) contains the API you need to use to interact with the external world of the smart contract (the node, the ledger...).
