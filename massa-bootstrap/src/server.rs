@@ -110,15 +110,15 @@ impl BootstrapServer {
         massa_trace!("bootstrap.lib.run", {});
         let mut listener = self.establisher.get_listener(self.bind).await?;
         let mut bootstrap_sessions = FuturesUnordered::new();
-        //let cache_timeout = self.bootstrap_config.cache_duration.to_duration();
+        // let cache_timeout = self.bootstrap_config.cache_duration.to_duration();
         // let mut bootstrap_data: Option<(
         //     BootstrapableGraph,
         //     BootstrapPeers,
         //     Arc<RwLock<FinalState>>,
         // )> = None;
-        //let cache_timer = sleep(cache_timeout);
+        // let cache_timer = sleep(cache_timeout);
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
-        //tokio::pin!(cache_timer);
+        // tokio::pin!(cache_timer);
         /*
             select! without the "biased" modifier will randomly select the 1st branch to check,
             then will check the next ones in the order they are written.
@@ -198,25 +198,21 @@ impl BootstrapServer {
                     //     // This is done to ensure that the execution bootstrap state is older than the consensus state.
                     //     // If the consensus state snapshot is older than the execution state snapshot,
                     //     //   the execution final ledger will be in the future after bootstrap, which causes an inconsistency.
-                    //     let peer_boot = self.network_command_sender.get_bootstrap_peers().await?;
-                    //     let graph_boot = self.consensus_command_sender.get_bootstrap_state().await?;
-                    //     bootstrap_data = Some((graph_boot, peer_boot, self.final_state.clone()));
+                    //     bootstrap_data = Some((data_graph, data_peers, self.final_state.clone()));
                     //     cache_timer.set(sleep(cache_timeout));
                     // }
-                    // massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
+                    massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
 
                     // launch bootstrap
 
                     let compensation_millis = self.compensation_millis;
                     let version = self.version;
-                    let consensus_command_sender = self.consensus_command_sender.clone();
-                    let network_command_sender = self.network_command_sender.clone();
                     let data_execution = self.final_state.clone();
                     let keypair = self.keypair.clone();
                     let config = self.bootstrap_config.clone();
+                    let (data_peers, data_graph) = tokio::join!(self.network_command_sender.get_bootstrap_peers(), self.consensus_command_sender.get_bootstrap_state());
 
                     bootstrap_sessions.push(async move {
-                        let (data_peers, data_graph) = tokio::join!(network_command_sender.get_bootstrap_peers(), consensus_command_sender.get_bootstrap_state());
                         let data_graph = match data_graph {
                             Ok(v) => v,
                             Err(err) => {
