@@ -45,17 +45,20 @@ Setup your node to use the secret you just generated as its public key and staki
 
     {"secret_key":"SECRETK","public_key":"PUBK"}
 
- * clear and modify the file `massa-node/base_config/initial_ledger.json` :
+ * modify the file `massa-node/base_config/initial_ledger.json` :
 
  .. code-block:: javascript
 
     {
         "ADDR": {
-            "balance": "250000000"
+            "sequential_balance": "80000000",
+            "parallel_balance": "80000000",
+            "datastore": {},
+            "bytecode": []
         }
     }
 
- * modify the file `massa-node/base_config/initial_rolls.json` :
+ * CLEAR and modify the file `massa-node/base_config/initial_rolls.json` :
 
  .. code-block:: javascript
 
