@@ -63,7 +63,9 @@ pub trait SelectorController: Send + Sync {
     ///
     /// Only used in tests for post-bootstrap selection matching.
     #[cfg(feature = "testing")]
-    fn get_entire_selection(&self) -> VecDeque<(u64, HashMap<Slot, Selection>)>;
+    fn get_entire_selection(&self) -> VecDeque<(u64, HashMap<Slot, Selection>)> {
+        unimplemented!("mock implementation only")
+    }
 }
 
 /// Allow cloning `Box<dyn SelectorController>`
