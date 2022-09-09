@@ -45,9 +45,10 @@ Setup your node to use the secret you just generated as its public key and staki
 
     {"secret_key":"SECRETK","public_key":"PUBK"}
 
- * modify the file `massa-node/base_config/initial_ledger.json` :
+ * clear and modify the file `massa-node/base_config/initial_ledger.json` :
 
  .. code-block:: javascript
+
     {
         "ADDR": {
             "balance": "250000000"
@@ -62,24 +63,16 @@ Setup your node to use the secret you just generated as its public key and staki
         "ADDR": 100
     }
 
- * modify the file `massa-node/base_config/initial_sce_ledger.json` :
-
- .. code-block:: javascript
-    
-    {
-        "ADDR": "250000000"
-    }
-
 You can now launch your node :
 
   .. code-block:: bash
-    
+
     cd massa-node && cargo run --features sandbox
 
 On your client run the following command to add your secret key as staking key:
 
 .. code-block:: bash
-        
+
     cd massa-client && cargo run node_add_staking_secret_keys SECRETK
 
 The network with your node all start in 10 seconds and you can now interact it with the CLI client like a testnet node.
