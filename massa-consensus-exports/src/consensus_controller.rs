@@ -104,7 +104,7 @@ impl ConsensusCommandSender {
 
     /// get bootstrap snapshot
     pub async fn get_bootstrap_state(&self) -> Result<BootstrapableGraph, ConsensusError> {
-        let (response_tx, mut response_rx) = mpsc::channel::<Box<BootstrapableGraph>>(1);
+        let (response_tx, mut response_rx) = mpsc::channel::<Box<BootstrapableGraph>>(10);
         self.0
             .send(ConsensusCommand::GetBootstrapState(response_tx))
             .await
