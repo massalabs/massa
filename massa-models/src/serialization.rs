@@ -1,122 +1,23 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::ModelsError;
-use crate::Amount;
-use integer_encoding::VarInt;
+use bitvec::prelude::BitVec;
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+    U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::bytes::complete::take;
 use nom::multi::length_data;
 use nom::sequence::preceded;
+use nom::{branch::alt, Parser, ToUsize};
 use nom::{
-    error::{context, ContextError, ParseError},
+    error::{context, ContextError, ErrorKind, ParseError},
     IResult,
 };
-use nom::{Parser, ToUsize};
 use std::convert::TryInto;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::ops::Bound;
-
-/// varint serialization
-pub trait SerializeVarInt {
-    /// Serialize as varint bytes
-    fn to_varint_bytes(self) -> Vec<u8>;
-}
-
-impl SerializeVarInt for u16 {
-    fn to_varint_bytes(self) -> Vec<u8> {
-        self.encode_var_vec()
-    }
-}
-
-impl SerializeVarInt for u32 {
-    fn to_varint_bytes(self) -> Vec<u8> {
-        self.encode_var_vec()
-    }
-}
-
-impl SerializeVarInt for u64 {
-    fn to_varint_bytes(self) -> Vec<u8> {
-        self.encode_var_vec()
-    }
-}
-
-/// var int deserialization
-pub trait DeserializeVarInt: Sized {
-    /// Deserialize variable size integer to Self from the provided buffer.
-    /// The data to deserialize starts at the beginning of the buffer but the buffer can be larger than needed.
-    /// In case of success, return the deserialized data and the number of bytes read
-    fn from_varint_bytes(buffer: &[u8]) -> Result<(Self, usize), ModelsError>;
-
-    /// Deserialize variable size integer to Self from the provided buffer and checks that its value is within given bounds.
-    /// The data to deserialize starts at the beginning of the buffer but the buffer can be larger than needed.
-    /// In case of success, return the deserialized data and the number of bytes read
-    fn from_varint_bytes_bounded(
-        buffer: &[u8],
-        max_value: Self,
-    ) -> Result<(Self, usize), ModelsError>;
-}
-
-impl DeserializeVarInt for u16 {
-    fn from_varint_bytes(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        u16::decode_var(buffer)
-            .ok_or_else(|| ModelsError::DeserializeError("could not deserialize varint".into()))
-    }
-
-    fn from_varint_bytes_bounded(
-        buffer: &[u8],
-        max_value: Self,
-    ) -> Result<(Self, usize), ModelsError> {
-        let (res, res_size) = Self::from_varint_bytes(buffer)?;
-        if res > max_value {
-            return Err(ModelsError::DeserializeError(
-                "deserialized varint u16 out of bounds".into(),
-            ));
-        }
-        Ok((res, res_size))
-    }
-}
-
-impl DeserializeVarInt for u32 {
-    fn from_varint_bytes(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        u32::decode_var(buffer)
-            .ok_or_else(|| ModelsError::DeserializeError("could not deserialize varint".into()))
-    }
-
-    fn from_varint_bytes_bounded(
-        buffer: &[u8],
-        max_value: Self,
-    ) -> Result<(Self, usize), ModelsError> {
-        let (res, res_size) = Self::from_varint_bytes(buffer)?;
-        if res > max_value {
-            return Err(ModelsError::DeserializeError(
-                "deserialized varint u32 out of bounds".into(),
-            ));
-        }
-        Ok((res, res_size))
-    }
-}
-
-impl DeserializeVarInt for u64 {
-    fn from_varint_bytes(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        u64::decode_var(buffer)
-            .ok_or_else(|| ModelsError::DeserializeError("could not deserialize varint".into()))
-    }
-
-    fn from_varint_bytes_bounded(
-        buffer: &[u8],
-        max_value: Self,
-    ) -> Result<(Self, usize), ModelsError> {
-        let (res, res_size) = Self::from_varint_bytes(buffer)?;
-        if res > max_value {
-            return Err(ModelsError::DeserializeError(
-                "deserialized varint u64 out of bounds".into(),
-            ));
-        }
-        Ok((res, res_size))
-    }
-}
+use Bound::Included;
 
 /// Serialize min big endian integer
 pub trait SerializeMinBEInt {
@@ -168,7 +69,7 @@ impl DeserializeMinBEInt for u32 {
         let read_bytes = Self::be_bytes_min_length(max_value);
         let skip_bytes = Self::MIN_BE_INT_BASE_SIZE - read_bytes;
         if buffer.len() < read_bytes {
-            return Err(ModelsError::SerializeError("unexpected buffer end".into()));
+            return Err(ModelsError::SerializeError("unexpected buffer END".into()));
         }
         let mut buf = [0u8; Self::MIN_BE_INT_BASE_SIZE];
         buf[skip_bytes..].clone_from_slice(&buffer[..read_bytes]);
@@ -193,7 +94,7 @@ impl DeserializeMinBEInt for u64 {
         let read_bytes = Self::be_bytes_min_length(max_value);
         let skip_bytes = Self::MIN_BE_INT_BASE_SIZE - read_bytes;
         if buffer.len() < read_bytes {
-            return Err(ModelsError::SerializeError("unexpected buffer end".into()));
+            return Err(ModelsError::SerializeError("unexpected buffer END".into()));
         }
         let mut buf = [0u8; Self::MIN_BE_INT_BASE_SIZE];
         buf[skip_bytes..].clone_from_slice(&buffer[..read_bytes]);
@@ -231,18 +132,6 @@ pub fn u8_from_slice(buffer: &[u8]) -> Result<u8, ModelsError> {
     Ok(buffer[0])
 }
 
-/// custom serialization trait
-pub trait SerializeCompact {
-    /// serialization
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError>;
-}
-
-/// custom deserialization trait
-pub trait DeserializeCompact: Sized {
-    /// deserialization
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError>;
-}
-
 /// Serializer for `IpAddr`
 #[derive(Default)]
 pub struct IpAddrSerializer;
@@ -256,7 +145,7 @@ impl IpAddrSerializer {
 
 impl Serializer<IpAddr> for IpAddrSerializer {
     /// ```
-    /// use massa_models::{Address, Amount, Slot, IpAddrSerializer};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot, serialization::IpAddrSerializer};
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
     /// use std::net::{IpAddr, Ipv4Addr};
@@ -270,11 +159,11 @@ impl Serializer<IpAddr> for IpAddrSerializer {
         match value {
             IpAddr::V4(ip_v4) => {
                 buffer.push(4u8);
-                buffer.extend(&ip_v4.octets());
+                buffer.extend(ip_v4.octets());
             }
             IpAddr::V6(ip_v6) => {
                 buffer.push(6u8);
-                buffer.extend(&ip_v6.octets());
+                buffer.extend(ip_v6.octets());
             }
         };
         Ok(())
@@ -294,7 +183,7 @@ impl IpAddrDeserializer {
 
 impl Deserializer<IpAddr> for IpAddrDeserializer {
     /// ```
-    /// use massa_models::{Address, Amount, Slot, IpAddrSerializer, IpAddrDeserializer};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot, serialization::{IpAddrSerializer, IpAddrDeserializer}};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
     /// use std::net::{IpAddr, Ipv4Addr};
@@ -312,40 +201,28 @@ impl Deserializer<IpAddr> for IpAddrDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], IpAddr, E> {
-        nom::branch::alt((
-            preceded(
-                |input| nom::bytes::complete::tag([4u8])(input),
-                |input: &'a [u8]| {
-                    let (rest, addr) = take(4usize)(input)?;
-                    let addr: [u8; 4] = addr.try_into().unwrap();
-                    Ok((rest, IpAddr::V4(Ipv4Addr::from(addr))))
-                },
-            ),
-            preceded(
-                |input| nom::bytes::complete::tag([6u8])(input),
-                |input: &'a [u8]| {
-                    let (rest, addr) = take(16usize)(input)?;
-                    // Safe because take would fail just above if less then 16
-                    let addr: [u8; 16] = addr.try_into().unwrap();
-                    Ok((rest, IpAddr::V6(Ipv6Addr::from(addr))))
-                },
-            ),
-        ))(buffer)
-    }
-}
-
-impl SerializeCompact for Amount {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        Ok(self.to_raw().to_varint_bytes())
-    }
-}
-
-/// Checks performed:
-/// - Buffer contains a valid `u8`.
-impl DeserializeCompact for Amount {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let (res_u64, delta) = u64::from_varint_bytes(buffer)?;
-        Ok((Amount::from_raw(res_u64), delta))
+        context(
+            "Failed IpAddr deserialization",
+            alt((
+                preceded(
+                    |input| nom::bytes::complete::tag([4u8])(input),
+                    |input: &'a [u8]| {
+                        let (rest, addr) = take(4usize)(input)?;
+                        let addr: [u8; 4] = addr.try_into().unwrap();
+                        Ok((rest, IpAddr::V4(Ipv4Addr::from(addr))))
+                    },
+                ),
+                preceded(
+                    |input| nom::bytes::complete::tag([6u8])(input),
+                    |input: &'a [u8]| {
+                        let (rest, addr) = take(16usize)(input)?;
+                        // Safe because take would fail just above if less then 16
+                        let addr: [u8; 16] = addr.try_into().unwrap();
+                        Ok((rest, IpAddr::V6(Ipv6Addr::from(addr))))
+                    },
+                ),
+            )),
+        )(buffer)
     }
 }
 
@@ -373,7 +250,7 @@ impl Serializer<Vec<u8>> for VecU8Serializer {
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::Serializer;
-    /// use massa_models::VecU8Serializer;
+    /// use massa_models::serialization::VecU8Serializer;
     ///
     /// let vec = vec![1, 2, 3];
     /// let mut buffer = Vec::new();
@@ -408,7 +285,7 @@ impl Deserializer<Vec<u8>> for VecU8Deserializer {
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{VecU8Serializer, VecU8Deserializer};
+    /// use massa_models::serialization::{VecU8Serializer, VecU8Deserializer};
     ///
     /// let vec = vec![1, 2, 3];
     /// let mut serialized = Vec::new();
@@ -525,6 +402,93 @@ where
     }
 }
 
+/// `BitVec<u8>` Serializer
+pub struct BitVecSerializer {
+    u32_serializer: U32VarIntSerializer,
+}
+
+impl BitVecSerializer {
+    /// Create a new `BitVec<u8>` Serializer
+    pub fn new() -> BitVecSerializer {
+        BitVecSerializer {
+            u32_serializer: U32VarIntSerializer::new(),
+        }
+    }
+}
+
+impl Default for BitVecSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<BitVec<u8>> for BitVecSerializer {
+    fn serialize(&self, value: &BitVec<u8>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        let n_entries: u32 = value.len().try_into().map_err(|err| {
+            SerializeError::NumberTooBig(format!(
+                "too many entries when serializing a `BitVec<u8>`: {}",
+                err
+            ))
+        })?;
+        self.u32_serializer.serialize(&n_entries, buffer)?;
+        buffer.extend(value.clone().into_vec());
+        Ok(())
+    }
+}
+
+/// `BitVec<u8>` Deserializer
+pub struct BitVecDeserializer {
+    u32_deserializer: U32VarIntDeserializer,
+}
+
+impl BitVecDeserializer {
+    /// Create a new `BitVec<u8>` Deserializer
+    pub fn new() -> BitVecDeserializer {
+        BitVecDeserializer {
+            u32_deserializer: U32VarIntDeserializer::new(
+                Bound::Included(u32::MIN),
+                Included(u32::MAX),
+            ),
+        }
+    }
+}
+
+impl Default for BitVecDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deserializer<BitVec<u8>> for BitVecDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], BitVec<u8>, E> {
+        context("Failed rng_seed deserialization", |input| {
+            let (rest, n_entries) = self.u32_deserializer.deserialize(input)?;
+            let bits_u8_len = n_entries.div_ceil(u8::BITS) as usize;
+            if rest.len() < bits_u8_len {
+                return Err(nom::Err::Error(ParseError::from_error_kind(
+                    input,
+                    ErrorKind::Eof,
+                )));
+            }
+            let mut rng_seed: BitVec<u8> = BitVec::try_from_vec(rest[..bits_u8_len].to_vec())
+                .map_err(|_| nom::Err::Error(ParseError::from_error_kind(input, ErrorKind::Eof)))?;
+            rng_seed.truncate(n_entries as usize);
+            if rng_seed.len() != n_entries as usize {
+                return Err(nom::Err::Error(ParseError::from_error_kind(
+                    input,
+                    ErrorKind::Eof,
+                )));
+            }
+            Ok((&rest[bits_u8_len..], rng_seed))
+        })
+        .map(|elements| elements.into_iter().collect())
+        .parse(buffer)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -578,36 +542,6 @@ mod tests {
             .unwrap();
         assert_eq!(rest, &[8, 7]);
         assert_eq!(res, &[9])
-    }
-
-    #[test]
-    #[serial]
-    fn test_varint() {
-        let x32 = 70_000u32;
-        let x64 = 10_000_000_000u64;
-
-        // serialize
-        let mut res: Vec<u8> = Vec::new();
-        res.extend(x32.to_varint_bytes());
-        assert_eq!(res.len(), 3);
-        res.extend(x64.to_varint_bytes());
-        assert_eq!(res.len(), 3 + 5);
-
-        // deserialize
-        let buf = res.as_slice();
-        let mut cursor = 0;
-        let (out_x32, delta) = u32::from_varint_bytes_bounded(&buf[cursor..], 80_000).unwrap();
-        assert_eq!(out_x32, x32);
-        cursor += delta;
-        let (out_x64, delta) =
-            u64::from_varint_bytes_bounded(&buf[cursor..], 20_000_000_000).unwrap();
-        assert_eq!(out_x64, x64);
-        cursor += delta;
-        assert_eq!(cursor, buf.len());
-
-        // deserialize fail bounds
-        assert!(u32::from_varint_bytes_bounded(&buf[0..], 69_999).is_err());
-        assert!(u64::from_varint_bytes_bounded(&buf[3..], 9_999_999_999).is_err());
     }
 
     #[test]

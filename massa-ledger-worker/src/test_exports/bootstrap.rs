@@ -1,7 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry};
-use massa_models::Address;
+use massa_models::{
+    address::Address,
+    config::{LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_DATASTORE_KEY_LENGTH, THREAD_COUNT},
+};
 use std::collections::HashMap;
 use tempfile::TempDir;
 
@@ -14,10 +17,15 @@ pub fn create_final_ledger(
     config: LedgerConfig,
 ) -> FinalLedger {
     let temp_dir = TempDir::new().unwrap();
-    let mut db = LedgerDB::new(temp_dir.path().to_path_buf());
-    db.set_initial_ledger(initial_ledger.unwrap_or_default());
+    let mut db = LedgerDB::new(
+        temp_dir.path().to_path_buf(),
+        THREAD_COUNT,
+        MAX_DATASTORE_KEY_LENGTH,
+        LEDGER_PART_SIZE_MESSAGE_BYTES,
+    );
+    db.load_initial_ledger(initial_ledger.unwrap_or_default());
     FinalLedger {
-        _config: config,
+        config,
         sorted_ledger: db,
     }
 }
@@ -42,7 +50,7 @@ pub fn assert_eq_ledger_entry(v1: &LedgerEntry, v2: &LedgerEntry) {
 }
 
 /// asserts that two `FinalLedgerBootstrapState` are equal
-pub fn assert_eq_ledger(v1: &Box<dyn LedgerController>, v2: &Box<dyn LedgerController>) {
+pub fn assert_eq_ledger(v1: &dyn LedgerController, v2: &dyn LedgerController) {
     let ledger1: HashMap<Address, LedgerEntry> = v1
         .get_every_address()
         .iter()
@@ -50,7 +58,8 @@ pub fn assert_eq_ledger(v1: &Box<dyn LedgerController>, v2: &Box<dyn LedgerContr
             (
                 *addr,
                 LedgerEntry {
-                    parallel_balance: *balance,
+                    sequential_balance: *balance,
+                    parallel_balance: v1.get_parallel_balance(addr).unwrap_or_default(),
                     bytecode: v1.get_bytecode(addr).unwrap_or_default(),
                     datastore: v1.get_entire_datastore(addr),
                 },
@@ -64,7 +73,8 @@ pub fn assert_eq_ledger(v1: &Box<dyn LedgerController>, v2: &Box<dyn LedgerContr
             (
                 *addr,
                 LedgerEntry {
-                    parallel_balance: *balance,
+                    sequential_balance: *balance,
+                    parallel_balance: v1.get_parallel_balance(addr).unwrap_or_default(),
                     bytecode: v2.get_bytecode(addr).unwrap_or_default(),
                     datastore: v2.get_entire_datastore(addr),
                 },

@@ -2,7 +2,7 @@
 
 use crate::ProtocolEvent;
 use displaydoc::Display;
-use massa_models::ModelsError;
+use massa_models::error::ModelsError;
 use massa_network_exports::ConnectionId;
 use massa_network_exports::NetworkError;
 use std::net::IpAddr;

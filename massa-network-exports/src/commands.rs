@@ -18,7 +18,7 @@
 //!    +-------------->|                |           Forward to Protocol
 //!    |               +--------------->|           Forward to Network, then Node
 //!    |               |                #
-//!    |               |                #           Propagate the batch of OperationIds through the network
+//!    |               |                #           Propagate the batch of Vec<OperationId> through the network
 //! ```
 //!
 //! When receiving an operation batch from the network, the `NodeWorker` will
@@ -71,32 +71,33 @@
 
 use crate::{BootstrapPeers, ConnectionClosureReason, Peers};
 use massa_models::{
+    block::{BlockId, WrappedHeader},
     composite::PubkeySig,
+    endorsement::WrappedEndorsement,
     node::NodeId,
-    operation::{OperationIds, OperationPrefixIds, Operations},
+    operation::{OperationId, OperationPrefixIds, WrappedOperation},
     stats::NetworkStats,
-    BlockId, WrappedBlock, WrappedEndorsement, WrappedHeader,
 };
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::IpAddr};
 use tokio::sync::oneshot;
 
 /// network command
 #[derive(Clone, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum NodeCommand {
     /// Send given peer list to node.
     SendPeerList(Vec<IpAddr>),
-    /// Send that block to node.
-    SendBlock(BlockId),
     /// Send the header of a block to a node.
-    SendBlockHeader(BlockId),
-    /// Ask for a block from that node.
-    AskForBlocks(Vec<BlockId>),
+    SendBlockHeader(WrappedHeader),
+    /// Ask for info on a list of blocks.
+    AskForBlocks(Vec<(BlockId, AskForBlocksInfo)>),
+    /// Reply with info on a list of blocks.
+    ReplyForBlocks(Vec<(BlockId, BlockInfoReply)>),
     /// Close the node worker.
     Close(ConnectionClosureReason),
-    /// Block not found
-    BlockNotFound(BlockId),
     /// Send full Operations (send to a node that previously asked for)
-    SendOperations(OperationIds),
+    SendOperations(Vec<WrappedOperation>),
     /// Send a batch of operation ids
     SendOperationAnnouncements(OperationPrefixIds),
     /// Ask for a set of operations
@@ -115,16 +116,14 @@ pub enum NodeEventType {
     AskedPeerList,
     /// Node we are connected to sent peer list
     ReceivedPeerList(Vec<IpAddr>),
-    /// Node we are connected to sent block
-    ReceivedBlock(WrappedBlock),
     /// Node we are connected to sent block header
     ReceivedBlockHeader(WrappedHeader),
-    /// Node we are connected to asks for a block.
-    ReceivedAskForBlocks(Vec<BlockId>),
-    /// Didn't found given block,
-    BlockNotFound(BlockId),
+    /// Node we are connected asked for info on a list of blocks.
+    ReceivedAskForBlocks(Vec<(BlockId, AskForBlocksInfo)>),
+    /// Node we are connected sent info on a list of blocks.
+    ReceivedReplyForBlocks(Vec<(BlockId, BlockInfoReply)>),
     /// Received full operations.
-    ReceivedOperations(Operations),
+    ReceivedOperations(Vec<WrappedOperation>),
     /// Received an operation id batch announcing new operations
     ReceivedOperationAnnouncements(OperationPrefixIds),
     /// Receive a list of wanted operations
@@ -138,27 +137,40 @@ pub enum NodeEventType {
 #[derive(Clone, Debug)]
 pub struct NodeEvent(pub NodeId, pub NodeEventType);
 
+/// Ask for the info about a block.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub enum AskForBlocksInfo {
+    /// Ask header
+    Header,
+    /// The info about the block is required(list of operations ids).
+    #[default]
+    Info,
+    /// The actual operations are required.
+    Operations(Vec<OperationId>),
+}
+
 /// Commands that the worker can execute
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum NetworkCommand {
     /// Ask for a block to a node.
     AskForBlocks {
         /// node to block ids
-        list: HashMap<NodeId, Vec<BlockId>>,
+        list: HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>>,
     },
-    /// Send that block to node.
-    SendBlock {
+    /// Send info about the content of a block to a node.
+    SendBlockInfo {
         /// to node id
         node: NodeId,
         /// block id
-        block_id: BlockId,
+        info: Vec<(BlockId, BlockInfoReply)>,
     },
     /// Send a header to a node.
     SendBlockHeader {
         /// to node id
         node: NodeId,
         /// block id
-        block_id: BlockId,
+        header: WrappedHeader,
     },
     /// `(PeerInfo, Vec <(NodeId, bool)>) peer info + list` of associated Id nodes in connection out (true)
     GetPeers(oneshot::Sender<Peers>),
@@ -172,13 +184,6 @@ pub enum NetworkCommand {
     NodeUnbanByIds(Vec<NodeId>),
     /// Unban a list of peer by their ip address
     NodeUnbanByIps(Vec<IpAddr>),
-    /// Send a message that a block is not found to a node
-    BlockNotFound {
-        /// to node id
-        node: NodeId,
-        /// block id
-        block_id: BlockId,
-    },
     /// Send endorsements to a node
     SendEndorsements {
         /// to node id
@@ -204,7 +209,7 @@ pub enum NetworkCommand {
         /// to node id
         node: NodeId,
         /// operations
-        operations: OperationIds,
+        operations: Vec<WrappedOperation>,
     },
     /// Send operation ids batch to a node
     SendOperationAnnouncements {
@@ -226,6 +231,20 @@ pub enum NetworkCommand {
     RemoveFromWhitelist(Vec<IpAddr>),
 }
 
+/// A node replied with info about a block.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::large_enum_variant)]
+pub enum BlockInfoReply {
+    /// Header
+    Header(WrappedHeader),
+    /// The info about the block is required(list of operations ids).
+    Info(Vec<OperationId>),
+    /// The actual operations required.
+    Operations(Vec<WrappedOperation>),
+    /// Block not found
+    NotFound,
+}
+
 /// network event
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
@@ -234,12 +253,12 @@ pub enum NetworkEvent {
     NewConnection(NodeId),
     /// connection to node was closed
     ConnectionClosed(NodeId),
-    /// A block was received
-    ReceivedBlock {
+    /// Info about a block was received
+    ReceivedBlockInfo {
         /// from node id
         node: NodeId,
         /// block
-        block: WrappedBlock,
+        info: Vec<(BlockId, BlockInfoReply)>,
     },
     /// A block header was received
     ReceivedBlockHeader {
@@ -253,21 +272,14 @@ pub enum NetworkEvent {
         /// node id
         node: NodeId,
         /// asked blocks
-        list: Vec<BlockId>,
-    },
-    /// That node does not have this block
-    BlockNotFound {
-        /// node id
-        node: NodeId,
-        /// block id
-        block_id: BlockId,
+        list: Vec<(BlockId, AskForBlocksInfo)>,
     },
     /// Receive previously asked Operation
     ReceivedOperations {
         /// node id
         node: NodeId,
         /// operations
-        operations: Operations,
+        operations: Vec<WrappedOperation>,
     },
     /// Receive a list of `OperationId`
     ReceivedOperationAnnouncements {

@@ -1,21 +1,29 @@
 use massa_models::{
-    address::AddressDeserializer,
-    constants::{default::MAX_DATASTORE_KEY_LENGTH, ADDRESS_SIZE_BYTES},
-    Address, VecU8Deserializer, VecU8Serializer,
+    address::{Address, AddressDeserializer, ADDRESS_SIZE_BYTES},
+    serialization::{VecU8Deserializer, VecU8Serializer},
 };
 use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
 use nom::error::{ContextError, ParseError};
 use std::ops::Bound::Included;
 
-pub const BALANCE_IDENT: u8 = 0u8;
-pub const BYTECODE_IDENT: u8 = 1u8;
-pub const DATASTORE_IDENT: u8 = 2u8;
+pub const SEQ_BALANCE_IDENT: u8 = 0u8;
+pub const PAR_BALANCE_IDENT: u8 = 1u8;
+pub const BYTECODE_IDENT: u8 = 2u8;
+pub const DATASTORE_IDENT: u8 = 3u8;
 
-/// Balance key formatting macro
+/// Sequential balance key formatting macro
 #[macro_export]
-macro_rules! balance_key {
+macro_rules! seq_balance_key {
     ($addr:expr) => {
-        [&$addr.to_bytes()[..], &[BALANCE_IDENT]].concat()
+        [&$addr.to_bytes()[..], &[SEQ_BALANCE_IDENT]].concat()
+    };
+}
+
+/// Parallel balance key formatting macro
+#[macro_export]
+macro_rules! par_balance_key {
+    ($addr:expr) => {
+        [&$addr.to_bytes()[..], &[PAR_BALANCE_IDENT]].concat()
     };
 }
 
@@ -108,23 +116,17 @@ impl Serializer<Vec<u8>> for KeySerializer {
 /// Basic key deserializer
 pub struct KeyDeserializer {
     address_deserializer: AddressDeserializer,
-    vec_u8_deserializer: VecU8Deserializer,
-}
-
-impl Default for KeyDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
+    datastore_key_deserializer: VecU8Deserializer,
 }
 
 impl KeyDeserializer {
     /// Creates a new `KeyDeserializer`
-    pub fn new() -> Self {
+    pub fn new(max_datastore_key_length: u8) -> Self {
         Self {
             address_deserializer: AddressDeserializer::new(),
-            vec_u8_deserializer: VecU8Deserializer::new(
+            datastore_key_deserializer: VecU8Deserializer::new(
                 Included(u64::MIN),
-                Included(MAX_DATASTORE_KEY_LENGTH as u64),
+                Included(max_datastore_key_length as u64),
             ),
         }
     }
@@ -132,9 +134,10 @@ impl KeyDeserializer {
 
 // TODO: deserialize keys into a rust type
 impl Deserializer<Vec<u8>> for KeyDeserializer {
+    /// ## Example
     /// ```
     /// use massa_models::address::Address;
-    /// use massa_ledger_exports::{KeyDeserializer, KeySerializer, DATASTORE_IDENT, BALANCE_IDENT};
+    /// use massa_ledger_exports::{KeyDeserializer, KeySerializer, DATASTORE_IDENT, SEQ_BALANCE_IDENT};
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use massa_hash::Hash;
     /// use std::str::FromStr;
@@ -148,16 +151,16 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
     /// key.push(DATASTORE_IDENT);
     /// key.extend(store_key.to_bytes());
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
-    /// let (rest, key_deser) = KeyDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let (rest, key_deser) = KeyDeserializer::new(255).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(key_deser, key);
     ///
     /// let mut key = Vec::new();
     /// let mut serialized = Vec::new();
     /// key.extend(address.to_bytes());
-    /// key.push(BALANCE_IDENT);
+    /// key.push(SEQ_BALANCE_IDENT);
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
-    /// let (rest, key_deser) = KeyDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let (rest, key_deser) = KeyDeserializer::new(255).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(key_deser, key);
     /// ```
@@ -172,10 +175,11 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
         ));
         match rest.first() {
             Some(ident) => match *ident {
-                BALANCE_IDENT => Ok((&rest[1..], balance_key!(address))),
+                SEQ_BALANCE_IDENT => Ok((&rest[1..], seq_balance_key!(address))),
+                PAR_BALANCE_IDENT => Ok((&rest[1..], par_balance_key!(address))),
                 BYTECODE_IDENT => Ok((&rest[1..], bytecode_key!(address))),
                 DATASTORE_IDENT => {
-                    let (rest, hash) = self.vec_u8_deserializer.deserialize(&rest[1..])?;
+                    let (rest, hash) = self.datastore_key_deserializer.deserialize(&rest[1..])?;
                     Ok((rest, data_key!(address, hash)))
                 }
                 _ => Err(error),

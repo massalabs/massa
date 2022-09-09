@@ -6,12 +6,9 @@
 //! Same as for wanted/known blocks, we remember here in cache which node asked
 //! for operations and which operations he seem to already know.
 
-use massa_models::{
-    operation::OperationIds,
-    prehash::{BuildMap, Map, Set},
-};
-use massa_models::{BlockId, EndorsementId, OperationId};
-use massa_protocol_exports::ProtocolSettings;
+use massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet};
+use massa_models::{block::BlockId, endorsement::EndorsementId, operation::OperationId};
+use massa_protocol_exports::ProtocolConfig;
 use std::collections::VecDeque;
 use tokio::time::Instant;
 
@@ -21,47 +18,36 @@ use tokio::time::Instant;
 pub(crate) struct NodeInfo {
     /// The blocks the node "knows about",
     /// defined as the one the node propagated headers to us for.
-    pub(crate) known_blocks: Map<BlockId, (bool, Instant)>,
-    /// The blocks the node asked for.
-    pub(crate) wanted_blocks: Map<BlockId, Instant>,
+    pub(crate) known_blocks: PreHashMap<BlockId, (bool, Instant)>,
     /// Blocks we asked that node for
-    pub asked_blocks: Map<BlockId, Instant>,
+    pub asked_blocks: PreHashMap<BlockId, Instant>,
     /// Instant when the node was added
     pub connection_instant: Instant,
     /// all known operations
-    known_operations: OperationIds,
+    known_operations: PreHashSet<OperationId>,
     /// Same as `known_operations` but sorted for a premature optimization :-)
     known_operations_queue: VecDeque<OperationId>,
     /// all known endorsements
-    known_endorsements: Set<EndorsementId>,
+    known_endorsements: PreHashSet<EndorsementId>,
     /// Same as `known_endorsements` but sorted for a premature optimization :-)
     known_endorsements_queue: VecDeque<EndorsementId>,
 }
 
 impl NodeInfo {
     /// Creates empty node info
-    pub fn new(pool_settings: &'static ProtocolSettings) -> NodeInfo {
+    pub fn new(pool_settings: &ProtocolConfig) -> NodeInfo {
         NodeInfo {
-            known_blocks: Map::with_capacity_and_hasher(
-                pool_settings.max_node_known_blocks_size,
-                BuildMap::default(),
-            ),
-            wanted_blocks: Map::with_capacity_and_hasher(
-                pool_settings.max_node_wanted_blocks_size,
-                BuildMap::default(),
-            ),
+            known_blocks: PreHashMap::with_capacity(pool_settings.max_node_known_blocks_size),
             asked_blocks: Default::default(),
             connection_instant: Instant::now(),
-            known_operations: Set::<OperationId>::with_capacity_and_hasher(
+            known_operations: PreHashSet::<OperationId>::with_capacity(
                 pool_settings.max_node_known_ops_size.saturating_add(1),
-                BuildMap::default(),
             ),
             known_operations_queue: VecDeque::with_capacity(
                 pool_settings.max_node_known_ops_size.saturating_add(1),
             ),
-            known_endorsements: Set::<EndorsementId>::with_capacity_and_hasher(
+            known_endorsements: PreHashSet::<EndorsementId>::with_capacity(
                 pool_settings.max_node_known_endorsements_size,
-                BuildMap::default(),
             ),
             known_endorsements_queue: VecDeque::with_capacity(
                 pool_settings.max_node_known_endorsements_size,
@@ -132,7 +118,7 @@ impl NodeInfo {
         self.known_endorsements.contains(endorsement_id)
     }
 
-    pub fn insert_known_ops(&mut self, ops: Set<OperationId>, max_ops_nb: usize) {
+    pub fn insert_known_ops(&mut self, ops: PreHashSet<OperationId>, max_ops_nb: usize) {
         for operation_id in ops.into_iter() {
             if self.known_operations.insert(operation_id) {
                 self.known_operations_queue.push_back(operation_id);
@@ -147,52 +133,5 @@ impl NodeInfo {
 
     pub fn knows_op(&self, op: &OperationId) -> bool {
         self.known_operations.contains(op)
-    }
-
-    /// Remove the oldest items from `wanted_blocks`
-    /// to ensure it contains at most `max_node_wanted_blocks_size` items.
-    /// This algorithm is optimized for cases where there are no more than a couple excess items, ideally just one.
-    fn remove_excess_wanted_blocks(&mut self, max_node_wanted_blocks_size: usize) {
-        while self.wanted_blocks.len() > max_node_wanted_blocks_size {
-            // remove oldest item
-            let (&h, _) = self
-                .wanted_blocks
-                .iter()
-                .min_by_key(|(h, t)| (*t, *h))
-                .unwrap(); // never None because is the collection is empty, while loop isn't executed.
-            self.wanted_blocks.remove(&h);
-        }
-    }
-
-    /// Insert a block in the wanted list of a node.
-    /// Also lists the block as not known by the node
-    pub fn insert_wanted_block(
-        &mut self,
-        block_id: BlockId,
-        max_node_wanted_blocks_size: usize,
-        max_node_known_blocks_size: usize,
-    ) {
-        // Insert into known_blocks
-        let now = Instant::now();
-        self.wanted_blocks.insert(block_id, now);
-        self.remove_excess_wanted_blocks(max_node_wanted_blocks_size);
-
-        // If the node wants a block, it means that it doesn't have it.
-        // To avoid asking the node for this block in the meantime,
-        // mark the node as not knowing the block.
-        self.insert_known_blocks(&[block_id], false, now, max_node_known_blocks_size);
-    }
-
-    /// returns whether a node wants a block, and if so, updates the timestamp of that info to now()
-    pub fn contains_wanted_block_update_timestamp(&mut self, block_id: &BlockId) -> bool {
-        self.wanted_blocks
-            .get_mut(block_id)
-            .map(|instant| *instant = Instant::now())
-            .is_some()
-    }
-
-    /// Removes given block from wanted block for that node
-    pub fn remove_wanted_block(&mut self, block_id: &BlockId) -> bool {
-        self.wanted_blocks.remove(block_id).is_some()
     }
 }

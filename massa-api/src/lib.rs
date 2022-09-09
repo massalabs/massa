@@ -1,4 +1,4 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 //! Json RPC API for a massa-node
 #![feature(async_closure)]
 #![warn(missing_docs)]
@@ -21,22 +21,34 @@ use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::Set;
-use massa_models::{Address, BlockId, EndorsementId, Version};
-use massa_network_exports::{NetworkCommandSender, NetworkSettings};
-use massa_pool::PoolCommandSender;
+use massa_models::prehash::PreHashSet;
+use massa_models::{
+    address::Address,
+    block::{Block, BlockId},
+    endorsement::EndorsementId,
+    slot::Slot,
+    version::Version,
+};
+use massa_network_exports::{NetworkCommandSender, NetworkConfig};
+use massa_pool_exports::PoolController;
+use massa_pos_exports::SelectorController;
+use massa_protocol_exports::ProtocolCommandSender;
 use massa_signature::KeyPair;
+use massa_storage::Storage;
+use massa_wallet::Wallet;
+use parking_lot::RwLock;
 use std::net::{IpAddr, SocketAddr};
+use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
 use tokio::sync::mpsc;
 use tracing::{info, warn};
 
+mod config;
 mod error;
 mod private;
 mod public;
-mod settings;
-pub use settings::APISettings;
+pub use config::APIConfig;
 
 /// Public API component
 pub struct Public {
@@ -44,14 +56,20 @@ pub struct Public {
     pub consensus_command_sender: ConsensusCommandSender,
     /// link to the execution component
     pub execution_controller: Box<dyn ExecutionController>,
+    /// link to the selector component
+    pub selector_controller: Box<dyn SelectorController>,
     /// link to the pool component
-    pub pool_command_sender: PoolCommandSender,
+    pub pool_command_sender: Box<dyn PoolController>,
+    /// link to the protocol component
+    pub protocol_command_sender: ProtocolCommandSender,
+    /// Massa storage
+    pub storage: Storage,
     /// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
     pub consensus_config: ConsensusConfig,
     /// API settings
-    pub api_settings: &'static APISettings,
-    /// network setting (TODO consider removing)
-    pub network_settings: &'static NetworkSettings,
+    pub api_settings: APIConfig,
+    /// network setting
+    pub network_settings: NetworkConfig,
     /// node version (TODO remove, can be retrieved via an endpoint)
     pub version: Version,
     /// link to the network component
@@ -73,9 +91,11 @@ pub struct Private {
     /// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
     pub consensus_config: ConsensusConfig,
     /// API settings
-    pub api_settings: &'static APISettings,
+    pub api_settings: APIConfig,
     /// stop channel
     pub stop_node_channel: mpsc::Sender<()>,
+    /// User wallet
+    pub node_wallet: Arc<RwLock<Wallet>>,
 }
 
 /// The API wrapper
@@ -162,7 +182,7 @@ pub trait Endpoints {
 
     /// Return hash set of staking addresses.
     #[rpc(name = "get_staking_addresses")]
-    fn get_staking_addresses(&self) -> BoxFuture<Result<Set<Address>, ApiError>>;
+    fn get_staking_addresses(&self) -> BoxFuture<Result<PreHashSet<Address>, ApiError>>;
 
     /// Bans given IP address(es).
     /// No confirmation to expect.
@@ -225,6 +245,11 @@ pub trait Endpoints {
     /// Get information on a block given its hash.
     #[rpc(name = "get_block")]
     fn get_block(&self, _: BlockId) -> BoxFuture<Result<BlockInfo, ApiError>>;
+
+    /// Get information on the block at a slot in the blockclique.
+    /// If there is no block at this slot a `None` is returned.
+    #[rpc(name = "get_blockclique_block_by_slot")]
+    fn get_blockclique_block_by_slot(&self, _: Slot) -> BoxFuture<Result<Option<Block>, ApiError>>;
 
     /// Get the block graph within the specified time interval.
     /// Optional parameters: from `<time_start>` (included) and to `<time_end>` (excluded) millisecond timestamp

@@ -2,13 +2,15 @@
 
 //! This file defines the structure representing an asynchronous message
 
-use std::ops::Bound::Included;
-
 use massa_models::address::AddressDeserializer;
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
-use massa_models::constants::THREAD_COUNT;
 use massa_models::slot::{SlotDeserializer, SlotSerializer};
-use massa_models::{Address, Amount, Slot, VecU8Deserializer, VecU8Serializer};
+use massa_models::{
+    address::Address,
+    amount::Amount,
+    serialization::{VecU8Deserializer, VecU8Serializer},
+    slot::Slot,
+};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -17,6 +19,7 @@ use nom::multi::length_data;
 use nom::sequence::tuple;
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
+use std::ops::Bound::{Excluded, Included};
 
 /// Unique identifier of a message.
 /// Also has the property of ordering by priority (highest first) following the triplet:
@@ -46,10 +49,11 @@ impl Default for AsyncMessageIdSerializer {
 }
 
 impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
+    /// ## Example
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::Serializer;
-    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use std::str::FromStr;
     /// use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageIdSerializer};
     ///
@@ -86,33 +90,34 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
 pub struct AsyncMessageIdDeserializer {
     amount_deserializer: AmountDeserializer,
     slot_deserializer: SlotDeserializer,
-    u64_deserializer: U64VarIntDeserializer,
+    emission_index_deserializer: U64VarIntDeserializer,
 }
 
 impl AsyncMessageIdDeserializer {
-    pub fn new() -> Self {
+    pub fn new(thread_count: u8) -> Self {
         Self {
-            amount_deserializer: AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
-                (Included(0), Included(THREAD_COUNT)),
+                (Included(0), Excluded(thread_count)),
             ),
-            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            emission_index_deserializer: U64VarIntDeserializer::new(
+                Included(u64::MIN),
+                Included(u64::MAX),
+            ),
         }
     }
 }
 
-impl Default for AsyncMessageIdDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
+    /// ## Example
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use std::str::FromStr;
     /// use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageIdSerializer, AsyncMessageIdDeserializer};
     ///
@@ -132,7 +137,7 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
     /// let id: AsyncMessageId = message.compute_id();
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncMessageIdSerializer::new();
-    /// let deserializer = AsyncMessageIdDeserializer::new();
+    /// let deserializer = AsyncMessageIdDeserializer::new(10);
     /// serializer.serialize(&id, &mut serialized).unwrap();
     /// let (rest, id_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
@@ -145,9 +150,15 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
         context(
             "Failed AsyncMessageId deserialization",
             tuple((
-                |input| self.amount_deserializer.deserialize(input),
-                |input| self.slot_deserializer.deserialize(input),
-                |input| self.u64_deserializer.deserialize(input),
+                context("Failed gas_price deserialization", |input| {
+                    self.amount_deserializer.deserialize(input)
+                }),
+                context("Failed emission_slot deserialization", |input| {
+                    self.slot_deserializer.deserialize(input)
+                }),
+                context("Failed emission_index deserialization", |input| {
+                    self.emission_index_deserializer.deserialize(input)
+                }),
             )),
         )
         .map(|(amount, slot, index)| (std::cmp::Reverse(amount), slot, index))
@@ -234,9 +245,10 @@ impl Default for AsyncMessageSerializer {
 }
 
 impl Serializer<AsyncMessage> for AsyncMessageSerializer {
+    /// ## Example
     /// ```
     /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer};
-    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
     /// let message = AsyncMessage {
@@ -272,7 +284,7 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
         let handler_name_len: u8 = handler_bytes.len().try_into().map_err(|_| {
             SerializeError::GeneralError("could not convert handler name length to u8".into())
         })?;
-        buffer.extend(&[handler_name_len]);
+        buffer.extend([handler_name_len]);
         buffer.extend(handler_bytes);
 
         self.u64_serializer.serialize(&value.max_gas, buffer)?;
@@ -290,36 +302,42 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
 pub struct AsyncMessageDeserializer {
     slot_deserializer: SlotDeserializer,
     amount_deserializer: AmountDeserializer,
-    u64_deserializer: U64VarIntDeserializer,
-    vec_u8_deserializer: VecU8Deserializer,
+    emission_index_deserializer: U64VarIntDeserializer,
+    max_gas_deserializer: U64VarIntDeserializer,
+    data_deserializer: VecU8Deserializer,
     address_deserializer: AddressDeserializer,
 }
 
 impl AsyncMessageDeserializer {
-    pub fn new() -> Self {
+    pub fn new(thread_count: u8, max_data_async_message: u64) -> Self {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Included(THREAD_COUNT)),
+                (Included(0), Excluded(thread_count)),
             ),
-            amount_deserializer: AmountDeserializer::new(Included(0), Included(u64::MAX)),
-            u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
-            vec_u8_deserializer: VecU8Deserializer::new(Included(0), Included(u64::MAX)),
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
+            emission_index_deserializer: U64VarIntDeserializer::new(
+                Included(0),
+                Included(u64::MAX),
+            ),
+            max_gas_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            data_deserializer: VecU8Deserializer::new(
+                Included(0),
+                Included(max_data_async_message),
+            ),
             address_deserializer: AddressDeserializer::new(),
         }
     }
 }
 
-impl Default for AsyncMessageDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
+    /// ## Example
     /// ```
     /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer, AsyncMessageDeserializer};
-    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
     /// let message = AsyncMessage {
@@ -338,7 +356,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     /// let message_serializer = AsyncMessageSerializer::new();
     /// let mut serialized = Vec::new();
     /// message_serializer.serialize(&message, &mut serialized).unwrap();
-    /// let message_deserializer = AsyncMessageDeserializer::new();
+    /// let message_deserializer = AsyncMessageDeserializer::new(32, 100000);
     /// let (rest, message_deserialized) = message_deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(message, message_deserialized);
@@ -354,7 +372,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                     self.slot_deserializer.deserialize(input)
                 }),
                 context("Failed emission_index deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
+                    self.emission_index_deserializer.deserialize(input)
                 }),
                 context("Failed sender deserialization", |input| {
                     self.address_deserializer.deserialize(input)
@@ -381,7 +399,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                     ))
                 }),
                 context("Failed max_gas deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
+                    self.max_gas_deserializer.deserialize(input)
                 }),
                 context("Failed gas_price deserialization", |input| {
                     self.amount_deserializer.deserialize(input)
@@ -396,7 +414,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                     self.slot_deserializer.deserialize(input)
                 }),
                 context("Failed data deserialization", |input| {
-                    self.vec_u8_deserializer.deserialize(input)
+                    self.data_deserializer.deserialize(input)
                 }),
             )),
         )
@@ -436,7 +454,12 @@ mod tests {
     use massa_serialization::{DeserializeError, Deserializer, Serializer};
 
     use crate::{AsyncMessage, AsyncMessageDeserializer, AsyncMessageSerializer};
-    use massa_models::{Address, Amount, Slot};
+    use massa_models::{
+        address::Address,
+        amount::Amount,
+        config::{MAX_DATA_ASYNC_MESSAGE, THREAD_COUNT},
+        slot::Slot,
+    };
     use std::str::FromStr;
 
     #[test]
@@ -461,7 +484,8 @@ mod tests {
         message_serializer
             .serialize(&message, &mut serialized)
             .unwrap();
-        let message_deserializer = AsyncMessageDeserializer::new();
+        let message_deserializer =
+            AsyncMessageDeserializer::new(THREAD_COUNT, MAX_DATA_ASYNC_MESSAGE);
         serialized[1] = 50;
         message_deserializer
             .deserialize::<DeserializeError>(&serialized)

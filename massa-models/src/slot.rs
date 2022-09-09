@@ -1,12 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use super::{
-    serialization::{
-        u8_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
-    },
-    with_serialization_context,
-};
-use crate::constants::SLOT_KEY_SIZE;
 use crate::error::ModelsError;
 use massa_hash::Hash;
 use massa_serialization::{
@@ -26,6 +19,9 @@ pub struct Slot {
     /// thread
     pub thread: u8,
 }
+
+/// size of the slot key representation
+pub const SLOT_KEY_SIZE: usize = 9;
 
 /// Basic serializer for `Slot`
 pub struct SlotSerializer {
@@ -51,7 +47,7 @@ impl Serializer<Slot> for SlotSerializer {
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::Serializer;
-    /// use massa_models::{Slot, SlotSerializer};
+    /// use massa_models::slot::{Slot, SlotSerializer};
     ///
     /// let slot: Slot = Slot::new(1, 3);
     /// let mut serialized = Vec::new();
@@ -88,7 +84,7 @@ impl Deserializer<Slot> for SlotDeserializer {
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{Slot, SlotSerializer, SlotDeserializer};
+    /// use massa_models::slot::{Slot, SlotSerializer, SlotDeserializer};
     ///
     /// let slot: Slot = Slot::new(1, 3);
     /// let mut serialized = Vec::new();
@@ -167,6 +163,31 @@ impl Slot {
         Slot { period, thread }
     }
 
+    /// create the last slot of a given cycle
+    pub fn new_last_of_cycle(
+        cycle: u64,
+        periods_per_cycle: u64,
+        thread_count: u8,
+    ) -> Result<Slot, ModelsError> {
+        let period = cycle
+            .checked_mul(periods_per_cycle)
+            .ok_or(ModelsError::PeriodOverflowError)?
+            .checked_add(periods_per_cycle - 1)
+            .ok_or(ModelsError::PeriodOverflowError)?;
+        Ok(Slot {
+            period,
+            thread: thread_count - 1,
+        })
+    }
+
+    /// create the first slot of a given cycle
+    pub fn new_first_of_cycle(cycle: u64, periods_per_cycle: u64) -> Result<Slot, ModelsError> {
+        let period = cycle
+            .checked_mul(periods_per_cycle)
+            .ok_or(ModelsError::PeriodOverflowError)?;
+        Ok(Slot { period, thread: 0 })
+    }
+
     /// returns the minimal slot
     pub const fn min() -> Slot {
         Slot {
@@ -193,11 +214,22 @@ impl Slot {
         self.period / periods_per_cycle
     }
 
+    /// check if the slot is last in the cycle
+    pub fn is_last_of_cycle(&self, periods_per_cycle: u64, thread_count: u8) -> bool {
+        self.period % periods_per_cycle == (periods_per_cycle - 1)
+            && self.thread == (thread_count - 1)
+    }
+
+    /// check if the slot is first in the cycle
+    pub fn is_first_of_cycle(&self, periods_per_cycle: u64) -> bool {
+        self.period % periods_per_cycle == 0 && self.thread == 0
+    }
+
     /// Returns a fixed-size sortable binary key
     ///
     /// ## Example
     /// ```rust
-    /// # use massa_models::Slot;
+    /// # use massa_models::slot::Slot;
     /// let slot = Slot::new(10,5);
     /// let key = slot.to_bytes_key();
     /// let res = Slot::from_bytes_key(&key);
@@ -214,7 +246,7 @@ impl Slot {
     ///
     /// ## Example
     /// ```rust
-    /// # use massa_models::Slot;
+    /// # use massa_models::slot::Slot;
     /// let slot = Slot::new(10,5);
     /// let key = slot.to_bytes_key();
     /// let res = Slot::from_bytes_key(&key);
@@ -231,7 +263,7 @@ impl Slot {
     ///
     /// ## Example
     /// ```rust
-    /// # use massa_models::Slot;
+    /// # use massa_models::slot::Slot;
     /// let slot = Slot::new(10,5);
     /// assert_eq!(slot.get_next_slot(5).unwrap(), Slot::new(11, 0))
     /// ```
@@ -269,64 +301,5 @@ impl Slot {
             .checked_add(self.thread as u64)
             .ok_or(ModelsError::PeriodOverflowError)?
             .saturating_sub(s.thread as u64))
-    }
-}
-
-impl SerializeCompact for Slot {
-    /// Returns a compact binary representation of the slot
-    ///
-    /// ## Example
-    /// ```rust
-    /// # use massa_models::Slot;
-    /// # use massa_models::{DeserializeCompact, SerializeCompact};
-    /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
-    /// # let context = massa_models::get_serialization_context();
-    /// let slot = Slot::new(10,1);
-    /// let ser = slot.to_bytes_compact().unwrap();
-    /// let (deser, _) = Slot::from_bytes_compact(&ser).unwrap();
-    /// assert_eq!(slot, deser);
-    /// ```
-    ///
-    /// Checks performed: none.
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        let mut res: Vec<u8> = Vec::with_capacity(9);
-        res.extend(self.period.to_varint_bytes());
-        res.push(self.thread);
-        Ok(res)
-    }
-}
-
-impl DeserializeCompact for Slot {
-    /// Deserializes from a compact representation
-    ///
-    /// ## Example
-    /// ```rust
-    /// # use massa_models::Slot;
-    /// # use massa_models::{DeserializeCompact, SerializeCompact};
-    /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
-    /// # let context = massa_models::get_serialization_context();
-    /// let slot = Slot::new(10,1);
-    /// let ser = slot.to_bytes_compact().unwrap();
-    /// let (deser, _) = Slot::from_bytes_compact(&ser).unwrap();
-    /// assert_eq!(slot, deser);
-    /// ```
-    ///
-    /// Checks performed:
-    /// - Valid period and delta.
-    /// - Valid thread.
-    /// - Valid thread number.
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let parent_count = with_serialization_context(|context| context.thread_count);
-        let mut cursor = 0usize;
-        let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
-        let thread = u8_from_slice(&buffer[cursor..])?;
-        cursor += 1;
-        if thread >= parent_count {
-            return Err(ModelsError::DeserializeError(
-                "invalid thread number".into(),
-            ));
-        }
-        Ok((Slot { period, thread }, cursor))
     }
 }

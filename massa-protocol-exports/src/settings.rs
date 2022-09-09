@@ -2,10 +2,11 @@
 
 use massa_time::MassaTime;
 use serde::Deserialize;
-
-/// Protocol Configuration
+/// Dinamic protocol configuration mixin static settings and constants configurations.
 #[derive(Debug, Deserialize, Clone, Copy)]
-pub struct ProtocolSettings {
+pub struct ProtocolConfig {
+    /// running threads count
+    pub thread_count: u8,
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node
     pub ask_block_timeout: MassaTime,
     /// max known blocks of current nodes we keep in memory (by node)
@@ -35,4 +36,10 @@ pub struct ProtocolSettings {
     pub asked_operations_pruning_period: MassaTime,
     /// Maximum of operations sent in one message.
     pub max_operations_per_message: u64,
+    /// Maximum size in bytes of all serialized operations size in a block
+    pub max_serialized_operations_size_per_block: usize,
+    /// Controller channel size
+    pub controller_channel_size: usize,
+    /// Event channel size
+    pub event_channel_size: usize,
 }

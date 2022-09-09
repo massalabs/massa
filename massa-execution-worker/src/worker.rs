@@ -13,11 +13,12 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest,
 };
 use massa_final_state::FinalState;
-use massa_models::BlockId;
+use massa_models::block::BlockId;
 use massa_models::{
+    slot::Slot,
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
-    Slot,
 };
+use massa_pos_exports::SelectorController;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::{Condvar, Mutex, RwLock};
@@ -32,22 +33,24 @@ pub(crate) struct ExecutionThread {
     input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
     // Map of final slots not executed yet but ready for execution
     // See lib.rs for an explanation on final execution ordering.
-    ready_final_slots: HashMap<Slot, Option<BlockId>>,
+    ready_final_slots: HashMap<Slot, Option<(BlockId, Storage)>>,
     // Highest final slot that is ready to be executed
     last_ready_final_slot: Slot,
     // Map of final blocks that are not yet ready to be executed
     // See lib.rs for an explanation on final execution ordering.
-    pending_final_blocks: HashMap<Slot, BlockId>,
+    pending_final_blocks: HashMap<Slot, (BlockId, Storage)>,
     // Current blockclique, indexed by slot number
-    blockclique: HashMap<Slot, BlockId>,
+    blockclique: HashMap<Slot, (BlockId, Storage)>,
     // Map of all active slots
-    active_slots: HashMap<Slot, Option<BlockId>>,
+    active_slots: HashMap<Slot, Option<(BlockId, Storage)>>,
     // Highest active slot
     last_active_slot: Slot,
     // Execution state (see execution.rs) to which execution requests are sent
     execution_state: Arc<RwLock<ExecutionState>>,
     /// queue for read-only requests and response MPSCs to send back their outputs
     readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
+    /// Selector controller
+    selector: Box<dyn SelectorController>,
 }
 
 impl ExecutionThread {
@@ -62,6 +65,7 @@ impl ExecutionThread {
         config: ExecutionConfig,
         input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
         execution_state: Arc<RwLock<ExecutionState>>,
+        selector: Box<dyn SelectorController>,
     ) -> Self {
         // get the latest executed final slot, at the output of which the final ledger is attached
         let final_cursor = execution_state.read().final_cursor;
@@ -78,6 +82,7 @@ impl ExecutionThread {
             readonly_requests: RequestQueue::new(config.readonly_queue_length),
             config,
             execution_state,
+            selector,
         }
     }
 
@@ -86,7 +91,7 @@ impl ExecutionThread {
     ///
     /// # Arguments
     /// * `new_final_blocks`: a map of newly finalized blocks
-    fn update_final_slots(&mut self, new_final_blocks: HashMap<Slot, BlockId>) {
+    fn update_final_slots(&mut self, new_final_blocks: HashMap<Slot, (BlockId, Storage)>) {
         // if there are no new final blocks, exit and do nothing
         if new_final_blocks.is_empty() {
             return;
@@ -113,10 +118,11 @@ impl ExecutionThread {
                 .expect("final slot overflow in VM");
 
             // try to remove that slot out of pending_final_blocks
-            if let Some(block_id) = self.pending_final_blocks.remove(&slot) {
+            if let Some((block_id, block_store)) = self.pending_final_blocks.remove(&slot) {
                 // pending final block found at slot:
                 // add block to the ready_final_slots list of final slots ready for execution
-                self.ready_final_slots.insert(slot, Some(block_id));
+                self.ready_final_slots
+                    .insert(slot, Some((block_id, block_store)));
                 self.last_ready_final_slot = slot;
                 // continue the loop
                 continue;
@@ -145,6 +151,13 @@ impl ExecutionThread {
                 // Add it to the list of final slots ready for execution
                 self.ready_final_slots.insert(slot, None);
                 self.last_ready_final_slot = slot;
+
+                warn!(
+                    "address {} missed a production opportunity at slot {} (cycle {})",
+                    self.selector.get_producer(slot).unwrap(),
+                    slot,
+                    slot.get_cycle(self.config.periods_per_cycle)
+                );
             } else {
                 // This slot is not final:
                 // we have reached the end of the list of consecutive final slots
@@ -163,7 +176,7 @@ impl ExecutionThread {
     /// The latest slot at or before `now() - self.config.cursor_delay` if there is any,
     /// or None if it falls behind the genesis timestamp.
     fn get_end_active_slot(&self) -> Option<Slot> {
-        let target_time = MassaTime::compensated_now(self.config.clock_compensation)
+        let target_time = MassaTime::now(self.config.clock_compensation)
             .expect("could not read current time")
             .saturating_sub(self.config.cursor_delay);
         get_latest_block_slot_at_timestamp(
@@ -182,7 +195,7 @@ impl ExecutionThread {
     ///
     /// Arguments:
     /// * `new_blockclique`: optionally provide a new blockclique
-    fn update_active_slots(&mut self, new_blockclique: Option<HashMap<Slot, BlockId>>) {
+    fn update_active_slots(&mut self, new_blockclique: Option<HashMap<Slot, (BlockId, Storage)>>) {
         // Update the current blockclique if it has changed
         if let Some(blockclique) = new_blockclique {
             self.blockclique = blockclique;
@@ -210,15 +223,17 @@ impl ExecutionThread {
                 .get_next_slot(self.config.thread_count)
                 .expect("active slot overflow in VM");
             // look for a block at that slot among the ones that are final but not ready for final execution yet
-            if let Some(block_id) = self.pending_final_blocks.get(&slot) {
+            if let Some((block_id, block_store)) = self.pending_final_blocks.get(&slot) {
                 // A block at that slot was found in pending_final_blocks.
                 // Add it to the sequence of active slots.
-                self.active_slots.insert(slot, Some(*block_id));
+                self.active_slots
+                    .insert(slot, Some((*block_id, block_store.clone())));
                 self.last_active_slot = slot;
-            } else if let Some(block_id) = self.blockclique.get(&slot) {
+            } else if let Some((block_id, block_store)) = self.blockclique.get(&slot) {
                 // A block at that slot was found in the current blockclique.
                 // Add it to the sequence of active slots.
-                self.active_slots.insert(slot, Some(*block_id));
+                self.active_slots
+                    .insert(slot, Some((*block_id, block_store.clone())));
                 self.last_active_slot = slot;
             } else {
                 // No block was found at that slot: it's a miss
@@ -251,10 +266,11 @@ impl ExecutionThread {
             .ready_final_slots
             .remove(&slot)
             .expect("the SCE final slot list skipped a slot");
+        let target_id = exec_target.as_ref().map(|(b_id, _)| *b_id);
 
         // check if the final slot is cached at the front of the speculative execution history
         if let Some(exec_out) = exec_state.pop_first_execution_result() {
-            if exec_out.slot == slot && exec_out.block_id == exec_target {
+            if exec_out.slot == slot && exec_out.block_id == target_id {
                 // speculative execution front result matches what we want to compute
 
                 // apply the cached output and return
@@ -264,14 +280,14 @@ impl ExecutionThread {
                 // speculative cache mismatch
                 warn!(
                     "speculative execution cache mismatch (final slot={}/block={:?}, front speculative slot={}/block={:?}). Resetting the cache.",
-                    slot, exec_target, exec_out.slot, exec_out.block_id
+                    slot, target_id, exec_out.slot, exec_out.block_id
                 );
             }
         } else {
             // cache entry absent
             info!(
                 "speculative execution cache empty, executing final slot={}/block={:?}",
-                slot, exec_target
+                slot, target_id
             );
         }
 
@@ -279,7 +295,7 @@ impl ExecutionThread {
         exec_state.clear_history();
 
         // execute slot
-        let exec_out = exec_state.execute_slot(slot, exec_target);
+        let exec_out = exec_state.execute_slot(slot, exec_target, &self.selector);
 
         // apply execution output to final state
         exec_state.apply_final_execution_output(exec_out);
@@ -316,12 +332,12 @@ impl ExecutionThread {
 
         // choose the execution target
         let exec_target = match self.active_slots.get(&slot) {
-            Some(b_id) => *b_id,
+            Some(b_store) => b_store.as_ref().map(|(b_id, bs)| (*b_id, bs.clone())),
             _ => return false,
         };
 
         // execute the slot
-        let exec_out = exec_state.execute_slot(slot, exec_target);
+        let exec_out = exec_state.execute_slot(slot, exec_target, &self.selector);
 
         // apply execution output to active state
         exec_state.apply_active_execution_output(exec_out);
@@ -347,7 +363,7 @@ impl ExecutionThread {
         .expect("could not compute block timestamp in VM");
 
         // get the current timestamp minus the cursor delay
-        let end_time = MassaTime::compensated_now(self.config.clock_compensation)
+        let end_time = MassaTime::now(self.config.clock_compensation)
             .expect("could not get current time in VM")
             .saturating_sub(self.config.cursor_delay);
 
@@ -572,7 +588,6 @@ impl ExecutionThread {
 /// # parameters
 /// * `config`: execution configuration
 /// * `final_state`: a thread-safe shared access to the final state for reading and writing
-/// * `storage`: A shared storage between all modules to have shared data.
 ///
 /// # Returns
 /// A pair `(execution_manager, execution_controller)` where:
@@ -581,13 +596,12 @@ impl ExecutionThread {
 pub fn start_execution_worker(
     config: ExecutionConfig,
     final_state: Arc<RwLock<FinalState>>,
-    storage: Storage,
+    selector: Box<dyn SelectorController>,
 ) -> (Box<dyn ExecutionManager>, Box<dyn ExecutionController>) {
     // create an execution state
     let execution_state = Arc::new(RwLock::new(ExecutionState::new(
         config.clone(),
         final_state,
-        storage,
     )));
 
     // define the input data interface
@@ -605,7 +619,7 @@ pub fn start_execution_worker(
     // launch the execution thread
     let input_data_clone = input_data.clone();
     let thread_handle = std::thread::spawn(move || {
-        ExecutionThread::new(config, input_data_clone, execution_state).main_loop();
+        ExecutionThread::new(config, input_data_clone, execution_state, selector).main_loop();
     });
 
     // create a manager

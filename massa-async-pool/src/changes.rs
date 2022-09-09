@@ -56,10 +56,11 @@ impl Default for AsyncPoolChangesSerializer {
 }
 
 impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
+    /// ## Example
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::Serializer;
-    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use std::str::FromStr;
     /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges, AsyncPoolChangesSerializer};
     ///
@@ -110,32 +111,33 @@ impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
 }
 
 pub struct AsyncPoolChangesDeserializer {
-    u64_deserializer: U64VarIntDeserializer,
+    async_pool_changes_length: U64VarIntDeserializer,
     id_deserializer: AsyncMessageIdDeserializer,
     message_deserializer: AsyncMessageDeserializer,
 }
 
 impl AsyncPoolChangesDeserializer {
-    pub fn new() -> Self {
+    pub fn new(thread_count: u8, max_async_pool_changes: u64, max_data_async_message: u64) -> Self {
         Self {
-            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(1000000)),
-            id_deserializer: AsyncMessageIdDeserializer::new(),
-            message_deserializer: AsyncMessageDeserializer::new(),
+            async_pool_changes_length: U64VarIntDeserializer::new(
+                Included(u64::MIN),
+                Included(max_async_pool_changes),
+            ),
+            id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
+            message_deserializer: AsyncMessageDeserializer::new(
+                thread_count,
+                max_data_async_message,
+            ),
         }
     }
 }
 
-impl Default for AsyncPoolChangesDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
+    /// ## Example
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use std::str::FromStr;
     /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges, AsyncPoolChangesSerializer, AsyncPoolChangesDeserializer};
     ///
@@ -155,7 +157,7 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncPoolChangesSerializer::new();
-    /// let deserializer = AsyncPoolChangesDeserializer::new();
+    /// let deserializer = AsyncPoolChangesDeserializer::new(32, 100000, 100000);
     /// serializer.serialize(&changes, &mut serialized).unwrap();
     /// let (rest, changes_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
@@ -169,20 +171,30 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
             "Failed AsyncPoolChanges deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
+                    self.async_pool_changes_length.deserialize(input)
                 }),
                 |input: &'a [u8]| match input.first() {
-                    Some(0) => {
-                        let (rest, (id, message)) = tuple((
-                            |input| self.id_deserializer.deserialize(input),
-                            |input| self.message_deserializer.deserialize(input),
-                        ))(&input[1..])?;
-                        Ok((rest, Change::Add(id, message)))
-                    }
-                    Some(1) => {
-                        let (rest, id) = self.id_deserializer.deserialize(&input[1..])?;
-                        Ok((rest, Change::Delete(id)))
-                    }
+                    Some(0) => context(
+                        "Failed Change::Add deserialization",
+                        tuple((
+                            context("Failed id deserialization", |input| {
+                                self.id_deserializer.deserialize(input)
+                            }),
+                            context("Failed message deserialization", |input| {
+                                self.message_deserializer.deserialize(input)
+                            }),
+                        )),
+                    )
+                    .map(|(id, message)| Change::Add(id, message))
+                    .parse(&input[1..]),
+                    Some(1) => context(
+                        "Failed Change::Delete deserialization",
+                        context("Failed id deserialization", |input| {
+                            self.id_deserializer.deserialize(input)
+                        }),
+                    )
+                    .map(Change::Delete)
+                    .parse(&input[1..]),
                     Some(_) => Err(nom::Err::Error(ParseError::from_error_kind(
                         buffer,
                         nom::error::ErrorKind::Digit,

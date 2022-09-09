@@ -3,7 +3,7 @@ use std::{net::SocketAddr, sync::Arc, time::Duration};
 use massa_final_state::FinalState;
 use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
-use massa_models::Version;
+use massa_models::version::Version;
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use nom::AsBytes;
@@ -19,14 +19,14 @@ use crate::{
     client_binder::BootstrapClientBinder,
     error::BootstrapError,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
-    BootstrapSettings, Establisher, GlobalBootstrapState,
+    BootstrapConfig, Establisher, GlobalBootstrapState,
 };
 
 /// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum's variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
 async fn stream_final_state(
-    cfg: &BootstrapSettings,
+    cfg: &BootstrapConfig,
     client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
@@ -62,6 +62,8 @@ async fn stream_final_state(
                 BootstrapServerMessage::FinalStatePart {
                     ledger_data,
                     async_pool_part,
+                    pos_cycle_part,
+                    pos_credits_part,
                     slot,
                     final_state_changes,
                 } => {
@@ -70,12 +72,23 @@ async fn stream_final_state(
                     let last_last_async_id = write_final_state
                         .async_pool
                         .set_pool_part(async_pool_part.as_bytes())?;
+                    let last_cycle = write_final_state
+                        .pos_state
+                        .set_cycle_history_part(pos_cycle_part.as_bytes())?;
+                    let last_credits_slot = write_final_state
+                        .pos_state
+                        .set_deferred_credits_part(pos_credits_part.as_bytes())?;
                     write_final_state
                         .ledger
                         .apply_changes(final_state_changes.ledger_changes.clone(), slot);
                     write_final_state
                         .async_pool
                         .apply_changes_unchecked(&final_state_changes.async_pool_changes);
+                    if !final_state_changes.roll_state_changes.is_empty() {
+                        write_final_state
+                            .pos_state
+                            .apply_changes(final_state_changes.roll_state_changes, slot)?;
+                    }
                     write_final_state.slot = slot;
                     if let BootstrapClientMessage::AskFinalStatePart {
                         last_key: old_key,
@@ -90,6 +103,8 @@ async fn stream_final_state(
                         last_key,
                         slot: Some(slot),
                         last_async_message_id: last_last_async_id,
+                        last_cycle,
+                        last_credits_slot,
                     };
                 }
                 BootstrapServerMessage::FinalStateFinished => {
@@ -103,6 +118,8 @@ async fn stream_final_state(
                         last_key: None,
                         slot: None,
                         last_async_message_id: None,
+                        last_cycle: None,
+                        last_credits_slot: None,
                     };
                     return Ok(());
                 }
@@ -124,7 +141,7 @@ async fn stream_final_state(
 /// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
 async fn bootstrap_from_server(
-    cfg: &BootstrapSettings,
+    cfg: &BootstrapConfig,
     client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
@@ -148,7 +165,7 @@ async fn bootstrap_from_server(
     };
 
     // handshake
-    let send_time_uncompensated = MassaTime::now()?;
+    let send_time_uncompensated = MassaTime::now(0)?;
     // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     match tokio::time::timeout(cfg.write_timeout.into(), client.handshake(our_version)).await {
         Err(_) => {
@@ -163,7 +180,7 @@ async fn bootstrap_from_server(
     }
 
     // compute ping
-    let ping = MassaTime::now()?.saturating_sub(send_time_uncompensated);
+    let ping = MassaTime::now(0)?.saturating_sub(send_time_uncompensated);
     if ping > cfg.max_ping {
         return Err(BootstrapError::GeneralError(
             "bootstrap ping too high".into(),
@@ -199,7 +216,7 @@ async fn bootstrap_from_server(
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
     };
 
-    let recv_time_uncompensated = MassaTime::now()?;
+    let recv_time_uncompensated = MassaTime::now(0)?;
 
     // compute ping
     let ping = recv_time_uncompensated.saturating_sub(send_time_uncompensated);
@@ -270,18 +287,17 @@ async fn bootstrap_from_server(
                 )
                 .await?
                 {
-                    BootstrapServerMessage::ConsensusState { pos, graph } => (pos, graph),
+                    BootstrapServerMessage::ConsensusState { graph } => graph,
                     BootstrapServerMessage::BootstrapError { error } => {
                         return Err(BootstrapError::ReceivedError(error))
                     }
                     other => return Err(BootstrapError::UnexpectedServerMessage(other)),
                 };
-                global_bootstrap_state.pos = Some(state.0);
-                global_bootstrap_state.graph = Some(state.1);
+                global_bootstrap_state.graph = Some(state);
                 *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess => {
-                if global_bootstrap_state.graph.is_none() || global_bootstrap_state.pos.is_none() {
+                if global_bootstrap_state.graph.is_none() {
                     *next_bootstrap_message = BootstrapClientMessage::AskConsensusState;
                     continue;
                 }
@@ -331,26 +347,43 @@ async fn send_client_message(
 
 async fn connect_to_server(
     establisher: &mut Establisher,
-    bootstrap_settings: &BootstrapSettings,
+    bootstrap_config: &BootstrapConfig,
     addr: &SocketAddr,
     pub_key: &PublicKey,
 ) -> Result<BootstrapClientBinder, BootstrapError> {
     // connect
     let mut connector = establisher
-        .get_connector(bootstrap_settings.connect_timeout)
+        .get_connector(bootstrap_config.connect_timeout)
         .await?; // cancellable
     let socket = connector.connect(*addr).await?; // cancellable
     Ok(BootstrapClientBinder::new(
         socket,
         *pub_key,
-        bootstrap_settings.max_bytes_read_write,
+        bootstrap_config.max_bytes_read_write,
+        bootstrap_config.max_bootstrap_message_size,
+        bootstrap_config.endorsement_count,
+        bootstrap_config.max_advertise_length,
+        bootstrap_config.max_bootstrap_blocks_length,
+        bootstrap_config.max_operations_per_blocks,
+        bootstrap_config.thread_count,
+        bootstrap_config.randomness_size_bytes,
+        bootstrap_config.max_bootstrap_async_pool_changes,
+        bootstrap_config.max_bootstrap_error_length,
+        bootstrap_config.max_bootstrap_final_state_parts_size,
+        bootstrap_config.max_datastore_entry_count,
+        bootstrap_config.max_datastore_key_length,
+        bootstrap_config.max_datastore_value_length,
+        bootstrap_config.max_data_async_message,
+        bootstrap_config.max_function_name_length,
+        bootstrap_config.max_parameters_size,
+        bootstrap_config.max_ledger_changes_count,
     ))
 }
 
 /// Gets the state from a bootstrap server
 /// needs to be CANCELLABLE
 pub async fn get_state(
-    bootstrap_settings: &'static BootstrapSettings,
+    bootstrap_config: &BootstrapConfig,
     final_state: Arc<RwLock<FinalState>>,
     mut establisher: Establisher,
     version: Version,
@@ -358,20 +391,33 @@ pub async fn get_state(
     end_timestamp: Option<MassaTime>,
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
-    let now = MassaTime::now()?;
+    let now = MassaTime::now(0)?;
     // if we are before genesis, do not bootstrap
     if now < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
-        return Ok(GlobalBootstrapState::new(final_state.clone()));
+        // init final state
+        {
+            let mut final_state_guard = final_state.write();
+            // load ledger from initial ledger file
+            final_state_guard
+                .ledger
+                .load_initial_ledger()
+                .map_err(|err| {
+                    BootstrapError::GeneralError(format!("could not load initial ledger: {}", err))
+                })?;
+            // create the initial cycle of PoS cycle_history
+            final_state_guard.pos_state.create_initial_cycle();
+        }
+        return Ok(GlobalBootstrapState::new(final_state));
     }
     // we are after genesis => bootstrap
     massa_trace!("bootstrap.lib.get_state.init_from_others", {});
-    if bootstrap_settings.bootstrap_list.is_empty() {
+    if bootstrap_config.bootstrap_list.is_empty() {
         return Err(BootstrapError::GeneralError(
             "no bootstrap nodes found in list".into(),
         ));
     }
-    let mut shuffled_list = bootstrap_settings.bootstrap_list.clone();
+    let mut shuffled_list = bootstrap_config.bootstrap_list.clone();
     shuffled_list.shuffle(&mut StdRng::from_entropy());
     // Will be none when bootstrap is over
     let mut next_bootstrap_message: BootstrapClientMessage =
@@ -379,26 +425,28 @@ pub async fn get_state(
             last_key: None,
             slot: None,
             last_async_message_id: None,
+            last_cycle: None,
+            last_credits_slot: None,
         };
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
     loop {
         for (addr, pub_key) in shuffled_list.iter() {
             if let Some(end) = end_timestamp {
-                if MassaTime::now().expect("could not get now time") > end {
+                if MassaTime::now(0).expect("could not get now time") > end {
                     panic!("This episode has come to an end, please get the latest testnet node version to continue");
                 }
             }
             info!("Start bootstrapping from {}", addr);
-            match connect_to_server(&mut establisher, bootstrap_settings, addr, pub_key).await {
+            match connect_to_server(&mut establisher, bootstrap_config, addr, pub_key).await {
                 Ok(mut client) => {
-                    match bootstrap_from_server(bootstrap_settings, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
+                    match bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
                     .await  // cancellable
                     {
                         Err(BootstrapError::ReceivedError(error)) => warn!("Error received from bootstrap server: {}", error),
                         Err(e) => {
                             warn!("Error while bootstrapping: {}", e);
                             // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                            let _ = tokio::time::timeout(bootstrap_settings.write_error_timeout.into(), client.send(&BootstrapClientMessage::BootstrapError { error: e.to_string() })).await;
+                            let _ = tokio::time::timeout(bootstrap_config.write_error_timeout.into(), client.send(&BootstrapClientMessage::BootstrapError { error: e.to_string() })).await;
                         }
                         Ok(()) => {
                             return Ok(global_bootstrap_state)
@@ -410,8 +458,8 @@ pub async fn get_state(
                 }
             };
 
-            info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {:#?}.", addr, bootstrap_settings.retry_delay.to_duration());
-            sleep(bootstrap_settings.retry_delay.into()).await;
+            info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {:#?}.", addr, bootstrap_config.retry_delay.to_duration());
+            sleep(bootstrap_config.retry_delay.into()).await;
         }
     }
 }

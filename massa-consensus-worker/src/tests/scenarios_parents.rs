@@ -2,23 +2,27 @@
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
-use massa_models::Slot;
+use massa_models::slot::Slot;
 use massa_signature::KeyPair;
 use serial_test::serial;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_parent_in_the_future() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        t0: 1000.into(),
+        t0: 32.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -47,6 +51,7 @@ async fn test_parent_in_the_future() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -55,17 +60,21 @@ async fn test_parent_in_the_future() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_parents() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        t0: 1000.into(),
+        t0: 32.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -109,6 +118,7 @@ async fn test_parents() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -117,17 +127,21 @@ async fn test_parents() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_parents_in_incompatible_cliques() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        t0: 1000.into(),
+        t0: 32.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -184,6 +198,7 @@ async fn test_parents_in_incompatible_cliques() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )

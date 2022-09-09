@@ -8,7 +8,7 @@
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
 use massa_ledger_exports::{Applicable, LedgerChanges};
-use massa_models::{constants::default::MAX_DATASTORE_KEY_LENGTH, Address, Amount};
+use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -30,6 +30,9 @@ pub(crate) struct SpeculativeLedger {
 
     /// list of ledger changes that were applied to this `SpeculativeLedger` since its creation
     added_changes: LedgerChanges,
+
+    /// max datastore key length
+    max_datastore_key_length: u8,
 }
 
 impl SpeculativeLedger {
@@ -37,15 +40,17 @@ impl SpeculativeLedger {
     ///
     /// # Arguments
     /// * `final_state`: thread-safe shared access to the final state (for reading only)
-    /// * `previous_changes`: accumulation of changes that previously happened to the ledger since finality
+    /// * `active_history`: thread-safe shared access the speculative execution history
     pub fn new(
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
+        max_datastore_key_length: u8,
     ) -> Self {
         SpeculativeLedger {
             final_state,
             added_changes: Default::default(),
             active_history,
+            max_datastore_key_length,
         }
     }
 
@@ -65,6 +70,26 @@ impl SpeculativeLedger {
         self.added_changes = snapshot;
     }
 
+    /// Gets the effective sequential balance of an address
+    ///
+    /// # Arguments:
+    /// `addr`: the address to query
+    ///
+    /// # Returns
+    /// Some(Amount) if the address was found, otherwise None
+    pub fn get_sequential_balance(&self, addr: &Address) -> Option<Amount> {
+        // try to read from added changes > history > final_state
+        self.added_changes.get_sequential_balance_or_else(addr, || {
+            match self.active_history.read().fetch_sequential_balance(addr) {
+                HistorySearchResult::Present(seq_balance) => Some(seq_balance),
+                HistorySearchResult::NoInfo => {
+                    self.final_state.read().ledger.get_sequential_balance(addr)
+                }
+                HistorySearchResult::Absent => None,
+            }
+        })
+    }
+
     /// Gets the effective parallel balance of an address
     ///
     /// # Arguments:
@@ -75,12 +100,8 @@ impl SpeculativeLedger {
     pub fn get_parallel_balance(&self, addr: &Address) -> Option<Amount> {
         // try to read from added changes > history > final_state
         self.added_changes.get_parallel_balance_or_else(addr, || {
-            match self
-                .active_history
-                .read()
-                .fetch_active_history_balance(addr)
-            {
-                HistorySearchResult::Present(active_balance) => Some(active_balance),
+            match self.active_history.read().fetch_parallel_balance(addr) {
+                HistorySearchResult::Present(par_balance) => Some(par_balance),
                 HistorySearchResult::NoInfo => {
                     self.final_state.read().ledger.get_parallel_balance(addr)
                 }
@@ -99,16 +120,60 @@ impl SpeculativeLedger {
     pub fn get_bytecode(&self, addr: &Address) -> Option<Vec<u8>> {
         // try to read from added changes > history > final_state
         self.added_changes.get_bytecode_or_else(addr, || {
-            match self
-                .active_history
-                .read()
-                .fetch_active_history_bytecode(addr)
-            {
+            match self.active_history.read().fetch_bytecode(addr) {
                 HistorySearchResult::Present(bytecode) => Some(bytecode),
                 HistorySearchResult::NoInfo => self.final_state.read().ledger.get_bytecode(addr),
                 HistorySearchResult::Absent => None,
             }
         })
+    }
+
+    /// Transfers sequential coins from one address to another.
+    /// No changes are retained in case of failure.
+    /// The spending address, if defined, must exist.
+    ///
+    /// # Parameters:
+    /// * `from_addr`: optional spending address (use None for pure coin creation)
+    /// * `to_addr`: optional crediting address (use None for pure coin destruction)
+    /// * `amount`: amount of coins to transfer
+    pub fn transfer_sequential_coins(
+        &mut self,
+        from_addr: Option<Address>,
+        to_addr: Option<Address>,
+        amount: Amount,
+    ) -> Result<(), ExecutionError> {
+        // init empty ledger changes
+        let mut changes = LedgerChanges::default();
+
+        // simulate spending coins from sender address (if any)
+        if let Some(from_addr) = from_addr {
+            let new_balance = self
+                .get_sequential_balance(&from_addr)
+                .ok_or_else(|| ExecutionError::RuntimeError("source address not found".into()))?
+                .checked_sub(amount)
+                .ok_or_else(|| {
+                    ExecutionError::RuntimeError("insufficient from_addr balance".into())
+                })?;
+            changes.set_sequential_balance(from_addr, new_balance);
+        }
+
+        // simulate crediting coins to destination address (if any)
+        // note that to_addr can be the same as from_addr
+        if let Some(to_addr) = to_addr {
+            let new_balance = changes
+                .get_sequential_balance_or_else(&to_addr, || self.get_sequential_balance(&to_addr))
+                .unwrap_or_default()
+                .checked_add(amount)
+                .ok_or_else(|| {
+                    ExecutionError::RuntimeError("overflow in to_addr balance".into())
+                })?;
+            changes.set_sequential_balance(to_addr, new_balance);
+        }
+
+        // apply the simulated changes to the speculative ledger
+        self.added_changes.apply(changes);
+
+        Ok(())
     }
 
     /// Transfers parallel coins from one address to another.
@@ -169,11 +234,7 @@ impl SpeculativeLedger {
     pub fn entry_exists(&self, addr: &Address) -> bool {
         // try to read from added changes > history > final_state
         self.added_changes.entry_exists_or_else(addr, || {
-            match self
-                .active_history
-                .read()
-                .fetch_active_history_balance(addr)
-            {
+            match self.active_history.read().fetch_sequential_balance(addr) {
                 HistorySearchResult::Present(_balance) => true,
                 HistorySearchResult::NoInfo => self.final_state.read().ledger.entry_exists(addr),
                 HistorySearchResult::Absent => false,
@@ -295,10 +356,10 @@ impl SpeculativeLedger {
 
         // check key correctness
         let key_length = key.len();
-        if key_length == 0 || key_length > MAX_DATASTORE_KEY_LENGTH as usize {
+        if key_length == 0 || key_length > self.max_datastore_key_length as usize {
             return Err(ExecutionError::RuntimeError(format!(
-                "key length is {}, but it must be in [0..{}]",
-                key_length, MAX_DATASTORE_KEY_LENGTH
+                "key length is {}, but it must be in [0..={}]",
+                key_length, self.max_datastore_key_length
             )));
         }
 

@@ -2,7 +2,7 @@
 
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
-use massa_models::{ledger_models::LedgerData, Address, Amount, BlockId, Slot};
+use massa_models::{block::BlockId, slot::Slot};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
@@ -44,20 +44,11 @@ use std::{collections::HashSet, str::FromStr};
 /// This test ensures non-regression by making sure `B4` is propagated when `B1` is received.
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_inter_cycle_batch_finalization() {
     let t0: MassaTime = 1000.into();
     let staking_key =
         KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8").unwrap();
-    let creator_addr = Address::from_public_key(&staking_key.get_public_key());
-    let roll_price = Amount::from_str("42").unwrap();
-    let initial_ledger = vec![(
-        creator_addr,
-        LedgerData {
-            balance: roll_price, // allows the address to buy 1 roll
-        },
-    )]
-    .into_iter()
-    .collect();
     let warmup_time: MassaTime = 1000.into();
     let margin_time: MassaTime = 300.into();
     let cfg = ConsensusConfig {
@@ -68,18 +59,20 @@ async fn test_inter_cycle_batch_finalization() {
         max_future_processing_blocks: 10,
         max_dependency_blocks: 10,
         future_block_processing_max_periods: 10,
-        roll_price,
         t0,
-        genesis_timestamp: MassaTime::now().unwrap().saturating_add(warmup_time),
-        ..ConsensusConfig::default_with_staking_keys_and_ledger(
-            &[staking_key.clone()],
-            &initial_ledger,
-        )
+        genesis_timestamp: MassaTime::now(0).unwrap().saturating_add(warmup_time),
+        ..ConsensusConfig::default()
     };
 
-    consensus_without_pool_test(
+    consensus_pool_test_with_storage(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        None,
+        async move |pool_controller,
+                    mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    mut storage,
+                    selector_controller| {
             // wait for consensus warmup time
             tokio::time::sleep(warmup_time.to_duration()).await;
 
@@ -112,52 +105,73 @@ async fn test_inter_cycle_batch_finalization() {
                     0,
                 )],
             );
-            protocol_controller.receive_block(b2_block.clone()).await;
+            let b2_block_id = b2_block.id;
+            let b2_block_slot = b2_block.content.header.content.slot;
+            storage.store_block(b2_block);
+            protocol_controller
+                .receive_block(b2_block_id, b2_block_slot, storage.clone())
+                .await;
 
             // create and send B3
             tokio::time::sleep(t0.to_duration()).await;
             let b3_block = create_block_with_operations_and_endorsements(
                 &cfg,
                 Slot::new(3, 0),
-                &vec![b2_block.id],
+                &vec![b2_block_id],
                 &staking_key,
                 vec![],
                 vec![create_endorsement(
                     &staking_key,
                     Slot::new(2, 0),
-                    b2_block.id,
+                    b2_block_id,
                     0,
                 )],
             );
-            protocol_controller.receive_block(b3_block.clone()).await;
+            let b3_block_id = b3_block.id;
+            let b3_block_slot = b3_block.content.header.content.slot;
+            storage.store_block(b3_block);
+            protocol_controller
+                .receive_block(b3_block_id, b3_block_slot, storage.clone())
+                .await;
 
             // create and send B4
             tokio::time::sleep(t0.to_duration()).await;
             let roll_sell = create_roll_sell(&staking_key, 1, 4, 0);
+            storage.store_operations(vec![roll_sell.clone()]);
             let b4_block = create_block_with_operations_and_endorsements(
                 &cfg,
                 Slot::new(4, 0),
-                &vec![b3_block.id],
+                &vec![b3_block_id],
                 &staking_key,
                 vec![roll_sell],
                 vec![create_endorsement(
                     &staking_key,
                     Slot::new(3, 0),
-                    b3_block.id,
+                    b3_block_id,
                     0,
                 )],
             );
-            protocol_controller.receive_block(b4_block.clone()).await;
+            let b4_block_id = b4_block.id;
+            let b4_block_slot = b4_block.content.header.content.slot;
+            storage.store_block(b4_block);
+            protocol_controller
+                .receive_block(b4_block_id, b4_block_slot, storage.clone())
+                .await;
 
             // wait for the slot after B4
             tokio::time::sleep(t0.saturating_mul(5).to_duration()).await;
 
             // send B1
-            protocol_controller.receive_block(b1_block.clone()).await;
+            let b1_block_id = b1_block.id;
+            let b1_block_slot = b1_block.content.header.content.slot;
+            storage.store_block(b1_block);
+            protocol_controller
+                .receive_block(b1_block_id, b1_block_slot, storage.clone())
+                .await;
 
             // wait for the propagation of B1, B2, B3 and B4 (unordered)
             let mut to_propagate: HashSet<_> =
-                vec![b1_block.id, b2_block.id, b3_block.id, b4_block.id]
+                vec![b1_block_id, b2_block_id, b3_block_id, b4_block_id]
                     .into_iter()
                     .collect();
             for _ in 0u8..4 {
@@ -172,9 +186,11 @@ async fn test_inter_cycle_batch_finalization() {
             }
 
             (
+                pool_controller,
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )

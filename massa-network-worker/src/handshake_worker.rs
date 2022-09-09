@@ -2,6 +2,8 @@
 
 //! Here are happening handshakes.
 
+use crate::messages::MessageDeserializer;
+
 use super::{
     binders::{ReadBinder, WriteBinder},
     messages::Message,
@@ -9,9 +11,18 @@ use super::{
 use futures::future::try_join;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::node::NodeId;
-use massa_models::SerializeCompact;
-use massa_models::Version;
+use massa_models::{
+    config::{
+        constants::{MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE},
+        ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_MESSAGE_SIZE,
+        MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
+    },
+    version::Version,
+};
+use massa_models::{
+    config::{MAX_ASK_BLOCKS_PER_MESSAGE, MAX_OPERATIONS_PER_MESSAGE},
+    node::NodeId,
+};
 use massa_network_exports::{
     throw_handshake_error as throw, ConnectionId, HandshakeErrorType, NetworkError, ReadHalf,
     WriteHalf,
@@ -79,8 +90,24 @@ impl HandshakeWorker {
             (
                 connection_id_copy,
                 HandshakeWorker {
-                    reader: ReadBinder::new(socket_reader, max_bytes_read),
-                    writer: WriteBinder::new(socket_writer, max_bytes_write),
+                    reader: ReadBinder::new(
+                        socket_reader,
+                        max_bytes_read,
+                        MAX_MESSAGE_SIZE,
+                        MessageDeserializer::new(
+                            THREAD_COUNT,
+                            ENDORSEMENT_COUNT,
+                            MAX_ADVERTISE_LENGTH,
+                            MAX_ASK_BLOCKS_PER_MESSAGE,
+                            MAX_OPERATIONS_PER_BLOCK,
+                            MAX_OPERATIONS_PER_MESSAGE,
+                            MAX_ENDORSEMENTS_PER_MESSAGE,
+                            MAX_DATASTORE_VALUE_LENGTH,
+                            MAX_FUNCTION_NAME_LENGTH,
+                            MAX_PARAMETERS_SIZE,
+                        ),
+                    ),
+                    writer: WriteBinder::new(socket_writer, max_bytes_write, MAX_MESSAGE_SIZE),
                     self_node_id,
                     keypair,
                     timeout_duration,
@@ -102,13 +129,12 @@ impl HandshakeWorker {
         StdRng::from_entropy().fill_bytes(&mut self_random_bytes);
         let self_random_hash = Hash::compute_from(&self_random_bytes);
         // send handshake init future
-        let send_init_msg = Message::HandshakeInitiation {
+        let msg = Message::HandshakeInitiation {
             public_key: self.self_node_id.0,
             random_bytes: self_random_bytes,
             version: self.version,
         };
-        let bytes_vec: Vec<u8> = send_init_msg.to_bytes_compact().unwrap();
-        let send_init_fut = self.writer.send(&bytes_vec);
+        let send_init_fut = self.writer.send(&msg);
 
         // receive handshake init future
         let recv_init_fut = self.reader.next();
@@ -149,11 +175,10 @@ impl HandshakeWorker {
         let self_signature = self.keypair.sign(&other_random_hash)?;
 
         // send handshake reply future
-        let send_reply_msg = Message::HandshakeReply {
+        let msg = Message::HandshakeReply {
             signature: self_signature,
         };
-        let bytes_vec: Vec<u8> = send_reply_msg.to_bytes_compact().unwrap();
-        let send_reply_fut = self.writer.send(&bytes_vec);
+        let send_reply_fut = self.writer.send(&msg);
 
         // receive handshake reply future
         let recv_reply_fut = self.reader.next();

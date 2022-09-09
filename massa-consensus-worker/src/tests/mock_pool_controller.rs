@@ -1,82 +1,58 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::constants::CHANNEL_SIZE;
-use massa_pool::{PoolCommand, PoolCommandSender};
-use massa_time::MassaTime;
-use tokio::{
-    sync::{mpsc, oneshot},
-    task::JoinHandle,
-    time::sleep,
+use massa_models::{
+    block::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
+use massa_pool_exports::PoolController;
+use massa_storage::Storage;
 
-pub struct MockPoolController {
-    pub pool_command_rx: mpsc::Receiver<PoolCommand>,
-}
+#[derive(Clone)]
+pub struct MockPoolController;
 
 impl MockPoolController {
-    pub fn new() -> (Self, PoolCommandSender) {
-        let (pool_command_tx, pool_command_rx) = mpsc::channel::<PoolCommand>(CHANNEL_SIZE);
-        (
-            MockPoolController { pool_command_rx },
-            PoolCommandSender(pool_command_tx),
-        )
-    }
-
-    pub async fn wait_command<F, T>(&mut self, timeout: MassaTime, filter_map: F) -> Option<T>
-    where
-        F: Fn(PoolCommand) -> Option<T>,
-    {
-        let timer = sleep(timeout.into());
-        tokio::pin!(timer);
-        loop {
-            tokio::select! {
-                cmd_opt = self.pool_command_rx.recv() => match cmd_opt {
-                    Some(orig_cmd) => if let Some(res_cmd) = filter_map(orig_cmd) { return Some(res_cmd); },
-                    None => panic!("Unexpected closure of pool command channel."),
-                },
-                _ = &mut timer => return None
-            }
-        }
+    pub fn new() -> Self {
+        MockPoolController
     }
 }
 
-/// a structure that ignores pool commands
-pub struct PoolCommandSink {
-    stop_tx: oneshot::Sender<()>,
-    handle: JoinHandle<MockPoolController>,
-}
-
-impl PoolCommandSink {
-    pub async fn new(mut mock_pool_controller: MockPoolController) -> Self {
-        let (stop_tx, stop_rx) = oneshot::channel();
-        let handle = tokio::spawn(async move {
-            tokio::pin!(stop_rx);
-            loop {
-                tokio::select! {
-                    _ = &mut stop_rx => return mock_pool_controller,
-                    cmd = mock_pool_controller.pool_command_rx.recv() => match cmd {
-                        Some(PoolCommand::GetOperationBatch{response_tx, ..}) => {
-                            response_tx.send(vec![]).unwrap();
-                        },
-                        Some(PoolCommand::GetEndorsements{response_tx, ..}) => {
-                            response_tx.send(vec![]).unwrap();
-                        }
-                        Some(_) => {},
-                        None => {
-                            let _  = stop_rx.await;
-                            return mock_pool_controller
-                        }
-                    }
-                }
-            }
-        });
-        PoolCommandSink { stop_tx, handle }
+impl PoolController for MockPoolController {
+    fn add_endorsements(&mut self, _endorsements: Storage) {
+        todo!("")
+    }
+    fn add_operations(&mut self, _operations: Storage) {
+        todo!("")
+    }
+    fn notify_final_cs_periods(&mut self, _final_cs_periods: &[u64]) {
+        todo!("")
+    }
+    fn get_block_operations(&self, _slot: &Slot) -> (Vec<OperationId>, Storage) {
+        todo!("")
+    }
+    fn get_block_endorsements(
+        &self,
+        _target_block: &BlockId,
+        _target_slot: &Slot,
+    ) -> (Vec<Option<EndorsementId>>, Storage) {
+        todo!("")
     }
 
-    pub async fn stop(self) -> MockPoolController {
-        drop(self.stop_tx);
-        self.handle
-            .await
-            .expect("Failed to stop pool command sink.")
+    fn contains_endorsements(&self, _endorsements: &[EndorsementId]) -> Vec<bool> {
+        todo!("")
+    }
+
+    fn contains_operations(&self, _operations: &[OperationId]) -> Vec<bool> {
+        todo!("")
+    }
+
+    fn get_endorsement_count(&self) -> usize {
+        todo!("")
+    }
+
+    fn get_operation_count(&self) -> usize {
+        todo!("")
+    }
+
+    fn clone_box(&self) -> Box<dyn PoolController> {
+        Box::new(self.clone())
     }
 }

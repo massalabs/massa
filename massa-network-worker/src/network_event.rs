@@ -80,10 +80,13 @@ pub mod event_impl {
     use crate::network_worker::NetworkWorker;
     use massa_logging::massa_trace;
     use massa_models::{
-        node::NodeId, operation::OperationPrefixIds, operation::Operations, wrapped::Id, BlockId,
-        WrappedBlock, WrappedEndorsement, WrappedHeader,
+        block::{BlockId, WrappedHeader},
+        endorsement::WrappedEndorsement,
+        node::NodeId,
+        operation::{OperationPrefixIds, WrappedOperation},
+        wrapped::Id,
     };
-    use massa_network_exports::NodeCommand;
+    use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NodeCommand};
     use massa_network_exports::{NetworkError, NetworkEvent};
     use std::net::IpAddr;
     use tracing::{debug, info};
@@ -108,29 +111,10 @@ pub mod event_impl {
         Ok(())
     }
 
-    pub async fn on_received_block(
-        worker: &mut NetworkWorker,
-        from: NodeId,
-        block: WrappedBlock,
-    ) -> Result<(), NetworkError> {
-        massa_trace!(
-            "network_worker.on_node_event receive NetworkEvent::ReceivedBlock",
-            {"block_id": block.id, "block": block, "node": from}
-        );
-        if let Err(err) = worker
-            .event
-            .send(NetworkEvent::ReceivedBlock { node: from, block })
-            .await
-        {
-            evt_failed!(err)
-        }
-        Ok(())
-    }
-
     pub async fn on_received_ask_for_blocks(
         worker: &mut NetworkWorker,
         from: NodeId,
-        list: Vec<BlockId>,
+        list: Vec<(BlockId, AskForBlocksInfo)>,
     ) {
         if let Err(err) = worker
             .event
@@ -148,7 +132,7 @@ pub mod event_impl {
     ) -> Result<(), NetworkError> {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedBlockHeader",
-            {"hash": header.id.hash(), "header": header, "node": from}
+            {"hash": header.id.get_hash(), "header": header, "node": from}
         );
         if let Err(err) = worker
             .event
@@ -156,6 +140,21 @@ pub mod event_impl {
                 source_node_id: from,
                 header,
             })
+            .await
+        {
+            evt_failed!(err)
+        }
+        Ok(())
+    }
+
+    pub async fn on_received_block_info(
+        worker: &mut NetworkWorker,
+        from: NodeId,
+        info: Vec<(BlockId, BlockInfoReply)>,
+    ) -> Result<(), NetworkError> {
+        if let Err(err) = worker
+            .event
+            .send(NetworkEvent::ReceivedBlockInfo { node: from, info })
             .await
         {
             evt_failed!(err)
@@ -188,23 +187,6 @@ pub mod event_impl {
         Ok(())
     }
 
-    pub async fn on_block_not_found(worker: &mut NetworkWorker, from: NodeId, block_id: BlockId) {
-        massa_trace!(
-            "network_worker.on_node_event receive NetworkEvent::BlockNotFound",
-            { "id": block_id }
-        );
-        if let Err(err) = worker
-            .event
-            .send(NetworkEvent::BlockNotFound {
-                node: from,
-                block_id,
-            })
-            .await
-        {
-            evt_failed!(err)
-        }
-    }
-
     /// The node worker signal that he received some full `operations` from a
     /// node.
     ///
@@ -213,7 +195,7 @@ pub mod event_impl {
     pub async fn on_received_operations(
         worker: &mut NetworkWorker,
         from: NodeId,
-        operations: Operations,
+        operations: Vec<WrappedOperation>,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedOperations",

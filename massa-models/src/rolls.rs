@@ -1,7 +1,8 @@
 use crate::{
+    address::Address,
+    error::ModelsError,
     error::ModelsResult as Result,
-    prehash::{Map, Set},
-    Address, ModelsError,
+    prehash::{PreHashMap, PreHashSet},
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -95,6 +96,18 @@ impl Default for RollUpdateSerializer {
 }
 
 impl Serializer<RollUpdate> for RollUpdateSerializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::rolls::{RollUpdate, RollUpdateSerializer};
+    /// use massa_serialization::Serializer;
+    ///
+    /// let roll_update = RollUpdate {
+    ///   roll_purchases: 1,
+    ///   roll_sales: 2,
+    /// };
+    /// let mut buffer = vec![];
+    /// RollUpdateSerializer::new().serialize(&roll_update, &mut buffer).unwrap();
+    /// ```
     fn serialize(&self, value: &RollUpdate, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.u64_serializer
             .serialize(&value.roll_purchases, buffer)?;
@@ -124,6 +137,22 @@ impl Default for RollUpdateDeserializer {
 }
 
 impl Deserializer<RollUpdate> for RollUpdateDeserializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::rolls::{RollUpdate, RollUpdateDeserializer, RollUpdateSerializer};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    ///
+    /// let roll_update = RollUpdate {
+    ///   roll_purchases: 1,
+    ///   roll_sales: 2,
+    /// };
+    /// let mut buffer = vec![];
+    /// RollUpdateSerializer::new().serialize(&roll_update, &mut buffer).unwrap();
+    /// let (rest, roll_update_deserialized) = RollUpdateDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(roll_update.roll_purchases, roll_update_deserialized.roll_purchases);
+    /// assert_eq!(roll_update.roll_sales, roll_update_deserialized.roll_sales);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
@@ -149,17 +178,20 @@ impl Deserializer<RollUpdate> for RollUpdateDeserializer {
 
 /// maps addresses to roll updates
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub struct RollUpdates(pub Map<Address, RollUpdate>);
+pub struct RollUpdates(pub PreHashMap<Address, RollUpdate>);
 
 impl RollUpdates {
     /// the addresses impacted by the updates
-    pub fn get_involved_addresses(&self) -> Set<Address> {
+    pub fn get_involved_addresses(&self) -> PreHashSet<Address> {
         self.0.keys().copied().collect()
     }
 
     /// chains with another `RollUpdates`, compensates and returns compensations
-    pub fn chain(&mut self, updates: &RollUpdates) -> Result<Map<Address, RollCompensation>> {
-        let mut res = Map::default();
+    pub fn chain(
+        &mut self,
+        updates: &RollUpdates,
+    ) -> Result<PreHashMap<Address, RollCompensation>> {
+        let mut res = PreHashMap::default();
         for (addr, update) in updates.0.iter() {
             res.insert(*addr, self.apply(addr, update)?);
             // remove if nil
@@ -190,7 +222,7 @@ impl RollUpdates {
 
     /// get the roll update for a subset of addresses
     #[must_use]
-    pub fn clone_subset(&self, addrs: &Set<Address>) -> Self {
+    pub fn clone_subset(&self, addrs: &PreHashSet<Address>) -> Self {
         Self(
             addrs
                 .iter()
@@ -201,7 +233,7 @@ impl RollUpdates {
 
     /// merge another roll updates into self, overwriting existing data
     /// addresses that are in not other are removed from self
-    pub fn sync_from(&mut self, addrs: &Set<Address>, mut other: RollUpdates) {
+    pub fn sync_from(&mut self, addrs: &PreHashSet<Address>, mut other: RollUpdates) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {
                 self.0.insert(*addr, new_val);
@@ -279,7 +311,7 @@ impl RollCounts {
 
     /// get roll counts for a subset of addresses.
     #[must_use]
-    pub fn clone_subset(&self, addrs: &Set<Address>) -> Self {
+    pub fn clone_subset(&self, addrs: &PreHashSet<Address>) -> Self {
         Self(
             addrs
                 .iter()
@@ -290,7 +322,7 @@ impl RollCounts {
 
     /// merge another roll counts into self, overwriting existing data
     /// addresses that are in not other are removed from self
-    pub fn sync_from(&mut self, addrs: &Set<Address>, mut other: RollCounts) {
+    pub fn sync_from(&mut self, addrs: &PreHashSet<Address>, mut other: RollCounts) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {
                 self.0.insert(*addr, new_val);

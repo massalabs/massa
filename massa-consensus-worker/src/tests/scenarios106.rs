@@ -5,10 +5,11 @@
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
-use massa_models::prehash::Set;
+use massa_models::prehash::PreHashSet;
 use massa_models::timeslots;
-use massa_models::{BlockId, Slot};
+use massa_models::{block::BlockId, slot::Slot};
 use massa_signature::KeyPair;
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashSet;
@@ -16,6 +17,7 @@ use std::time::Duration;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_unsorted_block() {
     /*stderrlog::new()
     .verbosity(4)
@@ -27,12 +29,17 @@ async fn test_unsorted_block() {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
         max_future_processing_blocks: 10,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
+
+    let mut storage = Storage::create_root();
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let start_period = 3;
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
@@ -95,15 +102,39 @@ async fn test_unsorted_block() {
             );
 
             // send blocks  t0s1, t1s1,
-            protocol_controller.receive_block(t0s1.clone()).await;
-            protocol_controller.receive_block(t1s1.clone()).await;
+            storage.store_block(t0s1.clone());
+            protocol_controller
+                .receive_block(t0s1.id, t0s1.content.header.content.slot, storage.clone())
+                .await;
+            storage.store_block(t1s1.clone());
+            protocol_controller
+                .receive_block(t1s1.id, t1s1.content.header.content.slot, storage.clone())
+                .await;
             // send blocks t0s3, t1s4, t0s4, t0s2, t1s3, t1s2
-            protocol_controller.receive_block(t0s3.clone()).await;
-            protocol_controller.receive_block(t1s4.clone()).await;
-            protocol_controller.receive_block(t0s4.clone()).await;
-            protocol_controller.receive_block(t0s2.clone()).await;
-            protocol_controller.receive_block(t1s3.clone()).await;
-            protocol_controller.receive_block(t1s2.clone()).await;
+            storage.store_block(t0s3.clone());
+            protocol_controller
+                .receive_block(t0s3.id, t0s3.content.header.content.slot, storage.clone())
+                .await;
+            storage.store_block(t1s4.clone());
+            protocol_controller
+                .receive_block(t1s4.id, t1s4.content.header.content.slot, storage.clone())
+                .await;
+            storage.store_block(t0s4.clone());
+            protocol_controller
+                .receive_block(t0s4.id, t0s4.content.header.content.slot, storage.clone())
+                .await;
+            storage.store_block(t0s2.clone());
+            protocol_controller
+                .receive_block(t0s2.id, t0s2.content.header.content.slot, storage.clone())
+                .await;
+            storage.store_block(t1s3.clone());
+            protocol_controller
+                .receive_block(t1s3.id, t1s3.content.header.content.slot, storage.clone())
+                .await;
+            storage.store_block(t1s2.clone());
+            protocol_controller
+                .receive_block(t1s2.id, t1s2.content.header.content.slot, storage.clone())
+                .await;
 
             // block t0s1 and t1s1 are propagated
             let hash_list = vec![t0s1.id, t1s1.id];
@@ -130,6 +161,7 @@ async fn test_unsorted_block() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -139,6 +171,7 @@ async fn test_unsorted_block() {
 //test future_incoming_blocks block in the future with max_future_processing_blocks.
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_unsorted_block_with_to_much_in_the_future() {
     /*stderrlog::new()
     .verbosity(4)
@@ -149,15 +182,20 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         // slot 1 is in the past
-        genesis_timestamp: MassaTime::now().unwrap().saturating_sub(2000.into()),
+        genesis_timestamp: MassaTime::now(0).unwrap().saturating_sub(2000.into()),
         future_block_processing_max_periods: 3,
         max_future_processing_blocks: 5,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
+
+    let mut storage = Storage::create_root();
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             // create test blocks
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
@@ -172,7 +210,14 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
                 genesis_hashes.clone(),
                 &staking_keys[0],
             );
-            protocol_controller.receive_block(block1.clone()).await;
+            storage.store_block(block1.clone());
+            protocol_controller
+                .receive_block(
+                    block1.id,
+                    block1.content.header.content.slot,
+                    storage.clone(),
+                )
+                .await;
             validate_propagate_block(&mut protocol_controller, block1.id, 2500).await;
 
             // this block is slightly in the future: will wait for it
@@ -190,7 +235,14 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
                 genesis_hashes.clone(),
                 &staking_keys[0],
             );
-            protocol_controller.receive_block(block2.clone()).await;
+            storage.store_block(block2.clone());
+            protocol_controller
+                .receive_block(
+                    block2.id,
+                    block2.content.header.content.slot,
+                    storage.clone(),
+                )
+                .await;
             assert!(!validate_notpropagate_block(&mut protocol_controller, block2.id, 500).await);
             validate_propagate_block(&mut protocol_controller, block2.id, 2500).await;
 
@@ -209,7 +261,14 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
                 genesis_hashes.clone(),
                 &staking_keys[0],
             );
-            protocol_controller.receive_block(block3.clone()).await;
+            storage.store_block(block3.clone());
+            protocol_controller
+                .receive_block(
+                    block3.id,
+                    block3.content.header.content.slot,
+                    storage.clone(),
+                )
+                .await;
             assert!(!validate_notpropagate_block(&mut protocol_controller, block3.id, 2500).await);
 
             // Check that the block has been silently dropped and not discarded for being too much in the future.
@@ -223,6 +282,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -231,6 +291,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_too_many_blocks_in_the_future() {
     /*stderrlog::new()
     .verbosity(4)
@@ -242,15 +303,20 @@ async fn test_too_many_blocks_in_the_future() {
         delta_f0: 1000,
         future_block_processing_max_periods: 100,
         // slot 1 is in the past
-        genesis_timestamp: MassaTime::now().unwrap().saturating_sub(2000.into()),
+        genesis_timestamp: MassaTime::now(0).unwrap().saturating_sub(2000.into()),
         max_future_processing_blocks: 2,
         t0: 1000.into(),
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
+
+    let mut storage = Storage::create_root();
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             // get genesis block hashes
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
@@ -277,7 +343,10 @@ async fn test_too_many_blocks_in_the_future() {
                     genesis_hashes.clone(),
                     &staking_keys[0],
                 );
-                protocol_controller.receive_block(block.clone()).await;
+                storage.store_block(block.clone());
+                protocol_controller
+                    .receive_block(block.id, block.content.header.content.slot, storage.clone())
+                    .await;
                 if period < 2 {
                     expected_block_hashes.insert(block.id);
                 }
@@ -327,6 +396,7 @@ async fn test_too_many_blocks_in_the_future() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -335,6 +405,7 @@ async fn test_too_many_blocks_in_the_future() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_dep_in_back_order() {
     /*stderrlog::new()
     .verbosity(4)
@@ -344,15 +415,20 @@ async fn test_dep_in_back_order() {
 
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        genesis_timestamp: MassaTime::now()
+        genesis_timestamp: MassaTime::now(0)
             .unwrap()
-            .saturating_sub(MassaTime::from(1000).checked_mul(1000).unwrap()),
+            .saturating_sub(MassaTime::from_millis(1000).checked_mul(1000).unwrap()),
         t0: 1000.into(),
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
+
+    let mut storage = Storage::create_root();
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -414,37 +490,55 @@ async fn test_dep_in_back_order() {
             );
 
             // send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
-            protocol_controller.receive_block(t0s2.clone()).await; // not propagated and update wishlist
+            storage.store_block(t0s2.clone());
+            protocol_controller
+                .receive_block(t0s2.id, t0s2.content.header.content.slot, storage.clone())
+                .await; // not propagated and update wishlist
             validate_wishlist(
                 &mut protocol_controller,
                 vec![t0s1.id, t1s1.id].into_iter().collect(),
-                Set::<BlockId>::default(),
+                PreHashSet::<BlockId>::default(),
                 500,
             )
             .await;
             validate_notpropagate_block(&mut protocol_controller, t0s2.id, 500).await;
 
-            protocol_controller.receive_block(t1s3.clone()).await; // not propagated and no wishlist update
+            storage.store_block(t1s3.clone());
+            protocol_controller
+                .receive_block(t1s3.id, t1s3.content.header.content.slot, storage.clone())
+                .await; // not propagated and no wishlist update
             validate_notpropagate_block(&mut protocol_controller, t1s3.id, 500).await;
 
-            protocol_controller.receive_block(t0s1.clone()).await; // we have its parents so it should be integrated right now and update wishlist
+            storage.store_block(t0s1.clone());
+            protocol_controller
+                .receive_block(t0s1.id, t0s1.content.header.content.slot, storage.clone())
+                .await; // we have its parents so it should be integrated right now and update wishlist
 
             validate_propagate_block(&mut protocol_controller, t0s1.id, 500).await;
             validate_wishlist(
                 &mut protocol_controller,
-                Set::<BlockId>::default(),
+                PreHashSet::<BlockId>::default(),
                 vec![t0s1.id].into_iter().collect(),
                 500,
             )
             .await;
 
-            protocol_controller.receive_block(t0s4.clone()).await; // not propagated and no wishlist update
+            storage.store_block(t0s4.clone());
+            protocol_controller
+                .receive_block(t0s4.id, t0s4.content.header.content.slot, storage.clone())
+                .await; // not propagated and no wishlist update
             validate_notpropagate_block(&mut protocol_controller, t0s4.id, 500).await;
 
-            protocol_controller.receive_block(t1s4.clone()).await; // not propagated and no wishlist update
+            storage.store_block(t1s4.clone());
+            protocol_controller
+                .receive_block(t1s4.id, t1s4.content.header.content.slot, storage.clone())
+                .await; // not propagated and no wishlist update
             validate_notpropagate_block(&mut protocol_controller, t1s4.id, 500).await;
 
-            protocol_controller.receive_block(t1s1.clone()).await; // assert t1s1 is integrated and t0s2 is integrated and wishlist updated
+            storage.store_block(t1s1.clone());
+            protocol_controller
+                .receive_block(t1s1.id, t1s1.content.header.content.slot, storage.clone())
+                .await; // assert t1s1 is integrated and t0s2 is integrated and wishlist updated
             validate_propagate_block_in_list(
                 &mut protocol_controller,
                 &vec![t1s1.id, t0s2.id],
@@ -466,10 +560,16 @@ async fn test_dep_in_back_order() {
             )
             .await;
 
-            protocol_controller.receive_block(t0s3.clone()).await; // not propagated and no wishlist update
+            storage.store_block(t0s3.clone());
+            protocol_controller
+                .receive_block(t0s3.id, t0s3.content.header.content.slot, storage.clone())
+                .await; // not propagated and no wishlist update
             validate_notpropagate_block(&mut protocol_controller, t0s3.id, 500).await;
 
-            protocol_controller.receive_block(t1s2.clone()).await;
+            storage.store_block(t1s2.clone());
+            protocol_controller
+                .receive_block(t1s2.id, t1s2.content.header.content.slot, storage.clone())
+                .await;
 
             // All remaining blocks are propagated
             let integrated = vec![t1s2.id, t0s3.id, t1s3.id, t0s4.id, t1s4.id];
@@ -480,7 +580,7 @@ async fn test_dep_in_back_order() {
             validate_propagate_block_in_list(&mut protocol_controller, &integrated, 1000).await;
             validate_wishlist(
                 &mut protocol_controller,
-                Set::<BlockId>::default(),
+                PreHashSet::<BlockId>::default(),
                 vec![t1s2.id].into_iter().collect(),
                 500,
             )
@@ -489,6 +589,7 @@ async fn test_dep_in_back_order() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -497,6 +598,7 @@ async fn test_dep_in_back_order() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_dep_in_back_order_with_max_dependency_blocks() {
     /*stderrlog::new()
     .verbosity(4)
@@ -505,18 +607,22 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     .unwrap();*/
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        genesis_timestamp: MassaTime::now()
+        genesis_timestamp: MassaTime::now(0)
             .unwrap()
-            .saturating_sub(MassaTime::from(1000).checked_mul(1000).unwrap()),
+            .saturating_sub(MassaTime::from_millis(1000).checked_mul(1000).unwrap()),
         max_dependency_blocks: 2,
         t0: 1000.into(),
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
     tokio::time::sleep(Duration::from_millis(1000)).await;
+    let mut storage = Storage::create_root();
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -566,35 +672,53 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
             );
 
             // send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
-            protocol_controller.receive_block(t0s2.clone()).await;
+            storage.store_block(t0s2.clone());
+            protocol_controller
+                .receive_block(t0s2.id, t0s2.content.header.content.slot, storage.clone())
+                .await;
             validate_wishlist(
                 &mut protocol_controller,
                 vec![t0s1.id, t1s1.id].into_iter().collect(),
-                Set::<BlockId>::default(),
+                PreHashSet::<BlockId>::default(),
                 500,
             )
             .await;
             validate_notpropagate_block(&mut protocol_controller, t0s2.id, 500).await;
 
-            protocol_controller.receive_block(t1s3.clone()).await;
+            storage.store_block(t1s3.clone());
+            protocol_controller
+                .receive_block(t1s3.id, t1s3.content.header.content.slot, storage.clone())
+                .await;
             validate_notpropagate_block(&mut protocol_controller, t1s3.id, 500).await;
 
-            protocol_controller.receive_block(t0s1.clone()).await;
+            storage.store_block(t0s1.clone());
+            protocol_controller
+                .receive_block(t0s1.id, t0s1.content.header.content.slot, storage.clone())
+                .await;
             validate_propagate_block(&mut protocol_controller, t0s1.id, 500).await;
             validate_wishlist(
                 &mut protocol_controller,
-                Set::<BlockId>::default(),
+                PreHashSet::<BlockId>::default(),
                 vec![t0s1.id].into_iter().collect(),
                 500,
             )
             .await;
-            protocol_controller.receive_block(t0s3.clone()).await;
+            storage.store_block(t0s3.clone());
+            protocol_controller
+                .receive_block(t0s3.id, t0s3.content.header.content.slot, storage.clone())
+                .await;
             validate_notpropagate_block(&mut protocol_controller, t0s3.id, 500).await;
 
-            protocol_controller.receive_block(t1s2.clone()).await;
+            storage.store_block(t1s2.clone());
+            protocol_controller
+                .receive_block(t1s2.id, t1s2.content.header.content.slot, storage.clone())
+                .await;
             validate_notpropagate_block(&mut protocol_controller, t1s2.id, 500).await;
 
-            protocol_controller.receive_block(t1s1.clone()).await;
+            storage.store_block(t1s1.clone());
+            protocol_controller
+                .receive_block(t1s1.id, t1s1.content.header.content.slot, storage.clone())
+                .await;
             validate_propagate_block_in_list(
                 &mut protocol_controller,
                 &vec![t1s1.id, t1s2.id],
@@ -609,7 +733,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
             .await;
             validate_wishlist(
                 &mut protocol_controller,
-                Set::<BlockId>::default(),
+                PreHashSet::<BlockId>::default(),
                 vec![t1s1.id].into_iter().collect(),
                 500,
             )
@@ -619,6 +743,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -627,6 +752,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_add_block_that_depends_on_invalid_block() {
     /*stderrlog::new()
     .verbosity(4)
@@ -635,17 +761,21 @@ async fn test_add_block_that_depends_on_invalid_block() {
     .unwrap();*/
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        genesis_timestamp: MassaTime::now()
+        genesis_timestamp: MassaTime::now(0)
             .unwrap()
-            .saturating_sub(MassaTime::from(1000).checked_mul(1000).unwrap()),
+            .saturating_sub(MassaTime::from_millis(1000).checked_mul(1000).unwrap()),
         max_dependency_blocks: 7,
         t0: 1000.into(),
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
+    let mut storage = Storage::create_root();
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -691,11 +821,26 @@ async fn test_add_block_that_depends_on_invalid_block() {
 
             // add block in this order t0s1, t1s1, t0s3, t1s3, t3s2
             // send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
-            protocol_controller.receive_block(t0s1.clone()).await;
-            protocol_controller.receive_block(t1s1.clone()).await;
-            protocol_controller.receive_block(t0s3.clone()).await;
-            protocol_controller.receive_block(t1s3.clone()).await;
-            protocol_controller.receive_block(t3s2.clone()).await;
+            storage.store_block(t0s1.clone());
+            protocol_controller
+                .receive_block(t0s1.id, t0s1.content.header.content.slot, storage.clone())
+                .await;
+            storage.store_block(t1s1.clone());
+            protocol_controller
+                .receive_block(t1s1.id, t1s1.content.header.content.slot, storage.clone())
+                .await;
+            storage.store_block(t0s3.clone());
+            protocol_controller
+                .receive_block(t0s3.id, t0s1.content.header.content.slot, storage.clone())
+                .await;
+            storage.store_block(t1s3.clone());
+            protocol_controller
+                .receive_block(t1s3.id, t1s3.content.header.content.slot, storage.clone())
+                .await;
+            storage.store_block(t3s2.clone());
+            protocol_controller
+                .receive_block(t3s2.id, t3s2.content.header.content.slot, storage.clone())
+                .await;
 
             // block t0s1 and t1s1 are propagated
             let hash_list = vec![t0s1.id, t1s1.id];
@@ -716,6 +861,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )

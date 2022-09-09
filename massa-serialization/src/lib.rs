@@ -5,8 +5,12 @@ use std::{
 
 use displaydoc::Display;
 use nom::{
+    branch::alt,
+    bytes::complete::tag,
+    combinator::value,
     error::{ContextError, ParseError},
-    IResult,
+    sequence::preceded,
+    IResult, Parser,
 };
 use thiserror::Error;
 
@@ -55,13 +59,8 @@ impl<'a> ParseError<&'a [u8]> for DeserializeError<'a> {
 
 impl<'a> Display for DeserializeError<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut last_input = None;
         for error in &self.errors {
             write!(f, "{} / ", error.1)?;
-            last_input = Some(error.0);
-        }
-        if let Some(last_input) = last_input {
-            writeln!(f, "Input: {:?}", last_input)?;
         }
         Ok(())
     }
@@ -249,4 +248,88 @@ gen_varint! {
 u16, U16VarIntSerializer, u16_buffer, U16VarIntDeserializer, "`u16`";
 u32, U32VarIntSerializer, u32_buffer, U32VarIntDeserializer, "`u32`";
 u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, "`u64`"
+}
+
+pub struct OptionSerializer<T, ST>
+where
+    ST: Serializer<T>,
+{
+    data_serializer: ST,
+    phantom_t: std::marker::PhantomData<T>,
+}
+
+impl<T, ST> OptionSerializer<T, ST>
+where
+    ST: Serializer<T>,
+{
+    pub fn new(data_serializer: ST) -> Self {
+        OptionSerializer {
+            data_serializer,
+            phantom_t: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<T, ST> Serializer<Option<T>> for OptionSerializer<T, ST>
+where
+    ST: Serializer<T>,
+{
+    fn serialize(&self, opt_value: &Option<T>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        if let Some(value) = opt_value {
+            buffer.push(b'1');
+            self.data_serializer.serialize(value, buffer)?;
+        } else {
+            buffer.push(b'0');
+        }
+        Ok(())
+    }
+}
+
+pub struct OptionDeserializer<T, DT>
+where
+    T: Clone,
+    DT: Deserializer<T>,
+{
+    data_deserializer: DT,
+    phantom_t: std::marker::PhantomData<T>,
+}
+
+impl<T, DT> OptionDeserializer<T, DT>
+where
+    T: Clone,
+    DT: Deserializer<T>,
+{
+    pub fn new(data_deserializer: DT) -> Self {
+        OptionDeserializer {
+            data_deserializer,
+            phantom_t: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<T, DT> Deserializer<Option<T>> for OptionDeserializer<T, DT>
+where
+    T: Clone,
+    DT: Deserializer<T>,
+{
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Option<T>, E> {
+        context(
+            "Option<_> deserializer failed",
+            alt((
+                context("None", value(None, tag(b"0"))),
+                context(
+                    "Some(_)",
+                    preceded(tag(b"1"), |input| {
+                        self.data_deserializer
+                            .deserialize(input)
+                            .map(|(rest, data)| (rest, Some(data)))
+                    }),
+                ),
+            )),
+        )
+        .parse(buffer)
+    }
 }

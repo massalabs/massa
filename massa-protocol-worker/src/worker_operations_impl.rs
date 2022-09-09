@@ -14,8 +14,8 @@ use crate::protocol_worker::ProtocolWorker;
 use massa_logging::massa_trace;
 use massa_models::{
     node::NodeId,
-    operation::{OperationIds, OperationPrefixIds, Operations},
-    prehash::BuildMap,
+    operation::{OperationPrefixIds, WrappedOperation},
+    prehash::{CapacityAllocator, PreHashSet},
 };
 use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
@@ -63,10 +63,8 @@ impl ProtocolWorker {
         op_batch: OperationPrefixIds,
         node_id: NodeId,
     ) -> Result<(), ProtocolError> {
-        let mut ask_set =
-            OperationPrefixIds::with_capacity_and_hasher(op_batch.len(), BuildMap::default());
-        let mut future_set =
-            OperationPrefixIds::with_capacity_and_hasher(op_batch.len(), BuildMap::default());
+        let mut ask_set = OperationPrefixIds::with_capacity(op_batch.len());
+        let mut future_set = OperationPrefixIds::with_capacity(op_batch.len());
         // exactitude isn't important, we want to have a now for that function call
         let now = Instant::now();
         let mut count_reask = 0;
@@ -89,7 +87,7 @@ impl ProtocolWorker {
                 // otherwise add in future_set
                 if wish.0
                     < now
-                        .checked_sub(self.protocol_settings.operation_batch_proc_period.into())
+                        .checked_sub(self.config.operation_batch_proc_period.into())
                         .ok_or(TimeError::TimeOverflowError)?
                 {
                     count_reask += 1;
@@ -104,20 +102,22 @@ impl ProtocolWorker {
                 self.asked_operations.insert(op_id, (now, vec![node_id]));
             }
         } // EndOf for op_id in op_batch:
+
         if count_reask > 0 {
             massa_trace!("re-ask operations.", { "count": count_reask });
         }
-        if self.op_batch_buffer.len() < self.protocol_settings.operation_batch_buffer_capacity
+        if self.op_batch_buffer.len() < self.config.operation_batch_buffer_capacity
             && !future_set.is_empty()
         {
             self.op_batch_buffer.push_back(OperationBatchItem {
                 instant: now
-                    .checked_add(self.protocol_settings.operation_batch_proc_period.into())
+                    .checked_add(self.config.operation_batch_proc_period.into())
                     .ok_or(TimeError::TimeOverflowError)?,
                 node_id,
                 operations_prefix_ids: future_set,
             });
         }
+
         if !ask_set.is_empty() {
             self.network_command_sender
                 .send_ask_for_operations(node_id, ask_set)
@@ -132,10 +132,13 @@ impl ProtocolWorker {
     /// - Update the cache `received_operations` ids and each
     ///   `node_info.known_operations`
     /// - Notify the operations to he local node, to be propagated
-    pub(crate) async fn on_operations_received(&mut self, node_id: NodeId, operations: Operations) {
+    pub(crate) async fn on_operations_received(
+        &mut self,
+        node_id: NodeId,
+        operations: Vec<WrappedOperation>,
+    ) {
         if self
-            .note_operations_from_node(operations, &node_id, true)
-            .await
+            .note_operations_from_node(operations, &node_id)
             .is_err()
         {
             warn!("node {} sent us critically incorrect operation, which may be an attack attempt by the remote node or a loss of sync between us and the remote node", node_id,);
@@ -152,11 +155,7 @@ impl ProtocolWorker {
         self.asked_operations.clear();
         // reset timer
         let instant = Instant::now()
-            .checked_add(
-                self.protocol_settings
-                    .asked_operations_pruning_period
-                    .into(),
-            )
+            .checked_add(self.config.asked_operations_pruning_period.into())
             .ok_or(TimeError::TimeOverflowError)?;
         ask_operations_timer.set(sleep_until(instant));
         Ok(())
@@ -183,7 +182,7 @@ impl ProtocolWorker {
             operation_batch_proc_period_timer.set(sleep_until(item.instant));
         } else {
             let next_tick = now
-                .checked_add(self.protocol_settings.operation_batch_proc_period.into())
+                .checked_add(self.config.operation_batch_proc_period.into())
                 .ok_or(TimeError::TimeOverflowError)?;
             operation_batch_proc_period_timer.set(sleep_until(next_tick));
         }
@@ -193,7 +192,7 @@ impl ProtocolWorker {
 
     /// Process the reception of a batch of asked operations, that means that
     /// we have already sent a batch of ids in the network, notifying that we already
-    /// have those operations. Ask pool for the operations.
+    /// have those operations.
     ///
     /// See also `on_operation_results_from_pool`
     pub(crate) async fn on_asked_operations_received(
@@ -201,16 +200,23 @@ impl ProtocolWorker {
         node_id: NodeId,
         op_pre_ids: OperationPrefixIds,
     ) -> Result<(), ProtocolError> {
-        let mut req_operation_ids = OperationIds::default();
+        let mut req_operation_ids = PreHashSet::default();
         for prefix in op_pre_ids {
             if let Some(op_id) = self.checked_operations.get(&prefix) {
                 req_operation_ids.insert(*op_id);
             }
         }
-        let found = self.storage.find_operations(req_operation_ids);
-        if !found.is_empty() {
+        let ops: Vec<WrappedOperation> = {
+            let stored_ops = self.storage.read_operations();
+            req_operation_ids
+                .iter()
+                .filter_map(|id| stored_ops.get(id))
+                .cloned()
+                .collect()
+        };
+        if !ops.is_empty() {
             self.network_command_sender
-                .send_operations(node_id, found)
+                .send_operations(node_id, ops)
                 .await?;
         }
         Ok(())

@@ -24,14 +24,16 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
+    block::{BlockId, WrappedHeader},
     composite::PubkeySig,
+    endorsement::WrappedEndorsement,
     node::NodeId,
-    operation::{OperationIds, OperationPrefixIds},
+    operation::{OperationPrefixIds, WrappedOperation},
     stats::NetworkStats,
-    BlockId, WrappedEndorsement,
 };
 use massa_network_exports::{
-    BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError, NodeCommand, Peer, Peers,
+    AskForBlocksInfo, BlockInfoReply, BootstrapPeers, ConnectionClosureReason, ConnectionId,
+    NetworkError, NodeCommand, Peer, Peers,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -173,21 +175,24 @@ pub async fn on_node_ban_by_ids_cmd(
 pub async fn on_send_block_header_cmd(
     worker: &mut NetworkWorker,
     node: NodeId,
-    block_id: BlockId,
+    header: WrappedHeader,
 ) -> Result<(), NetworkError> {
-    massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"block_id": block_id, "node": node});
+    massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"block_id": header.id, "node": node});
     worker
         .event
         .forward(
             node,
             worker.active_nodes.get(&node),
-            NodeCommand::SendBlockHeader(block_id),
+            NodeCommand::SendBlockHeader(header),
         )
         .await;
     Ok(())
 }
 
-pub async fn on_ask_for_block_cmd(worker: &mut NetworkWorker, map: HashMap<NodeId, Vec<BlockId>>) {
+pub async fn on_ask_for_block_cmd(
+    worker: &mut NetworkWorker,
+    map: HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>>,
+) {
     for (node, hash_list) in map.into_iter() {
         massa_trace!(
             "network_worker.manage_network_command receive NetworkCommand::AskForBlocks",
@@ -198,27 +203,27 @@ pub async fn on_ask_for_block_cmd(worker: &mut NetworkWorker, map: HashMap<NodeI
             .forward(
                 node,
                 worker.active_nodes.get(&node),
-                NodeCommand::AskForBlocks(hash_list.clone()),
+                NodeCommand::AskForBlocks(hash_list),
             )
             .await;
     }
 }
 
-pub async fn on_send_block_cmd(
+pub async fn on_send_block_info_cmd(
     worker: &mut NetworkWorker,
     node: NodeId,
-    block_id: BlockId,
+    info: Vec<(BlockId, BlockInfoReply)>,
 ) -> Result<(), NetworkError> {
     massa_trace!(
-        "network_worker.manage_network_command send NodeCommand::SendBlock",
-        {"hash": block_id, "node": node}
+        "network_worker.manage_network_command receive NetworkCommand::SendBlockInfo",
+        { "node": node }
     );
     worker
         .event
         .forward(
             node,
             worker.active_nodes.get(&node),
-            NodeCommand::SendBlock(block_id),
+            NodeCommand::ReplyForBlocks(info),
         )
         .await;
     Ok(())
@@ -244,21 +249,6 @@ pub async fn on_get_bootstrap_peers_cmd(
     if response_tx.send(BootstrapPeers(peer_list)).is_err() {
         warn!("network: could not send GetBootstrapPeers response upstream");
     }
-}
-
-pub async fn on_block_not_found_cmd(worker: &mut NetworkWorker, node: NodeId, block_id: BlockId) {
-    massa_trace!(
-        "network_worker.manage_network_command receive NetworkCommand::BlockNotFound",
-        { "block_id": block_id, "node": node }
-    );
-    worker
-        .event
-        .forward(
-            node,
-            worker.active_nodes.get(&node),
-            NodeCommand::BlockNotFound(block_id),
-        )
-        .await;
 }
 
 pub async fn on_send_endorsements_cmd(
@@ -365,7 +355,7 @@ pub async fn on_get_stats_cmd(
 pub async fn on_send_operations_cmd(
     worker: &mut NetworkWorker,
     to_node: NodeId,
-    operations: OperationIds,
+    operations: Vec<WrappedOperation>,
 ) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::SendOperations",

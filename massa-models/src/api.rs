@@ -1,21 +1,20 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::address::AddressCycleProductionStats;
+use crate::address::ExecutionAddressCycleInfo;
+use crate::endorsement::{EndorsementId, WrappedEndorsement};
 use crate::ledger_models::LedgerData;
 use crate::node::NodeId;
-use crate::prehash::Set;
-use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
-use crate::WrappedEndorsement;
-use crate::WrappedOperation;
+use crate::operation::{OperationId, WrappedOperation};
+use crate::stats::{ConsensusStats, ExecutionStats, NetworkStats};
 use crate::{
-    Address, Amount, Block, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
+    address::Address, amount::Amount, block::Block, block::BlockId, config::CompactConfig,
+    slot::Slot, version::Version,
 };
 use massa_signature::{PublicKey, Signature};
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::HashMap;
 use std::net::IpAddr;
-use std::str::FromStr;
 
 /// operation input
 #[derive(Serialize, Deserialize, Debug)]
@@ -49,10 +48,12 @@ pub struct NodeStatus {
     pub next_slot: Slot,
     /// consensus stats
     pub consensus_stats: ConsensusStats,
-    /// pool stats
-    pub pool_stats: PoolStats,
+    /// pool stats (operation count and endorsement count)
+    pub pool_stats: (usize, usize),
     /// network stats
     pub network_stats: NetworkStats,
+    /// execution stats
+    pub execution_stats: ExecutionStats,
     /// compact configuration
     pub config: CompactConfig,
 }
@@ -80,8 +81,8 @@ impl std::fmt::Display for NodeStatus {
         writeln!(f)?;
 
         writeln!(f, "{}", self.consensus_stats)?;
-
-        writeln!(f, "{}", self.pool_stats)?;
+        //TODO: https://github.com/massalabs/massa/issues/2870
+        //writeln!(f, "{}", self.pool_stats)?;
 
         writeln!(f, "{}", self.network_stats)?;
 
@@ -115,32 +116,43 @@ pub struct OperationInfo {
     pub operation: WrappedOperation,
 }
 
-impl OperationInfo {
-    /// extend an operation info with another one
-    /// There is not check to see if the id and operation are indeed the same
-    pub fn extend(&mut self, other: &OperationInfo) {
-        self.in_pool = self.in_pool || other.in_pool;
-        self.in_blocks.extend(other.in_blocks.iter());
-        self.is_final = self.is_final || other.is_final;
-    }
-}
-
 impl std::fmt::Display for OperationInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
-            "Operation's ID: {}{}{}",
+            "Operation {}{}{}",
             self.id,
-            display_if_true(self.in_pool, "in pool"),
-            display_if_true(self.is_final, "final")
+            display_if_true(self.in_pool, " (in pool)"),
+            display_if_true(self.is_final, " (final)")
         )?;
-        writeln!(f, "Block's ID")?;
+        writeln!(f, "In blocks:")?;
         for block_id in &self.in_blocks {
             writeln!(f, "\t- {}", block_id)?;
         }
         writeln!(f, "{}", self.operation)?;
         Ok(())
     }
+}
+
+/// Block status within the graph
+#[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]
+pub enum BlockGraphStatus {
+    /// received but not yet graph-processed
+    Incoming,
+    /// waiting for its slot
+    WaitingForSlot,
+    /// waiting for a missing dependency
+    WaitingForDependencies,
+    /// active in alternative cliques
+    ActiveInAlternativeCliques,
+    /// active in blockclique
+    ActiveInBlockclique,
+    /// forever applies
+    Final,
+    /// discarded for any reason
+    Discarded,
+    /// not found in graph
+    NotFound,
 }
 
 /// Current Parallel balance ledger info
@@ -192,112 +204,89 @@ impl std::fmt::Display for RollsInfo {
 pub struct AddressInfo {
     /// the address
     pub address: Address,
-    /// the thread it is in
+    /// the thread the address belongs to
     pub thread: u8,
-    /// parallel balance info
-    pub ledger_info: LedgerInfo,
+
+    /// final parallel balance
+    pub final_parallel_balance: Amount,
     /// final sequential balance
-    pub final_balance_info: Option<Amount>,
-    /// latest sequential balance
-    pub candidate_balance_info: Option<Amount>,
-    /// every final datastore key
-    pub final_datastore_keys: BTreeSet<Vec<u8>>,
-    /// every candidate datastore key
-    pub candidate_datastore_keys: BTreeSet<Vec<u8>>,
-    /// rolls
-    pub rolls: RollsInfo,
-    /// next slots this address will be selected to create a block
-    pub block_draws: HashSet<Slot>,
-    /// next slots this address will be selected to create a endorsement
-    pub endorsement_draws: HashSet<IndexedSlot>,
-    /// created blocks ids
-    pub blocks_created: Set<BlockId>,
-    /// endorsements in which this address is involved (endorser, block creator)
-    pub involved_in_endorsements: Set<EndorsementId>,
-    /// operation in which this address is involved (sender or receiver)
-    pub involved_in_operations: Set<OperationId>,
-    /// stats about block production
-    pub production_stats: Vec<AddressCycleProductionStats>,
+    pub final_sequential_balance: Amount,
+    /// final roll count
+    pub final_roll_count: u64,
+    /// final datastore keys
+    pub final_datastore_keys: Vec<Vec<u8>>,
+
+    /// candidate parallel balance
+    pub candidate_parallel_balance: Amount,
+    /// candidate sequential balance
+    pub candidate_sequential_balance: Amount,
+    /// candidate roll count
+    pub candidate_roll_count: u64,
+    /// candidate datastore keys
+    pub candidate_datastore_keys: Vec<Vec<u8>>,
+
+    /// deferred credits
+    pub deferred_credits: Vec<SlotAmount>,
+
+    /// next block draws
+    pub next_block_draws: Vec<Slot>,
+    /// next endorsement draws
+    pub next_endorsement_draws: Vec<IndexedSlot>,
+
+    /// created blocks
+    pub created_blocks: Vec<BlockId>,
+    /// created operations
+    pub created_operations: Vec<OperationId>,
+    /// created endorsements
+    pub created_endorsements: Vec<EndorsementId>,
+
+    /// cycle infos
+    pub cycle_infos: Vec<ExecutionAddressCycleInfo>,
 }
 
 impl std::fmt::Display for AddressInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Address: {}", self.address)?;
-        writeln!(f, "Thread: {}", self.thread)?;
-        writeln!(f, "Sequential balance:\n{}", self.ledger_info)?;
-        writeln!(f, "Parallel balance:",)?;
-        writeln!(f, "\tFinal: {:?}", self.final_balance_info)?;
-        writeln!(f, "\tCandidate: {:?}\n", self.candidate_balance_info)?;
-        writeln!(f, "Rolls:\n{}", self.rolls)?;
+        writeln!(f, "Address {} (thread {}):", self.address, self.thread)?;
         writeln!(
             f,
-            "Final datastore keys (UTF-8):\n{:?}\n",
-            self.final_datastore_keys
-                .iter()
-                .map(|v| std::str::from_utf8(v).unwrap_or("(non-utf8 key)"))
-                .collect::<Vec<&str>>()
+            "\tSequential balance: final={}, candidate={}",
+            self.final_sequential_balance, self.candidate_sequential_balance
         )?;
         writeln!(
             f,
-            "Candidate datastore keys (UTF-8):\n{:?}\n",
-            self.candidate_datastore_keys
-                .iter()
-                .map(|v| std::str::from_utf8(v).unwrap_or("(non-utf8 key)"))
-                .collect::<Vec<&str>>()
+            "\tParallel balance: final={}, candidate={}",
+            self.final_parallel_balance, self.candidate_parallel_balance
         )?;
-        writeln!(
-            f,
-            "Block draws: {}",
-            self.block_draws
-                .iter()
-                .fold("\n".to_string(), |acc, s| format!("{}    {}", acc, s))
-        )?;
-        writeln!(
-            f,
-            "Endorsement draws: {}",
-            self.endorsement_draws
-                .iter()
-                .fold("\n".to_string(), |acc, s| format!("{}    {}", acc, s))
-        )?;
-        writeln!(
-            f,
-            "Blocks created: {}",
-            self.blocks_created
-                .iter()
-                .fold("\n".to_string(), |acc, s| format!("{}    {}", acc, s))
-        )?;
-        writeln!(
-            f,
-            "Involved in endorsements: {}",
-            self.involved_in_endorsements
-                .iter()
-                .fold("\n".to_string(), |acc, s| format!("{}    {}", acc, s))
-        )?;
-        writeln!(
-            f,
-            "Involved in operations: {}",
-            self.involved_in_operations
-                .iter()
-                .fold("\n".to_string(), |acc, s| format!("{}    {}", acc, s))
-        )?;
-        writeln!(f, "Production stats:")?;
-        let mut sorted_production_stats = self.production_stats.clone();
-        sorted_production_stats.sort_unstable_by_key(|v| v.cycle);
-        for cycle_stat in sorted_production_stats.into_iter() {
+        writeln!(f, "\tLocked coins:")?;
+        for slot_amount in &self.deferred_credits {
             writeln!(
                 f,
-                "\t produced {} and failed {} at cycle {} {}",
-                cycle_stat.ok_count,
-                cycle_stat.nok_count,
-                cycle_stat.cycle,
-                if cycle_stat.is_final {
-                    "(final)"
-                } else {
-                    "(non-final)"
-                }
+                "\t\t{} locked coins will be unlocked at slot {}",
+                slot_amount.amount, slot_amount.slot
             )?;
         }
-
+        writeln!(f, "\tCycle infos:")?;
+        for cycle_info in &self.cycle_infos {
+            writeln!(
+                f,
+                "\t\tCycle {} ({}): produced {} and missed {} blocks{}",
+                cycle_info.cycle,
+                if cycle_info.is_final {
+                    "final"
+                } else {
+                    "candidate"
+                },
+                cycle_info.ok_count,
+                cycle_info.nok_count,
+                match cycle_info.active_rolls {
+                    Some(rolls) => format!(" with {} active rolls", rolls),
+                    None => "".into(),
+                },
+            )?;
+        }
+        //writeln!(f, "\tProduced blocks: {}", self.created_blocks.iter().map(|id| id.to_string()).intersperse(", ".into()).collect())?;
+        //writeln!(f, "\tProduced operations: {}", self.created_operations.iter().map(|id| id.to_string()).intersperse(", ".into()).collect())?;
+        //writeln!(f, "\tProduced endorsements: {}", self.created_endorsements.iter().map(|id| id.to_string()).intersperse(", ".into()).collect())?;
         Ok(())
     }
 }
@@ -308,10 +297,17 @@ impl AddressInfo {
         CompactAddressInfo {
             address: self.address,
             thread: self.thread,
-            balance: self.ledger_info,
-            rolls: self.rolls,
-            final_balance: self.final_balance_info,
-            candidate_balance: self.candidate_balance_info,
+            active_rolls: self
+                .cycle_infos
+                .last()
+                .and_then(|c| c.active_rolls)
+                .unwrap_or_default(),
+            final_rolls: self.final_roll_count,
+            candidate_rolls: self.candidate_roll_count,
+            final_sequential_balance: self.final_sequential_balance,
+            candidate_sequential_balance: self.candidate_sequential_balance,
+            final_parallel_balance: self.final_parallel_balance,
+            candidate_parallel_balance: self.candidate_parallel_balance,
         }
     }
 }
@@ -332,41 +328,46 @@ impl std::fmt::Display for IndexedSlot {
 }
 
 /// Less information about an address
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CompactAddressInfo {
     /// the address
     pub address: Address,
     /// the thread it is
     pub thread: u8,
-    /// parallel balance
-    pub balance: LedgerInfo,
-    /// rolls
-    pub rolls: RollsInfo,
+    /// candidate rolls
+    pub candidate_rolls: u64,
+    /// final rolls
+    pub final_rolls: u64,
+    /// active rolls
+    pub active_rolls: u64,
     /// final sequential balance
-    pub final_balance: Option<Amount>,
-    /// latest sequential balance
-    pub candidate_balance: Option<Amount>,
+    pub final_sequential_balance: Amount,
+    /// candidate sequential balance
+    pub candidate_sequential_balance: Amount,
+    /// final parallel balance
+    pub final_parallel_balance: Amount,
+    /// candidate parallel balance
+    pub candidate_parallel_balance: Amount,
 }
 
 impl std::fmt::Display for CompactAddressInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Address: {}", self.address)?;
-        writeln!(f, "Thread: {}", self.thread)?;
-        writeln!(f, "Parallel balance:",)?;
+        writeln!(f, "Address: {} (thread {}):", self.address, self.thread)?;
         writeln!(
             f,
-            "\tFinal: {:?}",
-            self.final_balance
-                .unwrap_or(Amount::from_str("0").map_err(|_| std::fmt::Error)?)
+            "\tSequential balance: final={}, candidate={}",
+            self.final_sequential_balance, self.candidate_sequential_balance
         )?;
         writeln!(
             f,
-            "\tCandidate: {:?}\n",
-            self.candidate_balance
-                .unwrap_or(Amount::from_str("0").map_err(|_| std::fmt::Error)?)
+            "\tParallel balance: final={}, candidate={}",
+            self.final_parallel_balance, self.candidate_parallel_balance
         )?;
-        writeln!(f, "Sequential balance:\n{}", self.balance)?;
-        writeln!(f, "Rolls:\n{}", self.rolls)?;
+        writeln!(
+            f,
+            "\tRolls: active={}, final={}, candidate={}",
+            self.active_rolls, self.final_rolls, self.candidate_rolls
+        )?;
         Ok(())
     }
 }
@@ -374,33 +375,44 @@ impl std::fmt::Display for CompactAddressInfo {
 /// All you wanna know about an endorsement
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct EndorsementInfo {
-    /// the id
+    /// id
     pub id: EndorsementId,
-    /// true is the endorsement is still in pool
+    /// true if endorsement is still in pool
     pub in_pool: bool,
-    /// endorsements included in these blocks
+    /// the endorsement appears in `in_blocks`
+    /// if it appears in multiple blocks, these blocks are in different cliques
     pub in_blocks: Vec<BlockId>,
-    /// true included in a final block
+    /// true if the endorsement is final (for example in a final block)
     pub is_final: bool,
-    /// The full endorsement
+    /// the endorsmeent itself
     pub endorsement: WrappedEndorsement,
 }
 
 impl std::fmt::Display for EndorsementInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Endorsement id: {}", self.id)?;
-        display_if_true(self.is_final, "final");
-        display_if_true(self.in_pool, "in pool");
         writeln!(
             f,
-            "In blocks: {}",
-            self.in_blocks
-                .iter()
-                .fold("\n".to_string(), |acc, s| format!("{}    {}", acc, s))
+            "Endorsement {}{}{}",
+            self.id,
+            display_if_true(self.in_pool, " (in pool)"),
+            display_if_true(self.is_final, " (final)")
         )?;
-        writeln!(f, "Endorsement: {}", self.endorsement)?;
+        writeln!(f, "In blocks:")?;
+        for block_id in &self.in_blocks {
+            writeln!(f, "\t- {}", block_id)?;
+        }
+        writeln!(f, "{}", self.endorsement)?;
         Ok(())
     }
+}
+
+/// slot / amount pair
+#[derive(Debug, Deserialize, Serialize)]
+pub struct SlotAmount {
+    /// slot
+    pub slot: Slot,
+    /// amount
+    pub amount: Amount,
 }
 
 /// refactor to delete
@@ -417,10 +429,12 @@ pub struct BlockInfo {
 pub struct BlockInfoContent {
     /// true if final
     pub is_final: bool,
-    /// true if incompatible with a final block
-    pub is_stale: bool,
-    /// true if in the greatest clique
+    /// true if in the greatest clique (and not final)
     pub is_in_blockclique: bool,
+    /// true if candidate (active any clique but not final)
+    pub is_candidate: bool,
+    /// true if discarded
+    pub is_discarded: bool,
     /// block
     pub block: Block,
 }
@@ -430,11 +444,12 @@ impl std::fmt::Display for BlockInfo {
         if let Some(content) = &self.content {
             writeln!(
                 f,
-                "Block's ID: {}{}{}{}",
+                "Block ID: {}{}{}{}{}",
                 self.id,
-                display_if_true(content.is_final, "final"),
-                display_if_true(content.is_stale, "stale"),
-                display_if_true(content.is_in_blockclique, "in blockclique"),
+                display_if_true(content.is_final, " (final)"),
+                display_if_true(content.is_candidate, " (candidate)"),
+                display_if_true(content.is_in_blockclique, " (blockclique)"),
+                display_if_true(content.is_discarded, " (discarded)"),
             )?;
             writeln!(f, "Block: {}", content.block)?;
         } else {
@@ -540,6 +555,12 @@ pub struct EventFilter {
     pub original_caller_address: Option<Address>,
     /// optional operation id
     pub original_operation_id: Option<OperationId>,
+    /// optional event status
+    ///
+    /// Some(true) means final
+    /// Some(false) means candidate
+    /// None means final _and_ candidate
+    pub is_final: Option<bool>,
 }
 
 /// read only bytecode execution request

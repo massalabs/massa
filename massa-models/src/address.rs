@@ -1,18 +1,20 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::error::ModelsError;
 use crate::prehash::PreHashed;
-use crate::{
-    api::{LedgerInfo, RollsInfo},
-    constants::ADDRESS_SIZE_BYTES,
-};
-use crate::{DeserializeVarInt, ModelsError, SerializeVarInt};
 use massa_hash::{Hash, HashDeserializer};
-use massa_serialization::Deserializer;
+use massa_serialization::{
+    DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 use massa_signature::PublicKey;
 use nom::error::{context, ContextError, ParseError};
-use nom::IResult;
+use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
+use std::ops::Bound::Included;
 use std::str::FromStr;
+
+/// Size of a serialized address, in bytes
+pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
 /// Derived from a public key
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -23,8 +25,12 @@ const ADDRESS_VERSION: u64 = 0;
 
 impl std::fmt::Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let u64_serializer = U64VarIntSerializer::new();
         // might want to allocate the vector with capacity in order to avoid re-allocation
-        let mut bytes: Vec<u8> = ADDRESS_VERSION.to_varint_bytes();
+        let mut bytes: Vec<u8> = Vec::new();
+        u64_serializer
+            .serialize(&ADDRESS_VERSION, &mut bytes)
+            .map_err(|_| std::fmt::Error)?;
         bytes.extend(self.0.to_bytes());
         write!(
             f,
@@ -112,17 +118,16 @@ impl FromStr for Address {
         match chars.next() {
             Some(prefix) if prefix == ADDRESS_PREFIX => {
                 let data = chars.collect::<String>();
-                let mut decoded_bs58_check = bs58::decode(data)
+                let decoded_bs58_check = bs58::decode(data)
                     .with_check(None)
                     .into_vec()
                     .map_err(|_| ModelsError::AddressParseError)?;
-                let (_version, size) = u64::from_varint_bytes(&decoded_bs58_check[..])
+                let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
+                let (rest, _version) = u64_deserializer
+                    .deserialize::<DeserializeError>(&decoded_bs58_check[..])
                     .map_err(|_| ModelsError::AddressParseError)?;
-                decoded_bs58_check.drain(0..size);
                 Ok(Address(Hash::from_bytes(
-                    &decoded_bs58_check
-                        .as_slice()
-                        .try_into()
+                    rest.try_into()
                         .map_err(|_| ModelsError::AddressParseError)?,
                 )))
             }
@@ -162,7 +167,7 @@ impl Address {
     /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// # use massa_models::Address;
+    /// # use massa_models::address::Address;
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let bytes = address.into_bytes();
@@ -178,7 +183,7 @@ impl Address {
     /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// # use massa_models::Address;
+    /// # use massa_models::address::Address;
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let bytes = address.into_bytes();
@@ -194,7 +199,7 @@ impl Address {
     /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// # use massa_models::Address;
+    /// # use massa_models::address::Address;
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let bytes = address.to_bytes();
@@ -210,7 +215,7 @@ impl Address {
     /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// # use massa_models::Address;
+    /// # use massa_models::address::Address;
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let ser = address.to_bs58_check();
@@ -228,7 +233,7 @@ impl Address {
     /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// # use massa_models::Address;
+    /// # use massa_models::address::Address;
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let ser = address.to_bs58_check();
@@ -256,20 +261,33 @@ impl AddressDeserializer {
 }
 
 impl Deserializer<Address> for AddressDeserializer {
+    /// ## Example
+    /// ```rust
+    /// use massa_models::address::{Address, AddressDeserializer};
+    /// use massa_serialization::{Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    ///
+    /// let address = Address::from_str("A12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ").unwrap();
+    /// let bytes = address.into_bytes();
+    /// let (rest, res_addr) = AddressDeserializer::new().deserialize::<DeserializeError>(&bytes).unwrap();
+    /// assert_eq!(address, res_addr);
+    /// assert_eq!(rest.len(), 0);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Address, E> {
         context("Failed Address deserialization", |input| {
-            let (rest, hash) = self.hash_deserializer.deserialize(input)?;
-            Ok((rest, Address(hash)))
-        })(buffer)
+            self.hash_deserializer.deserialize(input)
+        })
+        .map(Address)
+        .parse(buffer)
     }
 }
 
-/// Production stats for a given address during a given cycle
+/// Info for a given address on a given cycle
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct AddressCycleProductionStats {
+pub struct ExecutionAddressCycleInfo {
     /// cycle number
     pub cycle: u64,
     /// true if that cycle is final
@@ -278,16 +296,6 @@ pub struct AddressCycleProductionStats {
     pub ok_count: u64,
     /// `ok_count` blocks were missed by this address during that cycle
     pub nok_count: u64,
-}
-
-/// Address state as know by consensus
-/// Used to answer to API
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct AddressState {
-    /// Parallel balance information
-    pub ledger_info: LedgerInfo,
-    /// Rolls information
-    pub rolls: RollsInfo,
-    /// stats for still in memory cycles
-    pub production_stats: Vec<AddressCycleProductionStats>,
+    /// number of active rolls the address had at that cycle (if still available)
+    pub active_rolls: Option<u64>,
 }

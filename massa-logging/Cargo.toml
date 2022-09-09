@@ -11,5 +11,5 @@ serde_json = "1.0"
 tracing = "0.1"
 
 [dev-dependencies]
-pretty_assertions = "1.0"
-serial_test = "0.8"
+pretty_assertions = "1.2"
+serial_test = "0.9"

@@ -4,6 +4,7 @@
 
 use massa_async_pool::AsyncPoolConfig;
 use massa_ledger_exports::LedgerConfig;
+use std::path::PathBuf;
 
 /// Ledger configuration
 #[derive(Debug, Clone)]
@@ -16,4 +17,10 @@ pub struct FinalStateConfig {
     pub final_history_length: usize,
     /// thread count
     pub thread_count: u8,
+    /// periods per cycle
+    pub periods_per_cycle: u64,
+    /// initial PoS seed string
+    pub initial_seed_string: String,
+    /// initial rolls file path
+    pub initial_rolls_path: PathBuf,
 }

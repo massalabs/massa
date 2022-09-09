@@ -5,10 +5,9 @@ use massa_time::MassaTime;
 use serde::Deserialize;
 use std::net::SocketAddr;
 
-/// Bootstrap settings.
-/// Both bootstrapping at start-up and bootstrap server settings
+/// Bootstrap config.
 #[derive(Debug, Deserialize, Clone)]
-pub struct BootstrapSettings {
+pub struct BootstrapConfig {
     /// Ip address of our bootstrap nodes and their public key.
     pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
     /// Port to listen if we choose to allow other nodes to use us as bootstrap node.
@@ -39,4 +38,40 @@ pub struct BootstrapSettings {
     pub ip_list_max_size: usize,
     /// Read-Write limitation for a connection in bytes per seconds
     pub max_bytes_read_write: f64,
+    /// max bootstrap message size in bytes
+    pub max_bootstrap_message_size: u32,
+    /// thread count
+    pub thread_count: u8,
+    /// period per cycle
+    pub periods_per_cycle: u64,
+    /// max datastore key length
+    pub max_datastore_key_length: u8,
+    /// randomness size bytes
+    pub randomness_size_bytes: usize,
+    /// endorsement count
+    pub endorsement_count: u32,
+    /// max advertise length
+    pub max_advertise_length: u32,
+    /// max bootstrap blocks length
+    pub max_bootstrap_blocks_length: u32,
+    /// max operations per blocks
+    pub max_operations_per_blocks: u32,
+    /// max bootstrap async pool changes
+    pub max_bootstrap_async_pool_changes: u64,
+    /// max bootstrap error length
+    pub max_bootstrap_error_length: u32,
+    /// max bootstrap final state parts size
+    pub max_bootstrap_final_state_parts_size: u64,
+    /// max datastore entry count
+    pub max_datastore_entry_count: u64,
+    /// max datastore value length
+    pub max_datastore_value_length: u64,
+    /// max data async message
+    pub max_data_async_message: u64,
+    /// max function name length
+    pub max_function_name_length: u16,
+    /// max parameters size
+    pub max_parameters_size: u32,
+    /// max ledger changes
+    pub max_ledger_changes_count: u64,
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 //! Bootstrap crate
 //!
 //! At start up, if now is after genesis timestamp,
@@ -12,12 +12,12 @@
 #![warn(unused_crate_dependencies)]
 #![feature(ip)]
 #![feature(map_first_last)]
+#![feature(let_chains)]
 
 pub use establisher::types::Establisher;
 use massa_final_state::FinalState;
 use massa_graph::BootstrapableGraph;
 use massa_network_exports::BootstrapPeers;
-use massa_proof_of_stake_exports::ExportProofOfStake;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -31,18 +31,18 @@ mod server_binder;
 mod settings;
 pub use client::get_state;
 pub use establisher::types;
+pub use messages::{
+    BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapClientMessageSerializer,
+    BootstrapServerMessage, BootstrapServerMessageDeserializer, BootstrapServerMessageSerializer,
+};
 pub use server::{start_bootstrap_server, BootstrapManager};
-pub use settings::BootstrapSettings;
+pub use settings::BootstrapConfig;
 
 #[cfg(test)]
 pub mod tests;
 
 /// a collection of the bootstrap state snapshots of all relevant modules
-#[derive(Debug)]
 pub struct GlobalBootstrapState {
-    /// state of the proof of stake state (distributions, seeds...)
-    pub pos: Option<ExportProofOfStake>,
-
     /// state of the consensus graph
     pub graph: Option<BootstrapableGraph>,
 
@@ -59,7 +59,6 @@ pub struct GlobalBootstrapState {
 impl GlobalBootstrapState {
     fn new(final_state: Arc<RwLock<FinalState>>) -> Self {
         Self {
-            pos: None,
             graph: None,
             compensation_millis: Default::default(),
             peers: None,

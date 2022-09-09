@@ -5,23 +5,25 @@ use super::tools;
 use crate::handshake_worker::HandshakeWorker;
 use crate::messages::Message;
 use crate::start_network_controller;
+use crate::NetworkConfig;
 use crate::NetworkError;
 use crate::NetworkEvent;
-use crate::NetworkSettings;
 
 use massa_hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
-    Address, Amount, BlockId, Operation, OperationSerializer, OperationType, SerializeCompact,
-    Version, WrappedOperation,
+    address::Address,
+    amount::Amount,
+    block::BlockId,
+    operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
+    version::Version,
 };
 use massa_network_exports::test_exports::mock_establisher::{self, MockEstablisherInterface};
 use massa_network_exports::{
     ConnectionId, NetworkCommandSender, NetworkEventReceiver, NetworkManager, PeerInfo,
 };
 use massa_signature::KeyPair;
-use massa_storage::Storage;
 use massa_time::MassaTime;
 use std::str::FromStr;
 use std::{
@@ -309,11 +311,7 @@ pub async fn incoming_message_drain_start(
 
 pub async fn advertise_peers_in_connection(write_binder: &mut WriteBinder, peer_list: Vec<IpAddr>) {
     write_binder
-        .send(
-            &Message::PeerList(peer_list)
-                .to_bytes_compact()
-                .expect("Fail to serialize message"),
-        )
+        .send(&Message::PeerList(peer_list))
         .await
         .expect("could not send peer list");
 }
@@ -346,7 +344,7 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
 
 /// Runs a consensus test, passing a mock pool controller to it.
 pub async fn network_test<F, V>(
-    network_settings: NetworkSettings,
+    network_settings: NetworkConfig,
     temp_peers_file: NamedTempFile,
     test: F,
 ) where
@@ -355,7 +353,6 @@ pub async fn network_test<F, V>(
         NetworkEventReceiver,
         NetworkManager,
         MockEstablisherInterface,
-        Storage,
     ) -> V,
     V: Future<
         Output = (
@@ -368,15 +365,13 @@ pub async fn network_test<F, V>(
 {
     // create establisher
     let (establisher, mock_interface) = mock_establisher::new();
-    let storage: Storage = Default::default();
     // launch network controller
     let (network_event_sender, network_event_receiver, network_manager, _keypair, _node_id) =
         start_network_controller(
-            network_settings,
+            &network_settings,
             establisher,
             0,
             None,
-            storage.clone(),
             Version::from_str("TEST.1.2").unwrap(),
         )
         .await
@@ -389,7 +384,6 @@ pub async fn network_test<F, V>(
         network_event_receiver,
         network_manager,
         mock_interface,
-        storage,
     )
     .await;
 

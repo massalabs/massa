@@ -5,7 +5,8 @@
 #![feature(ip)]
 
 pub use commands::{
-    NetworkCommand, NetworkEvent, NetworkManagementCommand, NodeCommand, NodeEvent, NodeEventType,
+    AskForBlocksInfo, BlockInfoReply, NetworkCommand, NetworkEvent, NetworkManagementCommand,
+    NodeCommand, NodeEvent, NodeEventType,
 };
 
 pub use common::{ConnectionClosureReason, ConnectionId};
@@ -16,7 +17,7 @@ pub use peers::{
     BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer, ConnectionCount, Peer,
     PeerInfo, PeerType, Peers,
 };
-pub use settings::NetworkSettings;
+pub use settings::NetworkConfig;
 
 mod commands;
 mod common;

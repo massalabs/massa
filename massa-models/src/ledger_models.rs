@@ -1,16 +1,28 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::{
-    array_from_slice,
+    address::{Address, AddressDeserializer},
+    amount::{Amount, AmountDeserializer, AmountSerializer},
+    error::ModelsError,
     error::ModelsResult as Result,
-    node_configuration::ADDRESS_SIZE_BYTES,
-    prehash::{Map, Set},
-    u8_from_slice, Address, Amount, DeserializeCompact, DeserializeVarInt, ModelsError,
-    SerializeCompact, SerializeVarInt,
+    prehash::{PreHashMap, PreHashSet},
 };
 use core::usize;
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
+use nom::{
+    branch::alt,
+    bytes::complete::tag,
+    combinator::value,
+    error::{context, ContextError, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult, Parser,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map;
+use std::ops::Bound::Included;
 
 /// a consensus ledger entry
 #[derive(Debug, Default, Deserialize, Clone, Copy, Serialize)]
@@ -19,24 +31,90 @@ pub struct LedgerData {
     pub balance: Amount,
 }
 
-/// Checks performed:
-/// - Balance.
-impl SerializeCompact for LedgerData {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>> {
-        let mut res: Vec<u8> = Vec::new();
-        res.extend(&self.balance.to_bytes_compact()?);
-        Ok(res)
+/// Basic serializer for `LedgerData`
+#[derive(Default)]
+pub struct LedgerDataSerializer {
+    amount_serializer: AmountSerializer,
+}
+
+impl LedgerDataSerializer {
+    /// Creates a `LedgerDataSerializer`
+    pub fn new() -> Self {
+        Self {
+            amount_serializer: AmountSerializer::new(),
+        }
     }
 }
 
-/// Checks performed:
-/// - Balance.
-impl DeserializeCompact for LedgerData {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize)> {
-        let mut cursor = 0usize;
-        let (balance, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
-        Ok((LedgerData { balance }, cursor))
+impl Serializer<LedgerData> for LedgerDataSerializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::ledger_models::{LedgerData, LedgerDataSerializer};
+    /// use massa_models::amount::Amount;
+    /// use massa_serialization::Serializer;
+    /// use std::str::FromStr;
+    ///
+    /// let ledger_data = LedgerData {
+    ///    balance: Amount::from_str("1349").unwrap(),
+    /// };
+    /// let mut buffer = Vec::new();
+    /// LedgerDataSerializer::new().serialize(&ledger_data, &mut buffer).unwrap();
+    /// ```
+    fn serialize(&self, value: &LedgerData, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.amount_serializer.serialize(&value.balance, buffer)?;
+        Ok(())
+    }
+}
+
+/// Basic deserializer for `LedgerData`
+pub struct LedgerDataDeserializer {
+    amount_deserializer: AmountDeserializer,
+}
+
+impl LedgerDataDeserializer {
+    /// Creates a `LedgerDataDeserializer`
+    pub fn new() -> Self {
+        Self {
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
+        }
+    }
+}
+
+impl Default for LedgerDataDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deserializer<LedgerData> for LedgerDataDeserializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::ledger_models::{LedgerData, LedgerDataDeserializer, LedgerDataSerializer};
+    /// use massa_models::amount::Amount;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    ///
+    /// let ledger_data = LedgerData {
+    ///    balance: Amount::from_str("1349").unwrap(),
+    /// };
+    /// let mut buffer = Vec::new();
+    /// LedgerDataSerializer::new().serialize(&ledger_data, &mut buffer).unwrap();
+    /// let (rest, ledger_data_deserialized) = LedgerDataDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(ledger_data.balance, ledger_data_deserialized.balance);
+    /// ```
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], LedgerData, E> {
+        context("Failed LedgerData deserialization", |input| {
+            self.amount_deserializer.deserialize(input)
+        })
+        .map(|balance| LedgerData { balance })
+        .parse(buffer)
     }
 }
 
@@ -97,6 +175,108 @@ impl Default for LedgerChange {
     }
 }
 
+/// Basic serializer for `LedgerChange`
+#[derive(Default)]
+pub struct LedgerChangeSerializer {
+    amount_serializer: AmountSerializer,
+}
+
+impl LedgerChangeSerializer {
+    /// Creates a `LedgerChangeSerializer`
+    pub fn new() -> Self {
+        Self {
+            amount_serializer: AmountSerializer::new(),
+        }
+    }
+}
+
+impl Serializer<LedgerChange> for LedgerChangeSerializer {
+    /// ## Example
+    /// ```rust
+    /// use massa_models::{address::Address, amount::Amount, ledger_models::LedgerChangeSerializer};
+    /// use std::str::FromStr;
+    /// use massa_models::ledger_models::LedgerChange;
+    /// use massa_serialization::Serializer;
+    /// let ledger_change = LedgerChange {
+    ///   balance_delta: Amount::from_str("1149").unwrap(),
+    ///   balance_increment: true
+    /// };
+    /// let mut serialized = Vec::new();
+    /// LedgerChangeSerializer::new().serialize(&ledger_change, &mut serialized).unwrap();
+    /// ```
+    fn serialize(&self, value: &LedgerChange, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        buffer.push(if value.balance_increment { 1 } else { 0 });
+        self.amount_serializer
+            .serialize(&value.balance_delta, buffer)?;
+        Ok(())
+    }
+}
+
+/// Basic deserializer for `LedgerChange`
+pub struct LedgerChangeDeserializer {
+    amount_deserializer: AmountDeserializer,
+}
+
+impl LedgerChangeDeserializer {
+    /// Creates a `LedgerChangeDeserializer`
+    pub fn new() -> Self {
+        Self {
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
+        }
+    }
+}
+
+impl Default for LedgerChangeDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deserializer<LedgerChange> for LedgerChangeDeserializer {
+    /// ## Example
+    /// ```rust
+    /// use massa_models::{address::Address, amount::Amount, ledger_models::{LedgerChangeSerializer, LedgerChangeDeserializer}};
+    /// use std::str::FromStr;
+    /// use massa_models::ledger_models::LedgerChange;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// let ledger_change = LedgerChange {
+    ///   balance_delta: Amount::from_str("1149").unwrap(),
+    ///   balance_increment: true
+    /// };
+    /// let mut serialized = Vec::new();
+    /// LedgerChangeSerializer::new().serialize(&ledger_change, &mut serialized).unwrap();
+    /// let (rest, serialized) = LedgerChangeDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(ledger_change.balance_delta, serialized.balance_delta);
+    /// assert_eq!(ledger_change.balance_increment, serialized.balance_increment);
+    /// ```
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], LedgerChange, E> {
+        context(
+            "Failed LedgerChange deserialization",
+            tuple((
+                context(
+                    "Failed balance_increment deserialization",
+                    alt((value(true, tag(&[1u8])), value(false, tag(&[0u8])))),
+                ),
+                context("Failed balance_delta deserialization", |input| {
+                    self.amount_deserializer.deserialize(input)
+                }),
+            )),
+        )
+        .map(|(balance_increment, balance_delta)| LedgerChange {
+            balance_delta,
+            balance_increment,
+        })
+        .parse(buffer)
+    }
+}
+
 impl LedgerChange {
     /// Applies another ledger change on top of self
     pub fn chain(&mut self, change: &LedgerChange) -> Result<(), ModelsError> {
@@ -135,56 +315,126 @@ impl LedgerChange {
     }
 }
 
-/// Checks performed:
-/// - Balance delta.
-impl SerializeCompact for LedgerChange {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, crate::ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
-        res.push(if self.balance_increment { 1u8 } else { 0u8 });
-        res.extend(&self.balance_delta.to_bytes_compact()?);
-        Ok(res)
-    }
-}
-
-/// Checks performed:
-/// - Increment flag.
-/// - Balance delta.
-impl DeserializeCompact for LedgerChange {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), crate::ModelsError> {
-        let mut cursor = 0usize;
-
-        let balance_increment = match u8_from_slice(&buffer[cursor..])? {
-            0u8 => false,
-            1u8 => true,
-            _ => {
-                return Err(ModelsError::DeserializeError(
-                    "wrong boolean balance_increment encoding in LedgerChange deserialization"
-                        .into(),
-                ))
-            }
-        };
-        cursor += 1;
-
-        let (balance_delta, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
-
-        Ok((
-            LedgerChange {
-                balance_increment,
-                balance_delta,
-            },
-            cursor,
-        ))
-    }
-}
-
 /// Map an address to a `LedgerChange`
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct LedgerChanges(pub Map<Address, LedgerChange>);
+pub struct LedgerChanges(pub PreHashMap<Address, LedgerChange>);
+
+/// Basic serializer for `LedgerChanges`
+pub struct LedgerChangesSerializer {
+    length_serializer: U64VarIntSerializer,
+    ledger_change_serializer: LedgerChangeSerializer,
+}
+
+impl LedgerChangesSerializer {
+    /// Creates a `LedgerChangesSerializer`
+    pub fn new() -> Self {
+        Self {
+            length_serializer: U64VarIntSerializer::new(),
+            ledger_change_serializer: LedgerChangeSerializer::new(),
+        }
+    }
+}
+
+impl Default for LedgerChangesSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<LedgerChanges> for LedgerChangesSerializer {
+    fn serialize(&self, value: &LedgerChanges, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.length_serializer
+            .serialize(&(value.0.len() as u64), buffer)?;
+        for (address, change) in value.0.iter() {
+            buffer.extend(address.to_bytes());
+            self.ledger_change_serializer.serialize(change, buffer)?;
+        }
+        Ok(())
+    }
+}
+
+/// Basic deserializer for `LedgerChanges`
+pub struct LedgerChangesDeserializer {
+    length_deserializer: U64VarIntDeserializer,
+    address_deserializer: AddressDeserializer,
+    ledger_change_deserializer: LedgerChangeDeserializer,
+}
+
+impl LedgerChangesDeserializer {
+    /// Creates a `LedgerChangesDeserializer`
+    pub fn new(max_ledger_changes_count: u64) -> Self {
+        Self {
+            length_deserializer: U64VarIntDeserializer::new(
+                Included(0),
+                Included(max_ledger_changes_count),
+            ),
+            address_deserializer: AddressDeserializer::new(),
+            ledger_change_deserializer: LedgerChangeDeserializer::new(),
+        }
+    }
+}
+
+impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
+    /// ## Example
+    /// ```rust
+    /// # use massa_models::{address::Address, amount::Amount, ledger_models::{LedgerChangesSerializer, LedgerChangesDeserializer, LedgerChangeSerializer, LedgerChangeDeserializer}};
+    /// # use std::str::FromStr;
+    /// # use massa_models::ledger_models::{LedgerChanges, LedgerChange};
+    /// # use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// # let ledger_changes = LedgerChanges(vec![
+    /// #   (
+    /// #       Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(),
+    /// #       LedgerChange {
+    /// #           balance_delta: Amount::from_str("1149").unwrap(),
+    /// #           balance_increment: true
+    /// #       },
+    /// #   ),
+    /// #   (
+    /// #       Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(),
+    /// #       LedgerChange {
+    /// #           balance_delta: Amount::from_str("1020").unwrap(),
+    /// #           balance_increment: true
+    /// #       },
+    /// #   )
+    /// # ].into_iter().collect());
+    /// let mut serialized = Vec::new();
+    /// let ledger_change_serializer = LedgerChangeSerializer::new();
+    /// LedgerChangesSerializer::new().serialize(&ledger_changes, &mut serialized).unwrap();
+    /// let (_, res) = LedgerChangesDeserializer::new(10000).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// for (address, data) in &ledger_changes.0 {
+    ///    let mut data_serialized = Vec::new();
+    ///    ledger_change_serializer.serialize(data, &mut data_serialized).unwrap();
+    ///    assert!(res.0.iter().filter(|(addr, dta)| {
+    ///      let mut dta_serialized = Vec::new();
+    ///      ledger_change_serializer.serialize(dta, &mut dta_serialized).unwrap();
+    ///      &address == addr && dta_serialized == data_serialized
+    ///     }).count() == 1);
+    ///    data_serialized = Vec::new();
+    /// }
+    /// assert_eq!(ledger_changes.0.len(), res.0.len());
+    /// ```
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], LedgerChanges, E> {
+        context(
+            "Failed LedgerChanges deserialization",
+            length_count(
+                |input| self.length_deserializer.deserialize(input),
+                tuple((
+                    |input| self.address_deserializer.deserialize(input),
+                    |input| self.ledger_change_deserializer.deserialize(input),
+                )),
+            ),
+        )
+        .map(|changes| LedgerChanges(changes.into_iter().collect()))
+        .parse(buffer)
+    }
+}
 
 impl LedgerChanges {
     /// addresses that are impacted by these ledger changes
-    pub fn get_involved_addresses(&self) -> Set<Address> {
+    pub fn get_involved_addresses(&self) -> PreHashSet<Address> {
         self.0.keys().copied().collect()
     }
 
@@ -218,7 +468,7 @@ impl LedgerChanges {
 
     /// merge another ledger changes into self, overwriting existing data
     /// addresses that are in not other are removed from self
-    pub fn sync_from(&mut self, addrs: &Set<Address>, mut other: LedgerChanges) {
+    pub fn sync_from(&mut self, addrs: &PreHashSet<Address>, mut other: LedgerChanges) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {
                 self.0.insert(*addr, new_val);
@@ -230,7 +480,7 @@ impl LedgerChanges {
 
     /// clone subset
     #[must_use]
-    pub fn clone_subset(&self, addrs: &Set<Address>) -> Self {
+    pub fn clone_subset(&self, addrs: &PreHashSet<Address>) -> Self {
         LedgerChanges(
             self.0
                 .iter()
@@ -243,128 +493,5 @@ impl LedgerChanges {
                 })
                 .collect(),
         )
-    }
-
-    /// add reward related changes
-    pub fn add_reward(
-        &mut self,
-        creator: Address,
-        endorsers: Vec<Address>,
-        parent_creator: Address,
-        reward: Amount,
-        endorsement_count: u32,
-    ) -> Result<()> {
-        let endorsers_count = endorsers.len() as u64;
-        let third = reward
-            .checked_div_u64(3 * (1 + (endorsement_count as u64)))
-            .ok_or(ModelsError::AmountOverflowError)?;
-        for ed in endorsers {
-            self.apply(
-                &parent_creator,
-                &LedgerChange {
-                    balance_delta: third,
-                    balance_increment: true,
-                },
-            )?;
-            self.apply(
-                &ed,
-                &LedgerChange {
-                    balance_delta: third,
-                    balance_increment: true,
-                },
-            )?;
-        }
-        let total_credited = third
-            .checked_mul_u64(2 * endorsers_count)
-            .ok_or(ModelsError::AmountOverflowError)?;
-        // here we credited only parent_creator and ed for every endorsement
-        // total_credited now contains the total amount already credited
-
-        let expected_credit = reward
-            .checked_mul_u64(1 + endorsers_count)
-            .ok_or(ModelsError::AmountOverflowError)?
-            .checked_div_u64(1 + (endorsement_count as u64))
-            .ok_or(ModelsError::AmountOverflowError)?;
-        // here expected_credit contains the expected amount that should be credited in total
-        // the difference between expected_credit and total_credited is sent to the block creator
-        self.apply(
-            &creator,
-            &LedgerChange {
-                balance_delta: expected_credit.saturating_sub(total_credited),
-                balance_increment: true,
-            },
-        )
-    }
-}
-
-impl SerializeCompact for LedgerChanges {
-    /// ## Example
-    /// ```rust
-    /// # use massa_models::{SerializeCompact, DeserializeCompact, SerializationContext, Address, Amount};
-    /// # use std::str::FromStr;
-    /// # use massa_models::ledger_models::{LedgerChanges, LedgerChange};
-    /// # let ledger_changes = LedgerChanges(vec![
-    /// #   (
-    /// #       Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(),
-    /// #       LedgerChange {
-    /// #           balance_delta: Amount::from_str("1149").unwrap(),
-    /// #           balance_increment: true
-    /// #       },
-    /// #   ),
-    /// #   (
-    /// #       Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(),
-    /// #       LedgerChange {
-    /// #           balance_delta: Amount::from_str("1020").unwrap(),
-    /// #           balance_increment: true
-    /// #       },
-    /// #   )
-    /// # ].into_iter().collect());
-    /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
-    /// let bytes = ledger_changes.clone().to_bytes_compact().unwrap();
-    /// let (res, _) = LedgerChanges::from_bytes_compact(&bytes).unwrap();
-    /// for (address, data) in &ledger_changes.0 {
-    ///    assert!(res.0.iter().filter(|(addr, dta)| &address == addr && dta.to_bytes_compact().unwrap() == data.to_bytes_compact().unwrap()).count() == 1)
-    /// }
-    /// assert_eq!(ledger_changes.0.len(), res.0.len());
-    /// ```
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
-
-        let entry_count: u64 = self.0.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!(
-                "too many entries in ConsensusLedgerSubset: {}",
-                err
-            ))
-        })?;
-        res.extend(entry_count.to_varint_bytes());
-        for (address, data) in self.0.iter() {
-            res.extend(address.to_bytes());
-            res.extend(&data.to_bytes_compact()?);
-        }
-
-        Ok(res)
-    }
-}
-
-impl DeserializeCompact for LedgerChanges {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let mut cursor = 0usize;
-
-        let (entry_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-        // TODO: add entry_count checks ... see #1200
-        cursor += delta;
-
-        let mut ledger_subset = LedgerChanges(Map::default());
-        for _ in 0..entry_count {
-            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
-            cursor += ADDRESS_SIZE_BYTES;
-
-            let (data, delta) = LedgerChange::from_bytes_compact(&buffer[cursor..])?;
-            cursor += delta;
-
-            ledger_subset.0.insert(address, data);
-        }
-
-        Ok((ledger_subset, cursor))
     }
 }
