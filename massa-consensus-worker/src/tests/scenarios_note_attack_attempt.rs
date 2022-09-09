@@ -1,8 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use super::mock_pool_controller::MockPoolController;
 use super::tools::*;
 use crate::start_consensus_controller;
+use massa_pool_exports::test_exports::MockPoolController;
 
 use massa_consensus_exports::settings::ConsensusChannels;
 use massa_consensus_exports::ConsensusConfig;
@@ -41,7 +41,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         channel_size: 256,
     };
     let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
-    let pool_controller = MockPoolController::new();
+    let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
     // launch consensus controller
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
@@ -51,7 +51,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
                 execution_controller,
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
-                pool_command_sender: Box::new(pool_controller),
+                pool_command_sender: pool_controller,
                 selector_controller,
             },
             None,
@@ -101,7 +101,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
-    let pool_controller = MockPoolController::new();
+    let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
     let selector_config = SelectorConfig {
         thread_count: 2,
         periods_per_cycle: 100,
@@ -121,7 +121,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
                 execution_controller,
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
-                pool_command_sender: Box::new(pool_controller),
+                pool_command_sender: pool_controller,
                 selector_controller,
             },
             None,
