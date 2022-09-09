@@ -151,6 +151,9 @@ impl LedgerDB {
     pub fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
         // create the batch
         let mut batch = WriteBatch::default();
+        // TODO: get current ledger hash
+        // TODO: find a solution for the no hash case
+        // TODO: consider implemententing Hash functions instead of overloading XOR operator
         // for all incoming changes
         for (addr, change) in changes.0 {
             match change {
@@ -192,12 +195,16 @@ impl LedgerDB {
     /// * batch: the given operation batch to update
     ///
     /// NOTE: right now the metadata is only a Slot, use a struct in the future
-    fn set_metadata(&self, slot: Slot, batch: &mut WriteBatch) {
+    fn set_metadata(&self, slot: Slot, batch: &mut WriteBatch, ledger_hash: &mut Hash) {
         let handle = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
         let mut bytes = Vec::new();
         // Slot serialization never fails
         self.slot_serializer.serialize(&slot, &mut bytes).unwrap();
-        batch.put_cf(handle, SLOT_KEY, bytes);
+        batch.put_cf(handle, SLOT_KEY, bytes.clone());
+        // XOR previous slot and new one
+        // TODO: get and XOR previous first
+        let new_hash = Hash::from_bytes(bytes);
+        *ledger_hash = *ledger_hash ^ new_hash;
     }
 
     /// Add every sub-entry individually for a given entry.
@@ -206,7 +213,13 @@ impl LedgerDB {
     /// * addr: associated address
     /// * ledger_entry: complete entry to be added
     /// * batch: the given operation batch to update
-    fn put_entry(&mut self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut WriteBatch) {
+    fn put_entry(
+        &mut self,
+        addr: &Address,
+        ledger_entry: LedgerEntry,
+        batch: &mut WriteBatch,
+        ledger_hash: &mut Hash,
+    ) {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         // note that Amount serialization never fails
         let mut bytes_parallel_balance = Vec::new();
@@ -220,15 +233,17 @@ impl LedgerDB {
                 &mut bytes_sequential_balance,
             )
             .unwrap();
+
         // sequential balance
-        let mut key = seq_balance_key!(addr);
-        key.extend(bytes_sequential_balance.clone());
-
-        batch.put_cf(handle, seq_balance_key!(addr), bytes_sequential_balance);
-
-        let ledger_hash = Hash::compute_from(b"");
-        let new_hash = Hash::compute_from(&key);
-        let _update = ledger_hash ^ new_hash;
+        batch.put_cf(
+            handle,
+            seq_balance_key!(addr),
+            bytes_sequential_balance.clone(),
+        );
+        // TODO: XOR other operations as well
+        let seq_balance_hash =
+            Hash::compute_from(&[seq_balance_key!(addr), bytes_sequential_balance].concat());
+        *ledger_hash = *ledger_hash ^ seq_balance_hash;
 
         // parallel balance
         batch.put_cf(handle, par_balance_key!(addr), bytes_parallel_balance);
