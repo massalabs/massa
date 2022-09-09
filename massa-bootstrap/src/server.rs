@@ -545,12 +545,10 @@ async fn manage_bootstrap(
                         Ok(Ok(_)) => {
                             data_graph.final_blocks = Vec::new();
                             Ok(())
-                        },
+                        }
                     }?;
                 }
-                BootstrapClientMessage::BootstrapSuccess => {
-                    break Ok(())
-                },
+                BootstrapClientMessage::BootstrapSuccess => break Ok(()),
                 BootstrapClientMessage::BootstrapError { error } => {
                     break Err(BootstrapError::ReceivedError(error));
                 }

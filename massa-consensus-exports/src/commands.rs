@@ -6,7 +6,7 @@ use massa_models::api::BlockGraphStatus;
 use massa_models::{block::BlockId, slot::Slot};
 use massa_models::{clique::Clique, stats::ConsensusStats};
 use massa_storage::Storage;
-use tokio::sync::{oneshot, mpsc};
+use tokio::sync::{mpsc, oneshot};
 
 /// Commands that can be processed by consensus.
 #[derive(Debug)]
