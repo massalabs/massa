@@ -547,8 +547,6 @@
             "summary": "Ban given id(s)",
             "description": "Ban given id(s)."
         },
-    
-
         {
             "tags": [
                 {
@@ -854,7 +852,6 @@
                     "context",
                     "data"
                 ],
-                
                 "type": "object",
                 "properties": {
                     "context": {
@@ -2282,14 +2279,6 @@
                 "description": "A PubkeySig object",
                 "schema": {
                     "$ref": "#/components/schemas/PubkeySig"
-                }
-            },
-            "Operation": {
-                "name": "Operation",
-                "summary": "Operation",
-                "description": "A Operation object",
-                "schema": {
-                    "$ref": "#/components/schemas/Operation"
                 }
             },
             "SCOutputEvent": {
