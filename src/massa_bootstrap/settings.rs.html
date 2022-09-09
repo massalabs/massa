@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/settings.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>settings.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_bootstrap/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_bootstrap/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/settings.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>settings.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_bootstrap/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_bootstrap/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -40,6 +40,41 @@
 <span id="40">40</span>
 <span id="41">41</span>
 <span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_signature::PublicKey;
@@ -47,10 +82,9 @@
 <span class="kw">use </span>serde::Deserialize;
 <span class="kw">use </span>std::net::SocketAddr;
 
-<span class="doccomment">/// Bootstrap settings.
-/// Both bootstrapping at start-up and bootstrap server settings
+<span class="doccomment">/// Bootstrap config.
 </span><span class="attribute">#[derive(Debug, Deserialize, Clone)]
-</span><span class="kw">pub struct </span>BootstrapSettings {
+</span><span class="kw">pub struct </span>BootstrapConfig {
     <span class="doccomment">/// Ip address of our bootstrap nodes and their public key.
     </span><span class="kw">pub </span>bootstrap_list: Vec&lt;(SocketAddr, PublicKey)&gt;,
     <span class="doccomment">/// Port to listen if we choose to allow other nodes to use us as bootstrap node.
@@ -81,6 +115,42 @@
     </span><span class="kw">pub </span>ip_list_max_size: usize,
     <span class="doccomment">/// Read-Write limitation for a connection in bytes per seconds
     </span><span class="kw">pub </span>max_bytes_read_write: f64,
+    <span class="doccomment">/// max bootstrap message size in bytes
+    </span><span class="kw">pub </span>max_bootstrap_message_size: u32,
+    <span class="doccomment">/// thread count
+    </span><span class="kw">pub </span>thread_count: u8,
+    <span class="doccomment">/// period per cycle
+    </span><span class="kw">pub </span>periods_per_cycle: u64,
+    <span class="doccomment">/// max datastore key length
+    </span><span class="kw">pub </span>max_datastore_key_length: u8,
+    <span class="doccomment">/// randomness size bytes
+    </span><span class="kw">pub </span>randomness_size_bytes: usize,
+    <span class="doccomment">/// endorsement count
+    </span><span class="kw">pub </span>endorsement_count: u32,
+    <span class="doccomment">/// max advertise length
+    </span><span class="kw">pub </span>max_advertise_length: u32,
+    <span class="doccomment">/// max bootstrap blocks length
+    </span><span class="kw">pub </span>max_bootstrap_blocks_length: u32,
+    <span class="doccomment">/// max operations per blocks
+    </span><span class="kw">pub </span>max_operations_per_blocks: u32,
+    <span class="doccomment">/// max bootstrap async pool changes
+    </span><span class="kw">pub </span>max_bootstrap_async_pool_changes: u64,
+    <span class="doccomment">/// max bootstrap error length
+    </span><span class="kw">pub </span>max_bootstrap_error_length: u32,
+    <span class="doccomment">/// max bootstrap final state parts size
+    </span><span class="kw">pub </span>max_bootstrap_final_state_parts_size: u64,
+    <span class="doccomment">/// max datastore entry count
+    </span><span class="kw">pub </span>max_datastore_entry_count: u64,
+    <span class="doccomment">/// max datastore value length
+    </span><span class="kw">pub </span>max_datastore_value_length: u64,
+    <span class="doccomment">/// max data async message
+    </span><span class="kw">pub </span>max_data_async_message: u64,
+    <span class="doccomment">/// max function name length
+    </span><span class="kw">pub </span>max_function_name_length: u16,
+    <span class="doccomment">/// max parameters size
+    </span><span class="kw">pub </span>max_parameters_size: u32,
+    <span class="doccomment">/// max ledger changes
+    </span><span class="kw">pub </span>max_ledger_changes_count: u64,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

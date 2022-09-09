@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-final-state/src/state_changes.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>state_changes.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_final_state/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_final_state/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_final_state/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-final-state/src/state_changes.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>state_changes.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_final_state/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_final_state/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_final_state/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -195,6 +195,48 @@
 <span id="195">195</span>
 <span id="196">196</span>
 <span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the final state
@@ -203,6 +245,7 @@
     AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer,
 };
 <span class="kw">use </span>massa_ledger_exports::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
+<span class="kw">use </span>massa_pos_exports::{PoSChanges, PoSChangesDeserializer, PoSChangesSerializer};
 <span class="kw">use </span>massa_serialization::{Deserializer, SerializeError, Serializer};
 <span class="kw">use </span>nom::{
     error::{context, ContextError, ParseError},
@@ -210,19 +253,28 @@
     IResult, Parser,
 };
 
+<span class="kw">use crate</span>::{executed_ops::ExecutedOpsSerializer, ExecutedOps, ExecutedOpsDeserializer};
+
 <span class="doccomment">/// represents changes that can be applied to the execution state
-</span><span class="attribute">#[derive(Default, Debug, Clone, PartialEq, Eq)]
+</span><span class="attribute">#[derive(Default, Debug, Clone)]
 </span><span class="kw">pub struct </span>StateChanges {
     <span class="doccomment">/// ledger changes
     </span><span class="kw">pub </span>ledger_changes: LedgerChanges,
     <span class="doccomment">/// asynchronous pool changes
     </span><span class="kw">pub </span>async_pool_changes: AsyncPoolChanges,
+    <span class="doccomment">/// roll state changes
+    </span><span class="kw">pub </span>roll_state_changes: PoSChanges,
+    <span class="doccomment">/// executed operations: maps the operation ID to its validity slot end - included
+    </span><span class="kw">pub </span>executed_ops: ExecutedOps,
 }
 
 <span class="doccomment">/// Basic `StateChanges` serializer.
+</span><span class="attribute">#[derive(Default)]
 </span><span class="kw">pub struct </span>StateChangesSerializer {
     ledger_changes_serializer: LedgerChangesSerializer,
     async_pool_changes_serializer: AsyncPoolChangesSerializer,
+    roll_state_changes_serializer: PoSChangesSerializer,
+    executed_ops_serializer: ExecutedOpsSerializer,
 }
 
 <span class="kw">impl </span>StateChangesSerializer {
@@ -231,20 +283,17 @@
         <span class="self">Self </span>{
             ledger_changes_serializer: LedgerChangesSerializer::new(),
             async_pool_changes_serializer: AsyncPoolChangesSerializer::new(),
+            roll_state_changes_serializer: PoSChangesSerializer::new(),
+            executed_ops_serializer: ExecutedOpsSerializer::new(),
         }
     }
 }
 
-<span class="kw">impl </span>Default <span class="kw">for </span>StateChangesSerializer {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new()
-    }
-}
-
 <span class="kw">impl </span>Serializer&lt;StateChanges&gt; <span class="kw">for </span>StateChangesSerializer {
-    <span class="doccomment">/// ```
+    <span class="doccomment">/// ## Example
+    /// ```
     /// use massa_serialization::Serializer;
-    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use massa_final_state::{StateChanges, StateChangesSerializer};
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
@@ -272,6 +321,7 @@
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntryUpdate {
     ///    parallel_balance: SetOrKeep::Set(amount),
+    ///    sequential_balance: SetOrKeep::Set(amount),
     ///    bytecode: SetOrKeep::Set(bytecode),
     ///    datastore: BTreeMap::default(),
     /// };
@@ -289,6 +339,10 @@
             .serialize(<span class="kw-2">&amp;</span>value.ledger_changes, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.async_pool_changes_serializer
             .serialize(<span class="kw-2">&amp;</span>value.async_pool_changes, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.roll_state_changes_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.roll_state_changes, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.executed_ops_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.executed_ops, buffer)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
@@ -297,28 +351,44 @@
 </span><span class="kw">pub struct </span>StateChangesDeserializer {
     ledger_changes_deserializer: LedgerChangesDeserializer,
     async_pool_changes_deserializer: AsyncPoolChangesDeserializer,
+    roll_state_changes_deserializer: PoSChangesDeserializer,
+    executed_ops_deserializer: ExecutedOpsDeserializer,
 }
 
 <span class="kw">impl </span>StateChangesDeserializer {
     <span class="doccomment">/// Creates a `StateChangesDeserializer`
-    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(
+        thread_count: u8,
+        max_async_pool_changes: u64,
+        max_data_async_message: u64,
+        max_ledger_changes_count: u64,
+        max_datastore_key_length: u8,
+        max_datastore_value_length: u64,
+        max_datastore_entry_count: u64,
+    ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            ledger_changes_deserializer: LedgerChangesDeserializer::new(),
-            async_pool_changes_deserializer: AsyncPoolChangesDeserializer::new(),
+            ledger_changes_deserializer: LedgerChangesDeserializer::new(
+                max_ledger_changes_count,
+                max_datastore_key_length,
+                max_datastore_value_length,
+                max_datastore_entry_count,
+            ),
+            async_pool_changes_deserializer: AsyncPoolChangesDeserializer::new(
+                thread_count,
+                max_async_pool_changes,
+                max_data_async_message,
+            ),
+            roll_state_changes_deserializer: PoSChangesDeserializer::new(thread_count),
+            executed_ops_deserializer: ExecutedOpsDeserializer::new(thread_count),
         }
     }
 }
 
-<span class="kw">impl </span>Default <span class="kw">for </span>StateChangesDeserializer {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new()
-    }
-}
-
 <span class="kw">impl </span>Deserializer&lt;StateChanges&gt; <span class="kw">for </span>StateChangesDeserializer {
-    <span class="doccomment">/// ```
+    <span class="doccomment">/// ## Example
+    /// ```
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{Address, prehash::Map, Amount, Slot};
+    /// use massa_models::{address::Address, prehash::PreHashMap, amount::Amount, slot::Slot};
     /// use massa_final_state::{StateChanges, StateChangesSerializer, StateChangesDeserializer};
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
@@ -346,6 +416,7 @@
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntryUpdate {
     ///    parallel_balance: SetOrKeep::Set(amount),
+    ///    sequential_balance: SetOrKeep::Set(amount),
     ///    bytecode: SetOrKeep::Set(bytecode),
     ///    datastore: BTreeMap::default(),
     /// };
@@ -357,9 +428,10 @@
     /// state_changes.ledger_changes = ledger_changes;
     /// let mut serialized = Vec::new();
     /// StateChangesSerializer::new().serialize(&amp;state_changes, &amp;mut serialized).unwrap();
-    /// let (rest, state_changes_deser) = StateChangesDeserializer::new().deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(32, 255, 255, 255, 255, 255, 255).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert!(rest.is_empty());
-    /// assert_eq!(state_changes_deser, state_changes);
+    /// assert_eq!(state_changes_deser.ledger_changes, state_changes.ledger_changes);
+    /// assert_eq!(state_changes_deser.async_pool_changes, state_changes.async_pool_changes);
     /// ```
     </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -374,12 +446,22 @@
                 context(<span class="string">&quot;Failed async_pool_changes deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.async_pool_changes_deserializer.deserialize(input)
                 }),
+                context(<span class="string">&quot;Failed roll_state_changes deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.roll_state_changes_deserializer.deserialize(input)
+                }),
+                context(<span class="string">&quot;Failed executed_ops deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.executed_ops_deserializer.deserialize(input)
+                }),
             )),
         )
-        .map(|(ledger_changes, async_pool_changes)| StateChanges {
-            ledger_changes,
-            async_pool_changes,
-        })
+        .map(
+            |(ledger_changes, async_pool_changes, roll_state_changes, executed_ops)| StateChanges {
+                ledger_changes,
+                async_pool_changes,
+                roll_state_changes,
+                executed_ops,
+            },
+        )
         .parse(buffer)
     }
 }
@@ -390,7 +472,9 @@
         <span class="kw">use </span>massa_ledger_exports::Applicable;
         <span class="self">self</span>.ledger_changes.apply(changes.ledger_changes);
         <span class="self">self</span>.async_pool_changes.extend(changes.async_pool_changes);
+        <span class="self">self</span>.roll_state_changes.extend(changes.roll_state_changes);
+        <span class="self">self</span>.executed_ops.extend(changes.executed_ops);
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

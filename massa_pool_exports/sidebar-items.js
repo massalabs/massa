@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":[["PoolError","pool error"]],"struct":[["PoolConfig","Pool configuration"]],"trait":[["PoolController","Trait defining a pool controller"]]};

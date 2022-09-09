@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-network-worker/src/network_cmd_impl.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>network_cmd_impl.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_network_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-network-worker/src/network_cmd_impl.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>network_cmd_impl.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_network_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -454,16 +454,6 @@
 <span id="454">454</span>
 <span id="455">455</span>
 <span id="456">456</span>
-<span id="457">457</span>
-<span id="458">458</span>
-<span id="459">459</span>
-<span id="460">460</span>
-<span id="461">461</span>
-<span id="462">462</span>
-<span id="463">463</span>
-<span id="464">464</span>
-<span id="465">465</span>
-<span id="466">466</span>
 </pre><pre class="rust"><code><span class="doccomment">//! On `NetworkWorker` receive a command behaviors implementation
 //!
 //! All following function take by default a reference to the `NetworkWorker`
@@ -490,14 +480,16 @@
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
+    block::{BlockId, WrappedHeader},
     composite::PubkeySig,
+    endorsement::WrappedEndorsement,
     node::NodeId,
-    operation::{OperationIds, OperationPrefixIds},
+    operation::{OperationPrefixIds, WrappedOperation},
     stats::NetworkStats,
-    BlockId, WrappedEndorsement,
 };
 <span class="kw">use </span>massa_network_exports::{
-    BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError, NodeCommand, Peer, Peers,
+    AskForBlocksInfo, BlockInfoReply, BootstrapPeers, ConnectionClosureReason, ConnectionId,
+    NetworkError, NodeCommand, Peer, Peers,
 };
 <span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
@@ -639,21 +631,24 @@
 <span class="kw">pub async fn </span>on_send_block_header_cmd(
     worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
     node: NodeId,
-    block_id: BlockId,
+    header: WrappedHeader,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
-    <span class="macro">massa_trace!</span>(<span class="string">&quot;network_worker.manage_network_command send NodeCommand::SendBlockHeader&quot;</span>, {<span class="string">&quot;block_id&quot;</span>: block_id, <span class="string">&quot;node&quot;</span>: node});
+    <span class="macro">massa_trace!</span>(<span class="string">&quot;network_worker.manage_network_command send NodeCommand::SendBlockHeader&quot;</span>, {<span class="string">&quot;block_id&quot;</span>: header.id, <span class="string">&quot;node&quot;</span>: node});
     worker
         .event
         .forward(
             node,
             worker.active_nodes.get(<span class="kw-2">&amp;</span>node),
-            NodeCommand::SendBlockHeader(block_id),
+            NodeCommand::SendBlockHeader(header),
         )
         .<span class="kw">await</span>;
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">pub async fn </span>on_ask_for_block_cmd(worker: <span class="kw-2">&amp;mut </span>NetworkWorker, map: HashMap&lt;NodeId, Vec&lt;BlockId&gt;&gt;) {
+<span class="kw">pub async fn </span>on_ask_for_block_cmd(
+    worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
+    map: HashMap&lt;NodeId, Vec&lt;(BlockId, AskForBlocksInfo)&gt;&gt;,
+) {
     <span class="kw">for </span>(node, hash_list) <span class="kw">in </span>map.into_iter() {
         <span class="macro">massa_trace!</span>(
             <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::AskForBlocks&quot;</span>,
@@ -664,27 +659,27 @@
             .forward(
                 node,
                 worker.active_nodes.get(<span class="kw-2">&amp;</span>node),
-                NodeCommand::AskForBlocks(hash_list.clone()),
+                NodeCommand::AskForBlocks(hash_list),
             )
             .<span class="kw">await</span>;
     }
 }
 
-<span class="kw">pub async fn </span>on_send_block_cmd(
+<span class="kw">pub async fn </span>on_send_block_info_cmd(
     worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
     node: NodeId,
-    block_id: BlockId,
+    info: Vec&lt;(BlockId, BlockInfoReply)&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
     <span class="macro">massa_trace!</span>(
-        <span class="string">&quot;network_worker.manage_network_command send NodeCommand::SendBlock&quot;</span>,
-        {<span class="string">&quot;hash&quot;</span>: block_id, <span class="string">&quot;node&quot;</span>: node}
+        <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::SendBlockInfo&quot;</span>,
+        { <span class="string">&quot;node&quot;</span>: node }
     );
     worker
         .event
         .forward(
             node,
             worker.active_nodes.get(<span class="kw-2">&amp;</span>node),
-            NodeCommand::SendBlock(block_id),
+            NodeCommand::ReplyForBlocks(info),
         )
         .<span class="kw">await</span>;
     <span class="prelude-val">Ok</span>(())
@@ -710,21 +705,6 @@
     <span class="kw">if </span>response_tx.send(BootstrapPeers(peer_list)).is_err() {
         <span class="macro">warn!</span>(<span class="string">&quot;network: could not send GetBootstrapPeers response upstream&quot;</span>);
     }
-}
-
-<span class="kw">pub async fn </span>on_block_not_found_cmd(worker: <span class="kw-2">&amp;mut </span>NetworkWorker, node: NodeId, block_id: BlockId) {
-    <span class="macro">massa_trace!</span>(
-        <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::BlockNotFound&quot;</span>,
-        { <span class="string">&quot;block_id&quot;</span>: block_id, <span class="string">&quot;node&quot;</span>: node }
-    );
-    worker
-        .event
-        .forward(
-            node,
-            worker.active_nodes.get(<span class="kw-2">&amp;</span>node),
-            NodeCommand::BlockNotFound(block_id),
-        )
-        .<span class="kw">await</span>;
 }
 
 <span class="kw">pub async fn </span>on_send_endorsements_cmd(
@@ -831,7 +811,7 @@
 </span><span class="kw">pub async fn </span>on_send_operations_cmd(
     worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
     to_node: NodeId,
-    operations: OperationIds,
+    operations: Vec&lt;WrappedOperation&gt;,
 ) {
     <span class="macro">massa_trace!</span>(
         <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::SendOperations&quot;</span>,
@@ -931,4 +911,4 @@
     <span class="prelude-val">None
 </span>}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

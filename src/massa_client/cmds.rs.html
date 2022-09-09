@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-client/src/cmds.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>cmds.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_client/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_client/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_client/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-client/src/cmds.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>cmds.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_client/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_client/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_client/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -1118,27 +1118,6 @@
 <span id="1118">1118</span>
 <span id="1119">1119</span>
 <span id="1120">1120</span>
-<span id="1121">1121</span>
-<span id="1122">1122</span>
-<span id="1123">1123</span>
-<span id="1124">1124</span>
-<span id="1125">1125</span>
-<span id="1126">1126</span>
-<span id="1127">1127</span>
-<span id="1128">1128</span>
-<span id="1129">1129</span>
-<span id="1130">1130</span>
-<span id="1131">1131</span>
-<span id="1132">1132</span>
-<span id="1133">1133</span>
-<span id="1134">1134</span>
-<span id="1135">1135</span>
-<span id="1136">1136</span>
-<span id="1137">1137</span>
-<span id="1138">1138</span>
-<span id="1139">1139</span>
-<span id="1140">1140</span>
-<span id="1141">1141</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::repl::Output;
@@ -1149,15 +1128,20 @@
 };
 <span class="kw">use </span>massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
 <span class="kw">use </span>massa_models::node::NodeId;
-<span class="kw">use </span>massa_models::prehash::Map;
+<span class="kw">use </span>massa_models::prehash::PreHashMap;
 <span class="kw">use </span>massa_models::timeslots::get_current_latest_block_slot;
 <span class="kw">use </span>massa_models::{
-    Address, Amount, BlockId, EndorsementId, Operation, OperationId, OperationType, Slot,
+    address::Address,
+    amount::Amount,
+    block::BlockId,
+    endorsement::EndorsementId,
+    operation::{Operation, OperationId, OperationType},
+    slot::Slot,
 };
 <span class="kw">use </span>massa_sdk::Client;
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_wallet::{Wallet, WalletError};
+<span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>serde::Serialize;
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::fmt::Write <span class="kw">as _</span>;
@@ -1293,7 +1277,7 @@
     <span class="attribute">#[strum(
         ascii_case_insensitive,
         props(
-            args = <span class="string">&quot;start=Slot end=Slot emitter_address=Address caller_address=Address operation_id=OperationId&quot;
+            args = <span class="string">&quot;start=Slot end=Slot emitter_address=Address caller_address=Address operation_id=OperationId is_final=bool&quot;
         </span>),
         message = <span class="string">&quot;show events emitted by smart contracts with various filters&quot;
     </span>)]
@@ -1436,7 +1420,7 @@
 <span class="doccomment">/// Aggregation of the local, with some useful information as the balance, etc
 /// to be printed by the client.
 </span><span class="attribute">#[derive(Debug, Serialize)]
-</span><span class="kw">pub struct </span>ExtendedWallet(Map&lt;Address, ExtendedWalletEntry&gt;);
+</span><span class="kw">pub struct </span>ExtendedWallet(PreHashMap&lt;Address, ExtendedWalletEntry&gt;);
 
 <span class="kw">impl </span>ExtendedWallet {
     <span class="doccomment">/// Reorganize everything into an extended wallet
@@ -1637,7 +1621,7 @@
                 </span><span class="kw">let </span>addr = parameters[<span class="number">0</span>].parse::&lt;Address&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>msg = parameters[<span class="number">1</span>].as_bytes().to_vec();
                 <span class="comment">// get address signature
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(addr_sig) = wallet.sign_message(addr, msg.clone()) {
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(addr_sig) = wallet.sign_message(<span class="kw-2">&amp;</span>addr, msg.clone()) {
                     <span class="comment">// get node signature
                     </span><span class="kw">match </span>client.private.node_sign_message(msg).<span class="kw">await </span>{
                         <span class="comment">// print concatenation
@@ -1717,12 +1701,13 @@
             }
 
             Command::get_filtered_sc_output_event =&gt; {
-                <span class="kw">let </span>p_list: [<span class="kw-2">&amp;</span>str; <span class="number">5</span>] = [
+                <span class="kw">let </span>p_list: [<span class="kw-2">&amp;</span>str; <span class="number">6</span>] = [
                     <span class="string">&quot;start&quot;</span>,
                     <span class="string">&quot;end&quot;</span>,
                     <span class="string">&quot;emitter_address&quot;</span>,
                     <span class="string">&quot;caller_address&quot;</span>,
                     <span class="string">&quot;operation_id&quot;</span>,
+                    <span class="string">&quot;is_final&quot;</span>,
                 ];
                 <span class="kw">let </span><span class="kw-2">mut </span>p: HashMap&lt;<span class="kw-2">&amp;</span>str, <span class="kw-2">&amp;</span>str&gt; = HashMap::new();
                 <span class="kw">for </span>v <span class="kw">in </span>parameters {
@@ -1734,14 +1719,12 @@
                     }
                 }
                 <span class="kw">let </span>filter = EventFilter {
-                    start: parse_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">0</span>]),
-                    end: parse_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">1</span>]),
-                    emitter_address: parse_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">2</span>]),
-                    original_caller_address: parse_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">3</span>]),
-                    original_operation_id: parse_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">4</span>]),
-                    <span class="comment">// TODO: update client to enable this option
-                    // see `EventFilter` description for more info
-                    </span>is_final: <span class="prelude-val">None</span>,
+                    start: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">0</span>]),
+                    end: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">1</span>]),
+                    emitter_address: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">2</span>]),
+                    original_caller_address: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">3</span>]),
+                    original_operation_id: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">4</span>]),
+                    is_final: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">5</span>]),
                 };
                 <span class="kw">match </span>client.public.get_filtered_sc_output_event(filter).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(events) =&gt; <span class="prelude-val">Ok</span>(Box::new(events)),
@@ -1767,52 +1750,39 @@
 
             Command::wallet_generate_secret_key =&gt; {
                 <span class="kw">let </span>key = KeyPair::generate();
-                <span class="kw">let </span>ad = wallet.add_keypair(key.clone())<span class="question-mark">?</span>;
+                <span class="kw">let </span>ad = wallet.add_keypairs(<span class="macro">vec!</span>[key])<span class="question-mark">?</span>[<span class="number">0</span>];
                 <span class="kw">if </span>json {
                     <span class="prelude-val">Ok</span>(Box::new(ad.to_string()))
                 } <span class="kw">else </span>{
                     <span class="macro">println!</span>(<span class="string">&quot;Generated {} address and added it to the wallet&quot;</span>, ad);
-                    <span class="macro">println!</span>(
-                        <span class="string">&quot;Type `node_add_staking_secret_keys {}` to start staking with this key.\n&quot;</span>,
-                        key
-                    );
+                    <span class="macro">println!</span>(<span class="string">&quot;Type `node_add_staking_secret_keys &lt;your secret key&gt;` to start staking with this key.\n&quot;</span>);
                     <span class="prelude-val">Ok</span>(Box::new(()))
                 }
             }
 
             Command::wallet_add_secret_keys =&gt; {
-                <span class="kw">let </span>addresses = parse_vec::&lt;KeyPair&gt;(parameters)<span class="question-mark">?
-                    </span>.into_iter()
-                    .map(|key| <span class="prelude-val">Ok</span>((wallet.add_keypair(key.clone())<span class="question-mark">?</span>, key)))
-                    .collect::&lt;<span class="prelude-ty">Result</span>&lt;HashMap&lt;Address, KeyPair&gt;&gt;&gt;()<span class="question-mark">?</span>;
+                <span class="kw">let </span>keypairs = parse_vec::&lt;KeyPair&gt;(parameters)<span class="question-mark">?</span>;
+                <span class="kw">let </span>addresses = wallet.add_keypairs(keypairs)<span class="question-mark">?</span>;
                 <span class="kw">if </span>json {
-                    <span class="kw">return </span><span class="prelude-val">Ok</span>(Box::new(addresses.into_keys().collect::&lt;Vec&lt;Address&gt;&gt;()));
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(Box::new(addresses));
                 } <span class="kw">else </span>{
-                    <span class="kw">for </span>(address, key) <span class="kw">in </span>addresses.iter() {
+                    <span class="kw">for </span>address <span class="kw">in </span>addresses {
                         <span class="macro">println!</span>(<span class="string">&quot;Derived and added address {} to the wallet.&quot;</span>, address);
-                        <span class="macro">println!</span>(
-                            <span class="string">&quot;Type `node_add_staking_secret_keys {}` to start staking with this key.\n&quot;</span>,
-                            key
-                        );
                     }
+                    <span class="macro">println!</span>(<span class="string">&quot;Type `node_add_staking_secret_keys &lt;your secret key&gt;` to start staking with the corresponding key.\n&quot;</span>);
                 }
                 <span class="prelude-val">Ok</span>(Box::new(()))
             }
 
             Command::wallet_remove_addresses =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="string">&quot;&quot;</span>.to_string();
-                <span class="kw">for </span>key <span class="kw">in </span>parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>.into_iter() {
-                    <span class="kw">match </span>wallet.remove_address(key) {
-                        <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
-                            <span class="kw">let _ </span>= <span class="macro">writeln!</span>(res, <span class="string">&quot;Removed address {} from the wallet&quot;</span>, key);
-                        }
-                        <span class="prelude-val">Err</span>(WalletError::MissingKeyError(<span class="kw">_</span>)) =&gt; {
-                            <span class="kw">let _ </span>= <span class="macro">writeln!</span>(res, <span class="string">&quot;Address {} wasn&#39;t in the wallet&quot;</span>, key);
-                        }
-                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                            <span class="kw">let _ </span>=
-                                <span class="macro">writeln!</span>(res, <span class="string">&quot;Failed to remove address {} from the wallet&quot;</span>, key);
-                        }
+                <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
+                <span class="kw">match </span>wallet.remove_addresses(<span class="kw-2">&amp;</span>addresses) {
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                        <span class="kw">let _ </span>= <span class="macro">writeln!</span>(res, <span class="string">&quot;Addresses removed from the wallet&quot;</span>);
+                    }
+                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+                        <span class="kw">let _ </span>= <span class="macro">writeln!</span>(res, <span class="string">&quot;Wallet error while removing addresses&quot;</span>);
                     }
                 }
                 <span class="kw">if </span>!json {
@@ -1844,7 +1814,7 @@
                             </span>{
                                 <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
                                     <span class="prelude-val">Some</span>(info) =&gt; {
-                                        <span class="kw">if </span>info.ledger_info.candidate_ledger_info.balance &lt; total {
+                                        <span class="kw">if </span>info.candidate_sequential_balance &lt; total {
                                             <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
                                         }
                                     }
@@ -1887,8 +1857,8 @@
                     <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) = client.public.get_addresses(<span class="macro">vec!</span>[addr]).<span class="kw">await </span>{
                         <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
                             <span class="prelude-val">Some</span>(info) =&gt; {
-                                <span class="kw">if </span>info.ledger_info.candidate_ledger_info.balance &lt; fee
-                                    || roll_count &gt; info.rolls.candidate_rolls
+                                <span class="kw">if </span>info.candidate_sequential_balance &lt; fee
+                                    || roll_count &gt; info.candidate_roll_count
                                 {
                                     <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance or roll count&quot;</span>);
                                 }
@@ -1919,25 +1889,16 @@
                 <span class="kw">let </span>fee = parameters[<span class="number">3</span>].parse::&lt;Amount&gt;()<span class="question-mark">?</span>;
 
                 <span class="kw">if </span>!json {
-                    <span class="kw">match </span>amount.checked_add(fee) {
-                        <span class="prelude-val">Some</span>(total) =&gt; {
-                            <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) =
-                                client.public.get_addresses(<span class="macro">vec!</span>[addr]).<span class="kw">await
-                            </span>{
-                                <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
-                                    <span class="prelude-val">Some</span>(info) =&gt; {
-                                        <span class="kw">if </span>info.ledger_info.candidate_ledger_info.balance &lt; total {
-                                            <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
-                                        }
-                                    }
-                                    <span class="prelude-val">None </span>=&gt; {
-                                        <span class="macro">client_warning!</span>(<span class="macro">format!</span>(<span class="string">&quot;address {} not found&quot;</span>, addr))
-                                    }
+                    <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) = client.public.get_addresses(<span class="macro">vec!</span>[addr]).<span class="kw">await </span>{
+                        <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
+                            <span class="prelude-val">Some</span>(info) =&gt; {
+                                <span class="kw">if </span>info.candidate_sequential_balance &lt; fee {
+                                    <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
                                 }
                             }
-                        }
-                        <span class="prelude-val">None </span>=&gt; {
-                            <span class="macro">client_warning!</span>(<span class="string">&quot;the total amount hit the limit overflow, operation will certainly be rejected&quot;</span>);
+                            <span class="prelude-val">None </span>=&gt; {
+                                <span class="macro">client_warning!</span>(<span class="macro">format!</span>(<span class="string">&quot;address {} not found&quot;</span>, addr))
+                            }
                         }
                     }
                 }
@@ -1962,8 +1923,9 @@
                 };
                 <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="string">&quot;&quot;</span>.to_string();
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(e) = end {
-                    <span class="kw">let </span>(days, hours, mins, secs) =
-                        e.saturating_sub(MassaTime::now()<span class="question-mark">?</span>).days_hours_mins_secs()<span class="question-mark">?</span>; <span class="comment">// compensation milliseconds is zero
+                    <span class="kw">let </span>(days, hours, mins, secs) = e
+                        .saturating_sub(MassaTime::now(<span class="number">0</span>)<span class="question-mark">?</span>)
+                        .days_hours_mins_secs()<span class="question-mark">?</span>; <span class="comment">// compensation milliseconds is zero
 
                     </span><span class="kw">let _ </span>= <span class="macro">write!</span>(res, <span class="string">&quot;{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode&quot;</span>, days, hours, mins, secs);
                 } <span class="kw">else </span>{
@@ -1995,7 +1957,6 @@
                 <span class="kw">if </span>!json {
                     <span class="kw">match </span>gas_price
                         .checked_mul_u64(max_gas)
-                        .and_then(|x| x.checked_add(coins))
                         .and_then(|x| x.checked_add(fee))
                     {
                         <span class="prelude-val">Some</span>(total) =&gt; {
@@ -2004,7 +1965,7 @@
                             </span>{
                                 <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
                                     <span class="prelude-val">Some</span>(info) =&gt; {
-                                        <span class="kw">if </span>info.ledger_info.candidate_ledger_info.balance &lt; total {
+                                        <span class="kw">if </span>info.candidate_sequential_balance &lt; total {
                                             <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
                                         }
                                     }
@@ -2068,10 +2029,7 @@
                             </span>{
                                 <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
                                     <span class="prelude-val">Some</span>(info) =&gt; {
-                                        <span class="kw">if </span>info.ledger_info.candidate_ledger_info.balance &lt; total
-                                            || info.candidate_balance_info.unwrap_or_default()
-                                                &lt; coins
-                                        {
+                                        <span class="kw">if </span>info.candidate_sequential_balance &lt; total {
                                             <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
                                         }
                                     }
@@ -2113,7 +2071,7 @@
                 }
                 <span class="kw">let </span>addr = parameters[<span class="number">0</span>].parse::&lt;Address&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>msg = parameters[<span class="number">1</span>].clone();
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(signed) = wallet.sign_message(addr, msg.into_bytes()) {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(signed) = wallet.sign_message(<span class="kw-2">&amp;</span>addr, msg.into_bytes()) {
                     <span class="prelude-val">Ok</span>(Box::new(signed))
                 } <span class="kw">else </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;Missing public key&quot;</span>)
@@ -2268,7 +2226,7 @@
 }
 
 <span class="comment">// chains get_key_value with its parsing and displays a warning on parsing error
-</span><span class="kw">pub fn </span>parse_value&lt;T: std::str::FromStr&gt;(p: <span class="kw-2">&amp;</span>HashMap&lt;<span class="kw-2">&amp;</span>str, <span class="kw-2">&amp;</span>str&gt;, key: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;T&gt; {
+</span><span class="kw">pub fn </span>parse_key_value&lt;T: std::str::FromStr&gt;(p: <span class="kw-2">&amp;</span>HashMap&lt;<span class="kw-2">&amp;</span>str, <span class="kw-2">&amp;</span>str&gt;, key: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;T&gt; {
     p.get_key_value(key).and_then(|x| {
         x.<span class="number">1</span>.parse::&lt;T&gt;()
             .map_err(|<span class="kw">_</span>| {
@@ -2281,4 +2239,4 @@
     })
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

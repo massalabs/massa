@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/ledger_models.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ledger_models.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/ledger_models.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ledger_models.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -368,19 +368,158 @@
 <span id="368">368</span>
 <span id="369">369</span>
 <span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{
-    array_from_slice,
+    address::{Address, AddressDeserializer},
+    amount::{Amount, AmountDeserializer, AmountSerializer},
+    error::ModelsError,
     error::ModelsResult <span class="kw">as </span><span class="prelude-ty">Result</span>,
-    node_configuration::ADDRESS_SIZE_BYTES,
-    prehash::{Map, Set},
-    u8_from_slice, Address, Amount, DeserializeCompact, DeserializeVarInt, ModelsError,
-    SerializeCompact, SerializeVarInt,
+    prehash::{PreHashMap, PreHashSet},
 };
 <span class="kw">use </span>core::usize;
+<span class="kw">use </span>massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
+<span class="kw">use </span>nom::{
+    branch::alt,
+    bytes::complete::tag,
+    combinator::value,
+    error::{context, ContextError, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult, Parser,
+};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::collections::hash_map;
+<span class="kw">use </span>std::ops::Bound::Included;
 
 <span class="doccomment">/// a consensus ledger entry
 </span><span class="attribute">#[derive(Debug, Default, Deserialize, Clone, Copy, Serialize)]
@@ -389,24 +528,90 @@
     </span><span class="kw">pub </span>balance: Amount,
 }
 
-<span class="doccomment">/// Checks performed:
-/// - Balance.
-</span><span class="kw">impl </span>SerializeCompact <span class="kw">for </span>LedgerData {
-    <span class="kw">fn </span>to_bytes_compact(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;u8&gt; = Vec::new();
-        res.extend(<span class="kw-2">&amp;</span><span class="self">self</span>.balance.to_bytes_compact()<span class="question-mark">?</span>);
-        <span class="prelude-val">Ok</span>(res)
+<span class="doccomment">/// Basic serializer for `LedgerData`
+</span><span class="attribute">#[derive(Default)]
+</span><span class="kw">pub struct </span>LedgerDataSerializer {
+    amount_serializer: AmountSerializer,
+}
+
+<span class="kw">impl </span>LedgerDataSerializer {
+    <span class="doccomment">/// Creates a `LedgerDataSerializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            amount_serializer: AmountSerializer::new(),
+        }
     }
 }
 
-<span class="doccomment">/// Checks performed:
-/// - Balance.
-</span><span class="kw">impl </span>DeserializeCompact <span class="kw">for </span>LedgerData {
-    <span class="kw">fn </span>from_bytes_compact(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize)&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="number">0usize</span>;
-        <span class="kw">let </span>(balance, delta) = Amount::from_bytes_compact(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
-        cursor += delta;
-        <span class="prelude-val">Ok</span>((LedgerData { balance }, cursor))
+<span class="kw">impl </span>Serializer&lt;LedgerData&gt; <span class="kw">for </span>LedgerDataSerializer {
+    <span class="doccomment">/// ## Example:
+    /// ```rust
+    /// use massa_models::ledger_models::{LedgerData, LedgerDataSerializer};
+    /// use massa_models::amount::Amount;
+    /// use massa_serialization::Serializer;
+    /// use std::str::FromStr;
+    ///
+    /// let ledger_data = LedgerData {
+    ///    balance: Amount::from_str(&quot;1349&quot;).unwrap(),
+    /// };
+    /// let mut buffer = Vec::new();
+    /// LedgerDataSerializer::new().serialize(&amp;ledger_data, &amp;mut buffer).unwrap();
+    /// ```
+    </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>LedgerData, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="self">self</span>.amount_serializer.serialize(<span class="kw-2">&amp;</span>value.balance, buffer)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
+<span class="doccomment">/// Basic deserializer for `LedgerData`
+</span><span class="kw">pub struct </span>LedgerDataDeserializer {
+    amount_deserializer: AmountDeserializer,
+}
+
+<span class="kw">impl </span>LedgerDataDeserializer {
+    <span class="doccomment">/// Creates a `LedgerDataDeserializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
+        }
+    }
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>LedgerDataDeserializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
+    }
+}
+
+<span class="kw">impl </span>Deserializer&lt;LedgerData&gt; <span class="kw">for </span>LedgerDataDeserializer {
+    <span class="doccomment">/// ## Example:
+    /// ```rust
+    /// use massa_models::ledger_models::{LedgerData, LedgerDataDeserializer, LedgerDataSerializer};
+    /// use massa_models::amount::Amount;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    ///
+    /// let ledger_data = LedgerData {
+    ///    balance: Amount::from_str(&quot;1349&quot;).unwrap(),
+    /// };
+    /// let mut buffer = Vec::new();
+    /// LedgerDataSerializer::new().serialize(&amp;ledger_data, &amp;mut buffer).unwrap();
+    /// let (rest, ledger_data_deserialized) = LedgerDataDeserializer::new().deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(ledger_data.balance, ledger_data_deserialized.balance);
+    /// ```
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], LedgerData, E&gt; {
+        context(<span class="string">&quot;Failed LedgerData deserialization&quot;</span>, |input| {
+            <span class="self">self</span>.amount_deserializer.deserialize(input)
+        })
+        .map(|balance| LedgerData { balance })
+        .parse(buffer)
     }
 }
 
@@ -467,6 +672,108 @@
     }
 }
 
+<span class="doccomment">/// Basic serializer for `LedgerChange`
+</span><span class="attribute">#[derive(Default)]
+</span><span class="kw">pub struct </span>LedgerChangeSerializer {
+    amount_serializer: AmountSerializer,
+}
+
+<span class="kw">impl </span>LedgerChangeSerializer {
+    <span class="doccomment">/// Creates a `LedgerChangeSerializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            amount_serializer: AmountSerializer::new(),
+        }
+    }
+}
+
+<span class="kw">impl </span>Serializer&lt;LedgerChange&gt; <span class="kw">for </span>LedgerChangeSerializer {
+    <span class="doccomment">/// ## Example
+    /// ```rust
+    /// use massa_models::{address::Address, amount::Amount, ledger_models::LedgerChangeSerializer};
+    /// use std::str::FromStr;
+    /// use massa_models::ledger_models::LedgerChange;
+    /// use massa_serialization::Serializer;
+    /// let ledger_change = LedgerChange {
+    ///   balance_delta: Amount::from_str(&quot;1149&quot;).unwrap(),
+    ///   balance_increment: true
+    /// };
+    /// let mut serialized = Vec::new();
+    /// LedgerChangeSerializer::new().serialize(&amp;ledger_change, &amp;mut serialized).unwrap();
+    /// ```
+    </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>LedgerChange, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        buffer.push(<span class="kw">if </span>value.balance_increment { <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>});
+        <span class="self">self</span>.amount_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.balance_delta, buffer)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
+<span class="doccomment">/// Basic deserializer for `LedgerChange`
+</span><span class="kw">pub struct </span>LedgerChangeDeserializer {
+    amount_deserializer: AmountDeserializer,
+}
+
+<span class="kw">impl </span>LedgerChangeDeserializer {
+    <span class="doccomment">/// Creates a `LedgerChangeDeserializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
+        }
+    }
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>LedgerChangeDeserializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
+    }
+}
+
+<span class="kw">impl </span>Deserializer&lt;LedgerChange&gt; <span class="kw">for </span>LedgerChangeDeserializer {
+    <span class="doccomment">/// ## Example
+    /// ```rust
+    /// use massa_models::{address::Address, amount::Amount, ledger_models::{LedgerChangeSerializer, LedgerChangeDeserializer}};
+    /// use std::str::FromStr;
+    /// use massa_models::ledger_models::LedgerChange;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// let ledger_change = LedgerChange {
+    ///   balance_delta: Amount::from_str(&quot;1149&quot;).unwrap(),
+    ///   balance_increment: true
+    /// };
+    /// let mut serialized = Vec::new();
+    /// LedgerChangeSerializer::new().serialize(&amp;ledger_change, &amp;mut serialized).unwrap();
+    /// let (rest, serialized) = LedgerChangeDeserializer::new().deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(ledger_change.balance_delta, serialized.balance_delta);
+    /// assert_eq!(ledger_change.balance_increment, serialized.balance_increment);
+    /// ```
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], LedgerChange, E&gt; {
+        context(
+            <span class="string">&quot;Failed LedgerChange deserialization&quot;</span>,
+            tuple((
+                context(
+                    <span class="string">&quot;Failed balance_increment deserialization&quot;</span>,
+                    alt((value(<span class="bool-val">true</span>, tag(<span class="kw-2">&amp;</span>[<span class="number">1u8</span>])), value(<span class="bool-val">false</span>, tag(<span class="kw-2">&amp;</span>[<span class="number">0u8</span>])))),
+                ),
+                context(<span class="string">&quot;Failed balance_delta deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.amount_deserializer.deserialize(input)
+                }),
+            )),
+        )
+        .map(|(balance_increment, balance_delta)| LedgerChange {
+            balance_delta,
+            balance_increment,
+        })
+        .parse(buffer)
+    }
+}
+
 <span class="kw">impl </span>LedgerChange {
     <span class="doccomment">/// Applies another ledger change on top of self
     </span><span class="kw">pub fn </span>chain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, change: <span class="kw-2">&amp;</span>LedgerChange) -&gt; <span class="prelude-ty">Result</span>&lt;(), ModelsError&gt; {
@@ -505,56 +812,126 @@
     }
 }
 
-<span class="doccomment">/// Checks performed:
-/// - Balance delta.
-</span><span class="kw">impl </span>SerializeCompact <span class="kw">for </span>LedgerChange {
-    <span class="kw">fn </span>to_bytes_compact(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, <span class="kw">crate</span>::ModelsError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;u8&gt; = Vec::new();
-        res.push(<span class="kw">if </span><span class="self">self</span>.balance_increment { <span class="number">1u8 </span>} <span class="kw">else </span>{ <span class="number">0u8 </span>});
-        res.extend(<span class="kw-2">&amp;</span><span class="self">self</span>.balance_delta.to_bytes_compact()<span class="question-mark">?</span>);
-        <span class="prelude-val">Ok</span>(res)
-    }
-}
-
-<span class="doccomment">/// Checks performed:
-/// - Increment flag.
-/// - Balance delta.
-</span><span class="kw">impl </span>DeserializeCompact <span class="kw">for </span>LedgerChange {
-    <span class="kw">fn </span>from_bytes_compact(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), <span class="kw">crate</span>::ModelsError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="number">0usize</span>;
-
-        <span class="kw">let </span>balance_increment = <span class="kw">match </span>u8_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">? </span>{
-            <span class="number">0u8 </span>=&gt; <span class="bool-val">false</span>,
-            <span class="number">1u8 </span>=&gt; <span class="bool-val">true</span>,
-            <span class="kw">_ </span>=&gt; {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::DeserializeError(
-                    <span class="string">&quot;wrong boolean balance_increment encoding in LedgerChange deserialization&quot;
-                        </span>.into(),
-                ))
-            }
-        };
-        cursor += <span class="number">1</span>;
-
-        <span class="kw">let </span>(balance_delta, delta) = Amount::from_bytes_compact(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
-        cursor += delta;
-
-        <span class="prelude-val">Ok</span>((
-            LedgerChange {
-                balance_increment,
-                balance_delta,
-            },
-            cursor,
-        ))
-    }
-}
-
 <span class="doccomment">/// Map an address to a `LedgerChange`
 </span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-</span><span class="kw">pub struct </span>LedgerChanges(<span class="kw">pub </span>Map&lt;Address, LedgerChange&gt;);
+</span><span class="kw">pub struct </span>LedgerChanges(<span class="kw">pub </span>PreHashMap&lt;Address, LedgerChange&gt;);
+
+<span class="doccomment">/// Basic serializer for `LedgerChanges`
+</span><span class="kw">pub struct </span>LedgerChangesSerializer {
+    length_serializer: U64VarIntSerializer,
+    ledger_change_serializer: LedgerChangeSerializer,
+}
+
+<span class="kw">impl </span>LedgerChangesSerializer {
+    <span class="doccomment">/// Creates a `LedgerChangesSerializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            length_serializer: U64VarIntSerializer::new(),
+            ledger_change_serializer: LedgerChangeSerializer::new(),
+        }
+    }
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>LedgerChangesSerializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
+    }
+}
+
+<span class="kw">impl </span>Serializer&lt;LedgerChanges&gt; <span class="kw">for </span>LedgerChangesSerializer {
+    <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>LedgerChanges, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="self">self</span>.length_serializer
+            .serialize(<span class="kw-2">&amp;</span>(value.<span class="number">0</span>.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
+        <span class="kw">for </span>(address, change) <span class="kw">in </span>value.<span class="number">0</span>.iter() {
+            buffer.extend(address.to_bytes());
+            <span class="self">self</span>.ledger_change_serializer.serialize(change, buffer)<span class="question-mark">?</span>;
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
+<span class="doccomment">/// Basic deserializer for `LedgerChanges`
+</span><span class="kw">pub struct </span>LedgerChangesDeserializer {
+    length_deserializer: U64VarIntDeserializer,
+    address_deserializer: AddressDeserializer,
+    ledger_change_deserializer: LedgerChangeDeserializer,
+}
+
+<span class="kw">impl </span>LedgerChangesDeserializer {
+    <span class="doccomment">/// Creates a `LedgerChangesDeserializer`
+    </span><span class="kw">pub fn </span>new(max_ledger_changes_count: u64) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            length_deserializer: U64VarIntDeserializer::new(
+                Included(<span class="number">0</span>),
+                Included(max_ledger_changes_count),
+            ),
+            address_deserializer: AddressDeserializer::new(),
+            ledger_change_deserializer: LedgerChangeDeserializer::new(),
+        }
+    }
+}
+
+<span class="kw">impl </span>Deserializer&lt;LedgerChanges&gt; <span class="kw">for </span>LedgerChangesDeserializer {
+    <span class="doccomment">/// ## Example
+    /// ```rust
+    /// # use massa_models::{address::Address, amount::Amount, ledger_models::{LedgerChangesSerializer, LedgerChangesDeserializer, LedgerChangeSerializer, LedgerChangeDeserializer}};
+    /// # use std::str::FromStr;
+    /// # use massa_models::ledger_models::{LedgerChanges, LedgerChange};
+    /// # use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// # let ledger_changes = LedgerChanges(vec![
+    /// #   (
+    /// #       Address::from_bs58_check(&quot;2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi&quot;.into()).unwrap(),
+    /// #       LedgerChange {
+    /// #           balance_delta: Amount::from_str(&quot;1149&quot;).unwrap(),
+    /// #           balance_increment: true
+    /// #       },
+    /// #   ),
+    /// #   (
+    /// #       Address::from_bs58_check(&quot;2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q&quot;.into()).unwrap(),
+    /// #       LedgerChange {
+    /// #           balance_delta: Amount::from_str(&quot;1020&quot;).unwrap(),
+    /// #           balance_increment: true
+    /// #       },
+    /// #   )
+    /// # ].into_iter().collect());
+    /// let mut serialized = Vec::new();
+    /// let ledger_change_serializer = LedgerChangeSerializer::new();
+    /// LedgerChangesSerializer::new().serialize(&amp;ledger_changes, &amp;mut serialized).unwrap();
+    /// let (_, res) = LedgerChangesDeserializer::new(10000).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+    /// for (address, data) in &amp;ledger_changes.0 {
+    ///    let mut data_serialized = Vec::new();
+    ///    ledger_change_serializer.serialize(data, &amp;mut data_serialized).unwrap();
+    ///    assert!(res.0.iter().filter(|(addr, dta)| {
+    ///      let mut dta_serialized = Vec::new();
+    ///      ledger_change_serializer.serialize(dta, &amp;mut dta_serialized).unwrap();
+    ///      &amp;address == addr &amp;&amp; dta_serialized == data_serialized
+    ///     }).count() == 1);
+    ///    data_serialized = Vec::new();
+    /// }
+    /// assert_eq!(ledger_changes.0.len(), res.0.len());
+    /// ```
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], LedgerChanges, E&gt; {
+        context(
+            <span class="string">&quot;Failed LedgerChanges deserialization&quot;</span>,
+            length_count(
+                |input| <span class="self">self</span>.length_deserializer.deserialize(input),
+                tuple((
+                    |input| <span class="self">self</span>.address_deserializer.deserialize(input),
+                    |input| <span class="self">self</span>.ledger_change_deserializer.deserialize(input),
+                )),
+            ),
+        )
+        .map(|changes| LedgerChanges(changes.into_iter().collect()))
+        .parse(buffer)
+    }
+}
 
 <span class="kw">impl </span>LedgerChanges {
     <span class="doccomment">/// addresses that are impacted by these ledger changes
-    </span><span class="kw">pub fn </span>get_involved_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Set&lt;Address&gt; {
+    </span><span class="kw">pub fn </span>get_involved_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; PreHashSet&lt;Address&gt; {
         <span class="self">self</span>.<span class="number">0</span>.keys().copied().collect()
     }
 
@@ -588,7 +965,7 @@
 
     <span class="doccomment">/// merge another ledger changes into self, overwriting existing data
     /// addresses that are in not other are removed from self
-    </span><span class="kw">pub fn </span>sync_from(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>Set&lt;Address&gt;, <span class="kw-2">mut </span>other: LedgerChanges) {
+    </span><span class="kw">pub fn </span>sync_from(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>PreHashSet&lt;Address&gt;, <span class="kw-2">mut </span>other: LedgerChanges) {
         <span class="kw">for </span>addr <span class="kw">in </span>addrs.iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(new_val) = other.<span class="number">0</span>.remove(addr) {
                 <span class="self">self</span>.<span class="number">0</span>.insert(<span class="kw-2">*</span>addr, new_val);
@@ -600,7 +977,7 @@
 
     <span class="doccomment">/// clone subset
     </span><span class="attribute">#[must_use]
-    </span><span class="kw">pub fn </span>clone_subset(<span class="kw-2">&amp;</span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>Set&lt;Address&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>clone_subset(<span class="kw-2">&amp;</span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>PreHashSet&lt;Address&gt;) -&gt; <span class="self">Self </span>{
         LedgerChanges(
             <span class="self">self</span>.<span class="number">0
                 </span>.iter()
@@ -614,129 +991,6 @@
                 .collect(),
         )
     }
-
-    <span class="doccomment">/// add reward related changes
-    </span><span class="kw">pub fn </span>add_reward(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        creator: Address,
-        endorsers: Vec&lt;Address&gt;,
-        parent_creator: Address,
-        reward: Amount,
-        endorsement_count: u32,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">let </span>endorsers_count = endorsers.len() <span class="kw">as </span>u64;
-        <span class="kw">let </span>third = reward
-            .checked_div_u64(<span class="number">3 </span>* (<span class="number">1 </span>+ (endorsement_count <span class="kw">as </span>u64)))
-            .ok_or(ModelsError::AmountOverflowError)<span class="question-mark">?</span>;
-        <span class="kw">for </span>ed <span class="kw">in </span>endorsers {
-            <span class="self">self</span>.apply(
-                <span class="kw-2">&amp;</span>parent_creator,
-                <span class="kw-2">&amp;</span>LedgerChange {
-                    balance_delta: third,
-                    balance_increment: <span class="bool-val">true</span>,
-                },
-            )<span class="question-mark">?</span>;
-            <span class="self">self</span>.apply(
-                <span class="kw-2">&amp;</span>ed,
-                <span class="kw-2">&amp;</span>LedgerChange {
-                    balance_delta: third,
-                    balance_increment: <span class="bool-val">true</span>,
-                },
-            )<span class="question-mark">?</span>;
-        }
-        <span class="kw">let </span>total_credited = third
-            .checked_mul_u64(<span class="number">2 </span>* endorsers_count)
-            .ok_or(ModelsError::AmountOverflowError)<span class="question-mark">?</span>;
-        <span class="comment">// here we credited only parent_creator and ed for every endorsement
-        // total_credited now contains the total amount already credited
-
-        </span><span class="kw">let </span>expected_credit = reward
-            .checked_mul_u64(<span class="number">1 </span>+ endorsers_count)
-            .ok_or(ModelsError::AmountOverflowError)<span class="question-mark">?
-            </span>.checked_div_u64(<span class="number">1 </span>+ (endorsement_count <span class="kw">as </span>u64))
-            .ok_or(ModelsError::AmountOverflowError)<span class="question-mark">?</span>;
-        <span class="comment">// here expected_credit contains the expected amount that should be credited in total
-        // the difference between expected_credit and total_credited is sent to the block creator
-        </span><span class="self">self</span>.apply(
-            <span class="kw-2">&amp;</span>creator,
-            <span class="kw-2">&amp;</span>LedgerChange {
-                balance_delta: expected_credit.saturating_sub(total_credited),
-                balance_increment: <span class="bool-val">true</span>,
-            },
-        )
-    }
-}
-
-<span class="kw">impl </span>SerializeCompact <span class="kw">for </span>LedgerChanges {
-    <span class="doccomment">/// ## Example
-    /// ```rust
-    /// # use massa_models::{SerializeCompact, DeserializeCompact, SerializationContext, Address, Amount};
-    /// # use std::str::FromStr;
-    /// # use massa_models::ledger_models::{LedgerChanges, LedgerChange};
-    /// # let ledger_changes = LedgerChanges(vec![
-    /// #   (
-    /// #       Address::from_bs58_check(&quot;2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi&quot;.into()).unwrap(),
-    /// #       LedgerChange {
-    /// #           balance_delta: Amount::from_str(&quot;1149&quot;).unwrap(),
-    /// #           balance_increment: true
-    /// #       },
-    /// #   ),
-    /// #   (
-    /// #       Address::from_bs58_check(&quot;2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q&quot;.into()).unwrap(),
-    /// #       LedgerChange {
-    /// #           balance_delta: Amount::from_str(&quot;1020&quot;).unwrap(),
-    /// #           balance_increment: true
-    /// #       },
-    /// #   )
-    /// # ].into_iter().collect());
-    /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
-    /// let bytes = ledger_changes.clone().to_bytes_compact().unwrap();
-    /// let (res, _) = LedgerChanges::from_bytes_compact(&amp;bytes).unwrap();
-    /// for (address, data) in &amp;ledger_changes.0 {
-    ///    assert!(res.0.iter().filter(|(addr, dta)| &amp;address == addr &amp;&amp; dta.to_bytes_compact().unwrap() == data.to_bytes_compact().unwrap()).count() == 1)
-    /// }
-    /// assert_eq!(ledger_changes.0.len(), res.0.len());
-    /// ```
-    </span><span class="kw">fn </span>to_bytes_compact(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;u8&gt; = Vec::new();
-
-        <span class="kw">let </span>entry_count: u64 = <span class="self">self</span>.<span class="number">0</span>.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(<span class="macro">format!</span>(
-                <span class="string">&quot;too many entries in ConsensusLedgerSubset: {}&quot;</span>,
-                err
-            ))
-        })<span class="question-mark">?</span>;
-        res.extend(entry_count.to_varint_bytes());
-        <span class="kw">for </span>(address, data) <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.iter() {
-            res.extend(address.to_bytes());
-            res.extend(<span class="kw-2">&amp;</span>data.to_bytes_compact()<span class="question-mark">?</span>);
-        }
-
-        <span class="prelude-val">Ok</span>(res)
-    }
-}
-
-<span class="kw">impl </span>DeserializeCompact <span class="kw">for </span>LedgerChanges {
-    <span class="kw">fn </span>from_bytes_compact(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="number">0usize</span>;
-
-        <span class="kw">let </span>(entry_count, delta) = u64::from_varint_bytes(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
-        <span class="comment">// TODO: add entry_count checks ... see #1200
-        </span>cursor += delta;
-
-        <span class="kw">let </span><span class="kw-2">mut </span>ledger_subset = LedgerChanges(Map::default());
-        <span class="kw">for _ in </span><span class="number">0</span>..entry_count {
-            <span class="kw">let </span>address = Address::from_bytes(<span class="kw-2">&amp;</span>array_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>);
-            cursor += ADDRESS_SIZE_BYTES;
-
-            <span class="kw">let </span>(data, delta) = LedgerChange::from_bytes_compact(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
-            cursor += delta;
-
-            ledger_subset.<span class="number">0</span>.insert(address, data);
-        }
-
-        <span class="prelude-val">Ok</span>((ledger_subset, cursor))
-    }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

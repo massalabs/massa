@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-network-exports/src/commands.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>commands.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_network_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_network_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_network_exports/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-network-exports/src/commands.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>commands.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_network_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_network_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_network_exports/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -295,6 +295,18 @@
 <span id="295">295</span>
 <span id="296">296</span>
 <span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Declaration of the public and internal Events and Commands used by
 //! `massa-network` that allow external communication with other nodes.
 //!
@@ -315,7 +327,7 @@
 //!    +--------------&gt;|                |           Forward to Protocol
 //!    |               +---------------&gt;|           Forward to Network, then Node
 //!    |               |                #
-//!    |               |                #           Propagate the batch of OperationIds through the network
+//!    |               |                #           Propagate the batch of Vec&lt;OperationId&gt; through the network
 //! ```
 //!
 //! When receiving an operation batch from the network, the `NodeWorker` will
@@ -368,32 +380,33 @@
 
 </span><span class="kw">use crate</span>::{BootstrapPeers, ConnectionClosureReason, Peers};
 <span class="kw">use </span>massa_models::{
+    block::{BlockId, WrappedHeader},
     composite::PubkeySig,
+    endorsement::WrappedEndorsement,
     node::NodeId,
-    operation::{OperationIds, OperationPrefixIds, Operations},
+    operation::{OperationId, OperationPrefixIds, WrappedOperation},
     stats::NetworkStats,
-    BlockId, WrappedBlock, WrappedEndorsement, WrappedHeader,
 };
+<span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::{collections::HashMap, net::IpAddr};
 <span class="kw">use </span>tokio::sync::oneshot;
 
 <span class="doccomment">/// network command
 </span><span class="attribute">#[derive(Clone, Debug)]
+#[allow(clippy::large_enum_variant)]
 </span><span class="kw">pub enum </span>NodeCommand {
     <span class="doccomment">/// Send given peer list to node.
     </span>SendPeerList(Vec&lt;IpAddr&gt;),
-    <span class="doccomment">/// Send that block to node.
-    </span>SendBlock(BlockId),
     <span class="doccomment">/// Send the header of a block to a node.
-    </span>SendBlockHeader(BlockId),
-    <span class="doccomment">/// Ask for a block from that node.
-    </span>AskForBlocks(Vec&lt;BlockId&gt;),
+    </span>SendBlockHeader(WrappedHeader),
+    <span class="doccomment">/// Ask for info on a list of blocks.
+    </span>AskForBlocks(Vec&lt;(BlockId, AskForBlocksInfo)&gt;),
+    <span class="doccomment">/// Reply with info on a list of blocks.
+    </span>ReplyForBlocks(Vec&lt;(BlockId, BlockInfoReply)&gt;),
     <span class="doccomment">/// Close the node worker.
     </span>Close(ConnectionClosureReason),
-    <span class="doccomment">/// Block not found
-    </span>BlockNotFound(BlockId),
     <span class="doccomment">/// Send full Operations (send to a node that previously asked for)
-    </span>SendOperations(OperationIds),
+    </span>SendOperations(Vec&lt;WrappedOperation&gt;),
     <span class="doccomment">/// Send a batch of operation ids
     </span>SendOperationAnnouncements(OperationPrefixIds),
     <span class="doccomment">/// Ask for a set of operations
@@ -412,16 +425,14 @@
     </span>AskedPeerList,
     <span class="doccomment">/// Node we are connected to sent peer list
     </span>ReceivedPeerList(Vec&lt;IpAddr&gt;),
-    <span class="doccomment">/// Node we are connected to sent block
-    </span>ReceivedBlock(WrappedBlock),
     <span class="doccomment">/// Node we are connected to sent block header
     </span>ReceivedBlockHeader(WrappedHeader),
-    <span class="doccomment">/// Node we are connected to asks for a block.
-    </span>ReceivedAskForBlocks(Vec&lt;BlockId&gt;),
-    <span class="doccomment">/// Didn&#39;t found given block,
-    </span>BlockNotFound(BlockId),
+    <span class="doccomment">/// Node we are connected asked for info on a list of blocks.
+    </span>ReceivedAskForBlocks(Vec&lt;(BlockId, AskForBlocksInfo)&gt;),
+    <span class="doccomment">/// Node we are connected sent info on a list of blocks.
+    </span>ReceivedReplyForBlocks(Vec&lt;(BlockId, BlockInfoReply)&gt;),
     <span class="doccomment">/// Received full operations.
-    </span>ReceivedOperations(Operations),
+    </span>ReceivedOperations(Vec&lt;WrappedOperation&gt;),
     <span class="doccomment">/// Received an operation id batch announcing new operations
     </span>ReceivedOperationAnnouncements(OperationPrefixIds),
     <span class="doccomment">/// Receive a list of wanted operations
@@ -435,27 +446,40 @@
 </span><span class="attribute">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>NodeEvent(<span class="kw">pub </span>NodeId, <span class="kw">pub </span>NodeEventType);
 
+<span class="doccomment">/// Ask for the info about a block.
+</span><span class="attribute">#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+</span><span class="kw">pub enum </span>AskForBlocksInfo {
+    <span class="doccomment">/// Ask header
+    </span>Header,
+    <span class="doccomment">/// The info about the block is required(list of operations ids).
+    </span><span class="attribute">#[default]
+    </span>Info,
+    <span class="doccomment">/// The actual operations are required.
+    </span>Operations(Vec&lt;OperationId&gt;),
+}
+
 <span class="doccomment">/// Commands that the worker can execute
 </span><span class="attribute">#[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 </span><span class="kw">pub enum </span>NetworkCommand {
     <span class="doccomment">/// Ask for a block to a node.
     </span>AskForBlocks {
         <span class="doccomment">/// node to block ids
-        </span>list: HashMap&lt;NodeId, Vec&lt;BlockId&gt;&gt;,
+        </span>list: HashMap&lt;NodeId, Vec&lt;(BlockId, AskForBlocksInfo)&gt;&gt;,
     },
-    <span class="doccomment">/// Send that block to node.
-    </span>SendBlock {
+    <span class="doccomment">/// Send info about the content of a block to a node.
+    </span>SendBlockInfo {
         <span class="doccomment">/// to node id
         </span>node: NodeId,
         <span class="doccomment">/// block id
-        </span>block_id: BlockId,
+        </span>info: Vec&lt;(BlockId, BlockInfoReply)&gt;,
     },
     <span class="doccomment">/// Send a header to a node.
     </span>SendBlockHeader {
         <span class="doccomment">/// to node id
         </span>node: NodeId,
         <span class="doccomment">/// block id
-        </span>block_id: BlockId,
+        </span>header: WrappedHeader,
     },
     <span class="doccomment">/// `(PeerInfo, Vec &lt;(NodeId, bool)&gt;) peer info + list` of associated Id nodes in connection out (true)
     </span>GetPeers(oneshot::Sender&lt;Peers&gt;),
@@ -469,13 +493,6 @@
     </span>NodeUnbanByIds(Vec&lt;NodeId&gt;),
     <span class="doccomment">/// Unban a list of peer by their ip address
     </span>NodeUnbanByIps(Vec&lt;IpAddr&gt;),
-    <span class="doccomment">/// Send a message that a block is not found to a node
-    </span>BlockNotFound {
-        <span class="doccomment">/// to node id
-        </span>node: NodeId,
-        <span class="doccomment">/// block id
-        </span>block_id: BlockId,
-    },
     <span class="doccomment">/// Send endorsements to a node
     </span>SendEndorsements {
         <span class="doccomment">/// to node id
@@ -501,7 +518,7 @@
         <span class="doccomment">/// to node id
         </span>node: NodeId,
         <span class="doccomment">/// operations
-        </span>operations: OperationIds,
+        </span>operations: Vec&lt;WrappedOperation&gt;,
     },
     <span class="doccomment">/// Send operation ids batch to a node
     </span>SendOperationAnnouncements {
@@ -523,6 +540,20 @@
     </span>RemoveFromWhitelist(Vec&lt;IpAddr&gt;),
 }
 
+<span class="doccomment">/// A node replied with info about a block.
+</span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::large_enum_variant)]
+</span><span class="kw">pub enum </span>BlockInfoReply {
+    <span class="doccomment">/// Header
+    </span>Header(WrappedHeader),
+    <span class="doccomment">/// The info about the block is required(list of operations ids).
+    </span>Info(Vec&lt;OperationId&gt;),
+    <span class="doccomment">/// The actual operations required.
+    </span>Operations(Vec&lt;WrappedOperation&gt;),
+    <span class="doccomment">/// Block not found
+    </span>NotFound,
+}
+
 <span class="doccomment">/// network event
 </span><span class="attribute">#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
@@ -531,12 +562,12 @@
     </span>NewConnection(NodeId),
     <span class="doccomment">/// connection to node was closed
     </span>ConnectionClosed(NodeId),
-    <span class="doccomment">/// A block was received
-    </span>ReceivedBlock {
+    <span class="doccomment">/// Info about a block was received
+    </span>ReceivedBlockInfo {
         <span class="doccomment">/// from node id
         </span>node: NodeId,
         <span class="doccomment">/// block
-        </span>block: WrappedBlock,
+        </span>info: Vec&lt;(BlockId, BlockInfoReply)&gt;,
     },
     <span class="doccomment">/// A block header was received
     </span>ReceivedBlockHeader {
@@ -550,21 +581,14 @@
         <span class="doccomment">/// node id
         </span>node: NodeId,
         <span class="doccomment">/// asked blocks
-        </span>list: Vec&lt;BlockId&gt;,
-    },
-    <span class="doccomment">/// That node does not have this block
-    </span>BlockNotFound {
-        <span class="doccomment">/// node id
-        </span>node: NodeId,
-        <span class="doccomment">/// block id
-        </span>block_id: BlockId,
+        </span>list: Vec&lt;(BlockId, AskForBlocksInfo)&gt;,
     },
     <span class="doccomment">/// Receive previously asked Operation
     </span>ReceivedOperations {
         <span class="doccomment">/// node id
         </span>node: NodeId,
         <span class="doccomment">/// operations
-        </span>operations: Operations,
+        </span>operations: Vec&lt;WrappedOperation&gt;,
     },
     <span class="doccomment">/// Receive a list of `OperationId`
     </span>ReceivedOperationAnnouncements {
@@ -593,4 +617,4 @@
 </span><span class="attribute">#[derive(Debug)]
 </span><span class="kw">pub enum </span>NetworkManagementCommand {}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-async-pool/src/pool.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>pool.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_async_pool/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_async_pool/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_async_pool/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-async-pool/src/pool.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>pool.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_async_pool/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_async_pool/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_async_pool/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -231,6 +231,15 @@
 <span id="231">231</span>
 <span id="232">232</span>
 <span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
@@ -241,7 +250,7 @@
     message::{AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
     AsyncMessageDeserializer, AsyncMessageSerializer,
 };
-<span class="kw">use </span>massa_models::{constants::default::ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, ModelsError, Slot};
+<span class="kw">use </span>massa_models::{error::ModelsError, slot::Slot};
 <span class="kw">use </span>massa_serialization::{Deserializer, Serializer};
 <span class="kw">use </span>nom::{multi::many0, sequence::tuple};
 <span class="kw">use </span>std::collections::BTreeMap;
@@ -304,15 +313,15 @@
     /// * excess messages after inserting all remaining `new_messages`, in priority order (from highest to lowest priority)
     </span><span class="kw">pub fn </span>settle_slot(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        slot: Slot,
+        slot: <span class="kw-2">&amp;</span>Slot,
         new_messages: <span class="kw-2">&amp;mut </span>Vec&lt;(AsyncMessageId, AsyncMessage)&gt;,
     ) -&gt; Vec&lt;(AsyncMessageId, AsyncMessage)&gt; {
         <span class="comment">// Filter out all messages for which the validity end is expired.
         // Note that the validity_end bound is NOT included in the validity interval of the message.
         </span><span class="kw">let </span><span class="kw-2">mut </span>eliminated: Vec&lt;<span class="kw">_</span>&gt; = <span class="self">self
             </span>.messages
-            .drain_filter(|_k, v| slot &gt;= v.validity_end)
-            .chain(new_messages.drain_filter(|(_k, v)| slot &gt;= v.validity_end))
+            .drain_filter(|_k, v| <span class="kw-2">*</span>slot &gt;= v.validity_end)
+            .chain(new_messages.drain_filter(|(_k, v)| <span class="kw-2">*</span>slot &gt;= v.validity_end))
             .collect();
 
         <span class="comment">// Insert new messages into the pool
@@ -382,7 +391,7 @@
         <span class="kw">let </span>id_async_message_serializer = AsyncMessageIdSerializer::new();
         <span class="kw">let </span>async_message_serializer = AsyncMessageSerializer::new();
         <span class="kw">for </span>(id, message) <span class="kw">in </span><span class="self">self</span>.messages.range((last_id, Unbounded)) {
-            <span class="kw">if </span>part.len() &lt; ASYNC_POOL_PART_SIZE_MESSAGE_BYTES <span class="kw">as </span>usize {
+            <span class="kw">if </span>part.len() &lt; <span class="self">self</span>.config.part_size_message_bytes <span class="kw">as </span>usize {
                 id_async_message_serializer.serialize(id, <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
                 async_message_serializer.serialize(message, <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
                 next_last_id = <span class="prelude-val">Some</span>(<span class="kw-2">*</span>id);
@@ -404,8 +413,12 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         part: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;AsyncMessageId&gt;, ModelsError&gt; {
-        <span class="kw">let </span>async_message_id_deserializer = AsyncMessageIdDeserializer::new();
-        <span class="kw">let </span>async_message_deserializer = AsyncMessageDeserializer::new();
+        <span class="kw">let </span>async_message_id_deserializer =
+            AsyncMessageIdDeserializer::new(<span class="self">self</span>.config.thread_count);
+        <span class="kw">let </span>async_message_deserializer = AsyncMessageDeserializer::new(
+            <span class="self">self</span>.config.thread_count,
+            <span class="self">self</span>.config.max_data_async_message,
+        );
         <span class="kw">let </span>(rest, messages) = many0(|input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
             <span class="kw">if </span>input.is_empty() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(nom::error::Error::new(
@@ -432,10 +445,15 @@
 <span class="attribute">#[test]
 </span><span class="kw">fn </span>test_take_batch() {
     <span class="kw">use </span>massa_hash::Hash;
-    <span class="kw">use </span>massa_models::{Address, Amount, Slot};
+    <span class="kw">use </span>massa_models::{address::Address, amount::Amount, slot::Slot};
     <span class="kw">use </span>std::str::FromStr;
 
-    <span class="kw">let </span>config = AsyncPoolConfig { max_length: <span class="number">10 </span>};
+    <span class="kw">let </span>config = AsyncPoolConfig {
+        thread_count: <span class="number">2</span>,
+        max_length: <span class="number">10</span>,
+        max_data_async_message: <span class="number">1000000</span>,
+        part_size_message_bytes: <span class="number">1_000_000</span>,
+    };
     <span class="kw">let </span><span class="kw-2">mut </span>pool = AsyncPool::new(config);
     <span class="kw">let </span>address = Address(Hash::compute_from(<span class="string">b&quot;abc&quot;</span>));
     <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..<span class="number">10 </span>{
@@ -454,8 +472,8 @@
                 validity_start: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 validity_end: Slot::new(<span class="number">3</span>, <span class="number">0</span>),
                 max_gas: i,
-                gas_price: Amount::from_str(<span class="string">&quot;0.1&quot;</span>.into()).unwrap(),
-                coins: Amount::from_str(<span class="string">&quot;0.3&quot;</span>.into()).unwrap(),
+                gas_price: Amount::from_str(<span class="string">&quot;0.1&quot;</span>).unwrap(),
+                coins: Amount::from_str(<span class="string">&quot;0.3&quot;</span>).unwrap(),
                 data: Vec::new(),
             },
         );
@@ -465,4 +483,4 @@
     <span class="macro">assert_eq!</span>(pool.messages.len(), <span class="number">6</span>);
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_async_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_async_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

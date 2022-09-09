@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/active_history.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>active_history.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/active_history.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>active_history.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -90,12 +90,202 @@
 <span id="90">90</span>
 <span id="91">91</span>
 <span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_execution_exports::ExecutionOutput;
 <span class="kw">use </span>massa_ledger_exports::{
     LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
-<span class="kw">use </span>massa_models::{Address, Amount};
-<span class="kw">use </span>std::collections::VecDeque;
+<span class="kw">use </span>massa_models::{
+    address::Address, amount::Amount, operation::OperationId, prehash::PreHashMap, slot::Slot,
+};
+<span class="kw">use </span>std::collections::{BTreeMap, VecDeque};
 
 <span class="attribute">#[derive(Default)]
 </span><span class="doccomment">/// History of the outputs of recently executed slots.
@@ -109,11 +299,56 @@
     NoInfo,
 }
 
+<span class="doccomment">/// Result of the search for a slot index in history
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub enum </span>SlotIndexPosition {
+    <span class="doccomment">/// out of bounds in the past
+    </span>Past,
+    <span class="doccomment">/// out of bounds in the future
+    </span>Future,
+    <span class="doccomment">/// found in history at a the given index
+    </span>Found(usize),
+    <span class="doccomment">/// history is empty
+    </span>NoHistory,
+}
+
 <span class="kw">impl </span>ActiveHistory {
-    <span class="doccomment">/// Lazily query (from end to beginning) the active balance of an address after a given index.
+    <span class="doccomment">/// Lazily query (from end to beginning) the active list of executed ops to check if an op was executed.
     ///
     /// Returns a `HistorySearchResult`.
-    </span><span class="kw">pub fn </span>fetch_active_history_balance(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; HistorySearchResult&lt;Amount&gt; {
+    </span><span class="kw">pub fn </span>fetch_executed_op(<span class="kw-2">&amp;</span><span class="self">self</span>, op_id: <span class="kw-2">&amp;</span>OperationId) -&gt; HistorySearchResult&lt;()&gt; {
+        <span class="kw">for </span>history_element <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.iter().rev() {
+            <span class="kw">if </span>history_element.state_changes.executed_ops.contains(op_id) {
+                <span class="kw">return </span>HistorySearchResult::Present(());
+            }
+        }
+        HistorySearchResult::NoInfo
+    }
+
+    <span class="doccomment">/// Lazily query (from end to beginning) the active sequential balance of an address after a given index.
+    ///
+    /// Returns a `HistorySearchResult`.
+    </span><span class="kw">pub fn </span>fetch_sequential_balance(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; HistorySearchResult&lt;Amount&gt; {
+        <span class="kw">for </span>output <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.iter().rev() {
+            <span class="kw">match </span>output.state_changes.ledger_changes.<span class="number">0</span>.get(addr) {
+                <span class="prelude-val">Some</span>(SetUpdateOrDelete::Set(v)) =&gt; {
+                    <span class="kw">return </span>HistorySearchResult::Present(v.sequential_balance)
+                }
+                <span class="prelude-val">Some</span>(SetUpdateOrDelete::Update(LedgerEntryUpdate {
+                    sequential_balance: SetOrKeep::Set(v),
+                    ..
+                })) =&gt; <span class="kw">return </span>HistorySearchResult::Present(<span class="kw-2">*</span>v),
+                <span class="prelude-val">Some</span>(SetUpdateOrDelete::Delete) =&gt; <span class="kw">return </span>HistorySearchResult::Absent,
+                <span class="kw">_ </span>=&gt; (),
+            }
+        }
+        HistorySearchResult::NoInfo
+    }
+
+    <span class="doccomment">/// Lazily query (from end to beginning) the active parallel balance of an address after a given index.
+    ///
+    /// Returns a `HistorySearchResult`.
+    </span><span class="kw">pub fn </span>fetch_parallel_balance(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; HistorySearchResult&lt;Amount&gt; {
         <span class="kw">for </span>output <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.iter().rev() {
             <span class="kw">match </span>output.state_changes.ledger_changes.<span class="number">0</span>.get(addr) {
                 <span class="prelude-val">Some</span>(SetUpdateOrDelete::Set(v)) =&gt; {
@@ -133,7 +368,7 @@
     <span class="doccomment">/// Lazily query (from end to beginning) the active bytecode of an address after a given index.
     ///
     /// Returns a `HistorySearchResult`.
-    </span><span class="kw">pub fn </span>fetch_active_history_bytecode(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; HistorySearchResult&lt;Vec&lt;u8&gt;&gt; {
+    </span><span class="kw">pub fn </span>fetch_bytecode(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; HistorySearchResult&lt;Vec&lt;u8&gt;&gt; {
         <span class="kw">for </span>output <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.iter().rev() {
             <span class="kw">match </span>output.state_changes.ledger_changes.<span class="number">0</span>.get(addr) {
                 <span class="prelude-val">Some</span>(SetUpdateOrDelete::Set(v)) =&gt; {
@@ -181,6 +416,147 @@
         }
         HistorySearchResult::NoInfo
     }
+
+    <span class="doccomment">/// Starting from the newest element in history, return the first existing roll change of `addr`.
+    ///
+    /// # Arguments
+    /// * `addr`: address to fetch the rolls from
+    </span><span class="kw">pub fn </span>fetch_roll_count(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Option</span>&lt;u64&gt; {
+        <span class="self">self</span>.<span class="number">0</span>.iter().rev().find_map(|output| {
+            output
+                .state_changes
+                .roll_state_changes
+                .roll_changes
+                .get(addr)
+                .cloned()
+        })
+    }
+
+    <span class="doccomment">/// Traverse the whole history and return every deferred credit of `addr` _after_ `slot` (included).
+    ///
+    /// # Arguments
+    /// * `slot`: slot _after_ which we fetch the credits
+    /// * `addr`: address to fetch the credits from
+    </span><span class="attribute">#[allow(dead_code)]
+    </span><span class="kw">pub fn </span>fetch_deferred_credits_after(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        slot: <span class="kw-2">&amp;</span>Slot,
+        addr: <span class="kw-2">&amp;</span>Address,
+    ) -&gt; BTreeMap&lt;Slot, Amount&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.iter()
+            .flat_map(|output| {
+                output
+                    .state_changes
+                    .roll_state_changes
+                    .deferred_credits
+                    .<span class="number">0
+                    </span>.range(slot..)
+                    .filter_map(|(<span class="kw-2">&amp;</span>slot, credits)| credits.get(addr).map(|<span class="kw-2">&amp;</span>amount| (slot, amount)))
+            })
+            .collect()
+    }
+
+    <span class="doccomment">/// Traverse the whole history and return every deferred credit _at_ `slot`
+    ///
+    /// # Arguments
+    /// * `slot`: slot _at_ which we fetch the credits
+    </span><span class="kw">pub fn </span>fetch_all_deferred_credits_at(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot) -&gt; PreHashMap&lt;Address, Amount&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.iter()
+            .filter_map(|output| {
+                output
+                    .state_changes
+                    .roll_state_changes
+                    .deferred_credits
+                    .<span class="number">0
+                    </span>.get(slot)
+                    .cloned()
+            })
+            .flatten()
+            .collect()
+    }
+
+    <span class="doccomment">/// Gets the index of a slot in history
+    </span><span class="kw">pub fn </span>get_slot_index(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot, thread_count: u8) -&gt; SlotIndexPosition {
+        <span class="kw">let </span>first_slot = <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.front() {
+            <span class="prelude-val">Some</span>(itm) =&gt; <span class="kw-2">&amp;</span>itm.slot,
+            <span class="prelude-val">None </span>=&gt; <span class="kw">return </span>SlotIndexPosition::NoHistory,
+        };
+        <span class="kw">if </span>slot &lt; first_slot {
+            <span class="kw">return </span>SlotIndexPosition::Past; <span class="comment">// too old
+        </span>}
+        <span class="kw">let </span>index: usize = <span class="kw">match </span>slot.slots_since(first_slot, thread_count) {
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span>SlotIndexPosition::Future, <span class="comment">// overflow
+            </span><span class="prelude-val">Ok</span>(d) =&gt; {
+                <span class="kw">match </span>d.try_into() {
+                    <span class="prelude-val">Ok</span>(d) =&gt; d,
+                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span>SlotIndexPosition::Future, <span class="comment">// usize overflow
+                </span>}
+            }
+        };
+        <span class="kw">if </span>index &gt;= <span class="self">self</span>.<span class="number">0</span>.len() {
+            <span class="comment">// in the future
+            </span><span class="kw">return </span>SlotIndexPosition::Future;
+        }
+        SlotIndexPosition::Found(index)
+    }
+
+    <span class="doccomment">/// Find the history range of a cycle
+    ///
+    /// # Return value
+    ///
+    /// Tuple with the following elements:
+    /// * a range of indices
+    /// * a boolean indicating that the cycle overflows before the beginning of history
+    /// * a boolean indicating that the cycle overflows after the end of history
+    </span><span class="kw">pub fn </span>find_cycle_indices(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        cycle: u64,
+        periods_per_cycle: u64,
+        thread_count: u8,
+    ) -&gt; (std::ops::Range&lt;usize&gt;, bool, bool) {
+        <span class="comment">// Get first and last slots indices of cycle in history. We consider overflows as &quot;Future&quot;
+        </span><span class="kw">let </span>first_index = Slot::new_first_of_cycle(cycle, periods_per_cycle).map_or_else(
+            |_e| SlotIndexPosition::Future,
+            |s| <span class="self">self</span>.get_slot_index(<span class="kw-2">&amp;</span>s, thread_count),
+        );
+        <span class="kw">let </span>last_index = Slot::new_last_of_cycle(cycle, periods_per_cycle, thread_count)
+            .map_or_else(
+                |_e| SlotIndexPosition::Future,
+                |s| <span class="self">self</span>.get_slot_index(<span class="kw-2">&amp;</span>s, thread_count),
+            );
+
+        <span class="kw">match </span>(first_index, last_index) {
+            <span class="comment">// history is empty
+            </span>(SlotIndexPosition::NoHistory, <span class="kw">_</span>) =&gt; (<span class="number">0</span>..<span class="number">0</span>, <span class="bool-val">true</span>, <span class="bool-val">true</span>),
+            (<span class="kw">_</span>, SlotIndexPosition::NoHistory) =&gt; (<span class="number">0</span>..<span class="number">0</span>, <span class="bool-val">true</span>, <span class="bool-val">true</span>),
+
+            <span class="comment">// cycle starts in the future
+            </span>(SlotIndexPosition::Future, <span class="kw">_</span>) =&gt; (<span class="number">0</span>..<span class="number">0</span>, <span class="bool-val">false</span>, <span class="bool-val">true</span>),
+
+            <span class="comment">// cycle ends before history starts
+            </span>(<span class="kw">_</span>, SlotIndexPosition::Past) =&gt; (<span class="number">0</span>..<span class="number">0</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>),
+
+            <span class="comment">// the history is strictly included within the cycle
+            </span>(SlotIndexPosition::Past, SlotIndexPosition::Future) =&gt; (<span class="number">0</span>..<span class="self">self</span>.<span class="number">0</span>.len(), <span class="bool-val">true</span>, <span class="bool-val">true</span>),
+
+            <span class="comment">// cycle begins before and ends during history
+            </span>(SlotIndexPosition::Past, SlotIndexPosition::Found(idx)) =&gt; {
+                (<span class="number">0</span>..idx.saturating_add(<span class="number">1</span>), <span class="bool-val">true</span>, <span class="bool-val">false</span>)
+            }
+
+            <span class="comment">// cycle starts during the history and ends after the end of history
+            </span>(SlotIndexPosition::Found(idx), SlotIndexPosition::Future) =&gt; {
+                (idx..<span class="self">self</span>.<span class="number">0</span>.len(), <span class="bool-val">false</span>, <span class="bool-val">true</span>)
+            }
+
+            <span class="comment">// cycle starts and ends during active history
+            </span>(SlotIndexPosition::Found(idx1), SlotIndexPosition::Found(idx2)) =&gt; {
+                (idx1..idx2.saturating_add(<span class="number">1</span>), <span class="bool-val">false</span>, <span class="bool-val">false</span>)
+            }
+        }
+    }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

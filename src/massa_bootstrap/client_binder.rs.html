@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/client_binder.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client_binder.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_bootstrap/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_bootstrap/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/client_binder.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client_binder.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_bootstrap/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_bootstrap/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -161,6 +161,71 @@
 <span id="161">161</span>
 <span id="162">162</span>
 <span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
@@ -172,11 +237,8 @@
 <span class="kw">use </span>async_speed_limit::clock::StandardClock;
 <span class="kw">use </span>async_speed_limit::{Limiter, Resource};
 <span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
-<span class="kw">use </span>massa_models::Version;
-<span class="kw">use </span>massa_models::{
-    constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeMinBEInt,
-    SerializeMinBEInt, VersionSerializer,
-};
+<span class="kw">use </span>massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
+<span class="kw">use </span>massa_models::version::{Version, VersionSerializer};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
 <span class="kw">use </span>massa_signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES};
 <span class="kw">use </span>rand::{rngs::StdRng, RngCore, SeedableRng};
@@ -191,6 +253,22 @@
     duplex: Resource&lt;Duplex, StandardClock&gt;,
     prev_message: <span class="prelude-ty">Option</span>&lt;Hash&gt;,
     version_serializer: VersionSerializer,
+    endorsement_count: u32,
+    max_advertise_length: u32,
+    max_bootstrap_blocks: u32,
+    max_operations_per_block: u32,
+    thread_count: u8,
+    randomness_size_bytes: usize,
+    max_bootstrap_async_pool_changes: u64,
+    max_bootstrap_error_length: u32,
+    max_bootstrap_final_state_parts_size: u64,
+    max_datastore_entry_count: u64,
+    max_datastore_key_length: u8,
+    max_datastore_value_length: u64,
+    max_data_async_message: u64,
+    max_function_name_length: u16,
+    max_parameters_size: u32,
+    max_ledger_changes_count: u64,
 }
 
 <span class="kw">impl </span>BootstrapClientBinder {
@@ -199,9 +277,29 @@
     /// # Argument
     /// * duplex: duplex stream.
     /// * limit: limit max bytes per second (up and down)
-    </span><span class="kw">pub fn </span>new(duplex: Duplex, remote_pubkey: PublicKey, limit: f64) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>max_bootstrap_message_size =
-            with_serialization_context(|context| context.max_bootstrap_message_size);
+    </span><span class="attribute">#[allow(clippy::too_many_arguments)]
+    </span><span class="kw">pub fn </span>new(
+        duplex: Duplex,
+        remote_pubkey: PublicKey,
+        limit: f64,
+        max_bootstrap_message_size: u32,
+        endorsement_count: u32,
+        max_advertise_length: u32,
+        max_bootstrap_blocks: u32,
+        max_operations_per_block: u32,
+        thread_count: u8,
+        randomness_size_bytes: usize,
+        max_bootstrap_async_pool_changes: u64,
+        max_bootstrap_error_length: u32,
+        max_bootstrap_final_state_parts_size: u64,
+        max_datastore_entry_count: u64,
+        max_datastore_key_length: u8,
+        max_datastore_value_length: u64,
+        max_data_async_message: u64,
+        max_function_name_length: u16,
+        max_parameters_size: u32,
+        max_ledger_changes_count: u64,
+    ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapClientBinder {
             max_bootstrap_message_size,
@@ -210,6 +308,22 @@
             duplex: &lt;Limiter&gt;::new(limit).limit(duplex),
             prev_message: <span class="prelude-val">None</span>,
             version_serializer: VersionSerializer::new(),
+            endorsement_count,
+            max_advertise_length,
+            max_bootstrap_blocks,
+            max_operations_per_block,
+            thread_count,
+            randomness_size_bytes,
+            max_bootstrap_async_pool_changes,
+            max_bootstrap_error_length,
+            max_bootstrap_final_state_parts_size,
+            max_datastore_entry_count,
+            max_datastore_key_length,
+            max_datastore_value_length,
+            max_data_async_message,
+            max_function_name_length,
+            max_parameters_size,
+            max_ledger_changes_count,
         }
     }
 }
@@ -224,7 +338,7 @@
             <span class="self">self</span>.version_serializer
                 .serialize(<span class="kw-2">&amp;</span>version, <span class="kw-2">&amp;mut </span>version_ser)<span class="question-mark">?</span>;
             <span class="kw">let </span><span class="kw-2">mut </span>version_random_bytes =
-                <span class="macro">vec!</span>[<span class="number">0u8</span>; version_ser.len() + BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
+                <span class="macro">vec!</span>[<span class="number">0u8</span>; version_ser.len() + <span class="self">self</span>.randomness_size_bytes];
             version_random_bytes[..version_ser.len()].clone_from_slice(<span class="kw-2">&amp;</span>version_ser);
             StdRng::from_entropy().fill_bytes(<span class="kw-2">&amp;mut </span>version_random_bytes[version_ser.len()..]);
             <span class="self">self</span>.duplex.write_all(<span class="kw-2">&amp;</span>version_random_bytes).<span class="kw">await</span><span class="question-mark">?</span>;
@@ -253,7 +367,23 @@
         </span>};
 
         <span class="comment">// read message, check signature and check signature of the message sent just before then deserialize it
-        </span><span class="kw">let </span>message_deserializer = BootstrapServerMessageDeserializer::new();
+        </span><span class="kw">let </span>message_deserializer = BootstrapServerMessageDeserializer::new(
+            <span class="self">self</span>.thread_count,
+            <span class="self">self</span>.endorsement_count,
+            <span class="self">self</span>.max_advertise_length,
+            <span class="self">self</span>.max_bootstrap_blocks,
+            <span class="self">self</span>.max_operations_per_block,
+            <span class="self">self</span>.max_bootstrap_final_state_parts_size,
+            <span class="self">self</span>.max_bootstrap_async_pool_changes,
+            <span class="self">self</span>.max_data_async_message,
+            <span class="self">self</span>.max_ledger_changes_count,
+            <span class="self">self</span>.max_datastore_key_length,
+            <span class="self">self</span>.max_datastore_value_length,
+            <span class="self">self</span>.max_datastore_entry_count,
+            <span class="self">self</span>.max_function_name_length,
+            <span class="self">self</span>.max_parameters_size,
+            <span class="self">self</span>.max_bootstrap_error_length,
+        );
         <span class="kw">let </span>message = {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(prev_message) = <span class="self">self</span>.prev_message {
                 <span class="self">self</span>.prev_message = <span class="prelude-val">Some</span>(Hash::compute_from(<span class="kw-2">&amp;</span>sig.to_bytes()));
@@ -325,4 +455,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

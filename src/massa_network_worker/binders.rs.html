@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-network-worker/src/binders.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>binders.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_network_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-network-worker/src/binders.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>binders.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_network_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -172,22 +172,48 @@
 <span id="172">172</span>
 <span id="173">173</span>
 <span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! `Flexbuffer` layer between raw data and our objects.
-</span><span class="kw">use </span><span class="kw">super</span>::messages::Message;
+</span><span class="kw">use </span><span class="kw">crate</span>::messages::{MessageDeserializer, MessageSerializer};
+
+<span class="kw">use </span><span class="kw">super</span>::messages::Message;
 <span class="kw">use </span>async_speed_limit::{clock::StandardClock, Limiter, Resource};
 <span class="kw">use </span>massa_models::{
-    with_serialization_context, DeserializeCompact, DeserializeMinBEInt, SerializeMinBEInt,
+    error::ModelsError,
+    serialization::{DeserializeMinBEInt, SerializeMinBEInt},
 };
 <span class="kw">use </span>massa_network_exports::{NetworkError, ReadHalf, WriteHalf};
+<span class="kw">use </span>massa_serialization::Serializer;
+<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>std::convert::TryInto;
 <span class="kw">use </span>tokio::io::{AsyncReadExt, AsyncWriteExt};
+<span class="kw">use </span>tracing::log::warn;
 
 <span class="doccomment">/// Used to serialize and send data.
 </span><span class="kw">pub struct </span>WriteBinder {
     write_half: Resource&lt;WriteHalf, StandardClock&gt;,
     message_index: u64,
+    max_message_size: u32,
 }
 
 <span class="kw">impl </span>WriteBinder {
@@ -196,10 +222,11 @@
     /// # Argument
     /// * `write_half`: writer half.
     /// * `limit`: limit max bytes per second write
-    </span><span class="kw">pub fn </span>new(write_half: WriteHalf, limit: f64) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(write_half: WriteHalf, limit: f64, max_message_size: u32) -&gt; <span class="self">Self </span>{
         WriteBinder {
             write_half: &lt;Limiter&gt;::new(limit).limit(write_half),
             message_index: <span class="number">0</span>,
+            max_message_size,
         }
     }
 
@@ -207,26 +234,24 @@
     ///
     /// # Argument
     /// * `buf`: data to transmit.
-    </span><span class="kw">pub async fn </span>send(<span class="kw-2">&amp;mut </span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;u64, NetworkError&gt; {
+    </span><span class="kw">pub async fn </span>send(<span class="kw-2">&amp;mut </span><span class="self">self</span>, msg: <span class="kw-2">&amp;</span>Message) -&gt; <span class="prelude-ty">Result</span>&lt;u64, NetworkError&gt; {
         <span class="comment">//        massa_trace!(&quot;binder.send&quot;, { &quot;msg&quot;: msg });
-        </span><span class="kw">let </span>msg_size: u32 = buf
+        </span><span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
+        MessageSerializer::new().serialize(msg, <span class="kw-2">&amp;mut </span>buf)<span class="question-mark">?</span>;
+        <span class="kw">let </span>msg_size: u32 = buf
             .len()
             .try_into()
             .map_err(|<span class="kw">_</span>| NetworkError::GeneralProtocolError(<span class="string">&quot;message too long&quot;</span>.into()))<span class="question-mark">?</span>;
-
-        <span class="comment">// send length
-        </span><span class="kw">let </span>max_message_size = with_serialization_context(|context| context.max_message_size);
-
         <span class="self">self</span>.write_half
-            .write_all(<span class="kw-2">&amp;</span>msg_size.to_be_bytes_min(max_message_size)<span class="question-mark">?</span>[..])
+            .write_all(<span class="kw-2">&amp;</span>msg_size.to_be_bytes_min(<span class="self">self</span>.max_message_size)<span class="question-mark">?</span>[..])
             .<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="comment">// send message
-        </span><span class="self">self</span>.write_half.write_all(buf).<span class="kw">await</span><span class="question-mark">?</span>;
+        </span><span class="self">self</span>.write_half.write_all(<span class="kw-2">&amp;</span>buf).<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="kw">let </span>res_index = <span class="self">self</span>.message_index;
         <span class="self">self</span>.message_index += <span class="number">1</span>;
-        <span class="comment">//        massa_trace!(&quot;binder.send end&quot;, { &quot;index&quot;: res_index });
+        <span class="comment">//        massa_trace!(&quot;binder.send END&quot;, { &quot;index&quot;: res_index });
         </span><span class="prelude-val">Ok</span>(res_index)
     }
 }
@@ -238,6 +263,8 @@
     buf: Vec&lt;u8&gt;,
     cursor: usize,
     msg_size: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+    max_message_size: u32,
+    message_deserializer: MessageDeserializer,
 }
 
 <span class="kw">impl </span>ReadBinder {
@@ -246,13 +273,20 @@
     /// # Argument
     /// * `read_half`: reader half.
     /// * `limit`: limit max bytes per second read.
-    </span><span class="kw">pub fn </span>new(read_half: ReadHalf, limit: f64) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(
+        read_half: ReadHalf,
+        limit: f64,
+        max_message_size: u32,
+        message_deserializer: MessageDeserializer,
+    ) -&gt; <span class="self">Self </span>{
         ReadBinder {
             read_half: &lt;Limiter&gt;::new(limit).limit(read_half),
             message_index: <span class="number">0</span>,
             buf: Vec::new(),
             cursor: <span class="number">0</span>,
             msg_size: <span class="prelude-val">None</span>,
+            max_message_size,
+            message_deserializer,
         }
     }
 
@@ -268,12 +302,10 @@
     /// We can&#39;t use `read_exact` and similar because they are not cancel-safe:
     /// `https://docs.rs/tokio/latest/tokio/io/trait.AsyncReadExt.html#cancel-safety-2`
     </span><span class="kw">pub async fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;(u64, Message)&gt;, NetworkError&gt; {
-        <span class="kw">let </span>max_message_size = with_serialization_context(|context| context.max_message_size);
-
         <span class="comment">// check if we are in the process of reading the message length
         </span><span class="kw">if </span><span class="self">self</span>.msg_size.is_none() {
             <span class="comment">// pre-allocate the buffer to fit the encoded message size if the buffer is not already allocated
-            </span><span class="kw">let </span>size_field_len = u32::be_bytes_min_length(max_message_size);
+            </span><span class="kw">let </span>size_field_len = u32::be_bytes_min_length(<span class="self">self</span>.max_message_size);
             <span class="kw">if </span><span class="self">self</span>.buf.len() != size_field_len {
                 <span class="self">self</span>.buf = <span class="macro">vec!</span>[<span class="number">0u8</span>; size_field_len];
             }
@@ -301,7 +333,7 @@
             }
 
             <span class="comment">// once we have all the message size bytes, deserialize it
-            </span><span class="kw">let </span>res_size = u32::from_be_bytes_min(<span class="kw-2">&amp;</span><span class="self">self</span>.buf, max_message_size)<span class="question-mark">?</span>.<span class="number">0</span>;
+            </span><span class="kw">let </span>res_size = u32::from_be_bytes_min(<span class="kw-2">&amp;</span><span class="self">self</span>.buf, <span class="self">self</span>.max_message_size)<span class="question-mark">?</span>.<span class="number">0</span>;
             <span class="comment">// set self.msg_size to indicate that we are now in the process of reading the message contents (and not the size anymore).
             </span><span class="self">self</span>.msg_size = <span class="prelude-val">Some</span>(res_size);
             <span class="comment">// allocate the buffer to match the message length
@@ -331,7 +363,13 @@
                 }
             }
         }
-        <span class="kw">let </span>(res_msg, <span class="kw">_</span>) = Message::from_bytes_compact(<span class="kw-2">&amp;</span><span class="self">self</span>.buf)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(<span class="kw">_</span>, res_msg) = <span class="self">self
+            </span>.message_deserializer
+            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>.buf)
+            .map_err(|err| {
+                <span class="macro">warn!</span>(<span class="string">&quot;error deserializing message: {:?}&quot;</span>, err);
+                NetworkError::ModelsError(ModelsError::DeserializeError(err.to_string()))
+            })<span class="question-mark">?</span>;
 
         <span class="comment">// now the message readout is over, we reset the state to start reading the next message&#39;s size field again at the next run
         </span><span class="self">self</span>.cursor = <span class="number">0</span>;
@@ -347,4 +385,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

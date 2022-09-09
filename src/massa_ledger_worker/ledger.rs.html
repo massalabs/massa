@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-ledger-worker/src/ledger.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ledger.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_ledger_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_ledger_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_ledger_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-ledger-worker/src/ledger.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ledger.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_ledger_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_ledger_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_ledger_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -192,6 +192,30 @@
 <span id="192">192</span>
 <span id="193">193</span>
 <span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file defines the final ledger associating addresses to their balances, bytecode and data.
@@ -200,10 +224,16 @@
 <span class="kw">use </span>massa_ledger_exports::{
     LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
 };
-<span class="kw">use </span>massa_models::{Address, Amount, ModelsError};
-<span class="kw">use </span>massa_models::{DeserializeCompact, Slot};
+<span class="kw">use </span>massa_models::{
+    address::Address,
+    amount::{Amount, AmountDeserializer},
+    error::ModelsError,
+    slot::Slot,
+};
+<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>nom::AsBytes;
 <span class="kw">use </span>std::collections::{BTreeSet, HashMap};
+<span class="kw">use </span>std::ops::Bound::Included;
 
 <span class="doccomment">/// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -212,57 +242,26 @@
 </span><span class="attribute">#[derive(Debug)]
 </span><span class="kw">pub struct </span>FinalLedger {
     <span class="doccomment">/// ledger configuration
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) _config: LedgerConfig,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) config: LedgerConfig,
     <span class="doccomment">/// ledger tree, sorted by address
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) sorted_ledger: LedgerDB,
 }
 
-<span class="doccomment">/// Macro used to shorten file error returns
-</span><span class="macro">macro_rules! </span>init_file_error {
-    (<span class="macro-nonterminal">$st</span>:expr, <span class="macro-nonterminal">$cfg</span>:ident) =&gt; {
-        |err| {
-            LedgerError::FileError(<span class="macro">format!</span>(
-                <span class="string">&quot;error $st initial ledger file {}: {}&quot;</span>,
-                <span class="macro-nonterminal">$cfg</span>.initial_sce_ledger_path
-                    .to_str()
-                    .unwrap_or(<span class="string">&quot;(non-utf8 path)&quot;</span>),
-                err
-            ))
-        }
-    };
-}
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>init_file_error;
-
 <span class="kw">impl </span>FinalLedger {
     <span class="doccomment">/// Initializes a new `FinalLedger` by reading its initial state from file.
     </span><span class="kw">pub fn </span>new(config: LedgerConfig) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LedgerError&gt; {
-        <span class="comment">// load the ledger tree from file
-        </span><span class="kw">let </span>initial_ledger: HashMap&lt;Address, LedgerEntry&gt; =
-            serde_json::from_str::&lt;HashMap&lt;Address, Amount&gt;&gt;(
-                <span class="kw-2">&amp;</span>std::fs::read_to_string(<span class="kw-2">&amp;</span>config.initial_sce_ledger_path)
-                    .map_err(<span class="macro">init_file_error!</span>(<span class="string">&quot;loading&quot;</span>, config))<span class="question-mark">?</span>,
-            )
-            .map_err(<span class="macro">init_file_error!</span>(<span class="string">&quot;parsing&quot;</span>, config))<span class="question-mark">?
-            </span>.into_iter()
-            .map(|(addr, amount)| {
-                (
-                    addr,
-                    LedgerEntry {
-                        parallel_balance: amount,
-                        ..Default::default()
-                    },
-                )
-            })
-            .collect();
-
         <span class="comment">// create and initialize the disk ledger
-        </span><span class="kw">let </span><span class="kw-2">mut </span>sorted_ledger = LedgerDB::new(config.disk_ledger_path.clone());
-        sorted_ledger.set_initial_ledger(initial_ledger);
+        </span><span class="kw">let </span>sorted_ledger = LedgerDB::new(
+            config.disk_ledger_path.clone(),
+            config.thread_count,
+            config.max_key_length,
+            config.max_ledger_part_size,
+        );
 
         <span class="comment">// generate the final ledger
         </span><span class="prelude-val">Ok</span>(FinalLedger {
             sorted_ledger,
-            _config: config,
+            config,
         })
     }
 }
@@ -273,17 +272,66 @@
         <span class="self">self</span>.sorted_ledger.apply_changes(changes, slot);
     }
 
+    <span class="doccomment">/// Loads ledger from file
+    </span><span class="kw">fn </span>load_initial_ledger(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), LedgerError&gt; {
+        <span class="comment">// load the ledger tree from file
+        </span><span class="kw">let </span>initial_ledger: HashMap&lt;Address, LedgerEntry&gt; = serde_json::from_str(
+            <span class="kw-2">&amp;</span>std::fs::read_to_string(<span class="kw-2">&amp;</span><span class="self">self</span>.config.initial_ledger_path).map_err(|err| {
+                LedgerError::FileError(<span class="macro">format!</span>(
+                    <span class="string">&quot;error loading initial ledger file {}: {}&quot;</span>,
+                    <span class="self">self</span>.config
+                        .initial_ledger_path
+                        .to_str()
+                        .unwrap_or(<span class="string">&quot;(non-utf8 path)&quot;</span>),
+                    err
+                ))
+            })<span class="question-mark">?</span>,
+        )
+        .map_err(|err| {
+            LedgerError::FileError(<span class="macro">format!</span>(
+                <span class="string">&quot;error parsing initial ledger file {}: {}&quot;</span>,
+                <span class="self">self</span>.config
+                    .initial_ledger_path
+                    .to_str()
+                    .unwrap_or(<span class="string">&quot;(non-utf8 path)&quot;</span>),
+                err
+            ))
+        })<span class="question-mark">?</span>;
+        <span class="self">self</span>.sorted_ledger.load_initial_ledger(initial_ledger);
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Gets the sequential balance of a ledger entry
+    ///
+    /// # Returns
+    /// The sequential balance, or None if the ledger entry was not found
+    </span><span class="kw">fn </span>get_sequential_balance(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Option</span>&lt;Amount&gt; {
+        <span class="kw">let </span>amount_deserializer =
+            AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
+        <span class="self">self</span>.sorted_ledger
+            .get_sub_entry(addr, LedgerSubEntry::SeqBalance)
+            .map(|bytes| {
+                amount_deserializer
+                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>bytes)
+                    .expect(<span class="string">&quot;critical: invalid sequential balance format&quot;</span>)
+                    .<span class="number">1
+            </span>})
+    }
+
     <span class="doccomment">/// Gets the parallel balance of a ledger entry
     ///
     /// # Returns
     /// The parallel balance, or None if the ledger entry was not found
     </span><span class="kw">fn </span>get_parallel_balance(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Option</span>&lt;Amount&gt; {
+        <span class="kw">let </span>amount_deserializer =
+            AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
         <span class="self">self</span>.sorted_ledger
-            .get_sub_entry(addr, LedgerSubEntry::Balance)
+            .get_sub_entry(addr, LedgerSubEntry::ParBalance)
             .map(|bytes| {
-                Amount::from_bytes_compact(<span class="kw-2">&amp;</span>bytes)
+                amount_deserializer
+                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>bytes)
                     .expect(<span class="string">&quot;critical: invalid balance format&quot;</span>)
-                    .<span class="number">0
+                    .<span class="number">1
             </span>})
     }
 
@@ -302,7 +350,7 @@
     /// true if it exists, false otherwise.
     </span><span class="kw">fn </span>entry_exists(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; bool {
         <span class="self">self</span>.sorted_ledger
-            .get_sub_entry(addr, LedgerSubEntry::Balance)
+            .get_sub_entry(addr, LedgerSubEntry::SeqBalance)
             .is_some()
     }
 
@@ -387,4 +435,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

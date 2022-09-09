@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-ledger-exports/src/ledger_entry.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ledger_entry.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_ledger_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_ledger_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_ledger_exports/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-ledger-exports/src/ledger_entry.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ledger_entry.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_ledger_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_ledger_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_ledger_exports/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -271,15 +271,83 @@
 <span id="271">271</span>
 <span id="272">272</span>
 <span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file defines the structure representing an entry in the `FinalLedger`
 
 </span><span class="kw">use </span><span class="kw">crate</span>::ledger_changes::LedgerEntryUpdate;
 <span class="kw">use </span><span class="kw">crate</span>::types::{Applicable, SetOrDelete};
-<span class="kw">use </span>massa_models::amount::{AmountDeserializer, AmountSerializer};
-<span class="kw">use </span>massa_models::constants::default::MAX_DATASTORE_KEY_LENGTH;
-<span class="kw">use </span>massa_models::{Amount, VecU8Deserializer, VecU8Serializer};
+<span class="kw">use </span>massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
+<span class="kw">use </span>massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -295,7 +363,10 @@
 </span><span class="attribute">#[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 </span><span class="kw">pub struct </span>LedgerEntry {
     <span class="doccomment">/// The parallel balance of that entry.
-    /// See lib.rs for an explanation on parallel vs sequential balances.
+    /// See lib.rs for an explanation on sequential vs parallel balance.
+    </span><span class="kw">pub </span>sequential_balance: Amount,
+
+    <span class="doccomment">/// The parallel balance of that entry.
     </span><span class="kw">pub </span>parallel_balance: Amount,
 
     <span class="doccomment">/// Executable bytecode
@@ -306,6 +377,7 @@
 }
 
 <span class="doccomment">/// Serializer for `Datastore` field in `LedgerEntry`
+</span><span class="attribute">#[derive(Default)]
 </span><span class="kw">pub struct </span>DatastoreSerializer {
     u64_serializer: U64VarIntSerializer,
     vec_u8_serializer: VecU8Serializer,
@@ -322,7 +394,20 @@
 }
 
 <span class="kw">impl </span>Serializer&lt;BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;&gt; <span class="kw">for </span>DatastoreSerializer {
-    <span class="kw">fn </span>serialize(
+    <span class="doccomment">/// ## Example
+    /// ```rust
+    /// use std::collections::BTreeMap;
+    /// use massa_ledger_exports::DatastoreSerializer;
+    /// use massa_serialization::Serializer;
+    ///
+    /// let serializer = DatastoreSerializer::new();
+    /// let mut buffer = Vec::new();
+    /// let mut datastore = BTreeMap::new();
+    /// datastore.insert(vec![1, 2, 3], vec![4, 5, 6]);
+    /// datastore.insert(vec![3, 4, 5], vec![6, 7, 8]);
+    /// serializer.serialize(&amp;datastore, &amp;mut buffer).unwrap();
+    /// ```
+    </span><span class="kw">fn </span>serialize(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         value: <span class="kw-2">&amp;</span>BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;,
         buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
@@ -344,25 +429,54 @@
 
 <span class="doccomment">/// Deserializer for `Datastore` field in `LedgerEntry`
 </span><span class="kw">pub struct </span>DatastoreDeserializer {
-    u64_deserializer: U64VarIntDeserializer,
-    vec_u8_deserializer: VecU8Deserializer,
+    length_deserializer: U64VarIntDeserializer,
+    key_deserializer: VecU8Deserializer,
+    value_deserializer: VecU8Deserializer,
 }
 
 <span class="kw">impl </span>DatastoreDeserializer {
     <span class="doccomment">/// Creates a new `DatastoreDeserializer`
-    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(
+        max_datastore_entry_count: u64,
+        max_datastore_key_length: u8,
+        max_datastore_value_length: u64,
+    ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
-            vec_u8_deserializer: VecU8Deserializer::new(
+            length_deserializer: U64VarIntDeserializer::new(
                 Included(u64::MIN),
-                Included(MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>u64),
+                Included(max_datastore_entry_count),
+            ),
+            key_deserializer: VecU8Deserializer::new(
+                Included(u64::MIN),
+                Included(max_datastore_key_length <span class="kw">as </span>u64),
+            ),
+            value_deserializer: VecU8Deserializer::new(
+                Included(u64::MIN),
+                Included(max_datastore_value_length),
             ),
         }
     }
 }
 
 <span class="kw">impl </span>Deserializer&lt;BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;&gt; <span class="kw">for </span>DatastoreDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="doccomment">/// ## Example
+    /// ```rust
+    /// use std::collections::BTreeMap;
+    /// use massa_ledger_exports::{DatastoreDeserializer, DatastoreSerializer};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    ///
+    /// let serializer = DatastoreSerializer::new();
+    /// let deserializer = DatastoreDeserializer::new(10000, 255, 10000);
+    /// let mut buffer = Vec::new();
+    /// let mut datastore = BTreeMap::new();
+    /// datastore.insert(vec![1, 2, 3], vec![4, 5, 6]);
+    /// datastore.insert(vec![3, 4, 5], vec![6, 7, 8]);
+    /// serializer.serialize(&amp;datastore, &amp;mut buffer).unwrap();
+    /// let (rest, deserialized) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(deserialized, datastore);
+    /// ```
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;, E&gt; {
@@ -370,11 +484,15 @@
             <span class="string">&quot;Failed Datastore deserialization&quot;</span>,
             length_count(
                 context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.u64_deserializer.deserialize(input)
+                    <span class="self">self</span>.length_deserializer.deserialize(input)
                 }),
                 tuple((
-                    |input| <span class="self">self</span>.vec_u8_deserializer.deserialize(input),
-                    |input| <span class="self">self</span>.vec_u8_deserializer.deserialize(input),
+                    context(<span class="string">&quot;Failed key deserialization&quot;</span>, |input| {
+                        <span class="self">self</span>.key_deserializer.deserialize(input)
+                    }),
+                    context(<span class="string">&quot;Failed value deserialization&quot;</span>, |input| {
+                        <span class="self">self</span>.value_deserializer.deserialize(input)
+                    }),
                 )),
             ),
         )
@@ -408,11 +526,12 @@
 }
 
 <span class="kw">impl </span>Serializer&lt;LedgerEntry&gt; <span class="kw">for </span>LedgerEntrySerializer {
-    <span class="doccomment">/// ```
+    <span class="doccomment">/// ## Example
+    /// ```
     /// use massa_serialization::Serializer;
     /// use std::collections::BTreeMap;
     /// use std::str::FromStr;
-    /// use massa_models::Amount;
+    /// use massa_models::amount::Amount;
     /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer};
     ///
     /// let key = &quot;hello world&quot;.as_bytes().to_vec();
@@ -422,6 +541,7 @@
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {
     ///    parallel_balance: amount,
+    ///    sequential_balance: amount,
     ///    bytecode,
     ///    datastore: store,
     /// };
@@ -430,6 +550,8 @@
     /// serializer.serialize(&amp;ledger_entry, &amp;mut serialized).unwrap();
     /// ```
     </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>LedgerEntry, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="self">self</span>.amount_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.sequential_balance, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.amount_serializer
             .serialize(<span class="kw-2">&amp;</span>value.parallel_balance, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.vec_u8_serializer.serialize(<span class="kw-2">&amp;</span>value.bytecode, buffer)<span class="question-mark">?</span>;
@@ -442,33 +564,42 @@
 <span class="doccomment">/// Deserializer for `LedgerEntry`
 </span><span class="kw">pub struct </span>LedgerEntryDeserializer {
     amount_deserializer: AmountDeserializer,
-    vec_u8_deserializer: VecU8Deserializer,
+    bytecode_deserializer: VecU8Deserializer,
     datastore_deserializer: DatastoreDeserializer,
 }
 
 <span class="kw">impl </span>LedgerEntryDeserializer {
     <span class="doccomment">/// Creates a new `LedgerEntryDeserializer`
-    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(
+        max_datastore_entry_count: u64,
+        max_datastore_key_length: u8,
+        max_datastore_value_length: u64,
+    ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            amount_deserializer: AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
-            vec_u8_deserializer: VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX)),
-            datastore_deserializer: DatastoreDeserializer::new(),
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
+            bytecode_deserializer: VecU8Deserializer::new(
+                Included(u64::MIN),
+                Included(max_datastore_value_length),
+            ),
+            datastore_deserializer: DatastoreDeserializer::new(
+                max_datastore_entry_count,
+                max_datastore_key_length,
+                max_datastore_value_length,
+            ),
         }
     }
 }
 
-<span class="kw">impl </span>Default <span class="kw">for </span>LedgerEntryDeserializer {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new()
-    }
-}
-
 <span class="kw">impl </span>Deserializer&lt;LedgerEntry&gt; <span class="kw">for </span>LedgerEntryDeserializer {
-    <span class="doccomment">/// ```
+    <span class="doccomment">/// ## Example
+    /// ```
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use std::collections::BTreeMap;
     /// use std::str::FromStr;
-    /// use massa_models::Amount;
+    /// use massa_models::amount::Amount;
     /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer, LedgerEntryDeserializer};
     ///
     /// let key = &quot;hello world&quot;.as_bytes().to_vec();
@@ -478,12 +609,13 @@
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {
     ///    parallel_balance: amount,
+    ///    sequential_balance: amount,
     ///    bytecode,
     ///    datastore: store,
     /// };
     /// let mut serialized = Vec::new();
     /// let serializer = LedgerEntrySerializer::new();
-    /// let deserializer = LedgerEntryDeserializer::new();
+    /// let deserializer = LedgerEntryDeserializer::new(10000, 255, 10000);
     /// serializer.serialize(&amp;ledger_entry, &amp;mut serialized).unwrap();
     /// let (rest, ledger_entry_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert!(rest.is_empty());
@@ -496,22 +628,28 @@
         context(
             <span class="string">&quot;Failed LedgerEntry deserialization&quot;</span>,
             tuple((
+                context(<span class="string">&quot;Failed sequential_balance deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.amount_deserializer.deserialize(input)
+                }),
                 context(<span class="string">&quot;Failed parallel_balance deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.amount_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed bytecode deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.vec_u8_deserializer.deserialize(input)
+                    <span class="self">self</span>.bytecode_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed datastore deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.datastore_deserializer.deserialize(input)
                 }),
             )),
         )
-        .map(|(parallel_balance, bytecode, datastore)| LedgerEntry {
-            parallel_balance,
-            bytecode,
-            datastore,
-        })
+        .map(
+            |(sequential_balance, parallel_balance, bytecode, datastore)| LedgerEntry {
+                sequential_balance,
+                parallel_balance,
+                bytecode,
+                datastore,
+            },
+        )
         .parse(buffer)
     }
 }
@@ -545,4 +683,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

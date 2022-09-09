@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-network-worker/src/network_worker.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>network_worker.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_network_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-network-worker/src/network_worker.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>network_worker.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_network_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -802,6 +802,17 @@
 <span id="802">802</span>
 <span id="803">803</span>
 <span id="804">804</span>
+<span id="805">805</span>
+<span id="806">806</span>
+<span id="807">807</span>
+<span id="808">808</span>
+<span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The network worker actually does the job of managing connections
@@ -811,20 +822,18 @@
 <span class="kw">use crate</span>::{
     binders::{ReadBinder, WriteBinder},
     handshake_worker::HandshakeWorker,
-    messages::Message,
+    messages::{Message, MessageDeserializer},
     network_event::EventSender,
 };
 <span class="kw">use </span>futures::{stream::FuturesUnordered, StreamExt};
 <span class="kw">use </span>massa_logging::massa_trace;
-<span class="kw">use </span>massa_models::{constants::CHANNEL_SIZE, node::NodeId, SerializeCompact, Version};
+<span class="kw">use </span>massa_models::{node::NodeId, version::Version};
 <span class="kw">use </span>massa_network_exports::{
     ConnectionClosureReason, ConnectionId, Establisher, HandshakeErrorType, Listener,
-    NetworkCommand, NetworkConnectionErrorType, NetworkError, NetworkEvent,
-    NetworkManagementCommand, NetworkSettings, NodeCommand, NodeEvent, NodeEventType, ReadHalf,
-    WriteHalf,
+    NetworkCommand, NetworkConfig, NetworkConnectionErrorType, NetworkError, NetworkEvent,
+    NetworkManagementCommand, NodeCommand, NodeEvent, NodeEventType, ReadHalf, WriteHalf,
 };
 <span class="kw">use </span>massa_signature::KeyPair;
-<span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>std::{
     collections::{hash_map, HashMap, HashSet},
     net::{IpAddr, SocketAddr},
@@ -836,7 +845,7 @@
 <span class="doccomment">/// Real job is done by network worker
 </span><span class="kw">pub struct </span>NetworkWorker {
     <span class="doccomment">/// Network configuration.
-    </span>cfg: NetworkSettings,
+    </span>cfg: NetworkConfig,
     <span class="doccomment">/// Our keypair.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) keypair: KeyPair,
     <span class="doccomment">/// Our node id.
@@ -866,8 +875,6 @@
         FuturesUnordered&lt;JoinHandle&lt;(NodeId, <span class="prelude-ty">Result</span>&lt;ConnectionClosureReason, NetworkError&gt;)&gt;&gt;,
     <span class="doccomment">/// Map of connection to ip, `is_outgoing`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) active_connections: HashMap&lt;ConnectionId, (IpAddr, bool)&gt;,
-    <span class="doccomment">/// Shared storage.
-    </span>storage: Storage,
     <span class="doccomment">/// Node version
     </span>version: Version,
     <span class="doccomment">/// Event sender
@@ -893,7 +900,7 @@
     /// * `controller_manager_rx`: Channel receiving network management commands.
     </span><span class="attribute">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub fn </span>new(
-        cfg: NetworkSettings,
+        cfg: NetworkConfig,
         keypair: KeyPair,
         listener: Listener,
         establisher: Establisher,
@@ -903,12 +910,12 @@
             controller_event_tx,
             controller_manager_rx,
         }: NetworkWorkerChannels,
-        storage: Storage,
         version: Version,
     ) -&gt; NetworkWorker {
         <span class="kw">let </span>self_node_id = NodeId(keypair.get_public_key());
 
-        <span class="kw">let </span>(node_event_tx, node_event_rx) = mpsc::channel::&lt;NodeEvent&gt;(CHANNEL_SIZE);
+        <span class="kw">let </span>(node_event_tx, node_event_rx) =
+            mpsc::channel::&lt;NodeEvent&gt;(cfg.node_event_channel_size);
         <span class="kw">let </span>max_wait_event = cfg.max_send_wait.to_duration();
         NetworkWorker {
             cfg,
@@ -927,7 +934,6 @@
             active_nodes: HashMap::new(),
             node_worker_handles: FuturesUnordered::new(),
             active_connections: HashMap::new(),
-            storage,
             version,
         }
     }
@@ -1191,10 +1197,9 @@
 
                         <span class="comment">// spawn node_controller_fn
                         </span><span class="kw">let </span>(node_command_tx, node_command_rx) =
-                            mpsc::channel::&lt;NodeCommand&gt;(CHANNEL_SIZE);
+                            mpsc::channel::&lt;NodeCommand&gt;(<span class="self">self</span>.cfg.node_command_channel_size);
                         <span class="kw">let </span>node_event_tx_clone = <span class="self">self</span>.event.clone_node_sender();
                         <span class="kw">let </span>cfg_copy = <span class="self">self</span>.cfg.clone();
-                        <span class="kw">let </span>storage = <span class="self">self</span>.storage.clone();
                         <span class="kw">let </span>node_fn_handle = tokio::spawn(<span class="kw">async move </span>{
                             <span class="kw">let </span>res = NodeWorker::new(
                                 cfg_copy,
@@ -1203,7 +1208,6 @@
                                 socket_writer,
                                 node_command_rx,
                                 node_event_tx_clone,
-                                storage,
                             )
                             .run_loop()
                             .<span class="kw">await</span>;
@@ -1320,19 +1324,16 @@
         <span class="kw">match </span>cmd {
             NetworkCommand::NodeBanByIps(ips) =&gt; on_node_ban_by_ips_cmd(<span class="self">self</span>, ips).<span class="kw">await</span><span class="question-mark">?</span>,
             NetworkCommand::NodeBanByIds(ids) =&gt; on_node_ban_by_ids_cmd(<span class="self">self</span>, ids).<span class="kw">await</span><span class="question-mark">?</span>,
-            NetworkCommand::SendBlockHeader { node, block_id } =&gt; {
-                on_send_block_header_cmd(<span class="self">self</span>, node, block_id).<span class="kw">await</span><span class="question-mark">?
+            NetworkCommand::SendBlockHeader { node, header } =&gt; {
+                on_send_block_header_cmd(<span class="self">self</span>, node, header).<span class="kw">await</span><span class="question-mark">?
             </span>}
             NetworkCommand::AskForBlocks { list } =&gt; on_ask_for_block_cmd(<span class="self">self</span>, list).<span class="kw">await</span>,
-            NetworkCommand::SendBlock { node, block_id } =&gt; {
-                on_send_block_cmd(<span class="self">self</span>, node, block_id).<span class="kw">await</span><span class="question-mark">?
+            NetworkCommand::SendBlockInfo { node, info } =&gt; {
+                on_send_block_info_cmd(<span class="self">self</span>, node, info).<span class="kw">await</span><span class="question-mark">?
             </span>}
             NetworkCommand::GetPeers(response_tx) =&gt; on_get_peers_cmd(<span class="self">self</span>, response_tx).<span class="kw">await</span>,
             NetworkCommand::GetBootstrapPeers(response_tx) =&gt; {
                 on_get_bootstrap_peers_cmd(<span class="self">self</span>, response_tx).<span class="kw">await
-            </span>}
-            NetworkCommand::BlockNotFound { node, block_id } =&gt; {
-                on_block_not_found_cmd(<span class="self">self</span>, node, block_id).<span class="kw">await
             </span>}
             NetworkCommand::SendOperations { node, operations } =&gt; {
                 on_send_operations_cmd(<span class="self">self</span>, node, operations).<span class="kw">await
@@ -1507,16 +1508,40 @@
             <span class="kw">let </span>timeout = <span class="self">self</span>.cfg.peer_list_send_timeout.to_duration();
             <span class="kw">let </span>max_bytes_read = <span class="self">self</span>.cfg.max_bytes_read;
             <span class="kw">let </span>max_bytes_write = <span class="self">self</span>.cfg.max_bytes_write;
+            <span class="kw">let </span>max_ask_blocks = <span class="self">self</span>.cfg.max_ask_blocks;
+            <span class="kw">let </span>max_operations_per_block = <span class="self">self</span>.cfg.max_operations_per_block;
+            <span class="kw">let </span>thread_count = <span class="self">self</span>.cfg.thread_count;
+            <span class="kw">let </span>endorsement_count = <span class="self">self</span>.cfg.endorsement_count;
+            <span class="kw">let </span>max_advertise_length = <span class="self">self</span>.cfg.max_peer_advertise_length;
+            <span class="kw">let </span>max_endorsements_per_message = <span class="self">self</span>.cfg.max_endorsements_per_message;
+            <span class="kw">let </span>max_operations_per_message = <span class="self">self</span>.cfg.max_operations_per_message;
+            <span class="kw">let </span>max_message_size = <span class="self">self</span>.cfg.max_message_size;
+            <span class="kw">let </span>max_datastore_value_length = <span class="self">self</span>.cfg.max_datastore_value_length;
+            <span class="kw">let </span>max_function_name_length = <span class="self">self</span>.cfg.max_function_name_length;
+            <span class="kw">let </span>max_parameters_size = <span class="self">self</span>.cfg.max_parameters_size;
             <span class="self">self</span>.handshake_peer_list_futures
                 .push(tokio::spawn(<span class="kw">async move </span>{
-                    <span class="kw">let </span><span class="kw-2">mut </span>writer = WriteBinder::new(writer, max_bytes_read);
-                    <span class="kw">let </span><span class="kw-2">mut </span>reader = ReadBinder::new(reader, max_bytes_write);
+                    <span class="kw">let </span><span class="kw-2">mut </span>writer = WriteBinder::new(writer, max_bytes_read, max_message_size);
+                    <span class="kw">let </span><span class="kw-2">mut </span>reader = ReadBinder::new(
+                        reader,
+                        max_bytes_write,
+                        max_message_size,
+                        MessageDeserializer::new(
+                            thread_count,
+                            endorsement_count,
+                            max_advertise_length,
+                            max_ask_blocks,
+                            max_operations_per_block,
+                            max_operations_per_message,
+                            max_endorsements_per_message,
+                            max_datastore_value_length,
+                            max_function_name_length,
+                            max_parameters_size,
+                        ),
+                    );
                     <span class="kw">match </span>tokio::time::timeout(
                         timeout,
-                        futures::future::try_join(
-                            writer.send(<span class="kw-2">&amp;</span>msg.to_bytes_compact().unwrap()),
-                            reader.next(),
-                        ),
+                        futures::future::try_join(writer.send(<span class="kw-2">&amp;</span>msg), reader.next()),
                     )
                     .<span class="kw">await
                     </span>{
@@ -1575,20 +1600,17 @@
             </span>NodeEvent(from_node_id, NodeEventType::ReceivedPeerList(lst)) =&gt; {
                 event_impl::on_received_peer_list(<span class="self">self</span>, from_node_id, <span class="kw-2">&amp;</span>lst)<span class="question-mark">?
             </span>}
-            NodeEvent(from_node_id, NodeEventType::ReceivedBlock(block)) =&gt; {
-                event_impl::on_received_block(<span class="self">self</span>, from_node_id, block).<span class="kw">await</span><span class="question-mark">?
-            </span>}
             NodeEvent(from_node_id, NodeEventType::ReceivedAskForBlocks(list)) =&gt; {
                 event_impl::on_received_ask_for_blocks(<span class="self">self</span>, from_node_id, list).<span class="kw">await
+            </span>}
+            NodeEvent(from_node_id, NodeEventType::ReceivedReplyForBlocks(list)) =&gt; {
+                event_impl::on_received_block_info(<span class="self">self</span>, from_node_id, list).<span class="kw">await</span><span class="question-mark">?
             </span>}
             NodeEvent(source_node_id, NodeEventType::ReceivedBlockHeader(header)) =&gt; {
                 event_impl::on_received_block_header(<span class="self">self</span>, source_node_id, header).<span class="kw">await</span><span class="question-mark">?
             </span>}
             NodeEvent(from_node_id, NodeEventType::AskedPeerList) =&gt; {
                 event_impl::on_asked_peer_list(<span class="self">self</span>, from_node_id).<span class="kw">await</span><span class="question-mark">?
-            </span>}
-            NodeEvent(node, NodeEventType::BlockNotFound(block_id)) =&gt; {
-                event_impl::on_block_not_found(<span class="self">self</span>, node, block_id).<span class="kw">await
             </span>}
             NodeEvent(node, NodeEventType::ReceivedOperations(operations)) =&gt; {
                 event_impl::on_received_operations(<span class="self">self</span>, node, operations).<span class="kw">await
@@ -1607,4 +1629,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

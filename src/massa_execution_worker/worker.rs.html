@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/worker.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>worker.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/worker.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>worker.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -617,6 +617,20 @@
 <span id="617">617</span>
 <span id="618">618</span>
 <span id="619">619</span>
+<span id="620">620</span>
+<span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
+<span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module allows launching the execution worker thread, returning objects to communicate with it.
@@ -632,11 +646,12 @@
     ReadOnlyExecutionRequest,
 };
 <span class="kw">use </span>massa_final_state::FinalState;
-<span class="kw">use </span>massa_models::BlockId;
+<span class="kw">use </span>massa_models::block::BlockId;
 <span class="kw">use </span>massa_models::{
+    slot::Slot,
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
-    Slot,
 };
+<span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>parking_lot::{Condvar, Mutex, RwLock};
@@ -651,22 +666,24 @@
     </span>input_data: Arc&lt;(Condvar, Mutex&lt;ExecutionInputData&gt;)&gt;,
     <span class="comment">// Map of final slots not executed yet but ready for execution
     // See lib.rs for an explanation on final execution ordering.
-    </span>ready_final_slots: HashMap&lt;Slot, <span class="prelude-ty">Option</span>&lt;BlockId&gt;&gt;,
+    </span>ready_final_slots: HashMap&lt;Slot, <span class="prelude-ty">Option</span>&lt;(BlockId, Storage)&gt;&gt;,
     <span class="comment">// Highest final slot that is ready to be executed
     </span>last_ready_final_slot: Slot,
     <span class="comment">// Map of final blocks that are not yet ready to be executed
     // See lib.rs for an explanation on final execution ordering.
-    </span>pending_final_blocks: HashMap&lt;Slot, BlockId&gt;,
+    </span>pending_final_blocks: HashMap&lt;Slot, (BlockId, Storage)&gt;,
     <span class="comment">// Current blockclique, indexed by slot number
-    </span>blockclique: HashMap&lt;Slot, BlockId&gt;,
+    </span>blockclique: HashMap&lt;Slot, (BlockId, Storage)&gt;,
     <span class="comment">// Map of all active slots
-    </span>active_slots: HashMap&lt;Slot, <span class="prelude-ty">Option</span>&lt;BlockId&gt;&gt;,
+    </span>active_slots: HashMap&lt;Slot, <span class="prelude-ty">Option</span>&lt;(BlockId, Storage)&gt;&gt;,
     <span class="comment">// Highest active slot
     </span>last_active_slot: Slot,
     <span class="comment">// Execution state (see execution.rs) to which execution requests are sent
     </span>execution_state: Arc&lt;RwLock&lt;ExecutionState&gt;&gt;,
     <span class="doccomment">/// queue for read-only requests and response MPSCs to send back their outputs
     </span>readonly_requests: RequestQueue&lt;ReadOnlyExecutionRequest, ExecutionOutput&gt;,
+    <span class="doccomment">/// Selector controller
+    </span>selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
 }
 
 <span class="kw">impl </span>ExecutionThread {
@@ -681,6 +698,7 @@
         config: ExecutionConfig,
         input_data: Arc&lt;(Condvar, Mutex&lt;ExecutionInputData&gt;)&gt;,
         execution_state: Arc&lt;RwLock&lt;ExecutionState&gt;&gt;,
+        selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="comment">// get the latest executed final slot, at the output of which the final ledger is attached
         </span><span class="kw">let </span>final_cursor = execution_state.read().final_cursor;
@@ -697,6 +715,7 @@
             readonly_requests: RequestQueue::new(config.readonly_queue_length),
             config,
             execution_state,
+            selector,
         }
     }
 
@@ -705,7 +724,7 @@
     ///
     /// # Arguments
     /// * `new_final_blocks`: a map of newly finalized blocks
-    </span><span class="kw">fn </span>update_final_slots(<span class="kw-2">&amp;mut </span><span class="self">self</span>, new_final_blocks: HashMap&lt;Slot, BlockId&gt;) {
+    </span><span class="kw">fn </span>update_final_slots(<span class="kw-2">&amp;mut </span><span class="self">self</span>, new_final_blocks: HashMap&lt;Slot, (BlockId, Storage)&gt;) {
         <span class="comment">// if there are no new final blocks, exit and do nothing
         </span><span class="kw">if </span>new_final_blocks.is_empty() {
             <span class="kw">return</span>;
@@ -732,10 +751,11 @@
                 .expect(<span class="string">&quot;final slot overflow in VM&quot;</span>);
 
             <span class="comment">// try to remove that slot out of pending_final_blocks
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(block_id) = <span class="self">self</span>.pending_final_blocks.remove(<span class="kw-2">&amp;</span>slot) {
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>((block_id, block_store)) = <span class="self">self</span>.pending_final_blocks.remove(<span class="kw-2">&amp;</span>slot) {
                 <span class="comment">// pending final block found at slot:
                 // add block to the ready_final_slots list of final slots ready for execution
-                </span><span class="self">self</span>.ready_final_slots.insert(slot, <span class="prelude-val">Some</span>(block_id));
+                </span><span class="self">self</span>.ready_final_slots
+                    .insert(slot, <span class="prelude-val">Some</span>((block_id, block_store)));
                 <span class="self">self</span>.last_ready_final_slot = slot;
                 <span class="comment">// continue the loop
                 </span><span class="kw">continue</span>;
@@ -764,6 +784,13 @@
                 // Add it to the list of final slots ready for execution
                 </span><span class="self">self</span>.ready_final_slots.insert(slot, <span class="prelude-val">None</span>);
                 <span class="self">self</span>.last_ready_final_slot = slot;
+
+                <span class="macro">warn!</span>(
+                    <span class="string">&quot;address {} missed a production opportunity at slot {} (cycle {})&quot;</span>,
+                    <span class="self">self</span>.selector.get_producer(slot).unwrap(),
+                    slot,
+                    slot.get_cycle(<span class="self">self</span>.config.periods_per_cycle)
+                );
             } <span class="kw">else </span>{
                 <span class="comment">// This slot is not final:
                 // we have reached the end of the list of consecutive final slots
@@ -782,7 +809,7 @@
     /// The latest slot at or before `now() - self.config.cursor_delay` if there is any,
     /// or None if it falls behind the genesis timestamp.
     </span><span class="kw">fn </span>get_end_active_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Slot&gt; {
-        <span class="kw">let </span>target_time = MassaTime::compensated_now(<span class="self">self</span>.config.clock_compensation)
+        <span class="kw">let </span>target_time = MassaTime::now(<span class="self">self</span>.config.clock_compensation)
             .expect(<span class="string">&quot;could not read current time&quot;</span>)
             .saturating_sub(<span class="self">self</span>.config.cursor_delay);
         get_latest_block_slot_at_timestamp(
@@ -801,7 +828,7 @@
     ///
     /// Arguments:
     /// * `new_blockclique`: optionally provide a new blockclique
-    </span><span class="kw">fn </span>update_active_slots(<span class="kw-2">&amp;mut </span><span class="self">self</span>, new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, BlockId&gt;&gt;) {
+    </span><span class="kw">fn </span>update_active_slots(<span class="kw-2">&amp;mut </span><span class="self">self</span>, new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, (BlockId, Storage)&gt;&gt;) {
         <span class="comment">// Update the current blockclique if it has changed
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(blockclique) = new_blockclique {
             <span class="self">self</span>.blockclique = blockclique;
@@ -829,15 +856,17 @@
                 .get_next_slot(<span class="self">self</span>.config.thread_count)
                 .expect(<span class="string">&quot;active slot overflow in VM&quot;</span>);
             <span class="comment">// look for a block at that slot among the ones that are final but not ready for final execution yet
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(block_id) = <span class="self">self</span>.pending_final_blocks.get(<span class="kw-2">&amp;</span>slot) {
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>((block_id, block_store)) = <span class="self">self</span>.pending_final_blocks.get(<span class="kw-2">&amp;</span>slot) {
                 <span class="comment">// A block at that slot was found in pending_final_blocks.
                 // Add it to the sequence of active slots.
-                </span><span class="self">self</span>.active_slots.insert(slot, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>block_id));
+                </span><span class="self">self</span>.active_slots
+                    .insert(slot, <span class="prelude-val">Some</span>((<span class="kw-2">*</span>block_id, block_store.clone())));
                 <span class="self">self</span>.last_active_slot = slot;
-            } <span class="kw">else if let </span><span class="prelude-val">Some</span>(block_id) = <span class="self">self</span>.blockclique.get(<span class="kw-2">&amp;</span>slot) {
+            } <span class="kw">else if let </span><span class="prelude-val">Some</span>((block_id, block_store)) = <span class="self">self</span>.blockclique.get(<span class="kw-2">&amp;</span>slot) {
                 <span class="comment">// A block at that slot was found in the current blockclique.
                 // Add it to the sequence of active slots.
-                </span><span class="self">self</span>.active_slots.insert(slot, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>block_id));
+                </span><span class="self">self</span>.active_slots
+                    .insert(slot, <span class="prelude-val">Some</span>((<span class="kw-2">*</span>block_id, block_store.clone())));
                 <span class="self">self</span>.last_active_slot = slot;
             } <span class="kw">else </span>{
                 <span class="comment">// No block was found at that slot: it&#39;s a miss
@@ -870,10 +899,11 @@
             </span>.ready_final_slots
             .remove(<span class="kw-2">&amp;</span>slot)
             .expect(<span class="string">&quot;the SCE final slot list skipped a slot&quot;</span>);
+        <span class="kw">let </span>target_id = exec_target.as_ref().map(|(b_id, <span class="kw">_</span>)| <span class="kw-2">*</span>b_id);
 
         <span class="comment">// check if the final slot is cached at the front of the speculative execution history
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(exec_out) = exec_state.pop_first_execution_result() {
-            <span class="kw">if </span>exec_out.slot == slot &amp;&amp; exec_out.block_id == exec_target {
+            <span class="kw">if </span>exec_out.slot == slot &amp;&amp; exec_out.block_id == target_id {
                 <span class="comment">// speculative execution front result matches what we want to compute
 
                 // apply the cached output and return
@@ -883,14 +913,14 @@
                 <span class="comment">// speculative cache mismatch
                 </span><span class="macro">warn!</span>(
                     <span class="string">&quot;speculative execution cache mismatch (final slot={}/block={:?}, front speculative slot={}/block={:?}). Resetting the cache.&quot;</span>,
-                    slot, exec_target, exec_out.slot, exec_out.block_id
+                    slot, target_id, exec_out.slot, exec_out.block_id
                 );
             }
         } <span class="kw">else </span>{
             <span class="comment">// cache entry absent
             </span><span class="macro">info!</span>(
                 <span class="string">&quot;speculative execution cache empty, executing final slot={}/block={:?}&quot;</span>,
-                slot, exec_target
+                slot, target_id
             );
         }
 
@@ -898,7 +928,7 @@
         </span>exec_state.clear_history();
 
         <span class="comment">// execute slot
-        </span><span class="kw">let </span>exec_out = exec_state.execute_slot(slot, exec_target);
+        </span><span class="kw">let </span>exec_out = exec_state.execute_slot(slot, exec_target, <span class="kw-2">&amp;</span><span class="self">self</span>.selector);
 
         <span class="comment">// apply execution output to final state
         </span>exec_state.apply_final_execution_output(exec_out);
@@ -935,12 +965,12 @@
 
         <span class="comment">// choose the execution target
         </span><span class="kw">let </span>exec_target = <span class="kw">match </span><span class="self">self</span>.active_slots.get(<span class="kw-2">&amp;</span>slot) {
-            <span class="prelude-val">Some</span>(b_id) =&gt; <span class="kw-2">*</span>b_id,
+            <span class="prelude-val">Some</span>(b_store) =&gt; b_store.as_ref().map(|(b_id, bs)| (<span class="kw-2">*</span>b_id, bs.clone())),
             <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="bool-val">false</span>,
         };
 
         <span class="comment">// execute the slot
-        </span><span class="kw">let </span>exec_out = exec_state.execute_slot(slot, exec_target);
+        </span><span class="kw">let </span>exec_out = exec_state.execute_slot(slot, exec_target, <span class="kw-2">&amp;</span><span class="self">self</span>.selector);
 
         <span class="comment">// apply execution output to active state
         </span>exec_state.apply_active_execution_output(exec_out);
@@ -966,7 +996,7 @@
         .expect(<span class="string">&quot;could not compute block timestamp in VM&quot;</span>);
 
         <span class="comment">// get the current timestamp minus the cursor delay
-        </span><span class="kw">let </span>end_time = MassaTime::compensated_now(<span class="self">self</span>.config.clock_compensation)
+        </span><span class="kw">let </span>end_time = MassaTime::now(<span class="self">self</span>.config.clock_compensation)
             .expect(<span class="string">&quot;could not get current time in VM&quot;</span>)
             .saturating_sub(<span class="self">self</span>.config.cursor_delay);
 
@@ -1191,7 +1221,6 @@
 /// # parameters
 /// * `config`: execution configuration
 /// * `final_state`: a thread-safe shared access to the final state for reading and writing
-/// * `storage`: A shared storage between all modules to have shared data.
 ///
 /// # Returns
 /// A pair `(execution_manager, execution_controller)` where:
@@ -1200,13 +1229,12 @@
 </span><span class="kw">pub fn </span>start_execution_worker(
     config: ExecutionConfig,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
-    storage: Storage,
+    selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
 ) -&gt; (Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;, Box&lt;<span class="kw">dyn </span>ExecutionController&gt;) {
     <span class="comment">// create an execution state
     </span><span class="kw">let </span>execution_state = Arc::new(RwLock::new(ExecutionState::new(
         config.clone(),
         final_state,
-        storage,
     )));
 
     <span class="comment">// define the input data interface
@@ -1224,7 +1252,7 @@
     <span class="comment">// launch the execution thread
     </span><span class="kw">let </span>input_data_clone = input_data.clone();
     <span class="kw">let </span>thread_handle = std::thread::spawn(<span class="kw">move </span>|| {
-        ExecutionThread::new(config, input_data_clone, execution_state).main_loop();
+        ExecutionThread::new(config, input_data_clone, execution_state, selector).main_loop();
     });
 
     <span class="comment">// create a manager
@@ -1237,4 +1265,4 @@
     </span>(Box::new(manager), Box::new(controller))
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

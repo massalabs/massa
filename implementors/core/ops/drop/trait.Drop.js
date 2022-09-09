@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"massa_storage":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/ops/drop/trait.Drop.html\" title=\"trait core::ops::drop::Drop\">Drop</a> for <a class=\"struct\" href=\"massa_storage/struct.Storage.html\" title=\"struct massa_storage::Storage\">Storage</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

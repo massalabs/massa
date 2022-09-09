@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-protocol-exports/src/tests/tools.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>tools.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../massa_protocol_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../massa_protocol_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../massa_protocol_exports/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-protocol-exports/src/tests/tools.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>tools.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../massa_protocol_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../massa_protocol_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../massa_protocol_exports/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -361,32 +361,25 @@
 <span id="361">361</span>
 <span id="362">362</span>
 <span id="363">363</span>
-<span id="364">364</span>
-<span id="365">365</span>
-<span id="366">366</span>
-<span id="367">367</span>
-<span id="368">368</span>
-<span id="369">369</span>
-<span id="370">370</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">super</span>::mock_network_controller::MockNetworkController;
-<span class="kw">use crate</span>::{
-    ProtocolEvent, ProtocolEventReceiver, ProtocolPoolEvent, ProtocolPoolEventReceiver,
-    ProtocolSettings,
-};
+<span class="kw">use </span><span class="kw">crate</span>::protocol_controller::{ProtocolCommandSender, ProtocolEventReceiver};
+<span class="kw">use crate</span>::{ProtocolConfig, ProtocolEvent};
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::node::NodeId;
 <span class="kw">use </span>massa_models::operation::OperationSerializer;
+<span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::wrapped::WrappedContent;
 <span class="kw">use </span>massa_models::{
-    Address, Amount, Block, BlockHeader, BlockId, BlockSerializer, Slot, WrappedBlock,
-    WrappedEndorsement, WrappedOperation,
+    address::Address,
+    amount::Amount,
+    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock},
+    endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement},
+    operation::{Operation, OperationType, WrappedOperation},
+    slot::Slot,
 };
-<span class="kw">use </span>massa_models::{
-    BlockHeaderSerializer, Endorsement, EndorsementSerializer, Operation, OperationType,
-};
-<span class="kw">use </span>massa_network_exports::NetworkCommand;
+<span class="kw">use </span>massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand};
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::collections::HashMap;
@@ -446,7 +439,7 @@
     Block::new_wrapped(
         Block {
             header,
-            operations: Vec::new(),
+            operations: Default::default(),
         },
         BlockSerializer::new(),
         keypair,
@@ -484,8 +477,12 @@
     )
     .unwrap();
 
+    <span class="kw">let </span>op_ids = operations.into_iter().map(|op| op.id).collect();
     Block::new_wrapped(
-        Block { header, operations },
+        Block {
+            header,
+            operations: op_ids,
+        },
         BlockSerializer::new(),
         keypair,
     )
@@ -535,11 +532,39 @@
     valid: bool,
     source_node_id: NodeId,
     protocol_event_receiver: <span class="kw-2">&amp;mut </span>ProtocolEventReceiver,
+    protocol_command_sender: <span class="kw-2">&amp;mut </span>ProtocolCommandSender,
+    operations: Vec&lt;WrappedOperation&gt;,
 ) {
     <span class="kw">let </span>expected_hash = block.id;
 
-    <span class="comment">// Send block to protocol.
-    </span>network_controller.send_block(source_node_id, block).<span class="kw">await</span>;
+    network_controller
+        .send_header(source_node_id, block.content.header.clone())
+        .<span class="kw">await</span>;
+
+    protocol_command_sender
+        .send_wishlist_delta(
+            <span class="macro">vec!</span>[(block.id, <span class="prelude-val">Some</span>(block.content.header.clone()))]
+                .into_iter()
+                .collect(),
+            PreHashSet::&lt;BlockId&gt;::default(),
+        )
+        .<span class="kw">await
+        </span>.unwrap();
+
+    <span class="comment">// Send block info to protocol.
+    </span><span class="kw">let </span>info = <span class="macro">vec!</span>[(
+        block.id,
+        BlockInfoReply::Info(block.content.operations.clone()),
+    )];
+    network_controller
+        .send_block_info(source_node_id, info)
+        .<span class="kw">await</span>;
+
+    <span class="comment">// Send full ops.
+    </span><span class="kw">let </span>info = <span class="macro">vec!</span>[(block.id, BlockInfoReply::Operations(operations))];
+    network_controller
+        .send_block_info(source_node_id, info)
+        .<span class="kw">await</span>;
 
     <span class="comment">// Check protocol sends block to consensus.
     </span><span class="kw">let </span>hash = <span class="kw">match </span>wait_protocol_event(protocol_event_receiver, <span class="number">1000</span>.into(), |evt| <span class="kw">match </span>evt {
@@ -548,7 +573,7 @@
     })
     .<span class="kw">await
     </span>{
-        <span class="prelude-val">Some</span>(ProtocolEvent::ReceivedBlock { block, .. }) =&gt; <span class="prelude-val">Some</span>(block.id),
+        <span class="prelude-val">Some</span>(ProtocolEvent::ReceivedBlock { block_id, .. }) =&gt; <span class="prelude-val">Some</span>(block_id),
         <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
         <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected or no protocol event.&quot;</span>),
     };
@@ -593,39 +618,18 @@
 
 <span class="macro">lazy_static::lazy_static! </span>{
     <span class="doccomment">/// protocol settings
-    </span><span class="kw">pub static </span><span class="kw-2">ref </span>PROTOCOL_SETTINGS: ProtocolSettings = create_protocol_settings();
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>PROTOCOL_CONFIG: ProtocolConfig = create_protocol_config();
 }
 
 <span class="doccomment">/// create a `ProtocolConfig` with typical values
-</span><span class="kw">pub fn </span>create_protocol_settings() -&gt; ProtocolSettings {
-    <span class="comment">// Init the serialization context with a default,
-    // can be overwritten with a more specific one in the test.
-    </span>massa_models::init_serialization_context(massa_models::SerializationContext {
-        max_operations_per_block: <span class="number">1024</span>,
-        thread_count: <span class="number">2</span>,
-        max_advertise_length: <span class="number">128</span>,
-        max_message_size: <span class="number">3 </span>* <span class="number">1024 </span>* <span class="number">1024</span>,
-        max_block_size: <span class="number">3 </span>* <span class="number">1024 </span>* <span class="number">1024</span>,
-        max_bootstrap_blocks: <span class="number">100</span>,
-        max_bootstrap_cliques: <span class="number">100</span>,
-        max_bootstrap_deps: <span class="number">100</span>,
-        max_bootstrap_children: <span class="number">100</span>,
-        max_ask_blocks_per_message: <span class="number">10</span>,
-        max_operations_per_message: <span class="number">1024</span>,
-        max_endorsements_per_message: <span class="number">1024</span>,
-        max_bootstrap_message_size: <span class="number">100000000</span>,
-        max_bootstrap_pos_entries: <span class="number">1000</span>,
-        max_bootstrap_pos_cycles: <span class="number">5</span>,
-        endorsement_count: <span class="number">8</span>,
-    });
-
-    ProtocolSettings {
+</span><span class="kw">pub fn </span>create_protocol_config() -&gt; ProtocolConfig {
+    ProtocolConfig {
         ask_block_timeout: <span class="number">500</span>.into(),
         max_known_blocks_size: <span class="number">100</span>,
         max_node_known_blocks_size: <span class="number">100</span>,
         max_node_wanted_blocks_size: <span class="number">100</span>,
         max_simultaneous_ask_blocks_per_node: <span class="number">10</span>,
-        max_send_wait: MassaTime::from(<span class="number">100</span>),
+        max_send_wait: MassaTime::from_millis(<span class="number">100</span>),
         max_known_ops_size: <span class="number">1000</span>,
         max_node_known_ops_size: <span class="number">1000</span>,
         max_known_endorsements_size: <span class="number">1000</span>,
@@ -634,6 +638,10 @@
         operation_batch_proc_period: <span class="number">200</span>.into(),
         asked_operations_pruning_period: <span class="number">500</span>.into(),
         max_operations_per_message: <span class="number">1024</span>,
+        thread_count: <span class="number">32</span>,
+        max_serialized_operations_size_per_block: <span class="number">1024</span>,
+        controller_channel_size: <span class="number">1024</span>,
+        event_channel_size: <span class="number">1024</span>,
     }
 }
 
@@ -659,28 +667,6 @@
     }
 }
 
-<span class="doccomment">/// wait protocol pool event
-</span><span class="kw">pub async fn </span>wait_protocol_pool_event&lt;F&gt;(
-    protocol_event_receiver: <span class="kw-2">&amp;mut </span>ProtocolPoolEventReceiver,
-    timeout: MassaTime,
-    filter_map: F,
-) -&gt; <span class="prelude-ty">Option</span>&lt;ProtocolPoolEvent&gt;
-<span class="kw">where
-    </span>F: Fn(ProtocolPoolEvent) -&gt; <span class="prelude-ty">Option</span>&lt;ProtocolPoolEvent&gt;,
-{
-    <span class="kw">let </span>timer = sleep(timeout.into());
-    <span class="macro">tokio::pin!</span>(timer);
-    <span class="kw">loop </span>{
-        <span class="macro">tokio::select! </span>{
-            evt_opt = protocol_event_receiver.wait_event() =&gt; <span class="kw">match </span>evt_opt {
-                <span class="prelude-val">Ok</span>(orig_evt) =&gt; <span class="kw">if let </span><span class="prelude-val">Some</span>(res_evt) = filter_map(orig_evt) { <span class="kw">return </span><span class="prelude-val">Some</span>(res_evt); },
-                <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">None
-            </span>},
-            <span class="kw">_ </span>= <span class="kw-2">&amp;mut </span>timer =&gt; <span class="kw">return </span><span class="prelude-val">None
-        </span>}
-    }
-}
-
 <span class="doccomment">/// assert block id has been asked to node
 </span><span class="kw">pub async fn </span>assert_hash_asked_to_node(
     hash_1: BlockId,
@@ -691,18 +677,18 @@
         NetworkCommand::AskForBlocks { list } =&gt; <span class="prelude-val">Some</span>(list),
         <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
     };
-    <span class="kw">let </span>list = network_controller
+    <span class="kw">let </span><span class="kw-2">mut </span>list = network_controller
         .wait_command(<span class="number">1000</span>.into(), ask_for_block_cmd_filter)
         .<span class="kw">await
         </span>.expect(<span class="string">&quot;Hash not asked for before timer.&quot;</span>);
 
-    <span class="macro">assert!</span>(list.get(<span class="kw-2">&amp;</span>node_id).unwrap().contains(<span class="kw-2">&amp;</span>hash_1));
+    <span class="macro">assert_eq!</span>(list.get_mut(<span class="kw-2">&amp;</span>node_id).unwrap().pop().unwrap().<span class="number">0</span>, hash_1);
 }
 
 <span class="doccomment">/// retrieve what blocks where asked to which nodes
 </span><span class="kw">pub async fn </span>asked_list(
     network_controller: <span class="kw-2">&amp;mut </span>MockNetworkController,
-) -&gt; HashMap&lt;NodeId, Vec&lt;BlockId&gt;&gt; {
+) -&gt; HashMap&lt;NodeId, Vec&lt;(BlockId, AskForBlocksInfo)&gt;&gt; {
     <span class="kw">let </span>ask_for_block_cmd_filter = |cmd| <span class="kw">match </span>cmd {
         NetworkCommand::AskForBlocks { list } =&gt; <span class="prelude-val">Some</span>(list),
         <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
@@ -718,7 +704,7 @@
     <span class="kw-2">mut </span>nodes: Vec&lt;NodeId&gt;,
     network_controller: <span class="kw-2">&amp;mut </span>MockNetworkController,
 ) {
-    <span class="kw">let </span>timer = sleep(MassaTime::from(<span class="number">5000</span>).into());
+    <span class="kw">let </span>timer = sleep(MassaTime::from_millis(<span class="number">5000</span>).into());
     <span class="macro">tokio::pin!</span>(timer);
     <span class="kw">loop </span>{
         <span class="macro">tokio::select! </span>{
@@ -739,4 +725,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

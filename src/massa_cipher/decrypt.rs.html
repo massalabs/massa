@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-cipher/src/decrypt.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>decrypt.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_cipher/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_cipher/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_cipher/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-cipher/src/decrypt.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>decrypt.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_cipher/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_cipher/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_cipher/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -68,15 +68,16 @@
 <span id="68">68</span>
 <span id="69">69</span>
 <span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! massa-cipher decryption module.
 //!
 //! Read `lib.rs` module documentation for more information.
 
-</span><span class="kw">use </span>aes_gcm::aead::{Aead, NewAead};
-<span class="kw">use </span>aes_gcm::{Aes256Gcm, Key, Nonce};
-<span class="kw">use </span>massa_models::DeserializeVarInt;
+</span><span class="kw">use </span>aes_gcm::aead::Aead;
+<span class="kw">use </span>aes_gcm::{Aes256Gcm, KeyInit, Nonce};
 <span class="kw">use </span>pbkdf2::{
     password_hash::{PasswordHasher, SaltString},
     Pbkdf2,
@@ -84,22 +85,25 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::constants::{HASH_PARAMS, NONCE_SIZE, SALT_SIZE};
 <span class="kw">use </span><span class="kw">crate</span>::error::CipherError;
+<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, U32VarIntDeserializer};
+
+<span class="kw">use </span>std::ops::Bound::Included;
 
 <span class="doccomment">/// Decryption function using AES-GCM cipher.
 ///
 /// Read `lib.rs` module documentation for more information.
 </span><span class="kw">pub fn </span>decrypt(password: <span class="kw-2">&amp;</span>str, data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(u32, Vec&lt;u8&gt;), CipherError&gt; {
     <span class="comment">// parse cipher version
-    </span><span class="kw">let </span>(version, index): (u32, usize) =
-        DeserializeVarInt::from_varint_bytes(data).map_err(|<span class="kw">_</span>| {
+    </span><span class="kw">let </span>(rest, version) = U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u32::MAX))
+        .deserialize::&lt;DeserializeError&gt;(data)
+        .map_err(|<span class="kw">_</span>| {
             CipherError::DecryptionError(
                 <span class="string">&quot;wallet file truncated: version missing or incomplete&quot;</span>.to_string(),
             )
         })<span class="question-mark">?</span>;
 
     <span class="comment">// parse PBKDF2 salt
-    </span><span class="kw">let </span>salt_end_index = index + SALT_SIZE;
-    <span class="kw">let </span>salt_data = data.get(index..salt_end_index).ok_or_else(|| {
+    </span><span class="kw">let </span>salt_data = rest.get(..SALT_SIZE).ok_or_else(|| {
         CipherError::DecryptionError(
             <span class="string">&quot;wallet file truncated: salt missing or incomplete&quot;</span>.to_string(),
         )
@@ -115,19 +119,19 @@
         .expect(<span class="string">&quot;content is missing after a successful hash&quot;</span>);
 
     <span class="comment">// parse AES-GCM nonce
-    </span><span class="kw">let </span>nonce_end_index = salt_end_index + NONCE_SIZE;
-    <span class="kw">let </span>nonce = Nonce::from_slice(data.get(salt_end_index..nonce_end_index).ok_or_else(|| {
+    </span><span class="kw">let </span>nonce_end_index = SALT_SIZE + NONCE_SIZE;
+    <span class="kw">let </span>nonce = Nonce::from_slice(rest.get(SALT_SIZE..nonce_end_index).ok_or_else(|| {
         CipherError::DecryptionError(
             <span class="string">&quot;wallet file truncated: nonce missing or incomplete&quot;</span>.to_string(),
         )
     })<span class="question-mark">?</span>);
 
     <span class="comment">// decrypt the data
-    </span><span class="kw">let </span>cipher = Aes256Gcm::new(Key::from_slice(password_hash.as_bytes()));
+    </span><span class="kw">let </span>cipher = Aes256Gcm::new_from_slice(password_hash.as_bytes()).expect(<span class="string">&quot;invalid size key&quot;</span>);
     <span class="kw">let </span>decrypted_bytes = cipher
         .decrypt(
             nonce,
-            data.get(nonce_end_index..).ok_or_else(|| {
+            rest.get(nonce_end_index..).ok_or_else(|| {
                 CipherError::DecryptionError(
                     <span class="string">&quot;wallet file truncated: encrypted data missing or incomplete&quot;</span>.to_string(),
                 )
@@ -139,4 +143,4 @@
     <span class="prelude-val">Ok</span>((version, decrypted_bytes))
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_cipher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_cipher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

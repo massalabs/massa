@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-ledger-worker/src/ledger_db.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ledger_db.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_ledger_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_ledger_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_ledger_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-ledger-worker/src/ledger_db.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ledger_db.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_ledger_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_ledger_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_ledger_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -523,14 +523,107 @@
 <span id="523">523</span>
 <span id="524">524</span>
 <span id="525">525</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
+<span id="595">595</span>
+<span id="596">596</span>
+<span id="597">597</span>
+<span id="598">598</span>
+<span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="doccomment">//! Module to interact with the disk ledger
+//! Module to interact with the disk ledger
 
 </span><span class="kw">use </span>massa_ledger_exports::<span class="kw-2">*</span>;
-<span class="kw">use </span>massa_models::constants::{ADDRESS_SIZE_BYTES, LEDGER_PART_SIZE_MESSAGE_BYTES};
 <span class="kw">use </span>massa_models::{
-    Address, ModelsError, SerializeCompact, Slot, VecU8Deserializer, VecU8Serializer,
+    address::{Address, ADDRESS_SIZE_BYTES},
+    amount::AmountSerializer,
+    error::ModelsError,
+    serialization::{VecU8Deserializer, VecU8Serializer},
+    slot::{Slot, SlotSerializer},
 };
 <span class="kw">use </span>massa_serialization::{Deserializer, Serializer};
 <span class="kw">use </span>nom::multi::many0;
@@ -539,9 +632,13 @@
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
 <span class="kw">use </span>std::collections::{BTreeSet, HashMap};
+<span class="kw">use </span>std::fmt::Debug;
 <span class="kw">use </span>std::ops::Bound;
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::rc::Rc;
+
+<span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+</span><span class="kw">use </span>massa_models::amount::{Amount, AmountDeserializer};
 
 <span class="kw">const </span>LEDGER_CF: <span class="kw-2">&amp;</span>str = <span class="string">&quot;ledger&quot;</span>;
 <span class="kw">const </span>METADATA_CF: <span class="kw-2">&amp;</span>str = <span class="string">&quot;metadata&quot;</span>;
@@ -552,8 +649,10 @@
 
 <span class="doccomment">/// Ledger sub entry enum
 </span><span class="kw">pub enum </span>LedgerSubEntry {
-    <span class="doccomment">/// Balance
-    </span>Balance,
+    <span class="doccomment">/// Sequential Balance
+    </span>SeqBalance,
+    <span class="doccomment">/// Parallel Balance
+    </span>ParBalance,
     <span class="doccomment">/// Bytecode
     </span>Bytecode,
     <span class="doccomment">/// Datastore entry
@@ -563,8 +662,22 @@
 <span class="doccomment">/// Disk ledger DB module
 ///
 /// Contains a RocksDB DB instance
-</span><span class="attribute">#[derive(Debug)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>LedgerDB(DB);
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>LedgerDB {
+    db: DB,
+    thread_count: u8,
+    amount_serializer: AmountSerializer,
+    slot_serializer: SlotSerializer,
+    max_datastore_key_length: u8,
+    ledger_part_size_message_bytes: u64,
+    <span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+    </span>amount_deserializer: AmountDeserializer,
+}
+
+<span class="kw">impl </span>Debug <span class="kw">for </span>LedgerDB {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">&quot;{:#?}&quot;</span>, <span class="self">self</span>.db)
+    }
+}
 
 <span class="doccomment">/// For a given start prefix (inclusive), returns the correct end prefix (non-inclusive).
 /// This assumes the key bytes are ordered in lexicographical order.
@@ -589,13 +702,17 @@
     <span class="macro">assert_eq!</span>(end_prefix(<span class="kw-2">&amp;</span>[<span class="number">5</span>, <span class="number">6</span>, <span class="number">255</span>]), <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">5</span>, <span class="number">7</span>]));
 }
 
-<span class="comment">// TODO: save attached slot in metadata for a lighter bootstrap after disconnection
-</span><span class="kw">impl </span>LedgerDB {
+<span class="kw">impl </span>LedgerDB {
     <span class="doccomment">/// Create and initialize a new LedgerDB.
     ///
     /// # Arguments
     /// * path: path to the desired disk ledger db directory
-    </span><span class="kw">pub fn </span>new(path: PathBuf) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(
+        path: PathBuf,
+        thread_count: u8,
+        max_datastore_key_length: u8,
+        ledger_part_size_message_bytes: u64,
+    ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = Options::default();
         db_opts.create_if_missing(<span class="bool-val">true</span>);
         db_opts.create_missing_column_families(<span class="bool-val">true</span>);
@@ -610,18 +727,33 @@
         )
         .expect(OPEN_ERROR);
 
-        LedgerDB(db)
+        LedgerDB {
+            db,
+            thread_count,
+            amount_serializer: AmountSerializer::new(),
+            slot_serializer: SlotSerializer::new(),
+            max_datastore_key_length,
+            ledger_part_size_message_bytes,
+            <span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+            </span>amount_deserializer: AmountDeserializer::new(
+                Bound::Included(Amount::MIN),
+                Bound::Included(Amount::MAX),
+            ),
+        }
     }
 
-    <span class="doccomment">/// Set the initial disk ledger
+    <span class="doccomment">/// Loads the initial disk ledger
     ///
     /// # Arguments
-    /// * initial_ledger: initial entries to put in the disk
-    </span><span class="kw">pub fn </span>set_initial_ledger(<span class="kw-2">&amp;mut </span><span class="self">self</span>, initial_ledger: HashMap&lt;Address, LedgerEntry&gt;) {
+    </span><span class="kw">pub fn </span>load_initial_ledger(<span class="kw-2">&amp;mut </span><span class="self">self</span>, initial_ledger: HashMap&lt;Address, LedgerEntry&gt;) {
         <span class="kw">let </span><span class="kw-2">mut </span>batch = WriteBatch::default();
         <span class="kw">for </span>(address, entry) <span class="kw">in </span>initial_ledger {
             <span class="self">self</span>.put_entry(<span class="kw-2">&amp;</span>address, entry, <span class="kw-2">&amp;mut </span>batch);
         }
+        <span class="self">self</span>.set_metadata(
+            Slot::new(<span class="number">0</span>, <span class="self">self</span>.thread_count.saturating_sub(<span class="number">1</span>)),
+            <span class="kw-2">&amp;mut </span>batch,
+        );
         <span class="self">self</span>.write_batch(batch);
     }
 
@@ -664,7 +796,7 @@
     ///
     /// NOTE: the batch is not saved within the object because it cannot be shared between threads safely
     </span><span class="kw">fn </span>write_batch(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: WriteBatch) {
-        <span class="self">self</span>.<span class="number">0</span>.write(batch).expect(CRUD_ERROR);
+        <span class="self">self</span>.db.write(batch).expect(CRUD_ERROR);
     }
 
     <span class="doccomment">/// Set the disk ledger metadata
@@ -675,10 +807,11 @@
     ///
     /// NOTE: right now the metadata is only a Slot, use a struct in the future
     </span><span class="kw">fn </span>set_metadata(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot, batch: <span class="kw-2">&amp;mut </span>WriteBatch) {
-        <span class="kw">let </span>handle = <span class="self">self</span>.<span class="number">0</span>.cf_handle(METADATA_CF).expect(CF_ERROR);
-
-        <span class="comment">// Slot::to_bytes_compact() never fails
-        </span>batch.put_cf(handle, SLOT_KEY, slot.to_bytes_compact().unwrap());
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        <span class="kw">let </span><span class="kw-2">mut </span>bytes = Vec::new();
+        <span class="comment">// Slot serialization never fails
+        </span><span class="self">self</span>.slot_serializer.serialize(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;mut </span>bytes).unwrap();
+        batch.put_cf(handle, SLOT_KEY, bytes);
     }
 
     <span class="doccomment">/// Add every sub-entry individually for a given entry.
@@ -688,15 +821,24 @@
     /// * ledger_entry: complete entry to be added
     /// * batch: the given operation batch to update
     </span><span class="kw">fn </span>put_entry(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, ledger_entry: LedgerEntry, batch: <span class="kw-2">&amp;mut </span>WriteBatch) {
-        <span class="kw">let </span>handle = <span class="self">self</span>.<span class="number">0</span>.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        <span class="comment">// note that Amount serialization never fails
+        </span><span class="kw">let </span><span class="kw-2">mut </span>bytes_parallel_balance = Vec::new();
+        <span class="self">self</span>.amount_serializer
+            .serialize(<span class="kw-2">&amp;</span>ledger_entry.parallel_balance, <span class="kw-2">&amp;mut </span>bytes_parallel_balance)
+            .unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>bytes_sequential_balance = Vec::new();
+        <span class="self">self</span>.amount_serializer
+            .serialize(
+                <span class="kw-2">&amp;</span>ledger_entry.sequential_balance,
+                <span class="kw-2">&amp;mut </span>bytes_sequential_balance,
+            )
+            .unwrap();
+        <span class="comment">// sequential balance
+        </span>batch.put_cf(handle, <span class="macro">seq_balance_key!</span>(addr), bytes_sequential_balance);
 
-        <span class="comment">// balance
-        </span>batch.put_cf(
-            handle,
-            <span class="macro">balance_key!</span>(addr),
-            <span class="comment">// Amount::to_bytes_compact() never fails
-            </span>ledger_entry.parallel_balance.to_bytes_compact().unwrap(),
-        );
+        <span class="comment">// parallel balance
+        </span>batch.put_cf(handle, <span class="macro">par_balance_key!</span>(addr), bytes_parallel_balance);
 
         <span class="comment">// bytecode
         </span>batch.put_cf(handle, <span class="macro">bytecode_key!</span>(addr), ledger_entry.bytecode);
@@ -716,17 +858,24 @@
     /// # Returns
     /// An Option of the sub-entry value as bytes
     </span><span class="kw">pub fn </span>get_sub_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, ty: LedgerSubEntry) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt; {
-        <span class="kw">let </span>handle = <span class="self">self</span>.<span class="number">0</span>.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         <span class="kw">match </span>ty {
-            LedgerSubEntry::Balance =&gt; <span class="self">self</span>.<span class="number">0</span>.get_cf(handle, <span class="macro">balance_key!</span>(addr)).expect(CRUD_ERROR),
+            LedgerSubEntry::SeqBalance =&gt; <span class="self">self
+                </span>.db
+                .get_cf(handle, <span class="macro">seq_balance_key!</span>(addr))
+                .expect(CRUD_ERROR),
+            LedgerSubEntry::ParBalance =&gt; <span class="self">self
+                </span>.db
+                .get_cf(handle, <span class="macro">par_balance_key!</span>(addr))
+                .expect(CRUD_ERROR),
             LedgerSubEntry::Bytecode =&gt; <span class="self">self
-                </span>.<span class="number">0
-                </span>.get_cf(handle, <span class="macro">bytecode_key!</span>(addr))
+                </span>.db
+                .get_cf(handle, <span class="macro">bytecode_key!</span>(addr))
                 .expect(CRUD_ERROR),
             LedgerSubEntry::Datastore(hash) =&gt; <span class="self">self
-                </span>.<span class="number">0
-                </span>.get_cf(handle, <span class="macro">data_key!</span>(addr, hash))
+                </span>.db
+                .get_cf(handle, <span class="macro">data_key!</span>(addr, hash))
                 .expect(CRUD_ERROR),
         }
     }
@@ -736,17 +885,18 @@
     /// # Returns
     /// A BTreeSet of the datastore keys
     </span><span class="kw">pub fn </span>get_datastore_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; BTreeSet&lt;Vec&lt;u8&gt;&gt; {
-        <span class="kw">let </span>handle = <span class="self">self</span>.<span class="number">0</span>.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         <span class="kw">let </span><span class="kw-2">mut </span>opt = ReadOptions::default();
         opt.set_iterate_upper_bound(end_prefix(<span class="macro">data_prefix!</span>(addr)).unwrap());
 
-        <span class="self">self</span>.<span class="number">0
-            </span>.iterator_cf_opt(
+        <span class="self">self</span>.db
+            .iterator_cf_opt(
                 handle,
                 opt,
                 IteratorMode::From(<span class="macro">data_prefix!</span>(addr), Direction::Forward),
             )
+            .flatten()
             .map(|(key, <span class="kw">_</span>)| key.split_at(ADDRESS_SIZE_BYTES + <span class="number">1</span>).<span class="number">1</span>.to_vec())
             .collect()
     }
@@ -762,16 +912,27 @@
         entry_update: LedgerEntryUpdate,
         batch: <span class="kw-2">&amp;mut </span>WriteBatch,
     ) {
-        <span class="kw">let </span>handle = <span class="self">self</span>.<span class="number">0</span>.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
-        <span class="comment">// balance
+        <span class="comment">// sequential balance
+        // note that Amount::to_bytes_compact() never fails
+        </span><span class="kw">if let </span>SetOrKeep::Set(balance) = entry_update.sequential_balance {
+            <span class="kw">let </span><span class="kw-2">mut </span>bytes = Vec::new();
+            <span class="comment">// Amount serialization never fails
+            </span><span class="self">self</span>.amount_serializer
+                .serialize(<span class="kw-2">&amp;</span>balance, <span class="kw-2">&amp;mut </span>bytes)
+                .unwrap();
+            batch.put_cf(handle, <span class="macro">seq_balance_key!</span>(addr), bytes);
+        }
+
+        <span class="comment">// parallel balance
         </span><span class="kw">if let </span>SetOrKeep::Set(balance) = entry_update.parallel_balance {
-            batch.put_cf(
-                handle,
-                <span class="macro">balance_key!</span>(addr),
-                <span class="comment">// Amount::to_bytes_compact() never fails
-                </span>balance.to_bytes_compact().unwrap(),
-            );
+            <span class="kw">let </span><span class="kw-2">mut </span>bytes = Vec::new();
+            <span class="comment">// Amount serialization never fails
+            </span><span class="self">self</span>.amount_serializer
+                .serialize(<span class="kw-2">&amp;</span>balance, <span class="kw-2">&amp;mut </span>bytes)
+                .unwrap();
+            batch.put_cf(handle, <span class="macro">par_balance_key!</span>(addr), bytes);
         }
 
         <span class="comment">// bytecode
@@ -793,22 +954,29 @@
     /// # Arguments
     /// * batch: the given operation batch to update
     </span><span class="kw">fn </span>delete_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, batch: <span class="kw-2">&amp;mut </span>WriteBatch) {
-        <span class="kw">let </span>handle = <span class="self">self</span>.<span class="number">0</span>.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
-        <span class="comment">// balance
-        </span>batch.delete_cf(handle, <span class="macro">balance_key!</span>(addr));
+        <span class="comment">// sequential balance
+        </span>batch.delete_cf(handle, <span class="macro">seq_balance_key!</span>(addr));
+
+        <span class="comment">// parallel balance
+        </span>batch.delete_cf(handle, <span class="macro">par_balance_key!</span>(addr));
 
         <span class="comment">// bytecode
-        </span>batch.delete_cf(handle, <span class="macro">balance_key!</span>(addr));
+        </span>batch.delete_cf(handle, <span class="macro">bytecode_key!</span>(addr));
 
         <span class="comment">// datastore
         </span><span class="kw">let </span><span class="kw-2">mut </span>opt = ReadOptions::default();
         opt.set_iterate_upper_bound(end_prefix(<span class="macro">data_prefix!</span>(addr)).unwrap());
-        <span class="kw">for </span>(key, <span class="kw">_</span>) <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.iterator_cf_opt(
-            handle,
-            opt,
-            IteratorMode::From(<span class="macro">data_prefix!</span>(addr), Direction::Forward),
-        ) {
+        <span class="kw">for </span>(key, <span class="kw">_</span>) <span class="kw">in </span><span class="self">self
+            </span>.db
+            .iterator_cf_opt(
+                handle,
+                opt,
+                IteratorMode::From(<span class="macro">data_prefix!</span>(addr), Direction::Forward),
+            )
+            .flatten()
+        {
             batch.delete_cf(handle, key);
         }
     }
@@ -829,25 +997,25 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;), ModelsError&gt; {
         <span class="kw">let </span>ser = VecU8Serializer::new();
         <span class="kw">let </span>key_serializer = KeySerializer::new();
-        <span class="kw">let </span>handle = <span class="self">self</span>.<span class="number">0</span>.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         <span class="kw">let </span><span class="kw-2">mut </span>part = Vec::new();
         <span class="kw">let </span>opt = ReadOptions::default();
 
         <span class="comment">// Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key of the ledger.
         </span><span class="kw">let </span>db_iterator = <span class="kw">if let </span><span class="prelude-val">Some</span>(key) = last_key {
             <span class="kw">let </span><span class="kw-2">mut </span>iter =
-                <span class="self">self</span>.<span class="number">0
-                    </span>.iterator_cf_opt(handle, opt, IteratorMode::From(key, Direction::Forward));
+                <span class="self">self</span>.db
+                    .iterator_cf_opt(handle, opt, IteratorMode::From(key, Direction::Forward));
             iter.next();
             iter
         } <span class="kw">else </span>{
-            <span class="self">self</span>.<span class="number">0</span>.iterator_cf_opt(handle, opt, IteratorMode::Start)
+            <span class="self">self</span>.db.iterator_cf_opt(handle, opt, IteratorMode::Start)
         };
         <span class="kw">let </span><span class="kw-2">mut </span>last_key = <span class="prelude-val">None</span>;
 
         <span class="comment">// Iterates over the whole database
-        </span><span class="kw">for </span>(key, entry) <span class="kw">in </span>db_iterator {
-            <span class="kw">if </span>(part.len() <span class="kw">as </span>u64) &lt; (LEDGER_PART_SIZE_MESSAGE_BYTES) {
+        </span><span class="kw">for </span>(key, entry) <span class="kw">in </span>db_iterator.flatten() {
+            <span class="kw">if </span>(part.len() <span class="kw">as </span>u64) &lt; (<span class="self">self</span>.ledger_part_size_message_bytes) {
                 key_serializer.serialize(<span class="kw-2">&amp;</span>key.to_vec(), <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
                 ser.serialize(<span class="kw-2">&amp;</span>entry.to_vec(), <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
                 last_key = <span class="prelude-val">Some</span>(key.to_vec());
@@ -868,10 +1036,10 @@
     /// # Returns
     /// The last key of the inserted entry (this is an optimization to easily keep a reference to the last key)
     </span><span class="kw">pub fn </span>set_ledger_part&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, data: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;, ModelsError&gt; {
-        <span class="kw">let </span>handle = <span class="self">self</span>.<span class="number">0</span>.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         <span class="kw">let </span>vec_u8_deserializer =
             VecU8Deserializer::new(Bound::Included(<span class="number">0</span>), Bound::Excluded(u64::MAX));
-        <span class="kw">let </span>key_deserializer = KeyDeserializer::new();
+        <span class="kw">let </span>key_deserializer = KeyDeserializer::new(<span class="self">self</span>.max_datastore_key_length);
         <span class="kw">let </span><span class="kw-2">mut </span>last_key = Rc::new(<span class="prelude-val">None</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>batch = WriteBatch::default();
 
@@ -891,10 +1059,9 @@
 
         <span class="comment">// Every byte should have been read
         </span><span class="kw">if </span>rest.is_empty() {
-            <span class="self">self</span>.<span class="number">0</span>.write(batch).expect(CRUD_ERROR);
+            <span class="self">self</span>.db.write(batch).expect(CRUD_ERROR);
             <span class="prelude-val">Ok</span>((<span class="kw-2">*</span>last_key).clone())
         } <span class="kw">else </span>{
-            <span class="macro">println!</span>(<span class="string">&quot;REST LEN = {}&quot;</span>, rest.len());
             <span class="prelude-val">Err</span>(ModelsError::SerializeError(
                 <span class="string">&quot;rest is not empty.&quot;</span>.to_string(),
             ))
@@ -908,28 +1075,31 @@
     /// # Returns
     /// A BTreeMap with the address as key and the balance as value
     </span><span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
-    </span><span class="kw">pub fn </span>get_every_address(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; std::collections::BTreeMap&lt;Address, massa_models::Amount&gt; {
-        <span class="kw">use </span>massa_models::{address::AddressDeserializer, DeserializeCompact};
+    </span><span class="kw">pub fn </span>get_every_address(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+    ) -&gt; std::collections::BTreeMap&lt;Address, massa_models::amount::Amount&gt; {
+        <span class="kw">use </span>massa_models::address::AddressDeserializer;
         <span class="kw">use </span>massa_serialization::DeserializeError;
 
-        <span class="kw">let </span>handle = <span class="self">self</span>.<span class="number">0</span>.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         <span class="kw">let </span>ledger = <span class="self">self
-            </span>.<span class="number">0
-            </span>.iterator_cf(handle, IteratorMode::Start)
+            </span>.db
+            .iterator_cf(handle, IteratorMode::Start)
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
         <span class="kw">let </span><span class="kw-2">mut </span>addresses = std::collections::BTreeMap::new();
         <span class="kw">let </span>address_deserializer = AddressDeserializer::new();
-        <span class="kw">for </span>(key, entry) <span class="kw">in </span>ledger {
+        <span class="kw">for </span>(key, entry) <span class="kw">in </span>ledger.iter().flatten() {
             <span class="kw">let </span>(rest, address) = address_deserializer
                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>key[..])
                 .unwrap();
-            <span class="kw">if </span>rest.first() == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>BALANCE_IDENT) {
-                addresses.insert(
-                    address,
-                    massa_models::Amount::from_bytes_compact(<span class="kw-2">&amp;</span>entry).unwrap().<span class="number">0</span>,
-                );
+            <span class="kw">if </span>rest.first() == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>SEQ_BALANCE_IDENT) {
+                <span class="kw">let </span>(<span class="kw">_</span>, amount) = <span class="self">self
+                    </span>.amount_deserializer
+                    .deserialize::&lt;DeserializeError&gt;(entry)
+                    .unwrap();
+                addresses.insert(address, amount);
             }
         }
         addresses
@@ -946,17 +1116,18 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         addr: <span class="kw-2">&amp;</span>Address,
     ) -&gt; std::collections::BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt; {
-        <span class="kw">let </span>handle = <span class="self">self</span>.<span class="number">0</span>.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         <span class="kw">let </span><span class="kw-2">mut </span>opt = ReadOptions::default();
         opt.set_iterate_upper_bound(end_prefix(<span class="macro">data_prefix!</span>(addr)).unwrap());
 
-        <span class="self">self</span>.<span class="number">0
-            </span>.iterator_cf_opt(
+        <span class="self">self</span>.db
+            .iterator_cf_opt(
                 handle,
                 opt,
                 IteratorMode::From(<span class="macro">data_prefix!</span>(addr), Direction::Forward),
             )
+            .flatten()
             .map(|(key, data)| {
                 (
                     key.split_at(ADDRESS_SIZE_BYTES + <span class="number">1</span>).<span class="number">1</span>.to_vec(),
@@ -972,10 +1143,15 @@
     <span class="kw">use </span><span class="kw">super</span>::LedgerDB;
     <span class="kw">use </span><span class="kw">crate</span>::ledger_db::LedgerSubEntry;
     <span class="kw">use </span>massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
-    <span class="kw">use </span>massa_models::{Address, Amount, DeserializeCompact};
+    <span class="kw">use </span>massa_models::{
+        address::Address,
+        amount::{Amount, AmountDeserializer},
+    };
+    <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
     <span class="kw">use </span>massa_signature::KeyPair;
     <span class="kw">use </span>rocksdb::WriteBatch;
     <span class="kw">use </span>std::collections::BTreeMap;
+    <span class="kw">use </span>std::ops::Bound::Included;
     <span class="kw">use </span>tempfile::TempDir;
 
     <span class="attribute">#[cfg(test)]
@@ -998,7 +1174,7 @@
 
         <span class="comment">// write data
         </span><span class="kw">let </span>temp_dir = TempDir::new().unwrap();
-        <span class="kw">let </span><span class="kw-2">mut </span>db = LedgerDB::new(temp_dir.path().to_path_buf());
+        <span class="kw">let </span><span class="kw-2">mut </span>db = LedgerDB::new(temp_dir.path().to_path_buf(), <span class="number">32</span>, <span class="number">255</span>, <span class="number">1_000_000</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>batch = WriteBatch::default();
         db.put_entry(<span class="kw-2">&amp;</span>addr, entry, <span class="kw-2">&amp;mut </span>batch);
         db.update_entry(<span class="kw-2">&amp;</span>addr, entry_update, <span class="kw-2">&amp;mut </span>batch);
@@ -1017,16 +1193,20 @@
         <span class="kw">let </span>a = Address::from_public_key(<span class="kw-2">&amp;</span>pub_a);
         <span class="kw">let </span>b = Address::from_public_key(<span class="kw-2">&amp;</span>pub_b);
         <span class="kw">let </span>(db, data) = init_test_ledger(a);
-
+        <span class="kw">let </span>amount_deserializer =
+            AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
         <span class="comment">// first assert
-        </span><span class="macro">assert!</span>(db.get_sub_entry(<span class="kw-2">&amp;</span>a, LedgerSubEntry::Balance).is_some());
+        </span><span class="macro">assert!</span>(db.get_sub_entry(<span class="kw-2">&amp;</span>a, LedgerSubEntry::ParBalance).is_some());
         <span class="macro">assert_eq!</span>(
-            Amount::from_bytes_compact(<span class="kw-2">&amp;</span>db.get_sub_entry(<span class="kw-2">&amp;</span>a, LedgerSubEntry::Balance).unwrap())
+            amount_deserializer
+                .deserialize::&lt;DeserializeError&gt;(
+                    <span class="kw-2">&amp;</span>db.get_sub_entry(<span class="kw-2">&amp;</span>a, LedgerSubEntry::ParBalance).unwrap()
+                )
                 .unwrap()
-                .<span class="number">0</span>,
+                .<span class="number">1</span>,
             Amount::from_mantissa_scale(<span class="number">21</span>, <span class="number">0</span>)
         );
-        <span class="macro">assert!</span>(db.get_sub_entry(<span class="kw-2">&amp;</span>b, LedgerSubEntry::Balance).is_none());
+        <span class="macro">assert!</span>(db.get_sub_entry(<span class="kw-2">&amp;</span>b, LedgerSubEntry::ParBalance).is_none());
         <span class="macro">assert_eq!</span>(data, db.get_entire_datastore(<span class="kw-2">&amp;</span>a));
 
         <span class="comment">// delete entry
@@ -1035,7 +1215,7 @@
         db.write_batch(batch);
 
         <span class="comment">// second assert
-        </span><span class="macro">assert!</span>(db.get_sub_entry(<span class="kw-2">&amp;</span>a, LedgerSubEntry::Balance).is_none());
+        </span><span class="macro">assert!</span>(db.get_sub_entry(<span class="kw-2">&amp;</span>a, LedgerSubEntry::ParBalance).is_none());
         <span class="macro">assert!</span>(db.get_entire_datastore(<span class="kw-2">&amp;</span>a).is_empty());
     }
 
@@ -1049,4 +1229,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

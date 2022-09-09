@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-network-worker/src/peer_info_database.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>peer_info_database.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_network_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-network-worker/src/peer_info_database.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>peer_info_database.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_network_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -984,18 +984,16 @@
 <span id="984">984</span>
 <span id="985">985</span>
 <span id="986">986</span>
-<span id="987">987</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>enum_map::EnumMap;
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>massa_logging::massa_trace;
-<span class="kw">use </span>massa_models::constants::MAX_ADVERTISE_LENGTH;
 <span class="kw">use </span>massa_network_exports::settings::PeerTypeConnectionConfig;
 <span class="kw">use </span>massa_network_exports::ConnectionCount;
+<span class="kw">use </span>massa_network_exports::NetworkConfig;
 <span class="kw">use </span>massa_network_exports::NetworkConnectionErrorType;
 <span class="kw">use </span>massa_network_exports::NetworkError;
-<span class="kw">use </span>massa_network_exports::NetworkSettings;
 <span class="kw">use </span>massa_network_exports::PeerInfo;
 <span class="kw">use </span>massa_network_exports::PeerType;
 <span class="kw">use </span>massa_time::MassaTime;
@@ -1011,7 +1009,7 @@
 <span class="doccomment">/// Contains all information about every peers we know about.
 </span><span class="kw">pub struct </span>PeerInfoDatabase {
     <span class="doccomment">/// Network configuration.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) network_settings: NetworkSettings,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) network_settings: NetworkConfig,
     <span class="doccomment">/// Maps an ip address to peer&#39;s info
     </span><span class="kw">pub </span>peers: HashMap&lt;IpAddr, PeerInfo&gt;,
     <span class="doccomment">/// Handle on the task managing the dump
@@ -1062,13 +1060,13 @@
 /// Note: only standard non-active peers are counted when clipping to size limits.
 ///
 /// Arguments :
-/// * `cfg`: `NetworkSettings`
+/// * `cfg`: `NetworkConfig`
 /// * `peers`: peers to clean up
 /// * `opt_new_peers`: optional peers to add to the database
 /// * `clock_compensation`: to be sync with server time
 /// * `ban_timeout`: after that time we forget we banned a peer
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>cleanup_peers(
-    cfg: <span class="kw-2">&amp;</span>NetworkSettings,
+    cfg: <span class="kw-2">&amp;</span>NetworkConfig,
     peers: <span class="kw-2">&amp;mut </span>HashMap&lt;IpAddr, PeerInfo&gt;,
     opt_new_peers: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Vec&lt;IpAddr&gt;&gt;,
     clock_compensation: i64,
@@ -1098,7 +1096,7 @@
                 }
                 <span class="bool-val">true
             </span>})
-            .take(MAX_ADVERTISE_LENGTH <span class="kw">as </span>usize)
+            .take(cfg.max_peer_advertise_length <span class="kw">as </span>usize)
             .map(|ip| PeerInfo::new(ip, <span class="bool-val">true</span>))
             .collect()
     } <span class="kw">else </span>{
@@ -1142,7 +1140,7 @@
 
     <span class="comment">// sort and truncate inactive banned peers
     // forget about old banned peers
-    </span><span class="kw">let </span>ban_limit = MassaTime::compensated_now(clock_compensation)<span class="question-mark">?</span>.saturating_sub(ban_timeout);
+    </span><span class="kw">let </span>ban_limit = MassaTime::now(clock_compensation)<span class="question-mark">?</span>.saturating_sub(ban_timeout);
     banned_peers.retain(|p| p.last_failure.map_or(<span class="bool-val">false</span>, |v| v &gt;= ban_limit));
     banned_peers.sort_unstable_by_key(|<span class="kw-2">&amp;</span>p| (std::cmp::Reverse(p.last_failure), p.last_alive));
     banned_peers.truncate(cfg.max_banned_peers);
@@ -1161,7 +1159,7 @@
     /// # Argument
     /// * `cfg`: network configuration
     /// * `clock_compensation`: sync with server
-    </span><span class="kw">pub async fn </span>new(cfg: <span class="kw-2">&amp;</span>NetworkSettings, clock_compensation: i64) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NetworkError&gt; {
+    </span><span class="kw">pub async fn </span>new(cfg: <span class="kw-2">&amp;</span>NetworkConfig, clock_compensation: i64) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NetworkError&gt; {
         <span class="comment">// wakeup interval
         </span><span class="kw">let </span>wakeup_interval = cfg.wakeup_interval;
 
@@ -1462,7 +1460,7 @@
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
             })<span class="question-mark">?
-            </span>.last_alive = <span class="prelude-val">Some</span>(MassaTime::compensated_now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>);
+            </span>.last_alive = <span class="prelude-val">Some</span>(MassaTime::now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>);
         <span class="self">self</span>.request_dump()
     }
 
@@ -1480,7 +1478,7 @@
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
             })<span class="question-mark">?
-            </span>.last_failure = <span class="prelude-val">Some</span>(MassaTime::compensated_now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>);
+            </span>.last_failure = <span class="prelude-val">Some</span>(MassaTime::now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>);
         <span class="self">self</span>.request_dump()
     }
 
@@ -1496,7 +1494,7 @@
             </span>.peers
             .entry(ip)
             .or_insert_with(|| PeerInfo::new(ip, <span class="bool-val">false</span>));
-        peer.last_failure = <span class="prelude-val">Some</span>(MassaTime::compensated_now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>);
+        peer.last_failure = <span class="prelude-val">Some</span>(MassaTime::now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>);
         <span class="kw">if </span>!peer.banned {
             peer.banned = <span class="bool-val">true</span>;
             <span class="kw">if </span>!peer.is_active() {
@@ -1631,7 +1629,7 @@
             peer.advertised = <span class="bool-val">true</span>; <span class="comment">// we just connected to it. Assume advertised.
 
             </span><span class="kw">if </span>peer.banned {
-                peer.last_failure = <span class="prelude-val">Some</span>(MassaTime::compensated_now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>);
+                peer.last_failure = <span class="prelude-val">Some</span>(MassaTime::now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>);
                 <span class="kw">if </span>!peer.is_active() &amp;&amp; peer.peer_type == Default::default() {
                     <span class="self">self</span>.update()<span class="question-mark">?</span>;
                 }
@@ -1675,7 +1673,7 @@
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 ))<span class="question-mark">?</span>;
             peer.active_out_connection_attempts -= <span class="number">1</span>;
-            peer.last_failure = <span class="prelude-val">Some</span>(MassaTime::compensated_now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>);
+            peer.last_failure = <span class="prelude-val">Some</span>(MassaTime::now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>);
             <span class="kw">let </span>pt = peer.peer_type;
             <span class="kw">if </span>!peer.is_active() &amp;&amp; peer.peer_type == PeerType::Standard {
                 <span class="self">self</span>.update()<span class="question-mark">?</span>;
@@ -1735,7 +1733,7 @@
             // is there a attempt slot available
             </span><span class="kw">if </span>peer.banned {
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;in_connection_refused_peer_banned&quot;</span>, {<span class="string">&quot;ip&quot;</span>: peer.ip});
-                peer.last_failure = <span class="prelude-val">Some</span>(MassaTime::compensated_now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>);
+                peer.last_failure = <span class="prelude-val">Some</span>(MassaTime::now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>);
                 <span class="self">self</span>.request_dump()<span class="question-mark">?</span>;
                 <span class="kw">return </span><span class="prelude-val">Err</span>(NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::BannedPeerTryingToConnect(ip),
@@ -1797,12 +1795,12 @@
         sorted_peers.sort_unstable_by_key(|<span class="kw-2">&amp;</span>p| (std::cmp::Reverse(p.last_alive), p.last_failure));
         <span class="kw">let </span><span class="kw-2">mut </span>sorted_ips: Vec&lt;IpAddr&gt; = sorted_peers
             .into_iter()
-            .take(MAX_ADVERTISE_LENGTH <span class="kw">as </span>usize)
+            .take(<span class="self">self</span>.network_settings.max_peer_advertise_length <span class="kw">as </span>usize)
             .map(|p| p.ip)
             .collect();
         <span class="kw">if let </span><span class="prelude-val">Some</span>(our_ip) = <span class="self">self</span>.network_settings.routable_ip {
             sorted_ips.insert(<span class="number">0</span>, our_ip.to_canonical());
-            sorted_ips.truncate(MAX_ADVERTISE_LENGTH <span class="kw">as </span>usize);
+            sorted_ips.truncate(<span class="self">self</span>.network_settings.max_peer_advertise_length <span class="kw">as </span>usize);
         }
         sorted_ips
     }
@@ -1842,7 +1840,7 @@
         cfg: <span class="kw-2">&amp;</span>PeerTypeConnectionConfig,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;IpAddr&gt;, NetworkError&gt; {
         <span class="kw">let </span>available_slots = count.get_available_out_connection_attempts(cfg);
-        <span class="kw">let </span>now = MassaTime::compensated_now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>;
+        <span class="kw">let </span>now = MassaTime::now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>;
         <span class="kw">let </span>f = <span class="kw">move </span>|p: &amp;&amp;PeerInfo| {
             <span class="kw">if </span>p.peer_type != peer_type || !p.advertised || p.is_active() || p.banned {
                 <span class="kw">return </span><span class="bool-val">false</span>;
@@ -1973,4 +1971,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

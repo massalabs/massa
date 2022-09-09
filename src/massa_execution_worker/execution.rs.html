@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/execution.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>execution.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/execution.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>execution.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -846,6 +846,472 @@
 <span id="846">846</span>
 <span id="847">847</span>
 <span id="848">848</span>
+<span id="849">849</span>
+<span id="850">850</span>
+<span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
+<span id="900">900</span>
+<span id="901">901</span>
+<span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
+<span id="905">905</span>
+<span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
+<span id="911">911</span>
+<span id="912">912</span>
+<span id="913">913</span>
+<span id="914">914</span>
+<span id="915">915</span>
+<span id="916">916</span>
+<span id="917">917</span>
+<span id="918">918</span>
+<span id="919">919</span>
+<span id="920">920</span>
+<span id="921">921</span>
+<span id="922">922</span>
+<span id="923">923</span>
+<span id="924">924</span>
+<span id="925">925</span>
+<span id="926">926</span>
+<span id="927">927</span>
+<span id="928">928</span>
+<span id="929">929</span>
+<span id="930">930</span>
+<span id="931">931</span>
+<span id="932">932</span>
+<span id="933">933</span>
+<span id="934">934</span>
+<span id="935">935</span>
+<span id="936">936</span>
+<span id="937">937</span>
+<span id="938">938</span>
+<span id="939">939</span>
+<span id="940">940</span>
+<span id="941">941</span>
+<span id="942">942</span>
+<span id="943">943</span>
+<span id="944">944</span>
+<span id="945">945</span>
+<span id="946">946</span>
+<span id="947">947</span>
+<span id="948">948</span>
+<span id="949">949</span>
+<span id="950">950</span>
+<span id="951">951</span>
+<span id="952">952</span>
+<span id="953">953</span>
+<span id="954">954</span>
+<span id="955">955</span>
+<span id="956">956</span>
+<span id="957">957</span>
+<span id="958">958</span>
+<span id="959">959</span>
+<span id="960">960</span>
+<span id="961">961</span>
+<span id="962">962</span>
+<span id="963">963</span>
+<span id="964">964</span>
+<span id="965">965</span>
+<span id="966">966</span>
+<span id="967">967</span>
+<span id="968">968</span>
+<span id="969">969</span>
+<span id="970">970</span>
+<span id="971">971</span>
+<span id="972">972</span>
+<span id="973">973</span>
+<span id="974">974</span>
+<span id="975">975</span>
+<span id="976">976</span>
+<span id="977">977</span>
+<span id="978">978</span>
+<span id="979">979</span>
+<span id="980">980</span>
+<span id="981">981</span>
+<span id="982">982</span>
+<span id="983">983</span>
+<span id="984">984</span>
+<span id="985">985</span>
+<span id="986">986</span>
+<span id="987">987</span>
+<span id="988">988</span>
+<span id="989">989</span>
+<span id="990">990</span>
+<span id="991">991</span>
+<span id="992">992</span>
+<span id="993">993</span>
+<span id="994">994</span>
+<span id="995">995</span>
+<span id="996">996</span>
+<span id="997">997</span>
+<span id="998">998</span>
+<span id="999">999</span>
+<span id="1000">1000</span>
+<span id="1001">1001</span>
+<span id="1002">1002</span>
+<span id="1003">1003</span>
+<span id="1004">1004</span>
+<span id="1005">1005</span>
+<span id="1006">1006</span>
+<span id="1007">1007</span>
+<span id="1008">1008</span>
+<span id="1009">1009</span>
+<span id="1010">1010</span>
+<span id="1011">1011</span>
+<span id="1012">1012</span>
+<span id="1013">1013</span>
+<span id="1014">1014</span>
+<span id="1015">1015</span>
+<span id="1016">1016</span>
+<span id="1017">1017</span>
+<span id="1018">1018</span>
+<span id="1019">1019</span>
+<span id="1020">1020</span>
+<span id="1021">1021</span>
+<span id="1022">1022</span>
+<span id="1023">1023</span>
+<span id="1024">1024</span>
+<span id="1025">1025</span>
+<span id="1026">1026</span>
+<span id="1027">1027</span>
+<span id="1028">1028</span>
+<span id="1029">1029</span>
+<span id="1030">1030</span>
+<span id="1031">1031</span>
+<span id="1032">1032</span>
+<span id="1033">1033</span>
+<span id="1034">1034</span>
+<span id="1035">1035</span>
+<span id="1036">1036</span>
+<span id="1037">1037</span>
+<span id="1038">1038</span>
+<span id="1039">1039</span>
+<span id="1040">1040</span>
+<span id="1041">1041</span>
+<span id="1042">1042</span>
+<span id="1043">1043</span>
+<span id="1044">1044</span>
+<span id="1045">1045</span>
+<span id="1046">1046</span>
+<span id="1047">1047</span>
+<span id="1048">1048</span>
+<span id="1049">1049</span>
+<span id="1050">1050</span>
+<span id="1051">1051</span>
+<span id="1052">1052</span>
+<span id="1053">1053</span>
+<span id="1054">1054</span>
+<span id="1055">1055</span>
+<span id="1056">1056</span>
+<span id="1057">1057</span>
+<span id="1058">1058</span>
+<span id="1059">1059</span>
+<span id="1060">1060</span>
+<span id="1061">1061</span>
+<span id="1062">1062</span>
+<span id="1063">1063</span>
+<span id="1064">1064</span>
+<span id="1065">1065</span>
+<span id="1066">1066</span>
+<span id="1067">1067</span>
+<span id="1068">1068</span>
+<span id="1069">1069</span>
+<span id="1070">1070</span>
+<span id="1071">1071</span>
+<span id="1072">1072</span>
+<span id="1073">1073</span>
+<span id="1074">1074</span>
+<span id="1075">1075</span>
+<span id="1076">1076</span>
+<span id="1077">1077</span>
+<span id="1078">1078</span>
+<span id="1079">1079</span>
+<span id="1080">1080</span>
+<span id="1081">1081</span>
+<span id="1082">1082</span>
+<span id="1083">1083</span>
+<span id="1084">1084</span>
+<span id="1085">1085</span>
+<span id="1086">1086</span>
+<span id="1087">1087</span>
+<span id="1088">1088</span>
+<span id="1089">1089</span>
+<span id="1090">1090</span>
+<span id="1091">1091</span>
+<span id="1092">1092</span>
+<span id="1093">1093</span>
+<span id="1094">1094</span>
+<span id="1095">1095</span>
+<span id="1096">1096</span>
+<span id="1097">1097</span>
+<span id="1098">1098</span>
+<span id="1099">1099</span>
+<span id="1100">1100</span>
+<span id="1101">1101</span>
+<span id="1102">1102</span>
+<span id="1103">1103</span>
+<span id="1104">1104</span>
+<span id="1105">1105</span>
+<span id="1106">1106</span>
+<span id="1107">1107</span>
+<span id="1108">1108</span>
+<span id="1109">1109</span>
+<span id="1110">1110</span>
+<span id="1111">1111</span>
+<span id="1112">1112</span>
+<span id="1113">1113</span>
+<span id="1114">1114</span>
+<span id="1115">1115</span>
+<span id="1116">1116</span>
+<span id="1117">1117</span>
+<span id="1118">1118</span>
+<span id="1119">1119</span>
+<span id="1120">1120</span>
+<span id="1121">1121</span>
+<span id="1122">1122</span>
+<span id="1123">1123</span>
+<span id="1124">1124</span>
+<span id="1125">1125</span>
+<span id="1126">1126</span>
+<span id="1127">1127</span>
+<span id="1128">1128</span>
+<span id="1129">1129</span>
+<span id="1130">1130</span>
+<span id="1131">1131</span>
+<span id="1132">1132</span>
+<span id="1133">1133</span>
+<span id="1134">1134</span>
+<span id="1135">1135</span>
+<span id="1136">1136</span>
+<span id="1137">1137</span>
+<span id="1138">1138</span>
+<span id="1139">1139</span>
+<span id="1140">1140</span>
+<span id="1141">1141</span>
+<span id="1142">1142</span>
+<span id="1143">1143</span>
+<span id="1144">1144</span>
+<span id="1145">1145</span>
+<span id="1146">1146</span>
+<span id="1147">1147</span>
+<span id="1148">1148</span>
+<span id="1149">1149</span>
+<span id="1150">1150</span>
+<span id="1151">1151</span>
+<span id="1152">1152</span>
+<span id="1153">1153</span>
+<span id="1154">1154</span>
+<span id="1155">1155</span>
+<span id="1156">1156</span>
+<span id="1157">1157</span>
+<span id="1158">1158</span>
+<span id="1159">1159</span>
+<span id="1160">1160</span>
+<span id="1161">1161</span>
+<span id="1162">1162</span>
+<span id="1163">1163</span>
+<span id="1164">1164</span>
+<span id="1165">1165</span>
+<span id="1166">1166</span>
+<span id="1167">1167</span>
+<span id="1168">1168</span>
+<span id="1169">1169</span>
+<span id="1170">1170</span>
+<span id="1171">1171</span>
+<span id="1172">1172</span>
+<span id="1173">1173</span>
+<span id="1174">1174</span>
+<span id="1175">1175</span>
+<span id="1176">1176</span>
+<span id="1177">1177</span>
+<span id="1178">1178</span>
+<span id="1179">1179</span>
+<span id="1180">1180</span>
+<span id="1181">1181</span>
+<span id="1182">1182</span>
+<span id="1183">1183</span>
+<span id="1184">1184</span>
+<span id="1185">1185</span>
+<span id="1186">1186</span>
+<span id="1187">1187</span>
+<span id="1188">1188</span>
+<span id="1189">1189</span>
+<span id="1190">1190</span>
+<span id="1191">1191</span>
+<span id="1192">1192</span>
+<span id="1193">1193</span>
+<span id="1194">1194</span>
+<span id="1195">1195</span>
+<span id="1196">1196</span>
+<span id="1197">1197</span>
+<span id="1198">1198</span>
+<span id="1199">1199</span>
+<span id="1200">1200</span>
+<span id="1201">1201</span>
+<span id="1202">1202</span>
+<span id="1203">1203</span>
+<span id="1204">1204</span>
+<span id="1205">1205</span>
+<span id="1206">1206</span>
+<span id="1207">1207</span>
+<span id="1208">1208</span>
+<span id="1209">1209</span>
+<span id="1210">1210</span>
+<span id="1211">1211</span>
+<span id="1212">1212</span>
+<span id="1213">1213</span>
+<span id="1214">1214</span>
+<span id="1215">1215</span>
+<span id="1216">1216</span>
+<span id="1217">1217</span>
+<span id="1218">1218</span>
+<span id="1219">1219</span>
+<span id="1220">1220</span>
+<span id="1221">1221</span>
+<span id="1222">1222</span>
+<span id="1223">1223</span>
+<span id="1224">1224</span>
+<span id="1225">1225</span>
+<span id="1226">1226</span>
+<span id="1227">1227</span>
+<span id="1228">1228</span>
+<span id="1229">1229</span>
+<span id="1230">1230</span>
+<span id="1231">1231</span>
+<span id="1232">1232</span>
+<span id="1233">1233</span>
+<span id="1234">1234</span>
+<span id="1235">1235</span>
+<span id="1236">1236</span>
+<span id="1237">1237</span>
+<span id="1238">1238</span>
+<span id="1239">1239</span>
+<span id="1240">1240</span>
+<span id="1241">1241</span>
+<span id="1242">1242</span>
+<span id="1243">1243</span>
+<span id="1244">1244</span>
+<span id="1245">1245</span>
+<span id="1246">1246</span>
+<span id="1247">1247</span>
+<span id="1248">1248</span>
+<span id="1249">1249</span>
+<span id="1250">1250</span>
+<span id="1251">1251</span>
+<span id="1252">1252</span>
+<span id="1253">1253</span>
+<span id="1254">1254</span>
+<span id="1255">1255</span>
+<span id="1256">1256</span>
+<span id="1257">1257</span>
+<span id="1258">1258</span>
+<span id="1259">1259</span>
+<span id="1260">1260</span>
+<span id="1261">1261</span>
+<span id="1262">1262</span>
+<span id="1263">1263</span>
+<span id="1264">1264</span>
+<span id="1265">1265</span>
+<span id="1266">1266</span>
+<span id="1267">1267</span>
+<span id="1268">1268</span>
+<span id="1269">1269</span>
+<span id="1270">1270</span>
+<span id="1271">1271</span>
+<span id="1272">1272</span>
+<span id="1273">1273</span>
+<span id="1274">1274</span>
+<span id="1275">1275</span>
+<span id="1276">1276</span>
+<span id="1277">1277</span>
+<span id="1278">1278</span>
+<span id="1279">1279</span>
+<span id="1280">1280</span>
+<span id="1281">1281</span>
+<span id="1282">1282</span>
+<span id="1283">1283</span>
+<span id="1284">1284</span>
+<span id="1285">1285</span>
+<span id="1286">1286</span>
+<span id="1287">1287</span>
+<span id="1288">1288</span>
+<span id="1289">1289</span>
+<span id="1290">1290</span>
+<span id="1291">1291</span>
+<span id="1292">1292</span>
+<span id="1293">1293</span>
+<span id="1294">1294</span>
+<span id="1295">1295</span>
+<span id="1296">1296</span>
+<span id="1297">1297</span>
+<span id="1298">1298</span>
+<span id="1299">1299</span>
+<span id="1300">1300</span>
+<span id="1301">1301</span>
+<span id="1302">1302</span>
+<span id="1303">1303</span>
+<span id="1304">1304</span>
+<span id="1305">1305</span>
+<span id="1306">1306</span>
+<span id="1307">1307</span>
+<span id="1308">1308</span>
+<span id="1309">1309</span>
+<span id="1310">1310</span>
+<span id="1311">1311</span>
+<span id="1312">1312</span>
+<span id="1313">1313</span>
+<span id="1314">1314</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -859,6 +1325,7 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::{ActiveHistory, HistorySearchResult};
 <span class="kw">use </span><span class="kw">crate</span>::context::ExecutionContext;
 <span class="kw">use </span><span class="kw">crate</span>::interface_impl::InterfaceImpl;
+<span class="kw">use </span><span class="kw">crate</span>::stats::ExecutionStatsCounter;
 <span class="kw">use </span>massa_async_pool::AsyncMessage;
 <span class="kw">use </span>massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
@@ -866,14 +1333,22 @@
 };
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
+<span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
 <span class="kw">use </span>massa_models::api::EventFilter;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
-<span class="kw">use </span>massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
-<span class="kw">use </span>massa_models::{Amount, Slot};
+<span class="kw">use </span>massa_models::prehash::PreHashSet;
+<span class="kw">use </span>massa_models::stats::ExecutionStats;
+<span class="kw">use </span>massa_models::{
+    address::Address,
+    block::BlockId,
+    operation::{OperationId, OperationType, WrappedOperation},
+};
+<span class="kw">use </span>massa_models::{amount::Amount, slot::Slot};
+<span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_sc_runtime::Interface;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>parking_lot::{Mutex, RwLock};
-<span class="kw">use </span>std::collections::BTreeSet;
+<span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 <span class="kw">use </span>std::{collections::HashMap, sync::Arc};
 <span class="kw">use </span>tracing::debug;
 
@@ -907,8 +1382,8 @@
     </span>execution_context: Arc&lt;Mutex&lt;ExecutionContext&gt;&gt;,
     <span class="comment">// execution interface allowing the VM runtime to access the Massa context
     </span>execution_interface: Box&lt;<span class="kw">dyn </span>Interface&gt;,
-    <span class="doccomment">/// Shared storage across all modules
-    </span>storage: Storage,
+    <span class="comment">// execution statistics
+    </span>stats_counter: ExecutionStatsCounter,
 }
 
 <span class="kw">impl </span>ExecutionState {
@@ -917,15 +1392,10 @@
     /// # Arguments
     /// * `config`: execution configuration
     /// * `final_state`: atomic access to the final state
-    /// * `storage`: Shared storage with data shared all across the modules
     ///
     /// # returns
     /// A new `ExecutionState`
-    </span><span class="kw">pub fn </span>new(
-        config: ExecutionConfig,
-        final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
-        storage: Storage,
-    ) -&gt; ExecutionState {
+    </span><span class="kw">pub fn </span>new(config: ExecutionConfig, final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;) -&gt; ExecutionState {
         <span class="comment">// Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
         </span><span class="kw">let </span>last_final_slot = final_state.read().slot;
@@ -935,6 +1405,7 @@
 
         <span class="comment">// Create an empty placeholder execution context, with shared atomic access
         </span><span class="kw">let </span>execution_context = Arc::new(Mutex::new(ExecutionContext::new(
+            config.clone(),
             final_state.clone(),
             active_history.clone(),
         )));
@@ -947,7 +1418,6 @@
 
         <span class="comment">// build the execution state
         </span>ExecutionState {
-            config,
             final_state,
             execution_context,
             execution_interface,
@@ -958,8 +1428,17 @@
             <span class="comment">// no active slots executed yet: set active_cursor to the last final block
             </span>active_cursor: last_final_slot,
             final_cursor: last_final_slot,
-            storage,
+            stats_counter: ExecutionStatsCounter::new(
+                config.stats_time_window_duration,
+                config.clock_compensation,
+            ),
+            config,
         }
+    }
+
+    <span class="doccomment">/// Get execution statistics
+    </span><span class="kw">pub fn </span>get_stats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ExecutionStats {
+        <span class="self">self</span>.stats_counter.get_stats(<span class="self">self</span>.active_cursor)
     }
 
     <span class="doccomment">/// Gets out the first (oldest) execution history item, removing it from history.
@@ -974,16 +1453,24 @@
     /// The newly applied final output should be from the slot just after the last executed final slot
     ///
     /// # Arguments
-    /// * `exec_ou`t: execution output to apply
+    /// * `exec_out`: execution output to apply
     </span><span class="kw">pub fn </span>apply_final_execution_output(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>exec_out: ExecutionOutput) {
         <span class="kw">if </span><span class="self">self</span>.final_cursor &gt;= exec_out.slot {
             <span class="macro">panic!</span>(<span class="string">&quot;attempting to apply a final execution output at or before the current final_cursor&quot;</span>);
+        }
+
+        <span class="comment">// count stats
+        </span><span class="kw">if </span>exec_out.block_id.is_some() {
+            <span class="self">self</span>.stats_counter.register_final_blocks(<span class="number">1</span>);
+            <span class="self">self</span>.stats_counter
+                .register_final_executed_operations(exec_out.state_changes.executed_ops.len());
         }
 
         <span class="comment">// apply state changes to the final ledger
         </span><span class="self">self</span>.final_state
             .write()
             .finalize(exec_out.slot, exec_out.state_changes);
+
         <span class="comment">// update the final ledger&#39;s slot
         </span><span class="self">self</span>.final_cursor = exec_out.slot;
 
@@ -1040,8 +1527,8 @@
     /// * `ready_final_slots`:  A `HashMap` mapping each ready-to-execute final slot to a block or None if the slot is a miss
     </span><span class="kw">pub fn </span>truncate_history(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        active_slots: <span class="kw-2">&amp;</span>HashMap&lt;Slot, <span class="prelude-ty">Option</span>&lt;BlockId&gt;&gt;,
-        ready_final_slots: <span class="kw-2">&amp;</span>HashMap&lt;Slot, <span class="prelude-ty">Option</span>&lt;BlockId&gt;&gt;,
+        active_slots: <span class="kw-2">&amp;</span>HashMap&lt;Slot, <span class="prelude-ty">Option</span>&lt;(BlockId, Storage)&gt;&gt;,
+        ready_final_slots: <span class="kw-2">&amp;</span>HashMap&lt;Slot, <span class="prelude-ty">Option</span>&lt;(BlockId, Storage)&gt;&gt;,
     ) {
         <span class="comment">// find mismatch point (included)
         </span><span class="kw">let </span><span class="kw-2">mut </span>truncate_at = <span class="prelude-val">None</span>;
@@ -1050,8 +1537,9 @@
             <span class="comment">// try to find the corresponding slot in active_slots or ready_final_slots.
             </span><span class="kw">let </span>found_block_id = active_slots
                 .get(<span class="kw-2">&amp;</span>exec_output.slot)
-                .or_else(|| ready_final_slots.get(<span class="kw-2">&amp;</span>exec_output.slot));
-            <span class="kw">if </span>found_block_id == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>exec_output.block_id) {
+                .or_else(|| ready_final_slots.get(<span class="kw-2">&amp;</span>exec_output.slot))
+                .map(|inner| inner.as_ref().map(|(b_id, <span class="kw">_</span>)| <span class="kw-2">*</span>b_id));
+            <span class="kw">if </span>found_block_id == <span class="prelude-val">Some</span>(exec_output.block_id) {
                 <span class="comment">// the slot number and block ID still match. Continue scanning
                 </span><span class="kw">continue</span>;
             }
@@ -1087,35 +1575,284 @@
     ///
     /// # Arguments
     /// * `operation`: operation to execute
-    /// * `block_creator_addr`: address of the block creator
+    /// * `block_slot`: slot of the block in which the op is included
+    /// * `remaining_block_gas`: mutable reference towards the remaining gas in the block
+    /// * `block_credits`: mutable reference towards the total block reward/fee credits
     </span><span class="kw">pub fn </span>execute_operation(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         operation: <span class="kw-2">&amp;</span>WrappedOperation,
-        block_creator_addr: Address,
+        block_slot: Slot,
+        remaining_block_gas: <span class="kw-2">&amp;mut </span>u64,
+        block_credits: <span class="kw-2">&amp;mut </span>Amount,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
-        <span class="comment">// prefilter only SC operations
-        </span><span class="kw">match </span><span class="kw-2">&amp;</span>operation.content.op {
-            OperationType::ExecuteSC { .. } =&gt; {}
-            OperationType::CallSC { .. } =&gt; {}
-            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
+        <span class="comment">// check validity period
+        </span><span class="kw">if </span>!(operation
+            .get_validity_range(<span class="self">self</span>.config.operation_validity_period)
+            .contains(<span class="kw-2">&amp;</span>block_slot.period))
+        {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::InvalidSlotRange);
+        }
+
+        <span class="comment">// check remaining block gas
+        </span><span class="kw">let </span>op_gas = operation.get_gas_usage();
+        <span class="kw">let </span>new_remaining_block_gas = remaining_block_gas.checked_sub(op_gas).ok_or_else(|| {
+            ExecutionError::NotEnoughGas(
+                <span class="string">&quot;not enough remaining block gas to execute operation&quot;</span>.to_string(),
+            )
+        })<span class="question-mark">?</span>;
+
+        <span class="comment">// get the operation&#39;s sender address
+        </span><span class="kw">let </span>sender_addr = operation.creator_address;
+
+        <span class="comment">// get the thread to which the operation belongs
+        </span><span class="kw">let </span>op_thread = sender_addr.get_thread(<span class="self">self</span>.config.thread_count);
+
+        <span class="comment">// check block/op thread compatibility
+        </span><span class="kw">if </span>op_thread != block_slot.thread {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::InlcudeOperationError(
+                <span class="string">&quot;operation vs block thread mismatch&quot;</span>.to_string(),
+            ));
+        }
+
+        <span class="comment">// get operation ID
+        </span><span class="kw">let </span>operation_id = operation.id;
+
+        <span class="comment">// compute fee from (op.max_gas * op.gas_price + op.fee)
+        </span><span class="kw">let </span>op_fees = operation.get_total_fee();
+        <span class="kw">let </span>new_block_credits = block_credits.saturating_add(op_fees);
+
+        <span class="kw">let </span>context_snapshot;
+        {
+            <span class="comment">// lock execution context
+            </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+
+            <span class="comment">// ignore the operation if it was already executed
+            </span><span class="kw">if </span>context.is_op_executed(<span class="kw-2">&amp;</span>operation_id) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::InlcudeOperationError(
+                    <span class="string">&quot;operation was executed previously&quot;</span>.to_string(),
+                ));
+            }
+
+            <span class="comment">// debit the fee and coins from the operation sender
+            // fail execution if there are not enough coins
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
+                context.transfer_sequential_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">None</span>, op_fees, <span class="bool-val">false</span>)
+            {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::InlcudeOperationError(<span class="macro">format!</span>(
+                    <span class="string">&quot;could not spend fees: {}&quot;</span>,
+                    err
+                )));
+            }
+
+            <span class="comment">// from here, the op is considered as executed (fees transferred)
+
+            // add operation to executed ops list
+            </span>context.insert_executed_op(
+                operation_id,
+                Slot::new(operation.content.expire_period, op_thread),
+            );
+
+            <span class="comment">// save a snapshot of the context to revert any further changes on error
+            </span>context_snapshot = context.get_snapshot();
+
+            <span class="comment">// set the context gas price to match the one defined in the operation
+            </span>context.gas_price = operation.get_gas_price();
+
+            <span class="comment">// set the context max gas to match the one defined in the operation
+            </span>context.max_gas = operation.get_gas_usage();
+
+            <span class="comment">// set the context origin operation ID
+            </span>context.origin_operation_id = <span class="prelude-val">Some</span>(operation_id);
+
+            <span class="comment">// execution context lock dropped here because the op-specific execution functions below acquire it again
+        </span>}
+
+        <span class="comment">// update block gas
+        </span><span class="kw-2">*</span>remaining_block_gas = new_remaining_block_gas;
+
+        <span class="comment">// update block credits
+        </span><span class="kw-2">*</span>block_credits = new_block_credits;
+
+        <span class="comment">// Call the execution process specific to the operation type.
+        </span><span class="kw">let </span>execution_result = <span class="kw">match </span><span class="kw-2">&amp;</span>operation.content.op {
+            OperationType::ExecuteSC { .. } =&gt; {
+                <span class="self">self</span>.execute_executesc_op(<span class="kw-2">&amp;</span>operation.content.op, sender_addr)
+            }
+            OperationType::CallSC { .. } =&gt; {
+                <span class="self">self</span>.execute_callsc_op(<span class="kw-2">&amp;</span>operation.content.op, sender_addr)
+            }
+            OperationType::RollBuy { .. } =&gt; {
+                <span class="self">self</span>.execute_roll_buy_op(<span class="kw-2">&amp;</span>operation.content.op, sender_addr)
+            }
+            OperationType::RollSell { .. } =&gt; {
+                <span class="self">self</span>.execute_roll_sell_op(<span class="kw-2">&amp;</span>operation.content.op, sender_addr)
+            }
+            OperationType::Transaction { .. } =&gt; {
+                <span class="self">self</span>.execute_transaction_op(<span class="kw-2">&amp;</span>operation.content.op, sender_addr)
+            }
         };
 
-        <span class="comment">// call the execution process specific to the operation type
-        </span><span class="kw">match </span><span class="kw-2">&amp;</span>operation.content.op {
-            OperationType::ExecuteSC { .. } =&gt; <span class="self">self</span>.execute_executesc_op(
-                <span class="kw-2">&amp;</span>operation.content.op,
-                block_creator_addr,
-                operation.id,
-                operation.creator_address,
-            ),
-            OperationType::CallSC { .. } =&gt; <span class="self">self</span>.execute_callsc_op(
-                <span class="kw-2">&amp;</span>operation.content.op,
-                block_creator_addr,
-                operation.id,
-                operation.creator_address,
-            ),
-            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>), <span class="comment">// checked at the beginning of the function
-        </span>}
+        {
+            <span class="comment">// lock execution context
+            </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+
+            <span class="comment">// check execution results
+            </span><span class="kw">match </span>execution_result {
+                <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {}
+                <span class="prelude-val">Err</span>(err) =&gt; {
+                    <span class="comment">// an error occurred: emit error event and reset context to snapshot
+                    </span><span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                        <span class="string">&quot;runtime error when executing operation {}: {}&quot;</span>,
+                        operation_id, <span class="kw-2">&amp;</span>err
+                    ));
+                    <span class="macro">debug!</span>(<span class="string">&quot;{}&quot;</span>, <span class="kw-2">&amp;</span>err);
+                    context.reset_to_snapshot(context_snapshot, <span class="prelude-val">Some</span>(err));
+                }
+            }
+        }
+
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Execute an operation of type `RollSell`
+    /// Will panic if called with another operation type
+    ///
+    /// # Arguments
+    /// * `operation`: the `WrappedOperation` to process, must be an `RollSell`
+    /// * `sender_addr`: address of the sender
+    </span><span class="kw">pub fn </span>execute_roll_sell_op(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        operation: <span class="kw-2">&amp;</span>OperationType,
+        seller_addr: Address,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
+        <span class="comment">// process roll sell operations only
+        </span><span class="kw">let </span>roll_count = <span class="kw">match </span>operation {
+            OperationType::RollSell { roll_count } =&gt; roll_count,
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>),
+        };
+
+        <span class="comment">// acquire write access to the context
+        </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+
+        <span class="comment">// Set call stack
+        // This needs to be defined before anything can fail, so that the emitted event contains the right stack
+        </span>context.stack = <span class="macro">vec!</span>[ExecutionStackElement {
+            address: seller_addr,
+            coins: Amount::default(),
+            owned_addresses: <span class="macro">vec!</span>[seller_addr],
+        }];
+
+        <span class="comment">// try to sell the rolls
+        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = context.try_sell_rolls(<span class="kw-2">&amp;</span>seller_addr, <span class="kw-2">*</span>roll_count) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RollSellError(<span class="macro">format!</span>(
+                <span class="string">&quot;{} failed to sell {} rolls: {}&quot;</span>,
+                seller_addr, roll_count, err
+            )));
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Execute an operation of type `RollBuy`
+    /// Will panic if called with another operation type
+    ///
+    /// # Arguments
+    /// * `operation`: the `WrappedOperation` to process, must be an `RollBuy`
+    /// * `sender_addr`: address of the sender
+    </span><span class="kw">pub fn </span>execute_roll_buy_op(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        operation: <span class="kw-2">&amp;</span>OperationType,
+        buyer_addr: Address,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
+        <span class="comment">// process roll buy operations only
+        </span><span class="kw">let </span>roll_count = <span class="kw">match </span>operation {
+            OperationType::RollBuy { roll_count } =&gt; roll_count,
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>),
+        };
+
+        <span class="comment">// acquire write access to the context
+        </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+
+        <span class="comment">// Set call stack
+        // This needs to be defined before anything can fail, so that the emitted event contains the right stack
+        </span>context.stack = <span class="macro">vec!</span>[ExecutionStackElement {
+            address: buyer_addr,
+            coins: Default::default(),
+            owned_addresses: <span class="macro">vec!</span>[buyer_addr],
+        }];
+
+        <span class="comment">// compute the amount of sequential coins to spend
+        </span><span class="kw">let </span>spend_coins = <span class="kw">match </span><span class="self">self</span>.config.roll_price.checked_mul_u64(<span class="kw-2">*</span>roll_count) {
+            <span class="prelude-val">Some</span>(v) =&gt; v,
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RollBuyError(<span class="macro">format!</span>(
+                    <span class="string">&quot;{} failed to buy {} rolls: overflow on the required coin amount&quot;</span>,
+                    buyer_addr, roll_count
+                )));
+            }
+        };
+
+        <span class="comment">// spend `roll_price` * `roll_count` sequential coins from the buyer
+        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
+            context.transfer_sequential_coins(<span class="prelude-val">Some</span>(buyer_addr), <span class="prelude-val">None</span>, spend_coins, <span class="bool-val">false</span>)
+        {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RollBuyError(<span class="macro">format!</span>(
+                <span class="string">&quot;{} failed to buy {} rolls: {}&quot;</span>,
+                buyer_addr, roll_count, err
+            )));
+        }
+
+        <span class="comment">// add rolls to the buyer withing the context
+        </span>context.add_rolls(<span class="kw-2">&amp;</span>buyer_addr, <span class="kw-2">*</span>roll_count);
+
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Execute an operation of type `Transaction`
+    /// Will panic if called with another operation type
+    ///
+    /// # Arguments
+    /// * `operation`: the `WrappedOperation` to process, must be a `Transaction`
+    /// * `operation_id`: ID of the operation
+    /// * `sender_addr`: address of the sender
+    </span><span class="kw">pub fn </span>execute_transaction_op(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        operation: <span class="kw-2">&amp;</span>OperationType,
+        sender_addr: Address,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
+        <span class="comment">// process transaction operations only
+        </span><span class="kw">let </span>(recipient_address, amount) = <span class="kw">match </span>operation {
+            OperationType::Transaction {
+                recipient_address,
+                amount,
+            } =&gt; (recipient_address, amount),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>),
+        };
+
+        <span class="comment">// acquire write access to the context
+        </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+
+        <span class="comment">// Set call stack
+        // This needs to be defined before anything can fail, so that the emitted event contains the right stack
+        </span>context.stack = <span class="macro">vec!</span>[ExecutionStackElement {
+            address: sender_addr,
+            coins: <span class="kw-2">*</span>amount,
+            owned_addresses: <span class="macro">vec!</span>[sender_addr],
+        }];
+
+        <span class="comment">// send `roll_price` * `roll_count` sequential coins from the sender to the recipient
+        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = context.transfer_sequential_coins(
+            <span class="prelude-val">Some</span>(sender_addr),
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>recipient_address),
+            <span class="kw-2">*</span>amount,
+            <span class="bool-val">false</span>,
+        ) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::TransactionError(<span class="macro">format!</span>(
+                <span class="string">&quot;transfer of {} coins from {} to {} failed: {}&quot;</span>,
+                amount, sender_addr, recipient_address, err
+            )));
+        }
+
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Execute an operation of type `ExecuteSC`
@@ -1123,89 +1860,69 @@
     ///
     /// # Arguments
     /// * `operation`: the `WrappedOperation` to process, must be an `ExecuteSC`
-    /// * `block_creator_addr`: address of the block creator
-    /// * `operation_id`: ID of the operation
     /// * `sender_addr`: address of the sender
     </span><span class="kw">pub fn </span>execute_executesc_op(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         operation: <span class="kw-2">&amp;</span>OperationType,
-        block_creator_addr: Address,
-        operation_id: OperationId,
         sender_addr: Address,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// process ExecuteSC operations only
-        </span><span class="kw">let </span>(bytecode, max_gas, coins, gas_price) = <span class="kw">match </span><span class="kw-2">&amp;</span>operation {
+        </span><span class="kw">let </span>(bytecode, max_gas, coins) = <span class="kw">match </span><span class="kw-2">&amp;</span>operation {
             OperationType::ExecuteSC {
                 data,
                 max_gas,
                 coins,
-                gas_price,
-            } =&gt; (data, max_gas, coins, gas_price),
+                ..
+            } =&gt; (data, max_gas, coins),
             <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>),
         };
 
-        <span class="comment">// prepare the current slot context for executing the operation
-        </span><span class="kw">let </span>context_snapshot;
         {
             <span class="comment">// acquire write access to the context
             </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-
-            <span class="comment">// Use the context to credit the producer of the block with max_gas * gas_price parallel coins.
-            // Note that errors are deterministic and do not cancel the operation execution.
-            // That way, even if the sender sent an invalid operation, the block producer will still get credited.
-            </span><span class="kw">let </span>gas_fees = gas_price.saturating_mul_u64(<span class="kw-2">*</span>max_gas);
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
-                context.transfer_parallel_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(block_creator_addr), gas_fees)
-            {
-                <span class="macro">debug!</span>(
-                    <span class="string">&quot;failed to credit block producer {} with {} gas fee coins: {}&quot;</span>,
-                    block_creator_addr, gas_fees, err
-                );
-            }
-
-            <span class="comment">// Credit the operation sender with `coins` parallel coins.
-            // Note that errors are deterministic and do not cancel op execution.
-            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = context.transfer_parallel_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(sender_addr), <span class="kw-2">*</span>coins) {
-                <span class="macro">debug!</span>(
-                    <span class="string">&quot;failed to credit operation sender {} with {} operation coins: {}&quot;</span>,
-                    sender_addr, <span class="kw-2">*</span>coins, err
-                );
-            }
-
-            <span class="comment">// save a snapshot of the context state to restore it if the op fails to execute,
-            // this reverting any changes except the coin transfers above
-            </span>context_snapshot = context.get_snapshot();
-
-            <span class="comment">// set the context gas price to match the one defined in the operation
-            </span>context.gas_price = <span class="kw-2">*</span>gas_price;
-
-            <span class="comment">// set the context max gas to match the one defined in the operation
-            </span>context.max_gas = <span class="kw-2">*</span>max_gas;
 
             <span class="comment">// Set the call stack to a single element:
             // * the execution will happen in the context of the address of the operation&#39;s sender
             // * the context will signal that `coins` were credited to the parallel balance of the sender during that call
             // * the context will give the operation&#39;s sender write access to its own ledger entry
+            // This needs to be defined before anything can fail, so that the emitted event contains the right stack
             </span>context.stack = <span class="macro">vec!</span>[ExecutionStackElement {
                 address: sender_addr,
                 coins: <span class="kw-2">*</span>coins,
                 owned_addresses: <span class="macro">vec!</span>[sender_addr],
             }];
 
-            <span class="comment">// set the context origin operation ID
-            </span>context.origin_operation_id = <span class="prelude-val">Some</span>(operation_id);
+            <span class="comment">// Debit the sender&#39;s sequential balance with the coins to transfer
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
+                context.transfer_sequential_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">None</span>, <span class="kw-2">*</span>coins, <span class="bool-val">false</span>)
+            {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                    <span class="string">&quot;failed to debit operation sender {} with {} operation sequential coins: {}&quot;</span>,
+                    sender_addr, <span class="kw-2">*</span>coins, err
+                )));
+            }
+
+            <span class="comment">// Credit the operation sender with `coins` parallel coins.
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
+                context.transfer_parallel_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(sender_addr), <span class="kw-2">*</span>coins, <span class="bool-val">false</span>)
+            {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                    <span class="string">&quot;failed to credit operation sender {} with {} operation parallel coins: {}&quot;</span>,
+                    sender_addr, <span class="kw-2">*</span>coins, err
+                )));
+            }
         };
 
         <span class="comment">// run the VM on the bytecode contained in the operation
-        </span><span class="kw">let </span>run_result = massa_sc_runtime::run_main(bytecode, <span class="kw-2">*</span>max_gas, <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface);
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = run_result {
-            <span class="comment">// there was an error during bytecode execution:
-            // cancel the effects of the execution by resetting the context to the previously saved snapshot
-            </span><span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;bytecode execution error: {}&quot;</span>, err));
-            <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-            context.reset_to_snapshot(context_snapshot, <span class="prelude-val">Some</span>(err.clone()));
-            context.origin_operation_id = <span class="prelude-val">None</span>;
-            <span class="kw">return </span><span class="prelude-val">Err</span>(err);
+        </span><span class="kw">match </span>massa_sc_runtime::run_main(bytecode, <span class="kw-2">*</span>max_gas, <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface) {
+            <span class="prelude-val">Ok</span>(_reamining_gas) =&gt; {}
+            <span class="prelude-val">Err</span>(err) =&gt; {
+                <span class="comment">// there was an error during bytecode execution
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                    <span class="string">&quot;bytecode execution error: {}&quot;</span>,
+                    err
+                )));
+            }
         }
 
         <span class="prelude-val">Ok</span>(())
@@ -1222,23 +1939,20 @@
     </span><span class="kw">pub fn </span>execute_callsc_op(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         operation: <span class="kw-2">&amp;</span>OperationType,
-        block_creator_addr: Address,
-        operation_id: OperationId,
         sender_addr: Address,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// process CallSC operations only
-        </span><span class="kw">let </span>(gas_price, max_gas, target_addr, target_func, param, parallel_coins, sequential_coins) =
+        </span><span class="kw">let </span>(max_gas, target_addr, target_func, param, parallel_coins, sequential_coins) =
             <span class="kw">match </span><span class="kw-2">&amp;</span>operation {
                 OperationType::CallSC {
-                    gas_price,
                     max_gas,
                     target_addr,
                     target_func,
                     param,
                     parallel_coins,
                     sequential_coins,
+                    ..
                 } =&gt; (
-                    <span class="kw-2">*</span>gas_price,
                     <span class="kw-2">*</span>max_gas,
                     <span class="kw-2">*</span>target_addr,
                     target_func,
@@ -1250,112 +1964,95 @@
             };
 
         <span class="comment">// prepare the current slot context for executing the operation
-        </span><span class="kw">let </span>context_snapshot;
-        <span class="kw">let </span>bytecode;
+        </span><span class="kw">let </span>bytecode;
         {
             <span class="comment">// acquire write access to the context
             </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
-            <span class="comment">// Use the context to credit the producer of the block with max_gas * gas_price parallel coins.
-            // Note that errors are deterministic and do not cancel the operation execution.
-            // That way, even if the sender sent an invalid operation, the block producer will still get credited.
-            </span><span class="kw">let </span>gas_fees = gas_price.saturating_mul_u64(max_gas);
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
-                context.transfer_parallel_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(block_creator_addr), gas_fees)
+            <span class="comment">// Set the call stack
+            // This needs to be defined before anything can fail, so that the emitted event contains the right stack
+            </span>context.stack = <span class="macro">vec!</span>[
+                ExecutionStackElement {
+                    address: sender_addr,
+                    coins: Default::default(),
+                    owned_addresses: <span class="macro">vec!</span>[sender_addr],
+                },
+                ExecutionStackElement {
+                    address: target_addr,
+                    coins: Default::default(),
+                    owned_addresses: <span class="macro">vec!</span>[target_addr],
+                },
+            ];
+
+            <span class="comment">// Compute the amount of parallel coins to credit
+            </span><span class="kw">let </span>credit_parallel_coins = <span class="kw">match </span>sequential_coins.checked_add(parallel_coins) {
+                <span class="prelude-val">Some</span>(v) =&gt; v,
+                <span class="prelude-val">None </span>=&gt; {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                        <span class="string">&quot;overflow when transfering operation coins from {}&quot;</span>,
+                        sender_addr
+                    )));
+                }
+            };
+
+            <span class="comment">// Debit the sender&#39;s sequential balance with the sequential coins to transfer
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
+                context.transfer_sequential_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">None</span>, sequential_coins, <span class="bool-val">false</span>)
             {
-                <span class="macro">debug!</span>(
-                    <span class="string">&quot;failed to credit block producer {} with {} gas fee coins: {}&quot;</span>,
-                    block_creator_addr, gas_fees, err
-                );
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                    <span class="string">&quot;failed to debit operation sender {} with {} operation sequential coins: {}&quot;</span>,
+                    sender_addr, sequential_coins, err
+                )));
             }
 
-            <span class="comment">// Credit the operation sender with `sequential_coins` parallel coins.
-            // This is used to ensure that those coins are not lost in case of failure,
-            // since they have been debited by consensus beforehand.
-            // Note that errors are deterministic and do not cancel op execution.
+            <span class="comment">// Debit the sender&#39;s sequential balance with the parallel coins to transfer
             </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
-                context.transfer_parallel_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(sender_addr), sequential_coins)
+                context.transfer_parallel_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">None</span>, parallel_coins, <span class="bool-val">false</span>)
             {
-                <span class="macro">debug!</span>(
-                    <span class="string">&quot;failed to credit operation sender {} with {} operation coins: {}&quot;</span>,
-                    sender_addr, sequential_coins, err
-                );
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                    <span class="string">&quot;failed to debit operation sender {} with {} operation parallel coins: {}&quot;</span>,
+                    sender_addr, parallel_coins, err
+                )));
+            }
+
+            <span class="comment">// Credit the operation target with parallel coins.
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = context.transfer_parallel_coins(
+                <span class="prelude-val">None</span>,
+                <span class="prelude-val">Some</span>(target_addr),
+                credit_parallel_coins,
+                <span class="bool-val">false</span>,
+            ) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                    <span class="string">&quot;failed to credit operation target {} with {} operation parallel coins: {}&quot;</span>,
+                    target_addr, credit_parallel_coins, err
+                )));
+            }
+
+            <span class="comment">// quit if there is no function to be called
+            </span><span class="kw">if </span>target_func.is_empty() {
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(());
             }
 
             <span class="comment">// Load bytecode. Assume empty bytecode if not found.
             </span>bytecode = context.get_bytecode(<span class="kw-2">&amp;</span>target_addr).unwrap_or_default();
-
-            <span class="comment">// save a snapshot of the context state to restore it if the op fails to execute,
-            // thus reverting any changes except the coin transfers above
-            </span>context_snapshot = context.get_snapshot();
-
-            <span class="comment">// compute the total amount of coins that need to be transferred
-            // from the sender&#39;s parallel balance to the target&#39;s parallel balance
-            </span><span class="kw">let </span>coins = sequential_coins.saturating_add(parallel_coins);
-
-            <span class="comment">// set the context gas price to match the one defined in the operation
-            </span>context.gas_price = gas_price;
-
-            <span class="comment">// set the context max gas to match the one defined in the operation
-            </span>context.max_gas = max_gas;
-
-            <span class="comment">// set the context origin operation ID
-            </span>context.origin_operation_id = <span class="prelude-val">Some</span>(operation_id);
-
-            <span class="comment">// Set the call stack o the sender addr only to allow it to send parallel coins (access rights)
-            </span>context.stack = <span class="macro">vec!</span>[ExecutionStackElement {
-                address: sender_addr,
-                coins,
-                owned_addresses: <span class="macro">vec!</span>[sender_addr],
-            }];
-
-            <span class="comment">// try to transfer parallel coins from the sender to the target
-            </span><span class="kw">let </span>coin_transfer_result =
-                context.transfer_parallel_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">Some</span>(target_addr), coins);
-
-            <span class="comment">// Add the second part of the stack (the target)
-            // Note that we do it here so that the sender is on the top of the stack for the coin transfer above.
-            // and we don&#39;t do it after the coin transfer error handling because the emitted error event must show the correct stack.
-            </span>context.stack.push(ExecutionStackElement {
-                address: target_addr,
-                coins,
-                owned_addresses: <span class="macro">vec!</span>[target_addr],
-            });
-
-            <span class="comment">// check the coin transfer result
-            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = coin_transfer_result {
-                <span class="comment">// cancel the effects of the execution by resetting the context to the previously saved snapshot
-                </span><span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">&quot;failed to transfer {} call coins from {} to {}: {}&quot;</span>,
-                    coins, sender_addr, target_addr, err
-                ));
-                context.reset_to_snapshot(context_snapshot, <span class="prelude-val">Some</span>(err.clone()));
-                context.origin_operation_id = <span class="prelude-val">None</span>;
-                <span class="kw">return </span><span class="prelude-val">Err</span>(err);
-            }
-        };
-
-        <span class="comment">// quit if there is no function to be called
-        </span><span class="kw">if </span>target_func.is_empty() {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
 
-        <span class="comment">// run the VM on the called fucntion of the bytecode
-        </span><span class="kw">let </span>run_result = massa_sc_runtime::run_function(
+        <span class="comment">// run the VM on the bytecode loaded from the target address
+        </span><span class="kw">match </span>massa_sc_runtime::run_function(
             <span class="kw-2">&amp;</span>bytecode,
             max_gas,
             target_func,
             param,
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
-        );
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = run_result {
-            <span class="comment">// there was an error during bytecode execution:
-            // cancel the effects of the execution by resetting the context to the previously saved snapshot
-            </span><span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;bytecode execution error: {}&quot;</span>, err));
-            <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-            context.reset_to_snapshot(context_snapshot, <span class="prelude-val">Some</span>(err.clone()));
-            context.origin_operation_id = <span class="prelude-val">None</span>;
-            <span class="kw">return </span><span class="prelude-val">Err</span>(err);
+        ) {
+            <span class="prelude-val">Ok</span>(_reamining_gas) =&gt; {}
+            <span class="prelude-val">Err</span>(err) =&gt; {
+                <span class="comment">// there was an error during bytecode execution
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                    <span class="string">&quot;bytecode execution error: {}&quot;</span>,
+                    err
+                )));
+            }
         }
 
         <span class="prelude-val">Ok</span>(())
@@ -1411,9 +2108,12 @@
             };
 
             <span class="comment">// credit coins to the target address
-            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
-                context.transfer_parallel_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(message.destination), message.coins)
-            {
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = context.transfer_parallel_coins(
+                <span class="prelude-val">None</span>,
+                <span class="prelude-val">Some</span>(message.destination),
+                message.coins,
+                <span class="bool-val">false</span>,
+            ) {
                 <span class="comment">// coin crediting failed: reset context to snapshot and reimburse sender
                 </span><span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(
                     <span class="string">&quot;could not credit coins to target of async execution: {}&quot;</span>,
@@ -1454,25 +2154,31 @@
     ///
     /// # Arguments
     /// * `slot`: slot to execute
-    /// * `opt_block`: block ID if there is a block a that slot, otherwise None
+    /// * `opt_block`: Storage owning a ref to the block (+ its endorsements, ops, aparents) if there is a block a that slot, otherwise None
+    /// * `selector`: Reference to the selector
     ///
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
-    </span><span class="kw">pub fn </span>execute_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot, opt_block_id: <span class="prelude-ty">Option</span>&lt;BlockId&gt;) -&gt; ExecutionOutput {
-        <span class="comment">// create a new execution context for the whole active slot
+    </span><span class="attribute">#[allow(clippy::borrowed_box)]
+    </span><span class="kw">pub fn </span>execute_slot(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        slot: Slot,
+        opt_block: <span class="prelude-ty">Option</span>&lt;(BlockId, Storage)&gt;,
+        selector: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
+    ) -&gt; ExecutionOutput {
+        <span class="comment">// Create a new execution context for the whole active slot
         </span><span class="kw">let </span><span class="kw-2">mut </span>execution_context = ExecutionContext::active_slot(
+            <span class="self">self</span>.config.clone(),
             slot,
-            opt_block_id,
+            opt_block.as_ref().map(|(b_id, <span class="kw">_</span>)| <span class="kw-2">*</span>b_id),
             <span class="self">self</span>.final_state.clone(),
             <span class="self">self</span>.active_history.clone(),
         );
 
-        <span class="comment">// note that here, some pre-operations (like crediting block producers) can be performed before the lock
-
-        // get asynchronous messages to execute
+        <span class="comment">// Get asynchronous messages to execute
         </span><span class="kw">let </span>messages = execution_context.take_async_batch(<span class="self">self</span>.config.max_async_gas);
 
-        <span class="comment">// apply the created execution context for slot execution
+        <span class="comment">// Apply the created execution context for slot execution
         </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
 
         <span class="comment">// Try executing asynchronous messages.
@@ -1483,28 +2189,156 @@
             }
         }
 
-        <span class="comment">// check if there is a block at this slot
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(block_id) = opt_block_id {
-            <span class="kw">let </span>block = <span class="self">self
-                </span>.storage
-                .retrieve_block(<span class="kw-2">&amp;</span>block_id)
-                .expect(<span class="string">&quot;Missing block in storage.&quot;</span>);
-            <span class="kw">let </span>stored_block = block.read();
+        <span class="comment">// Check if there is a block at this slot
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((block_id, block_store)) = opt_block {
+            <span class="comment">// Retrieve the block from storage
+            </span><span class="kw">let </span>stored_block = block_store
+                .read_blocks()
+                .get(<span class="kw-2">&amp;</span>block_id)
+                .expect(<span class="string">&quot;Missing block in storage.&quot;</span>)
+                .clone();
+
+            <span class="comment">// gather all operations
+            </span><span class="kw">let </span>operations = {
+                <span class="kw">let </span>ops = block_store.read_operations();
+                stored_block
+                    .content
+                    .operations
+                    .into_iter()
+                    .map(|op_id| {
+                        ops.get(<span class="kw-2">&amp;</span>op_id)
+                            .expect(<span class="string">&quot;block operation absent from storage&quot;</span>)
+                            .clone()
+                    })
+                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+            };
+
+            <span class="comment">// gather all available endorsement creators and target blocks
+            </span><span class="kw">let </span>(endorsement_creators, endorsement_targets): <span class="kw-2">&amp;</span>(Vec&lt;Address&gt;, Vec&lt;BlockId&gt;) =
+                <span class="kw-2">&amp;</span>stored_block
+                    .content
+                    .header
+                    .content
+                    .endorsements
+                    .iter()
+                    .map(|endo| (endo.creator_address, endo.content.endorsed_block))
+                    .unzip();
+
+            <span class="comment">// deduce endorsement target block creators
+            </span><span class="kw">let </span>endorsement_target_creators = {
+                <span class="kw">let </span>blocks = block_store.read_blocks();
+                endorsement_targets
+                    .iter()
+                    .map(|b_id| {
+                        blocks
+                            .get(b_id)
+                            .expect(<span class="string">&quot;endorsed block absent from storage&quot;</span>)
+                            .creator_address
+                    })
+                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+            };
+
+            <span class="comment">// Set remaining block gas
+            </span><span class="kw">let </span><span class="kw-2">mut </span>remaining_block_gas = <span class="self">self</span>.config.max_gas_per_block;
+
+            <span class="comment">// Set block credits
+            </span><span class="kw">let </span><span class="kw-2">mut </span>block_credits = <span class="self">self</span>.config.block_reward;
+
             <span class="comment">// Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
-            </span><span class="kw">for </span>(op_idx, operation) <span class="kw">in </span>stored_block.content.operations.iter().enumerate() {
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
-                    <span class="self">self</span>.execute_operation(operation, stored_block.content.header.creator_address)
-                {
-                    <span class="macro">debug!</span>(
+            </span><span class="kw">for </span>(op_index, operation) <span class="kw">in </span>operations.into_iter().enumerate() {
+                <span class="kw">match </span><span class="self">self</span>.execute_operation(
+                    <span class="kw-2">&amp;</span>operation,
+                    stored_block.content.header.content.slot,
+                    <span class="kw-2">&amp;mut </span>remaining_block_gas,
+                    <span class="kw-2">&amp;mut </span>block_credits,
+                ) {
+                    <span class="prelude-val">Err</span>(ExecutionError::NotEnoughGas(<span class="kw">_</span>))
+                    | <span class="prelude-val">Err</span>(ExecutionError::InvalidSlotRange) =&gt; <span class="macro">debug!</span>(<span class="string">&quot;Ignoring operation&quot;</span>),
+                    <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">debug!</span>(
                         <span class="string">&quot;failed executing operation index {} in block {}: {}&quot;</span>,
-                        op_idx, block_id, err
-                    );
+                        op_index, block_id, err
+                    ),
+                    <span class="kw">_ </span>=&gt; {}
                 }
             }
+
+            <span class="comment">// Get block creator address
+            </span><span class="kw">let </span>block_creator_addr = stored_block.creator_address;
+
+            <span class="comment">// acquire lock on execution context
+            </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+
+            <span class="comment">// Update speculative rolls state production stats
+            </span>context.update_production_stats(<span class="kw-2">&amp;</span>block_creator_addr, slot, <span class="prelude-val">Some</span>(block_id));
+
+            <span class="comment">// Credit endorsement producers and endorsed block producers
+            </span><span class="kw">let </span><span class="kw-2">mut </span>remaining_credit = block_credits;
+            <span class="kw">let </span>block_credit_part = block_credits
+                .checked_div_u64(<span class="number">3 </span>* (<span class="number">1 </span>+ (<span class="self">self</span>.config.endorsement_count)))
+                .expect(<span class="string">&quot;critical: block_credits checked_div factor is 0&quot;</span>);
+            <span class="kw">for </span>(endorsement_creator, endorsement_target_creator) <span class="kw">in </span>endorsement_creators
+                .iter()
+                .zip(endorsement_target_creators.into_iter())
+            {
+                <span class="comment">// credit creator of the endorsement with sequential coins
+                </span><span class="kw">match </span>context.transfer_sequential_coins(
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">Some</span>(<span class="kw-2">*</span>endorsement_creator),
+                    block_credit_part,
+                    <span class="bool-val">false</span>,
+                ) {
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                        remaining_credit = remaining_credit.saturating_sub(block_credit_part);
+                    }
+                    <span class="prelude-val">Err</span>(err) =&gt; {
+                        <span class="macro">debug!</span>(
+                            <span class="string">&quot;failed to credit {} sequential coins to endorsement creator {} for an endorsed block execution: {}&quot;</span>,
+                            block_credit_part, endorsement_creator, err
+                        )
+                    }
+                }
+
+                <span class="comment">// credit creator of the endorsed block with sequential coins
+                </span><span class="kw">match </span>context.transfer_sequential_coins(
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">Some</span>(endorsement_target_creator),
+                    block_credit_part,
+                    <span class="bool-val">false</span>,
+                ) {
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                        remaining_credit = remaining_credit.saturating_sub(block_credit_part);
+                    }
+                    <span class="prelude-val">Err</span>(err) =&gt; {
+                        <span class="macro">debug!</span>(
+                            <span class="string">&quot;failed to credit {} sequential coins to endorsement target creator {} on block execution: {}&quot;</span>,
+                            block_credit_part, endorsement_target_creator, err
+                        )
+                    }
+                }
+            }
+
+            <span class="comment">// Credit block creator with remaining_credit
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = context.transfer_sequential_coins(
+                <span class="prelude-val">None</span>,
+                <span class="prelude-val">Some</span>(block_creator_addr),
+                remaining_credit,
+                <span class="bool-val">false</span>,
+            ) {
+                <span class="macro">debug!</span>(
+                    <span class="string">&quot;failed to credit {} sequential coins to block creator {} on block execution: {}&quot;</span>,
+                    remaining_credit, block_creator_addr, err
+                )
+            }
+        } <span class="kw">else </span>{
+            <span class="comment">// the slot is a miss, check who was supposed to be the creator and update production stats
+            </span><span class="kw">let </span>producer_addr = selector
+                .get_producer(slot)
+                .expect(<span class="string">&quot;couldn&#39;t get the expected block producer for a missed slot&quot;</span>);
+            <span class="macro">context_guard!</span>(<span class="self">self</span>).update_production_stats(<span class="kw-2">&amp;</span>producer_addr, slot, <span class="prelude-val">None</span>);
         }
 
-        <span class="comment">// finish slot and return the execution output
+        <span class="comment">// Finish slot and return the execution output
         </span><span class="macro">context_guard!</span>(<span class="self">self</span>).settle_slot()
     }
 
@@ -1522,7 +2356,10 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         req: ReadOnlyExecutionRequest,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionOutput, ExecutionError&gt; {
-        <span class="comment">// set the execution slot to be the one after the latest executed active slot
+        <span class="comment">// TODO ensure that speculative things are reset after every execution ends (incl. on error and readonly)
+        // otherwise, on prod stats accumulation etc... from the API we might be counting the remainder of this speculative execution
+
+        // set the execution slot to be the one after the latest executed active slot
         </span><span class="kw">let </span>slot = <span class="self">self
             </span>.active_cursor
             .get_next_slot(<span class="self">self</span>.config.thread_count)
@@ -1530,6 +2367,7 @@
 
         <span class="comment">// create a readonly execution context
         </span><span class="kw">let </span>execution_context = ExecutionContext::readonly(
+            <span class="self">self</span>.config.clone(),
             slot,
             req.max_gas,
             req.simulated_gas_price,
@@ -1577,16 +2415,13 @@
         </span><span class="prelude-val">Ok</span>(<span class="macro">context_guard!</span>(<span class="self">self</span>).settle_slot())
     }
 
-    <span class="doccomment">/// Gets a parallel balance both at the latest final and active executed slots
-    </span><span class="kw">pub fn </span>get_final_and_active_parallel_balance(
+    <span class="doccomment">/// Gets a parallel balance both at the latest final and candidate executed slots
+    </span><span class="kw">pub fn </span>get_final_and_candidate_parallel_balance(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         address: <span class="kw-2">&amp;</span>Address,
     ) -&gt; (<span class="prelude-ty">Option</span>&lt;Amount&gt;, <span class="prelude-ty">Option</span>&lt;Amount&gt;) {
         <span class="kw">let </span>final_balance = <span class="self">self</span>.final_state.read().ledger.get_parallel_balance(address);
-        <span class="kw">let </span>search_result = <span class="self">self
-            </span>.active_history
-            .read()
-            .fetch_active_history_balance(address);
+        <span class="kw">let </span>search_result = <span class="self">self</span>.active_history.read().fetch_parallel_balance(address);
         (
             final_balance,
             <span class="kw">match </span>search_result {
@@ -1595,6 +2430,38 @@
                 HistorySearchResult::Absent =&gt; <span class="prelude-val">None</span>,
             },
         )
+    }
+
+    <span class="doccomment">/// Gets a sequential balance both at the latest final and candidate executed slots
+    </span><span class="kw">pub fn </span>get_final_and_candidate_sequential_balance(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        address: <span class="kw-2">&amp;</span>Address,
+    ) -&gt; (<span class="prelude-ty">Option</span>&lt;Amount&gt;, <span class="prelude-ty">Option</span>&lt;Amount&gt;) {
+        <span class="kw">let </span>final_balance = <span class="self">self
+            </span>.final_state
+            .read()
+            .ledger
+            .get_sequential_balance(address);
+        <span class="kw">let </span>search_result = <span class="self">self</span>.active_history.read().fetch_sequential_balance(address);
+        (
+            final_balance,
+            <span class="kw">match </span>search_result {
+                HistorySearchResult::Present(active_balance) =&gt; <span class="prelude-val">Some</span>(active_balance),
+                HistorySearchResult::NoInfo =&gt; final_balance,
+                HistorySearchResult::Absent =&gt; <span class="prelude-val">None</span>,
+            },
+        )
+    }
+
+    <span class="doccomment">/// Gets roll counts both at the latest final and active executed slots
+    </span><span class="kw">pub fn </span>get_final_and_candidate_rolls(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address) -&gt; (u64, u64) {
+        <span class="kw">let </span>final_rolls = <span class="self">self</span>.final_state.read().pos_state.get_rolls_for(address);
+        <span class="kw">let </span>active_rolls = <span class="self">self
+            </span>.active_history
+            .read()
+            .fetch_roll_count(address)
+            .unwrap_or(final_rolls);
+        (final_rolls, active_rolls)
     }
 
     <span class="doccomment">/// Gets a data entry both at the latest final and active executed slots
@@ -1619,7 +2486,7 @@
     }
 
     <span class="doccomment">/// Get every final and active datastore key of the given address
-    </span><span class="kw">pub fn </span>get_final_and_active_datastore_keys(
+    </span><span class="kw">pub fn </span>get_final_and_candidate_datastore_keys(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         addr: <span class="kw-2">&amp;</span>Address,
     ) -&gt; (BTreeSet&lt;Vec&lt;u8&gt;&gt;, BTreeSet&lt;Vec&lt;u8&gt;&gt;) {
@@ -1658,6 +2525,26 @@
         (final_keys, candidate_keys)
     }
 
+    <span class="doccomment">/// Returns for a given cycle the stakers taken into account
+    /// by the selector. That correspond to the roll_counts in `cycle - 3`.
+    ///
+    /// By default it returns an empty map.
+    </span><span class="kw">pub fn </span>get_cycle_active_rolls(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; BTreeMap&lt;Address, u64&gt; {
+        <span class="kw">let </span>lookback_cycle = cycle.checked_sub(<span class="number">3</span>);
+        <span class="kw">let </span>final_state = <span class="self">self</span>.final_state.read();
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(lookback_cycle) = lookback_cycle {
+            <span class="kw">let </span>lookback_cycle_index = <span class="kw">match </span>final_state.pos_state.get_cycle_index(lookback_cycle) {
+                <span class="prelude-val">Some</span>(v) =&gt; v,
+                <span class="prelude-val">None </span>=&gt; Default::default(),
+            };
+            final_state.pos_state.cycle_history[lookback_cycle_index]
+                .roll_counts
+                .clone()
+        } <span class="kw">else </span>{
+            final_state.pos_state.initial_rolls.clone()
+        }
+    }
+
     <span class="doccomment">/// Gets execution events optionally filtered by:
     /// * start slot
     /// * end slot
@@ -1693,6 +2580,51 @@
                 .collect(),
         }
     }
+
+    <span class="doccomment">/// List which operations inside the provided list were not executed
+    </span><span class="kw">pub fn </span>unexecuted_ops_among(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        ops: <span class="kw-2">&amp;</span>PreHashSet&lt;OperationId&gt;,
+        thread: u8,
+    ) -&gt; PreHashSet&lt;OperationId&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>ops = ops.clone();
+
+        <span class="kw">if </span>ops.is_empty() {
+            <span class="kw">return </span>ops;
+        }
+
+        {
+            <span class="comment">// check active history
+            </span><span class="kw">let </span>history = <span class="self">self</span>.active_history.read();
+            <span class="kw">for </span>hist_item <span class="kw">in </span>history.<span class="number">0</span>.iter().rev() {
+                <span class="kw">if </span>hist_item.slot.thread != thread {
+                    <span class="kw">continue</span>;
+                }
+                ops.retain(|op_id| !hist_item.state_changes.executed_ops.contains(op_id));
+                <span class="kw">if </span>ops.is_empty() {
+                    <span class="kw">return </span>ops;
+                }
+            }
+        }
+
+        {
+            <span class="comment">// check final state
+            </span><span class="kw">let </span>final_state = <span class="self">self</span>.final_state.read();
+            ops.retain(|op_id| !final_state.executed_ops.contains(op_id));
+        }
+
+        ops
+    }
+
+    <span class="doccomment">/// Gets the production stats for an address at all cycles
+    </span><span class="kw">pub fn </span>get_address_cycle_infos(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address) -&gt; Vec&lt;ExecutionAddressCycleInfo&gt; {
+        <span class="macro">context_guard!</span>(<span class="self">self</span>).get_address_cycle_infos(address, <span class="self">self</span>.config.periods_per_cycle)
+    }
+
+    <span class="doccomment">/// Get future deferred credits of an address
+    </span><span class="kw">pub fn </span>get_address_future_deferred_credits(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address) -&gt; BTreeMap&lt;Slot, Amount&gt; {
+        <span class="macro">context_guard!</span>(<span class="self">self</span>).get_address_future_deferred_credits(address, <span class="self">self</span>.config.thread_count)
+    }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

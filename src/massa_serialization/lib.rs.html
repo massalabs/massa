@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-serialization/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_serialization/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_serialization/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_serialization/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-serialization/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_serialization/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_serialization/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_serialization/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -250,6 +250,89 @@
 <span id="250">250</span>
 <span id="251">251</span>
 <span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::VecDeque,
     fmt::{Debug, Display},
@@ -257,8 +340,12 @@
 
 <span class="kw">use </span>displaydoc::Display;
 <span class="kw">use </span>nom::{
+    branch::alt,
+    bytes::complete::tag,
+    combinator::value,
     error::{ContextError, ParseError},
-    IResult,
+    sequence::preceded,
+    IResult, Parser,
 };
 <span class="kw">use </span>thiserror::Error;
 
@@ -307,13 +394,8 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; Display <span class="kw">for </span>DeserializeError&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
-        <span class="kw">let </span><span class="kw-2">mut </span>last_input = <span class="prelude-val">None</span>;
         <span class="kw">for </span>error <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.errors {
             <span class="macro">write!</span>(f, <span class="string">&quot;{} / &quot;</span>, error.<span class="number">1</span>)<span class="question-mark">?</span>;
-            last_input = <span class="prelude-val">Some</span>(error.<span class="number">0</span>);
-        }
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(last_input) = last_input {
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;Input: {:?}&quot;</span>, last_input)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -502,5 +584,89 @@ u16, U16VarIntSerializer, u16_buffer, U16VarIntDeserializer, <span class="string
 u32, U32VarIntSerializer, u32_buffer, U32VarIntDeserializer, <span class="string">&quot;`u32`&quot;</span>;
 u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string">&quot;`u64`&quot;
 </span>}
+
+<span class="kw">pub struct </span>OptionSerializer&lt;T, ST&gt;
+<span class="kw">where
+    </span>ST: Serializer&lt;T&gt;,
+{
+    data_serializer: ST,
+    phantom_t: std::marker::PhantomData&lt;T&gt;,
+}
+
+<span class="kw">impl</span>&lt;T, ST&gt; OptionSerializer&lt;T, ST&gt;
+<span class="kw">where
+    </span>ST: Serializer&lt;T&gt;,
+{
+    <span class="kw">pub fn </span>new(data_serializer: ST) -&gt; <span class="self">Self </span>{
+        OptionSerializer {
+            data_serializer,
+            phantom_t: std::marker::PhantomData,
+        }
+    }
+}
+
+<span class="kw">impl</span>&lt;T, ST&gt; Serializer&lt;<span class="prelude-ty">Option</span>&lt;T&gt;&gt; <span class="kw">for </span>OptionSerializer&lt;T, ST&gt;
+<span class="kw">where
+    </span>ST: Serializer&lt;T&gt;,
+{
+    <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, opt_value: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;T&gt;, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = opt_value {
+            buffer.push(<span class="string">b&#39;1&#39;</span>);
+            <span class="self">self</span>.data_serializer.serialize(value, buffer)<span class="question-mark">?</span>;
+        } <span class="kw">else </span>{
+            buffer.push(<span class="string">b&#39;0&#39;</span>);
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
+<span class="kw">pub struct </span>OptionDeserializer&lt;T, DT&gt;
+<span class="kw">where
+    </span>T: Clone,
+    DT: Deserializer&lt;T&gt;,
+{
+    data_deserializer: DT,
+    phantom_t: std::marker::PhantomData&lt;T&gt;,
+}
+
+<span class="kw">impl</span>&lt;T, DT&gt; OptionDeserializer&lt;T, DT&gt;
+<span class="kw">where
+    </span>T: Clone,
+    DT: Deserializer&lt;T&gt;,
+{
+    <span class="kw">pub fn </span>new(data_deserializer: DT) -&gt; <span class="self">Self </span>{
+        OptionDeserializer {
+            data_deserializer,
+            phantom_t: std::marker::PhantomData,
+        }
+    }
+}
+
+<span class="kw">impl</span>&lt;T, DT&gt; Deserializer&lt;<span class="prelude-ty">Option</span>&lt;T&gt;&gt; <span class="kw">for </span>OptionDeserializer&lt;T, DT&gt;
+<span class="kw">where
+    </span>T: Clone,
+    DT: Deserializer&lt;T&gt;,
+{
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], <span class="prelude-ty">Option</span>&lt;T&gt;, E&gt; {
+        context(
+            <span class="string">&quot;Option&lt;_&gt; deserializer failed&quot;</span>,
+            alt((
+                context(<span class="string">&quot;None&quot;</span>, value(<span class="prelude-val">None</span>, tag(<span class="string">b&quot;0&quot;</span>))),
+                context(
+                    <span class="string">&quot;Some(_)&quot;</span>,
+                    preceded(tag(<span class="string">b&quot;1&quot;</span>), |input| {
+                        <span class="self">self</span>.data_deserializer
+                            .deserialize(input)
+                            .map(|(rest, data)| (rest, <span class="prelude-val">Some</span>(data)))
+                    }),
+                ),
+            )),
+        )
+        .parse(buffer)
+    }
+}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_serialization" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_serialization" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

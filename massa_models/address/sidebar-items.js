@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["Address","Derived from a public key"],["AddressCycleProductionStats","Production stats for a given address during a given cycle"],["AddressDeserializer","Deserializer for `Address`"],["AddressState","Address state as know by consensus Used to answer to API"]]};
+window.SIDEBAR_ITEMS = {"constant":[["ADDRESS_SIZE_BYTES","Size of a serialized address, in bytes"]],"struct":[["Address","Derived from a public key"],["AddressDeserializer","Deserializer for `Address`"],["ExecutionAddressCycleInfo","Info for a given address on a given cycle"]]};

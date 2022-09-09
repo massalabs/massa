@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-consensus-exports/src/settings.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>settings.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_consensus_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_consensus_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_consensus_exports/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-consensus-exports/src/settings.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>settings.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_consensus_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_consensus_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_consensus_exports/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -216,458 +216,6 @@
 <span id="216">216</span>
 <span id="217">217</span>
 <span id="218">218</span>
-<span id="219">219</span>
-<span id="220">220</span>
-<span id="221">221</span>
-<span id="222">222</span>
-<span id="223">223</span>
-<span id="224">224</span>
-<span id="225">225</span>
-<span id="226">226</span>
-<span id="227">227</span>
-<span id="228">228</span>
-<span id="229">229</span>
-<span id="230">230</span>
-<span id="231">231</span>
-<span id="232">232</span>
-<span id="233">233</span>
-<span id="234">234</span>
-<span id="235">235</span>
-<span id="236">236</span>
-<span id="237">237</span>
-<span id="238">238</span>
-<span id="239">239</span>
-<span id="240">240</span>
-<span id="241">241</span>
-<span id="242">242</span>
-<span id="243">243</span>
-<span id="244">244</span>
-<span id="245">245</span>
-<span id="246">246</span>
-<span id="247">247</span>
-<span id="248">248</span>
-<span id="249">249</span>
-<span id="250">250</span>
-<span id="251">251</span>
-<span id="252">252</span>
-<span id="253">253</span>
-<span id="254">254</span>
-<span id="255">255</span>
-<span id="256">256</span>
-<span id="257">257</span>
-<span id="258">258</span>
-<span id="259">259</span>
-<span id="260">260</span>
-<span id="261">261</span>
-<span id="262">262</span>
-<span id="263">263</span>
-<span id="264">264</span>
-<span id="265">265</span>
-<span id="266">266</span>
-<span id="267">267</span>
-<span id="268">268</span>
-<span id="269">269</span>
-<span id="270">270</span>
-<span id="271">271</span>
-<span id="272">272</span>
-<span id="273">273</span>
-<span id="274">274</span>
-<span id="275">275</span>
-<span id="276">276</span>
-<span id="277">277</span>
-<span id="278">278</span>
-<span id="279">279</span>
-<span id="280">280</span>
-<span id="281">281</span>
-<span id="282">282</span>
-<span id="283">283</span>
-<span id="284">284</span>
-<span id="285">285</span>
-<span id="286">286</span>
-<span id="287">287</span>
-<span id="288">288</span>
-<span id="289">289</span>
-<span id="290">290</span>
-<span id="291">291</span>
-<span id="292">292</span>
-<span id="293">293</span>
-<span id="294">294</span>
-<span id="295">295</span>
-<span id="296">296</span>
-<span id="297">297</span>
-<span id="298">298</span>
-<span id="299">299</span>
-<span id="300">300</span>
-<span id="301">301</span>
-<span id="302">302</span>
-<span id="303">303</span>
-<span id="304">304</span>
-<span id="305">305</span>
-<span id="306">306</span>
-<span id="307">307</span>
-<span id="308">308</span>
-<span id="309">309</span>
-<span id="310">310</span>
-<span id="311">311</span>
-<span id="312">312</span>
-<span id="313">313</span>
-<span id="314">314</span>
-<span id="315">315</span>
-<span id="316">316</span>
-<span id="317">317</span>
-<span id="318">318</span>
-<span id="319">319</span>
-<span id="320">320</span>
-<span id="321">321</span>
-<span id="322">322</span>
-<span id="323">323</span>
-<span id="324">324</span>
-<span id="325">325</span>
-<span id="326">326</span>
-<span id="327">327</span>
-<span id="328">328</span>
-<span id="329">329</span>
-<span id="330">330</span>
-<span id="331">331</span>
-<span id="332">332</span>
-<span id="333">333</span>
-<span id="334">334</span>
-<span id="335">335</span>
-<span id="336">336</span>
-<span id="337">337</span>
-<span id="338">338</span>
-<span id="339">339</span>
-<span id="340">340</span>
-<span id="341">341</span>
-<span id="342">342</span>
-<span id="343">343</span>
-<span id="344">344</span>
-<span id="345">345</span>
-<span id="346">346</span>
-<span id="347">347</span>
-<span id="348">348</span>
-<span id="349">349</span>
-<span id="350">350</span>
-<span id="351">351</span>
-<span id="352">352</span>
-<span id="353">353</span>
-<span id="354">354</span>
-<span id="355">355</span>
-<span id="356">356</span>
-<span id="357">357</span>
-<span id="358">358</span>
-<span id="359">359</span>
-<span id="360">360</span>
-<span id="361">361</span>
-<span id="362">362</span>
-<span id="363">363</span>
-<span id="364">364</span>
-<span id="365">365</span>
-<span id="366">366</span>
-<span id="367">367</span>
-<span id="368">368</span>
-<span id="369">369</span>
-<span id="370">370</span>
-<span id="371">371</span>
-<span id="372">372</span>
-<span id="373">373</span>
-<span id="374">374</span>
-<span id="375">375</span>
-<span id="376">376</span>
-<span id="377">377</span>
-<span id="378">378</span>
-<span id="379">379</span>
-<span id="380">380</span>
-<span id="381">381</span>
-<span id="382">382</span>
-<span id="383">383</span>
-<span id="384">384</span>
-<span id="385">385</span>
-<span id="386">386</span>
-<span id="387">387</span>
-<span id="388">388</span>
-<span id="389">389</span>
-<span id="390">390</span>
-<span id="391">391</span>
-<span id="392">392</span>
-<span id="393">393</span>
-<span id="394">394</span>
-<span id="395">395</span>
-<span id="396">396</span>
-<span id="397">397</span>
-<span id="398">398</span>
-<span id="399">399</span>
-<span id="400">400</span>
-<span id="401">401</span>
-<span id="402">402</span>
-<span id="403">403</span>
-<span id="404">404</span>
-<span id="405">405</span>
-<span id="406">406</span>
-<span id="407">407</span>
-<span id="408">408</span>
-<span id="409">409</span>
-<span id="410">410</span>
-<span id="411">411</span>
-<span id="412">412</span>
-<span id="413">413</span>
-<span id="414">414</span>
-<span id="415">415</span>
-<span id="416">416</span>
-<span id="417">417</span>
-<span id="418">418</span>
-<span id="419">419</span>
-<span id="420">420</span>
-<span id="421">421</span>
-<span id="422">422</span>
-<span id="423">423</span>
-<span id="424">424</span>
-<span id="425">425</span>
-<span id="426">426</span>
-<span id="427">427</span>
-<span id="428">428</span>
-<span id="429">429</span>
-<span id="430">430</span>
-<span id="431">431</span>
-<span id="432">432</span>
-<span id="433">433</span>
-<span id="434">434</span>
-<span id="435">435</span>
-<span id="436">436</span>
-<span id="437">437</span>
-<span id="438">438</span>
-<span id="439">439</span>
-<span id="440">440</span>
-<span id="441">441</span>
-<span id="442">442</span>
-<span id="443">443</span>
-<span id="444">444</span>
-<span id="445">445</span>
-<span id="446">446</span>
-<span id="447">447</span>
-<span id="448">448</span>
-<span id="449">449</span>
-<span id="450">450</span>
-<span id="451">451</span>
-<span id="452">452</span>
-<span id="453">453</span>
-<span id="454">454</span>
-<span id="455">455</span>
-<span id="456">456</span>
-<span id="457">457</span>
-<span id="458">458</span>
-<span id="459">459</span>
-<span id="460">460</span>
-<span id="461">461</span>
-<span id="462">462</span>
-<span id="463">463</span>
-<span id="464">464</span>
-<span id="465">465</span>
-<span id="466">466</span>
-<span id="467">467</span>
-<span id="468">468</span>
-<span id="469">469</span>
-<span id="470">470</span>
-<span id="471">471</span>
-<span id="472">472</span>
-<span id="473">473</span>
-<span id="474">474</span>
-<span id="475">475</span>
-<span id="476">476</span>
-<span id="477">477</span>
-<span id="478">478</span>
-<span id="479">479</span>
-<span id="480">480</span>
-<span id="481">481</span>
-<span id="482">482</span>
-<span id="483">483</span>
-<span id="484">484</span>
-<span id="485">485</span>
-<span id="486">486</span>
-<span id="487">487</span>
-<span id="488">488</span>
-<span id="489">489</span>
-<span id="490">490</span>
-<span id="491">491</span>
-<span id="492">492</span>
-<span id="493">493</span>
-<span id="494">494</span>
-<span id="495">495</span>
-<span id="496">496</span>
-<span id="497">497</span>
-<span id="498">498</span>
-<span id="499">499</span>
-<span id="500">500</span>
-<span id="501">501</span>
-<span id="502">502</span>
-<span id="503">503</span>
-<span id="504">504</span>
-<span id="505">505</span>
-<span id="506">506</span>
-<span id="507">507</span>
-<span id="508">508</span>
-<span id="509">509</span>
-<span id="510">510</span>
-<span id="511">511</span>
-<span id="512">512</span>
-<span id="513">513</span>
-<span id="514">514</span>
-<span id="515">515</span>
-<span id="516">516</span>
-<span id="517">517</span>
-<span id="518">518</span>
-<span id="519">519</span>
-<span id="520">520</span>
-<span id="521">521</span>
-<span id="522">522</span>
-<span id="523">523</span>
-<span id="524">524</span>
-<span id="525">525</span>
-<span id="526">526</span>
-<span id="527">527</span>
-<span id="528">528</span>
-<span id="529">529</span>
-<span id="530">530</span>
-<span id="531">531</span>
-<span id="532">532</span>
-<span id="533">533</span>
-<span id="534">534</span>
-<span id="535">535</span>
-<span id="536">536</span>
-<span id="537">537</span>
-<span id="538">538</span>
-<span id="539">539</span>
-<span id="540">540</span>
-<span id="541">541</span>
-<span id="542">542</span>
-<span id="543">543</span>
-<span id="544">544</span>
-<span id="545">545</span>
-<span id="546">546</span>
-<span id="547">547</span>
-<span id="548">548</span>
-<span id="549">549</span>
-<span id="550">550</span>
-<span id="551">551</span>
-<span id="552">552</span>
-<span id="553">553</span>
-<span id="554">554</span>
-<span id="555">555</span>
-<span id="556">556</span>
-<span id="557">557</span>
-<span id="558">558</span>
-<span id="559">559</span>
-<span id="560">560</span>
-<span id="561">561</span>
-<span id="562">562</span>
-<span id="563">563</span>
-<span id="564">564</span>
-<span id="565">565</span>
-<span id="566">566</span>
-<span id="567">567</span>
-<span id="568">568</span>
-<span id="569">569</span>
-<span id="570">570</span>
-<span id="571">571</span>
-<span id="572">572</span>
-<span id="573">573</span>
-<span id="574">574</span>
-<span id="575">575</span>
-<span id="576">576</span>
-<span id="577">577</span>
-<span id="578">578</span>
-<span id="579">579</span>
-<span id="580">580</span>
-<span id="581">581</span>
-<span id="582">582</span>
-<span id="583">583</span>
-<span id="584">584</span>
-<span id="585">585</span>
-<span id="586">586</span>
-<span id="587">587</span>
-<span id="588">588</span>
-<span id="589">589</span>
-<span id="590">590</span>
-<span id="591">591</span>
-<span id="592">592</span>
-<span id="593">593</span>
-<span id="594">594</span>
-<span id="595">595</span>
-<span id="596">596</span>
-<span id="597">597</span>
-<span id="598">598</span>
-<span id="599">599</span>
-<span id="600">600</span>
-<span id="601">601</span>
-<span id="602">602</span>
-<span id="603">603</span>
-<span id="604">604</span>
-<span id="605">605</span>
-<span id="606">606</span>
-<span id="607">607</span>
-<span id="608">608</span>
-<span id="609">609</span>
-<span id="610">610</span>
-<span id="611">611</span>
-<span id="612">612</span>
-<span id="613">613</span>
-<span id="614">614</span>
-<span id="615">615</span>
-<span id="616">616</span>
-<span id="617">617</span>
-<span id="618">618</span>
-<span id="619">619</span>
-<span id="620">620</span>
-<span id="621">621</span>
-<span id="622">622</span>
-<span id="623">623</span>
-<span id="624">624</span>
-<span id="625">625</span>
-<span id="626">626</span>
-<span id="627">627</span>
-<span id="628">628</span>
-<span id="629">629</span>
-<span id="630">630</span>
-<span id="631">631</span>
-<span id="632">632</span>
-<span id="633">633</span>
-<span id="634">634</span>
-<span id="635">635</span>
-<span id="636">636</span>
-<span id="637">637</span>
-<span id="638">638</span>
-<span id="639">639</span>
-<span id="640">640</span>
-<span id="641">641</span>
-<span id="642">642</span>
-<span id="643">643</span>
-<span id="644">644</span>
-<span id="645">645</span>
-<span id="646">646</span>
-<span id="647">647</span>
-<span id="648">648</span>
-<span id="649">649</span>
-<span id="650">650</span>
-<span id="651">651</span>
-<span id="652">652</span>
-<span id="653">653</span>
-<span id="654">654</span>
-<span id="655">655</span>
-<span id="656">656</span>
-<span id="657">657</span>
-<span id="658">658</span>
-<span id="659">659</span>
-<span id="660">660</span>
-<span id="661">661</span>
-<span id="662">662</span>
-<span id="663">663</span>
-<span id="664">664</span>
-<span id="665">665</span>
-<span id="666">666</span>
-<span id="667">667</span>
-<span id="668">668</span>
-<span id="669">669</span>
-<span id="670">670</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attribute">#![allow(clippy::assertions_on_constants)]
 </span><span class="doccomment">//! Definition &amp; Implementation of the consensus settings
@@ -715,16 +263,12 @@
 //! use the default values from `/node_configuration/default_testing.rs` in the
 //! `massa-models` crate sources.
 </span><span class="kw">use </span>massa_execution_exports::ExecutionController;
-<span class="kw">use </span>massa_graph::{settings::GraphConfig, LedgerConfig};
-<span class="kw">use </span>massa_models::Amount;
-<span class="kw">use </span>massa_pool::PoolCommandSender;
-<span class="kw">use </span>massa_proof_of_stake_exports::ProofOfStakeConfig;
+<span class="kw">use </span>massa_graph::settings::GraphConfig;
+<span class="kw">use </span>massa_pool_exports::PoolController;
+<span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_protocol_exports::{ProtocolCommandSender, ProtocolEventReceiver};
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>num::rational::Ratio;
-<span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::{default::Default, path::PathBuf, usize};
 <span class="kw">use </span>tokio::sync::mpsc;
 
 <span class="kw">use crate</span>::{
@@ -732,60 +276,9 @@
     events::ConsensusEvent,
 };
 
-<span class="doccomment">/// Consensus configuration
-/// Assumes `thread_count &gt;= 1, t0_millis &gt;= 1, t0_millis % thread_count == 0`
-</span><span class="attribute">#[derive(Debug, Deserialize, Serialize, Clone)]
-</span><span class="kw">pub struct </span>ConsensusSettings {
-    <span class="doccomment">/// Staking keys
-    </span><span class="kw">pub </span>staking_keys_path: PathBuf,
-    <span class="doccomment">/// Maximum number of blocks allowed in discarded blocks.
-    </span><span class="kw">pub </span>max_discarded_blocks: usize,
-    <span class="doccomment">/// If a block is `future_block_processing_max_periods` periods in the future, it is just discarded.
-    </span><span class="kw">pub </span>future_block_processing_max_periods: u64,
-    <span class="doccomment">/// Maximum number of blocks allowed in `FutureIncomingBlocks`.
-    </span><span class="kw">pub </span>max_future_processing_blocks: usize,
-    <span class="doccomment">/// Maximum number of blocks allowed in `DependencyWaitingBlocks`.
-    </span><span class="kw">pub </span>max_dependency_blocks: usize,
-    <span class="doccomment">/// Maximum tries to fill a block with operations
-    </span><span class="kw">pub </span>max_operations_fill_attempts: u32,
-    <span class="doccomment">/// number of cached draw cycles for PoS
-    </span><span class="kw">pub </span>pos_draw_cached_cycles: usize,
-    <span class="doccomment">/// path to ledger db
-    </span><span class="kw">pub </span>ledger_path: PathBuf,
-    <span class="doccomment">/// Cache capacity allowed to the ledger
-    </span><span class="kw">pub </span>ledger_cache_capacity: u64,
-    <span class="doccomment">/// the ledger is flushed to the disk every `ledger_flush_interval`
-    </span><span class="kw">pub </span>ledger_flush_interval: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
-    <span class="doccomment">/// if ledger need a reset at start up
-    </span><span class="kw">pub </span>ledger_reset_at_startup: bool,
-    <span class="doccomment">/// Initial file path that describe the ledger to merge in `ledger_path` after starting
-    </span><span class="kw">pub </span>initial_ledger_path: PathBuf,
-    <span class="doccomment">/// size of an operation batch when creating a block
-    </span><span class="kw">pub </span>operation_batch_size: usize,
-    <span class="doccomment">/// path to the initial rolls
-    </span><span class="kw">pub </span>initial_rolls_path: PathBuf,
-    <span class="doccomment">/// stats time span
-    </span><span class="kw">pub </span>stats_timespan: MassaTime,
-    <span class="doccomment">/// max event send wait
-    </span><span class="kw">pub </span>max_send_wait: MassaTime,
-    <span class="doccomment">/// force keep at least this number of final periods in RAM for each thread
-    </span><span class="kw">pub </span>force_keep_final_periods: u64,
-    <span class="doccomment">/// old blocks are pruned every `block_db_prune_interval`
-    </span><span class="kw">pub </span>block_db_prune_interval: MassaTime,
-    <span class="doccomment">/// max number of items returned while querying
-    </span><span class="kw">pub </span>max_item_return_count: usize,
-    <span class="doccomment">/// If we want to generate blocks.
-    /// Parameter that shouldn&#39;t be defined in prod.
-    </span><span class="attribute">#[serde(skip, default = <span class="string">&quot;Default::default&quot;</span>)]
-    </span><span class="kw">pub </span>disable_block_creation: bool,
-}
-
 <span class="doccomment">/// Consensus full configuration (static + user defined)
-</span><span class="attribute">#[derive(Debug)]
+</span><span class="attribute">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>ConsensusConfig {
-    <span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
-    </span><span class="doccomment">/// temps files
-    </span><span class="kw">pub </span>temp_files: TempFiles,
     <span class="doccomment">/// Time in milliseconds when the blockclique started.
     </span><span class="kw">pub </span>genesis_timestamp: MassaTime,
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.
@@ -796,8 +289,6 @@
     </span><span class="kw">pub </span>t0: MassaTime,
     <span class="doccomment">/// `KeyPair` to sign genesis blocks.
     </span><span class="kw">pub </span>genesis_key: KeyPair,
-    <span class="doccomment">/// Staking keys
-    </span><span class="kw">pub </span>staking_keys_path: PathBuf,
     <span class="doccomment">/// Maximum number of blocks allowed in discarded blocks.
     </span><span class="kw">pub </span>max_discarded_blocks: usize,
     <span class="doccomment">/// If a block is `future_block_processing_max_periods` periods in the future, it is just discarded.
@@ -808,44 +299,10 @@
     </span><span class="kw">pub </span>max_dependency_blocks: usize,
     <span class="doccomment">/// Threshold for fitness.
     </span><span class="kw">pub </span>delta_f0: u64,
-    <span class="doccomment">/// Maximum number of operations per block
-    </span><span class="kw">pub </span>max_operations_per_block: u32,
-    <span class="doccomment">/// Maximum tries to fill a block with operations
-    </span><span class="kw">pub </span>max_operations_fill_attempts: u32,
-    <span class="doccomment">/// Maximum block size in bytes
-    </span><span class="kw">pub </span>max_block_size: u32,
     <span class="doccomment">/// Maximum operation validity period count
     </span><span class="kw">pub </span>operation_validity_periods: u64,
     <span class="doccomment">/// cycle duration in periods
     </span><span class="kw">pub </span>periods_per_cycle: u64,
-    <span class="doccomment">/// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle `N - pos_lookback_cycles - 1`
-    </span><span class="kw">pub </span>pos_lookback_cycles: u64,
-    <span class="doccomment">/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`
-    </span><span class="kw">pub </span>pos_lock_cycles: u64,
-    <span class="doccomment">/// number of cached draw cycles for PoS
-    </span><span class="kw">pub </span>pos_draw_cached_cycles: usize,
-    <span class="doccomment">/// number of cycle misses (strictly) above which stakers are deactivated
-    </span><span class="kw">pub </span>pos_miss_rate_deactivation_threshold: Ratio&lt;u64&gt;,
-    <span class="doccomment">/// path to ledger db after initialization (merge with `initial_ledger_path` on node start)
-    </span><span class="kw">pub </span>ledger_path: PathBuf,
-    <span class="doccomment">/// Cache capacity allowed to the ledger
-    </span><span class="kw">pub </span>ledger_cache_capacity: u64,
-    <span class="doccomment">/// the ledger is flushed to the disk every `ledger_flush_interval`
-    </span><span class="kw">pub </span>ledger_flush_interval: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
-    <span class="doccomment">/// if ledger need a reset at start up
-    </span><span class="kw">pub </span>ledger_reset_at_startup: bool,
-    <span class="doccomment">/// Initial file path that describe the ledger to merge in `ledger_path` after starting
-    </span><span class="kw">pub </span>initial_ledger_path: PathBuf,
-    <span class="doccomment">/// Reward for the creation of a block
-    </span><span class="kw">pub </span>block_reward: Amount,
-    <span class="doccomment">/// size of an operation batch when creating a block
-    </span><span class="kw">pub </span>operation_batch_size: usize,
-    <span class="doccomment">/// path to the initial rolls
-    </span><span class="kw">pub </span>initial_rolls_path: PathBuf,
-    <span class="doccomment">/// initial seed
-    </span><span class="kw">pub </span>initial_draw_seed: String,
-    <span class="doccomment">/// Price of a roll inside the network
-    </span><span class="kw">pub </span>roll_price: Amount,
     <span class="doccomment">/// stats time span
     </span><span class="kw">pub </span>stats_timespan: MassaTime,
     <span class="doccomment">/// max event send wait
@@ -858,72 +315,10 @@
     </span><span class="kw">pub </span>block_db_prune_interval: MassaTime,
     <span class="doccomment">/// max number of items returned while querying
     </span><span class="kw">pub </span>max_item_return_count: usize,
-    <span class="doccomment">/// If we want to generate blocks.
-    /// Parameter that shouldn&#39;t be defined in prod.
-    </span><span class="kw">pub </span>disable_block_creation: bool,
     <span class="doccomment">/// Max gas per block for the execution configuration
     </span><span class="kw">pub </span>max_gas_per_block: u64,
-}
-
-<span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
-#[derive(Default, Debug)]
-</span><span class="doccomment">/// In testing mode if you create a configuration with temporary files
-/// we need to keep inside this structure the `TempDir` and
-/// `NamedTempFile` here since the end of the test.
-/// We don&#39;t need to move or clone, only the main configuration need that and
-/// the var is never used.
-</span><span class="kw">pub struct </span>TempFiles {
-    <span class="doccomment">/// Doesn&#39;t drop temporary file on testing
-    </span><span class="kw">pub </span>temp_files: Vec&lt;tempfile::NamedTempFile&gt;,
-    <span class="doccomment">/// Doesn&#39;t drop temporary directory on testing
-    </span><span class="kw">pub </span>temp_dir: Vec&lt;tempfile::TempDir&gt;,
-}
-
-<span class="kw">impl </span>Clone <span class="kw">for </span>ConsensusConfig {
-    <span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            <span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
-            </span>temp_files: TempFiles::default(),
-            genesis_timestamp: <span class="self">self</span>.genesis_timestamp,
-            end_timestamp: <span class="self">self</span>.end_timestamp,
-            thread_count: <span class="self">self</span>.thread_count,
-            t0: <span class="self">self</span>.t0,
-            genesis_key: <span class="self">self</span>.genesis_key.clone(),
-            staking_keys_path: <span class="self">self</span>.staking_keys_path.clone(),
-            max_discarded_blocks: <span class="self">self</span>.max_discarded_blocks,
-            future_block_processing_max_periods: <span class="self">self</span>.future_block_processing_max_periods,
-            max_future_processing_blocks: <span class="self">self</span>.max_future_processing_blocks,
-            max_dependency_blocks: <span class="self">self</span>.max_dependency_blocks,
-            delta_f0: <span class="self">self</span>.delta_f0,
-            max_operations_per_block: <span class="self">self</span>.max_operations_per_block,
-            max_operations_fill_attempts: <span class="self">self</span>.max_operations_fill_attempts,
-            max_block_size: <span class="self">self</span>.max_block_size,
-            operation_validity_periods: <span class="self">self</span>.operation_validity_periods,
-            periods_per_cycle: <span class="self">self</span>.periods_per_cycle,
-            pos_lookback_cycles: <span class="self">self</span>.pos_lookback_cycles,
-            pos_lock_cycles: <span class="self">self</span>.pos_lock_cycles,
-            pos_draw_cached_cycles: <span class="self">self</span>.pos_draw_cached_cycles,
-            pos_miss_rate_deactivation_threshold: <span class="self">self</span>.pos_miss_rate_deactivation_threshold,
-            ledger_path: <span class="self">self</span>.ledger_path.clone(),
-            ledger_cache_capacity: <span class="self">self</span>.ledger_cache_capacity,
-            ledger_flush_interval: <span class="self">self</span>.ledger_flush_interval,
-            ledger_reset_at_startup: <span class="self">self</span>.ledger_reset_at_startup,
-            initial_ledger_path: <span class="self">self</span>.initial_ledger_path.clone(),
-            block_reward: <span class="self">self</span>.block_reward,
-            operation_batch_size: <span class="self">self</span>.operation_batch_size,
-            initial_rolls_path: <span class="self">self</span>.initial_rolls_path.clone(),
-            initial_draw_seed: <span class="self">self</span>.initial_draw_seed.clone(),
-            roll_price: <span class="self">self</span>.roll_price,
-            stats_timespan: <span class="self">self</span>.stats_timespan,
-            max_send_wait: <span class="self">self</span>.max_send_wait,
-            force_keep_final_periods: <span class="self">self</span>.force_keep_final_periods,
-            endorsement_count: <span class="self">self</span>.endorsement_count,
-            block_db_prune_interval: <span class="self">self</span>.block_db_prune_interval,
-            max_item_return_count: <span class="self">self</span>.max_item_return_count,
-            disable_block_creation: <span class="self">self</span>.disable_block_creation,
-            max_gas_per_block: <span class="self">self</span>.max_gas_per_block,
-        }
-    }
+    <span class="doccomment">/// channel size
+    </span><span class="kw">pub </span>channel_size: usize,
 }
 
 <span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>ConsensusConfig&gt; <span class="kw">for </span>GraphConfig {
@@ -938,45 +333,9 @@
             delta_f0: cfg.delta_f0,
             operation_validity_periods: cfg.operation_validity_periods,
             periods_per_cycle: cfg.periods_per_cycle,
-            initial_ledger_path: cfg.initial_ledger_path.clone(),
-            block_reward: cfg.block_reward,
-            roll_price: cfg.roll_price,
             force_keep_final_periods: cfg.force_keep_final_periods,
             endorsement_count: cfg.endorsement_count,
             max_item_return_count: cfg.max_item_return_count,
-            ledger_path: cfg.ledger_path.clone(),
-            ledger_cache_capacity: cfg.ledger_cache_capacity,
-            ledger_flush_interval: cfg.ledger_flush_interval,
-        }
-    }
-}
-
-<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>ConsensusConfig&gt; <span class="kw">for </span>ProofOfStakeConfig {
-    <span class="kw">fn </span>from(cfg: <span class="kw-2">&amp;</span>ConsensusConfig) -&gt; <span class="self">Self </span>{
-        ProofOfStakeConfig {
-            thread_count: cfg.thread_count,
-            genesis_key: cfg.genesis_key.clone(),
-            periods_per_cycle: cfg.periods_per_cycle,
-            pos_lookback_cycles: cfg.pos_lookback_cycles,
-            pos_lock_cycles: cfg.pos_lock_cycles,
-            pos_draw_cached_cycles: cfg.pos_draw_cached_cycles,
-            pos_miss_rate_deactivation_threshold: cfg.pos_miss_rate_deactivation_threshold,
-            initial_rolls_path: cfg.initial_rolls_path.clone(),
-            initial_draw_seed: cfg.initial_draw_seed.clone(),
-            roll_price: cfg.roll_price,
-            endorsement_count: cfg.endorsement_count,
-        }
-    }
-}
-
-<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>ConsensusConfig&gt; <span class="kw">for </span>LedgerConfig {
-    <span class="kw">fn </span>from(cfg: <span class="kw-2">&amp;</span>ConsensusConfig) -&gt; <span class="self">Self </span>{
-        LedgerConfig {
-            thread_count: cfg.thread_count,
-            ledger_path: cfg.ledger_path.clone(),
-            ledger_cache_capacity: cfg.ledger_cache_capacity,
-            ledger_flush_interval: cfg.ledger_flush_interval,
-            initial_ledger_path: cfg.initial_ledger_path.clone(),
         }
     }
 }
@@ -993,7 +352,9 @@
     <span class="doccomment">/// Execution command sender.
     </span><span class="kw">pub </span>execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
     <span class="doccomment">/// Associated Pool command sender.
-    </span><span class="kw">pub </span>pool_command_sender: PoolCommandSender,
+    </span><span class="kw">pub </span>pool_command_sender: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
+    <span class="doccomment">/// Selector controller
+    </span><span class="kw">pub </span>selector_controller: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     <span class="doccomment">/// Channel receiving consensus commands.
     </span><span class="kw">pub </span>controller_command_rx: mpsc::Receiver&lt;ConsensusCommand&gt;,
     <span class="doccomment">/// Channel sending out consensus events.
@@ -1012,178 +373,9 @@
     <span class="doccomment">/// incoming link to protocol component
     </span><span class="kw">pub </span>protocol_event_receiver: ProtocolEventReceiver,
     <span class="doccomment">/// outgoing link to pool component
-    </span><span class="kw">pub </span>pool_command_sender: PoolCommandSender,
-}
-
-<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>ConsensusSettings&gt; <span class="kw">for </span>ConsensusConfig {
-    <span class="kw">fn </span>from(settings: <span class="kw-2">&amp;</span>ConsensusSettings) -&gt; <span class="self">Self </span>{
-        <span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
-        </span><span class="doccomment">/// If the feature `testing` is activated we force the unit
-        /// test values to be used for a default initialization.
-        </span><span class="kw">use </span>massa_models::constants::default_testing::<span class="kw-2">*</span>;
-        <span class="attribute">#[cfg(not(feature = <span class="string">&quot;testing&quot;</span>))]
-        </span><span class="kw">use </span>massa_models::constants::<span class="kw-2">*</span>;
-        ConsensusConfig {
-            <span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
-            </span>temp_files: TempFiles::default(), <span class="comment">// No need to clone
-            </span>genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
-            end_timestamp: <span class="kw-2">*</span>END_TIMESTAMP,
-            thread_count: THREAD_COUNT,
-            t0: T0,
-            genesis_key: GENESIS_KEY.clone(),
-            staking_keys_path: settings.staking_keys_path.clone(),
-            max_discarded_blocks: settings.max_discarded_blocks,
-            future_block_processing_max_periods: settings.future_block_processing_max_periods,
-            max_future_processing_blocks: settings.max_future_processing_blocks,
-            max_dependency_blocks: settings.max_dependency_blocks,
-            delta_f0: DELTA_F0,
-            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-            max_operations_fill_attempts: settings.max_operations_fill_attempts,
-            max_block_size: MAX_BLOCK_SIZE,
-            operation_validity_periods: OPERATION_VALIDITY_PERIODS,
-            periods_per_cycle: PERIODS_PER_CYCLE,
-            pos_lookback_cycles: POS_LOOKBACK_CYCLES,
-            pos_lock_cycles: POS_LOCK_CYCLES,
-            pos_draw_cached_cycles: settings.pos_draw_cached_cycles,
-            pos_miss_rate_deactivation_threshold: <span class="kw-2">*</span>POS_MISS_RATE_DEACTIVATION_THRESHOLD,
-            ledger_path: settings.ledger_path.clone(),
-            ledger_cache_capacity: settings.ledger_cache_capacity,
-            ledger_flush_interval: settings.ledger_flush_interval,
-            ledger_reset_at_startup: settings.ledger_reset_at_startup,
-            initial_ledger_path: settings.initial_ledger_path.clone(),
-            block_reward: BLOCK_REWARD,
-            operation_batch_size: settings.operation_batch_size,
-            initial_rolls_path: settings.initial_rolls_path.clone(),
-            initial_draw_seed: INITIAL_DRAW_SEED.to_string(),
-            roll_price: ROLL_PRICE,
-            stats_timespan: settings.stats_timespan,
-            max_send_wait: settings.max_send_wait,
-            force_keep_final_periods: settings.force_keep_final_periods,
-            endorsement_count: ENDORSEMENT_COUNT,
-            block_db_prune_interval: settings.block_db_prune_interval,
-            max_item_return_count: settings.max_item_return_count,
-            disable_block_creation: settings.disable_block_creation,
-            max_gas_per_block: MAX_GAS_PER_BLOCK,
-        }
-    }
-}
-
-<span class="kw">impl </span>From&lt;ConsensusSettings&gt; <span class="kw">for </span>ConsensusConfig {
-    <span class="kw">fn </span>from(settings: ConsensusSettings) -&gt; <span class="self">Self </span>{
-        <span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
-        </span><span class="doccomment">/// If the feature `testing` is activated we force the unit
-        /// test values to be used for a default initialization.
-        </span><span class="kw">use </span>massa_models::constants::default_testing::<span class="kw-2">*</span>;
-        <span class="attribute">#[cfg(not(feature = <span class="string">&quot;testing&quot;</span>))]
-        </span><span class="kw">use </span>massa_models::constants::<span class="kw-2">*</span>;
-        ConsensusConfig {
-            <span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
-            </span>temp_files: Default::default(),
-            genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
-            end_timestamp: <span class="kw-2">*</span>END_TIMESTAMP,
-            thread_count: THREAD_COUNT,
-            t0: T0,
-            genesis_key: GENESIS_KEY.clone(),
-            staking_keys_path: settings.staking_keys_path,
-            max_discarded_blocks: settings.max_discarded_blocks,
-            future_block_processing_max_periods: settings.future_block_processing_max_periods,
-            max_future_processing_blocks: settings.max_future_processing_blocks,
-            max_dependency_blocks: settings.max_dependency_blocks,
-            delta_f0: DELTA_F0,
-            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-            max_operations_fill_attempts: settings.max_operations_fill_attempts,
-            max_block_size: MAX_BLOCK_SIZE,
-            operation_validity_periods: OPERATION_VALIDITY_PERIODS,
-            periods_per_cycle: PERIODS_PER_CYCLE,
-            pos_lookback_cycles: POS_LOOKBACK_CYCLES,
-            pos_lock_cycles: POS_LOCK_CYCLES,
-            pos_draw_cached_cycles: settings.pos_draw_cached_cycles,
-            pos_miss_rate_deactivation_threshold: <span class="kw-2">*</span>POS_MISS_RATE_DEACTIVATION_THRESHOLD,
-            ledger_path: settings.ledger_path,
-            ledger_cache_capacity: settings.ledger_cache_capacity,
-            ledger_flush_interval: settings.ledger_flush_interval,
-            ledger_reset_at_startup: settings.ledger_reset_at_startup,
-            initial_ledger_path: settings.initial_ledger_path,
-            block_reward: BLOCK_REWARD,
-            operation_batch_size: settings.operation_batch_size,
-            initial_rolls_path: settings.initial_rolls_path,
-            initial_draw_seed: INITIAL_DRAW_SEED.to_string(),
-            roll_price: ROLL_PRICE,
-            stats_timespan: settings.stats_timespan,
-            max_send_wait: settings.max_send_wait,
-            force_keep_final_periods: settings.force_keep_final_periods,
-            endorsement_count: ENDORSEMENT_COUNT,
-            block_db_prune_interval: settings.block_db_prune_interval,
-            max_item_return_count: settings.max_item_return_count,
-            disable_block_creation: settings.disable_block_creation,
-            max_gas_per_block: MAX_GAS_PER_BLOCK,
-        }
-    }
-}
-
-<span class="doccomment">/// Defining the default consensus configuration for both
-/// testing and not testing.
-///
-/// Use the feature testing to load mocked default variable
-/// This is default variable but the configuration is a dynamic
-/// configuration passed as dependencies with no particular lifetime
-</span><span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
-</span><span class="kw">impl </span>Default <span class="kw">for </span>ConsensusSettings {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="doccomment">/// If the feature `testing` is activated we force the unit
-        /// test values to be used for a default initialization.
-        </span><span class="kw">use </span>massa_models::constants::default_testing::<span class="kw-2">*</span>;
-        <span class="self">Self </span>{
-            staking_keys_path: Default::default(),
-            max_discarded_blocks: MAX_DISCARDED_BLOCKS,
-            future_block_processing_max_periods: FUTURE_BLOCK_PROCESSING_MAX_PERIODS,
-            max_future_processing_blocks: MAX_FUTURE_PROCESSING_BLOCK,
-            max_dependency_blocks: MAX_DEPENDENCY_BLOCK,
-            max_operations_fill_attempts: MAX_OPERATION_FILL_ATTEMPTS,
-            pos_draw_cached_cycles: POS_DRAW_CACHED_CYCLE,
-            ledger_path: Default::default(),
-            ledger_cache_capacity: LEDGER_CACHE_CAPACITY,
-            ledger_flush_interval: <span class="kw-2">*</span>LEDGER_FLUSH_INTERVAL,
-            ledger_reset_at_startup: LEDGER_RESET_AT_STARTUP,
-            initial_ledger_path: Default::default(),
-            operation_batch_size: OPERATION_BATCH_SIZE,
-            initial_rolls_path: Default::default(),
-            stats_timespan: <span class="kw-2">*</span>STATS_TIMESPAN,
-            max_send_wait: <span class="kw-2">*</span>MAX_SEND_WAIT,
-            force_keep_final_periods: FORCE_KEEP_FINAL_PERIOD,
-            block_db_prune_interval: <span class="kw-2">*</span>BLOCK_DB_PRUNE_INTERVAL,
-            max_item_return_count: MAX_ITEM_RETURN_COUNT,
-            disable_block_creation: DISABLE_BLOCK_CREATION,
-        }
-    }
-}
-
-<span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
-</span><span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>std::path::Path&gt; <span class="kw">for </span>ConsensusConfig {
-    <span class="doccomment">/// Utility trait used in tests to get a full consensus configuration from an initial ledger path
-    </span><span class="kw">fn </span>from(initial_ledger_path: <span class="kw-2">&amp;</span>std::path::Path) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>staking_keys = Vec::new();
-        <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">2 </span>{
-            staking_keys.push(KeyPair::generate());
-        }
-        massa_models::init_serialization_context(massa_models::SerializationContext::default());
-        ConsensusSettings {
-            staking_keys_path: <span class="kw">crate</span>::tools::generate_staking_keys_file(<span class="kw-2">&amp;</span>staking_keys)
-                .path()
-                .to_path_buf(),
-            ledger_path: tempfile::tempdir()
-                .expect(<span class="string">&quot;cannot create temp dir&quot;</span>)
-                .path()
-                .to_path_buf(),
-            initial_ledger_path: initial_ledger_path.to_path_buf(),
-            initial_rolls_path: tempfile::tempdir()
-                .expect(<span class="string">&quot;cannot create temp dir&quot;</span>)
-                .path()
-                .to_path_buf(),
-            ..Default::default()
-        }
-        .into()
-    }
+    </span><span class="kw">pub </span>pool_command_sender: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
+    <span class="doccomment">/// selector controller
+    </span><span class="kw">pub </span>selector_controller: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
 }
 
 <span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
@@ -1215,128 +407,32 @@
 ///
 </span><span class="kw">impl </span>Default <span class="kw">for </span>ConsensusConfig {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="kw">use </span>massa_models::constants::default_testing::<span class="kw-2">*</span>;
-        massa_models::init_serialization_context(massa_models::SerializationContext::default());
-        <span class="kw">let </span>tempdir = tempfile::tempdir().expect(<span class="string">&quot;cannot create temp dir for the ledger path&quot;</span>);
-        <span class="kw">let </span>path_buf = tempdir.path().to_path_buf();
+        <span class="kw">use </span>massa_models::config::<span class="kw-2">*</span>;
         <span class="self">Self </span>{
-            temp_files: TempFiles {
-                temp_dir: <span class="macro">vec!</span>[tempdir],
-                temp_files: <span class="macro">vec!</span>[],
-            },
             <span class="comment">// reset genesis timestamp because we are in test mode that can take a while to process
-            </span>genesis_timestamp: MassaTime::now().expect(<span class="string">&quot;Impossible to reset the timestamp in test&quot;</span>),
+            </span>genesis_timestamp: MassaTime::now(<span class="number">0</span>)
+                .expect(<span class="string">&quot;Impossible to reset the timestamp in test&quot;</span>),
             end_timestamp: <span class="kw-2">*</span>END_TIMESTAMP,
             thread_count: THREAD_COUNT,
             t0: T0,
             genesis_key: GENESIS_KEY.clone(),
-            staking_keys_path: Default::default(),
-            max_discarded_blocks: MAX_DISCARDED_BLOCKS,
-            future_block_processing_max_periods: FUTURE_BLOCK_PROCESSING_MAX_PERIODS,
-            max_future_processing_blocks: MAX_FUTURE_PROCESSING_BLOCK,
-            max_dependency_blocks: MAX_DEPENDENCY_BLOCK,
+            max_discarded_blocks: <span class="number">100</span>,
+            future_block_processing_max_periods: <span class="number">2</span>,
+            max_future_processing_blocks: <span class="number">10</span>,
+            max_dependency_blocks: <span class="number">100</span>,
             delta_f0: DELTA_F0,
-            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-            max_operations_fill_attempts: MAX_OPERATION_FILL_ATTEMPTS,
-            max_block_size: MAX_BLOCK_SIZE,
             operation_validity_periods: OPERATION_VALIDITY_PERIODS,
             periods_per_cycle: PERIODS_PER_CYCLE,
-            pos_lookback_cycles: POS_LOOKBACK_CYCLES,
-            pos_lock_cycles: POS_LOCK_CYCLES,
-            pos_draw_cached_cycles: POS_DRAW_CACHED_CYCLE,
-            pos_miss_rate_deactivation_threshold: <span class="kw-2">*</span>POS_MISS_RATE_DEACTIVATION_THRESHOLD,
-            ledger_path: path_buf,
-            ledger_cache_capacity: LEDGER_CACHE_CAPACITY,
-            ledger_flush_interval: <span class="kw-2">*</span>LEDGER_FLUSH_INTERVAL,
-            ledger_reset_at_startup: LEDGER_RESET_AT_STARTUP,
-            initial_ledger_path: Default::default(),
-            block_reward: BLOCK_REWARD,
-            operation_batch_size: OPERATION_BATCH_SIZE,
-            initial_rolls_path: Default::default(),
-            initial_draw_seed: INITIAL_DRAW_SEED.to_string(),
-            roll_price: ROLL_PRICE,
-            stats_timespan: <span class="kw-2">*</span>STATS_TIMESPAN,
-            max_send_wait: <span class="kw-2">*</span>MAX_SEND_WAIT,
-            force_keep_final_periods: FORCE_KEEP_FINAL_PERIOD,
+            stats_timespan: MassaTime::from_millis(<span class="number">1000</span>),
+            max_send_wait: MassaTime::from_millis(<span class="number">1000</span>),
+            force_keep_final_periods: <span class="number">20</span>,
             endorsement_count: ENDORSEMENT_COUNT,
-            block_db_prune_interval: <span class="kw-2">*</span>BLOCK_DB_PRUNE_INTERVAL,
-            max_item_return_count: MAX_ITEM_RETURN_COUNT,
-            disable_block_creation: DISABLE_BLOCK_CREATION,
+            block_db_prune_interval: MassaTime::from_millis(<span class="number">1000</span>),
+            max_item_return_count: <span class="number">100</span>,
             max_gas_per_block: MAX_GAS_PER_BLOCK,
-        }
-    }
-}
-
-<span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
-</span><span class="doccomment">/**
- * The following implementation correspond to tools used in unit tests
- * It allow you to get a default `ConsensusConfig` (that isn&#39;t possible without
- * the feature *testing* with already set/default `initial_ledger_path`,
- * `staking_keys_path` and `initial_rolls_path`.
- *
- * Used to radically reduce code duplication in unit tests of Consensus.
- */
-</span><span class="kw">impl </span>ConsensusConfig {
-    <span class="doccomment">/// default consensus configuration
-    </span><span class="kw">pub fn </span>default_with_paths() -&gt; <span class="self">Self </span>{
-        <span class="kw">use </span><span class="kw">crate</span>::tools::<span class="kw-2">*</span>;
-        <span class="kw">let </span>staking_keys: Vec&lt;KeyPair&gt; = (<span class="number">0</span>..<span class="number">1</span>).map(|<span class="kw">_</span>| KeyPair::generate()).collect();
-        <span class="kw">let </span>ledger_file = generate_ledger_file(<span class="kw-2">&amp;</span>std::collections::HashMap::new());
-        <span class="kw">let </span>staking_file = generate_staking_keys_file(<span class="kw-2">&amp;</span>staking_keys);
-        <span class="kw">let </span>rolls_file = generate_default_roll_counts_file(staking_keys);
-        ConsensusConfig {
-            initial_ledger_path: ledger_file.path().to_path_buf(),
-            staking_keys_path: staking_file.path().to_path_buf(),
-            initial_rolls_path: rolls_file.path().to_path_buf(),
-            temp_files: TempFiles {
-                temp_files: <span class="macro">vec!</span>[ledger_file, staking_file, rolls_file],
-                temp_dir: <span class="macro">vec!</span>[],
-            },
-            ..Default::default()
-        }
-    }
-
-    <span class="doccomment">/// Default consensus configuration from staking keypairs
-    </span><span class="kw">pub fn </span>default_with_staking_keys(staking_keys: <span class="kw-2">&amp;</span>[KeyPair]) -&gt; <span class="self">Self </span>{
-        <span class="kw">use </span><span class="kw">crate</span>::tools::<span class="kw-2">*</span>;
-        <span class="kw">let </span>ledger_file = generate_ledger_file(<span class="kw-2">&amp;</span>std::collections::HashMap::new());
-        <span class="kw">let </span>staking_file = generate_staking_keys_file(staking_keys);
-        <span class="kw">let </span>rolls_file = generate_default_roll_counts_file(staking_keys.to_vec());
-        ConsensusConfig {
-            initial_ledger_path: ledger_file.path().to_path_buf(),
-            staking_keys_path: staking_file.path().to_path_buf(),
-            initial_rolls_path: rolls_file.path().to_path_buf(),
-            temp_files: TempFiles {
-                temp_files: <span class="macro">vec!</span>[ledger_file, staking_file, rolls_file],
-                temp_dir: <span class="macro">vec!</span>[],
-            },
-            ..Default::default()
-        }
-    }
-
-    <span class="doccomment">/// Default consensus configuration from staking keys and ledger
-    </span><span class="kw">pub fn </span>default_with_staking_keys_and_ledger(
-        staking_keys: <span class="kw-2">&amp;</span>[KeyPair],
-        ledger: <span class="kw-2">&amp;</span>std::collections::HashMap&lt;
-            massa_models::Address,
-            massa_models::ledger_models::LedgerData,
-        &gt;,
-    ) -&gt; <span class="self">Self </span>{
-        <span class="kw">use </span><span class="kw">crate</span>::tools::<span class="kw-2">*</span>;
-        <span class="kw">let </span>ledger_file = generate_ledger_file(ledger);
-        <span class="kw">let </span>staking_file = generate_staking_keys_file(staking_keys);
-        <span class="kw">let </span>rolls_file = generate_default_roll_counts_file(staking_keys.to_vec());
-        ConsensusConfig {
-            initial_ledger_path: ledger_file.path().to_path_buf(),
-            staking_keys_path: staking_file.path().to_path_buf(),
-            initial_rolls_path: rolls_file.path().to_path_buf(),
-            temp_files: TempFiles {
-                temp_files: <span class="macro">vec!</span>[ledger_file, staking_file, rolls_file],
-                temp_dir: <span class="macro">vec!</span>[],
-            },
-            ..Default::default()
+            channel_size: CHANNEL_SIZE,
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

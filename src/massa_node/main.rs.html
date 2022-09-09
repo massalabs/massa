@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-node/src/main.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>main.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_node/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_node/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_node/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-node/src/main.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>main.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_node/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_node/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_node/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -486,104 +486,336 @@
 <span id="486">486</span>
 <span id="487">487</span>
 <span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
+<span id="595">595</span>
+<span id="596">596</span>
+<span id="597">597</span>
+<span id="598">598</span>
+<span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
+<span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
+<span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
+<span id="641">641</span>
+<span id="642">642</span>
+<span id="643">643</span>
+<span id="644">644</span>
+<span id="645">645</span>
+<span id="646">646</span>
+<span id="647">647</span>
+<span id="648">648</span>
+<span id="649">649</span>
+<span id="650">650</span>
+<span id="651">651</span>
+<span id="652">652</span>
+<span id="653">653</span>
+<span id="654">654</span>
+<span id="655">655</span>
+<span id="656">656</span>
+<span id="657">657</span>
+<span id="658">658</span>
+<span id="659">659</span>
+<span id="660">660</span>
+<span id="661">661</span>
+<span id="662">662</span>
+<span id="663">663</span>
+<span id="664">664</span>
+<span id="665">665</span>
+<span id="666">666</span>
+<span id="667">667</span>
+<span id="668">668</span>
+<span id="669">669</span>
+<span id="670">670</span>
+<span id="671">671</span>
+<span id="672">672</span>
+<span id="673">673</span>
+<span id="674">674</span>
+<span id="675">675</span>
+<span id="676">676</span>
+<span id="677">677</span>
+<span id="678">678</span>
+<span id="679">679</span>
+<span id="680">680</span>
+<span id="681">681</span>
+<span id="682">682</span>
+<span id="683">683</span>
+<span id="684">684</span>
+<span id="685">685</span>
+<span id="686">686</span>
+<span id="687">687</span>
+<span id="688">688</span>
+<span id="689">689</span>
+<span id="690">690</span>
+<span id="691">691</span>
+<span id="692">692</span>
+<span id="693">693</span>
+<span id="694">694</span>
+<span id="695">695</span>
+<span id="696">696</span>
+<span id="697">697</span>
+<span id="698">698</span>
+<span id="699">699</span>
+<span id="700">700</span>
+<span id="701">701</span>
+<span id="702">702</span>
+<span id="703">703</span>
+<span id="704">704</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="attribute">#![feature(ip)]
-#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
+</span><span class="attribute">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 </span><span class="kw">extern crate </span>massa_logging;
-<span class="kw">use </span><span class="kw">crate</span>::settings::{POOL_CONFIG, SETTINGS};
+<span class="kw">use </span><span class="kw">crate</span>::settings::SETTINGS;
 
 <span class="kw">use </span>dialoguer::Password;
-<span class="kw">use </span>massa_api::{Private, Public, RpcServer, StopHandle, API};
+<span class="kw">use </span>massa_api::{APIConfig, Private, Public, RpcServer, StopHandle, API};
 <span class="kw">use </span>massa_async_pool::AsyncPoolConfig;
-<span class="kw">use </span>massa_bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
-<span class="kw">use </span>massa_cipher::{decrypt, encrypt};
+<span class="kw">use </span>massa_bootstrap::{get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager};
+<span class="kw">use </span>massa_consensus_exports::ConsensusManager;
 <span class="kw">use </span>massa_consensus_exports::{
-    events::ConsensusEvent, settings::ConsensusChannels, ConsensusCommandSender, ConsensusConfig,
-    ConsensusEventReceiver, ConsensusManager,
+    events::ConsensusEvent, settings::ConsensusChannels, ConsensusConfig, ConsensusEventReceiver,
 };
 <span class="kw">use </span>massa_consensus_worker::start_consensus_controller;
 <span class="kw">use </span>massa_execution_exports::{ExecutionConfig, ExecutionManager};
 <span class="kw">use </span>massa_execution_worker::start_execution_worker;
+<span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
+<span class="kw">use </span>massa_factory_worker::start_factory;
 <span class="kw">use </span>massa_final_state::{FinalState, FinalStateConfig};
 <span class="kw">use </span>massa_ledger_exports::LedgerConfig;
 <span class="kw">use </span>massa_ledger_worker::FinalLedger;
 <span class="kw">use </span>massa_logging::massa_trace;
-<span class="kw">use </span>massa_models::{
-    constants::{
-        END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_GAS_PER_BLOCK,
-        OPERATION_VALIDITY_PERIODS, T0, THREAD_COUNT, VERSION,
-    },
-    init_serialization_context,
-    prehash::Map,
-    Address, SerializationContext,
+<span class="kw">use </span>massa_models::address::Address;
+<span class="kw">use </span>massa_models::config::constants::{
+    BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY,
+    GENESIS_TIMESTAMP, INITIAL_DRAW_SEED, LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH,
+    MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
+    MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
+    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT,
+    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DATA_ASYNC_MESSAGE,
+    MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK,
+    MAX_LEDGER_CHANGES_COUNT, MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK, MAX_PARAMETERS_SIZE,
+    NETWORK_CONTROLLER_CHANNEL_SIZE, NETWORK_EVENT_CHANNEL_SIZE, OPERATION_VALIDITY_PERIODS,
+    PERIODS_PER_CYCLE, ROLL_PRICE, T0, THREAD_COUNT, VERSION,
 };
-<span class="kw">use </span>massa_network_exports::{Establisher, NetworkCommandSender, NetworkManager};
+<span class="kw">use </span>massa_models::config::{
+    ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, CHANNEL_SIZE, DELTA_F0, NETWORK_NODE_COMMAND_CHANNEL_SIZE,
+    NETWORK_NODE_EVENT_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+    PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE,
+};
+<span class="kw">use </span>massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 <span class="kw">use </span>massa_network_worker::start_network_controller;
-<span class="kw">use </span>massa_pool::{start_pool_controller, PoolCommandSender, PoolManager};
-<span class="kw">use </span>massa_protocol_exports::ProtocolManager;
+<span class="kw">use </span>massa_pool_exports::{PoolConfig, PoolController};
+<span class="kw">use </span>massa_pool_worker::start_pool;
+<span class="kw">use </span>massa_pos_exports::{SelectorConfig, SelectorManager};
+<span class="kw">use </span>massa_pos_worker::start_selector_worker;
+<span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 <span class="kw">use </span>massa_protocol_worker::start_protocol_controller;
-<span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
+<span class="kw">use </span>std::{mem, path::PathBuf};
 <span class="kw">use </span>std::{path::Path, process, sync::Arc};
 <span class="kw">use </span>structopt::StructOpt;
 <span class="kw">use </span>tokio::signal;
 <span class="kw">use </span>tokio::sync::mpsc;
 <span class="kw">use </span>tracing::{error, info, warn};
-<span class="attribute">#[cfg(not(feature = <span class="string">&quot;instrument&quot;</span>))]
-</span><span class="kw">use </span>tracing_subscriber::filter::{filter_fn, LevelFilter};
+<span class="kw">use </span>tracing_subscriber::filter::{filter_fn, LevelFilter};
 
 <span class="kw">mod </span>settings;
 
 <span class="kw">async fn </span>launch(
-    password: <span class="kw-2">&amp;</span>str,
-    staking_keys: <span class="kw-2">&amp;</span>Map&lt;Address, KeyPair&gt;,
+    node_wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
 ) -&gt; (
-    PoolCommandSender,
     ConsensusEventReceiver,
-    ConsensusCommandSender,
-    NetworkCommandSender,
     <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
     ConsensusManager,
     Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
-    PoolManager,
+    Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
+    Box&lt;<span class="kw">dyn </span>PoolController&gt;,
     ProtocolManager,
     NetworkManager,
+    Box&lt;<span class="kw">dyn </span>FactoryManager&gt;,
     mpsc::Receiver&lt;()&gt;,
     StopHandle,
     StopHandle,
 ) {
     <span class="macro">info!</span>(<span class="string">&quot;Node version : {}&quot;</span>, <span class="kw-2">*</span>VERSION);
     <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = <span class="kw-2">*</span>END_TIMESTAMP {
-        <span class="kw">if </span>MassaTime::now().expect(<span class="string">&quot;could not get now time&quot;</span>) &gt; end {
+        <span class="kw">if </span>MassaTime::now(<span class="number">0</span>).expect(<span class="string">&quot;could not get now time&quot;</span>) &gt; end {
             <span class="macro">panic!</span>(<span class="string">&quot;This episode has come to an end, please get the latest testnet node version to continue&quot;</span>);
         }
     }
 
     <span class="comment">// Storage shared by multiple components.
-    </span><span class="kw">let </span>shared_storage: Storage = Default::default();
+    </span><span class="kw">let </span>shared_storage: Storage = Storage::create_root();
 
     <span class="comment">// init final state
     </span><span class="kw">let </span>ledger_config = LedgerConfig {
-        initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path.clone(),
+        thread_count: THREAD_COUNT,
+        initial_ledger_path: SETTINGS.ledger.initial_ledger_path.clone(),
         disk_ledger_path: SETTINGS.ledger.disk_ledger_path.clone(),
+        max_key_length: MAX_DATASTORE_KEY_LENGTH,
+        max_ledger_part_size: LEDGER_PART_SIZE_MESSAGE_BYTES,
     };
     <span class="kw">let </span>async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
+        thread_count: THREAD_COUNT,
+        part_size_message_bytes: ASYNC_POOL_PART_SIZE_MESSAGE_BYTES,
+        max_data_async_message: MAX_DATA_ASYNC_MESSAGE,
     };
     <span class="kw">let </span>final_state_config = FinalStateConfig {
         final_history_length: SETTINGS.ledger.final_history_length,
         thread_count: THREAD_COUNT,
         ledger_config: ledger_config.clone(),
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        initial_seed_string: INITIAL_DRAW_SEED.into(),
+        initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
         async_pool_config,
     };
-
-    <span class="comment">// Init the global serialization context
-    </span>init_serialization_context(SerializationContext::default());
 
     <span class="comment">// Remove current disk ledger if there is one
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
@@ -595,14 +827,66 @@
     <span class="comment">// Create final ledger
     </span><span class="kw">let </span>ledger = FinalLedger::new(ledger_config.clone()).expect(<span class="string">&quot;could not init final ledger&quot;</span>);
 
+    <span class="comment">// launch selector worker
+    </span><span class="kw">let </span>(selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
+        max_draw_cache: SETTINGS.selector.max_draw_cache,
+        channel_size: CHANNEL_SIZE,
+        thread_count: THREAD_COUNT,
+        endorsement_count: ENDORSEMENT_COUNT,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        genesis_address: Address::from_public_key(<span class="kw-2">&amp;</span>GENESIS_KEY.get_public_key()),
+    })
+    .expect(<span class="string">&quot;could not start selector worker&quot;</span>);
+
     <span class="comment">// Create final state
-    </span><span class="kw">let </span>final_state = Arc::new(RwLock::new(
-        FinalState::new(final_state_config, Box::new(ledger)).expect(<span class="string">&quot;could not init final state&quot;</span>),
+    </span><span class="kw">let </span>final_state = Arc::new(parking_lot::RwLock::new(
+        FinalState::new(
+            final_state_config,
+            Box::new(ledger),
+            selector_controller.clone(),
+        )
+        .expect(<span class="string">&quot;could not init final state&quot;</span>),
     ));
 
     <span class="comment">// interrupt signal listener
     </span><span class="kw">let </span>stop_signal = signal::ctrl_c();
     <span class="macro">tokio::pin!</span>(stop_signal);
+
+    <span class="kw">let </span>bootstrap_config: BootstrapConfig = BootstrapConfig {
+        bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
+        bind: SETTINGS.bootstrap.bind,
+        connect_timeout: SETTINGS.bootstrap.connect_timeout,
+        read_timeout: SETTINGS.bootstrap.read_timeout,
+        write_timeout: SETTINGS.bootstrap.write_timeout,
+        read_error_timeout: SETTINGS.bootstrap.read_error_timeout,
+        write_error_timeout: SETTINGS.bootstrap.write_error_timeout,
+        retry_delay: SETTINGS.bootstrap.retry_delay,
+        max_ping: SETTINGS.bootstrap.max_ping,
+        enable_clock_synchronization: SETTINGS.bootstrap.enable_clock_synchronization,
+        cache_duration: SETTINGS.bootstrap.cache_duration,
+        max_simultaneous_bootstraps: SETTINGS.bootstrap.max_simultaneous_bootstraps,
+        per_ip_min_interval: SETTINGS.bootstrap.per_ip_min_interval,
+        ip_list_max_size: SETTINGS.bootstrap.ip_list_max_size,
+        max_bytes_read_write: SETTINGS.bootstrap.max_bytes_read_write,
+        max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
+        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+        randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
+        thread_count: THREAD_COUNT,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        endorsement_count: ENDORSEMENT_COUNT,
+        max_advertise_length: MAX_ADVERTISE_LENGTH,
+        max_bootstrap_async_pool_changes: MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
+        max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
+        max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
+        max_bootstrap_final_state_parts_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+        max_data_async_message: MAX_DATA_ASYNC_MESSAGE,
+        max_operations_per_blocks: MAX_OPERATIONS_PER_BLOCK,
+        max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
+        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+        max_ledger_changes_count: MAX_LEDGER_CHANGES_COUNT,
+        max_parameters_size: MAX_PARAMETERS_SIZE,
+    };
 
     <span class="comment">// bootstrap
     </span><span class="kw">let </span>bootstrap_state = <span class="macro">tokio::select! </span>{
@@ -611,7 +895,7 @@
             process::exit(<span class="number">0</span>);
         },
         res = get_state(
-            <span class="kw-2">&amp;</span>SETTINGS.bootstrap,
+            <span class="kw-2">&amp;</span>bootstrap_config,
             final_state.clone(),
             massa_bootstrap::types::Establisher::new(),
             <span class="kw-2">*</span>VERSION,
@@ -623,65 +907,160 @@
         }
     };
 
+    <span class="kw">let </span>network_config: NetworkConfig = NetworkConfig {
+        bind: SETTINGS.network.bind,
+        routable_ip: SETTINGS.network.routable_ip,
+        protocol_port: SETTINGS.network.protocol_port,
+        connect_timeout: SETTINGS.network.connect_timeout,
+        wakeup_interval: SETTINGS.network.wakeup_interval,
+        initial_peers_file: SETTINGS.network.initial_peers_file.clone(),
+        peers_file: SETTINGS.network.peers_file.clone(),
+        keypair_file: SETTINGS.network.keypair_file.clone(),
+        peer_types_config: SETTINGS.network.peer_types_config.clone(),
+        max_in_connections_per_ip: SETTINGS.network.max_in_connections_per_ip,
+        max_idle_peers: SETTINGS.network.max_idle_peers,
+        max_banned_peers: SETTINGS.network.max_banned_peers,
+        peers_file_dump_interval: SETTINGS.network.peers_file_dump_interval,
+        message_timeout: SETTINGS.network.message_timeout,
+        ask_peer_list_interval: SETTINGS.network.ask_peer_list_interval,
+        max_send_wait: SETTINGS.network.max_send_wait,
+        ban_timeout: SETTINGS.network.ban_timeout,
+        peer_list_send_timeout: SETTINGS.network.peer_list_send_timeout,
+        max_in_connection_overflow: SETTINGS.network.max_in_connection_overflow,
+        max_operations_per_message: SETTINGS.network.max_operations_per_message,
+        max_bytes_read: SETTINGS.network.max_bytes_read,
+        max_bytes_write: SETTINGS.network.max_bytes_write,
+        max_ask_blocks: MAX_ASK_BLOCKS_PER_MESSAGE,
+        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+        thread_count: THREAD_COUNT,
+        endorsement_count: ENDORSEMENT_COUNT,
+        max_peer_advertise_length: MAX_ADVERTISE_LENGTH,
+        max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
+        max_message_size: MAX_MESSAGE_SIZE,
+        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+        max_parameters_size: MAX_PARAMETERS_SIZE,
+        controller_channel_size: NETWORK_CONTROLLER_CHANNEL_SIZE,
+        event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
+        node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
+        node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
+    };
+
     <span class="comment">// launch network controller
     </span><span class="kw">let </span>(network_command_sender, network_event_receiver, network_manager, private_key, node_id) =
         start_network_controller(
-            SETTINGS.network.clone(), <span class="comment">// TODO: get rid of this clone() ... see #1277
-            </span>Establisher::new(),
+            <span class="kw-2">&amp;</span>network_config,
+            Establisher::new(),
             bootstrap_state.compensation_millis,
             bootstrap_state.peers,
-            shared_storage.clone(),
             <span class="kw-2">*</span>VERSION,
         )
         .<span class="kw">await
         </span>.expect(<span class="string">&quot;could not start network controller&quot;</span>);
 
-    <span class="comment">// launch protocol controller
-    </span><span class="kw">let </span>(
-        protocol_command_sender,
-        protocol_event_receiver,
-        protocol_pool_event_receiver,
-        protocol_manager,
-    ) = start_protocol_controller(
-        <span class="kw-2">&amp;</span>SETTINGS.protocol,
-        OPERATION_VALIDITY_PERIODS,
-        MAX_GAS_PER_BLOCK,
-        network_command_sender.clone(),
-        network_event_receiver,
-        shared_storage.clone(),
-    )
-    .<span class="kw">await
-    </span>.expect(<span class="string">&quot;could not start protocol controller&quot;</span>);
+    <span class="comment">// give the controller to final state in order for it to feed the cycles
+    </span>final_state
+        .write()
+        .compute_initial_draws()
+        .expect(<span class="string">&quot;could not compute initial draws&quot;</span>); <span class="comment">// TODO: this might just mean a bad bootstrap, no need to panic, just reboot
 
-    <span class="comment">// launch pool controller
-    </span><span class="kw">let </span>(pool_command_sender, pool_manager) = start_pool_controller(
-        <span class="kw-2">&amp;</span>POOL_CONFIG,
-        protocol_command_sender.clone(),
-        protocol_pool_event_receiver,
-        shared_storage.clone(),
-    )
-    .<span class="kw">await
-    </span>.expect(<span class="string">&quot;could not start pool controller&quot;</span>);
-
-    <span class="comment">// launch execution module
+    // launch execution module
     </span><span class="kw">let </span>execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,
         readonly_queue_length: SETTINGS.execution.readonly_queue_length,
         cursor_delay: SETTINGS.execution.cursor_delay,
         clock_compensation: bootstrap_state.compensation_millis,
         max_async_gas: MAX_ASYNC_GAS,
+        max_gas_per_block: MAX_GAS_PER_BLOCK,
+        roll_price: ROLL_PRICE,
         thread_count: THREAD_COUNT,
         t0: T0,
         genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
+        block_reward: BLOCK_REWARD,
+        endorsement_count: ENDORSEMENT_COUNT <span class="kw">as </span>u64,
+        operation_validity_period: OPERATION_VALIDITY_PERIODS,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        stats_time_window_duration: SETTINGS.execution.stats_time_window_duration,
+        max_miss_ratio: <span class="kw-2">*</span>POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
     };
     <span class="kw">let </span>(execution_manager, execution_controller) = start_execution_worker(
         execution_config,
         final_state.clone(),
-        shared_storage.clone(),
+        selector_controller.clone(),
     );
 
+    <span class="comment">// launch pool controller
+    </span><span class="kw">let </span>pool_config = PoolConfig {
+        thread_count: THREAD_COUNT,
+        max_block_size: MAX_BLOCK_SIZE,
+        max_block_gas: MAX_GAS_PER_BLOCK,
+        roll_price: ROLL_PRICE,
+        max_block_endorsement_count: ENDORSEMENT_COUNT,
+        operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+        max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
+        max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
+    };
+    <span class="kw">let </span>pool_controller = start_pool(pool_config, <span class="kw-2">&amp;</span>shared_storage, execution_controller.clone());
+    <span class="kw">let </span>pool_manager: Box&lt;<span class="kw">dyn </span>PoolController&gt; = Box::new(pool_controller.clone());
+
+    <span class="comment">// launch protocol controller
+    </span><span class="kw">let </span>protocol_config = ProtocolConfig {
+        thread_count: THREAD_COUNT,
+        ask_block_timeout: SETTINGS.protocol.ask_block_timeout,
+        max_known_blocks_size: SETTINGS.protocol.max_known_blocks_size,
+        max_node_known_blocks_size: SETTINGS.protocol.max_node_known_blocks_size,
+        max_node_wanted_blocks_size: SETTINGS.protocol.max_node_wanted_blocks_size,
+        max_known_ops_size: SETTINGS.protocol.max_known_ops_size,
+        max_node_known_ops_size: SETTINGS.protocol.max_node_known_ops_size,
+        max_known_endorsements_size: SETTINGS.protocol.max_known_endorsements_size,
+        max_node_known_endorsements_size: SETTINGS.protocol.max_node_known_endorsements_size,
+        max_simultaneous_ask_blocks_per_node: SETTINGS
+            .protocol
+            .max_simultaneous_ask_blocks_per_node,
+        max_send_wait: SETTINGS.protocol.max_send_wait,
+        operation_batch_buffer_capacity: SETTINGS.protocol.operation_batch_buffer_capacity,
+        operation_batch_proc_period: SETTINGS.protocol.operation_batch_proc_period,
+        asked_operations_pruning_period: SETTINGS.protocol.asked_operations_pruning_period,
+        max_operations_per_message: SETTINGS.protocol.max_operations_per_message,
+        max_serialized_operations_size_per_block: MAX_BLOCK_SIZE <span class="kw">as </span>usize,
+        controller_channel_size: PROTOCOL_CONTROLLER_CHANNEL_SIZE,
+        event_channel_size: PROTOCOL_EVENT_CHANNEL_SIZE,
+    };
+    <span class="kw">let </span>(protocol_command_sender, protocol_event_receiver, protocol_manager) =
+        start_protocol_controller(
+            protocol_config,
+            network_command_sender.clone(),
+            network_event_receiver,
+            pool_manager.clone(),
+            shared_storage.clone(),
+        )
+        .<span class="kw">await
+        </span>.expect(<span class="string">&quot;could not start protocol controller&quot;</span>);
+
     <span class="comment">// init consensus configuration
-    </span><span class="kw">let </span>consensus_config = ConsensusConfig::from(<span class="kw-2">&amp;</span>SETTINGS.consensus);
+    </span><span class="kw">let </span>consensus_config = ConsensusConfig {
+        genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
+        end_timestamp: <span class="kw-2">*</span>END_TIMESTAMP,
+        thread_count: THREAD_COUNT,
+        t0: T0,
+        genesis_key: GENESIS_KEY.clone(),
+        max_discarded_blocks: SETTINGS.consensus.max_discarded_blocks,
+        future_block_processing_max_periods: SETTINGS.consensus.future_block_processing_max_periods,
+        max_future_processing_blocks: SETTINGS.consensus.max_future_processing_blocks,
+        max_dependency_blocks: SETTINGS.consensus.max_dependency_blocks,
+        delta_f0: DELTA_F0,
+        operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        stats_timespan: SETTINGS.consensus.stats_timespan,
+        max_send_wait: SETTINGS.consensus.max_send_wait,
+        force_keep_final_periods: SETTINGS.consensus.force_keep_final_periods,
+        endorsement_count: ENDORSEMENT_COUNT,
+        block_db_prune_interval: SETTINGS.consensus.block_db_prune_interval,
+        max_item_return_count: SETTINGS.consensus.max_item_return_count,
+        max_gas_per_block: MAX_GAS_PER_BLOCK,
+        channel_size: CHANNEL_SIZE,
+    };
     <span class="comment">// launch consensus controller
     </span><span class="kw">let </span>(consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
@@ -690,24 +1069,41 @@
                 execution_controller: execution_controller.clone(),
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
-                pool_command_sender: pool_command_sender.clone(),
+                pool_command_sender: pool_manager.clone(),
+                selector_controller: selector_controller.clone(),
             },
-            bootstrap_state.pos,
             bootstrap_state.graph,
             shared_storage.clone(),
             bootstrap_state.compensation_millis,
-            password.to_string(),
-            staking_keys.to_owned(),
         )
         .<span class="kw">await
         </span>.expect(<span class="string">&quot;could not start consensus controller&quot;</span>);
+
+    <span class="comment">// launch factory
+    </span><span class="kw">let </span>factory_config = FactoryConfig {
+        thread_count: THREAD_COUNT,
+        genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
+        t0: T0,
+        clock_compensation_millis: bootstrap_state.compensation_millis,
+        initial_delay: SETTINGS.factory.initial_delay,
+        max_block_size: MAX_BLOCK_SIZE <span class="kw">as </span>u64,
+        max_block_gas: MAX_GAS_PER_BLOCK,
+    };
+    <span class="kw">let </span>factory_channels = FactoryChannels {
+        selector: selector_controller.clone(),
+        consensus: consensus_command_sender.clone(),
+        pool: pool_manager.clone(),
+        protocol: protocol_command_sender.clone(),
+        storage: shared_storage.clone(),
+    };
+    <span class="kw">let </span>factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
 
     <span class="comment">// launch bootstrap server
     </span><span class="kw">let </span>bootstrap_manager = start_bootstrap_server(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
         final_state.clone(),
-        <span class="kw-2">&amp;</span>SETTINGS.bootstrap,
+        bootstrap_config,
         massa_bootstrap::Establisher::new(),
         private_key,
         bootstrap_state.compensation_millis,
@@ -716,13 +1112,23 @@
     .<span class="kw">await
     </span>.unwrap();
 
+    <span class="kw">let </span>api_config: APIConfig = APIConfig {
+        bind_private: SETTINGS.api.bind_private,
+        bind_public: SETTINGS.api.bind_public,
+        draw_lookahead_period_count: SETTINGS.api.draw_lookahead_period_count,
+        max_arguments: SETTINGS.api.max_arguments,
+        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+        max_parameter_size: MAX_PARAMETERS_SIZE,
+    };
     <span class="comment">// spawn private API
     </span><span class="kw">let </span>(api_private, api_private_stop_rx) = API::&lt;Private&gt;::new(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
         execution_controller.clone(),
-        <span class="kw-2">&amp;</span>SETTINGS.api,
+        api_config,
         consensus_config.clone(),
+        node_wallet,
     );
     <span class="kw">let </span>api_private_handle = api_private.serve(<span class="kw-2">&amp;</span>SETTINGS.api.bind_private);
 
@@ -730,28 +1136,55 @@
     </span><span class="kw">let </span>api_public = API::&lt;Public&gt;::new(
         consensus_command_sender.clone(),
         execution_controller.clone(),
-        <span class="kw-2">&amp;</span>SETTINGS.api,
+        api_config,
+        selector_controller.clone(),
         consensus_config,
-        pool_command_sender.clone(),
-        <span class="kw-2">&amp;</span>SETTINGS.network,
+        pool_manager.clone(),
+        protocol_command_sender.clone(),
+        network_config,
         <span class="kw-2">*</span>VERSION,
         network_command_sender.clone(),
         bootstrap_state.compensation_millis,
         node_id,
+        shared_storage.clone(),
     );
     <span class="kw">let </span>api_public_handle = api_public.serve(<span class="kw-2">&amp;</span>SETTINGS.api.bind_public);
 
+    <span class="attribute">#[cfg(feature = <span class="string">&quot;deadlock_detection&quot;</span>)]
+    </span>{
+        <span class="comment">// only for #[cfg]
+        </span><span class="kw">use </span>parking_lot::deadlock;
+        <span class="kw">use </span>std::thread;
+        <span class="kw">use </span>std::time::Duration;
+        <span class="comment">// Create a background thread which checks for deadlocks every 10s
+        </span><span class="kw">let </span>handler2 = thread::spawn(<span class="kw">move </span>|| <span class="kw">loop </span>{
+            thread::sleep(Duration::from_secs(<span class="number">10</span>));
+            <span class="kw">let </span>deadlocks = deadlock::check_deadlock();
+            <span class="macro">println!</span>(<span class="string">&quot;deadlocks check&quot;</span>);
+            <span class="kw">if </span>deadlocks.is_empty() {
+                <span class="kw">continue</span>;
+            }
+
+            <span class="macro">println!</span>(<span class="string">&quot;{} deadlocks detected&quot;</span>, deadlocks.len());
+            <span class="kw">for </span>(i, threads) <span class="kw">in </span>deadlocks.iter().enumerate() {
+                <span class="macro">println!</span>(<span class="string">&quot;Deadlock #{}&quot;</span>, i);
+                <span class="kw">for </span>t <span class="kw">in </span>threads {
+                    <span class="macro">println!</span>(<span class="string">&quot;Thread Id {:#?}&quot;</span>, t.thread_id());
+                    <span class="macro">println!</span>(<span class="string">&quot;{:#?}&quot;</span>, t.backtrace());
+                }
+            }
+        });
+    }
     (
-        pool_command_sender,
         consensus_event_receiver,
-        consensus_command_sender,
-        network_command_sender,
         bootstrap_manager,
         consensus_manager,
         execution_manager,
+        selector_manager,
         pool_manager,
         protocol_manager,
         network_manager,
+        factory_manager,
         api_private_stop_rx,
         api_private_handle,
         api_public_handle,
@@ -762,20 +1195,24 @@
     bootstrap_manager: <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
     consensus_manager: ConsensusManager,
     execution_manager: Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
-    pool_manager: PoolManager,
+    selector_manager: Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
+    pool_manager: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
     protocol_manager: ProtocolManager,
     network_manager: NetworkManager,
+    factory_manager: Box&lt;<span class="kw">dyn </span>FactoryManager&gt;,
 }
 
 <span class="kw">async fn </span>stop(
     consensus_event_receiver: ConsensusEventReceiver,
     Managers {
         bootstrap_manager,
-        consensus_manager,
         <span class="kw-2">mut </span>execution_manager,
+        consensus_manager,
+        <span class="kw-2">mut </span>selector_manager,
         pool_manager,
         protocol_manager,
         network_manager,
+        <span class="kw-2">mut </span>factory_manager,
     }: Managers,
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
@@ -794,21 +1231,31 @@
     <span class="comment">// stop private API
     </span>api_private_handle.stop();
 
-    <span class="comment">// stop consensus controller
-    </span><span class="kw">let </span>protocol_event_receiver = consensus_manager
+    <span class="comment">// stop factory
+    </span>factory_manager.stop();
+
+    <span class="kw">let </span>protocol_event_receiver = consensus_manager
         .stop(consensus_event_receiver)
         .<span class="kw">await
         </span>.expect(<span class="string">&quot;consensus shutdown failed&quot;</span>);
 
-    <span class="comment">// Stop execution controller.
+    <span class="comment">// stop pool
+    //TODO make a proper manager
+    </span>mem::drop(pool_manager);
+
+    <span class="comment">// stop execution controller
     </span>execution_manager.stop();
 
-    <span class="comment">// stop pool controller
-    </span><span class="kw">let </span>protocol_pool_event_receiver = pool_manager.stop().<span class="kw">await</span>.expect(<span class="string">&quot;pool shutdown failed&quot;</span>);
+    <span class="comment">// stop selector controller
+    </span>selector_manager.stop();
 
-    <span class="comment">// stop protocol controller
+    <span class="comment">// stop pool controller
+    // TODO
+    //let protocol_pool_event_receiver = pool_manager.stop().await.expect(&quot;pool shutdown failed&quot;);
+
+    // stop protocol controller
     </span><span class="kw">let </span>network_event_receiver = protocol_manager
-        .stop(protocol_event_receiver, protocol_pool_event_receiver)
+        .stop(protocol_event_receiver)
         .<span class="kw">await
         </span>.expect(<span class="string">&quot;protocol shutdown failed&quot;</span>);
 
@@ -828,50 +1275,35 @@
     </span>password: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="doccomment">/// Ask for the staking keys file password and load them
-</span><span class="kw">async fn </span>load_or_create_staking_keys_file(
-    password: <span class="prelude-ty">Option</span>&lt;String&gt;,
-    path: <span class="kw-2">&amp;</span>Path,
-) -&gt; anyhow::Result&lt;(String, Map&lt;Address, KeyPair&gt;)&gt; {
-    <span class="kw">if </span>path.is_file() {
-        <span class="kw">let </span>password = password.unwrap_or_else(|| {
+<span class="doccomment">/// Load wallet, asking for passwords if necessary
+</span><span class="kw">fn </span>load_wallet(password: <span class="prelude-ty">Option</span>&lt;String&gt;, path: <span class="kw-2">&amp;</span>Path) -&gt; anyhow::Result&lt;Arc&lt;RwLock&lt;Wallet&gt;&gt;&gt; {
+    <span class="kw">let </span>password = <span class="kw">if </span>path.is_file() {
+        password.unwrap_or_else(|| {
             Password::new()
                 .with_prompt(<span class="string">&quot;Enter staking keys file password&quot;</span>)
                 .interact()
                 .expect(<span class="string">&quot;IO error: Password reading failed, staking keys file couldn&#39;t be unlocked&quot;</span>)
-        });
-        <span class="kw">let </span>(_version, decrypted_data) = decrypt(<span class="kw-2">&amp;</span>password, <span class="kw-2">&amp;</span>tokio::fs::read(path).<span class="kw">await</span><span class="question-mark">?</span>)<span class="question-mark">?</span>;
-        <span class="kw">let </span>staking_keys: anyhow::Result&lt;Map&lt;Address, KeyPair&gt;&gt; = <span class="prelude-val">Ok</span>(serde_json::from_slice::&lt;
-            Map&lt;Address, KeyPair&gt;,
-        &gt;(<span class="kw-2">&amp;</span>decrypted_data)<span class="question-mark">?</span>);
-        <span class="prelude-val">Ok</span>((password, staking_keys<span class="question-mark">?</span>))
+        })
     } <span class="kw">else </span>{
-        <span class="kw">let </span>password = password.unwrap_or_else(|| {
+        password.unwrap_or_else(|| {
             Password::new()
                 .with_prompt(<span class="string">&quot;Enter new password for staking keys file&quot;</span>)
                 .with_confirmation(<span class="string">&quot;Confirm password&quot;</span>, <span class="string">&quot;Passwords mismatching&quot;</span>)
                 .interact()
                 .expect(<span class="string">&quot;IO error: Password reading failed, staking keys file couldn&#39;t be created&quot;</span>)
-        });
-        <span class="kw">let </span>json = serde_json::to_string_pretty(<span class="kw-2">&amp;</span>Map::&lt;Address, KeyPair&gt;::default())<span class="question-mark">?</span>;
-        <span class="kw">let </span>encrypted_data = encrypt(<span class="kw-2">&amp;</span>password, json.as_bytes())<span class="question-mark">?</span>;
-        tokio::fs::write(path, encrypted_data).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>((password, Map::default()))
-    }
+        })
+    };
+    <span class="prelude-val">Ok</span>(Arc::new(RwLock::new(Wallet::new(
+        PathBuf::from(path),
+        password,
+    )<span class="question-mark">?</span>)))
 }
 
-<span class="doccomment">/// To instrument `massa-node` with `tokio-console` run
-/// ```shell
-/// RUSTFLAGS=&quot;--cfg tokio_unstable&quot; cargo run --bin massa-node --features instrument
-/// ```
-</span><span class="attribute">#[paw::main]
+<span class="attribute">#[paw::main]
 #[tokio::main]
 </span><span class="kw">async fn </span>main(args: Args) -&gt; anyhow::Result&lt;()&gt; {
     <span class="kw">use </span>tracing_subscriber::prelude::<span class="kw-2">*</span>;
     <span class="comment">// spawn the console server in the background, returning a `Layer`:
-    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;instrument&quot;</span>)]
-    </span><span class="kw">let </span>tracing_layer = console_subscriber::spawn();
-    <span class="attribute">#[cfg(not(feature = <span class="string">&quot;instrument&quot;</span>))]
     </span><span class="kw">let </span>tracing_layer = tracing_subscriber::fmt::layer()
         .with_filter(<span class="kw">match </span>SETTINGS.logging.level {
             <span class="number">4 </span>=&gt; LevelFilter::TRACE,
@@ -899,26 +1331,24 @@
         std::process::exit(<span class="number">1</span>);
     }));
 
-    <span class="comment">// run
-    </span><span class="kw">let </span>(password, staking_keys) =
-        load_or_create_staking_keys_file(args.password, <span class="kw-2">&amp;</span>SETTINGS.consensus.staking_keys_path)
-            .<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="comment">// load or create wallet, asking for password if necessary
+    </span><span class="kw">let </span>node_wallet = load_wallet(args.password, <span class="kw-2">&amp;</span>SETTINGS.factory.staking_wallet_path)<span class="question-mark">?</span>;
+
     <span class="kw">loop </span>{
         <span class="kw">let </span>(
-            _pool_command_sender,
             <span class="kw-2">mut </span>consensus_event_receiver,
-            _consensus_command_sender,
-            _network_command_sender,
             bootstrap_manager,
             consensus_manager,
             execution_manager,
+            selector_manager,
             pool_manager,
             protocol_manager,
             network_manager,
+            factory_manager,
             <span class="kw-2">mut </span>api_private_stop_rx,
             api_private_handle,
             api_public_handle,
-        ) = launch(<span class="kw-2">&amp;</span>password, <span class="kw-2">&amp;</span>staking_keys).<span class="kw">await</span>;
+        ) = launch(node_wallet.clone()).<span class="kw">await</span>;
 
         <span class="comment">// interrupt signal listener
         </span><span class="kw">let </span>stop_signal = signal::ctrl_c();
@@ -959,9 +1389,11 @@
                 bootstrap_manager,
                 consensus_manager,
                 execution_manager,
+                selector_manager,
                 pool_manager,
                 protocol_manager,
                 network_manager,
+                factory_manager,
             },
             api_private_handle,
             api_public_handle,
@@ -975,4 +1407,4 @@
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

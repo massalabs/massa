@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/rolls.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>rolls.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/rolls.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>rolls.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -300,10 +300,43 @@
 <span id="300">300</span>
 <span id="301">301</span>
 <span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
+    address::Address,
+    error::ModelsError,
     error::ModelsResult <span class="kw">as </span><span class="prelude-ty">Result</span>,
-    prehash::{Map, Set},
-    Address, ModelsError,
+    prehash::{PreHashMap, PreHashSet},
 };
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -397,7 +430,19 @@
 }
 
 <span class="kw">impl </span>Serializer&lt;RollUpdate&gt; <span class="kw">for </span>RollUpdateSerializer {
-    <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>RollUpdate, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+    <span class="doccomment">/// ## Example:
+    /// ```rust
+    /// use massa_models::rolls::{RollUpdate, RollUpdateSerializer};
+    /// use massa_serialization::Serializer;
+    ///
+    /// let roll_update = RollUpdate {
+    ///   roll_purchases: 1,
+    ///   roll_sales: 2,
+    /// };
+    /// let mut buffer = vec![];
+    /// RollUpdateSerializer::new().serialize(&amp;roll_update, &amp;mut buffer).unwrap();
+    /// ```
+    </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>RollUpdate, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         <span class="self">self</span>.u64_serializer
             .serialize(<span class="kw-2">&amp;</span>value.roll_purchases, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span>value.roll_sales, buffer)<span class="question-mark">?</span>;
@@ -426,7 +471,23 @@
 }
 
 <span class="kw">impl </span>Deserializer&lt;RollUpdate&gt; <span class="kw">for </span>RollUpdateDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="doccomment">/// ## Example:
+    /// ```rust
+    /// use massa_models::rolls::{RollUpdate, RollUpdateDeserializer, RollUpdateSerializer};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    ///
+    /// let roll_update = RollUpdate {
+    ///   roll_purchases: 1,
+    ///   roll_sales: 2,
+    /// };
+    /// let mut buffer = vec![];
+    /// RollUpdateSerializer::new().serialize(&amp;roll_update, &amp;mut buffer).unwrap();
+    /// let (rest, roll_update_deserialized) = RollUpdateDeserializer::new().deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(roll_update.roll_purchases, roll_update_deserialized.roll_purchases);
+    /// assert_eq!(roll_update.roll_sales, roll_update_deserialized.roll_sales);
+    /// ```
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], RollUpdate, E&gt; {
@@ -451,17 +512,20 @@
 
 <span class="doccomment">/// maps addresses to roll updates
 </span><span class="attribute">#[derive(Clone, Debug, Serialize, Deserialize, Default)]
-</span><span class="kw">pub struct </span>RollUpdates(<span class="kw">pub </span>Map&lt;Address, RollUpdate&gt;);
+</span><span class="kw">pub struct </span>RollUpdates(<span class="kw">pub </span>PreHashMap&lt;Address, RollUpdate&gt;);
 
 <span class="kw">impl </span>RollUpdates {
     <span class="doccomment">/// the addresses impacted by the updates
-    </span><span class="kw">pub fn </span>get_involved_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Set&lt;Address&gt; {
+    </span><span class="kw">pub fn </span>get_involved_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; PreHashSet&lt;Address&gt; {
         <span class="self">self</span>.<span class="number">0</span>.keys().copied().collect()
     }
 
     <span class="doccomment">/// chains with another `RollUpdates`, compensates and returns compensations
-    </span><span class="kw">pub fn </span>chain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, updates: <span class="kw-2">&amp;</span>RollUpdates) -&gt; <span class="prelude-ty">Result</span>&lt;Map&lt;Address, RollCompensation&gt;&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>res = Map::default();
+    </span><span class="kw">pub fn </span>chain(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        updates: <span class="kw-2">&amp;</span>RollUpdates,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PreHashMap&lt;Address, RollCompensation&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res = PreHashMap::default();
         <span class="kw">for </span>(addr, update) <span class="kw">in </span>updates.<span class="number">0</span>.iter() {
             res.insert(<span class="kw-2">*</span>addr, <span class="self">self</span>.apply(addr, update)<span class="question-mark">?</span>);
             <span class="comment">// remove if nil
@@ -492,7 +556,7 @@
 
     <span class="doccomment">/// get the roll update for a subset of addresses
     </span><span class="attribute">#[must_use]
-    </span><span class="kw">pub fn </span>clone_subset(<span class="kw-2">&amp;</span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>Set&lt;Address&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>clone_subset(<span class="kw-2">&amp;</span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>PreHashSet&lt;Address&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>(
             addrs
                 .iter()
@@ -503,7 +567,7 @@
 
     <span class="doccomment">/// merge another roll updates into self, overwriting existing data
     /// addresses that are in not other are removed from self
-    </span><span class="kw">pub fn </span>sync_from(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>Set&lt;Address&gt;, <span class="kw-2">mut </span>other: RollUpdates) {
+    </span><span class="kw">pub fn </span>sync_from(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>PreHashSet&lt;Address&gt;, <span class="kw-2">mut </span>other: RollUpdates) {
         <span class="kw">for </span>addr <span class="kw">in </span>addrs.iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(new_val) = other.<span class="number">0</span>.remove(addr) {
                 <span class="self">self</span>.<span class="number">0</span>.insert(<span class="kw-2">*</span>addr, new_val);
@@ -581,7 +645,7 @@
 
     <span class="doccomment">/// get roll counts for a subset of addresses.
     </span><span class="attribute">#[must_use]
-    </span><span class="kw">pub fn </span>clone_subset(<span class="kw-2">&amp;</span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>Set&lt;Address&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>clone_subset(<span class="kw-2">&amp;</span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>PreHashSet&lt;Address&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>(
             addrs
                 .iter()
@@ -592,7 +656,7 @@
 
     <span class="doccomment">/// merge another roll counts into self, overwriting existing data
     /// addresses that are in not other are removed from self
-    </span><span class="kw">pub fn </span>sync_from(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>Set&lt;Address&gt;, <span class="kw-2">mut </span>other: RollCounts) {
+    </span><span class="kw">pub fn </span>sync_from(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addrs: <span class="kw-2">&amp;</span>PreHashSet&lt;Address&gt;, <span class="kw-2">mut </span>other: RollCounts) {
         <span class="kw">for </span>addr <span class="kw">in </span>addrs.iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(new_val) = other.<span class="number">0</span>.remove(addr) {
                 <span class="self">self</span>.<span class="number">0</span>.insert(<span class="kw-2">*</span>addr, new_val);
@@ -603,4 +667,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

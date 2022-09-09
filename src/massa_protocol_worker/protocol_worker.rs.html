@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-protocol-worker/src/protocol_worker.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>protocol_worker.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_protocol_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_protocol_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_protocol_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-protocol-worker/src/protocol_worker.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>protocol_worker.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_protocol_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_protocol_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_protocol_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -1062,480 +1062,28 @@
 <span id="1062">1062</span>
 <span id="1063">1063</span>
 <span id="1064">1064</span>
-<span id="1065">1065</span>
-<span id="1066">1066</span>
-<span id="1067">1067</span>
-<span id="1068">1068</span>
-<span id="1069">1069</span>
-<span id="1070">1070</span>
-<span id="1071">1071</span>
-<span id="1072">1072</span>
-<span id="1073">1073</span>
-<span id="1074">1074</span>
-<span id="1075">1075</span>
-<span id="1076">1076</span>
-<span id="1077">1077</span>
-<span id="1078">1078</span>
-<span id="1079">1079</span>
-<span id="1080">1080</span>
-<span id="1081">1081</span>
-<span id="1082">1082</span>
-<span id="1083">1083</span>
-<span id="1084">1084</span>
-<span id="1085">1085</span>
-<span id="1086">1086</span>
-<span id="1087">1087</span>
-<span id="1088">1088</span>
-<span id="1089">1089</span>
-<span id="1090">1090</span>
-<span id="1091">1091</span>
-<span id="1092">1092</span>
-<span id="1093">1093</span>
-<span id="1094">1094</span>
-<span id="1095">1095</span>
-<span id="1096">1096</span>
-<span id="1097">1097</span>
-<span id="1098">1098</span>
-<span id="1099">1099</span>
-<span id="1100">1100</span>
-<span id="1101">1101</span>
-<span id="1102">1102</span>
-<span id="1103">1103</span>
-<span id="1104">1104</span>
-<span id="1105">1105</span>
-<span id="1106">1106</span>
-<span id="1107">1107</span>
-<span id="1108">1108</span>
-<span id="1109">1109</span>
-<span id="1110">1110</span>
-<span id="1111">1111</span>
-<span id="1112">1112</span>
-<span id="1113">1113</span>
-<span id="1114">1114</span>
-<span id="1115">1115</span>
-<span id="1116">1116</span>
-<span id="1117">1117</span>
-<span id="1118">1118</span>
-<span id="1119">1119</span>
-<span id="1120">1120</span>
-<span id="1121">1121</span>
-<span id="1122">1122</span>
-<span id="1123">1123</span>
-<span id="1124">1124</span>
-<span id="1125">1125</span>
-<span id="1126">1126</span>
-<span id="1127">1127</span>
-<span id="1128">1128</span>
-<span id="1129">1129</span>
-<span id="1130">1130</span>
-<span id="1131">1131</span>
-<span id="1132">1132</span>
-<span id="1133">1133</span>
-<span id="1134">1134</span>
-<span id="1135">1135</span>
-<span id="1136">1136</span>
-<span id="1137">1137</span>
-<span id="1138">1138</span>
-<span id="1139">1139</span>
-<span id="1140">1140</span>
-<span id="1141">1141</span>
-<span id="1142">1142</span>
-<span id="1143">1143</span>
-<span id="1144">1144</span>
-<span id="1145">1145</span>
-<span id="1146">1146</span>
-<span id="1147">1147</span>
-<span id="1148">1148</span>
-<span id="1149">1149</span>
-<span id="1150">1150</span>
-<span id="1151">1151</span>
-<span id="1152">1152</span>
-<span id="1153">1153</span>
-<span id="1154">1154</span>
-<span id="1155">1155</span>
-<span id="1156">1156</span>
-<span id="1157">1157</span>
-<span id="1158">1158</span>
-<span id="1159">1159</span>
-<span id="1160">1160</span>
-<span id="1161">1161</span>
-<span id="1162">1162</span>
-<span id="1163">1163</span>
-<span id="1164">1164</span>
-<span id="1165">1165</span>
-<span id="1166">1166</span>
-<span id="1167">1167</span>
-<span id="1168">1168</span>
-<span id="1169">1169</span>
-<span id="1170">1170</span>
-<span id="1171">1171</span>
-<span id="1172">1172</span>
-<span id="1173">1173</span>
-<span id="1174">1174</span>
-<span id="1175">1175</span>
-<span id="1176">1176</span>
-<span id="1177">1177</span>
-<span id="1178">1178</span>
-<span id="1179">1179</span>
-<span id="1180">1180</span>
-<span id="1181">1181</span>
-<span id="1182">1182</span>
-<span id="1183">1183</span>
-<span id="1184">1184</span>
-<span id="1185">1185</span>
-<span id="1186">1186</span>
-<span id="1187">1187</span>
-<span id="1188">1188</span>
-<span id="1189">1189</span>
-<span id="1190">1190</span>
-<span id="1191">1191</span>
-<span id="1192">1192</span>
-<span id="1193">1193</span>
-<span id="1194">1194</span>
-<span id="1195">1195</span>
-<span id="1196">1196</span>
-<span id="1197">1197</span>
-<span id="1198">1198</span>
-<span id="1199">1199</span>
-<span id="1200">1200</span>
-<span id="1201">1201</span>
-<span id="1202">1202</span>
-<span id="1203">1203</span>
-<span id="1204">1204</span>
-<span id="1205">1205</span>
-<span id="1206">1206</span>
-<span id="1207">1207</span>
-<span id="1208">1208</span>
-<span id="1209">1209</span>
-<span id="1210">1210</span>
-<span id="1211">1211</span>
-<span id="1212">1212</span>
-<span id="1213">1213</span>
-<span id="1214">1214</span>
-<span id="1215">1215</span>
-<span id="1216">1216</span>
-<span id="1217">1217</span>
-<span id="1218">1218</span>
-<span id="1219">1219</span>
-<span id="1220">1220</span>
-<span id="1221">1221</span>
-<span id="1222">1222</span>
-<span id="1223">1223</span>
-<span id="1224">1224</span>
-<span id="1225">1225</span>
-<span id="1226">1226</span>
-<span id="1227">1227</span>
-<span id="1228">1228</span>
-<span id="1229">1229</span>
-<span id="1230">1230</span>
-<span id="1231">1231</span>
-<span id="1232">1232</span>
-<span id="1233">1233</span>
-<span id="1234">1234</span>
-<span id="1235">1235</span>
-<span id="1236">1236</span>
-<span id="1237">1237</span>
-<span id="1238">1238</span>
-<span id="1239">1239</span>
-<span id="1240">1240</span>
-<span id="1241">1241</span>
-<span id="1242">1242</span>
-<span id="1243">1243</span>
-<span id="1244">1244</span>
-<span id="1245">1245</span>
-<span id="1246">1246</span>
-<span id="1247">1247</span>
-<span id="1248">1248</span>
-<span id="1249">1249</span>
-<span id="1250">1250</span>
-<span id="1251">1251</span>
-<span id="1252">1252</span>
-<span id="1253">1253</span>
-<span id="1254">1254</span>
-<span id="1255">1255</span>
-<span id="1256">1256</span>
-<span id="1257">1257</span>
-<span id="1258">1258</span>
-<span id="1259">1259</span>
-<span id="1260">1260</span>
-<span id="1261">1261</span>
-<span id="1262">1262</span>
-<span id="1263">1263</span>
-<span id="1264">1264</span>
-<span id="1265">1265</span>
-<span id="1266">1266</span>
-<span id="1267">1267</span>
-<span id="1268">1268</span>
-<span id="1269">1269</span>
-<span id="1270">1270</span>
-<span id="1271">1271</span>
-<span id="1272">1272</span>
-<span id="1273">1273</span>
-<span id="1274">1274</span>
-<span id="1275">1275</span>
-<span id="1276">1276</span>
-<span id="1277">1277</span>
-<span id="1278">1278</span>
-<span id="1279">1279</span>
-<span id="1280">1280</span>
-<span id="1281">1281</span>
-<span id="1282">1282</span>
-<span id="1283">1283</span>
-<span id="1284">1284</span>
-<span id="1285">1285</span>
-<span id="1286">1286</span>
-<span id="1287">1287</span>
-<span id="1288">1288</span>
-<span id="1289">1289</span>
-<span id="1290">1290</span>
-<span id="1291">1291</span>
-<span id="1292">1292</span>
-<span id="1293">1293</span>
-<span id="1294">1294</span>
-<span id="1295">1295</span>
-<span id="1296">1296</span>
-<span id="1297">1297</span>
-<span id="1298">1298</span>
-<span id="1299">1299</span>
-<span id="1300">1300</span>
-<span id="1301">1301</span>
-<span id="1302">1302</span>
-<span id="1303">1303</span>
-<span id="1304">1304</span>
-<span id="1305">1305</span>
-<span id="1306">1306</span>
-<span id="1307">1307</span>
-<span id="1308">1308</span>
-<span id="1309">1309</span>
-<span id="1310">1310</span>
-<span id="1311">1311</span>
-<span id="1312">1312</span>
-<span id="1313">1313</span>
-<span id="1314">1314</span>
-<span id="1315">1315</span>
-<span id="1316">1316</span>
-<span id="1317">1317</span>
-<span id="1318">1318</span>
-<span id="1319">1319</span>
-<span id="1320">1320</span>
-<span id="1321">1321</span>
-<span id="1322">1322</span>
-<span id="1323">1323</span>
-<span id="1324">1324</span>
-<span id="1325">1325</span>
-<span id="1326">1326</span>
-<span id="1327">1327</span>
-<span id="1328">1328</span>
-<span id="1329">1329</span>
-<span id="1330">1330</span>
-<span id="1331">1331</span>
-<span id="1332">1332</span>
-<span id="1333">1333</span>
-<span id="1334">1334</span>
-<span id="1335">1335</span>
-<span id="1336">1336</span>
-<span id="1337">1337</span>
-<span id="1338">1338</span>
-<span id="1339">1339</span>
-<span id="1340">1340</span>
-<span id="1341">1341</span>
-<span id="1342">1342</span>
-<span id="1343">1343</span>
-<span id="1344">1344</span>
-<span id="1345">1345</span>
-<span id="1346">1346</span>
-<span id="1347">1347</span>
-<span id="1348">1348</span>
-<span id="1349">1349</span>
-<span id="1350">1350</span>
-<span id="1351">1351</span>
-<span id="1352">1352</span>
-<span id="1353">1353</span>
-<span id="1354">1354</span>
-<span id="1355">1355</span>
-<span id="1356">1356</span>
-<span id="1357">1357</span>
-<span id="1358">1358</span>
-<span id="1359">1359</span>
-<span id="1360">1360</span>
-<span id="1361">1361</span>
-<span id="1362">1362</span>
-<span id="1363">1363</span>
-<span id="1364">1364</span>
-<span id="1365">1365</span>
-<span id="1366">1366</span>
-<span id="1367">1367</span>
-<span id="1368">1368</span>
-<span id="1369">1369</span>
-<span id="1370">1370</span>
-<span id="1371">1371</span>
-<span id="1372">1372</span>
-<span id="1373">1373</span>
-<span id="1374">1374</span>
-<span id="1375">1375</span>
-<span id="1376">1376</span>
-<span id="1377">1377</span>
-<span id="1378">1378</span>
-<span id="1379">1379</span>
-<span id="1380">1380</span>
-<span id="1381">1381</span>
-<span id="1382">1382</span>
-<span id="1383">1383</span>
-<span id="1384">1384</span>
-<span id="1385">1385</span>
-<span id="1386">1386</span>
-<span id="1387">1387</span>
-<span id="1388">1388</span>
-<span id="1389">1389</span>
-<span id="1390">1390</span>
-<span id="1391">1391</span>
-<span id="1392">1392</span>
-<span id="1393">1393</span>
-<span id="1394">1394</span>
-<span id="1395">1395</span>
-<span id="1396">1396</span>
-<span id="1397">1397</span>
-<span id="1398">1398</span>
-<span id="1399">1399</span>
-<span id="1400">1400</span>
-<span id="1401">1401</span>
-<span id="1402">1402</span>
-<span id="1403">1403</span>
-<span id="1404">1404</span>
-<span id="1405">1405</span>
-<span id="1406">1406</span>
-<span id="1407">1407</span>
-<span id="1408">1408</span>
-<span id="1409">1409</span>
-<span id="1410">1410</span>
-<span id="1411">1411</span>
-<span id="1412">1412</span>
-<span id="1413">1413</span>
-<span id="1414">1414</span>
-<span id="1415">1415</span>
-<span id="1416">1416</span>
-<span id="1417">1417</span>
-<span id="1418">1418</span>
-<span id="1419">1419</span>
-<span id="1420">1420</span>
-<span id="1421">1421</span>
-<span id="1422">1422</span>
-<span id="1423">1423</span>
-<span id="1424">1424</span>
-<span id="1425">1425</span>
-<span id="1426">1426</span>
-<span id="1427">1427</span>
-<span id="1428">1428</span>
-<span id="1429">1429</span>
-<span id="1430">1430</span>
-<span id="1431">1431</span>
-<span id="1432">1432</span>
-<span id="1433">1433</span>
-<span id="1434">1434</span>
-<span id="1435">1435</span>
-<span id="1436">1436</span>
-<span id="1437">1437</span>
-<span id="1438">1438</span>
-<span id="1439">1439</span>
-<span id="1440">1440</span>
-<span id="1441">1441</span>
-<span id="1442">1442</span>
-<span id="1443">1443</span>
-<span id="1444">1444</span>
-<span id="1445">1445</span>
-<span id="1446">1446</span>
-<span id="1447">1447</span>
-<span id="1448">1448</span>
-<span id="1449">1449</span>
-<span id="1450">1450</span>
-<span id="1451">1451</span>
-<span id="1452">1452</span>
-<span id="1453">1453</span>
-<span id="1454">1454</span>
-<span id="1455">1455</span>
-<span id="1456">1456</span>
-<span id="1457">1457</span>
-<span id="1458">1458</span>
-<span id="1459">1459</span>
-<span id="1460">1460</span>
-<span id="1461">1461</span>
-<span id="1462">1462</span>
-<span id="1463">1463</span>
-<span id="1464">1464</span>
-<span id="1465">1465</span>
-<span id="1466">1466</span>
-<span id="1467">1467</span>
-<span id="1468">1468</span>
-<span id="1469">1469</span>
-<span id="1470">1470</span>
-<span id="1471">1471</span>
-<span id="1472">1472</span>
-<span id="1473">1473</span>
-<span id="1474">1474</span>
-<span id="1475">1475</span>
-<span id="1476">1476</span>
-<span id="1477">1477</span>
-<span id="1478">1478</span>
-<span id="1479">1479</span>
-<span id="1480">1480</span>
-<span id="1481">1481</span>
-<span id="1482">1482</span>
-<span id="1483">1483</span>
-<span id="1484">1484</span>
-<span id="1485">1485</span>
-<span id="1486">1486</span>
-<span id="1487">1487</span>
-<span id="1488">1488</span>
-<span id="1489">1489</span>
-<span id="1490">1490</span>
-<span id="1491">1491</span>
-<span id="1492">1492</span>
-<span id="1493">1493</span>
-<span id="1494">1494</span>
-<span id="1495">1495</span>
-<span id="1496">1496</span>
-<span id="1497">1497</span>
-<span id="1498">1498</span>
-<span id="1499">1499</span>
-<span id="1500">1500</span>
-<span id="1501">1501</span>
-<span id="1502">1502</span>
-<span id="1503">1503</span>
-<span id="1504">1504</span>
-<span id="1505">1505</span>
-<span id="1506">1506</span>
-<span id="1507">1507</span>
-<span id="1508">1508</span>
-<span id="1509">1509</span>
-<span id="1510">1510</span>
-<span id="1511">1511</span>
-<span id="1512">1512</span>
-<span id="1513">1513</span>
-<span id="1514">1514</span>
-<span id="1515">1515</span>
-<span id="1516">1516</span>
-<span id="1517">1517</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::checked_operations::CheckedOperations;
 <span class="kw">use crate</span>::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
-<span class="kw">use </span>itertools::Itertools;
-<span class="kw">use </span>massa_hash::Hash;
+
 <span class="kw">use </span>massa_logging::massa_trace;
+
 <span class="kw">use </span>massa_models::{
-    constants::CHANNEL_SIZE,
+    block::{BlockId, WrappedHeader},
+    endorsement::{EndorsementId, WrappedEndorsement},
     node::NodeId,
-    operation::{OperationIds, OperationPrefixId, Operations},
-    prehash::{BuildMap, Map, Set},
-    BlockHeaderSerializer, BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader,
+    operation::OperationPrefixId,
+    operation::{OperationId, WrappedOperation},
+    prehash::{CapacityAllocator, PreHashMap, PreHashSet},
 };
-<span class="kw">use </span>massa_models::{EndorsementSerializer, OperationSerializer, WrappedBlock};
-<span class="kw">use </span>massa_network_exports::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
+<span class="kw">use </span>massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEventReceiver};
+<span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_protocol_exports::{
-    ProtocolCommand, ProtocolCommandSender, ProtocolError, ProtocolEvent, ProtocolEventReceiver,
-    ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
-    ProtocolSettings,
+    ProtocolCommand, ProtocolCommandSender, ProtocolConfig, ProtocolError, ProtocolEvent,
+    ProtocolEventReceiver, ProtocolManagementCommand, ProtocolManager,
 };
+
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::TimeError;
 <span class="kw">use </span>std::collections::{HashMap, HashSet};
@@ -1546,30 +1094,28 @@
 };
 <span class="kw">use </span>tracing::{debug, error, info, warn};
 
-<span class="doccomment">/// start a new `ProtocolController` from a `ProtocolConfig`
+<span class="comment">// TODO connect protocol to pool so that it sends ops and endorsements
+
+</span><span class="doccomment">/// start a new `ProtocolController` from a `ProtocolConfig`
 /// - generate keypair
 /// - create `protocol_command/protocol_event` channels
 /// - launch `protocol_controller_fn` in an other task
 ///
 /// # Arguments
-/// * `protocol_settings`: protocol settings
-/// * `operation_validity_periods`: operation validity duration in periods
-/// * `max_block_gas`: maximum gas per block
+/// * `config`: protocol settings
 /// * `network_command_sender`: the `NetworkCommandSender` we interact with
 /// * `network_event_receiver`: the `NetworkEventReceiver` we interact with
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
 </span><span class="kw">pub async fn </span>start_protocol_controller(
-    protocol_settings: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ProtocolSettings,
-    operation_validity_periods: u64,
-    max_block_gas: u64,
+    config: ProtocolConfig,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
+    pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
     storage: Storage,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;
     (
         ProtocolCommandSender,
         ProtocolEventReceiver,
-        ProtocolPoolEventReceiver,
         ProtocolManager,
     ),
     ProtocolError,
@@ -1577,24 +1123,22 @@
     <span class="macro">debug!</span>(<span class="string">&quot;starting protocol controller&quot;</span>);
 
     <span class="comment">// launch worker
-    </span><span class="kw">let </span>(controller_event_tx, event_rx) = mpsc::channel::&lt;ProtocolEvent&gt;(CHANNEL_SIZE);
-    <span class="kw">let </span>(controller_pool_event_tx, pool_event_rx) =
-        mpsc::channel::&lt;ProtocolPoolEvent&gt;(CHANNEL_SIZE);
-    <span class="kw">let </span>(command_tx, controller_command_rx) = mpsc::channel::&lt;ProtocolCommand&gt;(CHANNEL_SIZE);
+    </span><span class="kw">let </span>(controller_event_tx, event_rx) = mpsc::channel::&lt;ProtocolEvent&gt;(config.event_channel_size);
+    <span class="kw">let </span>(command_tx, controller_command_rx) =
+        mpsc::channel::&lt;ProtocolCommand&gt;(config.controller_channel_size);
     <span class="kw">let </span>(manager_tx, controller_manager_rx) = mpsc::channel::&lt;ProtocolManagementCommand&gt;(<span class="number">1</span>);
+    <span class="kw">let </span>pool_controller = pool_controller.clone();
     <span class="kw">let </span>join_handle = tokio::spawn(<span class="kw">async move </span>{
         <span class="kw">let </span>res = ProtocolWorker::new(
-            protocol_settings,
-            operation_validity_periods,
-            max_block_gas,
+            config,
             ProtocolWorkerChannels {
                 network_command_sender,
                 network_event_receiver,
                 controller_event_tx,
-                controller_pool_event_tx,
                 controller_command_rx,
                 controller_manager_rx,
             },
+            pool_controller,
             storage,
         )
         .run_loop()
@@ -1614,25 +1158,31 @@
     <span class="prelude-val">Ok</span>((
         ProtocolCommandSender(command_tx),
         ProtocolEventReceiver(event_rx),
-        ProtocolPoolEventReceiver(pool_event_rx),
         ProtocolManager::new(join_handle, manager_tx),
     ))
 }
 
 <span class="doccomment">/// Info about a block we&#39;ve seen
-</span><span class="kw">struct </span>BlockInfo {
-    <span class="doccomment">/// Endorsements contained in the block header.
-    </span>endorsements: Map&lt;EndorsementId, u32&gt;,
-    <span class="doccomment">/// Operations contained in the block,
+</span><span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>BlockInfo {
+    <span class="doccomment">/// The header of the block.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) header: <span class="prelude-ty">Option</span>&lt;WrappedHeader&gt;,
+    <span class="doccomment">/// Operations ids. None if not received yet
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) operation_ids: <span class="prelude-ty">Option</span>&lt;Vec&lt;OperationId&gt;&gt;,
+    <span class="doccomment">/// Operations and endorsements contained in the block,
     /// if we&#39;ve received them already, and none otherwise.
-    </span>operations: <span class="prelude-ty">Option</span>&lt;Vec&lt;OperationId&gt;&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) storage: Storage,
+    <span class="doccomment">/// Full operations size in bytes
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) operations_size: usize,
 }
 
 <span class="kw">impl </span>BlockInfo {
-    <span class="kw">fn </span>new(endorsements: Map&lt;EndorsementId, u32&gt;, operations: <span class="prelude-ty">Option</span>&lt;Vec&lt;OperationId&gt;&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">fn </span>new(header: <span class="prelude-ty">Option</span>&lt;WrappedHeader&gt;, storage: Storage) -&gt; <span class="self">Self </span>{
         BlockInfo {
-            endorsements,
-            operations,
+            header,
+            operation_ids: <span class="prelude-val">None</span>,
+            storage,
+            operations_size: <span class="number">0</span>,
         }
     }
 }
@@ -1640,11 +1190,7 @@
 <span class="doccomment">/// protocol worker
 </span><span class="kw">pub struct </span>ProtocolWorker {
     <span class="doccomment">/// Protocol configuration.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) protocol_settings: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ProtocolSettings,
-    <span class="doccomment">/// Operation validity periods
-    </span>operation_validity_periods: u64,
-    <span class="doccomment">/// Max gas per block
-    </span>max_block_gas: u64,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) config: ProtocolConfig,
     <span class="doccomment">/// Associated network command sender.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) network_command_sender: NetworkCommandSender,
     <span class="doccomment">/// Associated network event receiver.
@@ -1652,21 +1198,22 @@
     <span class="doccomment">/// Channel to send protocol events to the controller.
     </span>controller_event_tx: mpsc::Sender&lt;ProtocolEvent&gt;,
     <span class="doccomment">/// Channel to send protocol pool events to the controller.
-    </span>controller_pool_event_tx: mpsc::Sender&lt;ProtocolPoolEvent&gt;,
+    </span>pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
     <span class="doccomment">/// Channel receiving commands from the controller.
     </span>controller_command_rx: mpsc::Receiver&lt;ProtocolCommand&gt;,
     <span class="doccomment">/// Channel to send management commands to the controller.
     </span>controller_manager_rx: mpsc::Receiver&lt;ProtocolManagementCommand&gt;,
     <span class="doccomment">/// Ids of active nodes mapped to node info.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) active_nodes: HashMap&lt;NodeId, NodeInfo&gt;,
-    <span class="doccomment">/// List of wanted blocks.
-    </span>block_wishlist: Set&lt;BlockId&gt;,
+    <span class="doccomment">/// List of wanted blocks,
+    /// with the info representing their state with in the as_block workflow.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) block_wishlist: PreHashMap&lt;BlockId, BlockInfo&gt;,
     <span class="doccomment">/// List of processed endorsements
-    </span>checked_endorsements: Set&lt;EndorsementId&gt;,
+    </span>checked_endorsements: PreHashSet&lt;EndorsementId&gt;,
     <span class="doccomment">/// List of processed operations
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) checked_operations: CheckedOperations,
     <span class="doccomment">/// List of processed headers
-    </span>checked_headers: Map&lt;BlockId, BlockInfo&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) checked_headers: PreHashMap&lt;BlockId, WrappedHeader&gt;,
     <span class="doccomment">/// List of ids of operations that we asked to the nodes
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) asked_operations: HashMap&lt;OperationPrefixId, (Instant, Vec&lt;NodeId&gt;)&gt;,
     <span class="doccomment">/// Buffer for operations that we want later
@@ -1683,8 +1230,6 @@
     </span><span class="kw">pub </span>network_event_receiver: NetworkEventReceiver,
     <span class="doccomment">/// protocol event sender
     </span><span class="kw">pub </span>controller_event_tx: mpsc::Sender&lt;ProtocolEvent&gt;,
-    <span class="doccomment">/// protocol pool event sender
-    </span><span class="kw">pub </span>controller_pool_event_tx: mpsc::Sender&lt;ProtocolPoolEvent&gt;,
     <span class="doccomment">/// protocol command receiver
     </span><span class="kw">pub </span>controller_command_rx: mpsc::Receiver&lt;ProtocolCommand&gt;,
     <span class="doccomment">/// protocol management command receiver
@@ -1695,35 +1240,29 @@
     <span class="doccomment">/// Creates a new protocol worker.
     ///
     /// # Arguments
-    /// * `protocol_settings`: protocol configuration.
-    /// * `operation_validity_periods`: operation validity periods
-    /// * `max_block_gas`: max gas per block
+    /// * `config`: protocol configuration.
     /// * `network_controller`: associated network controller.
     /// * `controller_event_tx`: Channel to send protocol events.
     /// * `controller_command_rx`: Channel receiving commands.
     /// * `controller_manager_rx`: Channel receiving management commands.
     </span><span class="kw">pub fn </span>new(
-        protocol_settings: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ProtocolSettings,
-        operation_validity_periods: u64,
-        max_block_gas: u64,
+        config: ProtocolConfig,
         ProtocolWorkerChannels {
             network_command_sender,
             network_event_receiver,
             controller_event_tx,
-            controller_pool_event_tx,
             controller_command_rx,
             controller_manager_rx,
         }: ProtocolWorkerChannels,
+        pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
         storage: Storage,
     ) -&gt; ProtocolWorker {
         ProtocolWorker {
-            protocol_settings,
-            operation_validity_periods,
-            max_block_gas,
+            config,
             network_command_sender,
             network_event_receiver,
             controller_event_tx,
-            controller_pool_event_tx,
+            pool_controller,
             controller_command_rx,
             controller_manager_rx,
             active_nodes: Default::default(),
@@ -1733,16 +1272,16 @@
             checked_headers: Default::default(),
             asked_operations: Default::default(),
             op_batch_buffer: OperationBatchBuffer::with_capacity(
-                protocol_settings.operation_batch_buffer_capacity,
+                config.operation_batch_buffer_capacity,
             ),
             storage,
         }
     }
 
-    <span class="kw">async fn </span>send_protocol_event(<span class="kw-2">&amp;</span><span class="self">self</span>, event: ProtocolEvent) {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>send_protocol_event(<span class="kw-2">&amp;</span><span class="self">self</span>, event: ProtocolEvent) {
         <span class="kw">let </span>result = <span class="self">self
             </span>.controller_event_tx
-            .send_timeout(event, <span class="self">self</span>.protocol_settings.max_send_wait.to_duration())
+            .send_timeout(event, <span class="self">self</span>.config.max_send_wait.to_duration())
             .<span class="kw">await</span>;
         <span class="kw">match </span>result {
             <span class="prelude-val">Ok</span>(()) =&gt; {}
@@ -1754,28 +1293,6 @@
             }
             <span class="prelude-val">Err</span>(SendTimeoutError::Timeout(event)) =&gt; {
                 <span class="macro">warn!</span>(<span class="string">&quot;Failed to send ProtocolEvent due to timeout: {:?}.&quot;</span>, event);
-            }
-        }
-    }
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>send_protocol_pool_event(<span class="kw-2">&amp;</span><span class="self">self</span>, event: ProtocolPoolEvent) {
-        <span class="kw">let </span>result = <span class="self">self
-            </span>.controller_pool_event_tx
-            .send_timeout(event, <span class="self">self</span>.protocol_settings.max_send_wait.to_duration())
-            .<span class="kw">await</span>;
-        <span class="kw">match </span>result {
-            <span class="prelude-val">Ok</span>(()) =&gt; {}
-            <span class="prelude-val">Err</span>(SendTimeoutError::Closed(event)) =&gt; {
-                <span class="macro">warn!</span>(
-                    <span class="string">&quot;Failed to send ProtocolPoolEvent due to channel closure: {:?}.&quot;</span>,
-                    event
-                );
-            }
-            <span class="prelude-val">Err</span>(SendTimeoutError::Timeout(event)) =&gt; {
-                <span class="macro">warn!</span>(
-                    <span class="string">&quot;Failed to send ProtocolPoolEvent due to timeout: {:?}.&quot;</span>,
-                    event
-                );
             }
         }
     }
@@ -1792,16 +1309,12 @@
     /// It&#39;s mostly a `tokio::select!` within a loop.
     </span><span class="kw">pub async fn </span>run_loop(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;NetworkEventReceiver, ProtocolError&gt; {
         <span class="comment">// TODO: Config variable for the moment 10000 (prune) (100 seconds)
-        </span><span class="kw">let </span>operation_prune_timer = sleep(
-            <span class="self">self</span>.protocol_settings
-                .asked_operations_pruning_period
-                .into(),
-        );
+        </span><span class="kw">let </span>operation_prune_timer = sleep(<span class="self">self</span>.config.asked_operations_pruning_period.into());
         <span class="macro">tokio::pin!</span>(operation_prune_timer);
-        <span class="kw">let </span>block_ask_timer = sleep(<span class="self">self</span>.protocol_settings.ask_block_timeout.into());
+        <span class="kw">let </span>block_ask_timer = sleep(<span class="self">self</span>.config.ask_block_timeout.into());
         <span class="macro">tokio::pin!</span>(block_ask_timer);
         <span class="kw">let </span>operation_batch_proc_period_timer =
-            sleep(<span class="self">self</span>.protocol_settings.operation_batch_proc_period.into());
+            sleep(<span class="self">self</span>.config.operation_batch_proc_period.into());
         <span class="macro">tokio::pin!</span>(operation_batch_proc_period_timer);
         <span class="kw">loop </span>{
             <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.run_loop.begin&quot;</span>, {});
@@ -1826,7 +1339,6 @@
 
                 <span class="comment">// listen to incoming commands
                 </span><span class="prelude-val">Some</span>(cmd) = <span class="self">self</span>.controller_command_rx.recv() =&gt; {
-                    <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.run_loop.protocol_command_rx&quot;</span>, { <span class="string">&quot;cmd&quot;</span>: cmd });
                     <span class="self">self</span>.process_command(cmd, <span class="kw-2">&amp;mut </span>block_ask_timer).<span class="kw">await</span><span class="question-mark">?</span>;
                 }
 
@@ -1864,64 +1376,40 @@
         cmd: ProtocolCommand,
         timer: <span class="kw-2">&amp;mut </span>std::pin::Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.begin&quot;</span>, {
-            <span class="string">&quot;cmd&quot;</span>: cmd
-        });
         <span class="kw">match </span>cmd {
-            ProtocolCommand::IntegratedBlock {
-                block_id,
-                operation_ids,
-                endorsement_ids,
-            } =&gt; {
+            ProtocolCommand::IntegratedBlock { block_id, storage } =&gt; {
                 <span class="macro">massa_trace!</span>(
                     <span class="string">&quot;protocol.protocol_worker.process_command.integrated_block.begin&quot;</span>,
                     { <span class="string">&quot;block_id&quot;</span>: block_id }
                 );
-                <span class="kw">let </span>now = Instant::now();
+                <span class="kw">let </span>header = {
+                    <span class="kw">let </span>blocks = storage.read_blocks();
+                    blocks
+                        .get(<span class="kw-2">&amp;</span>block_id)
+                        .map(|block| block.content.header.clone())
+                        .ok_or_else(|| {
+                            ProtocolError::ContainerInconsistencyError(<span class="macro">format!</span>(
+                                <span class="string">&quot;header of id {} not found.&quot;</span>,
+                                block_id
+                            ))
+                        })<span class="question-mark">?
+                </span>};
                 <span class="kw">for </span>(node_id, node_info) <span class="kw">in </span><span class="self">self</span>.active_nodes.iter_mut() {
-                    <span class="comment">// if we know that a node wants a block we send the full block
-                    </span><span class="kw">if </span>node_info.remove_wanted_block(<span class="kw-2">&amp;</span>block_id) {
-                        node_info.insert_known_blocks(
-                            <span class="kw-2">&amp;</span>[block_id],
-                            <span class="bool-val">true</span>,
-                            now,
-                            <span class="self">self</span>.protocol_settings.max_node_known_blocks_size,
-                        );
-                        node_info.insert_known_endorsements(
-                            endorsement_ids.clone(),
-                            <span class="self">self</span>.protocol_settings.max_node_known_endorsements_size,
-                        );
-                        node_info.insert_known_ops(
-                            operation_ids.clone(),
-                            <span class="self">self</span>.protocol_settings.max_node_known_ops_size,
-                        );
-                        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.integrated_block.send_block&quot;</span>, { <span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;block_id&quot;</span>: block_id });
+                    <span class="comment">// node that isn&#39;t asking for that block
+                    </span><span class="kw">let </span>cond = node_info.get_known_block(<span class="kw-2">&amp;</span>block_id);
+                    <span class="comment">// if we don&#39;t know if that node knows that hash or if we know it doesn&#39;t
+                    </span><span class="kw">if </span>!cond.map_or_else(|| <span class="bool-val">false</span>, |v| v.<span class="number">0</span>) {
+                        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.integrated_block.send_header&quot;</span>, { <span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;block_id&quot;</span>: block_id});
                         <span class="self">self</span>.network_command_sender
-                            .send_block(<span class="kw-2">*</span>node_id, block_id)
+                            .send_block_header(<span class="kw-2">*</span>node_id, header.clone())
                             .<span class="kw">await
                             </span>.map_err(|<span class="kw">_</span>| {
                                 ProtocolError::ChannelError(
-                                    <span class="string">&quot;send block node command send failed&quot;</span>.into(),
+                                    <span class="string">&quot;send block header network command send failed&quot;</span>.into(),
                                 )
                             })<span class="question-mark">?</span>;
                     } <span class="kw">else </span>{
-                        <span class="comment">// node that isn&#39;t asking for that block
-                        </span><span class="kw">let </span>cond = node_info.get_known_block(<span class="kw-2">&amp;</span>block_id);
-                        <span class="comment">// if we don&#39;t know if that node knows that hash or if we know it doesn&#39;t
-                        </span><span class="kw">if </span>!cond.map_or_else(|| <span class="bool-val">false</span>, |v| v.<span class="number">0</span>) {
-                            <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.integrated_block.send_header&quot;</span>, { <span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;block_id&quot;</span>: block_id});
-                            <span class="self">self</span>.network_command_sender
-                                .send_block_header(<span class="kw-2">*</span>node_id, block_id)
-                                .<span class="kw">await
-                                </span>.map_err(|<span class="kw">_</span>| {
-                                    ProtocolError::ChannelError(
-                                        <span class="string">&quot;send block header network command send failed&quot;</span>.into(),
-                                    )
-                                })<span class="question-mark">?</span>;
-                        } <span class="kw">else </span>{
-                            <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.integrated_block.do_not_send&quot;</span>, { <span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;block_id&quot;</span>: block_id });
-                            <span class="comment">// Optimization: broadcast block id
-                        </span>}
+                        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.integrated_block.do_not_send&quot;</span>, { <span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;block_id&quot;</span>: block_id });
                     }
                 }
                 <span class="macro">massa_trace!</span>(
@@ -1952,100 +1440,46 @@
                     {}
                 );
             }
-            ProtocolCommand::GetBlocksResults(results) =&gt; {
-                <span class="kw">for </span>(block_id, block_info) <span class="kw">in </span>results.into_iter() {
-                    <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.found_block.begin&quot;</span>, { <span class="string">&quot;block_id&quot;</span>: block_id, <span class="string">&quot;block_info&quot;</span>: block_info });
-                    <span class="kw">match </span>block_info {
-                        <span class="prelude-val">Some</span>((opt_operation_ids, opt_endorsement_ids)) =&gt; {
-                            <span class="comment">// Send the block once to all nodes who asked for it.
-                            </span><span class="kw">for </span>(node_id, node_info) <span class="kw">in </span><span class="self">self</span>.active_nodes.iter_mut() {
-                                <span class="kw">if </span>node_info.remove_wanted_block(<span class="kw-2">&amp;</span>block_id) {
-                                    node_info.insert_known_blocks(
-                                        <span class="kw-2">&amp;</span>[block_id],
-                                        <span class="bool-val">true</span>,
-                                        Instant::now(),
-                                        <span class="self">self</span>.protocol_settings.max_node_known_blocks_size,
-                                    );
-                                    <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>endorsement_ids) = opt_endorsement_ids {
-                                        <span class="comment">// if endorsement IDs are available from the search, note them
-                                        // otherwise, it means that they are not relevant anyways (old final block)
-                                        </span>node_info.insert_known_endorsements(
-                                            endorsement_ids.clone(),
-                                            <span class="self">self</span>.protocol_settings.max_node_known_endorsements_size,
-                                        );
-                                    }
-                                    <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>operation_ids) = opt_operation_ids {
-                                        <span class="comment">// if operation IDs are available from the search, note them
-                                        // otherwise, it means that they are not relevant anyways (old final block)
-                                        </span>node_info.insert_known_ops(
-                                            operation_ids.clone(),
-                                            <span class="self">self</span>.protocol_settings.max_node_known_ops_size,
-                                        );
-                                    }
-                                    <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.found_block.send_block&quot;</span>, { <span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;block_id&quot;</span>: block_id});
-                                    <span class="self">self</span>.network_command_sender
-                                        .send_block(<span class="kw-2">*</span>node_id, block_id)
-                                        .<span class="kw">await
-                                        </span>.map_err(|<span class="kw">_</span>| {
-                                            ProtocolError::ChannelError(
-                                                <span class="string">&quot;send block node command send failed&quot;</span>.into(),
-                                            )
-                                        })<span class="question-mark">?</span>;
-                                }
-                            }
-                            <span class="macro">massa_trace!</span>(
-                                <span class="string">&quot;protocol.protocol_worker.process_command.found_block.end&quot;</span>,
-                                {}
-                            );
-                        }
-                        <span class="prelude-val">None </span>=&gt; {
-                            <span class="macro">massa_trace!</span>(
-                                <span class="string">&quot;protocol.protocol_worker.process_command.block_not_found.begin&quot;</span>,
-                                { <span class="string">&quot;block_id&quot;</span>: block_id }
-                            );
-                            <span class="kw">for </span>(node_id, node_info) <span class="kw">in </span><span class="self">self</span>.active_nodes.iter_mut() {
-                                <span class="kw">if </span>node_info.contains_wanted_block_update_timestamp(<span class="kw-2">&amp;</span>block_id) {
-                                    <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.block_not_found.notify_node&quot;</span>, { <span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;block_id&quot;</span>: block_id });
-                                    <span class="self">self</span>.network_command_sender
-                                        .block_not_found(<span class="kw-2">*</span>node_id, block_id)
-                                        .<span class="kw">await</span><span class="question-mark">?
-                                </span>}
-                            }
-                            <span class="macro">massa_trace!</span>(
-                                <span class="string">&quot;protocol.protocol_worker.process_command.block_not_found.end&quot;</span>,
-                                {}
-                            );
-                        }
-                    }
-                }
-            }
             ProtocolCommand::WishlistDelta { new, remove } =&gt; {
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.wishlist_delta.begin&quot;</span>, { <span class="string">&quot;new&quot;</span>: new, <span class="string">&quot;remove&quot;</span>: remove });
-                <span class="self">self</span>.stop_asking_blocks(remove)<span class="question-mark">?</span>;
-                <span class="self">self</span>.block_wishlist.extend(new);
+                <span class="kw">for </span>(block_id, header) <span class="kw">in </span>new.into_iter() {
+                    <span class="self">self</span>.block_wishlist.insert(
+                        block_id,
+                        BlockInfo::new(header, <span class="self">self</span>.storage.clone_without_refs()),
+                    );
+                }
+                <span class="comment">// Remove the knowledge that we asked this block to nodes.
+                </span><span class="self">self</span>.remove_asked_blocks_of_node(<span class="kw-2">&amp;</span>remove)<span class="question-mark">?</span>;
+
+                <span class="comment">// Remove from the wishlist.
+                </span><span class="kw">for </span>block_id <span class="kw">in </span>remove.iter() {
+                    <span class="self">self</span>.block_wishlist.remove(block_id);
+                }
                 <span class="self">self</span>.update_ask_block(timer).<span class="kw">await</span><span class="question-mark">?</span>;
                 <span class="macro">massa_trace!</span>(
                     <span class="string">&quot;protocol.protocol_worker.process_command.wishlist_delta.end&quot;</span>,
                     {}
                 );
             }
-            ProtocolCommand::PropagateOperations(operation_ids) =&gt; {
+            ProtocolCommand::PropagateOperations(storage) =&gt; {
+                <span class="kw">let </span>operation_ids = storage.get_op_refs();
                 <span class="macro">massa_trace!</span>(
                     <span class="string">&quot;protocol.protocol_worker.process_command.propagate_operations.begin&quot;</span>,
                     { <span class="string">&quot;operation_ids&quot;</span>: operation_ids }
                 );
+                <span class="self">self</span>.prune_checked_operations();
                 <span class="kw">for </span>id <span class="kw">in </span>operation_ids.iter() {
                     <span class="self">self</span>.checked_operations.insert(id);
                 }
                 <span class="kw">for </span>(node, node_info) <span class="kw">in </span><span class="self">self</span>.active_nodes.iter_mut() {
-                    <span class="kw">let </span>new_ops: OperationIds = operation_ids
+                    <span class="kw">let </span>new_ops: PreHashSet&lt;OperationId&gt; = operation_ids
                         .iter()
                         .filter(|id| !node_info.knows_op(id))
                         .copied()
                         .collect();
                     node_info.insert_known_ops(
                         new_ops.iter().cloned().collect(),
-                        <span class="self">self</span>.protocol_settings.max_node_known_ops_size,
+                        <span class="self">self</span>.config.max_node_known_ops_size,
                     );
                     <span class="kw">if </span>!new_ops.is_empty() {
                         <span class="self">self</span>.network_command_sender
@@ -2060,17 +1494,25 @@
             ProtocolCommand::PropagateEndorsements(endorsements) =&gt; {
                 <span class="macro">massa_trace!</span>(
                     <span class="string">&quot;protocol.protocol_worker.process_command.propagate_endorsements.begin&quot;</span>,
-                    { <span class="string">&quot;endorsements&quot;</span>: endorsements }
+                    { <span class="string">&quot;endorsements&quot;</span>: endorsements.get_endorsement_refs() }
                 );
                 <span class="kw">for </span>(node, node_info) <span class="kw">in </span><span class="self">self</span>.active_nodes.iter_mut() {
-                    <span class="kw">let </span>new_endorsements: Map&lt;EndorsementId, WrappedEndorsement&gt; = endorsements
-                        .iter()
-                        .filter(|(id, <span class="kw">_</span>)| !node_info.knows_endorsement(id))
-                        .map(|(k, v)| (<span class="kw-2">*</span>k, v.clone()))
-                        .collect();
+                    <span class="kw">let </span>new_endorsements: PreHashMap&lt;EndorsementId, WrappedEndorsement&gt; = {
+                        <span class="kw">let </span>endorsements_reader = endorsements.read_endorsements();
+                        endorsements
+                            .get_endorsement_refs()
+                            .iter()
+                            .filter_map(|id| {
+                                <span class="kw">if </span>node_info.knows_endorsement(id) {
+                                    <span class="kw">return </span><span class="prelude-val">None</span>;
+                                }
+                                <span class="prelude-val">Some</span>((<span class="kw-2">*</span>id, endorsements_reader.get(id).cloned().unwrap()))
+                            })
+                            .collect()
+                    };
                     node_info.insert_known_endorsements(
                         new_endorsements.keys().copied().collect(),
-                        <span class="self">self</span>.protocol_settings.max_node_known_endorsements_size,
+                        <span class="self">self</span>.config.max_node_known_endorsements_size,
                     );
                     <span class="kw">let </span>to_send = new_endorsements
                         .into_iter()
@@ -2088,8 +1530,12 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn </span>stop_asking_blocks(<span class="kw-2">&amp;mut </span><span class="self">self</span>, remove_hashes: Set&lt;BlockId&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.stop_asking_blocks&quot;</span>, {
+    <span class="doccomment">/// Remove the given blocks from the local wishlist
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>remove_asked_blocks_of_node(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        remove_hashes: <span class="kw-2">&amp;</span>PreHashSet&lt;BlockId&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.remove_asked_blocks_of_node&quot;</span>, {
             <span class="string">&quot;remove&quot;</span>: remove_hashes
         });
         <span class="kw">for </span>node_info <span class="kw">in </span><span class="self">self</span>.active_nodes.values_mut() {
@@ -2097,29 +1543,46 @@
                 .asked_blocks
                 .retain(|h, <span class="kw">_</span>| !remove_hashes.contains(h));
         }
-        <span class="self">self</span>.block_wishlist.retain(|h| !remove_hashes.contains(h));
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">async fn </span>update_ask_block(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>update_ask_block(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         ask_block_timer: <span class="kw-2">&amp;mut </span>std::pin::Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.update_ask_block.begin&quot;</span>, {});
-
         <span class="kw">let </span>now = Instant::now();
 
         <span class="comment">// init timer
         </span><span class="kw">let </span><span class="kw-2">mut </span>next_tick = now
-            .checked_add(<span class="self">self</span>.protocol_settings.ask_block_timeout.into())
+            .checked_add(<span class="self">self</span>.config.ask_block_timeout.into())
             .ok_or(TimeError::TimeOverflowError)<span class="question-mark">?</span>;
 
         <span class="comment">// list blocks to re-ask and gather candidate nodes to ask from
-        </span><span class="kw">let </span><span class="kw-2">mut </span>candidate_nodes: Map&lt;BlockId, Vec&lt;<span class="kw">_</span>&gt;&gt; = Default::default();
-        <span class="kw">let </span><span class="kw-2">mut </span>ask_block_list: HashMap&lt;NodeId, Vec&lt;BlockId&gt;&gt; = Default::default();
+        </span><span class="kw">let </span><span class="kw-2">mut </span>candidate_nodes: PreHashMap&lt;BlockId, Vec&lt;<span class="kw">_</span>&gt;&gt; = Default::default();
+        <span class="kw">let </span><span class="kw-2">mut </span>ask_block_list: HashMap&lt;NodeId, Vec&lt;(BlockId, AskForBlocksInfo)&gt;&gt; =
+            Default::default();
 
         <span class="comment">// list blocks to re-ask and from whom
-        </span><span class="kw">for </span>hash <span class="kw">in </span><span class="self">self</span>.block_wishlist.iter() {
+        </span><span class="kw">for </span>(hash, block_info) <span class="kw">in </span><span class="self">self</span>.block_wishlist.iter() {
+            <span class="kw">let </span>required_info = <span class="kw">if </span>block_info.header.is_none() {
+                AskForBlocksInfo::Header
+            } <span class="kw">else if </span>block_info.operation_ids.is_none() {
+                AskForBlocksInfo::Info
+            } <span class="kw">else </span>{
+                <span class="kw">let </span>already_stored_operations = block_info.storage.get_op_refs();
+                <span class="comment">// Unwrap safety: Check if `operation_ids` is none just above
+                </span>AskForBlocksInfo::Operations(
+                    block_info
+                        .operation_ids
+                        .as_ref()
+                        .unwrap()
+                        .iter()
+                        .filter(|id| !already_stored_operations.contains(id))
+                        .copied()
+                        .collect(),
+                )
+            };
             <span class="kw">let </span><span class="kw-2">mut </span>needs_ask = <span class="bool-val">true</span>;
 
             <span class="kw">for </span>(node_id, node_info) <span class="kw">in </span><span class="self">self</span>.active_nodes.iter_mut() {
@@ -2127,7 +1590,7 @@
                 </span><span class="kw">let </span>ask_time_opt = node_info.asked_blocks.get(hash).copied();
                 <span class="kw">let </span>(timeout_at_opt, timed_out) = <span class="kw">if let </span><span class="prelude-val">Some</span>(ask_time) = ask_time_opt {
                     <span class="kw">let </span>t = ask_time
-                        .checked_add(<span class="self">self</span>.protocol_settings.ask_block_timeout.into())
+                        .checked_add(<span class="self">self</span>.config.ask_block_timeout.into())
                         .ok_or(TimeError::TimeOverflowError)<span class="question-mark">?</span>;
                     (<span class="prelude-val">Some</span>(t), t &lt;= now)
                 } <span class="kw">else </span>{
@@ -2138,7 +1601,7 @@
                 <span class="comment">// check if the node recently told us it doesn&#39;t have the block
                 </span><span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="bool-val">false</span>, info_time)) = knows_block {
                     <span class="kw">let </span>info_expires = info_time
-                        .checked_add(<span class="self">self</span>.protocol_settings.ask_block_timeout.into())
+                        .checked_add(<span class="self">self</span>.config.ask_block_timeout.into())
                         .ok_or(TimeError::TimeOverflowError)<span class="question-mark">?</span>;
                     <span class="kw">if </span>info_expires &gt; now {
                         next_tick = std::cmp::min(next_tick, info_expires);
@@ -2167,7 +1630,7 @@
                                 <span class="kw-2">&amp;</span>[<span class="kw-2">*</span>hash],
                                 <span class="bool-val">false</span>,
                                 timeout_at,
-                                <span class="self">self</span>.protocol_settings.max_node_known_blocks_size,
+                                <span class="self">self</span>.config.max_node_known_blocks_size,
                             );
                             (<span class="number">2u8</span>, ask_time_opt)
                         } <span class="kw">else </span>{
@@ -2183,7 +1646,7 @@
                                 <span class="kw-2">&amp;</span>[<span class="kw-2">*</span>hash],
                                 <span class="bool-val">false</span>,
                                 timeout_at,
-                                <span class="self">self</span>.protocol_settings.max_node_known_blocks_size,
+                                <span class="self">self</span>.config.max_node_known_blocks_size,
                             );
                         }
                         (<span class="number">2u8</span>, ask_time_opt)
@@ -2194,17 +1657,18 @@
                             <span class="kw-2">&amp;</span>[<span class="kw-2">*</span>hash],
                             <span class="bool-val">false</span>,
                             timeout_at,
-                            <span class="self">self</span>.protocol_settings.max_node_known_blocks_size,
+                            <span class="self">self</span>.config.max_node_known_blocks_size,
                         );
                         (<span class="number">2u8</span>, ask_time_opt)
                     }
                 };
 
                 <span class="comment">// add candidate node
-                </span>candidate_nodes
-                    .entry(<span class="kw-2">*</span>hash)
-                    .or_insert_with(Vec::new)
-                    .push((candidate, <span class="kw-2">*</span>node_id));
+                </span>candidate_nodes.entry(<span class="kw-2">*</span>hash).or_insert_with(Vec::new).push((
+                    candidate,
+                    <span class="kw-2">*</span>node_id,
+                    required_info.clone(),
+                ));
             }
 
             <span class="comment">// remove if doesn&#39;t need to be asked
@@ -2225,7 +1689,7 @@
                         .iter()
                         .filter(|(_h, ask_t)| {
                             ask_t
-                                .checked_add(<span class="self">self</span>.protocol_settings.ask_block_timeout.into())
+                                .checked_add(<span class="self">self</span>.config.ask_block_timeout.into())
                                 .map_or(<span class="bool-val">false</span>, |timeout_t| timeout_t &gt; now)
                         })
                         .count(),
@@ -2235,14 +1699,14 @@
 
         <span class="kw">for </span>(hash, criteria) <span class="kw">in </span>candidate_nodes.into_iter() {
             <span class="comment">// find the best node
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>((_knowledge, best_node)) = criteria
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>((_knowledge, best_node, required_info)) = criteria
                 .into_iter()
-                .filter(|(_knowledge, node_id)| {
+                .filter(|(_knowledge, node_id, <span class="kw">_</span>)| {
                     <span class="comment">// filter out nodes with too many active block requests
                     </span><span class="kw-2">*</span>active_block_req_count.get(node_id).unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>)
-                        &lt;= <span class="self">self</span>.protocol_settings.max_simultaneous_ask_blocks_per_node
+                        &lt;= <span class="self">self</span>.config.max_simultaneous_ask_blocks_per_node
                 })
-                .min_by_key(|(knowledge, node_id)| {
+                .min_by_key(|(knowledge, node_id, <span class="kw">_</span>)| {
                     (
                         <span class="kw-2">*</span>knowledge,                                                 <span class="comment">// block knowledge
                         </span><span class="kw-2">*</span>active_block_req_count.get(node_id).unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>), <span class="comment">// active requests
@@ -2260,10 +1724,10 @@
                 ask_block_list
                     .entry(best_node)
                     .or_insert_with(Vec::new)
-                    .push(hash);
+                    .push((hash, required_info.clone()));
 
                 <span class="kw">let </span>timeout_at = now
-                    .checked_add(<span class="self">self</span>.protocol_settings.ask_block_timeout.into())
+                    .checked_add(<span class="self">self</span>.config.ask_block_timeout.into())
                     .ok_or(TimeError::TimeOverflowError)<span class="question-mark">?</span>;
                 next_tick = std::cmp::min(next_tick, timeout_at);
             }
@@ -2271,10 +1735,10 @@
 
         <span class="comment">// send AskBlockEvents
         </span><span class="kw">if </span>!ask_block_list.is_empty() {
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.update_ask_block&quot;</span>, {
-                <span class="string">&quot;list&quot;</span>: ask_block_list
-            });
-            <span class="self">self</span>.network_command_sender
+            <span class="comment">//massa_trace!(&quot;protocol.protocol_worker.update_ask_block&quot;, {
+            //    &quot;list&quot;: ask_block_list
+            //});
+            </span><span class="self">self</span>.network_command_sender
                 .ask_for_block_list(ask_block_list)
                 .<span class="kw">await
                 </span>.map_err(|<span class="kw">_</span>| {
@@ -2316,11 +1780,11 @@
     /// - Unique indices.
     /// - Slot matches that of the block.
     /// - Block matches that of the block.
-    </span><span class="kw">async fn </span>note_header_from_node(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>note_header_from_node(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         header: <span class="kw-2">&amp;</span>WrappedHeader,
         source_node_id: <span class="kw-2">&amp;</span>NodeId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;(BlockId, Map&lt;EndorsementId, u32&gt;, bool)&gt;, ProtocolError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;(BlockId, bool)&gt;, ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_header_from_node&quot;</span>, { <span class="string">&quot;node&quot;</span>: source_node_id, <span class="string">&quot;header&quot;</span>: header });
 
         <span class="comment">// check header integrity
@@ -2342,38 +1806,38 @@
 
         <span class="comment">// check if this header was already verified
         </span><span class="kw">let </span>now = Instant::now();
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(block_info) = <span class="self">self</span>.checked_headers.get(<span class="kw-2">&amp;</span>block_id) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(block_header) = <span class="self">self</span>.checked_headers.get(<span class="kw-2">&amp;</span>block_id) {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(node_info) = <span class="self">self</span>.active_nodes.get_mut(source_node_id) {
                 node_info.insert_known_blocks(
                     <span class="kw-2">&amp;</span>header.content.parents,
                     <span class="bool-val">true</span>,
                     now,
-                    <span class="self">self</span>.protocol_settings.max_node_known_blocks_size,
+                    <span class="self">self</span>.config.max_node_known_blocks_size,
                 );
                 node_info.insert_known_blocks(
                     <span class="kw-2">&amp;</span>[block_id],
                     <span class="bool-val">true</span>,
                     now,
-                    <span class="self">self</span>.protocol_settings.max_node_known_blocks_size,
+                    <span class="self">self</span>.config.max_node_known_blocks_size,
                 );
                 node_info.insert_known_endorsements(
-                    block_info.endorsements.keys().copied().collect(),
-                    <span class="self">self</span>.protocol_settings.max_node_known_endorsements_size,
+                    block_header
+                        .content
+                        .endorsements
+                        .iter()
+                        .map(|e| e.id)
+                        .collect(),
+                    <span class="self">self</span>.config.max_node_known_endorsements_size,
                 );
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(operations) = block_info.operations.as_ref() {
-                    node_info.insert_known_ops(
-                        operations.iter().cloned().collect(),
-                        <span class="self">self</span>.protocol_settings.max_node_known_ops_size,
-                    );
-                }
             }
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((block_id, block_info.endorsements.clone(), <span class="bool-val">false</span>)));
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((block_id, <span class="bool-val">false</span>)));
         }
 
-        <span class="kw">let </span>(endorsement_ids, endorsements_reused) = <span class="kw">match </span><span class="self">self
-            </span>.note_endorsements_from_node(header.content.endorsements.clone(), source_node_id, <span class="bool-val">false</span>)
-            .<span class="kw">await
-        </span>{
+        <span class="kw">let </span>(_endorsement_ids, endorsements_reused) = <span class="kw">match </span><span class="self">self</span>.note_endorsements_from_node(
+            header.content.endorsements.clone(),
+            source_node_id,
+            <span class="bool-val">false</span>,
+        ) {
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <span class="macro">warn!</span>(
                     <span class="string">&quot;node {} sent us a header containing critically incorrect endorsements&quot;</span>,
@@ -2394,9 +1858,7 @@
         }
 
         <span class="comment">// check header signature
-        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
-            header.verify_signature(BlockHeaderSerializer::new(), <span class="kw-2">&amp;</span>header.creator_public_key)
-        {
+        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = header.verify_signature() {
             <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.check_header.err_signature&quot;</span>, { <span class="string">&quot;header&quot;</span>: header, <span class="string">&quot;err&quot;</span>: <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)});
             <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
         };
@@ -2428,10 +1890,7 @@
 
         <span class="kw">if </span><span class="self">self
             </span>.checked_headers
-            .insert(
-                block_id,
-                BlockInfo::new(endorsement_ids.clone(), Default::default()),
-            )
+            .insert(block_id, header.clone())
             .is_none()
         {
             <span class="self">self</span>.prune_checked_headers();
@@ -2442,144 +1901,43 @@
                 <span class="kw-2">&amp;</span>header.content.parents,
                 <span class="bool-val">true</span>,
                 now,
-                <span class="self">self</span>.protocol_settings.max_node_known_blocks_size,
+                <span class="self">self</span>.config.max_node_known_blocks_size,
             );
             node_info.insert_known_blocks(
                 <span class="kw-2">&amp;</span>[block_id],
                 <span class="bool-val">true</span>,
                 now,
-                <span class="self">self</span>.protocol_settings.max_node_known_blocks_size,
+                <span class="self">self</span>.config.max_node_known_blocks_size,
+            );
+            node_info.insert_known_endorsements(
+                header.content.endorsements.iter().map(|e| e.id).collect(),
+                <span class="self">self</span>.config.max_node_known_endorsements_size,
             );
             <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_header_from_node.ok&quot;</span>, { <span class="string">&quot;node&quot;</span>: source_node_id,<span class="string">&quot;block_id&quot;</span>:block_id, <span class="string">&quot;header&quot;</span>: header});
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((block_id, endorsement_ids, <span class="bool-val">true</span>)));
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((block_id, <span class="bool-val">true</span>)));
         }
         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
     }
 
     <span class="doccomment">/// Prune `checked_endorsements` if it is too large
     </span><span class="kw">fn </span>prune_checked_endorsements(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">if </span><span class="self">self</span>.checked_endorsements.len() &gt; <span class="self">self</span>.protocol_settings.max_known_endorsements_size {
+        <span class="kw">if </span><span class="self">self</span>.checked_endorsements.len() &gt; <span class="self">self</span>.config.max_known_endorsements_size {
             <span class="self">self</span>.checked_endorsements.clear();
         }
     }
 
     <span class="doccomment">/// Prune `checked_operations` if it has grown too large.
     </span><span class="kw">fn </span>prune_checked_operations(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">if </span><span class="self">self</span>.checked_operations.len() &gt; <span class="self">self</span>.protocol_settings.max_known_ops_size {
+        <span class="kw">if </span><span class="self">self</span>.checked_operations.len() &gt; <span class="self">self</span>.config.max_known_ops_size {
             <span class="self">self</span>.checked_operations.clear();
         }
     }
 
     <span class="doccomment">/// Prune `checked_headers` if it is too large
     </span><span class="kw">fn </span>prune_checked_headers(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">if </span><span class="self">self</span>.checked_headers.len() &gt; <span class="self">self</span>.protocol_settings.max_known_blocks_size {
+        <span class="kw">if </span><span class="self">self</span>.checked_headers.len() &gt; <span class="self">self</span>.config.max_known_blocks_size {
             <span class="self">self</span>.checked_headers.clear();
         }
-    }
-
-    <span class="doccomment">/// Check a header&#39;s signature, and if valid note the node knows the block.
-    /// Does not ban if the block is invalid.
-    ///
-    /// Checks performed:
-    /// - Check the header(see `note_header_from_node`).
-    /// - Check operations(see `note_operations_from_node`).
-    /// - Check operations:
-    ///     - Absence of duplicates.
-    ///     - Validity period includes the slot of the block.
-    ///     - Address matches that of the block.
-    ///     - Thread matches that of the block.
-    /// - Check root hash.
-    </span><span class="kw">async fn </span>note_block_from_node(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        block: <span class="kw-2">&amp;</span>WrappedBlock,
-        source_node_id: <span class="kw-2">&amp;</span>NodeId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;
-        <span class="prelude-ty">Option</span>&lt;(
-            BlockId,
-            Map&lt;OperationId, (usize, u64)&gt;,
-            Map&lt;EndorsementId, u32&gt;,
-        )&gt;,
-        ProtocolError,
-    &gt; {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_block_from_node&quot;</span>, { <span class="string">&quot;node&quot;</span>: source_node_id, <span class="string">&quot;block&quot;</span>: block });
-
-        <span class="kw">let </span>(header, operations, operation_merkle_root, slot) = {
-            (
-                block.content.header.clone(),
-                block.content.operations.clone(),
-                block.content.header.content.operation_merkle_root,
-                block.content.header.content.slot,
-            )
-        };
-
-        <span class="comment">// check header
-        </span><span class="kw">let </span>(block_id, endorsement_ids, _is_header_new) =
-            <span class="kw">match </span><span class="self">self</span>.note_header_from_node(<span class="kw-2">&amp;</span>header, source_node_id).<span class="kw">await </span>{
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(v)) =&gt; v,
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
-                <span class="prelude-val">Err</span>(err) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(err),
-            };
-
-        <span class="comment">// Perform general checks on the operations, note them into caches and send them to pool
-        // but do not propagate as they are already propagating within a block
-        </span><span class="kw">let </span>(seen_ops, received_operations_ids, has_duplicate_operations, total_gas) = <span class="self">self
-            </span>.note_operations_from_node(operations.clone(), source_node_id, <span class="bool-val">false</span>)
-            .<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">if </span>total_gas &gt; <span class="self">self</span>.max_block_gas {
-            <span class="comment">// Gas usage over limit =&gt; block invalid
-            // TODO remove this check in the single-ledger version,
-            //      this is only here to prevent SC operations from spending gas fees while the block is unable to execute their op
-            </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
-        }
-
-        <span class="comment">// Perform checks on the operations that relate to the block in which they have been included.
-        // We perform those checks AFTER note_operations_from_node to allow otherwise valid operations to be noted
-        </span><span class="kw">if </span>has_duplicate_operations {
-            <span class="comment">// Block contains duplicate operations.
-            </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
-        }
-        <span class="kw">for </span>op <span class="kw">in </span>operations.iter() {
-            <span class="comment">// check validity period
-            </span><span class="kw">if </span>!(op
-                .get_validity_range(<span class="self">self</span>.operation_validity_periods)
-                .contains(<span class="kw-2">&amp;</span>slot.period))
-            {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_block_from_node.err_op_period&quot;</span>,
-                    { <span class="string">&quot;node&quot;</span>: source_node_id,<span class="string">&quot;block_id&quot;</span>:block_id, <span class="string">&quot;op&quot;</span>: op });
-                <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
-            }
-
-            <span class="comment">// check thread
-            </span><span class="kw">if </span>op.thread != slot.thread {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_block_from_node.err_op_thread&quot;</span>,
-                    { <span class="string">&quot;node&quot;</span>: source_node_id,<span class="string">&quot;block_id&quot;</span>:block_id, <span class="string">&quot;op&quot;</span>: op});
-                <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
-            }
-        }
-
-        <span class="comment">// check root hash
-        </span>{
-            <span class="kw">let </span>concat_bytes = seen_ops
-                .iter()
-                .map(|op_id| op_id.to_bytes().to_vec())
-                .concat();
-            <span class="kw">if </span>operation_merkle_root != Hash::compute_from(<span class="kw-2">&amp;</span>concat_bytes) {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_block_from_node.err_op_root_hash&quot;</span>,
-                    { <span class="string">&quot;node&quot;</span>: source_node_id,<span class="string">&quot;block_id&quot;</span>:block_id});
-                <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
-            }
-        }
-
-        <span class="comment">// Add operations to block info if found in the cache.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>block_info) = <span class="self">self</span>.checked_headers.get_mut(<span class="kw-2">&amp;</span>block_id) {
-            <span class="kw">if </span>block_info.operations.is_none() {
-                block_info.operations = <span class="prelude-val">Some</span>(received_operations_ids.keys().cloned().collect());
-            }
-        }
-
-        <span class="comment">// Note: block already added to node&#39;s view in `note_header_from_node`.
-
-        </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((block_id, received_operations_ids, endorsement_ids)))
     }
 
     <span class="doccomment">/// Checks operations, caching knowledge of valid ones.
@@ -2589,47 +1947,28 @@
     /// Returns :
     /// - a list of seen operation ids, for use in checking the root hash of the block.
     /// - a map of seen operations with indices and validity periods to avoid recomputing them later
-    /// - a boolean indicating whether duplicate operations were noted.
     /// - the sum of all operation&#39;s `max_gas`.
     ///
     /// Checks performed:
     /// - Valid signature
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>note_operations_from_node(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>note_operations_from_node(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        operations: Operations,
+        operations: Vec&lt;WrappedOperation&gt;,
         source_node_id: <span class="kw-2">&amp;</span>NodeId,
-        propagate: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;OperationId&gt;, Map&lt;OperationId, (usize, u64)&gt;, bool, u64), ProtocolError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;OperationId&gt;, PreHashMap&lt;OperationId, usize&gt;), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_operations_from_node&quot;</span>, { <span class="string">&quot;node&quot;</span>: source_node_id, <span class="string">&quot;operations&quot;</span>: operations });
-        <span class="kw">let </span><span class="kw-2">mut </span>total_gas = <span class="number">0u64</span>;
         <span class="kw">let </span>length = operations.len();
-        <span class="kw">let </span><span class="kw-2">mut </span>has_duplicate_operations = <span class="bool-val">false</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>seen_ops = <span class="macro">vec!</span>[];
-        <span class="kw">let </span><span class="kw-2">mut </span>new_operations = Map::with_capacity_and_hasher(length, BuildMap::default());
-        <span class="kw">let </span><span class="kw-2">mut </span>received_ids = Map::with_capacity_and_hasher(length, BuildMap::default());
+        <span class="kw">let </span><span class="kw-2">mut </span>new_operations = PreHashMap::with_capacity(length);
+        <span class="kw">let </span><span class="kw-2">mut </span>received_ids = PreHashMap::with_capacity(length);
         <span class="kw">for </span>(idx, operation) <span class="kw">in </span>operations.into_iter().enumerate() {
             <span class="kw">let </span>operation_id = operation.id;
             seen_ops.push(operation_id);
-
-            <span class="comment">// Note: we always want to update the node&#39;s view of known operations,
-            // even if we cached the check previously.
-            </span><span class="kw">let </span>was_present =
-                received_ids.insert(operation_id, (idx, operation.content.expire_period));
-
-            <span class="comment">// There are duplicate operations in this batch.
-            </span><span class="kw">if </span>was_present.is_some() {
-                has_duplicate_operations = <span class="bool-val">true</span>;
-            }
-
-            <span class="comment">// Accumulate gas
-            </span>total_gas = total_gas.saturating_add(operation.get_gas_usage());
-
+            received_ids.insert(operation_id, idx);
             <span class="comment">// Check operation signature only if not already checked.
             </span><span class="kw">if </span><span class="self">self</span>.checked_operations.insert(<span class="kw-2">&amp;</span>operation_id) {
-                <span class="comment">// check signature
-                </span>operation
-                    .verify_signature(OperationSerializer::new(), <span class="kw-2">&amp;</span>operation.creator_public_key)<span class="question-mark">?</span>;
-
+                <span class="comment">// check signature if the operation wasn&#39;t in `checked_operation`
+                </span>operation.verify_signature()<span class="question-mark">?</span>;
                 new_operations.insert(operation_id, operation);
             };
         }
@@ -2638,23 +1977,23 @@
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(node_info) = <span class="self">self</span>.active_nodes.get_mut(source_node_id) {
             node_info.insert_known_ops(
                 received_ids.keys().copied().collect(),
-                <span class="self">self</span>.protocol_settings.max_node_known_ops_size,
+                <span class="self">self</span>.config.max_node_known_ops_size,
             );
         }
 
         <span class="kw">if </span>!new_operations.is_empty() {
-            <span class="comment">// Add to pool, propagate when received outside of a header.
-            </span><span class="self">self</span>.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperations {
-                operations: new_operations,
-                propagate,
-            })
-            .<span class="kw">await</span>;
-
             <span class="comment">// prune checked operations cache
             </span><span class="self">self</span>.prune_checked_operations();
+
+            <span class="comment">// Store operation, claim locally
+            </span><span class="kw">let </span><span class="kw-2">mut </span>ops = <span class="self">self</span>.storage.clone_without_refs();
+            ops.store_operations(new_operations.into_values().collect());
+
+            <span class="comment">// Add to pool, propagate when received outside of a header.
+            </span><span class="self">self</span>.pool_controller.add_operations(ops);
         }
 
-        <span class="prelude-val">Ok</span>((seen_ops, received_ids, has_duplicate_operations, total_gas))
+        <span class="prelude-val">Ok</span>((seen_ops, received_ids))
     }
 
     <span class="doccomment">/// Note endorsements coming from a given node,
@@ -2666,18 +2005,18 @@
     ///
     /// Checks performed:
     /// - Valid signature.
-    </span><span class="kw">async fn </span>note_endorsements_from_node(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>note_endorsements_from_node(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         endorsements: Vec&lt;WrappedEndorsement&gt;,
         source_node_id: <span class="kw-2">&amp;</span>NodeId,
         propagate: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Map&lt;EndorsementId, u32&gt;, bool), ProtocolError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(PreHashMap&lt;EndorsementId, u32&gt;, bool), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_endorsements_from_node&quot;</span>, { <span class="string">&quot;node&quot;</span>: source_node_id, <span class="string">&quot;endorsements&quot;</span>: endorsements});
         <span class="kw">let </span>length = endorsements.len();
         <span class="kw">let </span><span class="kw-2">mut </span>contains_duplicates = <span class="bool-val">false</span>;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>new_endorsements = Map::with_capacity_and_hasher(length, BuildMap::default());
-        <span class="kw">let </span><span class="kw-2">mut </span>endorsement_ids = Map::default();
+        <span class="kw">let </span><span class="kw-2">mut </span>new_endorsements = PreHashMap::with_capacity(length);
+        <span class="kw">let </span><span class="kw-2">mut </span>endorsement_ids = PreHashMap::default();
         <span class="kw">for </span>endorsement <span class="kw">in </span>endorsements.into_iter() {
             <span class="kw">let </span>endorsement_id = endorsement.id;
             <span class="kw">if </span>endorsement_ids
@@ -2686,12 +2025,10 @@
             {
                 contains_duplicates = <span class="bool-val">true</span>;
             }
+
             <span class="comment">// check endorsement signature if not already checked
             </span><span class="kw">if </span><span class="self">self</span>.checked_endorsements.insert(endorsement_id) {
-                endorsement.verify_signature(
-                    EndorsementSerializer::new(),
-                    <span class="kw-2">&amp;</span>endorsement.creator_public_key,
-                )<span class="question-mark">?</span>;
+                endorsement.verify_signature()<span class="question-mark">?</span>;
                 new_endorsements.insert(endorsement_id, endorsement);
             }
         }
@@ -2700,171 +2037,21 @@
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(node_info) = <span class="self">self</span>.active_nodes.get_mut(source_node_id) {
             node_info.insert_known_endorsements(
                 endorsement_ids.keys().copied().collect(),
-                <span class="self">self</span>.protocol_settings.max_node_known_endorsements_size,
+                <span class="self">self</span>.config.max_node_known_endorsements_size,
             );
         }
 
-        <span class="kw">if </span>!new_endorsements.is_empty() {
+        <span class="kw">if </span>!new_endorsements.is_empty() &amp;&amp; propagate {
             <span class="self">self</span>.prune_checked_endorsements();
 
+            <span class="kw">let </span><span class="kw-2">mut </span>endorsements = <span class="self">self</span>.storage.clone_without_refs();
+            endorsements.store_endorsements(new_endorsements.into_values().collect());
+
             <span class="comment">// Add to pool, propagate if required
-            </span><span class="self">self</span>.send_protocol_pool_event(ProtocolPoolEvent::ReceivedEndorsements {
-                endorsements: new_endorsements,
-                propagate,
-            })
-            .<span class="kw">await</span>;
+            </span><span class="self">self</span>.pool_controller.add_endorsements(endorsements);
         }
 
         <span class="prelude-val">Ok</span>((endorsement_ids, contains_duplicates))
-    }
-
-    <span class="doccomment">/// Manages network event
-    /// Only used by the worker.
-    ///
-    /// # Argument
-    /// `evt`: event to process
-    /// `block_ask_timer`: Timer to update to the next time we are able to ask a block
-    </span><span class="kw">async fn </span>on_network_event(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        evt: NetworkEvent,
-        block_ask_timer: <span class="kw-2">&amp;mut </span>std::pin::Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="kw">match </span>evt {
-            NetworkEvent::NewConnection(node_id) =&gt; {
-                <span class="macro">info!</span>(<span class="string">&quot;Connected to node {}&quot;</span>, node_id);
-                <span class="macro">massa_trace!</span>(
-                    <span class="string">&quot;protocol.protocol_worker.on_network_event.new_connection&quot;</span>,
-                    { <span class="string">&quot;node&quot;</span>: node_id }
-                );
-                <span class="self">self</span>.active_nodes
-                    .insert(node_id, NodeInfo::new(<span class="self">self</span>.protocol_settings));
-                <span class="self">self</span>.update_ask_block(block_ask_timer).<span class="kw">await</span><span class="question-mark">?</span>;
-            }
-            NetworkEvent::ConnectionClosed(node_id) =&gt; {
-                <span class="macro">massa_trace!</span>(
-                    <span class="string">&quot;protocol.protocol_worker.on_network_event.connection_closed&quot;</span>,
-                    { <span class="string">&quot;node&quot;</span>: node_id }
-                );
-                <span class="kw">if </span><span class="self">self</span>.active_nodes.remove(<span class="kw-2">&amp;</span>node_id).is_some() {
-                    <span class="comment">// deletes all node info
-                    </span><span class="macro">info!</span>(<span class="string">&quot;Connection closed with {}&quot;</span>, node_id);
-                    <span class="self">self</span>.update_ask_block(block_ask_timer).<span class="kw">await</span><span class="question-mark">?</span>;
-                }
-            }
-            NetworkEvent::ReceivedBlock {
-                node: from_node_id,
-                block,
-            } =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.on_network_event.received_block&quot;</span>, { <span class="string">&quot;node&quot;</span>: from_node_id, <span class="string">&quot;block&quot;</span>: block});
-                <span class="kw">if let </span><span class="prelude-val">Some</span>((block_id, operation_set, endorsement_ids)) =
-                    <span class="self">self</span>.note_block_from_node(<span class="kw-2">&amp;</span>block, <span class="kw-2">&amp;</span>from_node_id).<span class="kw">await</span><span class="question-mark">?
-                </span>{
-                    <span class="kw">let </span>slot = block.content.header.content.slot;
-
-                    <span class="kw">let </span><span class="kw-2">mut </span>set = Set::&lt;BlockId&gt;::with_capacity_and_hasher(<span class="number">1</span>, BuildMap::default());
-                    set.insert(block_id);
-                    <span class="self">self</span>.stop_asking_blocks(set)<span class="question-mark">?</span>;
-                    <span class="self">self</span>.send_protocol_event(ProtocolEvent::ReceivedBlock {
-                        block,
-                        slot,
-                        operation_set,
-                        endorsement_ids,
-                    })
-                    .<span class="kw">await</span>;
-                    <span class="self">self</span>.update_ask_block(block_ask_timer).<span class="kw">await</span><span class="question-mark">?</span>;
-                } <span class="kw">else </span>{
-                    <span class="macro">warn!</span>(<span class="string">&quot;node {} sent us critically incorrect block, which may be an attack attempt by the remote node or a loss of sync between us and the remote node&quot;</span>, from_node_id);
-                    <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>from_node_id).<span class="kw">await</span>;
-                }
-            }
-            NetworkEvent::AskedForBlocks {
-                node: from_node_id,
-                list,
-            } =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.on_network_event.asked_for_blocks&quot;</span>, { <span class="string">&quot;node&quot;</span>: from_node_id, <span class="string">&quot;hashlist&quot;</span>: list});
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(node_info) = <span class="self">self</span>.active_nodes.get_mut(<span class="kw-2">&amp;</span>from_node_id) {
-                    <span class="kw">for </span>hash <span class="kw">in </span><span class="kw-2">&amp;</span>list {
-                        node_info.insert_wanted_block(
-                            <span class="kw-2">*</span>hash,
-                            <span class="self">self</span>.protocol_settings.max_node_wanted_blocks_size,
-                            <span class="self">self</span>.protocol_settings.max_node_known_blocks_size,
-                        );
-                    }
-                } <span class="kw">else </span>{
-                    <span class="kw">return </span><span class="prelude-val">Ok</span>(());
-                }
-                <span class="self">self</span>.send_protocol_event(ProtocolEvent::GetBlocks(list))
-                    .<span class="kw">await</span>;
-            }
-            NetworkEvent::ReceivedBlockHeader {
-                source_node_id,
-                header,
-            } =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.on_network_event.received_block_header&quot;</span>, { <span class="string">&quot;node&quot;</span>: source_node_id, <span class="string">&quot;header&quot;</span>: header});
-                <span class="kw">if let </span><span class="prelude-val">Some</span>((block_id, _endorsement_ids, is_new)) =
-                    <span class="self">self</span>.note_header_from_node(<span class="kw-2">&amp;</span>header, <span class="kw-2">&amp;</span>source_node_id).<span class="kw">await</span><span class="question-mark">?
-                </span>{
-                    <span class="kw">if </span>is_new {
-                        <span class="self">self</span>.send_protocol_event(ProtocolEvent::ReceivedBlockHeader {
-                            block_id,
-                            header,
-                        })
-                        .<span class="kw">await</span>;
-                    }
-                    <span class="self">self</span>.update_ask_block(block_ask_timer).<span class="kw">await</span><span class="question-mark">?</span>;
-                } <span class="kw">else </span>{
-                    <span class="macro">warn!</span>(
-                        <span class="string">&quot;node {} sent us critically incorrect header, which may be an attack attempt by the remote node or a loss of sync between us and the remote node&quot;</span>,
-                        source_node_id,
-                    );
-                    <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>source_node_id).<span class="kw">await</span>;
-                }
-            }
-            NetworkEvent::BlockNotFound { node, block_id } =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.on_network_event.block_not_found&quot;</span>, { <span class="string">&quot;node&quot;</span>: node, <span class="string">&quot;block_id&quot;</span>: block_id});
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = <span class="self">self</span>.active_nodes.get_mut(<span class="kw-2">&amp;</span>node) {
-                    info.insert_known_blocks(
-                        <span class="kw-2">&amp;</span>[block_id],
-                        <span class="bool-val">false</span>,
-                        Instant::now(),
-                        <span class="self">self</span>.protocol_settings.max_node_known_blocks_size,
-                    );
-                }
-                <span class="self">self</span>.update_ask_block(block_ask_timer).<span class="kw">await</span><span class="question-mark">?</span>;
-            }
-            NetworkEvent::ReceivedOperations { node, operations } =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.on_network_event.received_operations&quot;</span>, { <span class="string">&quot;node&quot;</span>: node, <span class="string">&quot;operations&quot;</span>: operations});
-                <span class="self">self</span>.on_operations_received(node, operations).<span class="kw">await</span>;
-            }
-            NetworkEvent::ReceivedEndorsements { node, endorsements } =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.on_network_event.received_endorsements&quot;</span>, { <span class="string">&quot;node&quot;</span>: node, <span class="string">&quot;endorsements&quot;</span>: endorsements});
-                <span class="kw">if </span><span class="self">self
-                    </span>.note_endorsements_from_node(endorsements, <span class="kw-2">&amp;</span>node, <span class="bool-val">true</span>)
-                    .<span class="kw">await
-                    </span>.is_err()
-                {
-                    <span class="macro">warn!</span>(<span class="string">&quot;node {} sent us critically incorrect endorsements, which may be an attack attempt by the remote node or a loss of sync between us and the remote node&quot;</span>, node,);
-                    <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>node).<span class="kw">await</span>;
-                }
-            }
-            NetworkEvent::ReceivedOperationAnnouncements {
-                node,
-                operation_prefix_ids,
-            } =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.on_network_event.received_operation_announcements&quot;</span>, { <span class="string">&quot;node&quot;</span>: node, <span class="string">&quot;operation_ids&quot;</span>: operation_prefix_ids});
-                <span class="self">self</span>.on_operations_announcements_received(operation_prefix_ids, node)
-                    .<span class="kw">await</span><span class="question-mark">?</span>;
-            }
-            NetworkEvent::ReceiveAskForOperations {
-                node,
-                operation_prefix_ids,
-            } =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.on_network_event.receive_ask_for_operations&quot;</span>, { <span class="string">&quot;node&quot;</span>: node, <span class="string">&quot;operation_ids&quot;</span>: operation_prefix_ids});
-                <span class="self">self</span>.on_asked_operations_received(node, operation_prefix_ids)
-                    .<span class="kw">await</span><span class="question-mark">?</span>;
-            }
-        }
-        <span class="prelude-val">Ok</span>(())
     }
 }
 
@@ -2872,61 +2059,24 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span><span class="kw">crate</span>::node_info::NodeInfo;
-    <span class="kw">use </span>massa_protocol_exports::tests::tools::create_protocol_settings;
+    <span class="kw">use </span>massa_hash::Hash;
+    <span class="kw">use </span>massa_protocol_exports::{tests::tools::create_protocol_config, ProtocolConfig};
     <span class="kw">use </span>serial_test::serial;
 
     <span class="macro">lazy_static::lazy_static! </span>{
-        <span class="kw">static </span><span class="kw-2">ref </span>PROTOCOL_SETTINGS: ProtocolSettings = create_protocol_settings();
+        <span class="kw">static </span><span class="kw-2">ref </span>PROTOCOL_CONFIG: ProtocolConfig = create_protocol_config();
     }
 
     <span class="kw">pub fn </span>get_dummy_block_id(s: <span class="kw-2">&amp;</span>str) -&gt; BlockId {
         BlockId(Hash::compute_from(s.as_bytes()))
     }
 
-    <span class="doccomment">/// Test the pruning behavior of `NodeInfo::insert_wanted_block`
-    </span><span class="attribute">#[test]
-    #[serial]
-    </span><span class="kw">fn </span>test_node_info_wanted_blocks_pruning() {
-        <span class="kw">let </span>protocol_settings = <span class="kw-2">&amp;</span>PROTOCOL_SETTINGS;
-        <span class="kw">let </span><span class="kw-2">mut </span>nodeinfo = NodeInfo::new(protocol_settings);
-
-        <span class="comment">// cap to 10 wanted blocks
-        </span><span class="kw">let </span>max_node_wanted_blocks_size = <span class="number">10</span>;
-
-        <span class="comment">// cap to 5 known blocks
-        </span><span class="kw">let </span>max_node_known_blocks_size = <span class="number">5</span>;
-
-        <span class="comment">// try to insert 15 wanted blocks
-        </span><span class="kw">for </span>index <span class="kw">in </span><span class="number">0usize</span>..<span class="number">15 </span>{
-            <span class="kw">let </span>hash = get_dummy_block_id(<span class="kw-2">&amp;</span>index.to_string());
-            nodeinfo.insert_wanted_block(
-                hash,
-                max_node_wanted_blocks_size,
-                max_node_known_blocks_size,
-            );
-        }
-
-        <span class="comment">// ensure that only max_node_wanted_blocks_size wanted blocks are kept
-        </span><span class="macro">assert_eq!</span>(
-            nodeinfo.wanted_blocks.len(),
-            max_node_wanted_blocks_size,
-            <span class="string">&quot;wanted_blocks pruning incorrect&quot;
-        </span>);
-
-        <span class="comment">// ensure that there are max_node_known_blocks_size entries for known blocks
-        </span><span class="macro">assert_eq!</span>(
-            nodeinfo.known_blocks.len(),
-            max_node_known_blocks_size,
-            <span class="string">&quot;known_blocks pruning incorrect&quot;
-        </span>);
-    }
-
     <span class="attribute">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_node_info_know_block() {
         <span class="kw">let </span>max_node_known_blocks_size = <span class="number">10</span>;
-        <span class="kw">let </span>protocol_settings = <span class="kw-2">&amp;</span>PROTOCOL_SETTINGS;
-        <span class="kw">let </span><span class="kw-2">mut </span>nodeinfo = NodeInfo::new(protocol_settings);
+        <span class="kw">let </span>config = <span class="kw-2">&amp;</span>PROTOCOL_CONFIG;
+        <span class="kw">let </span><span class="kw-2">mut </span>nodeinfo = NodeInfo::new(config);
         <span class="kw">let </span>instant = Instant::now();
 
         <span class="kw">let </span>hash_test = get_dummy_block_id(<span class="string">&quot;test&quot;</span>);
@@ -2975,62 +2125,6 @@
             <span class="macro">assert!</span>(nodeinfo.get_known_block(<span class="kw-2">&amp;</span>hash).is_some());
         }
     }
-
-    <span class="attribute">#[test]
-    #[serial]
-    </span><span class="kw">fn </span>test_node_info_wanted_block() {
-        <span class="kw">let </span>max_node_wanted_blocks_size = <span class="number">10</span>;
-        <span class="kw">let </span>max_node_known_blocks_size = <span class="number">10</span>;
-        <span class="kw">let </span>protocol_settings = <span class="kw-2">&amp;</span>PROTOCOL_SETTINGS;
-        <span class="kw">let </span><span class="kw-2">mut </span>nodeinfo = NodeInfo::new(protocol_settings);
-
-        <span class="kw">let </span>hash = get_dummy_block_id(<span class="string">&quot;test&quot;</span>);
-        nodeinfo.insert_wanted_block(
-            hash,
-            max_node_wanted_blocks_size,
-            max_node_known_blocks_size,
-        );
-        <span class="macro">assert!</span>(nodeinfo.contains_wanted_block_update_timestamp(<span class="kw-2">&amp;</span>hash));
-        nodeinfo.remove_wanted_block(<span class="kw-2">&amp;</span>hash);
-        <span class="macro">assert!</span>(!nodeinfo.contains_wanted_block_update_timestamp(<span class="kw-2">&amp;</span>hash));
-
-        <span class="kw">for </span>index <span class="kw">in </span><span class="number">0</span>..<span class="number">9 </span>{
-            <span class="kw">let </span>hash = get_dummy_block_id(<span class="kw-2">&amp;</span>index.to_string());
-            nodeinfo.insert_wanted_block(
-                hash,
-                max_node_wanted_blocks_size,
-                max_node_known_blocks_size,
-            );
-            <span class="macro">assert!</span>(nodeinfo.contains_wanted_block_update_timestamp(<span class="kw-2">&amp;</span>hash));
-        }
-
-        <span class="comment">// change the oldest time to now
-        </span><span class="macro">assert!</span>(
-            nodeinfo.contains_wanted_block_update_timestamp(<span class="kw-2">&amp;</span>get_dummy_block_id(<span class="kw-2">&amp;</span><span class="number">0</span>.to_string()))
-        );
-        <span class="comment">// add hash that triggers container pruning
-        </span>nodeinfo.insert_wanted_block(
-            get_dummy_block_id(<span class="string">&quot;test2&quot;</span>),
-            max_node_wanted_blocks_size,
-            max_node_known_blocks_size,
-        );
-
-        <span class="comment">// 0 is present because because its timestamp has been updated with contains_wanted_block
-        </span><span class="macro">assert!</span>(
-            nodeinfo.contains_wanted_block_update_timestamp(<span class="kw-2">&amp;</span>get_dummy_block_id(<span class="kw-2">&amp;</span><span class="number">0</span>.to_string()))
-        );
-
-        <span class="comment">// 1 has been removed because it&#39;s the oldest.
-        </span><span class="macro">assert!</span>(
-            nodeinfo.contains_wanted_block_update_timestamp(<span class="kw-2">&amp;</span>get_dummy_block_id(<span class="kw-2">&amp;</span><span class="number">1</span>.to_string()))
-        );
-
-        <span class="comment">// Other blocks are present.
-        </span><span class="kw">for </span>index <span class="kw">in </span><span class="number">2</span>..<span class="number">9 </span>{
-            <span class="kw">let </span>hash = get_dummy_block_id(<span class="kw-2">&amp;</span>index.to_string());
-            <span class="macro">assert!</span>(nodeinfo.contains_wanted_block_update_timestamp(<span class="kw-2">&amp;</span>hash));
-        }
-    }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

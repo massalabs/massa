@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/serialization.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>serialization.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/serialization.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>serialization.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -581,191 +581,26 @@
 <span id="581">581</span>
 <span id="582">582</span>
 <span id="583">583</span>
-<span id="584">584</span>
-<span id="585">585</span>
-<span id="586">586</span>
-<span id="587">587</span>
-<span id="588">588</span>
-<span id="589">589</span>
-<span id="590">590</span>
-<span id="591">591</span>
-<span id="592">592</span>
-<span id="593">593</span>
-<span id="594">594</span>
-<span id="595">595</span>
-<span id="596">596</span>
-<span id="597">597</span>
-<span id="598">598</span>
-<span id="599">599</span>
-<span id="600">600</span>
-<span id="601">601</span>
-<span id="602">602</span>
-<span id="603">603</span>
-<span id="604">604</span>
-<span id="605">605</span>
-<span id="606">606</span>
-<span id="607">607</span>
-<span id="608">608</span>
-<span id="609">609</span>
-<span id="610">610</span>
-<span id="611">611</span>
-<span id="612">612</span>
-<span id="613">613</span>
-<span id="614">614</span>
-<span id="615">615</span>
-<span id="616">616</span>
-<span id="617">617</span>
-<span id="618">618</span>
-<span id="619">619</span>
-<span id="620">620</span>
-<span id="621">621</span>
-<span id="622">622</span>
-<span id="623">623</span>
-<span id="624">624</span>
-<span id="625">625</span>
-<span id="626">626</span>
-<span id="627">627</span>
-<span id="628">628</span>
-<span id="629">629</span>
-<span id="630">630</span>
-<span id="631">631</span>
-<span id="632">632</span>
-<span id="633">633</span>
-<span id="634">634</span>
-<span id="635">635</span>
-<span id="636">636</span>
-<span id="637">637</span>
-<span id="638">638</span>
-<span id="639">639</span>
-<span id="640">640</span>
-<span id="641">641</span>
-<span id="642">642</span>
-<span id="643">643</span>
-<span id="644">644</span>
-<span id="645">645</span>
-<span id="646">646</span>
-<span id="647">647</span>
-<span id="648">648</span>
-<span id="649">649</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
-<span class="kw">use </span><span class="kw">crate</span>::Amount;
-<span class="kw">use </span>integer_encoding::VarInt;
+<span class="kw">use </span>bitvec::prelude::BitVec;
 <span class="kw">use </span>massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+    U64VarIntDeserializer, U64VarIntSerializer,
 };
 <span class="kw">use </span>nom::bytes::complete::take;
 <span class="kw">use </span>nom::multi::length_data;
 <span class="kw">use </span>nom::sequence::preceded;
+<span class="kw">use </span>nom::{branch::alt, Parser, ToUsize};
 <span class="kw">use </span>nom::{
-    error::{context, ContextError, ParseError},
+    error::{context, ContextError, ErrorKind, ParseError},
     IResult,
 };
-<span class="kw">use </span>nom::{Parser, ToUsize};
 <span class="kw">use </span>std::convert::TryInto;
 <span class="kw">use </span>std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 <span class="kw">use </span>std::ops::Bound;
-
-<span class="doccomment">/// varint serialization
-</span><span class="kw">pub trait </span>SerializeVarInt {
-    <span class="doccomment">/// Serialize as varint bytes
-    </span><span class="kw">fn </span>to_varint_bytes(<span class="self">self</span>) -&gt; Vec&lt;u8&gt;;
-}
-
-<span class="kw">impl </span>SerializeVarInt <span class="kw">for </span>u16 {
-    <span class="kw">fn </span>to_varint_bytes(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
-        <span class="self">self</span>.encode_var_vec()
-    }
-}
-
-<span class="kw">impl </span>SerializeVarInt <span class="kw">for </span>u32 {
-    <span class="kw">fn </span>to_varint_bytes(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
-        <span class="self">self</span>.encode_var_vec()
-    }
-}
-
-<span class="kw">impl </span>SerializeVarInt <span class="kw">for </span>u64 {
-    <span class="kw">fn </span>to_varint_bytes(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
-        <span class="self">self</span>.encode_var_vec()
-    }
-}
-
-<span class="doccomment">/// var int deserialization
-</span><span class="kw">pub trait </span>DeserializeVarInt: Sized {
-    <span class="doccomment">/// Deserialize variable size integer to Self from the provided buffer.
-    /// The data to deserialize starts at the beginning of the buffer but the buffer can be larger than needed.
-    /// In case of success, return the deserialized data and the number of bytes read
-    </span><span class="kw">fn </span>from_varint_bytes(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt;;
-
-    <span class="doccomment">/// Deserialize variable size integer to Self from the provided buffer and checks that its value is within given bounds.
-    /// The data to deserialize starts at the beginning of the buffer but the buffer can be larger than needed.
-    /// In case of success, return the deserialized data and the number of bytes read
-    </span><span class="kw">fn </span>from_varint_bytes_bounded(
-        buffer: <span class="kw-2">&amp;</span>[u8],
-        max_value: <span class="self">Self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt;;
-}
-
-<span class="kw">impl </span>DeserializeVarInt <span class="kw">for </span>u16 {
-    <span class="kw">fn </span>from_varint_bytes(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
-        u16::decode_var(buffer)
-            .ok_or_else(|| ModelsError::DeserializeError(<span class="string">&quot;could not deserialize varint&quot;</span>.into()))
-    }
-
-    <span class="kw">fn </span>from_varint_bytes_bounded(
-        buffer: <span class="kw-2">&amp;</span>[u8],
-        max_value: <span class="self">Self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
-        <span class="kw">let </span>(res, res_size) = <span class="self">Self</span>::from_varint_bytes(buffer)<span class="question-mark">?</span>;
-        <span class="kw">if </span>res &gt; max_value {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::DeserializeError(
-                <span class="string">&quot;deserialized varint u16 out of bounds&quot;</span>.into(),
-            ));
-        }
-        <span class="prelude-val">Ok</span>((res, res_size))
-    }
-}
-
-<span class="kw">impl </span>DeserializeVarInt <span class="kw">for </span>u32 {
-    <span class="kw">fn </span>from_varint_bytes(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
-        u32::decode_var(buffer)
-            .ok_or_else(|| ModelsError::DeserializeError(<span class="string">&quot;could not deserialize varint&quot;</span>.into()))
-    }
-
-    <span class="kw">fn </span>from_varint_bytes_bounded(
-        buffer: <span class="kw-2">&amp;</span>[u8],
-        max_value: <span class="self">Self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
-        <span class="kw">let </span>(res, res_size) = <span class="self">Self</span>::from_varint_bytes(buffer)<span class="question-mark">?</span>;
-        <span class="kw">if </span>res &gt; max_value {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::DeserializeError(
-                <span class="string">&quot;deserialized varint u32 out of bounds&quot;</span>.into(),
-            ));
-        }
-        <span class="prelude-val">Ok</span>((res, res_size))
-    }
-}
-
-<span class="kw">impl </span>DeserializeVarInt <span class="kw">for </span>u64 {
-    <span class="kw">fn </span>from_varint_bytes(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
-        u64::decode_var(buffer)
-            .ok_or_else(|| ModelsError::DeserializeError(<span class="string">&quot;could not deserialize varint&quot;</span>.into()))
-    }
-
-    <span class="kw">fn </span>from_varint_bytes_bounded(
-        buffer: <span class="kw-2">&amp;</span>[u8],
-        max_value: <span class="self">Self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
-        <span class="kw">let </span>(res, res_size) = <span class="self">Self</span>::from_varint_bytes(buffer)<span class="question-mark">?</span>;
-        <span class="kw">if </span>res &gt; max_value {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::DeserializeError(
-                <span class="string">&quot;deserialized varint u64 out of bounds&quot;</span>.into(),
-            ));
-        }
-        <span class="prelude-val">Ok</span>((res, res_size))
-    }
-}
+<span class="kw">use </span>Bound::Included;
 
 <span class="doccomment">/// Serialize min big endian integer
 </span><span class="kw">pub trait </span>SerializeMinBEInt {
@@ -817,7 +652,7 @@
         <span class="kw">let </span>read_bytes = <span class="self">Self</span>::be_bytes_min_length(max_value);
         <span class="kw">let </span>skip_bytes = <span class="self">Self</span>::MIN_BE_INT_BASE_SIZE - read_bytes;
         <span class="kw">if </span>buffer.len() &lt; read_bytes {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::SerializeError(<span class="string">&quot;unexpected buffer end&quot;</span>.into()));
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::SerializeError(<span class="string">&quot;unexpected buffer END&quot;</span>.into()));
         }
         <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0u8</span>; <span class="self">Self</span>::MIN_BE_INT_BASE_SIZE];
         buf[skip_bytes..].clone_from_slice(<span class="kw-2">&amp;</span>buffer[..read_bytes]);
@@ -842,7 +677,7 @@
         <span class="kw">let </span>read_bytes = <span class="self">Self</span>::be_bytes_min_length(max_value);
         <span class="kw">let </span>skip_bytes = <span class="self">Self</span>::MIN_BE_INT_BASE_SIZE - read_bytes;
         <span class="kw">if </span>buffer.len() &lt; read_bytes {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::SerializeError(<span class="string">&quot;unexpected buffer end&quot;</span>.into()));
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::SerializeError(<span class="string">&quot;unexpected buffer END&quot;</span>.into()));
         }
         <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0u8</span>; <span class="self">Self</span>::MIN_BE_INT_BASE_SIZE];
         buf[skip_bytes..].clone_from_slice(<span class="kw-2">&amp;</span>buffer[..read_bytes]);
@@ -880,18 +715,6 @@
     <span class="prelude-val">Ok</span>(buffer[<span class="number">0</span>])
 }
 
-<span class="doccomment">/// custom serialization trait
-</span><span class="kw">pub trait </span>SerializeCompact {
-    <span class="doccomment">/// serialization
-    </span><span class="kw">fn </span>to_bytes_compact(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt;;
-}
-
-<span class="doccomment">/// custom deserialization trait
-</span><span class="kw">pub trait </span>DeserializeCompact: Sized {
-    <span class="doccomment">/// deserialization
-    </span><span class="kw">fn </span>from_bytes_compact(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt;;
-}
-
 <span class="doccomment">/// Serializer for `IpAddr`
 </span><span class="attribute">#[derive(Default)]
 </span><span class="kw">pub struct </span>IpAddrSerializer;
@@ -905,7 +728,7 @@
 
 <span class="kw">impl </span>Serializer&lt;IpAddr&gt; <span class="kw">for </span>IpAddrSerializer {
     <span class="doccomment">/// ```
-    /// use massa_models::{Address, Amount, Slot, IpAddrSerializer};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot, serialization::IpAddrSerializer};
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
     /// use std::net::{IpAddr, Ipv4Addr};
@@ -919,11 +742,11 @@
         <span class="kw">match </span>value {
             IpAddr::V4(ip_v4) =&gt; {
                 buffer.push(<span class="number">4u8</span>);
-                buffer.extend(<span class="kw-2">&amp;</span>ip_v4.octets());
+                buffer.extend(ip_v4.octets());
             }
             IpAddr::V6(ip_v6) =&gt; {
                 buffer.push(<span class="number">6u8</span>);
-                buffer.extend(<span class="kw-2">&amp;</span>ip_v6.octets());
+                buffer.extend(ip_v6.octets());
             }
         };
         <span class="prelude-val">Ok</span>(())
@@ -943,7 +766,7 @@
 
 <span class="kw">impl </span>Deserializer&lt;IpAddr&gt; <span class="kw">for </span>IpAddrDeserializer {
     <span class="doccomment">/// ```
-    /// use massa_models::{Address, Amount, Slot, IpAddrSerializer, IpAddrDeserializer};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot, serialization::{IpAddrSerializer, IpAddrDeserializer}};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
     /// use std::net::{IpAddr, Ipv4Addr};
@@ -961,40 +784,28 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], IpAddr, E&gt; {
-        nom::branch::alt((
-            preceded(
-                |input| nom::bytes::complete::tag([<span class="number">4u8</span>])(input),
-                |input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
-                    <span class="kw">let </span>(rest, addr) = take(<span class="number">4usize</span>)(input)<span class="question-mark">?</span>;
-                    <span class="kw">let </span>addr: [u8; <span class="number">4</span>] = addr.try_into().unwrap();
-                    <span class="prelude-val">Ok</span>((rest, IpAddr::V4(Ipv4Addr::from(addr))))
-                },
-            ),
-            preceded(
-                |input| nom::bytes::complete::tag([<span class="number">6u8</span>])(input),
-                |input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
-                    <span class="kw">let </span>(rest, addr) = take(<span class="number">16usize</span>)(input)<span class="question-mark">?</span>;
-                    <span class="comment">// Safe because take would fail just above if less then 16
-                    </span><span class="kw">let </span>addr: [u8; <span class="number">16</span>] = addr.try_into().unwrap();
-                    <span class="prelude-val">Ok</span>((rest, IpAddr::V6(Ipv6Addr::from(addr))))
-                },
-            ),
-        ))(buffer)
-    }
-}
-
-<span class="kw">impl </span>SerializeCompact <span class="kw">for </span>Amount {
-    <span class="kw">fn </span>to_bytes_compact(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt; {
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.to_raw().to_varint_bytes())
-    }
-}
-
-<span class="doccomment">/// Checks performed:
-/// - Buffer contains a valid `u8`.
-</span><span class="kw">impl </span>DeserializeCompact <span class="kw">for </span>Amount {
-    <span class="kw">fn </span>from_bytes_compact(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
-        <span class="kw">let </span>(res_u64, delta) = u64::from_varint_bytes(buffer)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>((Amount::from_raw(res_u64), delta))
+        context(
+            <span class="string">&quot;Failed IpAddr deserialization&quot;</span>,
+            alt((
+                preceded(
+                    |input| nom::bytes::complete::tag([<span class="number">4u8</span>])(input),
+                    |input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
+                        <span class="kw">let </span>(rest, addr) = take(<span class="number">4usize</span>)(input)<span class="question-mark">?</span>;
+                        <span class="kw">let </span>addr: [u8; <span class="number">4</span>] = addr.try_into().unwrap();
+                        <span class="prelude-val">Ok</span>((rest, IpAddr::V4(Ipv4Addr::from(addr))))
+                    },
+                ),
+                preceded(
+                    |input| nom::bytes::complete::tag([<span class="number">6u8</span>])(input),
+                    |input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
+                        <span class="kw">let </span>(rest, addr) = take(<span class="number">16usize</span>)(input)<span class="question-mark">?</span>;
+                        <span class="comment">// Safe because take would fail just above if less then 16
+                        </span><span class="kw">let </span>addr: [u8; <span class="number">16</span>] = addr.try_into().unwrap();
+                        <span class="prelude-val">Ok</span>((rest, IpAddr::V6(Ipv6Addr::from(addr))))
+                    },
+                ),
+            )),
+        )(buffer)
     }
 }
 
@@ -1022,7 +833,7 @@
     <span class="doccomment">/// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::Serializer;
-    /// use massa_models::VecU8Serializer;
+    /// use massa_models::serialization::VecU8Serializer;
     ///
     /// let vec = vec![1, 2, 3];
     /// let mut buffer = Vec::new();
@@ -1057,7 +868,7 @@
     <span class="doccomment">/// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{VecU8Serializer, VecU8Deserializer};
+    /// use massa_models::serialization::{VecU8Serializer, VecU8Deserializer};
     ///
     /// let vec = vec![1, 2, 3];
     /// let mut serialized = Vec::new();
@@ -1174,6 +985,93 @@
     }
 }
 
+<span class="doccomment">/// `BitVec&lt;u8&gt;` Serializer
+</span><span class="kw">pub struct </span>BitVecSerializer {
+    u32_serializer: U32VarIntSerializer,
+}
+
+<span class="kw">impl </span>BitVecSerializer {
+    <span class="doccomment">/// Create a new `BitVec&lt;u8&gt;` Serializer
+    </span><span class="kw">pub fn </span>new() -&gt; BitVecSerializer {
+        BitVecSerializer {
+            u32_serializer: U32VarIntSerializer::new(),
+        }
+    }
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>BitVecSerializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
+    }
+}
+
+<span class="kw">impl </span>Serializer&lt;BitVec&lt;u8&gt;&gt; <span class="kw">for </span>BitVecSerializer {
+    <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>BitVec&lt;u8&gt;, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="kw">let </span>n_entries: u32 = value.len().try_into().map_err(|err| {
+            SerializeError::NumberTooBig(<span class="macro">format!</span>(
+                <span class="string">&quot;too many entries when serializing a `BitVec&lt;u8&gt;`: {}&quot;</span>,
+                err
+            ))
+        })<span class="question-mark">?</span>;
+        <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>n_entries, buffer)<span class="question-mark">?</span>;
+        buffer.extend(value.clone().into_vec());
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
+<span class="doccomment">/// `BitVec&lt;u8&gt;` Deserializer
+</span><span class="kw">pub struct </span>BitVecDeserializer {
+    u32_deserializer: U32VarIntDeserializer,
+}
+
+<span class="kw">impl </span>BitVecDeserializer {
+    <span class="doccomment">/// Create a new `BitVec&lt;u8&gt;` Deserializer
+    </span><span class="kw">pub fn </span>new() -&gt; BitVecDeserializer {
+        BitVecDeserializer {
+            u32_deserializer: U32VarIntDeserializer::new(
+                Bound::Included(u32::MIN),
+                Included(u32::MAX),
+            ),
+        }
+    }
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>BitVecDeserializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
+    }
+}
+
+<span class="kw">impl </span>Deserializer&lt;BitVec&lt;u8&gt;&gt; <span class="kw">for </span>BitVecDeserializer {
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BitVec&lt;u8&gt;, E&gt; {
+        context(<span class="string">&quot;Failed rng_seed deserialization&quot;</span>, |input| {
+            <span class="kw">let </span>(rest, n_entries) = <span class="self">self</span>.u32_deserializer.deserialize(input)<span class="question-mark">?</span>;
+            <span class="kw">let </span>bits_u8_len = n_entries.div_ceil(u8::BITS) <span class="kw">as </span>usize;
+            <span class="kw">if </span>rest.len() &lt; bits_u8_len {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
+                    input,
+                    ErrorKind::Eof,
+                )));
+            }
+            <span class="kw">let </span><span class="kw-2">mut </span>rng_seed: BitVec&lt;u8&gt; = BitVec::try_from_vec(rest[..bits_u8_len].to_vec())
+                .map_err(|<span class="kw">_</span>| nom::Err::Error(ParseError::from_error_kind(input, ErrorKind::Eof)))<span class="question-mark">?</span>;
+            rng_seed.truncate(n_entries <span class="kw">as </span>usize);
+            <span class="kw">if </span>rng_seed.len() != n_entries <span class="kw">as </span>usize {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
+                    input,
+                    ErrorKind::Eof,
+                )));
+            }
+            <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span>rest[bits_u8_len..], rng_seed))
+        })
+        .map(|elements| elements.into_iter().collect())
+        .parse(buffer)
+    }
+}
+
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -1231,36 +1129,6 @@
 
     <span class="attribute">#[test]
     #[serial]
-    </span><span class="kw">fn </span>test_varint() {
-        <span class="kw">let </span>x32 = <span class="number">70_000u32</span>;
-        <span class="kw">let </span>x64 = <span class="number">10_000_000_000u64</span>;
-
-        <span class="comment">// serialize
-        </span><span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;u8&gt; = Vec::new();
-        res.extend(x32.to_varint_bytes());
-        <span class="macro">assert_eq!</span>(res.len(), <span class="number">3</span>);
-        res.extend(x64.to_varint_bytes());
-        <span class="macro">assert_eq!</span>(res.len(), <span class="number">3 </span>+ <span class="number">5</span>);
-
-        <span class="comment">// deserialize
-        </span><span class="kw">let </span>buf = res.as_slice();
-        <span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="number">0</span>;
-        <span class="kw">let </span>(out_x32, delta) = u32::from_varint_bytes_bounded(<span class="kw-2">&amp;</span>buf[cursor..], <span class="number">80_000</span>).unwrap();
-        <span class="macro">assert_eq!</span>(out_x32, x32);
-        cursor += delta;
-        <span class="kw">let </span>(out_x64, delta) =
-            u64::from_varint_bytes_bounded(<span class="kw-2">&amp;</span>buf[cursor..], <span class="number">20_000_000_000</span>).unwrap();
-        <span class="macro">assert_eq!</span>(out_x64, x64);
-        cursor += delta;
-        <span class="macro">assert_eq!</span>(cursor, buf.len());
-
-        <span class="comment">// deserialize fail bounds
-        </span><span class="macro">assert!</span>(u32::from_varint_bytes_bounded(<span class="kw-2">&amp;</span>buf[<span class="number">0</span>..], <span class="number">69_999</span>).is_err());
-        <span class="macro">assert!</span>(u64::from_varint_bytes_bounded(<span class="kw-2">&amp;</span>buf[<span class="number">3</span>..], <span class="number">9_999_999_999</span>).is_err());
-    }
-
-    <span class="attribute">#[test]
-    #[serial]
     </span><span class="kw">fn </span>test_be_min() {
         <span class="kw">let </span>x32 = <span class="number">70_000u32</span>;
         <span class="kw">let </span>x64 = <span class="number">10_000_000_000u64</span>;
@@ -1297,4 +1165,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

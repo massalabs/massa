@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-signature/src/signature_impl.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>signature_impl.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_signature/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_signature/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_signature/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-signature/src/signature_impl.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>signature_impl.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_signature/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_signature/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_signature/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -996,27 +996,6 @@
 <span id="996">996</span>
 <span id="997">997</span>
 <span id="998">998</span>
-<span id="999">999</span>
-<span id="1000">1000</span>
-<span id="1001">1001</span>
-<span id="1002">1002</span>
-<span id="1003">1003</span>
-<span id="1004">1004</span>
-<span id="1005">1005</span>
-<span id="1006">1006</span>
-<span id="1007">1007</span>
-<span id="1008">1008</span>
-<span id="1009">1009</span>
-<span id="1010">1010</span>
-<span id="1011">1011</span>
-<span id="1012">1012</span>
-<span id="1013">1013</span>
-<span id="1014">1014</span>
-<span id="1015">1015</span>
-<span id="1016">1016</span>
-<span id="1017">1017</span>
-<span id="1018">1018</span>
-<span id="1019">1019</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::MassaSignatureError;
@@ -1044,8 +1023,6 @@
 </span><span class="kw">pub const </span>SECRET_KEY_BYTES_SIZE: usize = ed25519_dalek::SECRET_KEY_LENGTH;
 <span class="doccomment">/// Size of a signature
 </span><span class="kw">pub const </span>SIGNATURE_SIZE_BYTES: usize = ed25519_dalek::SIGNATURE_LENGTH;
-
-<span class="kw">const </span>SIGNATURE_STRING_PREFIX: <span class="kw-2">&amp;</span>str = <span class="string">&quot;SIG&quot;</span>;
 <span class="doccomment">/// `KeyPair` is used for signature and decrypting
 </span><span class="kw">pub struct </span>KeyPair(ed25519_dalek::Keypair);
 
@@ -1464,7 +1441,7 @@
         signature: <span class="kw-2">&amp;</span>Signature,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MassaSignatureError&gt; {
         <span class="self">self</span>.<span class="number">0</span>.verify(hash.to_bytes(), <span class="kw-2">&amp;</span>signature.<span class="number">0</span>).map_err(|err| {
-            MassaSignatureError::SignatureError(<span class="macro">format!</span>(<span class="string">&quot;Signature failed: {}&quot;</span>, err))
+            MassaSignatureError::SignatureError(<span class="macro">format!</span>(<span class="string">&quot;Signature verification failed: {}&quot;</span>, err))
         })
     }
 
@@ -1691,33 +1668,14 @@
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>Signature {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;hash-prefix&quot;</span>) {
-            <span class="macro">write!</span>(f, <span class="string">&quot;{}-{}&quot;</span>, SIGNATURE_STRING_PREFIX, <span class="self">self</span>.to_bs58_check())
-        } <span class="kw">else </span>{
-            <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.to_bs58_check())
-        }
+        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.to_bs58_check())
     }
 }
 
 <span class="kw">impl </span>FromStr <span class="kw">for </span>Signature {
     <span class="kw">type </span><span class="prelude-val">Err </span>= MassaSignatureError;
     <span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
-        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;hash-prefix&quot;</span>) {
-            <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = s.split(<span class="string">&#39;-&#39;</span>).collect();
-            <span class="kw">if </span>v.len() != <span class="number">2 </span>{
-                <span class="comment">// assume there is no prefix
-                </span>Signature::from_bs58_check(s)
-            } <span class="kw">else if </span>v[<span class="number">0</span>] != SIGNATURE_STRING_PREFIX {
-                <span class="prelude-val">Err</span>(MassaSignatureError::WrongPrefix(
-                    SIGNATURE_STRING_PREFIX.to_string(),
-                    v[<span class="number">0</span>].to_string(),
-                ))
-            } <span class="kw">else </span>{
-                Signature::from_bs58_check(v[<span class="number">1</span>])
-            }
-        } <span class="kw">else </span>{
-            Signature::from_bs58_check(s)
-        }
+        Signature::from_bs58_check(s)
     }
 }
 
@@ -2037,4 +1995,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_signature" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_signature" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

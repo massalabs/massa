@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/context.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>context.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/context.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>context.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -624,6 +624,215 @@
 <span id="624">624</span>
 <span id="625">625</span>
 <span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
+<span id="641">641</span>
+<span id="642">642</span>
+<span id="643">643</span>
+<span id="644">644</span>
+<span id="645">645</span>
+<span id="646">646</span>
+<span id="647">647</span>
+<span id="648">648</span>
+<span id="649">649</span>
+<span id="650">650</span>
+<span id="651">651</span>
+<span id="652">652</span>
+<span id="653">653</span>
+<span id="654">654</span>
+<span id="655">655</span>
+<span id="656">656</span>
+<span id="657">657</span>
+<span id="658">658</span>
+<span id="659">659</span>
+<span id="660">660</span>
+<span id="661">661</span>
+<span id="662">662</span>
+<span id="663">663</span>
+<span id="664">664</span>
+<span id="665">665</span>
+<span id="666">666</span>
+<span id="667">667</span>
+<span id="668">668</span>
+<span id="669">669</span>
+<span id="670">670</span>
+<span id="671">671</span>
+<span id="672">672</span>
+<span id="673">673</span>
+<span id="674">674</span>
+<span id="675">675</span>
+<span id="676">676</span>
+<span id="677">677</span>
+<span id="678">678</span>
+<span id="679">679</span>
+<span id="680">680</span>
+<span id="681">681</span>
+<span id="682">682</span>
+<span id="683">683</span>
+<span id="684">684</span>
+<span id="685">685</span>
+<span id="686">686</span>
+<span id="687">687</span>
+<span id="688">688</span>
+<span id="689">689</span>
+<span id="690">690</span>
+<span id="691">691</span>
+<span id="692">692</span>
+<span id="693">693</span>
+<span id="694">694</span>
+<span id="695">695</span>
+<span id="696">696</span>
+<span id="697">697</span>
+<span id="698">698</span>
+<span id="699">699</span>
+<span id="700">700</span>
+<span id="701">701</span>
+<span id="702">702</span>
+<span id="703">703</span>
+<span id="704">704</span>
+<span id="705">705</span>
+<span id="706">706</span>
+<span id="707">707</span>
+<span id="708">708</span>
+<span id="709">709</span>
+<span id="710">710</span>
+<span id="711">711</span>
+<span id="712">712</span>
+<span id="713">713</span>
+<span id="714">714</span>
+<span id="715">715</span>
+<span id="716">716</span>
+<span id="717">717</span>
+<span id="718">718</span>
+<span id="719">719</span>
+<span id="720">720</span>
+<span id="721">721</span>
+<span id="722">722</span>
+<span id="723">723</span>
+<span id="724">724</span>
+<span id="725">725</span>
+<span id="726">726</span>
+<span id="727">727</span>
+<span id="728">728</span>
+<span id="729">729</span>
+<span id="730">730</span>
+<span id="731">731</span>
+<span id="732">732</span>
+<span id="733">733</span>
+<span id="734">734</span>
+<span id="735">735</span>
+<span id="736">736</span>
+<span id="737">737</span>
+<span id="738">738</span>
+<span id="739">739</span>
+<span id="740">740</span>
+<span id="741">741</span>
+<span id="742">742</span>
+<span id="743">743</span>
+<span id="744">744</span>
+<span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
+<span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
+<span id="781">781</span>
+<span id="782">782</span>
+<span id="783">783</span>
+<span id="784">784</span>
+<span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
+<span id="789">789</span>
+<span id="790">790</span>
+<span id="791">791</span>
+<span id="792">792</span>
+<span id="793">793</span>
+<span id="794">794</span>
+<span id="795">795</span>
+<span id="796">796</span>
+<span id="797">797</span>
+<span id="798">798</span>
+<span id="799">799</span>
+<span id="800">800</span>
+<span id="801">801</span>
+<span id="802">802</span>
+<span id="803">803</span>
+<span id="804">804</span>
+<span id="805">805</span>
+<span id="806">806</span>
+<span id="807">807</span>
+<span id="808">808</span>
+<span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
+<span id="817">817</span>
+<span id="818">818</span>
+<span id="819">819</span>
+<span id="820">820</span>
+<span id="821">821</span>
+<span id="822">822</span>
+<span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
+<span id="826">826</span>
+<span id="827">827</span>
+<span id="828">828</span>
+<span id="829">829</span>
+<span id="830">830</span>
+<span id="831">831</span>
+<span id="832">832</span>
+<span id="833">833</span>
+<span id="834">834</span>
+<span id="835">835</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -633,20 +842,30 @@
 //! More generally, the context acts only on its own state
 //! and does not write anything persistent to the consensus state.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
-<span class="kw">use </span><span class="kw">crate</span>::speculative_async_pool::SpeculativeAsyncPool;
+</span><span class="kw">use </span><span class="kw">crate</span>::speculative_async_pool::SpeculativeAsyncPool;
+<span class="kw">use </span><span class="kw">crate</span>::speculative_executed_ops::SpeculativeExecutedOps;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_ledger::SpeculativeLedger;
+<span class="kw">use crate</span>::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 <span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageId};
-<span class="kw">use </span>massa_execution_exports::{EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement};
-<span class="kw">use </span>massa_final_state::{FinalState, StateChanges};
-<span class="kw">use </span>massa_ledger_exports::LedgerChanges;
-<span class="kw">use </span>massa_models::{
-    output_event::{EventExecutionContext, SCOutputEvent},
-    Address, Amount, BlockId, OperationId, Slot,
+<span class="kw">use </span>massa_execution_exports::{
+    EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
 };
+<span class="kw">use </span>massa_final_state::{ExecutedOps, FinalState, StateChanges};
+<span class="kw">use </span>massa_ledger_exports::LedgerChanges;
+<span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
+<span class="kw">use </span>massa_models::{
+    address::Address,
+    amount::Amount,
+    block::BlockId,
+    operation::OperationId,
+    output_event::{EventExecutionContext, SCOutputEvent},
+    slot::Slot,
+};
+<span class="kw">use </span>massa_pos_exports::PoSChanges;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>rand::SeedableRng;
 <span class="kw">use </span>rand_xoshiro::Xoshiro256PlusPlus;
+<span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>tracing::debug;
 
@@ -658,6 +877,12 @@
 
     <span class="doccomment">/// speculative asynchronous pool messages emitted so far in the context
     </span><span class="kw">pub </span>async_pool_changes: Vec&lt;(AsyncMessageId, AsyncMessage)&gt;,
+
+    <span class="doccomment">/// speculative list of operations executed (mapped to their end-of-validity slot)
+    </span><span class="kw">pub </span>executed_ops: ExecutedOps,
+
+    <span class="doccomment">/// speculative roll state changes caused so far in the context
+    </span><span class="kw">pub </span>roll_state_changes: PoSChanges,
 
     <span class="doccomment">/// counter of newly created addresses so far at this slot during this execution
     </span><span class="kw">pub </span>created_addr_index: u64,
@@ -679,6 +904,9 @@
 /// passed to the VM to interact with during bytecode execution (through ABIs),
 /// and read after execution to gather results.
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ExecutionContext {
+    <span class="doccomment">/// config
+    </span>config: ExecutionConfig,
+
     <span class="doccomment">/// speculative ledger state,
     /// as seen after everything that happened so far in the context
     </span>speculative_ledger: SpeculativeLedger,
@@ -686,6 +914,13 @@
     <span class="doccomment">/// speculative asynchronous pool state,
     /// as seen after everything that happened so far in the context
     </span>speculative_async_pool: SpeculativeAsyncPool,
+
+    <span class="doccomment">/// speculative roll state,
+    /// as seen after everything that happened so far in the context
+    </span>speculative_roll_state: SpeculativeRollState,
+
+    <span class="doccomment">/// speculative list of executed operations
+    </span>speculative_executed_ops: SpeculativeExecutedOps,
 
     <span class="doccomment">/// max gas for this execution
     </span><span class="kw">pub </span>max_gas: u64,
@@ -736,12 +971,25 @@
     /// # returns
     /// A new (empty) `ExecutionContext` instance
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+        config: ExecutionConfig,
         final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
     ) -&gt; <span class="self">Self </span>{
         ExecutionContext {
-            speculative_ledger: SpeculativeLedger::new(final_state.clone(), active_history.clone()),
-            speculative_async_pool: SpeculativeAsyncPool::new(final_state, active_history),
+            speculative_ledger: SpeculativeLedger::new(
+                final_state.clone(),
+                active_history.clone(),
+                config.max_datastore_key_length,
+            ),
+            speculative_async_pool: SpeculativeAsyncPool::new(
+                final_state.clone(),
+                active_history.clone(),
+            ),
+            speculative_roll_state: SpeculativeRollState::new(
+                final_state.clone(),
+                active_history.clone(),
+            ),
+            speculative_executed_ops: SpeculativeExecutedOps::new(final_state, active_history),
             max_gas: Default::default(),
             gas_price: Default::default(),
             slot: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
@@ -754,6 +1002,7 @@
             events: Default::default(),
             unsafe_rng: Xoshiro256PlusPlus::from_seed([<span class="number">0u8</span>; <span class="number">32</span>]),
             origin_operation_id: Default::default(),
+            config,
         }
     }
 
@@ -763,6 +1012,8 @@
         ExecutionContextSnapshot {
             ledger_changes: <span class="self">self</span>.speculative_ledger.get_snapshot(),
             async_pool_changes: <span class="self">self</span>.speculative_async_pool.get_snapshot(),
+            roll_state_changes: <span class="self">self</span>.speculative_roll_state.get_snapshot(),
+            executed_ops: <span class="self">self</span>.speculative_executed_ops.get_snapshot(),
             created_addr_index: <span class="self">self</span>.created_addr_index,
             created_event_index: <span class="self">self</span>.created_event_index,
             stack: <span class="self">self</span>.stack.clone(),
@@ -795,6 +1046,10 @@
             .reset_to_snapshot(snapshot.ledger_changes);
         <span class="self">self</span>.speculative_async_pool
             .reset_to_snapshot(snapshot.async_pool_changes);
+        <span class="self">self</span>.speculative_roll_state
+            .reset_to_snapshot(snapshot.roll_state_changes);
+        <span class="self">self</span>.speculative_executed_ops
+            .reset_to_snapshot(snapshot.executed_ops);
         <span class="self">self</span>.created_addr_index = snapshot.created_addr_index;
         <span class="self">self</span>.created_event_index = snapshot.created_event_index;
         <span class="self">self</span>.stack = snapshot.stack;
@@ -819,6 +1074,7 @@
     /// # returns
     /// A `ExecutionContext` instance ready for a read-only execution
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>readonly(
+        config: ExecutionConfig,
         slot: Slot,
         max_gas: u64,
         gas_price: Amount,
@@ -849,7 +1105,7 @@
             stack: call_stack,
             read_only: <span class="bool-val">true</span>,
             unsafe_rng,
-            ..ExecutionContext::new(final_state, active_history)
+            ..ExecutionContext::new(config, final_state, active_history)
         }
     }
 
@@ -884,6 +1140,7 @@
     /// # returns
     /// A `ExecutionContext` instance
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>active_slot(
+        config: ExecutionConfig,
         slot: Slot,
         opt_block_id: <span class="prelude-ty">Option</span>&lt;BlockId&gt;,
         final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
@@ -909,7 +1166,7 @@
             slot,
             opt_block_id,
             unsafe_rng,
-            ..ExecutionContext::new(final_state, active_history)
+            ..ExecutionContext::new(config, final_state, active_history)
         }
     }
 
@@ -1117,6 +1374,38 @@
         </span><span class="self">self</span>.speculative_ledger.delete_data_entry(address, key)
     }
 
+    <span class="doccomment">/// Transfers sequential coins from one address to another.
+    /// No changes are retained in case of failure.
+    /// Spending is only allowed from existing addresses we have write access on
+    ///
+    /// # Arguments
+    /// * `from_addr`: optional spending address (use None for pure coin creation)
+    /// * `to_addr`: optional crediting address (use None for pure coin destruction)
+    /// * `amount`: amount of coins to transfer
+    /// * `check_rights`: check that the sender has the right to spend the coins according to the call stack
+    </span><span class="kw">pub fn </span>transfer_sequential_coins(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        from_addr: <span class="prelude-ty">Option</span>&lt;Address&gt;,
+        to_addr: <span class="prelude-ty">Option</span>&lt;Address&gt;,
+        amount: Amount,
+        check_rights: bool,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
+        <span class="comment">// check access rights
+        </span><span class="kw">if </span>check_rights {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(from_addr) = <span class="kw-2">&amp;</span>from_addr {
+                <span class="kw">if </span>!<span class="self">self</span>.has_write_rights_on(from_addr) {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                        <span class="string">&quot;spending from address {} is not allowed in this context&quot;</span>,
+                        from_addr
+                    )));
+                }
+            }
+        }
+        <span class="comment">// do the transfer
+        </span><span class="self">self</span>.speculative_ledger
+            .transfer_sequential_coins(from_addr, to_addr, amount)
+    }
+
     <span class="doccomment">/// Transfers parallel coins from one address to another.
     /// No changes are retained in case of failure.
     /// Spending is only allowed from existing addresses we have write access on
@@ -1125,19 +1414,23 @@
     /// * `from_addr`: optional spending address (use None for pure coin creation)
     /// * `to_addr`: optional crediting address (use None for pure coin destruction)
     /// * `amount`: amount of coins to transfer
+    /// * `check_rights`: check that the sender has the right to spend the coins according to the call stack
     </span><span class="kw">pub fn </span>transfer_parallel_coins(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         from_addr: <span class="prelude-ty">Option</span>&lt;Address&gt;,
         to_addr: <span class="prelude-ty">Option</span>&lt;Address&gt;,
         amount: Amount,
+        check_rights: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// check access rights
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(from_addr) = <span class="kw-2">&amp;</span>from_addr {
-            <span class="kw">if </span>!<span class="self">self</span>.has_write_rights_on(from_addr) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">&quot;spending from address {} is not allowed in this context&quot;</span>,
-                    from_addr
-                )));
+        </span><span class="kw">if </span>check_rights {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(from_addr) = <span class="kw-2">&amp;</span>from_addr {
+                <span class="kw">if </span>!<span class="self">self</span>.has_write_rights_on(from_addr) {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                        <span class="string">&quot;spending from address {} is not allowed in this context&quot;</span>,
+                        from_addr
+                    )));
+                }
             }
         }
         <span class="comment">// do the transfer
@@ -1158,11 +1451,75 @@
     /// # Arguments
     /// * `msg`: the asynchronous message to cancel
     </span><span class="kw">pub fn </span>cancel_async_message(<span class="kw-2">&amp;mut </span><span class="self">self</span>, msg: <span class="kw-2">&amp;</span>AsyncMessage) {
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.transfer_parallel_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(msg.sender), msg.coins) {
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.transfer_parallel_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(msg.sender), msg.coins, <span class="bool-val">false</span>) {
             <span class="macro">debug!</span>(
                 <span class="string">&quot;async message cancel: reimbursement of {} failed: {}&quot;</span>,
                 msg.sender, e
             );
+        }
+    }
+
+    <span class="doccomment">/// Add `roll_count` rolls to the buyer address.
+    /// Validity checks must be performed _outside_ of this function.
+    ///
+    /// # Arguments
+    /// * `buyer_addr`: address that will receive the rolls
+    /// * `roll_count`: number of rolls it will receive
+    </span><span class="kw">pub fn </span>add_rolls(<span class="kw-2">&amp;mut </span><span class="self">self</span>, buyer_addr: <span class="kw-2">&amp;</span>Address, roll_count: u64) {
+        <span class="self">self</span>.speculative_roll_state
+            .add_rolls(buyer_addr, roll_count);
+    }
+
+    <span class="doccomment">/// Try to sell `roll_count` rolls from the seller address.
+    ///
+    /// # Arguments
+    /// * `seller_addr`: address to sell the rolls from
+    /// * `roll_count`: number of rolls to sell
+    </span><span class="kw">pub fn </span>try_sell_rolls(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        seller_addr: <span class="kw-2">&amp;</span>Address,
+        roll_count: u64,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
+        <span class="self">self</span>.speculative_roll_state.try_sell_rolls(
+            seller_addr,
+            <span class="self">self</span>.slot,
+            roll_count,
+            <span class="self">self</span>.config.periods_per_cycle,
+            <span class="self">self</span>.config.thread_count,
+            <span class="self">self</span>.config.roll_price,
+        )
+    }
+
+    <span class="doccomment">/// Update production statistics of an address.
+    ///
+    /// # Arguments
+    /// * `creator`: the supposed creator
+    /// * `slot`: current slot
+    /// * `block_id`: id of the block (if some)
+    </span><span class="kw">pub fn </span>update_production_stats(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        creator: <span class="kw-2">&amp;</span>Address,
+        slot: Slot,
+        block_id: <span class="prelude-ty">Option</span>&lt;BlockId&gt;,
+    ) {
+        <span class="self">self</span>.speculative_roll_state
+            .update_production_stats(creator, slot, block_id);
+    }
+
+    <span class="doccomment">/// Execute the deferred credits of `slot`.
+    ///
+    /// # Arguments
+    /// * `slot`: assiciated slot of the deferred credits to be executed
+    /// * `credits`: deferred to be executed
+    </span><span class="kw">pub fn </span>execute_deferred_credits(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot) {
+        <span class="kw">let </span>credits = <span class="self">self</span>.speculative_roll_state.get_deferred_credits(slot);
+        <span class="kw">for </span>(addr, amount) <span class="kw">in </span>credits {
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.transfer_sequential_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(addr), amount, <span class="bool-val">false</span>) {
+                <span class="macro">debug!</span>(
+                    <span class="string">&quot;could not credit {} deferred coins to {} at slot {}: {}&quot;</span>,
+                    amount, addr, slot, e
+                );
+            }
         }
     }
 
@@ -1174,19 +1531,40 @@
     /// This is used to get the output of an execution before discarding the context.
     /// Note that we are not taking self by value to consume it because the context is shared.
     </span><span class="kw">pub fn </span>settle_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; ExecutionOutput {
+        <span class="kw">let </span>slot = <span class="self">self</span>.slot;
+
         <span class="comment">// settle emitted async messages and reimburse the senders of deleted messages
-        </span><span class="kw">let </span>deleted_messages = <span class="self">self</span>.speculative_async_pool.settle_slot(<span class="self">self</span>.slot);
+        </span><span class="kw">let </span>deleted_messages = <span class="self">self</span>.speculative_async_pool.settle_slot(<span class="kw-2">&amp;</span>slot);
         <span class="kw">for </span>(_msg_id, msg) <span class="kw">in </span>deleted_messages {
             <span class="self">self</span>.cancel_async_message(<span class="kw-2">&amp;</span>msg);
+        }
+
+        <span class="comment">// execute the deferred credits coming from roll sells
+        </span><span class="self">self</span>.execute_deferred_credits(<span class="kw-2">&amp;</span>slot);
+
+        <span class="comment">// if the current slot is last in cycle check the production stats and act accordingly
+        </span><span class="kw">if </span><span class="self">self
+            </span>.slot
+            .is_last_of_cycle(<span class="self">self</span>.config.periods_per_cycle, <span class="self">self</span>.config.thread_count)
+        {
+            <span class="self">self</span>.speculative_roll_state.settle_production_stats(
+                <span class="kw-2">&amp;</span>slot,
+                <span class="self">self</span>.config.periods_per_cycle,
+                <span class="self">self</span>.config.thread_count,
+                <span class="self">self</span>.config.roll_price,
+                <span class="self">self</span>.config.max_miss_ratio,
+            );
         }
 
         <span class="comment">// generate the execution output
         </span><span class="kw">let </span>state_changes = StateChanges {
             ledger_changes: <span class="self">self</span>.speculative_ledger.take(),
             async_pool_changes: <span class="self">self</span>.speculative_async_pool.take(),
+            roll_state_changes: <span class="self">self</span>.speculative_roll_state.take(),
+            executed_ops: <span class="self">self</span>.speculative_executed_ops.take(),
         };
         ExecutionOutput {
-            slot: <span class="self">self</span>.slot,
+            slot,
             block_id: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.opt_block_id),
             state_changes,
             events: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.events),
@@ -1249,6 +1627,46 @@
         <span class="comment">// Add the event to the context store
         </span><span class="self">self</span>.events.push(event);
     }
+
+    <span class="doccomment">/// Check if an operation was previously executed (to prevent reuse)
+    </span><span class="kw">pub fn </span>is_op_executed(<span class="kw-2">&amp;</span><span class="self">self</span>, op_id: <span class="kw-2">&amp;</span>OperationId) -&gt; bool {
+        <span class="self">self</span>.speculative_executed_ops.is_op_executed(op_id)
+    }
+
+    <span class="doccomment">/// Insert an executed operation.
+    /// Does not check for reuse, please use `is_op_executed` before.
+    ///
+    /// # Arguments
+    /// * `op_id`: operation ID
+    /// * `op_valid_until_slot`: slot until which the operation remains valid (included)
+    </span><span class="kw">pub fn </span>insert_executed_op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op_id: OperationId, op_valid_until_slot: Slot) {
+        <span class="self">self</span>.speculative_executed_ops
+            .insert_executed_op(op_id, op_valid_until_slot)
+    }
+
+    <span class="doccomment">/// gets the cycle infos for an address
+    </span><span class="kw">pub fn </span>get_address_cycle_infos(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        address: <span class="kw-2">&amp;</span>Address,
+        periods_per_cycle: u64,
+    ) -&gt; Vec&lt;ExecutionAddressCycleInfo&gt; {
+        <span class="self">self</span>.speculative_roll_state
+            .get_address_cycle_infos(address, periods_per_cycle, <span class="self">self</span>.slot)
+    }
+
+    <span class="doccomment">/// Get future deferred credits of an address
+    </span><span class="kw">pub fn </span>get_address_future_deferred_credits(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        address: <span class="kw-2">&amp;</span>Address,
+        thread_count: u8,
+    ) -&gt; BTreeMap&lt;Slot, Amount&gt; {
+        <span class="kw">let </span>min_slot = <span class="self">self
+            </span>.slot
+            .get_next_slot(thread_count)
+            .expect(<span class="string">&quot;unexpected slot overflow in context.get_addresses_deferred_credits&quot;</span>);
+        <span class="self">self</span>.speculative_roll_state
+            .get_address_deferred_credits(address, min_slot)
+    }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

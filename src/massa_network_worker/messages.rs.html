@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-network-worker/src/messages.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>messages.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_network_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-network-worker/src/messages.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>messages.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_network_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_network_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -400,57 +400,230 @@
 <span id="400">400</span>
 <span id="401">401</span>
 <span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>massa_models::{
-    array_from_slice,
-    constants::{BLOCK_ID_SIZE_BYTES, HANDSHAKE_RANDOMNESS_SIZE_BYTES},
-    error::ModelsResult,
-    operation::OperationPrefixIds,
+</span><span class="kw">use </span>massa_hash::HashDeserializer;
+<span class="kw">use </span>massa_models::{
+    block::{BlockHeader, BlockHeaderDeserializer, BlockId, WrappedHeader},
+    config::HANDSHAKE_RANDOMNESS_SIZE_BYTES,
+    endorsement::{Endorsement, EndorsementDeserializer, WrappedEndorsement},
     operation::{
-        OperationPrefixIdsDeserializer, OperationPrefixIdsSerializer, Operations,
-        OperationsDeserializer, OperationsSerializer,
+        OperationIdsDeserializer, OperationIdsSerializer, OperationPrefixIds,
+        OperationPrefixIdsDeserializer, OperationPrefixIdsSerializer, OperationsDeserializer,
+        OperationsSerializer, WrappedOperation,
     },
-    with_serialization_context,
+    serialization::array_from_slice,
+    serialization::{IpAddrDeserializer, IpAddrSerializer},
+    version::{Version, VersionDeserializer, VersionSerializer},
     wrapped::{WrappedDeserializer, WrappedSerializer},
-    Block, BlockDeserializer, BlockHeader, BlockHeaderDeserializer, BlockId, DeserializeCompact,
-    DeserializeVarInt, Endorsement, EndorsementDeserializer, IpAddrDeserializer, IpAddrSerializer,
-    ModelsError, SerializeCompact, SerializeVarInt, Version, VersionDeserializer,
-    VersionSerializer, WrappedBlock, WrappedEndorsement, WrappedHeader,
 };
-<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
-<span class="kw">use </span>massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
+<span class="kw">use </span>massa_network_exports::{AskForBlocksInfo, BlockInfoReply};
+<span class="kw">use </span>massa_serialization::{
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+};
+<span class="kw">use </span>massa_signature::{PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer};
+<span class="kw">use </span>nom::{
+    bytes::complete::take,
+    error::{context, ContextError, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult, Parser,
+};
 <span class="kw">use </span>num_enum::{IntoPrimitive, TryFromPrimitive};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::{convert::TryInto, net::IpAddr};
-
-<span class="kw">static </span>IP_SERIALIZER: IpAddrSerializer = IpAddrSerializer::new();
-
-<span class="kw">static </span>IP_DESERIALIZER: IpAddrDeserializer = IpAddrDeserializer::new();
-
-<span class="kw">static </span>OPERATION_PREFIX_ID_DESERIALIZER: OperationPrefixIdsDeserializer =
-    OperationPrefixIdsDeserializer::new();
-
-<span class="kw">static </span>OPERATION_PREFIX_ID_SERIALIZER: OperationPrefixIdsSerializer =
-    OperationPrefixIdsSerializer::new();
-
-<span class="kw">static </span>OPERATIONS_DESERIALIZER: OperationsDeserializer = OperationsDeserializer::new();
-
-<span class="kw">static </span>OPERATIONS_SERIALIZER: OperationsSerializer = OperationsSerializer::new();
-
-<span class="kw">static </span>VERSION_DESERIALIZER: VersionDeserializer = VersionDeserializer::new();
-
-<span class="kw">static </span>VERSION_SERIALIZER: VersionSerializer = VersionSerializer::new();
-
-<span class="kw">static </span>WRAPPED_BLOCK_DESERIALIZER: WrappedDeserializer&lt;Block, BlockDeserializer&gt; =
-    WrappedDeserializer::new(BlockDeserializer::new());
-
-<span class="kw">static </span>WRAPPED_BLOCK_HEADER_DESERIALIZER: WrappedDeserializer&lt;
-    BlockHeader,
-    BlockHeaderDeserializer,
-&gt; = WrappedDeserializer::new(BlockHeaderDeserializer::new());
-
-<span class="kw">static </span>WRAPPED_SERIALIZER: WrappedSerializer = WrappedSerializer::new();
+<span class="kw">use </span>std::net::IpAddr;
+<span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 
 <span class="doccomment">/// All messages that can be sent or received.
 </span><span class="attribute">#[allow(clippy::large_enum_variant)]
@@ -471,12 +644,12 @@
         <span class="doccomment">/// Signature of the received random bytes with our `keypair`.
         </span>signature: Signature,
     },
-    <span class="doccomment">/// Whole block structure.
-    </span>Block(WrappedBlock),
     <span class="doccomment">/// Block header
     </span>BlockHeader(WrappedHeader),
-    <span class="doccomment">/// Message asking the peer for a block.
-    </span>AskForBlocks(Vec&lt;BlockId&gt;),
+    <span class="doccomment">/// Message asking the peer for info on a list of blocks.
+    </span>AskForBlocks(Vec&lt;(BlockId, AskForBlocksInfo)&gt;),
+    <span class="doccomment">/// Message replying with info on a list of blocks.
+    </span>ReplyForBlocks(Vec&lt;(BlockId, BlockInfoReply)&gt;),
     <span class="doccomment">/// Message asking the peer for its advertisable peers list.
     </span>AskPeerList,
     <span class="doccomment">/// Reply to a `AskPeerList` message
@@ -484,14 +657,12 @@
     /// If the ip of the node that sent that message is routable,
     /// it is the first ip of the list.
     </span>PeerList(Vec&lt;IpAddr&gt;),
-    <span class="doccomment">/// Block not found
-    </span>BlockNotFound(BlockId),
     <span class="doccomment">/// Batch of operation ids
     </span>OperationsAnnouncement(OperationPrefixIds),
     <span class="doccomment">/// Someone ask for operations.
     </span>AskForOperations(OperationPrefixIds),
     <span class="doccomment">/// A list of operations
-    </span>Operations(Operations),
+    </span>Operations(Vec&lt;WrappedOperation&gt;),
     <span class="doccomment">/// Endorsements
     </span>Endorsements(Vec&lt;WrappedEndorsement&gt;),
 }
@@ -500,277 +671,485 @@
 #[repr(u32)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>MessageTypeId {
     HandshakeInitiation = <span class="number">0u32</span>,
-    HandshakeReply = <span class="number">1</span>,
-    Block = <span class="number">2</span>,
-    BlockHeader = <span class="number">3</span>,
-    AskForBlocks = <span class="number">4</span>,
-    AskPeerList = <span class="number">5</span>,
-    PeerList = <span class="number">6</span>,
-    BlockNotFound = <span class="number">7</span>,
-    Operations = <span class="number">8</span>,
-    Endorsements = <span class="number">9</span>,
-    AskForOperations = <span class="number">10</span>,
-    OperationsAnnouncement = <span class="number">11</span>,
+    HandshakeReply,
+    BlockHeader,
+    AskForBlocks,
+    AskPeerList,
+    PeerList,
+    Operations,
+    Endorsements,
+    AskForOperations,
+    OperationsAnnouncement,
+    ReplyForBlocks,
+}
+
+<span class="attribute">#[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u32)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>BlockInfoType {
+    Header = <span class="number">0u32</span>,
+    Info,
+    Operations,
+    NotFound,
+}
+
+<span class="doccomment">/// Basic serializer for `Message`.
+</span><span class="kw">pub struct </span>MessageSerializer {
+    version_serializer: VersionSerializer,
+    u32_serializer: U32VarIntSerializer,
+    wrapped_serializer: WrappedSerializer,
+    operation_prefix_ids_serializer: OperationPrefixIdsSerializer,
+    operations_ids_serializer: OperationIdsSerializer,
+    operations_serializer: OperationsSerializer,
+    ip_addr_serializer: IpAddrSerializer,
+}
+
+<span class="kw">impl </span>MessageSerializer {
+    <span class="doccomment">/// Creates a new `MessageSerializer`.
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        MessageSerializer {
+            version_serializer: VersionSerializer::new(),
+            u32_serializer: U32VarIntSerializer::new(),
+            wrapped_serializer: WrappedSerializer::new(),
+            operation_prefix_ids_serializer: OperationPrefixIdsSerializer::new(),
+            operations_ids_serializer: OperationIdsSerializer::new(),
+            operations_serializer: OperationsSerializer::new(),
+            ip_addr_serializer: IpAddrSerializer::new(),
+        }
+    }
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>MessageSerializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
+    }
 }
 
 <span class="doccomment">/// For more details on how incoming objects are checked for validity at this stage,
-/// see their implementation of `to_bytes_compact` in `models`.
-</span><span class="kw">impl </span>SerializeCompact <span class="kw">for </span>Message {
-    <span class="kw">fn </span>to_bytes_compact(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;u8&gt; = Vec::new();
-        <span class="kw">match </span><span class="self">self </span>{
+/// see their serializer in `massa-models`.
+</span><span class="kw">impl </span>Serializer&lt;Message&gt; <span class="kw">for </span>MessageSerializer {
+    <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>Message, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="kw">match </span><span class="kw-2">&amp;</span>value {
             Message::HandshakeInitiation {
                 public_key,
                 random_bytes,
                 version,
             } =&gt; {
-                res.extend(u32::from(MessageTypeId::HandshakeInitiation).to_varint_bytes());
-                res.extend(public_key.to_bytes());
-                res.extend(random_bytes);
-                VERSION_SERIALIZER.serialize(version, <span class="kw-2">&amp;mut </span>res)<span class="question-mark">?</span>;
+                <span class="self">self</span>.u32_serializer
+                    .serialize(<span class="kw-2">&amp;</span>(MessageTypeId::HandshakeInitiation <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
+                buffer.extend(public_key.to_bytes());
+                buffer.extend(random_bytes);
+                <span class="self">self</span>.version_serializer.serialize(version, buffer)<span class="question-mark">?</span>;
             }
             Message::HandshakeReply { signature } =&gt; {
-                res.extend(u32::from(MessageTypeId::HandshakeReply).to_varint_bytes());
-                res.extend(signature.to_bytes());
-            }
-            Message::Block(block) =&gt; {
-                res.extend(u32::from(MessageTypeId::Block).to_varint_bytes());
-                WRAPPED_SERIALIZER.serialize(block, <span class="kw-2">&amp;mut </span>res)<span class="question-mark">?</span>;
+                <span class="self">self</span>.u32_serializer
+                    .serialize(<span class="kw-2">&amp;</span>(MessageTypeId::HandshakeReply <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
+                buffer.extend(signature.to_bytes());
             }
             Message::BlockHeader(header) =&gt; {
-                res.extend(u32::from(MessageTypeId::BlockHeader).to_varint_bytes());
-                WRAPPED_SERIALIZER.serialize(header, <span class="kw-2">&amp;mut </span>res)<span class="question-mark">?</span>;
+                <span class="self">self</span>.u32_serializer
+                    .serialize(<span class="kw-2">&amp;</span>(MessageTypeId::BlockHeader <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
+                <span class="self">self</span>.wrapped_serializer.serialize(header, buffer)<span class="question-mark">?</span>;
             }
             Message::AskForBlocks(list) =&gt; {
-                res.extend(u32::from(MessageTypeId::AskForBlocks).to_varint_bytes());
-                <span class="kw">let </span>list_len: u32 = list.len().try_into().map_err(|<span class="kw">_</span>| {
-                    ModelsError::SerializeError(
-                        <span class="string">&quot;could not encode AskForBlocks list length as u32&quot;</span>.into(),
-                    )
-                })<span class="question-mark">?</span>;
-                res.extend(list_len.to_varint_bytes());
-                <span class="kw">for </span>hash <span class="kw">in </span>list {
-                    res.extend(hash.to_bytes());
+                <span class="self">self</span>.u32_serializer
+                    .serialize(<span class="kw-2">&amp;</span>(MessageTypeId::AskForBlocks <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
+                <span class="self">self</span>.u32_serializer
+                    .serialize(<span class="kw-2">&amp;</span>(list.len() <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
+                <span class="kw">for </span>(hash, info) <span class="kw">in </span>list {
+                    buffer.extend(hash.to_bytes());
+                    <span class="kw">let </span>info_type = <span class="kw">match </span>info {
+                        AskForBlocksInfo::Header =&gt; BlockInfoType::Header,
+                        AskForBlocksInfo::Info =&gt; BlockInfoType::Info,
+                        AskForBlocksInfo::Operations(<span class="kw">_</span>) =&gt; BlockInfoType::Operations,
+                    };
+                    <span class="self">self</span>.u32_serializer
+                        .serialize(<span class="kw-2">&amp;</span>u32::from(info_type), buffer)<span class="question-mark">?</span>;
+                    <span class="kw">if let </span>AskForBlocksInfo::Operations(ids) = info {
+                        <span class="self">self</span>.operations_ids_serializer.serialize(ids, buffer)<span class="question-mark">?</span>;
+                    }
+                }
+            }
+            Message::ReplyForBlocks(list) =&gt; {
+                <span class="self">self</span>.u32_serializer
+                    .serialize(<span class="kw-2">&amp;</span>(MessageTypeId::ReplyForBlocks <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
+                <span class="self">self</span>.u32_serializer
+                    .serialize(<span class="kw-2">&amp;</span>(list.len() <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
+                <span class="kw">for </span>(hash, info) <span class="kw">in </span>list {
+                    buffer.extend(hash.to_bytes());
+                    <span class="kw">let </span>info_type = <span class="kw">match </span>info {
+                        BlockInfoReply::Header(<span class="kw">_</span>) =&gt; BlockInfoType::Header,
+                        BlockInfoReply::Info(<span class="kw">_</span>) =&gt; BlockInfoType::Info,
+                        BlockInfoReply::Operations(<span class="kw">_</span>) =&gt; BlockInfoType::Operations,
+                        BlockInfoReply::NotFound =&gt; BlockInfoType::NotFound,
+                    };
+                    <span class="self">self</span>.u32_serializer
+                        .serialize(<span class="kw-2">&amp;</span>u32::from(info_type), buffer)<span class="question-mark">?</span>;
+                    <span class="kw">if let </span>BlockInfoReply::Header(header) = info {
+                        <span class="self">self</span>.wrapped_serializer.serialize(header, buffer)<span class="question-mark">?</span>;
+                    }
+                    <span class="kw">if let </span>BlockInfoReply::Operations(ops) = info {
+                        <span class="self">self</span>.operations_serializer.serialize(ops, buffer)<span class="question-mark">?</span>;
+                    }
+                    <span class="kw">if let </span>BlockInfoReply::Info(ids) = info {
+                        <span class="self">self</span>.operations_ids_serializer.serialize(ids, buffer)<span class="question-mark">?</span>;
+                    }
                 }
             }
             Message::AskPeerList =&gt; {
-                res.extend(u32::from(MessageTypeId::AskPeerList).to_varint_bytes());
+                <span class="self">self</span>.u32_serializer
+                    .serialize(<span class="kw-2">&amp;</span>(MessageTypeId::AskPeerList <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
             }
-            Message::PeerList(ip_vec) =&gt; {
-                res.extend(u32::from(MessageTypeId::PeerList).to_varint_bytes());
-                res.extend((ip_vec.len() <span class="kw">as </span>u64).to_varint_bytes());
-                <span class="kw">for </span>ip <span class="kw">in </span>ip_vec {
-                    IP_SERIALIZER.serialize(ip, <span class="kw-2">&amp;mut </span>res)<span class="question-mark">?
-                </span>}
+            Message::PeerList(peers) =&gt; {
+                <span class="self">self</span>.u32_serializer
+                    .serialize(<span class="kw-2">&amp;</span>(MessageTypeId::PeerList <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
+                <span class="self">self</span>.u32_serializer
+                    .serialize(<span class="kw-2">&amp;</span>(peers.len() <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
+                <span class="kw">for </span>peer <span class="kw">in </span>peers {
+                    <span class="self">self</span>.ip_addr_serializer.serialize(peer, buffer)<span class="question-mark">?</span>;
+                }
             }
-            Message::BlockNotFound(hash) =&gt; {
-                res.extend(u32::from(MessageTypeId::BlockNotFound).to_varint_bytes());
-                res.extend(hash.to_bytes());
+            Message::OperationsAnnouncement(operation_prefix_ids) =&gt; {
+                <span class="self">self</span>.u32_serializer
+                    .serialize(<span class="kw-2">&amp;</span>(MessageTypeId::OperationsAnnouncement <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
+                <span class="self">self</span>.operation_prefix_ids_serializer
+                    .serialize(operation_prefix_ids, buffer)<span class="question-mark">?</span>;
             }
-            Message::AskForOperations(operation_ids) =&gt; {
-                res.extend(u32::from(MessageTypeId::AskForOperations).to_varint_bytes());
-                OPERATION_PREFIX_ID_SERIALIZER.serialize(operation_ids, <span class="kw-2">&amp;mut </span>res)<span class="question-mark">?</span>;
-            }
-            Message::OperationsAnnouncement(operation_ids) =&gt; {
-                res.extend(u32::from(MessageTypeId::OperationsAnnouncement).to_varint_bytes());
-                OPERATION_PREFIX_ID_SERIALIZER.serialize(operation_ids, <span class="kw-2">&amp;mut </span>res)<span class="question-mark">?</span>;
+            Message::AskForOperations(operation_prefix_ids) =&gt; {
+                <span class="self">self</span>.u32_serializer
+                    .serialize(<span class="kw-2">&amp;</span>(MessageTypeId::AskForOperations <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
+                <span class="self">self</span>.operation_prefix_ids_serializer
+                    .serialize(operation_prefix_ids, buffer)<span class="question-mark">?</span>;
             }
             Message::Operations(operations) =&gt; {
-                res.extend(u32::from(MessageTypeId::Operations).to_varint_bytes());
-                OPERATIONS_SERIALIZER.serialize(operations, <span class="kw-2">&amp;mut </span>res)<span class="question-mark">?</span>;
+                <span class="self">self</span>.u32_serializer
+                    .serialize(<span class="kw-2">&amp;</span>(MessageTypeId::Operations <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
+                <span class="self">self</span>.operations_serializer.serialize(operations, buffer)<span class="question-mark">?</span>;
             }
             Message::Endorsements(endorsements) =&gt; {
-                res.extend(u32::from(MessageTypeId::Endorsements).to_varint_bytes());
-                res.extend((endorsements.len() <span class="kw">as </span>u32).to_varint_bytes());
-                <span class="kw">for </span>endorsement <span class="kw">in </span>endorsements.iter() {
-                    WRAPPED_SERIALIZER.serialize(endorsement, <span class="kw-2">&amp;mut </span>res)<span class="question-mark">?</span>;
+                <span class="self">self</span>.u32_serializer
+                    .serialize(<span class="kw-2">&amp;</span>(MessageTypeId::Endorsements <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
+                <span class="self">self</span>.u32_serializer
+                    .serialize(<span class="kw-2">&amp;</span>(endorsements.len() <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
+                <span class="kw">for </span>endorsement <span class="kw">in </span>endorsements {
+                    <span class="self">self</span>.wrapped_serializer.serialize(endorsement, buffer)<span class="question-mark">?</span>;
                 }
             }
         }
-        <span class="prelude-val">Ok</span>(res)
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// For more details on how incoming objects are checked for validity at this stage,
-/// see their implementation of `from_bytes_compact` in `models`.
-</span><span class="kw">impl </span>DeserializeCompact <span class="kw">for </span>Message {
-    <span class="kw">fn </span>from_bytes_compact(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; ModelsResult&lt;(<span class="self">Self</span>, usize)&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="number">0usize</span>;
+<span class="doccomment">/// Basic deserializer for `Message`.
+</span><span class="kw">pub struct </span>MessageDeserializer {
+    public_key_deserializer: PublicKeyDeserializer,
+    signature_deserializer: SignatureDeserializer,
+    version_deserializer: VersionDeserializer,
+    id_deserializer: U32VarIntDeserializer,
+    ask_block_number_deserializer: U32VarIntDeserializer,
+    peer_list_length_deserializer: U32VarIntDeserializer,
+    operations_deserializer: OperationsDeserializer,
+    hash_deserializer: HashDeserializer,
+    block_header_deserializer: WrappedDeserializer&lt;BlockHeader, BlockHeaderDeserializer&gt;,
+    endorsements_length_deserializer: U32VarIntDeserializer,
+    endorsement_deserializer: WrappedDeserializer&lt;Endorsement, EndorsementDeserializer&gt;,
+    operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer,
+    infos_deserializer: OperationIdsDeserializer,
+    ip_addr_deserializer: IpAddrDeserializer,
+}
 
-        <span class="kw">let </span>(max_ask_blocks_per_message, max_peer_list_length, max_endorsements_per_message) =
-            with_serialization_context(|context| {
-                (
-                    context.max_ask_blocks_per_message,
-                    context.max_advertise_length,
-                    context.max_endorsements_per_message,
+<span class="kw">impl </span>MessageDeserializer {
+    <span class="doccomment">/// Creates a new `MessageDeserializer`.
+    </span><span class="attribute">#[allow(clippy::too_many_arguments)]
+    </span><span class="kw">pub fn </span>new(
+        thread_count: u8,
+        endorsement_count: u32,
+        max_advertise_length: u32,
+        max_ask_block: u32,
+        max_operations_per_block: u32,
+        max_operations_per_message: u32,
+        max_endorsements_per_message: u32,
+        max_datastore_value_length: u64,
+        max_function_name_length: u16,
+        max_parameters_size: u32,
+    ) -&gt; <span class="self">Self </span>{
+        MessageDeserializer {
+            public_key_deserializer: PublicKeyDeserializer::new(),
+            signature_deserializer: SignatureDeserializer::new(),
+            version_deserializer: VersionDeserializer::new(),
+            id_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u32::MAX)),
+            ask_block_number_deserializer: U32VarIntDeserializer::new(
+                Included(<span class="number">0</span>),
+                Included(max_ask_block),
+            ),
+            peer_list_length_deserializer: U32VarIntDeserializer::new(
+                Included(<span class="number">0</span>),
+                Excluded(max_advertise_length),
+            ),
+            operations_deserializer: OperationsDeserializer::new(
+                max_operations_per_block,
+                max_datastore_value_length,
+                max_function_name_length,
+                max_parameters_size,
+            ),
+            hash_deserializer: HashDeserializer::new(),
+            block_header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new(
+                thread_count,
+                endorsement_count,
+            )),
+            endorsements_length_deserializer: U32VarIntDeserializer::new(
+                Included(<span class="number">0</span>),
+                Excluded(max_endorsements_per_message),
+            ),
+            endorsement_deserializer: WrappedDeserializer::new(EndorsementDeserializer::new(
+                thread_count,
+                endorsement_count,
+            )),
+            operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer::new(
+                max_operations_per_message,
+            ),
+            infos_deserializer: OperationIdsDeserializer::new(max_operations_per_block),
+            ip_addr_deserializer: IpAddrDeserializer::new(),
+        }
+    }
+}
+
+<span class="kw">impl </span>Deserializer&lt;Message&gt; <span class="kw">for </span>MessageDeserializer {
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Message, E&gt; {
+        context(<span class="string">&quot;Failed Message deserialization&quot;</span>, |buffer| {
+            <span class="kw">let </span>(input, id) = <span class="self">self</span>.id_deserializer.deserialize(buffer)<span class="question-mark">?</span>;
+            <span class="kw">let </span>id = MessageTypeId::try_from(id).map_err(|<span class="kw">_</span>| {
+                nom::Err::Error(ParseError::from_error_kind(
+                    buffer,
+                    nom::error::ErrorKind::Eof,
+                ))
+            })<span class="question-mark">?</span>;
+            <span class="kw">match </span>id {
+                MessageTypeId::HandshakeInitiation =&gt; context(
+                    <span class="string">&quot;Failed HandshakeInitiation deserialization&quot;</span>,
+                    tuple((
+                        context(<span class="string">&quot;Failed public_key deserialization&quot;</span>, |input| {
+                            <span class="self">self</span>.public_key_deserializer.deserialize(input)
+                        }),
+                        context(
+                            <span class="string">&quot;Failed random_bytes deserialization&quot;</span>,
+                            take(HANDSHAKE_RANDOMNESS_SIZE_BYTES),
+                        ),
+                        context(<span class="string">&quot;Failed version deserialization&quot;</span>, |input| {
+                            <span class="self">self</span>.version_deserializer.deserialize(input)
+                        }),
+                    ))
+                    .map(|(public_key, random_bytes, version)| {
+                        <span class="comment">// Unwrap safety: we checked above that we took enough bytes
+                        </span>Message::HandshakeInitiation {
+                            public_key,
+                            random_bytes: array_from_slice(random_bytes).unwrap(),
+                            version,
+                        }
+                    }),
                 )
-            });
-
-        <span class="kw">let </span>(type_id_raw, delta) = u32::from_varint_bytes(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
-        cursor += delta;
-
-        <span class="kw">let </span>type_id: MessageTypeId = type_id_raw
-            .try_into()
-            .map_err(|<span class="kw">_</span>| ModelsError::DeserializeError(<span class="string">&quot;invalid message type ID&quot;</span>.into()))<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>res = <span class="kw">match </span>type_id {
-            MessageTypeId::HandshakeInitiation =&gt; {
-                <span class="comment">// public key
-                </span><span class="kw">let </span>public_key = PublicKey::from_bytes(<span class="kw-2">&amp;</span>array_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-                cursor += PUBLIC_KEY_SIZE_BYTES;
-                <span class="comment">// random bytes
-                </span><span class="kw">let </span>random_bytes: [u8; HANDSHAKE_RANDOMNESS_SIZE_BYTES] =
-                    array_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
-                cursor += HANDSHAKE_RANDOMNESS_SIZE_BYTES;
-
-                <span class="comment">// version
-                </span><span class="kw">let </span>(rest, version) = VERSION_DESERIALIZER.deserialize(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
-                cursor += buffer[cursor..].len() - rest.len();
-
-                <span class="comment">// return message
-                </span>Message::HandshakeInitiation {
-                    public_key,
-                    random_bytes,
-                    version,
+                .parse(input),
+                MessageTypeId::HandshakeReply =&gt; {
+                    context(<span class="string">&quot;Failed HandshakeReply deserialization&quot;</span>, |input| {
+                        <span class="self">self</span>.signature_deserializer.deserialize(input)
+                    })
+                    .map(|signature| Message::HandshakeReply { signature })
+                    .parse(input)
                 }
-            }
-            MessageTypeId::HandshakeReply =&gt; {
-                <span class="kw">let </span>signature = Signature::from_bytes(<span class="kw-2">&amp;</span>array_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-                cursor += SIGNATURE_SIZE_BYTES;
-                Message::HandshakeReply { signature }
-            }
-            MessageTypeId::Block =&gt; {
-                <span class="kw">let </span>(rest, block): (<span class="kw-2">&amp;</span>[u8], WrappedBlock) =
-                    WRAPPED_BLOCK_DESERIALIZER.deserialize(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
-                cursor += buffer[cursor..].len() - rest.len();
-                Message::Block(block)
-            }
-            MessageTypeId::BlockHeader =&gt; {
-                <span class="kw">let </span>(rest, header): (<span class="kw-2">&amp;</span>[u8], WrappedHeader) =
-                    WRAPPED_BLOCK_HEADER_DESERIALIZER.deserialize(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
-                cursor += buffer[cursor..].len() - rest.len();
-                Message::BlockHeader(header)
-            }
-            MessageTypeId::AskForBlocks =&gt; {
-                <span class="kw">let </span>(length, delta) =
-                    u32::from_varint_bytes_bounded(<span class="kw-2">&amp;</span>buffer[cursor..], max_ask_blocks_per_message)<span class="question-mark">?</span>;
-                cursor += delta;
-                <span class="comment">// hash list
-                </span><span class="kw">let </span><span class="kw-2">mut </span>list: Vec&lt;BlockId&gt; = Vec::with_capacity(length <span class="kw">as </span>usize);
-                <span class="kw">for _ in </span><span class="number">0</span>..length {
-                    <span class="kw">let </span>b_id = BlockId::from_bytes(<span class="kw-2">&amp;</span>array_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>);
-                    cursor += BLOCK_ID_SIZE_BYTES;
-                    list.push(b_id);
+                MessageTypeId::BlockHeader =&gt; {
+                    context(<span class="string">&quot;Failed BlockHeader deserialization&quot;</span>, |input| {
+                        <span class="self">self</span>.block_header_deserializer.deserialize(input)
+                    })
+                    .map(Message::BlockHeader)
+                    .parse(input)
                 }
-                Message::AskForBlocks(list)
-            }
-            MessageTypeId::AskPeerList =&gt; Message::AskPeerList,
-            MessageTypeId::PeerList =&gt; {
-                <span class="comment">// length
-                </span><span class="kw">let </span>(length, delta) =
-                    u32::from_varint_bytes_bounded(<span class="kw-2">&amp;</span>buffer[cursor..], max_peer_list_length)<span class="question-mark">?</span>;
-                cursor += delta;
-                <span class="comment">// peer list
-                </span><span class="kw">let </span><span class="kw-2">mut </span>peers: Vec&lt;IpAddr&gt; = Vec::with_capacity(length <span class="kw">as </span>usize);
-                <span class="kw">for _ in </span><span class="number">0</span>..length {
-                    <span class="kw">let </span>(rest, ip) = IP_DESERIALIZER
-                        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer[cursor..])
-                        .map_err(|<span class="kw">_</span>| {
-                            ModelsError::DeserializeError(
-                                <span class="string">&quot;Failed to deserialize IpAddr&quot;</span>.to_string(),
-                            )
-                        })<span class="question-mark">?</span>;
-                    cursor += buffer[cursor..].len() - rest.len();
-                    peers.push(ip);
+                MessageTypeId::AskForBlocks =&gt; context(
+                    <span class="string">&quot;Failed AskForBlocks deserialization&quot;</span>,
+                    length_count(
+                        context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                            <span class="self">self</span>.ask_block_number_deserializer.deserialize(input)
+                        }),
+                        context(
+                            <span class="string">&quot;Failed blockId deserialization&quot;</span>,
+                            tuple((
+                                |input| {
+                                    <span class="self">self</span>.hash_deserializer
+                                        .deserialize(input)
+                                        .map(|(rest, id)| (rest, BlockId(id)))
+                                },
+                                |input| {
+                                    <span class="kw">let </span>(rest, raw_id) = <span class="self">self</span>.id_deserializer.deserialize(input)<span class="question-mark">?</span>;
+                                    <span class="kw">let </span>info_type: BlockInfoType =
+                                        raw_id.try_into().map_err(|<span class="kw">_</span>| {
+                                            nom::Err::Error(ParseError::from_error_kind(
+                                                buffer,
+                                                nom::error::ErrorKind::Digit,
+                                            ))
+                                        })<span class="question-mark">?</span>;
+                                    <span class="kw">match </span>info_type {
+                                        BlockInfoType::Header =&gt; {
+                                            <span class="prelude-val">Ok</span>((rest, AskForBlocksInfo::Header))
+                                        }
+                                        BlockInfoType::Info =&gt; <span class="prelude-val">Ok</span>((rest, AskForBlocksInfo::Info)),
+                                        BlockInfoType::Operations =&gt; <span class="self">self
+                                            </span>.infos_deserializer
+                                            .deserialize(rest)
+                                            .map(|(rest, operation_ids)| {
+                                                (rest, AskForBlocksInfo::Operations(operation_ids))
+                                            }),
+                                        BlockInfoType::NotFound =&gt; {
+                                            <span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
+                                                buffer,
+                                                nom::error::ErrorKind::Digit,
+                                            )))
+                                        }
+                                    }
+                                },
+                            )),
+                        ),
+                    ),
+                )
+                .map(Message::AskForBlocks)
+                .parse(input),
+                MessageTypeId::ReplyForBlocks =&gt; context(
+                    <span class="string">&quot;Failed ReplyForBlocks deserialization&quot;</span>,
+                    length_count(
+                        context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                            <span class="self">self</span>.ask_block_number_deserializer.deserialize(input)
+                        }),
+                        context(
+                            <span class="string">&quot;Failed blockId deserialization&quot;</span>,
+                            tuple((
+                                |input| {
+                                    <span class="self">self</span>.hash_deserializer
+                                        .deserialize(input)
+                                        .map(|(rest, id)| (rest, BlockId(id)))
+                                },
+                                |input| {
+                                    <span class="kw">let </span>(rest, raw_id) = <span class="self">self</span>.id_deserializer.deserialize(input)<span class="question-mark">?</span>;
+                                    <span class="kw">let </span>info_type: BlockInfoType =
+                                        raw_id.try_into().map_err(|<span class="kw">_</span>| {
+                                            nom::Err::Error(ParseError::from_error_kind(
+                                                buffer,
+                                                nom::error::ErrorKind::Digit,
+                                            ))
+                                        })<span class="question-mark">?</span>;
+                                    <span class="kw">match </span>info_type {
+                                        BlockInfoType::Header =&gt; <span class="self">self
+                                            </span>.block_header_deserializer
+                                            .deserialize(rest)
+                                            .map(|(rest, header)| {
+                                                (rest, BlockInfoReply::Header(header))
+                                            }),
+                                        BlockInfoType::Info =&gt; <span class="self">self
+                                            </span>.infos_deserializer
+                                            .deserialize(rest)
+                                            .map(|(rest, operation_ids)| {
+                                                (rest, BlockInfoReply::Info(operation_ids))
+                                            }),
+                                        BlockInfoType::Operations =&gt; <span class="self">self
+                                            </span>.operations_deserializer
+                                            .deserialize(rest)
+                                            .map(|(rest, operations)| {
+                                                (rest, BlockInfoReply::Operations(operations))
+                                            }),
+                                        BlockInfoType::NotFound =&gt; {
+                                            <span class="prelude-val">Ok</span>((rest, BlockInfoReply::NotFound))
+                                        }
+                                    }
+                                },
+                            )),
+                        ),
+                    ),
+                )
+                .map(Message::ReplyForBlocks)
+                .parse(input),
+                MessageTypeId::AskPeerList =&gt; <span class="prelude-val">Ok</span>((input, Message::AskPeerList)),
+                MessageTypeId::PeerList =&gt; context(
+                    <span class="string">&quot;Failed PeerList deserialization&quot;</span>,
+                    length_count(
+                        context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                            <span class="self">self</span>.peer_list_length_deserializer.deserialize(input)
+                        }),
+                        context(<span class="string">&quot;Failed peer deserialization&quot;</span>, |input| {
+                            <span class="self">self</span>.ip_addr_deserializer.deserialize(input)
+                        }),
+                    ),
+                )
+                .map(Message::PeerList)
+                .parse(input),
+                MessageTypeId::Operations =&gt; {
+                    context(<span class="string">&quot;Failed Operations deserialization&quot;</span>, |input| {
+                        <span class="self">self</span>.operations_deserializer.deserialize(input)
+                    })
+                    .map(Message::Operations)
+                    .parse(input)
                 }
-                Message::PeerList(peers)
-            }
-            MessageTypeId::BlockNotFound =&gt; {
-                <span class="kw">let </span>b_id = BlockId::from_bytes(<span class="kw-2">&amp;</span>array_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>);
-                cursor += BLOCK_ID_SIZE_BYTES;
-                Message::BlockNotFound(b_id)
-            }
-            MessageTypeId::Operations =&gt; {
-                <span class="kw">let </span>(rest, operations) = OPERATIONS_DESERIALIZER.deserialize(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
-                cursor += buffer[cursor..].len() - rest.len();
-                Message::Operations(operations)
-            }
-            MessageTypeId::AskForOperations =&gt; {
-                <span class="kw">let </span>(rest, operation_prefix_ids) =
-                    OPERATION_PREFIX_ID_DESERIALIZER.deserialize(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
-                cursor += buffer[cursor..].len() - rest.len();
-                Message::AskForOperations(operation_prefix_ids)
-            }
-            MessageTypeId::OperationsAnnouncement =&gt; {
-                <span class="kw">let </span>(rest, operation_prefix_ids) =
-                    OPERATION_PREFIX_ID_DESERIALIZER.deserialize(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
-                cursor += buffer[cursor..].len() - rest.len();
-                Message::OperationsAnnouncement(operation_prefix_ids)
-            }
-            MessageTypeId::Endorsements =&gt; {
-                <span class="comment">// length
-                </span><span class="kw">let </span>(length, delta) = u32::from_varint_bytes_bounded(
-                    <span class="kw-2">&amp;</span>buffer[cursor..],
-                    max_endorsements_per_message,
-                )<span class="question-mark">?</span>;
-                cursor += delta;
-                <span class="comment">// operations
-                </span><span class="kw">let </span><span class="kw-2">mut </span>endorsements = Vec::with_capacity(length <span class="kw">as </span>usize);
-                <span class="kw">let </span>endorsement_deserializer = <span class="macro">maybe_static::maybe_static!</span>(
-                    <span class="prelude-val">Some</span>(max_endorsements_per_message),
-                    WrappedDeserializer&lt;Endorsement, EndorsementDeserializer&gt;,
-                    |max: u32| WrappedDeserializer::new(EndorsementDeserializer::new(max))
-                )<span class="question-mark">?</span>;
-                <span class="kw">for _ in </span><span class="number">0</span>..length {
-                    <span class="kw">let </span>(rest, endorsement) =
-                        endorsement_deserializer.deserialize(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
-                    cursor += buffer[cursor..].len() - rest.len();
-                    endorsements.push(endorsement);
+                MessageTypeId::AskForOperations =&gt; {
+                    context(<span class="string">&quot;Failed AskForOperations deserialization&quot;</span>, |input| {
+                        <span class="self">self</span>.operation_prefix_ids_deserializer.deserialize(input)
+                    })
+                    .map(Message::AskForOperations)
+                    .parse(input)
                 }
-                Message::Endorsements(endorsements)
+                MessageTypeId::OperationsAnnouncement =&gt; {
+                    context(<span class="string">&quot;Failed OperationsAnnouncement deserialization&quot;</span>, |input| {
+                        <span class="self">self</span>.operation_prefix_ids_deserializer.deserialize(input)
+                    })
+                    .map(Message::OperationsAnnouncement)
+                    .parse(input)
+                }
+                MessageTypeId::Endorsements =&gt; context(
+                    <span class="string">&quot;Failed Endorsements deserialization&quot;</span>,
+                    length_count(
+                        context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                            <span class="self">self</span>.endorsements_length_deserializer.deserialize(input)
+                        }),
+                        context(<span class="string">&quot;Failed endorsement deserialization&quot;</span>, |input| {
+                            <span class="self">self</span>.endorsement_deserializer.deserialize(input)
+                        }),
+                    ),
+                )
+                .map(Message::Endorsements)
+                .parse(input),
             }
-        };
-        <span class="prelude-val">Ok</span>((res, cursor))
+        })
+        .parse(buffer)
     }
 }
 
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>massa_models::config::{
+        ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
+        MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
+        MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_PARAMETERS_SIZE, THREAD_COUNT,
+    };
+    <span class="kw">use </span>massa_serialization::DeserializeError;
     <span class="kw">use </span>massa_signature::KeyPair;
     <span class="kw">use </span>rand::{prelude::StdRng, RngCore, SeedableRng};
     <span class="kw">use </span>serial_test::serial;
     <span class="kw">use </span>std::str::FromStr;
 
-    <span class="kw">fn </span>initialize_context() -&gt; massa_models::SerializationContext {
-        <span class="comment">// Init the serialization context with a default,
-        // can be overwritten with a more specific one in the test.
-        </span><span class="kw">let </span>ctx = massa_models::SerializationContext {
-            max_operations_per_block: <span class="number">1024</span>,
-            thread_count: <span class="number">2</span>,
-            max_advertise_length: <span class="number">128</span>,
-            max_message_size: <span class="number">3 </span>* <span class="number">1024 </span>* <span class="number">1024</span>,
-            max_block_size: <span class="number">3 </span>* <span class="number">1024 </span>* <span class="number">1024</span>,
-            max_bootstrap_blocks: <span class="number">100</span>,
-            max_bootstrap_cliques: <span class="number">100</span>,
-            max_bootstrap_deps: <span class="number">100</span>,
-            max_bootstrap_children: <span class="number">100</span>,
-            max_ask_blocks_per_message: <span class="number">10</span>,
-            max_operations_per_message: <span class="number">1024</span>,
-            max_endorsements_per_message: <span class="number">1024</span>,
-            max_bootstrap_message_size: <span class="number">100000000</span>,
-            max_bootstrap_pos_entries: <span class="number">1000</span>,
-            max_bootstrap_pos_cycles: <span class="number">5</span>,
-            endorsement_count: <span class="number">8</span>,
-        };
-        massa_models::init_serialization_context(ctx.clone());
-        ctx
-    }
-
     <span class="attribute">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_ser_deser() {
-        initialize_context();
+        <span class="kw">let </span>message_serializer = MessageSerializer::new();
+        <span class="kw">let </span>message_deserializer = MessageDeserializer::new(
+            THREAD_COUNT,
+            ENDORSEMENT_COUNT,
+            MAX_ADVERTISE_LENGTH,
+            MAX_ASK_BLOCKS_PER_MESSAGE,
+            MAX_OPERATIONS_PER_BLOCK,
+            MAX_OPERATIONS_PER_MESSAGE,
+            MAX_ENDORSEMENTS_PER_MESSAGE,
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+        );
         <span class="kw">let </span><span class="kw-2">mut </span>random_bytes = [<span class="number">0u8</span>; <span class="number">32</span>];
         StdRng::from_entropy().fill_bytes(<span class="kw-2">&amp;mut </span>random_bytes);
         <span class="kw">let </span>keypair = KeyPair::generate();
@@ -779,8 +1158,11 @@
             random_bytes,
             version: Version::from_str(<span class="string">&quot;TEST.1.2&quot;</span>).unwrap(),
         };
-        <span class="kw">let </span>ser = msg.to_bytes_compact().unwrap();
-        <span class="kw">let </span>(deser, <span class="kw">_</span>) = Message::from_bytes_compact(<span class="kw-2">&amp;</span>ser).unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>ser = Vec::new();
+        message_serializer.serialize(<span class="kw-2">&amp;</span>msg, <span class="kw-2">&amp;mut </span>ser).unwrap();
+        <span class="kw">let </span>(<span class="kw">_</span>, deser) = message_deserializer
+            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser)
+            .unwrap();
         <span class="kw">match </span>(msg, deser) {
             (
                 Message::HandshakeInitiation {
@@ -803,4 +1185,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

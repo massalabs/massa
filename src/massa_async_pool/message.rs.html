@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-async-pool/src/message.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>message.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_async_pool/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_async_pool/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_async_pool/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-async-pool/src/message.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>message.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_async_pool/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_async_pool/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_async_pool/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -468,17 +468,43 @@
 <span id="468">468</span>
 <span id="469">469</span>
 <span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the structure representing an asynchronous message
 
-</span><span class="kw">use </span>std::ops::Bound::Included;
-
-<span class="kw">use </span>massa_models::address::AddressDeserializer;
+</span><span class="kw">use </span>massa_models::address::AddressDeserializer;
 <span class="kw">use </span>massa_models::amount::{AmountDeserializer, AmountSerializer};
-<span class="kw">use </span>massa_models::constants::THREAD_COUNT;
 <span class="kw">use </span>massa_models::slot::{SlotDeserializer, SlotSerializer};
-<span class="kw">use </span>massa_models::{Address, Amount, Slot, VecU8Deserializer, VecU8Serializer};
+<span class="kw">use </span>massa_models::{
+    address::Address,
+    amount::Amount,
+    serialization::{VecU8Deserializer, VecU8Serializer},
+    slot::Slot,
+};
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -487,6 +513,7 @@
 <span class="kw">use </span>nom::sequence::tuple;
 <span class="kw">use </span>nom::{IResult, Parser};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 
 <span class="doccomment">/// Unique identifier of a message.
 /// Also has the property of ordering by priority (highest first) following the triplet:
@@ -516,10 +543,11 @@
 }
 
 <span class="kw">impl </span>Serializer&lt;AsyncMessageId&gt; <span class="kw">for </span>AsyncMessageIdSerializer {
-    <span class="doccomment">/// ```
+    <span class="doccomment">/// ## Example
+    /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::Serializer;
-    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use std::str::FromStr;
     /// use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageIdSerializer};
     ///
@@ -556,33 +584,34 @@
 <span class="kw">pub struct </span>AsyncMessageIdDeserializer {
     amount_deserializer: AmountDeserializer,
     slot_deserializer: SlotDeserializer,
-    u64_deserializer: U64VarIntDeserializer,
+    emission_index_deserializer: U64VarIntDeserializer,
 }
 
 <span class="kw">impl </span>AsyncMessageIdDeserializer {
-    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(thread_count: u8) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            amount_deserializer: AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
-                (Included(<span class="number">0</span>), Included(THREAD_COUNT)),
+                (Included(<span class="number">0</span>), Excluded(thread_count)),
             ),
-            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            emission_index_deserializer: U64VarIntDeserializer::new(
+                Included(u64::MIN),
+                Included(u64::MAX),
+            ),
         }
     }
 }
 
-<span class="kw">impl </span>Default <span class="kw">for </span>AsyncMessageIdDeserializer {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new()
-    }
-}
-
 <span class="kw">impl </span>Deserializer&lt;AsyncMessageId&gt; <span class="kw">for </span>AsyncMessageIdDeserializer {
-    <span class="doccomment">/// ```
+    <span class="doccomment">/// ## Example
+    /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use std::str::FromStr;
     /// use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageIdSerializer, AsyncMessageIdDeserializer};
     ///
@@ -602,7 +631,7 @@
     /// let id: AsyncMessageId = message.compute_id();
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncMessageIdSerializer::new();
-    /// let deserializer = AsyncMessageIdDeserializer::new();
+    /// let deserializer = AsyncMessageIdDeserializer::new(10);
     /// serializer.serialize(&amp;id, &amp;mut serialized).unwrap();
     /// let (rest, id_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert!(rest.is_empty());
@@ -615,9 +644,15 @@
         context(
             <span class="string">&quot;Failed AsyncMessageId deserialization&quot;</span>,
             tuple((
-                |input| <span class="self">self</span>.amount_deserializer.deserialize(input),
-                |input| <span class="self">self</span>.slot_deserializer.deserialize(input),
-                |input| <span class="self">self</span>.u64_deserializer.deserialize(input),
+                context(<span class="string">&quot;Failed gas_price deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.amount_deserializer.deserialize(input)
+                }),
+                context(<span class="string">&quot;Failed emission_slot deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.slot_deserializer.deserialize(input)
+                }),
+                context(<span class="string">&quot;Failed emission_index deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.emission_index_deserializer.deserialize(input)
+                }),
             )),
         )
         .map(|(amount, slot, index)| (std::cmp::Reverse(amount), slot, index))
@@ -704,9 +739,10 @@
 }
 
 <span class="kw">impl </span>Serializer&lt;AsyncMessage&gt; <span class="kw">for </span>AsyncMessageSerializer {
-    <span class="doccomment">/// ```
+    <span class="doccomment">/// ## Example
+    /// ```
     /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer};
-    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
     /// let message = AsyncMessage {
@@ -742,7 +778,7 @@
         <span class="kw">let </span>handler_name_len: u8 = handler_bytes.len().try_into().map_err(|<span class="kw">_</span>| {
             SerializeError::GeneralError(<span class="string">&quot;could not convert handler name length to u8&quot;</span>.into())
         })<span class="question-mark">?</span>;
-        buffer.extend(<span class="kw-2">&amp;</span>[handler_name_len]);
+        buffer.extend([handler_name_len]);
         buffer.extend(handler_bytes);
 
         <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span>value.max_gas, buffer)<span class="question-mark">?</span>;
@@ -760,36 +796,42 @@
 <span class="kw">pub struct </span>AsyncMessageDeserializer {
     slot_deserializer: SlotDeserializer,
     amount_deserializer: AmountDeserializer,
-    u64_deserializer: U64VarIntDeserializer,
-    vec_u8_deserializer: VecU8Deserializer,
+    emission_index_deserializer: U64VarIntDeserializer,
+    max_gas_deserializer: U64VarIntDeserializer,
+    data_deserializer: VecU8Deserializer,
     address_deserializer: AddressDeserializer,
 }
 
 <span class="kw">impl </span>AsyncMessageDeserializer {
-    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(thread_count: u8, max_data_async_message: u64) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             slot_deserializer: SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
-                (Included(<span class="number">0</span>), Included(THREAD_COUNT)),
+                (Included(<span class="number">0</span>), Excluded(thread_count)),
             ),
-            amount_deserializer: AmountDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
-            u64_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
-            vec_u8_deserializer: VecU8Deserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
+            emission_index_deserializer: U64VarIntDeserializer::new(
+                Included(<span class="number">0</span>),
+                Included(u64::MAX),
+            ),
+            max_gas_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
+            data_deserializer: VecU8Deserializer::new(
+                Included(<span class="number">0</span>),
+                Included(max_data_async_message),
+            ),
             address_deserializer: AddressDeserializer::new(),
         }
     }
 }
 
-<span class="kw">impl </span>Default <span class="kw">for </span>AsyncMessageDeserializer {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new()
-    }
-}
-
 <span class="kw">impl </span>Deserializer&lt;AsyncMessage&gt; <span class="kw">for </span>AsyncMessageDeserializer {
-    <span class="doccomment">/// ```
+    <span class="doccomment">/// ## Example
+    /// ```
     /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer, AsyncMessageDeserializer};
-    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
     /// let message = AsyncMessage {
@@ -808,7 +850,7 @@
     /// let message_serializer = AsyncMessageSerializer::new();
     /// let mut serialized = Vec::new();
     /// message_serializer.serialize(&amp;message, &amp;mut serialized).unwrap();
-    /// let message_deserializer = AsyncMessageDeserializer::new();
+    /// let message_deserializer = AsyncMessageDeserializer::new(32, 100000);
     /// let (rest, message_deserialized) = message_deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(message, message_deserialized);
@@ -824,7 +866,7 @@
                     <span class="self">self</span>.slot_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed emission_index deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.u64_deserializer.deserialize(input)
+                    <span class="self">self</span>.emission_index_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed sender deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.address_deserializer.deserialize(input)
@@ -851,7 +893,7 @@
                     ))
                 }),
                 context(<span class="string">&quot;Failed max_gas deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.u64_deserializer.deserialize(input)
+                    <span class="self">self</span>.max_gas_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed gas_price deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.amount_deserializer.deserialize(input)
@@ -866,7 +908,7 @@
                     <span class="self">self</span>.slot_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed data deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.vec_u8_deserializer.deserialize(input)
+                    <span class="self">self</span>.data_deserializer.deserialize(input)
                 }),
             )),
         )
@@ -906,7 +948,12 @@
     <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
 
     <span class="kw">use crate</span>::{AsyncMessage, AsyncMessageDeserializer, AsyncMessageSerializer};
-    <span class="kw">use </span>massa_models::{Address, Amount, Slot};
+    <span class="kw">use </span>massa_models::{
+        address::Address,
+        amount::Amount,
+        config::{MAX_DATA_ASYNC_MESSAGE, THREAD_COUNT},
+        slot::Slot,
+    };
     <span class="kw">use </span>std::str::FromStr;
 
     <span class="attribute">#[test]
@@ -931,7 +978,8 @@
         message_serializer
             .serialize(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;mut </span>serialized)
             .unwrap();
-        <span class="kw">let </span>message_deserializer = AsyncMessageDeserializer::new();
+        <span class="kw">let </span>message_deserializer =
+            AsyncMessageDeserializer::new(THREAD_COUNT, MAX_DATA_ASYNC_MESSAGE);
         serialized[<span class="number">1</span>] = <span class="number">50</span>;
         message_deserializer
             .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized)
@@ -939,4 +987,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_async_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_async_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

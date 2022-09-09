@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-wallet/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_wallet/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_wallet/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_wallet/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-wallet/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_wallet/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_wallet/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_wallet/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -159,11 +159,18 @@
 <span id="159">159</span>
 <span id="160">160</span>
 <span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Standalone massa wallet
 //! Keypair management
 </span><span class="attribute">#![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+#![feature(map_try_insert)]
 
 </span><span class="kw">pub use </span>error::WalletError;
 
@@ -171,10 +178,9 @@
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_models::composite::PubkeySig;
-<span class="kw">use </span>massa_models::operation::OperationSerializer;
-<span class="kw">use </span>massa_models::prehash::{Map, Set};
+<span class="kw">use </span>massa_models::operation::{Operation, OperationSerializer, WrappedOperation};
+<span class="kw">use </span>massa_models::prehash::{PreHashMap, PreHashSet};
 <span class="kw">use </span>massa_models::wrapped::WrappedContent;
-<span class="kw">use </span>massa_models::{Operation, WrappedOperation};
 <span class="kw">use </span>massa_signature::{KeyPair, PublicKey};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::path::PathBuf;
@@ -185,7 +191,7 @@
 </span><span class="attribute">#[derive(Clone, Debug, Deserialize, Serialize)]
 </span><span class="kw">pub struct </span>Wallet {
     <span class="doccomment">/// Keypairs and addresses
-    </span><span class="kw">pub </span>keys: Map&lt;Address, KeyPair&gt;,
+    </span><span class="kw">pub </span>keys: PreHashMap&lt;Address, KeyPair&gt;,
     <span class="doccomment">/// Path to the file containing the keypairs (encrypted)
     </span><span class="kw">pub </span>wallet_path: PathBuf,
     <span class="doccomment">/// Password
@@ -198,7 +204,8 @@
         <span class="kw">if </span>path.is_file() {
             <span class="kw">let </span>content = <span class="kw-2">&amp;</span>std::fs::read(<span class="kw-2">&amp;</span>path)<span class="question-mark">?</span>[..];
             <span class="kw">let </span>(_version, decrypted_content) = decrypt(<span class="kw-2">&amp;</span>password, content)<span class="question-mark">?</span>;
-            <span class="kw">let </span>keys = serde_json::from_slice::&lt;Map&lt;Address, KeyPair&gt;&gt;(<span class="kw-2">&amp;</span>decrypted_content[..])<span class="question-mark">?</span>;
+            <span class="kw">let </span>keys =
+                serde_json::from_slice::&lt;PreHashMap&lt;Address, KeyPair&gt;&gt;(<span class="kw-2">&amp;</span>decrypted_content[..])<span class="question-mark">?</span>;
             <span class="prelude-val">Ok</span>(Wallet {
                 keys,
                 wallet_path: path,
@@ -206,7 +213,7 @@
             })
         } <span class="kw">else </span>{
             <span class="kw">let </span>wallet = Wallet {
-                keys: Map::default(),
+                keys: PreHashMap::default(),
                 wallet_path: path,
                 password,
             };
@@ -218,8 +225,8 @@
     <span class="doccomment">/// Sign arbitrary message with the associated keypair
     /// returns none if the address isn&#39;t in the wallet or if an error occurred during the signature
     /// else returns the public key that signed the message and the signature
-    </span><span class="kw">pub fn </span>sign_message(<span class="kw-2">&amp;</span><span class="self">self</span>, address: Address, msg: Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;PubkeySig&gt; {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(key) = <span class="self">self</span>.keys.get(<span class="kw-2">&amp;</span>address) {
+    </span><span class="kw">pub fn </span>sign_message(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address, msg: Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;PubkeySig&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(key) = <span class="self">self</span>.keys.get(address) {
             <span class="kw">if let </span><span class="prelude-val">Ok</span>(signature) = key.sign(<span class="kw-2">&amp;</span>Hash::compute_from(<span class="kw-2">&amp;</span>msg)) {
                 <span class="prelude-val">Some</span>(PubkeySig {
                     public_key: key.get_public_key(),
@@ -233,52 +240,53 @@
         </span>}
     }
 
-    <span class="doccomment">/// Adds a new keypair to wallet, if it was missing
-    /// returns corresponding address
-    </span><span class="kw">pub fn </span>add_keypair(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: KeyPair) -&gt; <span class="prelude-ty">Result</span>&lt;Address, WalletError&gt; {
-        <span class="kw">if </span>!<span class="self">self
-            </span>.keys
-            .iter()
-            .any(|(<span class="kw">_</span>, file_key)| file_key.to_bytes() == key.to_bytes())
-        {
-            <span class="kw">let </span>ad = Address::from_public_key(<span class="kw-2">&amp;</span>key.get_public_key());
-            <span class="self">self</span>.keys.insert(ad, key);
-            <span class="self">self</span>.save()<span class="question-mark">?</span>;
-            <span class="prelude-val">Ok</span>(ad)
-        } <span class="kw">else </span>{
-            <span class="comment">// key already in wallet
-            </span><span class="prelude-val">Ok</span>(<span class="kw-2">*</span><span class="self">self
-                </span>.keys
-                .iter()
-                .find(|(<span class="kw">_</span>, file_key)| file_key.to_bytes() == key.to_bytes())
-                .unwrap()
-                .<span class="number">0</span>)
+    <span class="doccomment">/// Adds a list of keypairs to the wallet, returns their addresses.
+    /// The wallet file is updated.
+    </span><span class="kw">pub fn </span>add_keypairs(<span class="kw-2">&amp;mut </span><span class="self">self</span>, keys: Vec&lt;KeyPair&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Address&gt;, WalletError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>changed = <span class="bool-val">false</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>addrs = Vec::with_capacity(keys.len());
+        <span class="kw">for </span>key <span class="kw">in </span>keys {
+            <span class="kw">let </span>addr = Address::from_public_key(<span class="kw-2">&amp;</span>key.get_public_key());
+            <span class="kw">if </span><span class="self">self</span>.keys.try_insert(addr, key).is_ok() {
+                changed = <span class="bool-val">true</span>;
+            }
+            addrs.push(addr);
         }
+        <span class="kw">if </span>changed {
+            <span class="self">self</span>.save()<span class="question-mark">?</span>;
+        }
+        <span class="prelude-val">Ok</span>(addrs)
     }
 
-    <span class="doccomment">/// Remove a wallet entry (keys and address) given the address
-    /// The file is overwritten
-    </span><span class="kw">pub fn </span>remove_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, address: Address) -&gt; <span class="prelude-ty">Result</span>&lt;(), WalletError&gt; {
-        <span class="self">self</span>.keys
-            .remove(<span class="kw-2">&amp;</span>address)
-            .ok_or(WalletError::MissingKeyError(address))<span class="question-mark">?</span>;
-        <span class="self">self</span>.save()
+    <span class="doccomment">/// Removes wallet entries given a list of addresses. Missing entries are ignored.
+    /// The wallet file is updated.
+    </span><span class="kw">pub fn </span>remove_addresses(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addresses: <span class="kw-2">&amp;</span>Vec&lt;Address&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), WalletError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>changed = <span class="bool-val">false</span>;
+        <span class="kw">for </span>address <span class="kw">in </span>addresses {
+            <span class="kw">if </span><span class="self">self</span>.keys.remove(address).is_some() {
+                changed = <span class="bool-val">true</span>;
+            }
+        }
+        <span class="kw">if </span>changed {
+            <span class="self">self</span>.save()<span class="question-mark">?</span>;
+        }
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Finds the keypair associated with given address
-    </span><span class="kw">pub fn </span>find_associated_keypair(<span class="kw-2">&amp;</span><span class="self">self</span>, address: Address) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPair&gt; {
-        <span class="self">self</span>.keys.get(<span class="kw-2">&amp;</span>address)
+    </span><span class="kw">pub fn </span>find_associated_keypair(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPair&gt; {
+        <span class="self">self</span>.keys.get(address)
     }
 
     <span class="doccomment">/// Finds the public key associated with given address
-    </span><span class="kw">pub fn </span>find_associated_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>, address: Address) -&gt; <span class="prelude-ty">Option</span>&lt;PublicKey&gt; {
+    </span><span class="kw">pub fn </span>find_associated_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Option</span>&lt;PublicKey&gt; {
         <span class="self">self</span>.keys
-            .get(<span class="kw-2">&amp;</span>address)
+            .get(address)
             .map(|keypair| keypair.get_public_key())
     }
 
     <span class="doccomment">/// Get all addresses in the wallet
-    </span><span class="kw">pub fn </span>get_wallet_address_list(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Set&lt;Address&gt; {
+    </span><span class="kw">pub fn </span>get_wallet_address_list(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; PreHashSet&lt;Address&gt; {
         <span class="self">self</span>.keys.keys().copied().collect()
     }
 
@@ -292,7 +300,7 @@
     }
 
     <span class="doccomment">/// Export keys and addresses
-    </span><span class="kw">pub fn </span>get_full_wallet(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Map&lt;Address, KeyPair&gt; {
+    </span><span class="kw">pub fn </span>get_full_wallet(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PreHashMap&lt;Address, KeyPair&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.keys
     }
 
@@ -303,7 +311,7 @@
         address: Address,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;WrappedOperation, WalletError&gt; {
         <span class="kw">let </span>sender_keypair = <span class="self">self
-            </span>.find_associated_keypair(address)
+            </span>.find_associated_keypair(<span class="kw-2">&amp;</span>address)
             .ok_or(WalletError::MissingKeyError(address))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(Operation::new_wrapped(content, OperationSerializer::new(), sender_keypair).unwrap())
     }
@@ -320,5 +328,9 @@
         <span class="prelude-val">Ok</span>(())
     }
 }
+
+<span class="doccomment">/// Test utils
+</span><span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+</span><span class="kw">pub mod </span>test_exports;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_wallet" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_wallet" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

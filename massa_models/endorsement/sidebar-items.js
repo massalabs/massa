@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":[["ENDORSEMENT_ID_SIZE_BYTES","Endorsement ID size in bytes"]],"struct":[["Endorsement","an endorsement, as sent in the network"],["EndorsementDeserializer","Deserializer for `Endorsement`"],["EndorsementId","endorsement id"],["EndorsementSerializer","Serializer for `Endorsement`"]],"type":[["WrappedEndorsement","Wrapped endorsement"]]};

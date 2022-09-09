@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/slot.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>slot.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/slot.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>slot.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -303,43 +303,9 @@
 <span id="303">303</span>
 <span id="304">304</span>
 <span id="305">305</span>
-<span id="306">306</span>
-<span id="307">307</span>
-<span id="308">308</span>
-<span id="309">309</span>
-<span id="310">310</span>
-<span id="311">311</span>
-<span id="312">312</span>
-<span id="313">313</span>
-<span id="314">314</span>
-<span id="315">315</span>
-<span id="316">316</span>
-<span id="317">317</span>
-<span id="318">318</span>
-<span id="319">319</span>
-<span id="320">320</span>
-<span id="321">321</span>
-<span id="322">322</span>
-<span id="323">323</span>
-<span id="324">324</span>
-<span id="325">325</span>
-<span id="326">326</span>
-<span id="327">327</span>
-<span id="328">328</span>
-<span id="329">329</span>
-<span id="330">330</span>
-<span id="331">331</span>
-<span id="332">332</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use super</span>::{
-    serialization::{
-        u8_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
-    },
-    with_serialization_context,
-};
-<span class="kw">use </span><span class="kw">crate</span>::constants::SLOT_KEY_SIZE;
-<span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
+</span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -358,6 +324,9 @@
     <span class="doccomment">/// thread
     </span><span class="kw">pub </span>thread: u8,
 }
+
+<span class="doccomment">/// size of the slot key representation
+</span><span class="kw">pub const </span>SLOT_KEY_SIZE: usize = <span class="number">9</span>;
 
 <span class="doccomment">/// Basic serializer for `Slot`
 </span><span class="kw">pub struct </span>SlotSerializer {
@@ -383,7 +352,7 @@
     <span class="doccomment">/// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::Serializer;
-    /// use massa_models::{Slot, SlotSerializer};
+    /// use massa_models::slot::{Slot, SlotSerializer};
     ///
     /// let slot: Slot = Slot::new(1, 3);
     /// let mut serialized = Vec::new();
@@ -420,7 +389,7 @@
     <span class="doccomment">/// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{Slot, SlotSerializer, SlotDeserializer};
+    /// use massa_models::slot::{Slot, SlotSerializer, SlotDeserializer};
     ///
     /// let slot: Slot = Slot::new(1, 3);
     /// let mut serialized = Vec::new();
@@ -499,6 +468,31 @@
         Slot { period, thread }
     }
 
+    <span class="doccomment">/// create the last slot of a given cycle
+    </span><span class="kw">pub fn </span>new_last_of_cycle(
+        cycle: u64,
+        periods_per_cycle: u64,
+        thread_count: u8,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Slot, ModelsError&gt; {
+        <span class="kw">let </span>period = cycle
+            .checked_mul(periods_per_cycle)
+            .ok_or(ModelsError::PeriodOverflowError)<span class="question-mark">?
+            </span>.checked_add(periods_per_cycle - <span class="number">1</span>)
+            .ok_or(ModelsError::PeriodOverflowError)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(Slot {
+            period,
+            thread: thread_count - <span class="number">1</span>,
+        })
+    }
+
+    <span class="doccomment">/// create the first slot of a given cycle
+    </span><span class="kw">pub fn </span>new_first_of_cycle(cycle: u64, periods_per_cycle: u64) -&gt; <span class="prelude-ty">Result</span>&lt;Slot, ModelsError&gt; {
+        <span class="kw">let </span>period = cycle
+            .checked_mul(periods_per_cycle)
+            .ok_or(ModelsError::PeriodOverflowError)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(Slot { period, thread: <span class="number">0 </span>})
+    }
+
     <span class="doccomment">/// returns the minimal slot
     </span><span class="kw">pub const fn </span>min() -&gt; Slot {
         Slot {
@@ -525,11 +519,22 @@
         <span class="self">self</span>.period / periods_per_cycle
     }
 
+    <span class="doccomment">/// check if the slot is last in the cycle
+    </span><span class="kw">pub fn </span>is_last_of_cycle(<span class="kw-2">&amp;</span><span class="self">self</span>, periods_per_cycle: u64, thread_count: u8) -&gt; bool {
+        <span class="self">self</span>.period % periods_per_cycle == (periods_per_cycle - <span class="number">1</span>)
+            &amp;&amp; <span class="self">self</span>.thread == (thread_count - <span class="number">1</span>)
+    }
+
+    <span class="doccomment">/// check if the slot is first in the cycle
+    </span><span class="kw">pub fn </span>is_first_of_cycle(<span class="kw-2">&amp;</span><span class="self">self</span>, periods_per_cycle: u64) -&gt; bool {
+        <span class="self">self</span>.period % periods_per_cycle == <span class="number">0 </span>&amp;&amp; <span class="self">self</span>.thread == <span class="number">0
+    </span>}
+
     <span class="doccomment">/// Returns a fixed-size sortable binary key
     ///
     /// ## Example
     /// ```rust
-    /// # use massa_models::Slot;
+    /// # use massa_models::slot::Slot;
     /// let slot = Slot::new(10,5);
     /// let key = slot.to_bytes_key();
     /// let res = Slot::from_bytes_key(&amp;key);
@@ -546,7 +551,7 @@
     ///
     /// ## Example
     /// ```rust
-    /// # use massa_models::Slot;
+    /// # use massa_models::slot::Slot;
     /// let slot = Slot::new(10,5);
     /// let key = slot.to_bytes_key();
     /// let res = Slot::from_bytes_key(&amp;key);
@@ -563,7 +568,7 @@
     ///
     /// ## Example
     /// ```rust
-    /// # use massa_models::Slot;
+    /// # use massa_models::slot::Slot;
     /// let slot = Slot::new(10,5);
     /// assert_eq!(slot.get_next_slot(5).unwrap(), Slot::new(11, 0))
     /// ```
@@ -603,64 +608,5 @@
             </span>.saturating_sub(s.thread <span class="kw">as </span>u64))
     }
 }
-
-<span class="kw">impl </span>SerializeCompact <span class="kw">for </span>Slot {
-    <span class="doccomment">/// Returns a compact binary representation of the slot
-    ///
-    /// ## Example
-    /// ```rust
-    /// # use massa_models::Slot;
-    /// # use massa_models::{DeserializeCompact, SerializeCompact};
-    /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
-    /// # let context = massa_models::get_serialization_context();
-    /// let slot = Slot::new(10,1);
-    /// let ser = slot.to_bytes_compact().unwrap();
-    /// let (deser, _) = Slot::from_bytes_compact(&amp;ser).unwrap();
-    /// assert_eq!(slot, deser);
-    /// ```
-    ///
-    /// Checks performed: none.
-    </span><span class="kw">fn </span>to_bytes_compact(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;u8&gt; = Vec::with_capacity(<span class="number">9</span>);
-        res.extend(<span class="self">self</span>.period.to_varint_bytes());
-        res.push(<span class="self">self</span>.thread);
-        <span class="prelude-val">Ok</span>(res)
-    }
-}
-
-<span class="kw">impl </span>DeserializeCompact <span class="kw">for </span>Slot {
-    <span class="doccomment">/// Deserializes from a compact representation
-    ///
-    /// ## Example
-    /// ```rust
-    /// # use massa_models::Slot;
-    /// # use massa_models::{DeserializeCompact, SerializeCompact};
-    /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
-    /// # let context = massa_models::get_serialization_context();
-    /// let slot = Slot::new(10,1);
-    /// let ser = slot.to_bytes_compact().unwrap();
-    /// let (deser, _) = Slot::from_bytes_compact(&amp;ser).unwrap();
-    /// assert_eq!(slot, deser);
-    /// ```
-    ///
-    /// Checks performed:
-    /// - Valid period and delta.
-    /// - Valid thread.
-    /// - Valid thread number.
-    </span><span class="kw">fn </span>from_bytes_compact(buffer: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
-        <span class="kw">let </span>parent_count = with_serialization_context(|context| context.thread_count);
-        <span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="number">0usize</span>;
-        <span class="kw">let </span>(period, delta) = u64::from_varint_bytes(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
-        cursor += delta;
-        <span class="kw">let </span>thread = u8_from_slice(<span class="kw-2">&amp;</span>buffer[cursor..])<span class="question-mark">?</span>;
-        cursor += <span class="number">1</span>;
-        <span class="kw">if </span>thread &gt;= parent_count {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::DeserializeError(
-                <span class="string">&quot;invalid thread number&quot;</span>.into(),
-            ));
-        }
-        <span class="prelude-val">Ok</span>((Slot { period, thread }, cursor))
-    }
-}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

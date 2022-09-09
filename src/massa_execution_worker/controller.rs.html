@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/controller.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>controller.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/controller.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>controller.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -214,6 +214,46 @@
 <span id="214">214</span>
 <span id="215">215</span>
 <span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module implements an execution controller.
@@ -222,15 +262,18 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::execution::ExecutionState;
 <span class="kw">use </span><span class="kw">crate</span>::request_queue::{RequestQueue, RequestWithResponseSender};
 <span class="kw">use </span>massa_execution_exports::{
-    ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
-    ReadOnlyExecutionRequest,
+    ExecutionAddressInfo, ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager,
+    ExecutionOutput, ReadOnlyExecutionRequest,
 };
 <span class="kw">use </span>massa_models::api::EventFilter;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
-<span class="kw">use </span>massa_models::{Address, Amount};
-<span class="kw">use </span>massa_models::{BlockId, Slot};
+<span class="kw">use </span>massa_models::prehash::PreHashSet;
+<span class="kw">use </span>massa_models::stats::ExecutionStats;
+<span class="kw">use </span>massa_models::{address::Address, amount::Amount, operation::OperationId};
+<span class="kw">use </span>massa_models::{block::BlockId, slot::Slot};
+<span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>parking_lot::{Condvar, Mutex, RwLock};
-<span class="kw">use </span>std::collections::{BTreeSet, HashMap};
+<span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>tracing::info;
 
@@ -239,9 +282,9 @@
     <span class="doccomment">/// set stop to true to stop the thread
     </span><span class="kw">pub </span>stop: bool,
     <span class="doccomment">/// list of newly finalized blocks, indexed by slot
-    </span><span class="kw">pub </span>finalized_blocks: HashMap&lt;Slot, BlockId&gt;,
+    </span><span class="kw">pub </span>finalized_blocks: HashMap&lt;Slot, (BlockId, Storage)&gt;,
     <span class="doccomment">/// new blockclique (if there is a new one), blocks indexed by slot
-    </span><span class="kw">pub </span>new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, BlockId&gt;&gt;,
+    </span><span class="kw">pub </span>new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, (BlockId, Storage)&gt;&gt;,
     <span class="doccomment">/// queue for read-only execution requests and response MPSCs to send back their outputs
     </span><span class="kw">pub </span>readonly_requests: RequestQueue&lt;ReadOnlyExecutionRequest, ExecutionOutput&gt;,
 }
@@ -283,12 +326,12 @@
     <span class="doccomment">/// called to signal changes on the current blockclique, also listing newly finalized blocks
     ///
     /// # arguments
-    /// * `finalized_blocks`: list of newly finalized blocks to be appended to the input finalized blocks
-    /// * `blockclique`: new blockclique, replaces the current one in the input
+    /// * `finalized_blocks`: list of newly finalized blocks to be appended to the input finalized blocks. Each Storage owns the block and its ops/endorsements/parents.
+    /// * `blockclique`: new blockclique, replaces the current one in the input. Each Storage owns the block and its ops/endorsements/parents.
     </span><span class="kw">fn </span>update_blockclique_status(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        finalized_blocks: HashMap&lt;Slot, BlockId&gt;,
-        new_blockclique: HashMap&lt;Slot, BlockId&gt;,
+        finalized_blocks: HashMap&lt;Slot, (BlockId, Storage)&gt;,
+        new_blockclique: HashMap&lt;Slot, (BlockId, Storage)&gt;,
     ) {
         <span class="comment">// update input data
         </span><span class="kw">let </span><span class="kw-2">mut </span>input_data = <span class="self">self</span>.input_data.<span class="number">1</span>.lock();
@@ -309,49 +352,41 @@
             .get_filtered_sc_output_event(filter)
     }
 
-    <span class="doccomment">/// Get a balance final and active values
-    ///
-    /// # Return value
-    /// * `(final_balance, active_balance)`
-    </span><span class="kw">fn </span>get_final_and_active_parallel_balance(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        addresses: Vec&lt;Address&gt;,
-    ) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Amount&gt;, <span class="prelude-ty">Option</span>&lt;Amount&gt;)&gt; {
-        <span class="kw">let </span>lock = <span class="self">self</span>.execution_state.read();
-        <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::new();
-        <span class="kw">for </span>addr <span class="kw">in </span>addresses {
-            result.push(lock.get_final_and_active_parallel_balance(<span class="kw-2">&amp;</span>addr));
-        }
-        result
-    }
-
     <span class="doccomment">/// Get a copy of a single datastore entry with its final and active values
     ///
     /// # Return value
-    /// * `(final_data_entry, active_data_entry)`
+    /// * `Vec&lt;(final_data_entry, active_data_entry)&gt;`
     </span><span class="kw">fn </span>get_final_and_active_data_entry(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         input: Vec&lt;(Address, Vec&lt;u8&gt;)&gt;,
     ) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;)&gt; {
         <span class="kw">let </span>lock = <span class="self">self</span>.execution_state.read();
-        <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::with_capacity(input.len());
         <span class="kw">for </span>(addr, key) <span class="kw">in </span>input {
             result.push(lock.get_final_and_active_data_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>key));
         }
         result
     }
 
-    <span class="doccomment">/// Get every datastore key of the given address.
+    <span class="doccomment">/// Get the final and candidate values of sequential balances.
     ///
-    /// # Returns
-    /// A vector containing all the keys
-    </span><span class="kw">fn </span>get_final_and_active_datastore_keys(
+    /// # Return value
+    /// * `(final_balance, candidate_balance)`
+    </span><span class="kw">fn </span>get_final_and_candidate_sequential_balances(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        addr: <span class="kw-2">&amp;</span>Address,
-    ) -&gt; (BTreeSet&lt;Vec&lt;u8&gt;&gt;, BTreeSet&lt;Vec&lt;u8&gt;&gt;) {
-        <span class="self">self</span>.execution_state
-            .read()
-            .get_final_and_active_datastore_keys(addr)
+        addresses: <span class="kw-2">&amp;</span>[Address],
+    ) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Amount&gt;, <span class="prelude-ty">Option</span>&lt;Amount&gt;)&gt; {
+        <span class="kw">let </span>lock = <span class="self">self</span>.execution_state.read();
+        <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::with_capacity(addresses.len());
+        <span class="kw">for </span>addr <span class="kw">in </span>addresses {
+            result.push(lock.get_final_and_candidate_sequential_balance(addr));
+        }
+        result
+    }
+
+    <span class="doccomment">/// Return the active rolls distribution for the given `cycle`
+    </span><span class="kw">fn </span>get_cycle_active_rolls(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; BTreeMap&lt;Address, u64&gt; {
+        <span class="self">self</span>.execution_state.read().get_cycle_active_rolls(cycle)
     }
 
     <span class="doccomment">/// Executes a read-only request
@@ -395,6 +430,51 @@
         }
     }
 
+    <span class="doccomment">/// List which operations inside the provided list were not executed
+    </span><span class="kw">fn </span>unexecuted_ops_among(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        ops: <span class="kw-2">&amp;</span>PreHashSet&lt;OperationId&gt;,
+        thread: u8,
+    ) -&gt; PreHashSet&lt;OperationId&gt; {
+        <span class="self">self</span>.execution_state
+            .read()
+            .unexecuted_ops_among(ops, thread)
+    }
+
+    <span class="doccomment">/// Gets infos about a batch of addresses
+    </span><span class="kw">fn </span>get_addresses_infos(<span class="kw-2">&amp;</span><span class="self">self</span>, addresses: <span class="kw-2">&amp;</span>[Address]) -&gt; Vec&lt;ExecutionAddressInfo&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res = Vec::with_capacity(addresses.len());
+        <span class="kw">let </span>exec_state = <span class="self">self</span>.execution_state.read();
+        <span class="kw">for </span>addr <span class="kw">in </span>addresses {
+            <span class="kw">let </span>(final_datastore_keys, candidate_datastore_keys) =
+                exec_state.get_final_and_candidate_datastore_keys(addr);
+            <span class="kw">let </span>(final_parallel_balance, candidate_parallel_balance) =
+                exec_state.get_final_and_candidate_parallel_balance(addr);
+            <span class="kw">let </span>(final_sequential_balance, candidate_sequential_balance) =
+                exec_state.get_final_and_candidate_sequential_balance(addr);
+            <span class="kw">let </span>(final_roll_count, candidate_roll_count) =
+                exec_state.get_final_and_candidate_rolls(addr);
+            res.push(ExecutionAddressInfo {
+                final_datastore_keys,
+                candidate_datastore_keys,
+                final_parallel_balance: final_parallel_balance.unwrap_or_default(),
+                candidate_parallel_balance: candidate_parallel_balance.unwrap_or_default(),
+                final_sequential_balance: final_sequential_balance.unwrap_or_default(),
+                candidate_sequential_balance: candidate_sequential_balance.unwrap_or_default(),
+                final_roll_count,
+                candidate_roll_count,
+                future_deferred_credits: exec_state.get_address_future_deferred_credits(addr),
+                cycle_infos: exec_state.get_address_cycle_infos(addr),
+            });
+        }
+        res
+    }
+
+    <span class="doccomment">/// Get execution statistics
+    </span><span class="kw">fn </span>get_stats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ExecutionStats {
+        <span class="self">self</span>.execution_state.read().get_stats()
+    }
+
     <span class="doccomment">/// Returns a boxed clone of self.
     /// Allows cloning `Box&lt;dyn ExecutionController&gt;`,
     /// see `massa-execution-exports/controller_traits.rs`
@@ -431,4 +511,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

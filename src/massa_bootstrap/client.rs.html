@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/client.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_bootstrap/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_bootstrap/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/client.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_bootstrap/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_bootstrap/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -415,12 +415,60 @@
 <span id="415">415</span>
 <span id="416">416</span>
 <span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{net::SocketAddr, sync::Arc, time::Duration};
 
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_ledger_exports::get_address_from_key;
 <span class="kw">use </span>massa_logging::massa_trace;
-<span class="kw">use </span>massa_models::Version;
+<span class="kw">use </span>massa_models::version::Version;
 <span class="kw">use </span>massa_signature::PublicKey;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>nom::AsBytes;
@@ -436,14 +484,14 @@
     client_binder::BootstrapClientBinder,
     error::BootstrapError,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
-    BootstrapSettings, Establisher, GlobalBootstrapState,
+    BootstrapConfig, Establisher, GlobalBootstrapState,
 };
 
 <span class="doccomment">/// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum&#39;s variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
 </span><span class="kw">async fn </span>stream_final_state(
-    cfg: <span class="kw-2">&amp;</span>BootstrapSettings,
+    cfg: <span class="kw-2">&amp;</span>BootstrapConfig,
     client: <span class="kw-2">&amp;mut </span>BootstrapClientBinder,
     next_bootstrap_message: <span class="kw-2">&amp;mut </span>BootstrapClientMessage,
     global_bootstrap_state: <span class="kw-2">&amp;mut </span>GlobalBootstrapState,
@@ -479,6 +527,8 @@
                 BootstrapServerMessage::FinalStatePart {
                     ledger_data,
                     async_pool_part,
+                    pos_cycle_part,
+                    pos_credits_part,
                     slot,
                     final_state_changes,
                 } =&gt; {
@@ -487,12 +537,23 @@
                     <span class="kw">let </span>last_last_async_id = write_final_state
                         .async_pool
                         .set_pool_part(async_pool_part.as_bytes())<span class="question-mark">?</span>;
+                    <span class="kw">let </span>last_cycle = write_final_state
+                        .pos_state
+                        .set_cycle_history_part(pos_cycle_part.as_bytes())<span class="question-mark">?</span>;
+                    <span class="kw">let </span>last_credits_slot = write_final_state
+                        .pos_state
+                        .set_deferred_credits_part(pos_credits_part.as_bytes())<span class="question-mark">?</span>;
                     write_final_state
                         .ledger
                         .apply_changes(final_state_changes.ledger_changes.clone(), slot);
                     write_final_state
                         .async_pool
                         .apply_changes_unchecked(<span class="kw-2">&amp;</span>final_state_changes.async_pool_changes);
+                    <span class="kw">if </span>!final_state_changes.roll_state_changes.is_empty() {
+                        write_final_state
+                            .pos_state
+                            .apply_changes(final_state_changes.roll_state_changes, slot)<span class="question-mark">?</span>;
+                    }
                     write_final_state.slot = slot;
                     <span class="kw">if let </span>BootstrapClientMessage::AskFinalStatePart {
                         last_key: old_key,
@@ -507,6 +568,8 @@
                         last_key,
                         slot: <span class="prelude-val">Some</span>(slot),
                         last_async_message_id: last_last_async_id,
+                        last_cycle,
+                        last_credits_slot,
                     };
                 }
                 BootstrapServerMessage::FinalStateFinished =&gt; {
@@ -520,6 +583,8 @@
                         last_key: <span class="prelude-val">None</span>,
                         slot: <span class="prelude-val">None</span>,
                         last_async_message_id: <span class="prelude-val">None</span>,
+                        last_cycle: <span class="prelude-val">None</span>,
+                        last_credits_slot: <span class="prelude-val">None</span>,
                     };
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                 }
@@ -541,7 +606,7 @@
 <span class="doccomment">/// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
 </span><span class="kw">async fn </span>bootstrap_from_server(
-    cfg: <span class="kw-2">&amp;</span>BootstrapSettings,
+    cfg: <span class="kw-2">&amp;</span>BootstrapConfig,
     client: <span class="kw-2">&amp;mut </span>BootstrapClientBinder,
     next_bootstrap_message: <span class="kw-2">&amp;mut </span>BootstrapClientMessage,
     global_bootstrap_state: <span class="kw-2">&amp;mut </span>GlobalBootstrapState,
@@ -565,7 +630,7 @@
     };
 
     <span class="comment">// handshake
-    </span><span class="kw">let </span>send_time_uncompensated = MassaTime::now()<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>send_time_uncompensated = MassaTime::now(<span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="comment">// client.handshake() is not cancel-safe but we drop the whole client object if cancelled =&gt; it&#39;s OK
     </span><span class="kw">match </span>tokio::time::timeout(cfg.write_timeout.into(), client.handshake(our_version)).<span class="kw">await </span>{
         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
@@ -580,7 +645,7 @@
     }
 
     <span class="comment">// compute ping
-    </span><span class="kw">let </span>ping = MassaTime::now()<span class="question-mark">?</span>.saturating_sub(send_time_uncompensated);
+    </span><span class="kw">let </span>ping = MassaTime::now(<span class="number">0</span>)<span class="question-mark">?</span>.saturating_sub(send_time_uncompensated);
     <span class="kw">if </span>ping &gt; cfg.max_ping {
         <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
             <span class="string">&quot;bootstrap ping too high&quot;</span>.into(),
@@ -616,7 +681,7 @@
         <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(msg)) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::UnexpectedServerMessage(msg)),
     };
 
-    <span class="kw">let </span>recv_time_uncompensated = MassaTime::now()<span class="question-mark">?</span>;
+    <span class="kw">let </span>recv_time_uncompensated = MassaTime::now(<span class="number">0</span>)<span class="question-mark">?</span>;
 
     <span class="comment">// compute ping
     </span><span class="kw">let </span>ping = recv_time_uncompensated.saturating_sub(send_time_uncompensated);
@@ -687,18 +752,17 @@
                 )
                 .<span class="kw">await</span><span class="question-mark">?
                 </span>{
-                    BootstrapServerMessage::ConsensusState { pos, graph } =&gt; (pos, graph),
+                    BootstrapServerMessage::ConsensusState { graph } =&gt; graph,
                     BootstrapServerMessage::BootstrapError { error } =&gt; {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error))
                     }
                     other =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::UnexpectedServerMessage(other)),
                 };
-                global_bootstrap_state.pos = <span class="prelude-val">Some</span>(state.<span class="number">0</span>);
-                global_bootstrap_state.graph = <span class="prelude-val">Some</span>(state.<span class="number">1</span>);
+                global_bootstrap_state.graph = <span class="prelude-val">Some</span>(state);
                 <span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess =&gt; {
-                <span class="kw">if </span>global_bootstrap_state.graph.is_none() || global_bootstrap_state.pos.is_none() {
+                <span class="kw">if </span>global_bootstrap_state.graph.is_none() {
                     <span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::AskConsensusState;
                     <span class="kw">continue</span>;
                 }
@@ -748,26 +812,43 @@
 
 <span class="kw">async fn </span>connect_to_server(
     establisher: <span class="kw-2">&amp;mut </span>Establisher,
-    bootstrap_settings: <span class="kw-2">&amp;</span>BootstrapSettings,
+    bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     addr: <span class="kw-2">&amp;</span>SocketAddr,
     pub_key: <span class="kw-2">&amp;</span>PublicKey,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapClientBinder, BootstrapError&gt; {
     <span class="comment">// connect
     </span><span class="kw">let </span><span class="kw-2">mut </span>connector = establisher
-        .get_connector(bootstrap_settings.connect_timeout)
+        .get_connector(bootstrap_config.connect_timeout)
         .<span class="kw">await</span><span class="question-mark">?</span>; <span class="comment">// cancellable
     </span><span class="kw">let </span>socket = connector.connect(<span class="kw-2">*</span>addr).<span class="kw">await</span><span class="question-mark">?</span>; <span class="comment">// cancellable
     </span><span class="prelude-val">Ok</span>(BootstrapClientBinder::new(
         socket,
         <span class="kw-2">*</span>pub_key,
-        bootstrap_settings.max_bytes_read_write,
+        bootstrap_config.max_bytes_read_write,
+        bootstrap_config.max_bootstrap_message_size,
+        bootstrap_config.endorsement_count,
+        bootstrap_config.max_advertise_length,
+        bootstrap_config.max_bootstrap_blocks_length,
+        bootstrap_config.max_operations_per_blocks,
+        bootstrap_config.thread_count,
+        bootstrap_config.randomness_size_bytes,
+        bootstrap_config.max_bootstrap_async_pool_changes,
+        bootstrap_config.max_bootstrap_error_length,
+        bootstrap_config.max_bootstrap_final_state_parts_size,
+        bootstrap_config.max_datastore_entry_count,
+        bootstrap_config.max_datastore_key_length,
+        bootstrap_config.max_datastore_value_length,
+        bootstrap_config.max_data_async_message,
+        bootstrap_config.max_function_name_length,
+        bootstrap_config.max_parameters_size,
+        bootstrap_config.max_ledger_changes_count,
     ))
 }
 
 <span class="doccomment">/// Gets the state from a bootstrap server
 /// needs to be CANCELLABLE
 </span><span class="kw">pub async fn </span>get_state(
-    bootstrap_settings: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>BootstrapSettings,
+    bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
     <span class="kw-2">mut </span>establisher: Establisher,
     version: Version,
@@ -775,20 +856,33 @@
     end_timestamp: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;GlobalBootstrapState, BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state&quot;</span>, {});
-    <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
+    <span class="kw">let </span>now = MassaTime::now(<span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="comment">// if we are before genesis, do not bootstrap
     </span><span class="kw">if </span>now &lt; genesis_timestamp {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state.init_from_scratch&quot;</span>, {});
-        <span class="kw">return </span><span class="prelude-val">Ok</span>(GlobalBootstrapState::new(final_state.clone()));
+        <span class="comment">// init final state
+        </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>final_state_guard = final_state.write();
+            <span class="comment">// load ledger from initial ledger file
+            </span>final_state_guard
+                .ledger
+                .load_initial_ledger()
+                .map_err(|err| {
+                    BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;could not load initial ledger: {}&quot;</span>, err))
+                })<span class="question-mark">?</span>;
+            <span class="comment">// create the initial cycle of PoS cycle_history
+            </span>final_state_guard.pos_state.create_initial_cycle();
+        }
+        <span class="kw">return </span><span class="prelude-val">Ok</span>(GlobalBootstrapState::new(final_state));
     }
     <span class="comment">// we are after genesis =&gt; bootstrap
     </span><span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state.init_from_others&quot;</span>, {});
-    <span class="kw">if </span>bootstrap_settings.bootstrap_list.is_empty() {
+    <span class="kw">if </span>bootstrap_config.bootstrap_list.is_empty() {
         <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
             <span class="string">&quot;no bootstrap nodes found in list&quot;</span>.into(),
         ));
     }
-    <span class="kw">let </span><span class="kw-2">mut </span>shuffled_list = bootstrap_settings.bootstrap_list.clone();
+    <span class="kw">let </span><span class="kw-2">mut </span>shuffled_list = bootstrap_config.bootstrap_list.clone();
     shuffled_list.shuffle(<span class="kw-2">&amp;mut </span>StdRng::from_entropy());
     <span class="comment">// Will be none when bootstrap is over
     </span><span class="kw">let </span><span class="kw-2">mut </span>next_bootstrap_message: BootstrapClientMessage =
@@ -796,26 +890,28 @@
             last_key: <span class="prelude-val">None</span>,
             slot: <span class="prelude-val">None</span>,
             last_async_message_id: <span class="prelude-val">None</span>,
+            last_cycle: <span class="prelude-val">None</span>,
+            last_credits_slot: <span class="prelude-val">None</span>,
         };
     <span class="kw">let </span><span class="kw-2">mut </span>global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
     <span class="kw">loop </span>{
         <span class="kw">for </span>(addr, pub_key) <span class="kw">in </span>shuffled_list.iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = end_timestamp {
-                <span class="kw">if </span>MassaTime::now().expect(<span class="string">&quot;could not get now time&quot;</span>) &gt; end {
+                <span class="kw">if </span>MassaTime::now(<span class="number">0</span>).expect(<span class="string">&quot;could not get now time&quot;</span>) &gt; end {
                     <span class="macro">panic!</span>(<span class="string">&quot;This episode has come to an end, please get the latest testnet node version to continue&quot;</span>);
                 }
             }
             <span class="macro">info!</span>(<span class="string">&quot;Start bootstrapping from {}&quot;</span>, addr);
-            <span class="kw">match </span>connect_to_server(<span class="kw-2">&amp;mut </span>establisher, bootstrap_settings, addr, pub_key).<span class="kw">await </span>{
+            <span class="kw">match </span>connect_to_server(<span class="kw-2">&amp;mut </span>establisher, bootstrap_config, addr, pub_key).<span class="kw">await </span>{
                 <span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>client) =&gt; {
-                    <span class="kw">match </span>bootstrap_from_server(bootstrap_settings, <span class="kw-2">&amp;mut </span>client, <span class="kw-2">&amp;mut </span>next_bootstrap_message, <span class="kw-2">&amp;mut </span>global_bootstrap_state,version)
+                    <span class="kw">match </span>bootstrap_from_server(bootstrap_config, <span class="kw-2">&amp;mut </span>client, <span class="kw-2">&amp;mut </span>next_bootstrap_message, <span class="kw-2">&amp;mut </span>global_bootstrap_state,version)
                     .<span class="kw">await  </span><span class="comment">// cancellable
                     </span>{
                         <span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error)) =&gt; <span class="macro">warn!</span>(<span class="string">&quot;Error received from bootstrap server: {}&quot;</span>, error),
                         <span class="prelude-val">Err</span>(e) =&gt; {
                             <span class="macro">warn!</span>(<span class="string">&quot;Error while bootstrapping: {}&quot;</span>, e);
                             <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                            </span><span class="kw">let _ </span>= tokio::time::timeout(bootstrap_settings.write_error_timeout.into(), client.send(<span class="kw-2">&amp;</span>BootstrapClientMessage::BootstrapError { error: e.to_string() })).<span class="kw">await</span>;
+                            </span><span class="kw">let _ </span>= tokio::time::timeout(bootstrap_config.write_error_timeout.into(), client.send(<span class="kw-2">&amp;</span>BootstrapClientMessage::BootstrapError { error: e.to_string() })).<span class="kw">await</span>;
                         }
                         <span class="prelude-val">Ok</span>(()) =&gt; {
                             <span class="kw">return </span><span class="prelude-val">Ok</span>(global_bootstrap_state)
@@ -827,10 +923,10 @@
                 }
             };
 
-            <span class="macro">info!</span>(<span class="string">&quot;Bootstrap from server {} failed. Your node will try to bootstrap from another server in {:#?}.&quot;</span>, addr, bootstrap_settings.retry_delay.to_duration());
-            sleep(bootstrap_settings.retry_delay.into()).<span class="kw">await</span>;
+            <span class="macro">info!</span>(<span class="string">&quot;Bootstrap from server {} failed. Your node will try to bootstrap from another server in {:#?}.&quot;</span>, addr, bootstrap_config.retry_delay.to_duration());
+            sleep(bootstrap_config.retry_delay.into()).<span class="kw">await</span>;
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

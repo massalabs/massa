@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-protocol-exports/src/protocol_controller.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>protocol_controller.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_protocol_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_protocol_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_protocol_exports/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-protocol-exports/src/protocol_controller.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>protocol_controller.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_protocol_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_protocol_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_protocol_exports/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -232,111 +232,47 @@
 <span id="232">232</span>
 <span id="233">233</span>
 <span id="234">234</span>
-<span id="235">235</span>
-<span id="236">236</span>
-<span id="237">237</span>
-<span id="238">238</span>
-<span id="239">239</span>
-<span id="240">240</span>
-<span id="241">241</span>
-<span id="242">242</span>
-<span id="243">243</span>
-<span id="244">244</span>
-<span id="245">245</span>
-<span id="246">246</span>
-<span id="247">247</span>
-<span id="248">248</span>
-<span id="249">249</span>
-<span id="250">250</span>
-<span id="251">251</span>
-<span id="252">252</span>
-<span id="253">253</span>
-<span id="254">254</span>
-<span id="255">255</span>
-<span id="256">256</span>
-<span id="257">257</span>
-<span id="258">258</span>
-<span id="259">259</span>
-<span id="260">260</span>
-<span id="261">261</span>
-<span id="262">262</span>
-<span id="263">263</span>
-<span id="264">264</span>
-<span id="265">265</span>
-<span id="266">266</span>
-<span id="267">267</span>
-<span id="268">268</span>
-<span id="269">269</span>
-<span id="270">270</span>
-<span id="271">271</span>
-<span id="272">272</span>
-<span id="273">273</span>
-<span id="274">274</span>
-<span id="275">275</span>
-<span id="276">276</span>
-<span id="277">277</span>
-<span id="278">278</span>
-<span id="279">279</span>
-<span id="280">280</span>
-<span id="281">281</span>
-<span id="282">282</span>
-<span id="283">283</span>
-<span id="284">284</span>
-<span id="285">285</span>
-<span id="286">286</span>
-<span id="287">287</span>
-<span id="288">288</span>
-<span id="289">289</span>
-<span id="290">290</span>
-<span id="291">291</span>
-<span id="292">292</span>
-<span id="293">293</span>
-<span id="294">294</span>
-<span id="295">295</span>
-<span id="296">296</span>
-<span id="297">297</span>
-<span id="298">298</span>
-<span id="299">299</span>
-<span id="300">300</span>
-<span id="301">301</span>
-<span id="302">302</span>
-<span id="303">303</span>
-<span id="304">304</span>
-<span id="305">305</span>
-<span id="306">306</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span><span class="kw">crate</span>::error::ProtocolError;
+</span><span class="kw">use </span>std::collections::VecDeque;
+
+<span class="kw">use </span><span class="kw">crate</span>::error::ProtocolError;
 <span class="kw">use </span>massa_logging::massa_trace;
 
 <span class="kw">use </span>massa_models::{
-    operation::OperationIds,
-    prehash::{Map, Set},
-    Slot, WrappedBlock,
+    block::{BlockId, WrappedHeader},
+    endorsement::EndorsementId,
+    operation::OperationId,
 };
 <span class="kw">use </span>massa_models::{
-    BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader, WrappedOperation,
+    prehash::{PreHashMap, PreHashSet},
+    slot::Slot,
 };
 <span class="kw">use </span>massa_network_exports::NetworkEventReceiver;
+<span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>serde::Serialize;
-<span class="kw">use </span>std::collections::VecDeque;
 <span class="kw">use </span>tokio::{sync::mpsc, task::JoinHandle};
-<span class="kw">use </span>tracing::debug;
+<span class="kw">use </span>tracing::{debug, info};
 
 <span class="doccomment">/// Possible types of events that can happen.
 </span><span class="attribute">#[allow(clippy::large_enum_variant)]
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 </span><span class="kw">pub enum </span>ProtocolEvent {
     <span class="doccomment">/// A block with a valid signature has been received.
     </span>ReceivedBlock {
-        <span class="doccomment">/// corresponding block
-        </span>block: WrappedBlock,
-        <span class="doccomment">/// the slot
+        <span class="doccomment">/// block ID
+        </span>block_id: BlockId,
+        <span class="doccomment">/// block slot
         </span>slot: Slot,
-        <span class="doccomment">/// operations in the block by (index, validity end period)
-        </span>operation_set: Map&lt;OperationId, (usize, u64)&gt;,
-        <span class="doccomment">/// endorsements in the block with index
-        </span>endorsement_ids: Map&lt;EndorsementId, u32&gt;,
+        <span class="doccomment">/// storage instance containing the block and its dependencies (except the parents)
+        </span>storage: Storage,
+    },
+    <span class="doccomment">/// A message to tell the consensus that a block is invalid
+    </span>InvalidBlock {
+        <span class="doccomment">/// block ID
+        </span>block_id: BlockId,
+        <span class="doccomment">/// header
+        </span>header: WrappedHeader,
     },
     <span class="doccomment">/// A block header with a valid signature has been received.
     </span>ReceivedBlockHeader {
@@ -344,26 +280,6 @@
         </span>block_id: BlockId,
         <span class="doccomment">/// The header
         </span>header: WrappedHeader,
-    },
-    <span class="doccomment">/// Ask for a list of blocks from consensus.
-    </span>GetBlocks(Vec&lt;BlockId&gt;),
-}
-<span class="doccomment">/// Possible types of pool events that can happen.
-</span><span class="attribute">#[derive(Debug, Serialize)]
-</span><span class="kw">pub enum </span>ProtocolPoolEvent {
-    <span class="doccomment">/// Operations were received
-    </span>ReceivedOperations {
-        <span class="doccomment">/// the operations
-        </span>operations: Map&lt;OperationId, WrappedOperation&gt;,
-        <span class="doccomment">/// whether or not to propagate operations
-        </span>propagate: bool,
-    },
-    <span class="doccomment">/// Endorsements were received
-    </span>ReceivedEndorsements {
-        <span class="doccomment">/// the endorsements
-        </span>endorsements: Map&lt;EndorsementId, WrappedEndorsement&gt;,
-        <span class="doccomment">/// whether or not to propagate endorsements
-        </span>propagate: bool,
     },
 }
 
@@ -375,37 +291,33 @@
 /// )
 /// ```
 </span><span class="kw">pub type </span>BlocksResults =
-    Map&lt;BlockId, <span class="prelude-ty">Option</span>&lt;(<span class="prelude-ty">Option</span>&lt;Set&lt;OperationId&gt;&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;EndorsementId&gt;&gt;)&gt;&gt;;
+    PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;(<span class="prelude-ty">Option</span>&lt;PreHashSet&lt;OperationId&gt;&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;EndorsementId&gt;&gt;)&gt;&gt;;
 
 <span class="doccomment">/// Commands that protocol worker can process
-</span><span class="attribute">#[derive(Debug, Serialize)]
+</span><span class="attribute">#[derive(Debug)]
 </span><span class="kw">pub enum </span>ProtocolCommand {
     <span class="doccomment">/// Notify block integration of a given block.
     </span>IntegratedBlock {
         <span class="doccomment">/// block id
         </span>block_id: BlockId,
-        <span class="doccomment">/// operations ids in the block
-        </span>operation_ids: OperationIds,
-        <span class="doccomment">/// endorsement ids in the block
-        </span>endorsement_ids: Vec&lt;EndorsementId&gt;,
+        <span class="doccomment">/// block storage
+        </span>storage: Storage,
     },
     <span class="doccomment">/// A block, or it&#39;s header, amounted to an attempted attack.
     </span>AttackBlockDetected(BlockId),
     <span class="doccomment">/// Wish list delta
     </span>WishlistDelta {
         <span class="doccomment">/// add to wish list
-        </span>new: Set&lt;BlockId&gt;,
+        </span>new: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;WrappedHeader&gt;&gt;,
         <span class="doccomment">/// remove from wish list
-        </span>remove: Set&lt;BlockId&gt;,
+        </span>remove: PreHashSet&lt;BlockId&gt;,
     },
-    <span class="doccomment">/// The response to a `[ProtocolEvent::GetBlocks]`.
-    </span>GetBlocksResults(BlocksResults),
     <span class="doccomment">/// Propagate operations (send batches)
-    /// note: OperationIds are replaced with OperationPrefixIds
+    /// note: Set&lt;OperationId&gt; are replaced with OperationPrefixIds
     ///       by the controller
-    </span>PropagateOperations(OperationIds),
+    </span>PropagateOperations(Storage),
     <span class="doccomment">/// Propagate endorsements
-    </span>PropagateEndorsements(Map&lt;EndorsementId, WrappedEndorsement&gt;),
+    </span>PropagateEndorsements(Storage),
 }
 
 <span class="doccomment">/// protocol management commands
@@ -420,22 +332,18 @@
     <span class="doccomment">/// Sends the order to propagate the header of a block
     ///
     /// # Arguments
-    /// * hash : hash of the block header
+    /// * block_id : ID of the block
+    /// * storage: Storage instance containing references to the block and all its dependencies
     </span><span class="kw">pub async fn </span>integrated_block(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         block_id: BlockId,
-        operation_ids: Set&lt;OperationId&gt;,
-        endorsement_ids: Vec&lt;EndorsementId&gt;,
+        storage: Storage,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.integrated_block&quot;</span>, {
             <span class="string">&quot;block_id&quot;</span>: block_id
         });
         <span class="self">self</span>.<span class="number">0
-            </span>.send(ProtocolCommand::IntegratedBlock {
-                block_id,
-                operation_ids,
-                endorsement_ids,
-            })
+            </span>.send(ProtocolCommand::IntegratedBlock { block_id, storage })
             .<span class="kw">await
             </span>.map_err(|<span class="kw">_</span>| ProtocolError::ChannelError(<span class="string">&quot;block_integrated command send error&quot;</span>.into()))
     }
@@ -453,27 +361,11 @@
             })
     }
 
-    <span class="doccomment">/// Send the response to a `ProtocolEvent::GetBlocks`.
-    </span><span class="kw">pub async fn </span>send_get_blocks_results(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        results: BlocksResults,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.send_get_blocks_results&quot;</span>, {
-            <span class="string">&quot;results&quot;</span>: results
-        });
-        <span class="self">self</span>.<span class="number">0
-            </span>.send(ProtocolCommand::GetBlocksResults(results))
-            .<span class="kw">await
-            </span>.map_err(|<span class="kw">_</span>| {
-                ProtocolError::ChannelError(<span class="string">&quot;send_get_blocks_results command send error&quot;</span>.into())
-            })
-    }
-
     <span class="doccomment">/// update the block wish list
     </span><span class="kw">pub async fn </span>send_wishlist_delta(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        new: Set&lt;BlockId&gt;,
-        remove: Set&lt;BlockId&gt;,
+        new: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;WrappedHeader&gt;&gt;,
+        remove: PreHashSet&lt;BlockId&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.send_wishlist_delta&quot;</span>, { <span class="string">&quot;new&quot;</span>: new, <span class="string">&quot;remove&quot;</span>: remove });
         <span class="self">self</span>.<span class="number">0
@@ -487,15 +379,12 @@
     <span class="doccomment">/// Propagate a batch of operation ids (from pool).
     ///
     /// note: Full `OperationId` is replaced by a `OperationPrefixId` later by the worker.
-    </span><span class="kw">pub async fn </span>propagate_operations(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        operation_ids: OperationIds,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+    </span><span class="kw">pub async fn </span>propagate_operations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, operations: Storage) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.propagate_operations&quot;</span>, {
-            <span class="string">&quot;operations&quot;</span>: operation_ids
+            <span class="string">&quot;operations&quot;</span>: operations.get_op_refs()
         });
         <span class="self">self</span>.<span class="number">0
-            </span>.send(ProtocolCommand::PropagateOperations(operation_ids))
+            </span>.send(ProtocolCommand::PropagateOperations(operations))
             .<span class="kw">await
             </span>.map_err(|<span class="kw">_</span>| {
                 ProtocolError::ChannelError(<span class="string">&quot;propagate_operation command send error&quot;</span>.into())
@@ -503,17 +392,13 @@
     }
 
     <span class="doccomment">/// propagate endorsements to connected node
-    </span><span class="kw">pub async fn </span>propagate_endorsements(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        endorsements: Map&lt;EndorsementId, WrappedEndorsement&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+    </span><span class="kw">pub fn </span>propagate_endorsements(<span class="kw-2">&amp;mut </span><span class="self">self</span>, endorsements: Storage) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.propagate_endorsements&quot;</span>, {
-            <span class="string">&quot;endorsements&quot;</span>: endorsements
+            <span class="string">&quot;endorsements&quot;</span>: endorsements.get_endorsement_refs()
         });
         <span class="self">self</span>.<span class="number">0
-            </span>.send(ProtocolCommand::PropagateEndorsements(endorsements))
-            .<span class="kw">await
-            </span>.map_err(|<span class="kw">_</span>| {
+            </span>.blocking_send(ProtocolCommand::PropagateEndorsements(endorsements))
+            .map_err(|<span class="kw">_</span>| {
                 ProtocolError::ChannelError(<span class="string">&quot;propagate_endorsements command send error&quot;</span>.into())
             })
     }
@@ -549,36 +434,6 @@
     }
 }
 
-<span class="doccomment">/// Protocol pool event receiver
-</span><span class="kw">pub struct </span>ProtocolPoolEventReceiver(<span class="kw">pub </span>mpsc::Receiver&lt;ProtocolPoolEvent&gt;);
-
-<span class="kw">impl </span>ProtocolPoolEventReceiver {
-    <span class="doccomment">/// Receives the next `ProtocolPoolEvent`
-    /// None is returned when all Sender halves have dropped,
-    /// indicating that no further values can be sent on the channel
-    </span><span class="kw">pub async fn </span>wait_event(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;ProtocolPoolEvent, ProtocolError&gt; {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.pool_event_receiver.wait_event&quot;</span>, {});
-        <span class="self">self</span>.<span class="number">0</span>.recv().<span class="kw">await</span>.ok_or_else(|| {
-            ProtocolError::ChannelError(
-                <span class="string">&quot;DefaultProtocolController wait_pool_event channel recv failed&quot;</span>.into(),
-            )
-        })
-    }
-
-    <span class="doccomment">/// drains remaining events and returns them in a `VecDeque`
-    /// note: events are sorted from oldest to newest
-    </span><span class="kw">pub async fn </span>drain(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; VecDeque&lt;ProtocolPoolEvent&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>remaining_events: VecDeque&lt;ProtocolPoolEvent&gt; = VecDeque::new();
-        <span class="kw">while let </span><span class="prelude-val">Some</span>(evt) = <span class="self">self</span>.<span class="number">0</span>.recv().<span class="kw">await </span>{
-            <span class="macro">debug!</span>(
-                <span class="string">&quot;after receiving event from ProtocolPoolEventReceiver.0 in protocol_controller drain&quot;
-            </span>);
-            remaining_events.push_back(evt);
-        }
-        remaining_events
-    }
-}
-
 <span class="doccomment">/// protocol manager used to stop the protocol
 </span><span class="kw">pub struct </span>ProtocolManager {
     join_handle: JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;NetworkEventReceiver, ProtocolError&gt;&gt;,
@@ -601,14 +456,15 @@
     </span><span class="kw">pub async fn </span>stop(
         <span class="self">self</span>,
         protocol_event_receiver: ProtocolEventReceiver,
-        protocol_pool_event_receiver: ProtocolPoolEventReceiver,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;NetworkEventReceiver, ProtocolError&gt; {
+        <span class="comment">//protocol_pool_event_receiver: ProtocolPoolEventReceiver,
+    </span>) -&gt; <span class="prelude-ty">Result</span>&lt;NetworkEventReceiver, ProtocolError&gt; {
+        <span class="macro">info!</span>(<span class="string">&quot;stopping protocol controller...&quot;</span>);
         drop(<span class="self">self</span>.manager_tx);
         <span class="kw">let </span>_remaining_events = protocol_event_receiver.drain().<span class="kw">await</span>;
-        <span class="kw">let </span>_remaining_events = protocol_pool_event_receiver.drain().<span class="kw">await</span>;
         <span class="kw">let </span>network_event_receiver = <span class="self">self</span>.join_handle.<span class="kw">await</span><span class="question-mark">??</span>;
+        <span class="macro">info!</span>(<span class="string">&quot;protocol controller stopped&quot;</span>);
         <span class="prelude-val">Ok</span>(network_event_receiver)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (addacb587 2022-08-24)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>
