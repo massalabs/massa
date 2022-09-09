@@ -208,11 +208,13 @@ impl BootstrapServer {
                     let compensation_millis = self.compensation_millis;
                     let version = self.version;
                     let data_execution = self.final_state.clone();
+                    let consensus_command_sender = self.consensus_command_sender.clone();
+                    let network_command_sender = self.network_command_sender.clone();
                     let keypair = self.keypair.clone();
                     let config = self.bootstrap_config.clone();
-                    let (data_peers, data_graph) = tokio::join!(self.network_command_sender.get_bootstrap_peers(), self.consensus_command_sender.get_bootstrap_state());
 
                     bootstrap_sessions.push(async move {
+                        let (data_peers, data_graph) = tokio::join!(network_command_sender.get_bootstrap_peers(), consensus_command_sender.get_bootstrap_state());
                         let data_graph = match data_graph {
                             Ok(v) => v,
                             Err(err) => {

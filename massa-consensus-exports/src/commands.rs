@@ -6,7 +6,7 @@ use massa_models::api::BlockGraphStatus;
 use massa_models::{block::BlockId, slot::Slot};
 use massa_models::{clique::Clique, stats::ConsensusStats};
 use massa_storage::Storage;
-use tokio::sync::oneshot;
+use tokio::sync::{oneshot, mpsc};
 
 /// Commands that can be processed by consensus.
 #[derive(Debug)]
@@ -28,7 +28,7 @@ pub enum ConsensusCommand {
         response_tx: oneshot::Sender<Vec<BlockGraphStatus>>,
     },
     /// Returns the bootstrap state
-    GetBootstrapState(oneshot::Sender<BootstrapableGraph>),
+    GetBootstrapState(mpsc::Sender<Box<BootstrapableGraph>>),
     /// get current stats on consensus
     GetStats(oneshot::Sender<ConsensusStats>),
     /// Get a block at a given slot in a blockclique
