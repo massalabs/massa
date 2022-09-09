@@ -104,20 +104,20 @@ impl ConsensusCommandSender {
 
     /// get bootstrap snapshot
     pub async fn get_bootstrap_state(&self) -> Result<BootstrapableGraph, ConsensusError> {
-        let (response_tx, mut response_rx) = mpsc::channel::<Box<BootstrapableGraph>>(10);
+        let (response_tx, mut response_rx) = mpsc::channel::<BootstrapableGraph>(3);
         self.0
-        .send(ConsensusCommand::GetBootstrapState(response_tx))
-        .await
-        .map_err(|_| {
-            ConsensusError::SendChannelError(
-                "send error consensus command get_bootstrap_state".into(),
+            .send(ConsensusCommand::GetBootstrapState(response_tx))
+            .await
+            .map_err(|_| {
+                ConsensusError::SendChannelError(
+                    "send error consensus command get_bootstrap_state".into(),
+                )
+            })?;
+        response_rx.recv().await.ok_or_else(|| {
+            ConsensusError::ReceiveChannelError(
+                "consensus command get_bootstrap_state response read error".to_string(),
             )
-        })?;
-    Ok(*response_rx.recv().await.ok_or_else(|| {
-        ConsensusError::ReceiveChannelError(
-            "consensus command get_bootstrap_state response read error".to_string(),
-        )
-    })?)
+        })
     }
 
     /// get best parents

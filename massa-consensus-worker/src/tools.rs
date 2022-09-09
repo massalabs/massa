@@ -28,7 +28,7 @@ pub async fn start_consensus_controller(
 ) -> Result<(
     ConsensusCommandSender,
     ConsensusEventReceiver,
-    ConsensusManager
+    ConsensusManager,
 )> {
     debug!("starting consensus controller");
     massa_trace!(
@@ -102,6 +102,6 @@ pub async fn start_consensus_controller(
         ConsensusManager {
             manager_tx,
             join_handle,
-        }
+        },
     ))
 }

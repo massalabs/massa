@@ -207,13 +207,11 @@ impl BootstrapServer {
 
                     // launch bootstrap
 
-                    // let (data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
                     let compensation_millis = self.compensation_millis;
                     let version = self.version;
                     let consensus_command_sender = self.consensus_command_sender.clone();
                     let network_command_sender = self.network_command_sender.clone();
                     let data_execution = self.final_state.clone();
-                    // let (data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
                     let keypair = self.keypair.clone();
                     let config = self.bootstrap_config.clone();
 
