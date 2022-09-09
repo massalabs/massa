@@ -6,6 +6,7 @@ use massa_consensus_exports::error::ConsensusError;
 use massa_final_state::FinalStateError;
 use massa_hash::MassaHashError;
 use massa_network_exports::NetworkError;
+use massa_pos_exports::PosError;
 use massa_serialization::SerializeError;
 use massa_time::TimeError;
 use thiserror::Error;
@@ -18,7 +19,7 @@ pub enum BootstrapError {
     /// general bootstrap error: {0}
     GeneralError(String),
     /// models error: {0}
-    ModelsError(#[from] massa_models::ModelsError),
+    ModelsError(#[from] massa_models::error::ModelsError),
     /// serialize error: {0}
     SerializeError(#[from] SerializeError),
     /// unexpected message received from server: {0:?}
@@ -39,6 +40,8 @@ pub enum BootstrapError {
     NetworkError(#[from] NetworkError),
     /// final state error: {0}
     FinalStateError(#[from] FinalStateError),
+    /// pos error: {0}
+    PoSError(#[from] PosError),
     /// join error: {0}
     JoinError(#[from] tokio::task::JoinError),
     /// missing keypair file

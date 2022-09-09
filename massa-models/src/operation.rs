@@ -1,16 +1,13 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::constants::OPERATION_ID_SIZE_BYTES;
-use crate::node_configuration::MAX_OPERATIONS_PER_MESSAGE;
-use crate::node_configuration::OPERATION_ID_PREFIX_SIZE_BYTES;
-use crate::prehash::{PreHashed, Set};
+use crate::prehash::{PreHashSet, PreHashed};
 use crate::serialization::StringDeserializer;
-
 use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
-use crate::{Address, Amount, ModelsError};
 use crate::{
-    AddressDeserializer, AmountDeserializer, AmountSerializer, StringSerializer, VecU8Deserializer,
-    VecU8Serializer,
+    address::{Address, AddressDeserializer},
+    amount::{Amount, AmountDeserializer, AmountSerializer},
+    error::ModelsError,
+    serialization::{StringSerializer, VecU8Deserializer, VecU8Serializer},
 };
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
@@ -32,7 +29,11 @@ use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::{ops::Bound::Included, ops::RangeInclusive, str::FromStr};
 
-const OPERATION_ID_STRING_PREFIX: &str = "OPE";
+/// Size in bytes of the serialized operation ID
+pub const OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+
+/// Size in bytes of the serialized operation ID prefix
+pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;
 
 /// operation id
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
@@ -44,83 +45,32 @@ pub struct OperationPrefixId([u8; OPERATION_ID_PREFIX_SIZE_BYTES]);
 
 impl std::fmt::Display for OperationId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if cfg!(feature = "hash-prefix") {
-            write!(
-                f,
-                "{}-{}",
-                OPERATION_ID_STRING_PREFIX,
-                self.0.to_bs58_check()
-            )
-        } else {
-            write!(f, "{}", self.0.to_bs58_check())
-        }
+        write!(f, "{}", self.0.to_bs58_check())
     }
 }
 
 impl std::fmt::Debug for OperationId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if cfg!(feature = "hash-prefix") {
-            write!(
-                f,
-                "{}-{}",
-                OPERATION_ID_STRING_PREFIX,
-                self.0.to_bs58_check()
-            )
-        } else {
-            write!(f, "{}", self.0.to_bs58_check())
-        }
+        write!(f, "{}", self.0.to_bs58_check())
     }
 }
 
 impl std::fmt::Display for OperationPrefixId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if cfg!(feature = "hash-prefix") {
-            write!(
-                f,
-                "{}-{}",
-                OPERATION_ID_STRING_PREFIX,
-                bs58::encode(self.0.as_bytes()).into_string()
-            )
-        } else {
-            write!(f, "{}", bs58::encode(self.0.as_bytes()).into_string())
-        }
+        write!(f, "{}", bs58::encode(self.0.as_bytes()).into_string())
     }
 }
 
 impl std::fmt::Debug for OperationPrefixId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if cfg!(feature = "hash-prefix") {
-            write!(
-                f,
-                "{}-{}",
-                OPERATION_ID_STRING_PREFIX,
-                bs58::encode(self.0.as_bytes()).into_string()
-            )
-        } else {
-            write!(f, "{}", bs58::encode(self.0.as_bytes()).into_string())
-        }
+        write!(f, "{}", bs58::encode(self.0.as_bytes()).into_string())
     }
 }
 
 impl FromStr for OperationId {
     type Err = ModelsError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if cfg!(feature = "hash-prefix") {
-            let v: Vec<_> = s.split('-').collect();
-            if v.len() != 2 {
-                // assume there is no prefix
-                Ok(OperationId(Hash::from_str(s)?))
-            } else if v[0] != OPERATION_ID_STRING_PREFIX {
-                Err(ModelsError::WrongPrefix(
-                    OPERATION_ID_STRING_PREFIX.to_string(),
-                    v[0].to_string(),
-                ))
-            } else {
-                Ok(OperationId(Hash::from_str(v[1])?))
-            }
-        } else {
-            Ok(OperationId(Hash::from_str(s)?))
-        }
+        Ok(OperationId(Hash::from_str(s)?))
     }
 }
 
@@ -132,8 +82,8 @@ impl Id for OperationId {
         OperationId(hash)
     }
 
-    fn hash(&self) -> Hash {
-        self.0
+    fn get_hash(&self) -> &Hash {
+        &self.0
     }
 }
 
@@ -191,6 +141,33 @@ impl OperationId {
                 .try_into()
                 .expect("failed to truncate prefix from OperationId"),
         )
+    }
+}
+
+/// Deserializer for `OperationId`
+#[derive(Default)]
+pub struct OperationIdDeserializer {
+    hash_deserializer: HashDeserializer,
+}
+
+impl OperationIdDeserializer {
+    /// Creates a new deserializer for `OperationId`
+    pub fn new() -> Self {
+        Self {
+            hash_deserializer: HashDeserializer::new(),
+        }
+    }
+}
+
+impl Deserializer<OperationId> for OperationIdDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], OperationId, E> {
+        context("Failed OperationId deserialization", |input| {
+            let (rest, hash) = self.hash_deserializer.deserialize(input)?;
+            Ok((rest, OperationId(hash)))
+        })(buffer)
     }
 }
 
@@ -254,6 +231,26 @@ impl Default for OperationSerializer {
 }
 
 impl Serializer<Operation> for OperationSerializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{amount::Amount, address::Address, operation::{OperationType, OperationSerializer, Operation}};
+    /// use massa_signature::KeyPair;
+    /// use massa_serialization::Serializer;
+    /// use std::str::FromStr;
+    ///
+    /// let keypair = KeyPair::generate();
+    /// let op = OperationType::Transaction {
+    ///    recipient_address: Address::from_public_key(&keypair.get_public_key()),
+    ///    amount: Amount::from_str("300").unwrap(),
+    /// };
+    /// let operation = Operation {
+    ///   fee: Amount::from_str("20").unwrap(),
+    ///   op,
+    ///   expire_period: 50,
+    /// };
+    /// let mut buffer = Vec::new();
+    /// OperationSerializer::new().serialize(&operation, &mut buffer).unwrap();
+    /// ```
     fn serialize(&self, value: &Operation, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.amount_serializer.serialize(&value.fee, buffer)?;
         self.u64_serializer
@@ -265,29 +262,68 @@ impl Serializer<Operation> for OperationSerializer {
 
 /// Serializer for `Operation`
 pub struct OperationDeserializer {
-    u64_deserializer: U64VarIntDeserializer,
+    expire_period_deserializer: U64VarIntDeserializer,
     amount_deserializer: AmountDeserializer,
     op_type_deserializer: OperationTypeDeserializer,
 }
 
 impl OperationDeserializer {
     /// Creates a `OperationDeserializer`
-    pub const fn new() -> Self {
+    pub fn new(
+        max_datastore_value_length: u64,
+        max_function_name_length: u16,
+        max_parameters_size: u32,
+    ) -> Self {
         Self {
-            u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
-            amount_deserializer: AmountDeserializer::new(Included(0), Included(u64::MAX)),
-            op_type_deserializer: OperationTypeDeserializer::new(),
+            expire_period_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
+            op_type_deserializer: OperationTypeDeserializer::new(
+                max_datastore_value_length,
+                max_function_name_length,
+                max_parameters_size,
+            ),
         }
     }
 }
 
-impl Default for OperationDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Deserializer<Operation> for OperationDeserializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{amount::Amount, address::Address, operation::{OperationType, OperationSerializer, Operation, OperationDeserializer}};
+    /// use massa_signature::KeyPair;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    ///
+    /// let keypair = KeyPair::generate();
+    /// let op = OperationType::Transaction {
+    ///    recipient_address: Address::from_public_key(&keypair.get_public_key()),
+    ///    amount: Amount::from_str("300").unwrap(),
+    /// };
+    /// let operation = Operation {
+    ///   fee: Amount::from_str("20").unwrap(),
+    ///   op,
+    ///   expire_period: 50,
+    /// };
+    /// let mut buffer = Vec::new();
+    /// OperationSerializer::new().serialize(&operation, &mut buffer).unwrap();
+    /// let (rest, deserialized_operation) = OperationDeserializer::new(10000, 10000, 10000).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(deserialized_operation.fee, operation.fee);
+    /// assert_eq!(deserialized_operation.expire_period, operation.expire_period);
+    /// match deserialized_operation.op {
+    ///   OperationType::Transaction {
+    ///     recipient_address,
+    ///     amount,
+    ///   } => {
+    ///     assert_eq!(recipient_address, Address::from_public_key(&keypair.get_public_key()));
+    ///     assert_eq!(amount, Amount::from_str("300").unwrap());
+    ///   }
+    ///   _ => panic!("wrong operation type"),
+    /// };
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
@@ -299,7 +335,7 @@ impl Deserializer<Operation> for OperationDeserializer {
                     self.amount_deserializer.deserialize(input)
                 }),
                 context("Failed expire_period deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
+                    self.expire_period_deserializer.deserialize(input)
                 }),
                 context("Failed op deserialization", |input| {
                     let (rest, op) = self.op_type_deserializer.deserialize(input)?;
@@ -427,7 +463,7 @@ pub struct OperationTypeSerializer {
     vec_u8_serializer: VecU8Serializer,
     amount_serializer: AmountSerializer,
     function_name_serializer: StringSerializer<U16VarIntSerializer, u16>,
-    parameter_serializer: StringSerializer<U16VarIntSerializer, u16>,
+    parameter_serializer: StringSerializer<U32VarIntSerializer, u32>,
 }
 
 impl OperationTypeSerializer {
@@ -439,7 +475,7 @@ impl OperationTypeSerializer {
             vec_u8_serializer: VecU8Serializer::new(),
             amount_serializer: AmountSerializer::new(),
             function_name_serializer: StringSerializer::new(U16VarIntSerializer::new()),
-            parameter_serializer: StringSerializer::new(U16VarIntSerializer::new()),
+            parameter_serializer: StringSerializer::new(U32VarIntSerializer::new()),
         }
     }
 }
@@ -451,6 +487,23 @@ impl Default for OperationTypeSerializer {
 }
 
 impl Serializer<OperationType> for OperationTypeSerializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{operation::{OperationTypeSerializer, OperationTypeDeserializer,OperationType}, address::Address, amount::Amount};
+    /// use massa_signature::KeyPair;
+    /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
+    /// use std::str::FromStr;
+    ///
+    /// let keypair = KeyPair::generate();
+    /// let op = OperationType::ExecuteSC {
+    ///    data: vec![0x01, 0x02, 0x03],
+    ///    max_gas: 100,
+    ///    coins: Amount::from_str("300").unwrap(),
+    ///    gas_price: Amount::from_str("1").unwrap(),
+    /// };
+    /// let mut buffer = Vec::new();
+    /// OperationTypeSerializer::new().serialize(&op, &mut buffer).unwrap();
+    /// ```
     fn serialize(&self, value: &OperationType, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         match value {
             OperationType::Transaction {
@@ -512,10 +565,11 @@ impl Serializer<OperationType> for OperationTypeSerializer {
 
 /// Serializer for `OperationType`
 pub struct OperationTypeDeserializer {
-    u32_deserializer: U32VarIntDeserializer,
-    u64_deserializer: U64VarIntDeserializer,
+    id_deserializer: U32VarIntDeserializer,
+    rolls_number_deserializer: U64VarIntDeserializer,
+    max_gas_deserializer: U64VarIntDeserializer,
     address_deserializer: AddressDeserializer,
-    vec_u8_deserializer: VecU8Deserializer,
+    data_deserializer: VecU8Deserializer,
     amount_deserializer: AmountDeserializer,
     function_name_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
     parameter_deserializer: StringDeserializer<U32VarIntDeserializer, u32>,
@@ -523,38 +577,76 @@ pub struct OperationTypeDeserializer {
 
 impl OperationTypeDeserializer {
     /// Creates a new `OperationTypeDeserializer`
-    pub const fn new() -> Self {
+    pub fn new(
+        max_datastore_value_length: u64,
+        max_function_name_length: u16,
+        max_parameters_size: u32,
+    ) -> Self {
         Self {
-            u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
-            u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
+            rolls_number_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            max_gas_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             address_deserializer: AddressDeserializer::new(),
-            vec_u8_deserializer: VecU8Deserializer::new(Included(0), Included(u64::MAX)),
-            amount_deserializer: AmountDeserializer::new(Included(0), Included(u64::MAX)),
+            data_deserializer: VecU8Deserializer::new(
+                Included(0),
+                Included(max_datastore_value_length),
+            ),
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
             function_name_deserializer: StringDeserializer::new(U16VarIntDeserializer::new(
                 Included(0),
-                Included(u16::MAX),
+                Included(max_function_name_length),
             )),
             parameter_deserializer: StringDeserializer::new(U32VarIntDeserializer::new(
                 Included(0),
-                Included(u32::MAX),
+                Included(max_parameters_size),
             )),
         }
     }
 }
 
-impl Default for OperationTypeDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Deserializer<OperationType> for OperationTypeDeserializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{operation::{OperationTypeSerializer, OperationTypeDeserializer, OperationType}, address::Address, amount::Amount};
+    /// use massa_signature::KeyPair;
+    /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
+    /// use std::str::FromStr;
+    ///
+    /// let keypair = KeyPair::generate();
+    /// let op = OperationType::ExecuteSC {
+    ///    data: vec![0x01, 0x02, 0x03],
+    ///    max_gas: 100,
+    ///    coins: Amount::from_str("300").unwrap(),
+    ///    gas_price: Amount::from_str("1").unwrap(),
+    /// };
+    /// let mut buffer = Vec::new();
+    /// OperationTypeSerializer::new().serialize(&op, &mut buffer).unwrap();
+    /// let (rest, op_deserialized) = OperationTypeDeserializer::new(10000, 10000, 10000).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// match op_deserialized {
+    ///    OperationType::ExecuteSC {
+    ///      data,
+    ///      max_gas,
+    ///      coins,
+    ///      gas_price
+    ///   } => {
+    ///     assert_eq!(data, vec![0x01, 0x02, 0x03]);
+    ///     assert_eq!(max_gas, 100);
+    ///     assert_eq!(coins, Amount::from_str("300").unwrap());
+    ///     assert_eq!(gas_price, Amount::from_str("1").unwrap());
+    ///   },
+    ///   _ => panic!("Unexpected operation type"),
+    /// };
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], OperationType, E> {
         context("Failed OperationType deserialization", |buffer| {
-            let (input, id) = self.u32_deserializer.deserialize(buffer)?;
+            let (input, id) = self.id_deserializer.deserialize(buffer)?;
             let id = OperationTypeId::try_from(id).map_err(|_| {
                 nom::Err::Error(ParseError::from_error_kind(
                     buffer,
@@ -579,12 +671,12 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                 })
                 .parse(input),
                 OperationTypeId::RollBuy => context("Failed RollBuy deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
+                    self.rolls_number_deserializer.deserialize(input)
                 })
                 .map(|roll_count| OperationType::RollBuy { roll_count })
                 .parse(input),
                 OperationTypeId::RollSell => context("Failed RollSell deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
+                    self.rolls_number_deserializer.deserialize(input)
                 })
                 .map(|roll_count| OperationType::RollSell { roll_count })
                 .parse(input),
@@ -592,7 +684,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                     "Failed ExecuteSC deserialization",
                     tuple((
                         context("Failed max_gas deserialization", |input| {
-                            self.u64_deserializer.deserialize(input)
+                            self.max_gas_deserializer.deserialize(input)
                         }),
                         context("Failed coins deserialization", |input| {
                             self.amount_deserializer.deserialize(input)
@@ -601,7 +693,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                             self.amount_deserializer.deserialize(input)
                         }),
                         context("Failed data deserialization", |input| {
-                            self.vec_u8_deserializer.deserialize(input)
+                            self.data_deserializer.deserialize(input)
                         }),
                     )),
                 )
@@ -618,7 +710,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                     "Failed CallSC deserialization",
                     tuple((
                         context("Failed max_gas deserialization", |input| {
-                            self.u64_deserializer.deserialize(input)
+                            self.max_gas_deserializer.deserialize(input)
                         }),
                         context("Failed parallel_coins deserialization", |input| {
                             self.amount_deserializer.deserialize(input)
@@ -667,15 +759,8 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
 }
 
 impl WrappedOperation {
-    /// Verifies the signature and integrity of the operation and computes operation ID
-    pub fn verify_integrity(&self) -> Result<OperationId, ModelsError> {
-        self.verify_signature(OperationSerializer::new(), &self.creator_public_key)?;
-        Ok(self.id)
-    }
-}
-
-impl WrappedOperation {
     /// get the range of periods during which an operation is valid
+    /// Range: (op.expire_period - cfg.operation_validity_period) -> op.expire_period (included)
     pub fn get_validity_range(&self, operation_validity_period: u64) -> RangeInclusive<u64> {
         let start = self
             .content
@@ -684,7 +769,7 @@ impl WrappedOperation {
         start..=self.content.expire_period
     }
 
-    /// Get the amount of gas used by the operation
+    /// Get the max amount of gas used by the operation (max_gas)
     pub fn get_gas_usage(&self) -> u64 {
         match &self.content.op {
             OperationType::ExecuteSC { max_gas, .. } => *max_gas,
@@ -695,24 +780,31 @@ impl WrappedOperation {
         }
     }
 
-    /// Get the amount of coins used by the operation to pay for gas
-    pub fn get_gas_coins(&self) -> Amount {
+    /// Get the gas price set by the operation
+    pub fn get_gas_price(&self) -> Amount {
         match &self.content.op {
-            OperationType::ExecuteSC {
-                max_gas, gas_price, ..
-            } => gas_price.saturating_mul_u64(*max_gas),
-            OperationType::CallSC {
-                max_gas, gas_price, ..
-            } => gas_price.saturating_mul_u64(*max_gas),
+            OperationType::ExecuteSC { gas_price, .. } => *gas_price,
+            OperationType::CallSC { gas_price, .. } => *gas_price,
             OperationType::RollBuy { .. } => Amount::default(),
             OperationType::RollSell { .. } => Amount::default(),
             OperationType::Transaction { .. } => Amount::default(),
         }
     }
 
+    /// Get the amount of coins used by the operation to pay for gas
+    pub fn get_gas_coins(&self) -> Amount {
+        self.get_gas_price()
+            .saturating_mul_u64(self.get_gas_usage())
+    }
+
+    /// Get the total fee paid by the creator
+    pub fn get_total_fee(&self) -> Amount {
+        self.get_gas_coins().saturating_add(self.content.fee)
+    }
+
     /// get the addresses that are involved in this operation from a ledger point of view
-    pub fn get_ledger_involved_addresses(&self) -> Set<Address> {
-        let mut res = Set::<Address>::default();
+    pub fn get_ledger_involved_addresses(&self) -> PreHashSet<Address> {
+        let mut res = PreHashSet::<Address>::default();
         let emitter_address = Address::from_public_key(&self.creator_public_key);
         res.insert(emitter_address);
         match &self.content.op {
@@ -731,9 +823,26 @@ impl WrappedOperation {
         res
     }
 
+    /// Gets the maximal amount of sequential coins that may be spent by this operation (incl. fee)
+    pub fn get_max_sequential_spending(&self, roll_price: Amount) -> Amount {
+        // compute the max amount of sequential coins spent outside of the fees
+        let max_non_fee_seq_spending = match &self.content.op {
+            OperationType::Transaction { amount, .. } => *amount,
+            OperationType::RollBuy { roll_count } => roll_price.saturating_mul_u64(*roll_count),
+            OperationType::RollSell { .. } => Amount::zero(),
+            OperationType::ExecuteSC { coins, .. } => *coins,
+            OperationType::CallSC {
+                sequential_coins, ..
+            } => *sequential_coins,
+        };
+
+        // add all fees and return
+        max_non_fee_seq_spending.saturating_add(self.get_total_fee())
+    }
+
     /// get the addresses that are involved in this operation from a rolls point of view
-    pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
-        let mut res = Set::<Address>::default();
+    pub fn get_roll_involved_addresses(&self) -> Result<PreHashSet<Address>, ModelsError> {
+        let mut res = PreHashSet::<Address>::default();
         match self.content.op {
             OperationType::Transaction { .. } => {}
             OperationType::RollBuy { .. } => {
@@ -749,12 +858,10 @@ impl WrappedOperation {
     }
 }
 
-/// Set of operation ids
-pub type OperationIds = Set<OperationId>;
 /// Set of operation id's prefix
-pub type OperationPrefixIds = Set<OperationPrefixId>;
+pub type OperationPrefixIds = PreHashSet<OperationPrefixId>;
 
-/// Serializer for `OperationIds`
+/// Serializer for `Vec<OperationId>`
 pub struct OperationIdsSerializer {
     u32_serializer: U32VarIntSerializer,
 }
@@ -774,10 +881,28 @@ impl Default for OperationIdsSerializer {
     }
 }
 
-impl Serializer<OperationIds> for OperationIdsSerializer {
-    fn serialize(&self, value: &OperationIds, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+impl Serializer<Vec<OperationId>> for OperationIdsSerializer {
+    /// ## Example:
+    /// ```
+    /// use massa_models::operation::{OperationId, OperationIdsSerializer};
+    /// use massa_serialization::Serializer;
+    /// use std::str::FromStr;
+    ///
+    /// let mut operations_ids = Vec::new();
+    /// operations_ids.push(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
+    /// operations_ids.push(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
+    /// let mut buffer = Vec::new();
+    /// OperationIdsSerializer::new().serialize(&operations_ids, &mut buffer).unwrap();
+    /// ```
+    fn serialize(
+        &self,
+        value: &Vec<OperationId>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
         let list_len: u32 = value.len().try_into().map_err(|_| {
-            SerializeError::NumberTooBig("could not encode OperationIds list length as u32".into())
+            SerializeError::NumberTooBig(
+                "could not encode Vec<OperationId> list length as u32".into(),
+            )
         })?;
         self.u32_serializer.serialize(&list_len, buffer)?;
         for hash in value {
@@ -787,41 +912,50 @@ impl Serializer<OperationIds> for OperationIdsSerializer {
     }
 }
 
-/// Deserializer for `OperationIds`
+/// Deserializer for `Vec<OperationId>`
 pub struct OperationIdsDeserializer {
-    u32_deserializer: U32VarIntDeserializer,
+    length_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
 }
 
 impl OperationIdsDeserializer {
     /// Creates a new `OperationIdsDeserializer`
-    pub fn new() -> Self {
+    pub fn new(max_operations_per_message: u32) -> Self {
         Self {
-            u32_deserializer: U32VarIntDeserializer::new(
+            length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Included(MAX_OPERATIONS_PER_MESSAGE),
+                Included(max_operations_per_message),
             ),
             hash_deserializer: HashDeserializer::new(),
         }
     }
 }
 
-impl Default for OperationIdsDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Deserializer<OperationIds> for OperationIdsDeserializer {
+impl Deserializer<Vec<OperationId>> for OperationIdsDeserializer {
+    /// ## Example:
+    /// ```
+    /// use massa_models::operation::{OperationId, OperationIdsSerializer, OperationIdsDeserializer};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    ///
+    /// let mut operations_ids = Vec::new();
+    /// operations_ids.push(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
+    /// operations_ids.push(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
+    /// let mut buffer = Vec::new();
+    /// OperationIdsSerializer::new().serialize(&operations_ids, &mut buffer).unwrap();
+    /// let (rest, deserialized_operations_ids) = OperationIdsDeserializer::new(1000).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(deserialized_operations_ids, operations_ids);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], OperationIds, E> {
+    ) -> IResult<&'a [u8], Vec<OperationId>, E> {
         context(
-            "Failed OperationIds deserialization",
+            "Failed Vec<OperationId> deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
-                    self.u32_deserializer.deserialize(input)
+                    self.length_deserializer.deserialize(input)
                 }),
                 context("Failed OperationId deserialization", |input| {
                     self.hash_deserializer.deserialize(input)
@@ -845,6 +979,17 @@ impl OperationPrefixIdDeserializer {
 }
 
 impl Deserializer<OperationPrefixId> for OperationPrefixIdDeserializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::operation::{OperationPrefixId, OperationPrefixIds, OperationPrefixIdsSerializer, OPERATION_ID_PREFIX_SIZE_BYTES};
+    /// use massa_serialization::Serializer;
+    ///
+    /// let mut op_prefixes = OperationPrefixIds::default();
+    /// op_prefixes.insert(OperationPrefixId::from(&[20; OPERATION_ID_PREFIX_SIZE_BYTES]));
+    /// op_prefixes.insert(OperationPrefixId::from(&[20; OPERATION_ID_PREFIX_SIZE_BYTES]));
+    /// let mut buffer = Vec::new();
+    /// OperationPrefixIdsSerializer::new().serialize(&op_prefixes, &mut buffer).unwrap();
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
@@ -878,30 +1023,38 @@ impl Deserializer<OperationPrefixId> for OperationPrefixIdDeserializer {
 
 /// Deserializer for `OperationPrefixIds`
 pub struct OperationPrefixIdsDeserializer {
-    u32_deserializer: U32VarIntDeserializer,
+    length_deserializer: U32VarIntDeserializer,
     pref_deserializer: OperationPrefixIdDeserializer,
 }
 
 impl OperationPrefixIdsDeserializer {
     /// Creates a new `OperationIdsDeserializer`
-    pub const fn new() -> Self {
+    pub const fn new(max_operations_per_message: u32) -> Self {
         Self {
-            u32_deserializer: U32VarIntDeserializer::new(
+            length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Included(MAX_OPERATIONS_PER_MESSAGE),
+                Included(max_operations_per_message),
             ),
             pref_deserializer: OperationPrefixIdDeserializer::new(),
         }
     }
 }
 
-impl Default for OperationPrefixIdsDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Deserializer<OperationPrefixIds> for OperationPrefixIdsDeserializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{operation::{OperationPrefixId, OperationPrefixIds, OperationPrefixIdsSerializer, OperationPrefixIdsDeserializer, OPERATION_ID_PREFIX_SIZE_BYTES}};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    ///
+    /// let mut op_prefixes = OperationPrefixIds::default();
+    /// op_prefixes.insert(OperationPrefixId::from(&[20; OPERATION_ID_PREFIX_SIZE_BYTES]));
+    /// op_prefixes.insert(OperationPrefixId::from(&[20; OPERATION_ID_PREFIX_SIZE_BYTES]));
+    /// let mut buffer = Vec::new();
+    /// OperationPrefixIdsSerializer::new().serialize(&op_prefixes, &mut buffer).unwrap();
+    /// let (rest, deserialized) = OperationPrefixIdsDeserializer::new(1000).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(deserialized, op_prefixes);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
@@ -910,7 +1063,7 @@ impl Deserializer<OperationPrefixIds> for OperationPrefixIdsDeserializer {
             "Failed OperationPrefixIds deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
-                    self.u32_deserializer.deserialize(input)
+                    self.length_deserializer.deserialize(input)
                 }),
                 context("Failed OperationPrefixId deserialization", |input| {
                     self.pref_deserializer.deserialize(input)
@@ -949,7 +1102,9 @@ impl Serializer<OperationPrefixIds> for OperationPrefixIdsSerializer {
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
         let list_len: u32 = value.len().try_into().map_err(|_| {
-            SerializeError::NumberTooBig("could not encode OperationIds list length as u32".into())
+            SerializeError::NumberTooBig(
+                "could not encode Set<OperationId> list length as u32".into(),
+            )
         })?;
         self.u32_serializer.serialize(&list_len, buffer)?;
         for prefix in value {
@@ -958,9 +1113,6 @@ impl Serializer<OperationPrefixIds> for OperationPrefixIdsSerializer {
         Ok(())
     }
 }
-
-/// Set of self containing signed operations.
-pub type Operations = Vec<WrappedOperation>;
 
 /// Serializer for `Operations`
 pub struct OperationsSerializer {
@@ -984,8 +1136,34 @@ impl Default for OperationsSerializer {
     }
 }
 
-impl Serializer<Operations> for OperationsSerializer {
-    fn serialize(&self, value: &Operations, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+impl Serializer<Vec<WrappedOperation>> for OperationsSerializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{operation::{WrappedOperation, Operation, OperationType, OperationsSerializer, OperationSerializer}, wrapped::WrappedContent, address::Address, amount::Amount};
+    /// use massa_signature::KeyPair;
+    /// use massa_serialization::Serializer;
+    /// use std::str::FromStr;
+    ///
+    /// let keypair = KeyPair::generate();
+    /// let op = OperationType::Transaction {
+    ///    recipient_address: Address::from_public_key(&keypair.get_public_key()),
+    ///    amount: Amount::from_str("300").unwrap(),
+    /// };
+    /// let content = Operation {
+    ///   fee: Amount::from_str("20").unwrap(),
+    ///   op,
+    ///   expire_period: 50,
+    /// };
+    /// let op_wrapped = Operation::new_wrapped(content, OperationSerializer::new(), &keypair).unwrap();
+    /// let operations = vec![op_wrapped.clone(), op_wrapped.clone()];
+    /// let mut buffer = Vec::new();
+    /// OperationsSerializer::new().serialize(&operations, &mut buffer).unwrap();
+    /// ```
+    fn serialize(
+        &self,
+        value: &Vec<WrappedOperation>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
         let list_len: u32 = value.len().try_into().map_err(|_| {
             SerializeError::NumberTooBig("could not encode Operations list length as u32".into())
         })?;
@@ -999,39 +1177,71 @@ impl Serializer<Operations> for OperationsSerializer {
 
 /// Deserializer for `Operations`
 pub struct OperationsDeserializer {
-    u32_deserializer: U32VarIntDeserializer,
+    length_deserializer: U32VarIntDeserializer,
     signed_op_deserializer: WrappedDeserializer<Operation, OperationDeserializer>,
 }
 
 impl OperationsDeserializer {
     /// Creates a new `OperationsDeserializer`
-    pub const fn new() -> Self {
+    pub fn new(
+        max_operations_per_message: u32,
+        max_datastore_value_length: u64,
+        max_function_name_length: u16,
+        max_parameters_size: u32,
+    ) -> Self {
         Self {
-            u32_deserializer: U32VarIntDeserializer::new(
+            length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Included(MAX_OPERATIONS_PER_MESSAGE),
+                Included(max_operations_per_message),
             ),
-            signed_op_deserializer: WrappedDeserializer::new(OperationDeserializer::new()),
+            signed_op_deserializer: WrappedDeserializer::new(OperationDeserializer::new(
+                max_datastore_value_length,
+                max_function_name_length,
+                max_parameters_size,
+            )),
         }
     }
 }
 
-impl Default for OperationsDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Deserializer<Operations> for OperationsDeserializer {
+impl Deserializer<Vec<WrappedOperation>> for OperationsDeserializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{operation::{WrappedOperation, Operation, OperationType, OperationsSerializer, OperationsDeserializer, OperationSerializer}, wrapped::WrappedContent, address::Address, amount::Amount};
+    /// use massa_signature::KeyPair;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    ///
+    /// let keypair = KeyPair::generate();
+    /// let op = OperationType::Transaction {
+    ///    recipient_address: Address::from_public_key(&keypair.get_public_key()),
+    ///    amount: Amount::from_str("300").unwrap(),
+    /// };
+    /// let content = Operation {
+    ///   fee: Amount::from_str("20").unwrap(),
+    ///   op,
+    ///   expire_period: 50,
+    /// };
+    /// let op_wrapped = Operation::new_wrapped(content, OperationSerializer::new(), &keypair).unwrap();
+    /// let operations = vec![op_wrapped.clone(), op_wrapped.clone()];
+    /// let mut buffer = Vec::new();
+    /// OperationsSerializer::new().serialize(&operations, &mut buffer).unwrap();
+    /// let (rest, deserialized_operations) = OperationsDeserializer::new(10000, 10000, 10000, 10000).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// for (operation1, operation2) in deserialized_operations.iter().zip(operations.iter()) {
+    ///     assert_eq!(operation1.id, operation2.id);
+    ///     assert_eq!(operation1.signature, operation2.signature);
+    ///     assert_eq!(operation1.creator_public_key, operation2.creator_public_key);
+    ///     assert_eq!(operation1.content.fee, operation2.content.fee);
+    /// }
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Operations, E> {
+    ) -> IResult<&'a [u8], Vec<WrappedOperation>, E> {
         context(
             "Failed Operations deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
-                    self.u32_deserializer.deserialize(input)
+                    self.length_deserializer.deserialize(input)
                 }),
                 context("Failed operation deserialization", |input| {
                     self.signed_op_deserializer.deserialize(input)
@@ -1044,6 +1254,10 @@ impl Deserializer<Operations> for OperationsDeserializer {
 
 #[cfg(test)]
 mod tests {
+    use crate::config::{
+        MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
+    };
+
     use super::*;
     use massa_serialization::DeserializeError;
     use massa_signature::KeyPair;
@@ -1063,9 +1277,13 @@ mod tests {
         OperationTypeSerializer::new()
             .serialize(&op, &mut ser_type)
             .unwrap();
-        let (_, res_type) = OperationTypeDeserializer::new()
-            .deserialize::<DeserializeError>(&ser_type)
-            .unwrap();
+        let (_, res_type) = OperationTypeDeserializer::new(
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+        )
+        .deserialize::<DeserializeError>(&ser_type)
+        .unwrap();
         assert_eq!(format!("{}", res_type), format!("{}", op));
 
         let content = Operation {
@@ -1078,9 +1296,13 @@ mod tests {
         OperationSerializer::new()
             .serialize(&content, &mut ser_content)
             .unwrap();
-        let (_, res_content) = OperationDeserializer::new()
-            .deserialize::<DeserializeError>(&ser_content)
-            .unwrap();
+        let (_, res_content) = OperationDeserializer::new(
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+        )
+        .deserialize::<DeserializeError>(&ser_content)
+        .unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
 
@@ -1091,9 +1313,13 @@ mod tests {
             .serialize(&op, &mut ser_op)
             .unwrap();
         let (_, res_op): (&[u8], WrappedOperation) =
-            WrappedDeserializer::new(OperationDeserializer::new())
-                .deserialize::<DeserializeError>(&ser_op)
-                .unwrap();
+            WrappedDeserializer::new(OperationDeserializer::new(
+                MAX_DATASTORE_VALUE_LENGTH,
+                MAX_FUNCTION_NAME_LENGTH,
+                MAX_PARAMETERS_SIZE,
+            ))
+            .deserialize::<DeserializeError>(&ser_op)
+            .unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
         assert_eq!(op.get_validity_range(10), 40..=50);
@@ -1114,9 +1340,13 @@ mod tests {
         OperationTypeSerializer::new()
             .serialize(&op, &mut ser_type)
             .unwrap();
-        let (_, res_type) = OperationTypeDeserializer::new()
-            .deserialize::<DeserializeError>(&ser_type)
-            .unwrap();
+        let (_, res_type) = OperationTypeDeserializer::new(
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+        )
+        .deserialize::<DeserializeError>(&ser_type)
+        .unwrap();
         assert_eq!(format!("{}", res_type), format!("{}", op));
 
         let content = Operation {
@@ -1129,9 +1359,13 @@ mod tests {
         OperationSerializer::new()
             .serialize(&content, &mut ser_content)
             .unwrap();
-        let (_, res_content) = OperationDeserializer::new()
-            .deserialize::<DeserializeError>(&ser_content)
-            .unwrap();
+        let (_, res_content) = OperationDeserializer::new(
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+        )
+        .deserialize::<DeserializeError>(&ser_content)
+        .unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
 
@@ -1142,9 +1376,13 @@ mod tests {
             .serialize(&op, &mut ser_op)
             .unwrap();
         let (_, res_op): (&[u8], WrappedOperation) =
-            WrappedDeserializer::new(OperationDeserializer::new())
-                .deserialize::<DeserializeError>(&ser_op)
-                .unwrap();
+            WrappedDeserializer::new(OperationDeserializer::new(
+                MAX_DATASTORE_VALUE_LENGTH,
+                MAX_FUNCTION_NAME_LENGTH,
+                MAX_PARAMETERS_SIZE,
+            ))
+            .deserialize::<DeserializeError>(&ser_op)
+            .unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
         assert_eq!(op.get_validity_range(10), 40..=50);
@@ -1171,9 +1409,13 @@ mod tests {
         OperationTypeSerializer::new()
             .serialize(&op, &mut ser_type)
             .unwrap();
-        let (_, res_type) = OperationTypeDeserializer::new()
-            .deserialize::<DeserializeError>(&ser_type)
-            .unwrap();
+        let (_, res_type) = OperationTypeDeserializer::new(
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+        )
+        .deserialize::<DeserializeError>(&ser_type)
+        .unwrap();
         assert_eq!(format!("{}", res_type), format!("{}", op));
 
         let content = Operation {
@@ -1186,9 +1428,13 @@ mod tests {
         OperationSerializer::new()
             .serialize(&content, &mut ser_content)
             .unwrap();
-        let (_, res_content) = OperationDeserializer::new()
-            .deserialize::<DeserializeError>(&ser_content)
-            .unwrap();
+        let (_, res_content) = OperationDeserializer::new(
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+        )
+        .deserialize::<DeserializeError>(&ser_content)
+        .unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
 
@@ -1199,9 +1445,13 @@ mod tests {
             .serialize(&op, &mut ser_op)
             .unwrap();
         let (_, res_op): (&[u8], WrappedOperation) =
-            WrappedDeserializer::new(OperationDeserializer::new())
-                .deserialize::<DeserializeError>(&ser_op)
-                .unwrap();
+            WrappedDeserializer::new(OperationDeserializer::new(
+                MAX_DATASTORE_VALUE_LENGTH,
+                MAX_FUNCTION_NAME_LENGTH,
+                MAX_PARAMETERS_SIZE,
+            ))
+            .deserialize::<DeserializeError>(&ser_op)
+            .unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
         assert_eq!(op.get_validity_range(10), 40..=50);

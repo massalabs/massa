@@ -1,6 +1,6 @@
 use massa_models::{
     operation::{OperationId, OperationPrefixId},
-    prehash::Map,
+    prehash::{PreHashMap, PreHashSet},
 };
 
 /// The structure store the previously checked operations.
@@ -8,7 +8,7 @@ use massa_models::{
 /// note: we could think about replace `Vec<OperationId>` with `Vec<OperationSuffixId>`
 ///       if the execution time CPU is equivalent
 #[derive(Default)]
-pub(crate) struct CheckedOperations(Map<OperationPrefixId, OperationId>);
+pub(crate) struct CheckedOperations(PreHashMap<OperationPrefixId, OperationId>);
 
 impl CheckedOperations {
     /// Insert in the adapter an operation `id`.
@@ -21,14 +21,20 @@ impl CheckedOperations {
         self.0.insert(prefix, *id).is_none()
     }
 
-    /// Get a set of [OperationIds] matching with the givec `prefix`.
+    pub fn extend(&mut self, ids: &PreHashSet<OperationId>) {
+        ids.iter().for_each(|id| {
+            self.insert(id);
+        });
+    }
+
+    /// Get a operation id matching with the givec `prefix` or None if there is none.
     pub fn get(&self, prefix: &OperationPrefixId) -> Option<&OperationId> {
         self.0.get(prefix)
     }
 
     /// Clear the content of the adapter.
-    pub fn clear(&mut self) {
-        self.0.clear()
+    pub fn clear(&mut self) -> PreHashSet<OperationId> {
+        self.0.drain().map(|(_, id)| id).collect()
     }
 
     /// Returns the number of prefix keys in the adapter.

@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, fmt::Display};
 
-use crate::{output_event::SCOutputEvent, Slot};
+use crate::{output_event::SCOutputEvent, slot::Slot};
 use serde::{Deserialize, Serialize};
 
 /// The result of the read-only execution.

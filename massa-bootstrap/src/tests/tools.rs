@@ -1,39 +1,43 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::mock_establisher::Duplex;
-use crate::settings::BootstrapSettings;
-use bitvec::prelude::*;
+use crate::settings::BootstrapConfig;
+use bitvec::vec::BitVec;
 use massa_async_pool::test_exports::{create_async_pool, get_random_message};
 use massa_consensus_exports::commands::ConsensusCommand;
 use massa_final_state::test_exports::create_final_state;
-use massa_final_state::FinalState;
-use massa_graph::{
-    export_active_block::ExportActiveBlock, ledger::ConsensusLedgerSubset, BootstrapableGraph,
-};
+use massa_final_state::{ExecutedOps, FinalState, StateChanges};
+use massa_graph::export_active_block::ExportActiveBlockSerializer;
+use massa_graph::{export_active_block::ExportActiveBlock, BootstrapableGraph};
+use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
-use massa_models::operation::OperationSerializer;
+use massa_models::config::{
+    BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH,
+    MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
+    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT,
+    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DATA_ASYNC_MESSAGE,
+    MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK,
+    MAX_PARAMETERS_SIZE, PERIODS_PER_CYCLE, THREAD_COUNT,
+};
+use massa_models::prehash::PreHashMap;
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
-    clique::Clique,
-    ledger_models::{LedgerChange, LedgerChanges, LedgerData},
-    rolls::{RollCounts, RollUpdate, RollUpdateSerializer, RollUpdates},
-    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, DeserializeCompact,
-    Endorsement, Operation, SerializeCompact, Slot,
+    address::Address,
+    amount::Amount,
+    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId},
+    endorsement::Endorsement,
+    slot::Slot,
 };
-use massa_models::{BlockSerializer, EndorsementSerializer};
+use massa_models::{block::BlockSerializer, endorsement::EndorsementSerializer};
 use massa_network_exports::{BootstrapPeers, NetworkCommand};
-use massa_proof_of_stake_exports::{
-    ExportProofOfStake, ExportProofOfStakeDeserializer, ExportProofOfStakeSerializer,
-    ThreadCycleState,
-};
+use massa_pos_exports::{CycleInfo, DeferredCredits, PoSChanges, PoSFinalState, ProductionStats};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{KeyPair, PublicKey, Signature};
 use massa_time::MassaTime;
 use rand::Rng;
 use std::collections::{HashMap, VecDeque};
-use std::str::FromStr;
 use std::{
     collections::BTreeMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -56,6 +60,7 @@ fn get_some_random_bytes() -> Vec<u8> {
 fn get_random_ledger_entry() -> LedgerEntry {
     let mut rng = rand::thread_rng();
     let parallel_balance = Amount::from_raw(rng.gen::<u64>());
+    let sequential_balance = Amount::from_raw(rng.gen::<u64>());
     let bytecode: Vec<u8> = get_some_random_bytes();
     let mut datastore = BTreeMap::new();
     for _ in 0usize..rng.gen_range(0..10) {
@@ -64,35 +69,132 @@ fn get_random_ledger_entry() -> LedgerEntry {
         datastore.insert(key, value);
     }
     LedgerEntry {
+        sequential_balance,
         parallel_balance,
         bytecode,
         datastore,
     }
 }
 
-/// generates a random bootstrap state for the final state
-pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalState {
+/// generates random PoS cycles info
+fn get_random_pos_cycles_info(
+    r_limit: u64,
+) -> (
+    BTreeMap<Address, u64>,
+    PreHashMap<Address, ProductionStats>,
+    BitVec<u8>,
+) {
     let mut rng = rand::thread_rng();
+    let mut roll_counts = BTreeMap::default();
+    let mut production_stats = PreHashMap::default();
+    let mut rng_seed: BitVec<u8> = BitVec::default();
+
+    for i in 0u64..(r_limit / 2) {
+        roll_counts.insert(get_random_address(), i);
+        production_stats.insert(
+            get_random_address(),
+            ProductionStats {
+                block_success_count: i * 3,
+                block_failure_count: i,
+            },
+        );
+        rng_seed.push(rng.gen_range(0..2) == 1);
+    }
+    (roll_counts, production_stats, rng_seed)
+}
+
+/// generates random PoS deferred credits
+fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
+    let mut deferred_credits = DeferredCredits::default();
+
+    for i in 0u64..r_limit {
+        let mut credits = PreHashMap::default();
+        for j in 0u64..(r_limit / 2) {
+            credits.insert(get_random_address(), Amount::from_raw(j));
+        }
+        deferred_credits.0.insert(
+            Slot {
+                period: i,
+                thread: 0,
+            },
+            credits,
+        );
+    }
+    deferred_credits
+}
+
+/// generates a random PoS final state
+fn get_random_pos_state(r_limit: u64, pos: PoSFinalState) -> PoSFinalState {
+    let mut cycle_history = VecDeque::new();
+    for i in 0u64..r_limit {
+        let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit);
+        cycle_history.push_back(CycleInfo {
+            cycle: i,
+            roll_counts,
+            complete: false, // if i == r_limit - 1 { false } else { true },
+            rng_seed,
+            production_stats,
+        });
+    }
+    let deferred_credits = get_random_deferred_credits(r_limit);
+    PoSFinalState {
+        cycle_history,
+        deferred_credits,
+        ..pos
+    }
+}
+
+/// generates random PoS changes
+fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
+    let deferred_credits = get_random_deferred_credits(r_limit);
+    let (roll_counts, production_stats, seed_bits) = get_random_pos_cycles_info(r_limit);
+    PoSChanges {
+        seed_bits,
+        roll_changes: roll_counts.into_iter().collect(),
+        production_stats,
+        deferred_credits,
+    }
+}
+
+/// generates a random bootstrap state for the final state
+pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
+    let mut rng = rand::thread_rng();
+    let r_limit: u64 = rng.gen_range(25..50);
 
     let mut sorted_ledger = HashMap::new();
     let mut messages = BTreeMap::new();
-    for _ in 0usize..rng.gen_range(3..10) {
+    for _ in 0..r_limit {
         let message = get_random_message();
         messages.insert(message.compute_id(), message);
     }
-    for _ in 0usize..rng.gen_range(5..10) {
+    for _ in 0..r_limit {
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
 
-    let slot = Slot::new(rng.gen::<u64>(), rng.gen_range(0..thread_count));
+    let slot = Slot::new(0, rng.gen_range(0..THREAD_COUNT));
     let final_ledger = create_final_ledger(Some(sorted_ledger), Default::default());
     let async_pool = create_async_pool(Default::default(), messages);
+    let mut changes_history = VecDeque::new();
+    for i in 0u64..r_limit {
+        changes_history.push_back((
+            Slot {
+                period: i,
+                thread: 0,
+            },
+            StateChanges {
+                roll_state_changes: get_random_pos_changes(r_limit),
+                ..Default::default()
+            },
+        ));
+    }
     create_final_state(
         Default::default(),
         slot,
         Box::new(final_ledger),
         async_pool,
-        VecDeque::new(),
+        changes_history,
+        get_random_pos_state(r_limit, pos),
+        ExecutedOps::default(),
     )
 }
 
@@ -115,33 +217,12 @@ pub fn get_dummy_signature(s: &str) -> Signature {
     priv_key.sign(&Hash::compute_from(s.as_bytes())).unwrap()
 }
 
-pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapSettings {
-    // Init the serialization context with a default,
-    // can be overwritten with a more specific one in the test.
-    massa_models::init_serialization_context(massa_models::SerializationContext {
-        max_operations_per_block: 1024,
-        thread_count: 2,
-        max_advertise_length: 128,
-        max_message_size: 3 * 1024 * 1024,
-        max_block_size: 3 * 1024 * 1024,
-        max_bootstrap_blocks: 100,
-        max_bootstrap_cliques: 100,
-        max_bootstrap_deps: 100,
-        max_bootstrap_children: 100,
-        max_ask_blocks_per_message: 10,
-        max_operations_per_message: 1024,
-        max_endorsements_per_message: 1024,
-        max_bootstrap_message_size: 100000000,
-        max_bootstrap_pos_entries: 1000,
-        max_bootstrap_pos_cycles: 5,
-        endorsement_count: 8,
-    });
-
-    BootstrapSettings {
+pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig {
+    BootstrapConfig {
         bind: Some("0.0.0.0:31244".parse().unwrap()),
         connect_timeout: 200.into(),
         retry_delay: 200.into(),
-        max_ping: MassaTime::from(500),
+        max_ping: MassaTime::from_millis(500),
         read_timeout: 1000.into(),
         write_timeout: 1000.into(),
         read_error_timeout: 200.into(),
@@ -153,6 +234,24 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapSetting
         ip_list_max_size: 10,
         per_ip_min_interval: 10000.into(),
         max_bytes_read_write: std::f64::INFINITY,
+        max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
+        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+        randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
+        thread_count: THREAD_COUNT,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        endorsement_count: ENDORSEMENT_COUNT,
+        max_advertise_length: MAX_ADVERTISE_LENGTH,
+        max_bootstrap_async_pool_changes: MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
+        max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
+        max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
+        max_bootstrap_final_state_parts_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+        max_data_async_message: MAX_DATA_ASYNC_MESSAGE,
+        max_operations_per_blocks: MAX_OPERATIONS_PER_BLOCK,
+        max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
+        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+        max_ledger_changes_count: MAX_LEDGER_CHANGES_COUNT,
+        max_parameters_size: MAX_PARAMETERS_SIZE,
     }
 }
 
@@ -198,202 +297,24 @@ where
     }
 }
 
-/// asserts that two `ExportProofOfStake` are equal
-pub fn assert_eq_thread_cycle_states(v1: &ExportProofOfStake, v2: &ExportProofOfStake) {
-    assert_eq!(
-        v1.cycle_states.len(),
-        v2.cycle_states.len(),
-        "length mismatch between sent and received pos"
-    );
-    for (itm1, itm2) in v1.cycle_states.iter().zip(v2.cycle_states.iter()) {
-        assert_eq!(
-            itm1.len(),
-            itm2.len(),
-            "subitem length mismatch between sent and received pos"
-        );
-        for (itm1, itm2) in itm1.iter().zip(itm2.iter()) {
-            assert_eq!(
-                itm1.cycle, itm2.cycle,
-                "ThreadCycleState.cycle mismatch between sent and received pos"
-            );
-            assert_eq!(
-                itm1.last_final_slot, itm2.last_final_slot,
-                "ThreadCycleState.last_final_slot mismatch between sent and received pos"
-            );
-            assert_eq!(
-                itm1.roll_count.0, itm2.roll_count.0,
-                "ThreadCycleState.roll_count mismatch between sent and received pos"
-            );
-            assert_eq!(
-                itm1.cycle_updates.0.len(),
-                itm2.cycle_updates.0.len(),
-                "ThreadCycleState.cycle_updates.len() mismatch between sent and received pos"
-            );
-            let roll_update_serializer = RollUpdateSerializer::new();
-            for (a1, itm1) in itm1.cycle_updates.0.iter() {
-                let itm2 = itm2.cycle_updates.0.get(a1).expect(
-                    "ThreadCycleState.cycle_updates element miss between sent and received pos",
-                );
-                let mut itm1_bytes = Vec::new();
-                roll_update_serializer
-                    .serialize(itm1, &mut itm1_bytes)
-                    .unwrap();
-                let mut itm2_bytes = Vec::new();
-                roll_update_serializer
-                    .serialize(itm2, &mut itm2_bytes)
-                    .unwrap();
-                assert_eq!(
-                    itm1_bytes, itm2_bytes,
-                    "ThreadCycleState.cycle_updates item mismatch between sent and received pos"
-                );
-            }
-            assert_eq!(
-                itm1.rng_seed, itm2.rng_seed,
-                "ThreadCycleState.rng_seed mismatch between sent and received pos"
-            );
-            assert_eq!(
-                itm1.production_stats, itm2.production_stats,
-                "ThreadCycleState.production_stats mismatch between sent and received pos"
-            );
-        }
-    }
-}
-
 /// asserts that two `BootstrapableGraph` are equal
 pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGraph) {
     assert_eq!(
-        v1.active_blocks.len(),
-        v2.active_blocks.len(),
+        v1.final_blocks.len(),
+        v2.final_blocks.len(),
         "length mismatch"
     );
-    for (id1, itm1) in v1.active_blocks.iter() {
-        let itm2 = v2.active_blocks.get(id1).unwrap();
-        assert_eq!(
-            itm1.block.serialized_data, itm2.block.serialized_data,
-            "block mismatch"
-        );
-        assert_eq!(
-            itm1.block_ledger_changes.0.len(),
-            itm2.block_ledger_changes.0.len(),
-            "ledger changes length mismatch"
-        );
-        for (id1, itm1) in itm1.block_ledger_changes.0.iter() {
-            let itm2 = itm2.block_ledger_changes.0.get(id1).unwrap();
-            assert_eq!(
-                itm1.balance_delta, itm2.balance_delta,
-                "balance delta mistmatch"
-            );
-            assert_eq!(
-                itm1.balance_increment, itm2.balance_increment,
-                "balance increment mismatch"
-            );
-        }
-        assert_eq!(itm1.children, itm2.children, "children mismatch");
-        assert_eq!(
-            itm1.dependencies, itm2.dependencies,
-            "dependencies mismatch"
-        );
-        assert_eq!(itm1.is_final, itm2.is_final, "is_final mismatch");
-        assert_eq!(itm1.parents, itm2.parents, "parents mismatch");
-        assert_eq!(
-            itm1.production_events, itm2.production_events,
-            "production events mismatch"
-        );
-        assert_eq!(
-            itm1.roll_updates.0.len(),
-            itm2.roll_updates.0.len(),
-            "roll updates len mismatch"
-        );
-        for (id1, itm1) in itm1.roll_updates.0.iter() {
-            let itm2 = itm2.roll_updates.0.get(id1).unwrap();
-            assert_eq!(
-                itm1.roll_purchases, itm2.roll_purchases,
-                "roll purchases mistmatch"
-            );
-            assert_eq!(itm1.roll_sales, itm2.roll_sales, "roll sales mismatch");
-        }
+    let serializer = ExportActiveBlockSerializer::new();
+    let mut data1: Vec<u8> = Vec::new();
+    let mut data2: Vec<u8> = Vec::new();
+    for (item1, item2) in v1.final_blocks.iter().zip(v2.final_blocks.iter()) {
+        serializer.serialize(item1, &mut data1).unwrap();
+        serializer.serialize(item2, &mut data2).unwrap();
     }
-    assert_eq!(v1.best_parents, v2.best_parents, "best parents mismatch");
-    assert_eq!(v1.gi_head, v2.gi_head, "gi_head mismatch");
-    assert_eq!(
-        v1.latest_final_blocks_periods, v2.latest_final_blocks_periods,
-        "latest_final_blocks_periods mismatch"
-    );
-    assert_eq!(v1.ledger.0.len(), v1.ledger.0.len(), "ledger len mismatch");
-    for (id1, itm1) in v1.ledger.0.iter() {
-        let itm2 = v2.ledger.0.get(id1).unwrap();
-        assert_eq!(itm1.balance, itm2.balance, "balance mistmatch");
-    }
-    assert_eq!(
-        v1.max_cliques.len(),
-        v2.max_cliques.len(),
-        "max_cliques len mismatch"
-    );
-    for (itm1, itm2) in v1.max_cliques.iter().zip(v2.max_cliques.iter()) {
-        assert_eq!(itm1.block_ids, itm2.block_ids, "block_ids mistmatch");
-        assert_eq!(itm1.fitness, itm2.fitness, "fitness mistmatch");
-        assert_eq!(
-            itm1.is_blockclique, itm2.is_blockclique,
-            "is_blockclique mistmatch"
-        );
-    }
+    assert_eq!(data1, data2, "BootstrapableGraph mismatch")
 }
 
-pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
-    let keypair = KeyPair::generate();
-    let address = Address::from_public_key(&keypair.get_public_key());
-
-    let mut ledger_subset = ConsensusLedgerSubset::default();
-    ledger_subset.0.insert(
-        address,
-        LedgerData {
-            balance: Amount::from_str("10").unwrap(),
-        },
-    );
-
-    let cycle_state = ThreadCycleState {
-        cycle: 1,
-        last_final_slot: Slot::new(1, 1),
-        roll_count: RollCounts(
-            vec![(get_random_address(), 123), (get_random_address(), 456)]
-                .into_iter()
-                .collect(),
-        ),
-        cycle_updates: RollUpdates(
-            vec![
-                (
-                    get_random_address(),
-                    RollUpdate {
-                        roll_purchases: 147,
-                        roll_sales: 44788,
-                    },
-                ),
-                (
-                    get_random_address(),
-                    RollUpdate {
-                        roll_purchases: 8887,
-                        roll_sales: 114,
-                    },
-                ),
-            ]
-            .into_iter()
-            .collect(),
-        ),
-        rng_seed: bitvec![u8, Lsb0 ; 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
-        production_stats: vec![
-            (get_random_address(), (1, 2)),
-            (get_random_address(), (3, 4)),
-        ]
-        .into_iter()
-        .collect(),
-    };
-    let boot_pos = ExportProofOfStake {
-        cycle_states: vec![
-            vec![cycle_state.clone()].into_iter().collect(),
-            vec![cycle_state].into_iter().collect(),
-        ],
-    };
-
+pub fn get_boot_state() -> BootstrapableGraph {
     let keypair = KeyPair::generate();
 
     let block = Block::new_wrapped(
@@ -401,7 +322,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
             header: BlockHeader::new_wrapped(
                 BlockHeader {
                     slot: Slot::new(1, 1),
-                    parents: vec![get_dummy_block_id("p1"), get_dummy_block_id("p2")],
+                    parents: vec![get_dummy_block_id("p1"); THREAD_COUNT as usize],
                     operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
                     endorsements: vec![
                         Endorsement::new_wrapped(
@@ -430,177 +351,47 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
                 &keypair,
             )
             .unwrap(),
-            operations: vec![
-                Operation::new_wrapped(
-                    Operation {
-                        fee: Amount::from_str("1524878").unwrap(),
-                        expire_period: 5787899,
-                        op: massa_models::OperationType::Transaction {
-                            recipient_address: get_random_address(),
-                            amount: Amount::from_str("1259787").unwrap(),
-                        },
-                    },
-                    OperationSerializer::new(),
-                    &keypair,
-                )
-                .unwrap(),
-                Operation::new_wrapped(
-                    Operation {
-                        fee: Amount::from_str("878763222").unwrap(),
-                        expire_period: 4557887,
-                        op: massa_models::OperationType::RollBuy { roll_count: 45544 },
-                    },
-                    OperationSerializer::new(),
-                    &keypair,
-                )
-                .unwrap(),
-                Operation::new_wrapped(
-                    Operation {
-                        fee: Amount::from_str("4545").unwrap(),
-                        expire_period: 452524,
-                        op: massa_models::OperationType::RollSell {
-                            roll_count: 4888787,
-                        },
-                    },
-                    OperationSerializer::new(),
-                    &keypair,
-                )
-                .unwrap(),
-            ],
+            operations: Default::default(),
         },
         BlockSerializer::new(),
         &keypair,
     )
     .unwrap();
 
-    let block_id = block.id;
-
-    //TODO: We currently lost information. Need to use shared storage
+    // TODO: We currently lost information. Need to use shared storage
     let block1 = ExportActiveBlock {
         block,
-        block_id,
-        parents: vec![
-            (get_dummy_block_id("b1"), 4777),
-            (get_dummy_block_id("b2"), 8870),
-        ],
-        children: vec![
-            vec![
-                (get_dummy_block_id("b3"), 101),
-                (get_dummy_block_id("b4"), 455),
-            ]
-            .into_iter()
-            .collect(),
-            vec![(get_dummy_block_id("b3_2"), 889)]
-                .into_iter()
-                .collect(),
-        ],
-        dependencies: vec![get_dummy_block_id("b5"), get_dummy_block_id("b6")]
-            .into_iter()
-            .collect(),
+        parents: vec![(get_dummy_block_id("b1"), 4777); THREAD_COUNT as usize],
         is_final: true,
-        block_ledger_changes: LedgerChanges(
-            vec![
-                (
-                    get_random_address(),
-                    LedgerChange {
-                        balance_increment: true,
-                        balance_delta: Amount::from_str("157").unwrap(),
-                    },
-                ),
-                (
-                    get_random_address(),
-                    LedgerChange {
-                        balance_increment: false,
-                        balance_delta: Amount::from_str("44").unwrap(),
-                    },
-                ),
-                (
-                    get_random_address(),
-                    LedgerChange {
-                        balance_increment: false,
-                        balance_delta: Amount::from_str("878").unwrap(),
-                    },
-                ),
-            ]
-            .into_iter()
-            .collect(),
-        ),
-        roll_updates: RollUpdates(
-            vec![
-                (
-                    get_random_address(),
-                    RollUpdate {
-                        roll_purchases: 778,
-                        roll_sales: 54851,
-                    },
-                ),
-                (
-                    get_random_address(),
-                    RollUpdate {
-                        roll_purchases: 788778,
-                        roll_sales: 11451,
-                    },
-                ),
-            ]
-            .into_iter()
-            .collect(),
-        ),
-        production_events: vec![
-            (12, get_random_address(), true),
-            (31, get_random_address(), false),
-        ],
+        operations: Default::default(),
     };
-
-    let export_pos_deserializer = ExportProofOfStakeDeserializer::new();
-    let export_pos_serializer = ExportProofOfStakeSerializer::new();
-    let mut export_pos_bytes = Vec::new();
-
-    export_pos_serializer
-        .serialize(&boot_pos, &mut export_pos_bytes)
-        .unwrap();
-    let (_, pos_deser) = export_pos_deserializer
-        .deserialize::<DeserializeError>(&export_pos_bytes)
-        .unwrap();
-
-    // check re-serialization
-    assert_eq_thread_cycle_states(&pos_deser, &boot_pos);
 
     let boot_graph = BootstrapableGraph {
-        active_blocks: vec![(get_dummy_block_id("block1"), block1)]
-            .into_iter()
-            .collect(),
-        best_parents: vec![
-            (get_dummy_block_id("parent1"), 2),
-            (get_dummy_block_id("parent2"), 3),
-        ],
-        latest_final_blocks_periods: vec![
-            (get_dummy_block_id("parent1"), 10),
-            (get_dummy_block_id("parent2"), 10),
-        ],
-        gi_head: vec![
-            (get_dummy_block_id("parent1"), Default::default()),
-            (get_dummy_block_id("parent2"), Default::default()),
-        ]
-        .into_iter()
-        .collect(),
-        max_cliques: vec![Clique {
-            block_ids: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")]
-                .into_iter()
-                .collect(),
-            fitness: 123,
-            is_blockclique: true,
-        }],
-        ledger: ledger_subset,
+        final_blocks: vec![block1],
     };
 
-    assert_eq_bootstrap_graph(
-        &BootstrapableGraph::from_bytes_compact(&boot_graph.to_bytes_compact().unwrap())
-            .unwrap()
-            .0,
-        &boot_graph,
+    let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();
+    let bootstrapable_graph_deserializer = BootstrapableGraphDeserializer::new(
+        THREAD_COUNT,
+        ENDORSEMENT_COUNT,
+        MAX_BOOTSTRAP_BLOCKS,
+        MAX_DATASTORE_VALUE_LENGTH,
+        MAX_FUNCTION_NAME_LENGTH,
+        MAX_PARAMETERS_SIZE,
+        MAX_OPERATIONS_PER_BLOCK,
     );
 
-    (boot_pos, boot_graph)
+    let mut bootstrapable_graph_serialized = Vec::new();
+    bootstrapable_graph_serializer
+        .serialize(&boot_graph, &mut bootstrapable_graph_serialized)
+        .unwrap();
+    let (_, bootstrapable_graph_deserialized) = bootstrapable_graph_deserializer
+        .deserialize::<DeserializeError>(&bootstrapable_graph_serialized)
+        .unwrap();
+
+    assert_eq_bootstrap_graph(&bootstrapable_graph_deserialized, &boot_graph);
+
+    boot_graph
 }
 
 pub fn get_peers() -> BootstrapPeers {

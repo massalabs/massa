@@ -1,8 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 use displaydoc::Display;
 use massa_execution_exports::ExecutionError;
-use massa_models::ModelsError;
-use massa_proof_of_stake_exports::error::ProofOfStakeError;
+use massa_models::error::ModelsError;
 use std::array::TryFromSliceError;
 use thiserror::Error;
 
@@ -24,6 +23,8 @@ pub enum GraphError {
     GenesisCreationError(String),
     /// missing block {0}
     MissingBlock(String),
+    /// missing operation {0}
+    MissingOperation(String),
     /// there was an inconsistency between containers {0}
     ContainerInconsistency(String),
     /// fitness overflow
@@ -34,8 +35,6 @@ pub enum GraphError {
     IOError(#[from] std::io::Error),
     /// serde error
     SerdeError(#[from] serde_json::Error),
-    /// Proof of Stake error {0}
-    ProofOfStakeError(#[from] ProofOfStakeError),
     /// Proof of stake cycle unavailable {0}
     PosCycleUnavailable(String),
     /// Ledger error {0}
@@ -60,10 +59,6 @@ pub enum LedgerError {
     AmountOverflowError,
     /// ledger inconsistency error {0}
     LedgerInconsistency(String),
-    /// sled error: {0}
-    SledError(#[from] sled::Error),
-    /// sled error {0}
-    SledTransactionError(#[from] sled::transaction::TransactionError<InternalError>),
     /// models error: {0}
     ModelsError(#[from] ModelsError),
     /// try from slice error {0}

@@ -1,0 +1,39 @@
+[package]
+name = "massa_factory_worker"
+version = "0.1.0"
+authors = ["Massa Labs <info@massa.net>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0"
+parking_lot = { version = "0.12", features = ["deadlock_detection"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tracing = "0.1"
+# custom modules
+massa_models = { path = "../massa-models" }
+massa_factory_exports = { path = "../massa-factory-exports" }
+massa_signature = { path = "../massa-signature" }
+massa_storage = { path = "../massa-storage" }
+massa_time = { path = "../massa-time" }
+massa_wallet = { path = "../massa-wallet" }
+massa_hash = { path = "../massa-hash" }
+massa_pos_exports = { path = "../massa-pos-exports" }
+massa_serialization = { path = "../massa-serialization" }
+massa_consensus_exports = { path = "../massa-consensus-exports" }
+massa_pool_exports = { path = "../massa-pool-exports" }
+
+[dev-dependencies]
+serial_test = "0.9"
+massa_protocol_exports = { path = "../massa-protocol-exports", features=["testing"] }
+massa_factory_exports = { path = "../massa-factory-exports", features=["testing"]  }
+massa_wallet = { path = "../massa-wallet", features=["testing"]  }
+massa_pos_exports = { path = "../massa-pos-exports", features=["testing"]  }
+massa_consensus_exports = { path = "../massa-consensus-exports", features=["testing"]  }
+massa_pool_exports = { path = "../massa-pool-exports", features=["testing"]  }
+
+[features]
+sandbox = []
+testing = ["massa_factory_exports/testing", "massa_pos_exports/testing", "massa_pool_exports/testing", "massa_consensus_exports/testing", "massa_protocol_exports/testing", "massa_wallet/testing"]

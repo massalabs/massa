@@ -4,23 +4,28 @@ use super::tools;
 use crate::tests::block_factory::BlockFactory;
 use massa_consensus_exports::ConsensusConfig;
 use massa_hash::Hash;
-use massa_models::{BlockId, Slot};
+use massa_models::{block::BlockId, slot::Slot};
 use massa_signature::KeyPair;
+use massa_storage::Storage;
 use serial_test::serial;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_old_stale_not_propagated_and_discarded() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        t0: 1000.into(),
+        t0: 32.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -55,6 +60,7 @@ async fn test_old_stale_not_propagated_and_discarded() {
                 block_factory.take_protocol_controller(),
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -63,17 +69,22 @@ async fn test_old_stale_not_propagated_and_discarded() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_block_not_processed_multiple_times() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 500.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
+    let mut storage = Storage::create_root();
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -90,10 +101,25 @@ async fn test_block_not_processed_multiple_times() {
             let block_1 = block_factory.create_and_receive_block(true).await;
 
             // Send it again, it should not be propagated.
-            block_factory.receieve_block(false, block_1.clone()).await;
+            storage.store_block(block_1.clone());
+            block_factory
+                .receive_block(
+                    false,
+                    block_1.id,
+                    block_1.content.header.content.slot,
+                    storage.clone(),
+                )
+                .await;
 
             // Send it again, it should not be propagated.
-            block_factory.receieve_block(false, block_1.clone()).await;
+            block_factory
+                .receive_block(
+                    false,
+                    block_1.id,
+                    block_1.content.header.content.slot,
+                    storage.clone(),
+                )
+                .await;
 
             // Block was not discarded.
             let status = consensus_command_sender
@@ -105,6 +131,7 @@ async fn test_block_not_processed_multiple_times() {
                 block_factory.take_protocol_controller(),
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -113,17 +140,21 @@ async fn test_block_not_processed_multiple_times() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_queuing() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         future_block_processing_max_periods: 50,
         t0: 1000.into(),
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -155,6 +186,7 @@ async fn test_queuing() {
                 block_factory.take_protocol_controller(),
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -163,17 +195,23 @@ async fn test_queuing() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_double_staking_does_not_propagate() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         future_block_processing_max_periods: 50,
         t0: 1000.into(),
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
+
+    let mut storage = Storage::create_root();
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -195,7 +233,15 @@ async fn test_double_staking_does_not_propagate() {
             let block = block_factory.sign_header(block_1.content.header.content);
 
             // Note: currently does propagate, see #190.
-            block_factory.receieve_block(true, block).await;
+            storage.store_block(block.clone());
+            block_factory
+                .receive_block(
+                    true,
+                    block.id,
+                    block.content.header.content.slot,
+                    storage.clone(),
+                )
+                .await;
 
             // Block was not discarded.
             let status = consensus_command_sender
@@ -207,6 +253,7 @@ async fn test_double_staking_does_not_propagate() {
                 block_factory.take_protocol_controller(),
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )

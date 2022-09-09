@@ -12,13 +12,12 @@ use crate::{
     peer_info_database::PeerInfoDatabase,
 };
 use massa_logging::massa_trace;
-use massa_models::{constants::CHANNEL_SIZE, node::NodeId, Version};
+use massa_models::{node::NodeId, version::Version};
 use massa_network_exports::{
-    BootstrapPeers, Establisher, NetworkCommand, NetworkCommandSender, NetworkError, NetworkEvent,
-    NetworkEventReceiver, NetworkManagementCommand, NetworkManager, NetworkSettings,
+    BootstrapPeers, Establisher, NetworkCommand, NetworkCommandSender, NetworkConfig, NetworkError,
+    NetworkEvent, NetworkEventReceiver, NetworkManagementCommand, NetworkManager,
 };
 use massa_signature::KeyPair;
-use massa_storage::Storage;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
@@ -40,11 +39,10 @@ pub mod tests;
 /// # Arguments
 /// * `cfg`: network configuration
 pub async fn start_network_controller(
-    network_settings: NetworkSettings,
+    network_settings: &NetworkConfig,
     mut establisher: Establisher,
     clock_compensation: i64,
     initial_peers: Option<BootstrapPeers>,
-    storage: Storage,
     version: Version,
 ) -> Result<
     (
@@ -97,7 +95,7 @@ pub async fn start_network_controller(
 
     debug!("Loading peer database");
     // load peer info database
-    let mut peer_info_db = PeerInfoDatabase::new(&network_settings, clock_compensation).await?;
+    let mut peer_info_db = PeerInfoDatabase::new(network_settings, clock_compensation).await?;
 
     // add bootstrap peers
     if let Some(peers) = initial_peers {
@@ -105,8 +103,10 @@ pub async fn start_network_controller(
     }
 
     // launch controller
-    let (command_tx, controller_command_rx) = mpsc::channel::<NetworkCommand>(CHANNEL_SIZE);
-    let (controller_event_tx, event_rx) = mpsc::channel::<NetworkEvent>(CHANNEL_SIZE);
+    let (command_tx, controller_command_rx) =
+        mpsc::channel::<NetworkCommand>(network_settings.controller_channel_size);
+    let (controller_event_tx, event_rx) =
+        mpsc::channel::<NetworkEvent>(network_settings.event_channel_size);
     let (manager_tx, controller_manager_rx) = mpsc::channel::<NetworkManagementCommand>(1);
     let cfg_copy = network_settings.clone();
     let keypair_cloned = keypair.clone();
@@ -122,7 +122,6 @@ pub async fn start_network_controller(
                 controller_event_tx,
                 controller_manager_rx,
             },
-            storage,
             version,
         )
         .run_loop()

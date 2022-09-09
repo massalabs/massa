@@ -2,28 +2,37 @@
 
 // To start alone RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1
 use super::tools;
-use crate::messages::Message;
+use crate::messages::{Message, MessageDeserializer};
 use crate::node_worker::NodeWorker;
 use crate::tests::tools::{get_dummy_block_id, get_transaction};
 use crate::NetworkError;
 use crate::NetworkEvent;
 use crate::{
     binders::{ReadBinder, WriteBinder},
-    NetworkSettings,
+    NetworkConfig,
 };
 use enum_map::enum_map;
 use enum_map::EnumMap;
 use massa_hash::Hash;
-use massa_models::EndorsementSerializer;
+use massa_models::config::{
+    ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
+    MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
+    MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_PARAMETERS_SIZE,
+    THREAD_COUNT,
+};
 use massa_models::{
-    node::NodeId, wrapped::WrappedContent, BlockId, Endorsement, SerializeCompact, Slot,
+    block::BlockId,
+    endorsement::{Endorsement, EndorsementSerializer},
+    node::NodeId,
+    slot::Slot,
+    wrapped::WrappedContent,
 };
 use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
 use massa_network_exports::{
-    ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo, PeerType,
+    AskForBlocksInfo, BlockInfoReply, ConnectionClosureReason, ConnectionId, HandshakeErrorType,
+    PeerInfo, PeerType,
 };
 use massa_signature::KeyPair;
-use massa_storage::Storage;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
@@ -62,11 +71,27 @@ fn default_testing_peer_type_enum_map() -> EnumMap<PeerType, PeerTypeConnectionC
 async fn test_node_worker_shutdown() {
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&[]);
-    let network_conf = NetworkSettings::scenarios_default(bind_port, temp_peers_file.path());
+    let network_conf = NetworkConfig::scenarios_default(bind_port, temp_peers_file.path());
     let (duplex_controller, _duplex_mock) = tokio::io::duplex(1);
     let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
-    let reader = ReadBinder::new(duplex_mock_read, f64::INFINITY);
-    let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY);
+    let reader = ReadBinder::new(
+        duplex_mock_read,
+        f64::INFINITY,
+        MAX_MESSAGE_SIZE,
+        MessageDeserializer::new(
+            THREAD_COUNT,
+            ENDORSEMENT_COUNT,
+            MAX_ADVERTISE_LENGTH,
+            MAX_ASK_BLOCKS_PER_MESSAGE,
+            MAX_OPERATIONS_PER_BLOCK,
+            MAX_OPERATIONS_PER_MESSAGE,
+            MAX_ENDORSEMENTS_PER_MESSAGE,
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+        ),
+    );
+    let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY, MAX_MESSAGE_SIZE);
 
     // Note: both channels have size 1.
     let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1);
@@ -74,7 +99,6 @@ async fn test_node_worker_shutdown() {
 
     let keypair = KeyPair::generate();
     let mock_node_id = NodeId(keypair.get_public_key());
-    let storage: Storage = Default::default();
 
     let node_fn_handle = tokio::spawn(async move {
         NodeWorker::new(
@@ -84,7 +108,6 @@ async fn test_node_worker_shutdown() {
             writer,
             node_command_rx,
             node_event_tx,
-            storage,
         )
         .run_loop()
         .await
@@ -117,11 +140,27 @@ async fn test_node_worker_shutdown() {
 async fn test_node_worker_operations_message() {
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&[]);
-    let network_conf = NetworkSettings::scenarios_default(bind_port, temp_peers_file.path());
+    let network_conf = NetworkConfig::scenarios_default(bind_port, temp_peers_file.path());
     let (duplex_controller, _duplex_mock) = tokio::io::duplex(1);
     let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
-    let reader = ReadBinder::new(duplex_mock_read, f64::INFINITY);
-    let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY);
+    let reader = ReadBinder::new(
+        duplex_mock_read,
+        f64::INFINITY,
+        MAX_MESSAGE_SIZE,
+        MessageDeserializer::new(
+            THREAD_COUNT,
+            ENDORSEMENT_COUNT,
+            MAX_ADVERTISE_LENGTH,
+            MAX_ASK_BLOCKS_PER_MESSAGE,
+            MAX_OPERATIONS_PER_BLOCK,
+            MAX_OPERATIONS_PER_MESSAGE,
+            MAX_ENDORSEMENTS_PER_MESSAGE,
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+        ),
+    );
+    let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY, MAX_MESSAGE_SIZE);
 
     // Note: both channels have size 1.
     let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1);
@@ -129,14 +168,9 @@ async fn test_node_worker_operations_message() {
 
     let keypair = KeyPair::generate();
     let mock_node_id = NodeId(keypair.get_public_key());
-    let storage: Storage = Default::default();
 
     // Create transaction.
     let transaction = get_transaction(50, 10);
-    let ref_id = transaction.verify_integrity().unwrap();
-
-    // Add to storage.
-    storage.store_operation(transaction.clone());
 
     let node_fn_handle = tokio::spawn(async move {
         NodeWorker::new(
@@ -146,7 +180,6 @@ async fn test_node_worker_operations_message() {
             writer,
             node_command_rx,
             node_event_tx,
-            storage,
         )
         .run_loop()
         .await
@@ -155,7 +188,7 @@ async fn test_node_worker_operations_message() {
     // Send operations message.
     node_command_tx
         .send(NodeCommand::SendOperations(
-            vec![ref_id].iter().copied().collect(),
+            vec![transaction].into_iter().collect(),
         ))
         .await
         .unwrap();
@@ -193,10 +226,10 @@ async fn test_multiple_connections_to_controller() {
     // test config
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&[]);
-    let network_conf = NetworkSettings {
+    let network_conf = NetworkConfig {
         peer_types_config: default_testing_peer_type_enum_map(),
         max_in_connections_per_ip: 1,
-        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+        ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
 
     let mock1_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
@@ -209,8 +242,7 @@ async fn test_multiple_connections_to_controller() {
         async move |_network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface,
-                    _storage| {
+                    mut mock_interface| {
             // note: the peers list is empty so the controller will not attempt outgoing connections
 
             // 1) connect peer1 to controller
@@ -313,9 +345,9 @@ async fn test_peer_ban() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo::new(mock_addr.ip(), true)]);
 
-    let network_conf = NetworkSettings {
+    let network_conf = NetworkConfig {
         wakeup_interval: 1000.into(),
-        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+        ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
 
     tools::network_test(
@@ -324,8 +356,7 @@ async fn test_peer_ban() {
         async move |network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface,
-                    _storage| {
+                    mut mock_interface| {
             // accept connection from controller to peer
             let (conn1_id, conn1_r, conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,
@@ -449,9 +480,9 @@ async fn test_peer_ban_by_ip() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo::new(mock_addr.ip(), true)]);
 
-    let network_conf = NetworkSettings {
+    let network_conf = NetworkConfig {
         wakeup_interval: 1000.into(),
-        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+        ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
 
     tools::network_test(
@@ -460,8 +491,7 @@ async fn test_peer_ban_by_ip() {
         async move |network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface,
-                    _storage| {
+                    mut mock_interface| {
             // accept connection from controller to peer
             let (_, conn1_r, conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,
@@ -592,10 +622,10 @@ async fn test_advertised_and_wakeup_interval() {
         active_in_connections: 0,
         banned: false,
     }]);
-    let network_conf = NetworkSettings {
-        wakeup_interval: MassaTime::from(500),
-        connect_timeout: MassaTime::from(2000),
-        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+    let network_conf = NetworkConfig {
+        wakeup_interval: MassaTime::from_millis(500),
+        connect_timeout: MassaTime::from_millis(2000),
+        ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
 
     tools::network_test(
@@ -604,8 +634,7 @@ async fn test_advertised_and_wakeup_interval() {
         async move |_network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface,
-                    _storage| {
+                    mut mock_interface| {
             // 1) open a connection, advertize peer, disconnect
             {
                 let (conn2_id, conn2_r, mut conn2_w) = tools::full_connection_to_controller(
@@ -728,15 +757,11 @@ async fn test_block_not_found() {
         active_in_connections: 0,
         banned: false,
     }]);
-    let network_conf = NetworkSettings {
+    let network_conf = NetworkConfig {
         peer_types_config: default_testing_peer_type_enum_map(),
-        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+        max_ask_blocks: 3,
+        ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
-
-    // Overwrite the context.
-    let mut serialization_context = massa_models::get_serialization_context();
-    serialization_context.max_ask_blocks_per_message = 3;
-    massa_models::init_serialization_context(serialization_context);
 
     tools::network_test(
         network_conf.clone(),
@@ -744,8 +769,7 @@ async fn test_block_not_found() {
         async move |network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface,
-                    _storage| {
+                    mut mock_interface| {
             // accept connection from controller to peer
             let (conn1_id, mut conn1_r, mut conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,
@@ -761,17 +785,10 @@ async fn test_block_not_found() {
 
             // Send ask for block message from connected peer
             let wanted_hash = get_dummy_block_id("default_val");
-            conn1_w
-                .send(
-                    &Message::AskForBlocks(vec![wanted_hash])
-                        .to_bytes_compact()
-                        .expect("Fail to serialize message"),
-                )
-                .await
-                .unwrap();
+            conn1_w.send(&Message::AskForBlocks(vec![(wanted_hash, AskForBlocksInfo::Info)])).await.unwrap();
 
             // assert it is sent to protocol
-            if let Some((list, node)) =
+            if let Some((mut list, node)) =
                 tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg
                 {
                     NetworkEvent::AskedForBlocks { list, node } => Some((list, node)),
@@ -779,7 +796,7 @@ async fn test_block_not_found() {
                 })
                 .await
             {
-                assert!(list.contains(&wanted_hash));
+                assert_eq!(list.pop().unwrap().0, wanted_hash);
                 assert_eq!(node, conn1_id);
             } else {
                 panic!("Timeout while waiting for asked for block event");
@@ -787,7 +804,7 @@ async fn test_block_not_found() {
 
             // reply with block not found
             network_command_sender
-                .block_not_found(conn1_id, wanted_hash)
+                .send_block_info(conn1_id, vec![(wanted_hash,  BlockInfoReply::NotFound)])
                 .await
                 .unwrap();
 
@@ -800,8 +817,12 @@ async fn test_block_not_found() {
                 tokio::select! {
                     evt = conn1_r.next() => {
                         let evt = evt.unwrap().unwrap().1;
-                        if let Message::BlockNotFound(hash) = evt {assert_eq!(hash, wanted_hash);
-                            break;
+                        if let Message::ReplyForBlocks(mut info) = evt {
+                            let info = info.pop().unwrap();
+                            assert_eq!(info.0, wanted_hash);
+                            if let BlockInfoReply::NotFound = info.1 {
+                                break;
+                            }
                         }
                     },
                     _ = &mut timer => panic!("timeout reached waiting for message")
@@ -809,12 +830,12 @@ async fn test_block_not_found() {
             }
 
             // test send AskForBlocks with more max_ask_blocks_per_message using node_worker split in several message function.
-            let mut block_list: HashMap<NodeId, Vec<BlockId>> = HashMap::new();
+            let mut block_list: HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>> = HashMap::new();
             let hash_list = vec![
-                get_dummy_block_id("default_val1"),
-                get_dummy_block_id("default_val2"),
-                get_dummy_block_id("default_val3"),
-                get_dummy_block_id("default_val4"),
+                (get_dummy_block_id("default_val1"), AskForBlocksInfo::Info),
+                (get_dummy_block_id("default_val2"), AskForBlocksInfo::Info),
+                (get_dummy_block_id("default_val3"), AskForBlocksInfo::Info),
+                (get_dummy_block_id("default_val4"), AskForBlocksInfo::Info),
             ];
             block_list.insert(conn1_id, hash_list);
 
@@ -830,6 +851,7 @@ async fn test_block_not_found() {
                     evt = conn1_r.next() => {
                         let evt = evt.unwrap().unwrap().1;
                         if let Message::AskForBlocks(list1) = evt {
+                            let list1: Vec<BlockId> = list1.iter().cloned().map(|(id, _)| id).collect();
                             assert!(list1.contains(&get_dummy_block_id("default_val1")));
                             assert!(list1.contains(&get_dummy_block_id("default_val2")));
                             assert!(list1.contains(&get_dummy_block_id("default_val3")));
@@ -845,7 +867,7 @@ async fn test_block_not_found() {
                     evt = conn1_r.next() => {
                         let evt = evt.unwrap().unwrap().1;
                         if let Message::AskForBlocks(list2) = evt {
-                            assert!(list2.contains(&get_dummy_block_id("default_val4")));
+                            assert!(list2.iter().cloned().map(|(id, _)| id).any(|x| x == get_dummy_block_id("default_val4")));
                             break;
                         }
                     },
@@ -854,24 +876,17 @@ async fn test_block_not_found() {
             }
 
             // test with max_ask_blocks_per_message > 3 sending the message straight to the connection.
-            // the message is rejected by the receiver.
-            let wanted_hash1 = get_dummy_block_id("default_val1");
-            let wanted_hash2 = get_dummy_block_id("default_val2");
-            let wanted_hash3 = get_dummy_block_id("default_val3");
-            let wanted_hash4 = get_dummy_block_id("default_val4");
-            conn1_w
-                .send(
-                    &Message::AskForBlocks(vec![
+            // the message is not rejected by the receiver.
+            let wanted_hash1 = (get_dummy_block_id("default_val1"), AskForBlocksInfo::Info);
+            let wanted_hash2 = (get_dummy_block_id("default_val2"), AskForBlocksInfo::Info);
+            let wanted_hash3 = (get_dummy_block_id("default_val3"), AskForBlocksInfo::Info);
+            let wanted_hash4 = (get_dummy_block_id("default_val4"), AskForBlocksInfo::Info);
+            conn1_w.send(&Message::AskForBlocks(vec![
                         wanted_hash1,
                         wanted_hash2,
                         wanted_hash3,
                         wanted_hash4,
-                    ])
-                    .to_bytes_compact()
-                    .expect("Fail to serialize message"),
-                )
-                .await
-                .unwrap();
+                    ])).await.unwrap();
             // assert it is sent to protocol
             if tools::wait_network_event(
                 &mut network_event_receiver,
@@ -882,7 +897,7 @@ async fn test_block_not_found() {
                 },
             )
             .await
-            .is_some()
+            .is_none()
             {
                 panic!("AskedForBlocks with more max_ask_blocks_per_message forward blocks");
             }
@@ -924,9 +939,9 @@ async fn test_retry_connection_closed() {
         active_in_connections: 0,
         banned: false,
     }]);
-    let network_conf = NetworkSettings {
+    let network_conf = NetworkConfig {
         peer_types_config: default_testing_peer_type_enum_map(),
-        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+        ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
 
     tools::network_test(
@@ -935,8 +950,7 @@ async fn test_retry_connection_closed() {
         async move |network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface,
-                    _storage| {
+                    mut mock_interface| {
             let (node_id, _read, _write) = tools::full_connection_to_controller(
                 &mut network_event_receiver,
                 &mut mock_interface,
@@ -970,7 +984,7 @@ async fn test_retry_connection_closed() {
 
             // Send a command for a node not found in active.
             network_command_sender
-                .block_not_found(node_id, get_dummy_block_id("default_val"))
+                .send_block_info(node_id, vec![])
                 .await
                 .unwrap();
 
@@ -1024,15 +1038,11 @@ async fn test_operation_messages() {
         active_in_connections: 0,
         banned: false,
     }]);
-    let network_conf = NetworkSettings {
+    let network_conf = NetworkConfig {
         peer_types_config: default_testing_peer_type_enum_map(),
-        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+        max_ask_blocks: 3,
+        ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
-
-    // Overwrite the context.
-    let mut serialization_context = massa_models::get_serialization_context();
-    serialization_context.max_ask_blocks_per_message = 3;
-    massa_models::init_serialization_context(serialization_context);
 
     tools::network_test(
         network_conf.clone(),
@@ -1040,8 +1050,7 @@ async fn test_operation_messages() {
         async move |network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface,
-                    storage| {
+                    mut mock_interface| {
             // accept connection from controller to peer
             let (conn1_id, mut conn1_r, mut conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,
@@ -1057,13 +1066,8 @@ async fn test_operation_messages() {
 
             // Send transaction message from connected peer
             let transaction = get_transaction(50, 10);
-            let ref_id = transaction.verify_integrity().unwrap();
             conn1_w
-                .send(
-                    &Message::Operations(vec![transaction.clone()])
-                        .to_bytes_compact()
-                        .expect("Fail to serialize message"),
-                )
+                .send(&Message::Operations(vec![transaction.clone()]))
                 .await
                 .unwrap();
 
@@ -1079,22 +1083,17 @@ async fn test_operation_messages() {
                 .await
             {
                 assert_eq!(operations.len(), 1);
-                assert!(operations[0].verify_integrity().is_ok());
-                assert_eq!(operations[0].verify_integrity().unwrap(), ref_id);
                 assert_eq!(node, conn1_id);
             } else {
                 panic!("Timeout while waiting for received operations event");
             }
 
             let transaction2 = get_transaction(10, 50);
-            let ref_id2 = transaction2.verify_integrity().unwrap();
-
-            // Add to storage.
-            storage.store_operation(transaction2);
+            let ref_id2 = transaction2.id;
 
             // reply with another transaction
             network_command_sender
-                .send_operations(conn1_id, vec![ref_id2].iter().copied().collect())
+                .send_operations(conn1_id, vec![transaction2].into_iter().collect())
                 .await
                 .unwrap();
 
@@ -1109,8 +1108,7 @@ async fn test_operation_messages() {
                         let evt = evt.unwrap().unwrap().1;
                         if let Message::Operations(op) = evt {
                             assert_eq!(op.len(), 1);
-                            assert!(op[0].verify_integrity().is_ok());
-                            assert_eq!(op[0].verify_integrity().unwrap(), ref_id2);
+                            assert_eq!(op[0].id, ref_id2);
                             break;
                         }
                     },
@@ -1155,15 +1153,11 @@ async fn test_endorsements_messages() {
         active_in_connections: 0,
         banned: false,
     }]);
-    let network_conf = NetworkSettings {
+    let network_conf = NetworkConfig {
         peer_types_config: default_testing_peer_type_enum_map(),
-        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+        max_ask_blocks: 3,
+        ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
-
-    // Overwrite the context.
-    let mut serialization_context = massa_models::get_serialization_context();
-    serialization_context.max_ask_blocks_per_message = 3;
-    massa_models::init_serialization_context(serialization_context);
 
     tools::network_test(
         network_conf.clone(),
@@ -1171,8 +1165,7 @@ async fn test_endorsements_messages() {
         async move |network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface,
-                    _storage| {
+                    mut mock_interface| {
             // accept connection from controller to peer
             let (conn1_id, mut conn1_r, mut conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,
@@ -1201,11 +1194,7 @@ async fn test_endorsements_messages() {
             .unwrap();
             let ref_id = endorsement.id;
             conn1_w
-                .send(
-                    &Message::Endorsements(vec![endorsement])
-                        .to_bytes_compact()
-                        .expect("Fail to serialize message"),
-                )
+                .send(&Message::Endorsements(vec![endorsement]))
                 .await
                 .unwrap();
 

@@ -1,36 +1,44 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::collections::VecDeque;
+
 use crate::error::ProtocolError;
 use massa_logging::massa_trace;
 
 use massa_models::{
-    operation::OperationIds,
-    prehash::{Map, Set},
-    Slot, WrappedBlock,
+    block::{BlockId, WrappedHeader},
+    endorsement::EndorsementId,
+    operation::OperationId,
 };
 use massa_models::{
-    BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader, WrappedOperation,
+    prehash::{PreHashMap, PreHashSet},
+    slot::Slot,
 };
 use massa_network_exports::NetworkEventReceiver;
+use massa_storage::Storage;
 use serde::Serialize;
-use std::collections::VecDeque;
 use tokio::{sync::mpsc, task::JoinHandle};
-use tracing::debug;
+use tracing::{debug, info};
 
 /// Possible types of events that can happen.
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub enum ProtocolEvent {
     /// A block with a valid signature has been received.
     ReceivedBlock {
-        /// corresponding block
-        block: WrappedBlock,
-        /// the slot
+        /// block ID
+        block_id: BlockId,
+        /// block slot
         slot: Slot,
-        /// operations in the block by (index, validity end period)
-        operation_set: Map<OperationId, (usize, u64)>,
-        /// endorsements in the block with index
-        endorsement_ids: Map<EndorsementId, u32>,
+        /// storage instance containing the block and its dependencies (except the parents)
+        storage: Storage,
+    },
+    /// A message to tell the consensus that a block is invalid
+    InvalidBlock {
+        /// block ID
+        block_id: BlockId,
+        /// header
+        header: WrappedHeader,
     },
     /// A block header with a valid signature has been received.
     ReceivedBlockHeader {
@@ -38,26 +46,6 @@ pub enum ProtocolEvent {
         block_id: BlockId,
         /// The header
         header: WrappedHeader,
-    },
-    /// Ask for a list of blocks from consensus.
-    GetBlocks(Vec<BlockId>),
-}
-/// Possible types of pool events that can happen.
-#[derive(Debug, Serialize)]
-pub enum ProtocolPoolEvent {
-    /// Operations were received
-    ReceivedOperations {
-        /// the operations
-        operations: Map<OperationId, WrappedOperation>,
-        /// whether or not to propagate operations
-        propagate: bool,
-    },
-    /// Endorsements were received
-    ReceivedEndorsements {
-        /// the endorsements
-        endorsements: Map<EndorsementId, WrappedEndorsement>,
-        /// whether or not to propagate endorsements
-        propagate: bool,
     },
 }
 
@@ -69,37 +57,33 @@ pub enum ProtocolPoolEvent {
 /// )
 /// ```
 pub type BlocksResults =
-    Map<BlockId, Option<(Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
+    PreHashMap<BlockId, Option<(Option<PreHashSet<OperationId>>, Option<Vec<EndorsementId>>)>>;
 
 /// Commands that protocol worker can process
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub enum ProtocolCommand {
     /// Notify block integration of a given block.
     IntegratedBlock {
         /// block id
         block_id: BlockId,
-        /// operations ids in the block
-        operation_ids: OperationIds,
-        /// endorsement ids in the block
-        endorsement_ids: Vec<EndorsementId>,
+        /// block storage
+        storage: Storage,
     },
     /// A block, or it's header, amounted to an attempted attack.
     AttackBlockDetected(BlockId),
     /// Wish list delta
     WishlistDelta {
         /// add to wish list
-        new: Set<BlockId>,
+        new: PreHashMap<BlockId, Option<WrappedHeader>>,
         /// remove from wish list
-        remove: Set<BlockId>,
+        remove: PreHashSet<BlockId>,
     },
-    /// The response to a `[ProtocolEvent::GetBlocks]`.
-    GetBlocksResults(BlocksResults),
     /// Propagate operations (send batches)
-    /// note: OperationIds are replaced with OperationPrefixIds
+    /// note: Set<OperationId> are replaced with OperationPrefixIds
     ///       by the controller
-    PropagateOperations(OperationIds),
+    PropagateOperations(Storage),
     /// Propagate endorsements
-    PropagateEndorsements(Map<EndorsementId, WrappedEndorsement>),
+    PropagateEndorsements(Storage),
 }
 
 /// protocol management commands
@@ -114,22 +98,18 @@ impl ProtocolCommandSender {
     /// Sends the order to propagate the header of a block
     ///
     /// # Arguments
-    /// * hash : hash of the block header
+    /// * block_id : ID of the block
+    /// * storage: Storage instance containing references to the block and all its dependencies
     pub async fn integrated_block(
         &mut self,
         block_id: BlockId,
-        operation_ids: Set<OperationId>,
-        endorsement_ids: Vec<EndorsementId>,
+        storage: Storage,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.integrated_block", {
             "block_id": block_id
         });
         self.0
-            .send(ProtocolCommand::IntegratedBlock {
-                block_id,
-                operation_ids,
-                endorsement_ids,
-            })
+            .send(ProtocolCommand::IntegratedBlock { block_id, storage })
             .await
             .map_err(|_| ProtocolError::ChannelError("block_integrated command send error".into()))
     }
@@ -147,27 +127,11 @@ impl ProtocolCommandSender {
             })
     }
 
-    /// Send the response to a `ProtocolEvent::GetBlocks`.
-    pub async fn send_get_blocks_results(
-        &mut self,
-        results: BlocksResults,
-    ) -> Result<(), ProtocolError> {
-        massa_trace!("protocol.command_sender.send_get_blocks_results", {
-            "results": results
-        });
-        self.0
-            .send(ProtocolCommand::GetBlocksResults(results))
-            .await
-            .map_err(|_| {
-                ProtocolError::ChannelError("send_get_blocks_results command send error".into())
-            })
-    }
-
     /// update the block wish list
     pub async fn send_wishlist_delta(
         &mut self,
-        new: Set<BlockId>,
-        remove: Set<BlockId>,
+        new: PreHashMap<BlockId, Option<WrappedHeader>>,
+        remove: PreHashSet<BlockId>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.send_wishlist_delta", { "new": new, "remove": remove });
         self.0
@@ -181,15 +145,12 @@ impl ProtocolCommandSender {
     /// Propagate a batch of operation ids (from pool).
     ///
     /// note: Full `OperationId` is replaced by a `OperationPrefixId` later by the worker.
-    pub async fn propagate_operations(
-        &mut self,
-        operation_ids: OperationIds,
-    ) -> Result<(), ProtocolError> {
+    pub async fn propagate_operations(&mut self, operations: Storage) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_operations", {
-            "operations": operation_ids
+            "operations": operations.get_op_refs()
         });
         self.0
-            .send(ProtocolCommand::PropagateOperations(operation_ids))
+            .send(ProtocolCommand::PropagateOperations(operations))
             .await
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_operation command send error".into())
@@ -197,16 +158,12 @@ impl ProtocolCommandSender {
     }
 
     /// propagate endorsements to connected node
-    pub async fn propagate_endorsements(
-        &mut self,
-        endorsements: Map<EndorsementId, WrappedEndorsement>,
-    ) -> Result<(), ProtocolError> {
+    pub fn propagate_endorsements(&mut self, endorsements: Storage) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_endorsements", {
-            "endorsements": endorsements
+            "endorsements": endorsements.get_endorsement_refs()
         });
         self.0
-            .send(ProtocolCommand::PropagateEndorsements(endorsements))
-            .await
+            .blocking_send(ProtocolCommand::PropagateEndorsements(endorsements))
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_endorsements command send error".into())
             })
@@ -243,36 +200,6 @@ impl ProtocolEventReceiver {
     }
 }
 
-/// Protocol pool event receiver
-pub struct ProtocolPoolEventReceiver(pub mpsc::Receiver<ProtocolPoolEvent>);
-
-impl ProtocolPoolEventReceiver {
-    /// Receives the next `ProtocolPoolEvent`
-    /// None is returned when all Sender halves have dropped,
-    /// indicating that no further values can be sent on the channel
-    pub async fn wait_event(&mut self) -> Result<ProtocolPoolEvent, ProtocolError> {
-        massa_trace!("protocol.pool_event_receiver.wait_event", {});
-        self.0.recv().await.ok_or_else(|| {
-            ProtocolError::ChannelError(
-                "DefaultProtocolController wait_pool_event channel recv failed".into(),
-            )
-        })
-    }
-
-    /// drains remaining events and returns them in a `VecDeque`
-    /// note: events are sorted from oldest to newest
-    pub async fn drain(mut self) -> VecDeque<ProtocolPoolEvent> {
-        let mut remaining_events: VecDeque<ProtocolPoolEvent> = VecDeque::new();
-        while let Some(evt) = self.0.recv().await {
-            debug!(
-                "after receiving event from ProtocolPoolEventReceiver.0 in protocol_controller drain"
-            );
-            remaining_events.push_back(evt);
-        }
-        remaining_events
-    }
-}
-
 /// protocol manager used to stop the protocol
 pub struct ProtocolManager {
     join_handle: JoinHandle<Result<NetworkEventReceiver, ProtocolError>>,
@@ -295,12 +222,13 @@ impl ProtocolManager {
     pub async fn stop(
         self,
         protocol_event_receiver: ProtocolEventReceiver,
-        protocol_pool_event_receiver: ProtocolPoolEventReceiver,
+        //protocol_pool_event_receiver: ProtocolPoolEventReceiver,
     ) -> Result<NetworkEventReceiver, ProtocolError> {
+        info!("stopping protocol controller...");
         drop(self.manager_tx);
         let _remaining_events = protocol_event_receiver.drain().await;
-        let _remaining_events = protocol_pool_event_receiver.drain().await;
         let network_event_receiver = self.join_handle.await??;
+        info!("protocol controller stopped");
         Ok(network_event_receiver)
     }
 }

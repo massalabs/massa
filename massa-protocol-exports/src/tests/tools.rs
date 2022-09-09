@@ -1,22 +1,22 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::mock_network_controller::MockNetworkController;
-use crate::{
-    ProtocolEvent, ProtocolEventReceiver, ProtocolPoolEvent, ProtocolPoolEventReceiver,
-    ProtocolSettings,
-};
+use crate::protocol_controller::{ProtocolCommandSender, ProtocolEventReceiver};
+use crate::{ProtocolConfig, ProtocolEvent};
 use massa_hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::operation::OperationSerializer;
+use massa_models::prehash::PreHashSet;
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
-    Address, Amount, Block, BlockHeader, BlockId, BlockSerializer, Slot, WrappedBlock,
-    WrappedEndorsement, WrappedOperation,
+    address::Address,
+    amount::Amount,
+    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock},
+    endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement},
+    operation::{Operation, OperationType, WrappedOperation},
+    slot::Slot,
 };
-use massa_models::{
-    BlockHeaderSerializer, Endorsement, EndorsementSerializer, Operation, OperationType,
-};
-use massa_network_exports::NetworkCommand;
+use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use std::collections::HashMap;
@@ -76,7 +76,7 @@ pub fn create_block(keypair: &KeyPair) -> WrappedBlock {
     Block::new_wrapped(
         Block {
             header,
-            operations: Vec::new(),
+            operations: Default::default(),
         },
         BlockSerializer::new(),
         keypair,
@@ -114,8 +114,12 @@ pub fn create_block_with_operations(
     )
     .unwrap();
 
+    let op_ids = operations.into_iter().map(|op| op.id).collect();
     Block::new_wrapped(
-        Block { header, operations },
+        Block {
+            header,
+            operations: op_ids,
+        },
         BlockSerializer::new(),
         keypair,
     )
@@ -165,11 +169,39 @@ pub async fn send_and_propagate_block(
     valid: bool,
     source_node_id: NodeId,
     protocol_event_receiver: &mut ProtocolEventReceiver,
+    protocol_command_sender: &mut ProtocolCommandSender,
+    operations: Vec<WrappedOperation>,
 ) {
     let expected_hash = block.id;
 
-    // Send block to protocol.
-    network_controller.send_block(source_node_id, block).await;
+    network_controller
+        .send_header(source_node_id, block.content.header.clone())
+        .await;
+
+    protocol_command_sender
+        .send_wishlist_delta(
+            vec![(block.id, Some(block.content.header.clone()))]
+                .into_iter()
+                .collect(),
+            PreHashSet::<BlockId>::default(),
+        )
+        .await
+        .unwrap();
+
+    // Send block info to protocol.
+    let info = vec![(
+        block.id,
+        BlockInfoReply::Info(block.content.operations.clone()),
+    )];
+    network_controller
+        .send_block_info(source_node_id, info)
+        .await;
+
+    // Send full ops.
+    let info = vec![(block.id, BlockInfoReply::Operations(operations))];
+    network_controller
+        .send_block_info(source_node_id, info)
+        .await;
 
     // Check protocol sends block to consensus.
     let hash = match wait_protocol_event(protocol_event_receiver, 1000.into(), |evt| match evt {
@@ -178,7 +210,7 @@ pub async fn send_and_propagate_block(
     })
     .await
     {
-        Some(ProtocolEvent::ReceivedBlock { block, .. }) => Some(block.id),
+        Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => Some(block_id),
         None => None,
         _ => panic!("Unexpected or no protocol event."),
     };
@@ -223,39 +255,18 @@ pub fn create_operation_with_expire_period(
 
 lazy_static::lazy_static! {
     /// protocol settings
-    pub static ref PROTOCOL_SETTINGS: ProtocolSettings = create_protocol_settings();
+    pub static ref PROTOCOL_CONFIG: ProtocolConfig = create_protocol_config();
 }
 
 /// create a `ProtocolConfig` with typical values
-pub fn create_protocol_settings() -> ProtocolSettings {
-    // Init the serialization context with a default,
-    // can be overwritten with a more specific one in the test.
-    massa_models::init_serialization_context(massa_models::SerializationContext {
-        max_operations_per_block: 1024,
-        thread_count: 2,
-        max_advertise_length: 128,
-        max_message_size: 3 * 1024 * 1024,
-        max_block_size: 3 * 1024 * 1024,
-        max_bootstrap_blocks: 100,
-        max_bootstrap_cliques: 100,
-        max_bootstrap_deps: 100,
-        max_bootstrap_children: 100,
-        max_ask_blocks_per_message: 10,
-        max_operations_per_message: 1024,
-        max_endorsements_per_message: 1024,
-        max_bootstrap_message_size: 100000000,
-        max_bootstrap_pos_entries: 1000,
-        max_bootstrap_pos_cycles: 5,
-        endorsement_count: 8,
-    });
-
-    ProtocolSettings {
+pub fn create_protocol_config() -> ProtocolConfig {
+    ProtocolConfig {
         ask_block_timeout: 500.into(),
         max_known_blocks_size: 100,
         max_node_known_blocks_size: 100,
         max_node_wanted_blocks_size: 100,
         max_simultaneous_ask_blocks_per_node: 10,
-        max_send_wait: MassaTime::from(100),
+        max_send_wait: MassaTime::from_millis(100),
         max_known_ops_size: 1000,
         max_node_known_ops_size: 1000,
         max_known_endorsements_size: 1000,
@@ -264,6 +275,10 @@ pub fn create_protocol_settings() -> ProtocolSettings {
         operation_batch_proc_period: 200.into(),
         asked_operations_pruning_period: 500.into(),
         max_operations_per_message: 1024,
+        thread_count: 32,
+        max_serialized_operations_size_per_block: 1024,
+        controller_channel_size: 1024,
+        event_channel_size: 1024,
     }
 }
 
@@ -289,28 +304,6 @@ where
     }
 }
 
-/// wait protocol pool event
-pub async fn wait_protocol_pool_event<F>(
-    protocol_event_receiver: &mut ProtocolPoolEventReceiver,
-    timeout: MassaTime,
-    filter_map: F,
-) -> Option<ProtocolPoolEvent>
-where
-    F: Fn(ProtocolPoolEvent) -> Option<ProtocolPoolEvent>,
-{
-    let timer = sleep(timeout.into());
-    tokio::pin!(timer);
-    loop {
-        tokio::select! {
-            evt_opt = protocol_event_receiver.wait_event() => match evt_opt {
-                Ok(orig_evt) => if let Some(res_evt) = filter_map(orig_evt) { return Some(res_evt); },
-                _ => return None
-            },
-            _ = &mut timer => return None
-        }
-    }
-}
-
 /// assert block id has been asked to node
 pub async fn assert_hash_asked_to_node(
     hash_1: BlockId,
@@ -321,18 +314,18 @@ pub async fn assert_hash_asked_to_node(
         NetworkCommand::AskForBlocks { list } => Some(list),
         _ => None,
     };
-    let list = network_controller
+    let mut list = network_controller
         .wait_command(1000.into(), ask_for_block_cmd_filter)
         .await
         .expect("Hash not asked for before timer.");
 
-    assert!(list.get(&node_id).unwrap().contains(&hash_1));
+    assert_eq!(list.get_mut(&node_id).unwrap().pop().unwrap().0, hash_1);
 }
 
 /// retrieve what blocks where asked to which nodes
 pub async fn asked_list(
     network_controller: &mut MockNetworkController,
-) -> HashMap<NodeId, Vec<BlockId>> {
+) -> HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>> {
     let ask_for_block_cmd_filter = |cmd| match cmd {
         NetworkCommand::AskForBlocks { list } => Some(list),
         _ => None,
@@ -348,7 +341,7 @@ pub async fn assert_banned_nodes(
     mut nodes: Vec<NodeId>,
     network_controller: &mut MockNetworkController,
 ) {
-    let timer = sleep(MassaTime::from(5000).into());
+    let timer = sleep(MassaTime::from_millis(5000).into());
     tokio::pin!(timer);
     loop {
         tokio::select! {

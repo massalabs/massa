@@ -11,4 +11,6 @@ use thiserror::Error;
 pub enum FinalStateError {
     /// ledger error: {0}
     LedgerError(String),
+    /// PoS error: {0}
+    PosError(String),
 }

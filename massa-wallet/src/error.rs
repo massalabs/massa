@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use displaydoc::Display;
-use massa_models::Address;
+use massa_models::address::Address;
 use thiserror::Error;
 
 /// wallet error
@@ -15,7 +15,7 @@ pub enum WalletError {
     /// Serde Sq error: {0}
     SerdeqsError(#[from] serde_qs::Error),
     /// Models error: {0}
-    ModelsError(#[from] massa_models::ModelsError),
+    ModelsError(#[from] massa_models::error::ModelsError),
     /// `MassaHash` error: {0}
     MassaHashError(#[from] massa_hash::MassaHashError),
     /// Missing key error: {0}

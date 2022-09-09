@@ -1,19 +1,26 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! `Flexbuffer` layer between raw data and our objects.
+use crate::messages::{MessageDeserializer, MessageSerializer};
+
 use super::messages::Message;
 use async_speed_limit::{clock::StandardClock, Limiter, Resource};
 use massa_models::{
-    with_serialization_context, DeserializeCompact, DeserializeMinBEInt, SerializeMinBEInt,
+    error::ModelsError,
+    serialization::{DeserializeMinBEInt, SerializeMinBEInt},
 };
 use massa_network_exports::{NetworkError, ReadHalf, WriteHalf};
+use massa_serialization::Serializer;
+use massa_serialization::{DeserializeError, Deserializer};
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tracing::log::warn;
 
 /// Used to serialize and send data.
 pub struct WriteBinder {
     write_half: Resource<WriteHalf, StandardClock>,
     message_index: u64,
+    max_message_size: u32,
 }
 
 impl WriteBinder {
@@ -22,10 +29,11 @@ impl WriteBinder {
     /// # Argument
     /// * `write_half`: writer half.
     /// * `limit`: limit max bytes per second write
-    pub fn new(write_half: WriteHalf, limit: f64) -> Self {
+    pub fn new(write_half: WriteHalf, limit: f64, max_message_size: u32) -> Self {
         WriteBinder {
             write_half: <Limiter>::new(limit).limit(write_half),
             message_index: 0,
+            max_message_size,
         }
     }
 
@@ -33,26 +41,24 @@ impl WriteBinder {
     ///
     /// # Argument
     /// * `buf`: data to transmit.
-    pub async fn send(&mut self, buf: &[u8]) -> Result<u64, NetworkError> {
+    pub async fn send(&mut self, msg: &Message) -> Result<u64, NetworkError> {
         //        massa_trace!("binder.send", { "msg": msg });
+        let mut buf = Vec::new();
+        MessageSerializer::new().serialize(msg, &mut buf)?;
         let msg_size: u32 = buf
             .len()
             .try_into()
             .map_err(|_| NetworkError::GeneralProtocolError("message too long".into()))?;
-
-        // send length
-        let max_message_size = with_serialization_context(|context| context.max_message_size);
-
         self.write_half
-            .write_all(&msg_size.to_be_bytes_min(max_message_size)?[..])
+            .write_all(&msg_size.to_be_bytes_min(self.max_message_size)?[..])
             .await?;
 
         // send message
-        self.write_half.write_all(buf).await?;
+        self.write_half.write_all(&buf).await?;
 
         let res_index = self.message_index;
         self.message_index += 1;
-        //        massa_trace!("binder.send end", { "index": res_index });
+        //        massa_trace!("binder.send END", { "index": res_index });
         Ok(res_index)
     }
 }
@@ -64,6 +70,8 @@ pub struct ReadBinder {
     buf: Vec<u8>,
     cursor: usize,
     msg_size: Option<u32>,
+    max_message_size: u32,
+    message_deserializer: MessageDeserializer,
 }
 
 impl ReadBinder {
@@ -72,13 +80,20 @@ impl ReadBinder {
     /// # Argument
     /// * `read_half`: reader half.
     /// * `limit`: limit max bytes per second read.
-    pub fn new(read_half: ReadHalf, limit: f64) -> Self {
+    pub fn new(
+        read_half: ReadHalf,
+        limit: f64,
+        max_message_size: u32,
+        message_deserializer: MessageDeserializer,
+    ) -> Self {
         ReadBinder {
             read_half: <Limiter>::new(limit).limit(read_half),
             message_index: 0,
             buf: Vec::new(),
             cursor: 0,
             msg_size: None,
+            max_message_size,
+            message_deserializer,
         }
     }
 
@@ -94,12 +109,10 @@ impl ReadBinder {
     /// We can't use `read_exact` and similar because they are not cancel-safe:
     /// `https://docs.rs/tokio/latest/tokio/io/trait.AsyncReadExt.html#cancel-safety-2`
     pub async fn next(&mut self) -> Result<Option<(u64, Message)>, NetworkError> {
-        let max_message_size = with_serialization_context(|context| context.max_message_size);
-
         // check if we are in the process of reading the message length
         if self.msg_size.is_none() {
             // pre-allocate the buffer to fit the encoded message size if the buffer is not already allocated
-            let size_field_len = u32::be_bytes_min_length(max_message_size);
+            let size_field_len = u32::be_bytes_min_length(self.max_message_size);
             if self.buf.len() != size_field_len {
                 self.buf = vec![0u8; size_field_len];
             }
@@ -127,7 +140,7 @@ impl ReadBinder {
             }
 
             // once we have all the message size bytes, deserialize it
-            let res_size = u32::from_be_bytes_min(&self.buf, max_message_size)?.0;
+            let res_size = u32::from_be_bytes_min(&self.buf, self.max_message_size)?.0;
             // set self.msg_size to indicate that we are now in the process of reading the message contents (and not the size anymore).
             self.msg_size = Some(res_size);
             // allocate the buffer to match the message length
@@ -157,7 +170,13 @@ impl ReadBinder {
                 }
             }
         }
-        let (res_msg, _) = Message::from_bytes_compact(&self.buf)?;
+        let (_, res_msg) = self
+            .message_deserializer
+            .deserialize::<DeserializeError>(&self.buf)
+            .map_err(|err| {
+                warn!("error deserializing message: {:?}", err);
+                NetworkError::ModelsError(ModelsError::DeserializeError(err.to_string()))
+            })?;
 
         // now the message readout is over, we reset the state to start reading the next message's size field again at the next run
         self.cursor = 0;

@@ -61,14 +61,20 @@
 //! A speculative (non-final) ledger that supports canceling already-executed operations
 //! in the case of some blockclique changes.
 //!
+//! ## `speculative_executed_ops.rs`
+//! A speculative (non-final) list of previously executed operations to prevent reuse.
+//!
 //! ## `request_queue.rs`
 //! This module contains the implementation of a generic finite-size execution request queue.
 //! It handles requests that come with an MPSC to send back the result of their execution once it's done.
 //!
+//! ## `stats.rs`
+//! Defines a structure that gathers execution statistics.
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 #![feature(is_sorted)]
+#![feature(map_try_insert)]
 
 mod active_history;
 mod context;
@@ -77,7 +83,10 @@ mod execution;
 mod interface_impl;
 mod request_queue;
 mod speculative_async_pool;
+mod speculative_executed_ops;
 mod speculative_ledger;
+mod speculative_roll_state;
+mod stats;
 mod worker;
 
 pub use worker::start_execution_worker;

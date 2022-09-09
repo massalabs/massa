@@ -10,13 +10,8 @@ use async_speed_limit::clock::StandardClock;
 use async_speed_limit::{Limiter, Resource};
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
-use massa_models::Version;
-use massa_models::VersionDeserializer;
-use massa_models::VersionSerializer;
-use massa_models::{
-    constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeMinBEInt,
-    SerializeMinBEInt,
-};
+use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
+use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use std::convert::TryInto;
@@ -25,6 +20,9 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 /// Bootstrap server binder
 pub struct BootstrapServerBinder {
     max_bootstrap_message_size: u32,
+    thread_count: u8,
+    max_datastore_key_length: u8,
+    randomness_size_bytes: usize,
     size_field_len: usize,
     local_keypair: KeyPair,
     duplex: Resource<Duplex, StandardClock>,
@@ -40,9 +38,15 @@ impl BootstrapServerBinder {
     /// * duplex: duplex stream.
     /// * local_keypair: local node user keypair
     /// * limit: limit max bytes per second (up and down)
-    pub fn new(duplex: Duplex, local_keypair: KeyPair, limit: f64) -> Self {
-        let max_bootstrap_message_size =
-            with_serialization_context(|context| context.max_bootstrap_message_size);
+    pub fn new(
+        duplex: Duplex,
+        local_keypair: KeyPair,
+        limit: f64,
+        max_bootstrap_message_size: u32,
+        thread_count: u8,
+        max_datastore_key_length: u8,
+        randomness_size_bytes: usize,
+    ) -> Self {
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapServerBinder {
             max_bootstrap_message_size,
@@ -50,6 +54,9 @@ impl BootstrapServerBinder {
             local_keypair,
             duplex: <Limiter>::new(limit).limit(duplex),
             prev_message: None,
+            thread_count,
+            max_datastore_key_length,
+            randomness_size_bytes,
             version_serializer: VersionSerializer::new(),
             version_deserializer: VersionDeserializer::new(),
         }
@@ -66,7 +73,7 @@ impl BootstrapServerBinder {
             let mut version_bytes = Vec::new();
             self.version_serializer
                 .serialize(&version, &mut version_bytes)?;
-            let mut msg_bytes = vec![0u8; version_bytes.len() + BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
+            let mut msg_bytes = vec![0u8; version_bytes.len() + self.randomness_size_bytes];
             self.duplex.read_exact(&mut msg_bytes).await?;
             let (_, received_version) = self
                 .version_deserializer
@@ -172,9 +179,12 @@ impl BootstrapServerBinder {
         }
 
         // deserialize message
-        let (_, msg) = BootstrapClientMessageDeserializer::new()
-            .deserialize::<DeserializeError>(&msg_bytes)
-            .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
+        let (_, msg) = BootstrapClientMessageDeserializer::new(
+            self.thread_count,
+            self.max_datastore_key_length,
+        )
+        .deserialize::<DeserializeError>(&msg_bytes)
+        .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
 
         Ok(msg)
     }

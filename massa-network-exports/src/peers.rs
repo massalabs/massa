@@ -2,7 +2,7 @@ use crate::settings::PeerTypeConnectionConfig;
 use displaydoc::Display;
 use enum_map::Enum;
 use massa_models::node::NodeId;
-use massa_models::{IpAddrDeserializer, IpAddrSerializer};
+use massa_models::serialization::{IpAddrDeserializer, IpAddrSerializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
@@ -92,7 +92,7 @@ impl Serializer<BootstrapPeers> for BootstrapPeersSerializer {
 
 /// Deserializer for `BootstrapPeers`
 pub struct BootstrapPeersDeserializer {
-    u32_deserializer: U32VarIntDeserializer,
+    length_deserializer: U32VarIntDeserializer,
     ip_addr_deserializer: IpAddrDeserializer,
 }
 
@@ -104,7 +104,7 @@ impl BootstrapPeersDeserializer {
     /// * max_peers: maximum peers that can be serialized
     pub fn new(max_peers: u32) -> Self {
         Self {
-            u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(max_peers)),
+            length_deserializer: U32VarIntDeserializer::new(Included(0), Included(max_peers)),
             ip_addr_deserializer: IpAddrDeserializer::new(),
         }
     }
@@ -133,7 +133,7 @@ impl Deserializer<BootstrapPeers> for BootstrapPeersDeserializer {
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], BootstrapPeers, E> {
         length_count(
-            |input| self.u32_deserializer.deserialize(input),
+            |input| self.length_deserializer.deserialize(input),
             |input| self.ip_addr_deserializer.deserialize(input),
         )
         .map(BootstrapPeers)
@@ -257,7 +257,7 @@ impl PeerInfo {
             return now
                 .saturating_sub(last_failure)
                 .saturating_sub(wakeup_interval)
-                > MassaTime::from(0u64);
+                > MassaTime::from_millis(0u64);
         }
         true
     }

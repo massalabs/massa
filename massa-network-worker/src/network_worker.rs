@@ -7,20 +7,18 @@ use super::{
 use crate::{
     binders::{ReadBinder, WriteBinder},
     handshake_worker::HandshakeWorker,
-    messages::Message,
+    messages::{Message, MessageDeserializer},
     network_event::EventSender,
 };
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_logging::massa_trace;
-use massa_models::{constants::CHANNEL_SIZE, node::NodeId, SerializeCompact, Version};
+use massa_models::{node::NodeId, version::Version};
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, Establisher, HandshakeErrorType, Listener,
-    NetworkCommand, NetworkConnectionErrorType, NetworkError, NetworkEvent,
-    NetworkManagementCommand, NetworkSettings, NodeCommand, NodeEvent, NodeEventType, ReadHalf,
-    WriteHalf,
+    NetworkCommand, NetworkConfig, NetworkConnectionErrorType, NetworkError, NetworkEvent,
+    NetworkManagementCommand, NodeCommand, NodeEvent, NodeEventType, ReadHalf, WriteHalf,
 };
 use massa_signature::KeyPair;
-use massa_storage::Storage;
 use std::{
     collections::{hash_map, HashMap, HashSet},
     net::{IpAddr, SocketAddr},
@@ -32,7 +30,7 @@ use tracing::{debug, trace, warn};
 /// Real job is done by network worker
 pub struct NetworkWorker {
     /// Network configuration.
-    cfg: NetworkSettings,
+    cfg: NetworkConfig,
     /// Our keypair.
     pub(crate) keypair: KeyPair,
     /// Our node id.
@@ -62,8 +60,6 @@ pub struct NetworkWorker {
         FuturesUnordered<JoinHandle<(NodeId, Result<ConnectionClosureReason, NetworkError>)>>,
     /// Map of connection to ip, `is_outgoing`.
     pub(crate) active_connections: HashMap<ConnectionId, (IpAddr, bool)>,
-    /// Shared storage.
-    storage: Storage,
     /// Node version
     version: Version,
     /// Event sender
@@ -89,7 +85,7 @@ impl NetworkWorker {
     /// * `controller_manager_rx`: Channel receiving network management commands.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        cfg: NetworkSettings,
+        cfg: NetworkConfig,
         keypair: KeyPair,
         listener: Listener,
         establisher: Establisher,
@@ -99,12 +95,12 @@ impl NetworkWorker {
             controller_event_tx,
             controller_manager_rx,
         }: NetworkWorkerChannels,
-        storage: Storage,
         version: Version,
     ) -> NetworkWorker {
         let self_node_id = NodeId(keypair.get_public_key());
 
-        let (node_event_tx, node_event_rx) = mpsc::channel::<NodeEvent>(CHANNEL_SIZE);
+        let (node_event_tx, node_event_rx) =
+            mpsc::channel::<NodeEvent>(cfg.node_event_channel_size);
         let max_wait_event = cfg.max_send_wait.to_duration();
         NetworkWorker {
             cfg,
@@ -123,7 +119,6 @@ impl NetworkWorker {
             active_nodes: HashMap::new(),
             node_worker_handles: FuturesUnordered::new(),
             active_connections: HashMap::new(),
-            storage,
             version,
         }
     }
@@ -387,10 +382,9 @@ impl NetworkWorker {
 
                         // spawn node_controller_fn
                         let (node_command_tx, node_command_rx) =
-                            mpsc::channel::<NodeCommand>(CHANNEL_SIZE);
+                            mpsc::channel::<NodeCommand>(self.cfg.node_command_channel_size);
                         let node_event_tx_clone = self.event.clone_node_sender();
                         let cfg_copy = self.cfg.clone();
-                        let storage = self.storage.clone();
                         let node_fn_handle = tokio::spawn(async move {
                             let res = NodeWorker::new(
                                 cfg_copy,
@@ -399,7 +393,6 @@ impl NetworkWorker {
                                 socket_writer,
                                 node_command_rx,
                                 node_event_tx_clone,
-                                storage,
                             )
                             .run_loop()
                             .await;
@@ -516,19 +509,16 @@ impl NetworkWorker {
         match cmd {
             NetworkCommand::NodeBanByIps(ips) => on_node_ban_by_ips_cmd(self, ips).await?,
             NetworkCommand::NodeBanByIds(ids) => on_node_ban_by_ids_cmd(self, ids).await?,
-            NetworkCommand::SendBlockHeader { node, block_id } => {
-                on_send_block_header_cmd(self, node, block_id).await?
+            NetworkCommand::SendBlockHeader { node, header } => {
+                on_send_block_header_cmd(self, node, header).await?
             }
             NetworkCommand::AskForBlocks { list } => on_ask_for_block_cmd(self, list).await,
-            NetworkCommand::SendBlock { node, block_id } => {
-                on_send_block_cmd(self, node, block_id).await?
+            NetworkCommand::SendBlockInfo { node, info } => {
+                on_send_block_info_cmd(self, node, info).await?
             }
             NetworkCommand::GetPeers(response_tx) => on_get_peers_cmd(self, response_tx).await,
             NetworkCommand::GetBootstrapPeers(response_tx) => {
                 on_get_bootstrap_peers_cmd(self, response_tx).await
-            }
-            NetworkCommand::BlockNotFound { node, block_id } => {
-                on_block_not_found_cmd(self, node, block_id).await
             }
             NetworkCommand::SendOperations { node, operations } => {
                 on_send_operations_cmd(self, node, operations).await
@@ -703,16 +693,40 @@ impl NetworkWorker {
             let timeout = self.cfg.peer_list_send_timeout.to_duration();
             let max_bytes_read = self.cfg.max_bytes_read;
             let max_bytes_write = self.cfg.max_bytes_write;
+            let max_ask_blocks = self.cfg.max_ask_blocks;
+            let max_operations_per_block = self.cfg.max_operations_per_block;
+            let thread_count = self.cfg.thread_count;
+            let endorsement_count = self.cfg.endorsement_count;
+            let max_advertise_length = self.cfg.max_peer_advertise_length;
+            let max_endorsements_per_message = self.cfg.max_endorsements_per_message;
+            let max_operations_per_message = self.cfg.max_operations_per_message;
+            let max_message_size = self.cfg.max_message_size;
+            let max_datastore_value_length = self.cfg.max_datastore_value_length;
+            let max_function_name_length = self.cfg.max_function_name_length;
+            let max_parameters_size = self.cfg.max_parameters_size;
             self.handshake_peer_list_futures
                 .push(tokio::spawn(async move {
-                    let mut writer = WriteBinder::new(writer, max_bytes_read);
-                    let mut reader = ReadBinder::new(reader, max_bytes_write);
+                    let mut writer = WriteBinder::new(writer, max_bytes_read, max_message_size);
+                    let mut reader = ReadBinder::new(
+                        reader,
+                        max_bytes_write,
+                        max_message_size,
+                        MessageDeserializer::new(
+                            thread_count,
+                            endorsement_count,
+                            max_advertise_length,
+                            max_ask_blocks,
+                            max_operations_per_block,
+                            max_operations_per_message,
+                            max_endorsements_per_message,
+                            max_datastore_value_length,
+                            max_function_name_length,
+                            max_parameters_size,
+                        ),
+                    );
                     match tokio::time::timeout(
                         timeout,
-                        futures::future::try_join(
-                            writer.send(&msg.to_bytes_compact().unwrap()),
-                            reader.next(),
-                        ),
+                        futures::future::try_join(writer.send(&msg), reader.next()),
                     )
                     .await
                     {
@@ -771,20 +785,17 @@ impl NetworkWorker {
             NodeEvent(from_node_id, NodeEventType::ReceivedPeerList(lst)) => {
                 event_impl::on_received_peer_list(self, from_node_id, &lst)?
             }
-            NodeEvent(from_node_id, NodeEventType::ReceivedBlock(block)) => {
-                event_impl::on_received_block(self, from_node_id, block).await?
-            }
             NodeEvent(from_node_id, NodeEventType::ReceivedAskForBlocks(list)) => {
                 event_impl::on_received_ask_for_blocks(self, from_node_id, list).await
+            }
+            NodeEvent(from_node_id, NodeEventType::ReceivedReplyForBlocks(list)) => {
+                event_impl::on_received_block_info(self, from_node_id, list).await?
             }
             NodeEvent(source_node_id, NodeEventType::ReceivedBlockHeader(header)) => {
                 event_impl::on_received_block_header(self, source_node_id, header).await?
             }
             NodeEvent(from_node_id, NodeEventType::AskedPeerList) => {
                 event_impl::on_asked_peer_list(self, from_node_id).await?
-            }
-            NodeEvent(node, NodeEventType::BlockNotFound(block_id)) => {
-                event_impl::on_block_not_found(self, node, block_id).await
             }
             NodeEvent(node, NodeEventType::ReceivedOperations(operations)) => {
                 event_impl::on_received_operations(self, node, operations).await

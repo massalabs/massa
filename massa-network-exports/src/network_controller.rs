@@ -1,15 +1,17 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::{
-    commands::NetworkManagementCommand, error::NetworkError, BootstrapPeers, NetworkCommand,
-    NetworkEvent, Peers,
+    commands::{AskForBlocksInfo, NetworkManagementCommand},
+    error::NetworkError,
+    BlockInfoReply, BootstrapPeers, NetworkCommand, NetworkEvent, Peers,
 };
 use massa_models::{
+    block::{BlockId, WrappedHeader},
     composite::PubkeySig,
+    endorsement::WrappedEndorsement,
     node::NodeId,
-    operation::{OperationIds, OperationPrefixIds},
+    operation::{OperationPrefixIds, WrappedOperation},
     stats::NetworkStats,
-    BlockId, WrappedEndorsement,
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -19,6 +21,7 @@ use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
 };
+use tracing::info;
 
 /// Network command sender
 #[derive(Clone)]
@@ -81,19 +84,25 @@ impl NetworkCommandSender {
         Ok(())
     }
 
-    /// Send the order to send block.
-    pub async fn send_block(&self, node: NodeId, block_id: BlockId) -> Result<(), NetworkError> {
+    /// Send info about the contents of a block.
+    pub async fn send_block_info(
+        &self,
+        node: NodeId,
+        info: Vec<(BlockId, BlockInfoReply)>,
+    ) -> Result<(), NetworkError> {
         self.0
-            .send(NetworkCommand::SendBlock { node, block_id })
+            .send(NetworkCommand::SendBlockInfo { node, info })
             .await
-            .map_err(|_| NetworkError::ChannelError("could not send SendBlock command".into()))?;
+            .map_err(|_| {
+                NetworkError::ChannelError("could not send SendBlockInfo command".into())
+            })?;
         Ok(())
     }
 
     /// Send the order to ask for a block.
     pub async fn ask_for_block_list(
         &self,
-        list: HashMap<NodeId, Vec<BlockId>>,
+        list: HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>>,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::AskForBlocks { list })
@@ -111,10 +120,10 @@ impl NetworkCommandSender {
     pub async fn send_block_header(
         &self,
         node: NodeId,
-        block_id: BlockId,
+        header: WrappedHeader,
     ) -> Result<(), NetworkError> {
         self.0
-            .send(NetworkCommand::SendBlockHeader { node, block_id })
+            .send(NetworkCommand::SendBlockHeader { node, header })
             .await
             .map_err(|_| {
                 NetworkError::ChannelError("could not send SendBlockHeader command".into())
@@ -164,26 +173,11 @@ impl NetworkCommandSender {
         })
     }
 
-    /// send block not found to node
-    pub async fn block_not_found(
-        &self,
-        node: NodeId,
-        block_id: BlockId,
-    ) -> Result<(), NetworkError> {
-        self.0
-            .send(NetworkCommand::BlockNotFound { node, block_id })
-            .await
-            .map_err(|_| {
-                NetworkError::ChannelError("could not send block_not_found command".into())
-            })?;
-        Ok(())
-    }
-
     /// send operations to node
     pub async fn send_operations(
         &self,
         node: NodeId,
-        operations: OperationIds,
+        operations: Vec<WrappedOperation>,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendOperations { node, operations })
@@ -194,7 +188,7 @@ impl NetworkCommandSender {
         Ok(())
     }
 
-    /// Create a new call to the network, sending a announcement of `OperationIds` to a
+    /// Create a new call to the network, sending a announcement of operation ID prefixes to a
     /// target node (`to_node`)
     ///
     /// # Returns
@@ -303,9 +297,11 @@ impl NetworkManager {
         self,
         network_event_receiver: NetworkEventReceiver,
     ) -> Result<(), NetworkError> {
+        info!("stopping network manager...");
         drop(self.manager_tx);
         let _remaining_events = network_event_receiver.drain().await;
         let _ = self.join_handle.await?;
+        info!("network manager stopped");
         Ok(())
     }
 }

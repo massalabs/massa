@@ -25,8 +25,6 @@ pub const PUBLIC_KEY_SIZE_BYTES: usize = ed25519_dalek::PUBLIC_KEY_LENGTH;
 pub const SECRET_KEY_BYTES_SIZE: usize = ed25519_dalek::SECRET_KEY_LENGTH;
 /// Size of a signature
 pub const SIGNATURE_SIZE_BYTES: usize = ed25519_dalek::SIGNATURE_LENGTH;
-
-const SIGNATURE_STRING_PREFIX: &str = "SIG";
 /// `KeyPair` is used for signature and decrypting
 pub struct KeyPair(ed25519_dalek::Keypair);
 
@@ -445,7 +443,7 @@ impl PublicKey {
         signature: &Signature,
     ) -> Result<(), MassaSignatureError> {
         self.0.verify(hash.to_bytes(), &signature.0).map_err(|err| {
-            MassaSignatureError::SignatureError(format!("Signature failed: {}", err))
+            MassaSignatureError::SignatureError(format!("Signature verification failed: {}", err))
         })
     }
 
@@ -672,33 +670,14 @@ pub struct Signature(ed25519_dalek::Signature);
 
 impl std::fmt::Display for Signature {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if cfg!(feature = "hash-prefix") {
-            write!(f, "{}-{}", SIGNATURE_STRING_PREFIX, self.to_bs58_check())
-        } else {
-            write!(f, "{}", self.to_bs58_check())
-        }
+        write!(f, "{}", self.to_bs58_check())
     }
 }
 
 impl FromStr for Signature {
     type Err = MassaSignatureError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if cfg!(feature = "hash-prefix") {
-            let v: Vec<_> = s.split('-').collect();
-            if v.len() != 2 {
-                // assume there is no prefix
-                Signature::from_bs58_check(s)
-            } else if v[0] != SIGNATURE_STRING_PREFIX {
-                Err(MassaSignatureError::WrongPrefix(
-                    SIGNATURE_STRING_PREFIX.to_string(),
-                    v[0].to_string(),
-                ))
-            } else {
-                Signature::from_bs58_check(v[1])
-            }
-        } else {
-            Signature::from_bs58_check(s)
-        }
+        Signature::from_bs58_check(s)
     }
 }
 

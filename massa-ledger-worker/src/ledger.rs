@@ -6,10 +6,16 @@ use crate::ledger_db::{LedgerDB, LedgerSubEntry};
 use massa_ledger_exports::{
     LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
 };
-use massa_models::{Address, Amount, ModelsError};
-use massa_models::{DeserializeCompact, Slot};
+use massa_models::{
+    address::Address,
+    amount::{Amount, AmountDeserializer},
+    error::ModelsError,
+    slot::Slot,
+};
+use massa_serialization::{DeserializeError, Deserializer};
 use nom::AsBytes;
 use std::collections::{BTreeSet, HashMap};
+use std::ops::Bound::Included;
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -18,57 +24,26 @@ use std::collections::{BTreeSet, HashMap};
 #[derive(Debug)]
 pub struct FinalLedger {
     /// ledger configuration
-    pub(crate) _config: LedgerConfig,
+    pub(crate) config: LedgerConfig,
     /// ledger tree, sorted by address
     pub(crate) sorted_ledger: LedgerDB,
 }
 
-/// Macro used to shorten file error returns
-macro_rules! init_file_error {
-    ($st:expr, $cfg:ident) => {
-        |err| {
-            LedgerError::FileError(format!(
-                "error $st initial ledger file {}: {}",
-                $cfg.initial_sce_ledger_path
-                    .to_str()
-                    .unwrap_or("(non-utf8 path)"),
-                err
-            ))
-        }
-    };
-}
-pub(crate) use init_file_error;
-
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
     pub fn new(config: LedgerConfig) -> Result<Self, LedgerError> {
-        // load the ledger tree from file
-        let initial_ledger: HashMap<Address, LedgerEntry> =
-            serde_json::from_str::<HashMap<Address, Amount>>(
-                &std::fs::read_to_string(&config.initial_sce_ledger_path)
-                    .map_err(init_file_error!("loading", config))?,
-            )
-            .map_err(init_file_error!("parsing", config))?
-            .into_iter()
-            .map(|(addr, amount)| {
-                (
-                    addr,
-                    LedgerEntry {
-                        parallel_balance: amount,
-                        ..Default::default()
-                    },
-                )
-            })
-            .collect();
-
         // create and initialize the disk ledger
-        let mut sorted_ledger = LedgerDB::new(config.disk_ledger_path.clone());
-        sorted_ledger.set_initial_ledger(initial_ledger);
+        let sorted_ledger = LedgerDB::new(
+            config.disk_ledger_path.clone(),
+            config.thread_count,
+            config.max_key_length,
+            config.max_ledger_part_size,
+        );
 
         // generate the final ledger
         Ok(FinalLedger {
             sorted_ledger,
-            _config: config,
+            config,
         })
     }
 }
@@ -79,17 +54,66 @@ impl LedgerController for FinalLedger {
         self.sorted_ledger.apply_changes(changes, slot);
     }
 
+    /// Loads ledger from file
+    fn load_initial_ledger(&mut self) -> Result<(), LedgerError> {
+        // load the ledger tree from file
+        let initial_ledger: HashMap<Address, LedgerEntry> = serde_json::from_str(
+            &std::fs::read_to_string(&self.config.initial_ledger_path).map_err(|err| {
+                LedgerError::FileError(format!(
+                    "error loading initial ledger file {}: {}",
+                    self.config
+                        .initial_ledger_path
+                        .to_str()
+                        .unwrap_or("(non-utf8 path)"),
+                    err
+                ))
+            })?,
+        )
+        .map_err(|err| {
+            LedgerError::FileError(format!(
+                "error parsing initial ledger file {}: {}",
+                self.config
+                    .initial_ledger_path
+                    .to_str()
+                    .unwrap_or("(non-utf8 path)"),
+                err
+            ))
+        })?;
+        self.sorted_ledger.load_initial_ledger(initial_ledger);
+        Ok(())
+    }
+
+    /// Gets the sequential balance of a ledger entry
+    ///
+    /// # Returns
+    /// The sequential balance, or None if the ledger entry was not found
+    fn get_sequential_balance(&self, addr: &Address) -> Option<Amount> {
+        let amount_deserializer =
+            AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
+        self.sorted_ledger
+            .get_sub_entry(addr, LedgerSubEntry::SeqBalance)
+            .map(|bytes| {
+                amount_deserializer
+                    .deserialize::<DeserializeError>(&bytes)
+                    .expect("critical: invalid sequential balance format")
+                    .1
+            })
+    }
+
     /// Gets the parallel balance of a ledger entry
     ///
     /// # Returns
     /// The parallel balance, or None if the ledger entry was not found
     fn get_parallel_balance(&self, addr: &Address) -> Option<Amount> {
+        let amount_deserializer =
+            AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
         self.sorted_ledger
-            .get_sub_entry(addr, LedgerSubEntry::Balance)
+            .get_sub_entry(addr, LedgerSubEntry::ParBalance)
             .map(|bytes| {
-                Amount::from_bytes_compact(&bytes)
+                amount_deserializer
+                    .deserialize::<DeserializeError>(&bytes)
                     .expect("critical: invalid balance format")
-                    .0
+                    .1
             })
     }
 
@@ -108,7 +132,7 @@ impl LedgerController for FinalLedger {
     /// true if it exists, false otherwise.
     fn entry_exists(&self, addr: &Address) -> bool {
         self.sorted_ledger
-            .get_sub_entry(addr, LedgerSubEntry::Balance)
+            .get_sub_entry(addr, LedgerSubEntry::SeqBalance)
             .is_some()
     }
 
