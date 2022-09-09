@@ -389,7 +389,7 @@ impl ConsensusWorker {
                     {}
                 );
                 let resp = self.block_db.export_bootstrap_graph()?;
-                if response_tx.send(resp).is_err() {
+                if response_tx.send(Box::new(resp)).await.is_err() {
                     warn!("consensus: could not send GetBootstrapState answer");
                 }
                 Ok(())

@@ -155,24 +155,25 @@ async fn test_bootstrap_server() {
         sent_peers
     };
 
-    // wait for peers
-    let sent_peers = wait_peers().await;
-
-    // here the ledger is queried directly. We don't intercept this
-
     // wait for bootstrap to ask consensus for bootstrap graph, send it
-    let response = match wait_consensus_command(&mut consensus_cmd_rx, 1000.into(), |cmd| match cmd
-    {
-        ConsensusCommand::GetBootstrapState(resp) => Some(resp),
-        _ => None,
-    })
-    .await
-    {
-        Some(resp) => resp,
-        None => panic!("timeout waiting for get boot graph consensus command"),
+    let wait_graph = async move || {
+        let response =
+            match wait_consensus_command(&mut consensus_cmd_rx, 1000.into(), |cmd| match cmd {
+                ConsensusCommand::GetBootstrapState(resp) => Some(resp),
+                _ => None,
+            })
+            .await
+            {
+                Some(resp) => resp,
+                None => panic!("timeout waiting for get boot graph consensus command"),
+            };
+        let sent_graph = get_boot_state();
+        response.send(sent_graph.clone()).unwrap();
+        sent_graph
     };
-    let sent_graph = get_boot_state();
-    response.send(sent_graph.clone()).unwrap();
+
+    // wait for peers and graph
+    let (sent_peers, sent_graph) = tokio::join!(wait_peers(), wait_graph());
 
     // launch the modifier thread
     let (tx, rx) = std::sync::mpsc::channel();
