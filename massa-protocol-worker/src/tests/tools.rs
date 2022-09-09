@@ -37,7 +37,7 @@ where
         ProtocolEventReceiver,
         ProtocolManager,
     ) = start_protocol_controller(
-        protocol_config.clone(),
+        *protocol_config,
         network_command_sender,
         network_event_receiver,
         pool_controller,

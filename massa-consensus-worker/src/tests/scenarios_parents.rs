@@ -8,6 +8,7 @@ use serial_test::serial;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_parent_in_the_future() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
@@ -59,6 +60,7 @@ async fn test_parent_in_the_future() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_parents() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
@@ -125,6 +127,7 @@ async fn test_parents() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_parents_in_incompatible_cliques() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {

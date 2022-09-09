@@ -124,7 +124,7 @@ impl Deserializer<BTreeMap<Vec<u8>, Vec<u8>>> for DatastoreDeserializer {
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
     /// let serializer = DatastoreSerializer::new();
-    /// let deserializer = DatastoreDeserializer::new(10000, 10000, 10000);
+    /// let deserializer = DatastoreDeserializer::new(10000, 255, 10000);
     /// let mut buffer = Vec::new();
     /// let mut datastore = BTreeMap::new();
     /// datastore.insert(vec![1, 2, 3], vec![4, 5, 6]);
@@ -189,7 +189,7 @@ impl Serializer<LedgerEntry> for LedgerEntrySerializer {
     /// use massa_serialization::Serializer;
     /// use std::collections::BTreeMap;
     /// use std::str::FromStr;
-    /// use massa_models::Amount;
+    /// use massa_models::amount::Amount;
     /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer};
     ///
     /// let key = "hello world".as_bytes().to_vec();
@@ -257,7 +257,7 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use std::collections::BTreeMap;
     /// use std::str::FromStr;
-    /// use massa_models::Amount;
+    /// use massa_models::amount::Amount;
     /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer, LedgerEntryDeserializer};
     ///
     /// let key = "hello world".as_bytes().to_vec();
@@ -273,7 +273,7 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
     /// };
     /// let mut serialized = Vec::new();
     /// let serializer = LedgerEntrySerializer::new();
-    /// let deserializer = LedgerEntryDeserializer::new(10000, 10000, 10000);
+    /// let deserializer = LedgerEntryDeserializer::new(10000, 255, 10000);
     /// serializer.serialize(&ledger_entry, &mut serialized).unwrap();
     /// let (rest, ledger_entry_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());

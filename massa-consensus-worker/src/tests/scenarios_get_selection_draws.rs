@@ -1,9 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::tools::*;
-use massa_consensus_exports::test_exports::{
-    generate_default_roll_counts_file, generate_ledger_file, generate_staking_keys_file,
-};
 use massa_consensus_exports::ConsensusConfig;
 
 use massa_models::ledger_models::LedgerData;
@@ -15,6 +12,7 @@ use std::str::FromStr;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_get_selection_draws_high_end_slot() {
     // setup logging
     /*
@@ -24,7 +22,7 @@ async fn test_get_selection_draws_high_end_slot() {
         .init()
         .unwrap();
     */
-    let mut cfg = ConsensusConfig {
+    let cfg = ConsensusConfig {
         periods_per_cycle: 2,
         t0: 500.into(),
         delta_f0: 3,
@@ -34,7 +32,7 @@ async fn test_get_selection_draws_high_end_slot() {
     };
     // define addresses use for the test
     // addresses 1 and 2 both in thread 0
-    let addr_1 = random_address_on_thread(0, cfg.thread_count);
+    //let addr_1 = random_address_on_thread(0, cfg.thread_count);
     let addr_2 = random_address_on_thread(0, cfg.thread_count);
 
     let mut ledger = HashMap::new();

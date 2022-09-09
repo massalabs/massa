@@ -55,7 +55,7 @@ fn get_export_active_test_block() -> (WrappedBlock, ExportActiveBlock) {
                 (get_dummy_block_id("parent11"), 23),
                 (get_dummy_block_id("parent12"), 24),
             ],
-            block: block.clone(),
+            block,
             operations: vec![],
             is_final: true,
         },

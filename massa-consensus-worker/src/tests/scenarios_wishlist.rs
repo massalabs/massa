@@ -14,6 +14,7 @@ use std::iter::FromIterator;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_wishlist_delta_with_empty_remove() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
@@ -69,6 +70,7 @@ async fn test_wishlist_delta_with_empty_remove() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_wishlist_delta_remove() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {

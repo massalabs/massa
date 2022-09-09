@@ -54,7 +54,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
     /// ## Example
     /// ```
     /// use massa_serialization::Serializer;
-    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use massa_final_state::{StateChanges, StateChangesSerializer};
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
@@ -149,7 +149,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// ## Example
     /// ```
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{Address, prehash::Map, Amount, Slot};
+    /// use massa_models::{address::Address, prehash::PreHashMap, amount::Amount, slot::Slot};
     /// use massa_final_state::{StateChanges, StateChangesSerializer, StateChangesDeserializer};
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
@@ -189,7 +189,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// state_changes.ledger_changes = ledger_changes;
     /// let mut serialized = Vec::new();
     /// StateChangesSerializer::new().serialize(&state_changes, &mut serialized).unwrap();
-    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(32, 10000, 10000, 10000, 10000, 10000, 10000).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(32, 255, 255, 255, 255, 255, 255).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(state_changes_deser.ledger_changes, state_changes.ledger_changes);
     /// assert_eq!(state_changes_deser.async_pool_changes, state_changes.async_pool_changes);

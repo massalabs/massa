@@ -252,10 +252,7 @@ mod tests {
         state_changes
             .async_pool_changes
             .0
-            .push(massa_async_pool::Change::Add(
-                message.compute_id(),
-                message.clone(),
-            ));
+            .push(massa_async_pool::Change::Add(message.compute_id(), message));
         history_state_changes.push_front((Slot::new(3, 0), state_changes));
         let mut state_changes = StateChanges::default();
         state_changes

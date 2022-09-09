@@ -284,7 +284,7 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
         let handler_name_len: u8 = handler_bytes.len().try_into().map_err(|_| {
             SerializeError::GeneralError("could not convert handler name length to u8".into())
         })?;
-        buffer.extend(&[handler_name_len]);
+        buffer.extend([handler_name_len]);
         buffer.extend(handler_bytes);
 
         self.u64_serializer.serialize(&value.max_gas, buffer)?;

@@ -2,7 +2,6 @@
 
 use super::tools::random_address_on_thread;
 use crate::tests::tools;
-use massa_consensus_exports::test_exports::generate_roll_counts_file;
 use massa_consensus_exports::ConsensusConfig;
 use massa_models::ledger_models::LedgerData;
 use massa_models::rolls::{RollCounts, RollUpdate, RollUpdates};
@@ -288,11 +287,12 @@ use tokio::time::sleep_until;
 ///         if key a created a block, assert it has chosen as parents expected blocks (no misses), and that it was sent to protocol around the time it was expected.
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_interleaving_block_creation_with_reception() {
     let thread_count = 1;
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let (address_1, keypair_1) = random_address_on_thread(0, thread_count).into();
+    let (address_1, _) = random_address_on_thread(0, thread_count).into();
     let (address_2, keypair_2) = random_address_on_thread(0, thread_count).into();
 
     let mut ledger = HashMap::new();
@@ -300,7 +300,7 @@ async fn test_interleaving_block_creation_with_reception() {
         address_2,
         LedgerData::new(Amount::from_mantissa_scale(1000, 0)),
     );
-    let mut cfg = ConsensusConfig {
+    let cfg = ConsensusConfig {
         thread_count,
         t0: 1000.into(),
         genesis_timestamp: MassaTime::now(0).unwrap().checked_add(1000.into()).unwrap(),
@@ -359,13 +359,12 @@ async fn test_interleaving_block_creation_with_reception() {
                                 let block = storage
                                     .read_blocks()
                                     .get(&block_id)
-                                    .expect(&format!(
-                                        "Block id : {} not found in storage",
-                                        block_id
-                                    ))
+                                    .unwrap_or_else(|| {
+                                        panic!("Block id : {} not found in storage", block_id)
+                                    })
                                     .clone();
                                 if block.content.header.content.slot == cur_slot {
-                                    Some((block.content.header.clone(), block_id))
+                                    Some((block.content.header, block_id))
                                 } else {
                                     None
                                 }

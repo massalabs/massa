@@ -11,6 +11,7 @@ use serial_test::serial;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_old_stale_not_propagated_and_discarded() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
@@ -68,6 +69,7 @@ async fn test_old_stale_not_propagated_and_discarded() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_block_not_processed_multiple_times() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
@@ -138,6 +140,7 @@ async fn test_block_not_processed_multiple_times() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_queuing() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
@@ -192,6 +195,7 @@ async fn test_queuing() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_double_staking_does_not_propagate() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {

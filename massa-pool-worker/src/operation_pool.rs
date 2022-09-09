@@ -206,7 +206,7 @@ impl OperationPool {
             }
 
             // check if the op was already executed
-            // TOOD batch this
+            // TODO batch this
             if self
                 .execution_controller
                 .unexecuted_ops_among(&vec![op_info.id].into_iter().collect(), slot.thread)
