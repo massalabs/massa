@@ -2,9 +2,7 @@
 
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
-use massa_models::{
-    address::Address, amount::Amount, block::BlockId, ledger_models::LedgerData, slot::Slot,
-};
+use massa_models::{block::BlockId, slot::Slot};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
@@ -50,7 +48,6 @@ async fn test_inter_cycle_batch_finalization() {
     let t0: MassaTime = 1000.into();
     let staking_key =
         KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8").unwrap();
-    let creator_addr = Address::from_public_key(&staking_key.get_public_key());
     let warmup_time: MassaTime = 1000.into();
     let margin_time: MassaTime = 300.into();
     let cfg = ConsensusConfig {

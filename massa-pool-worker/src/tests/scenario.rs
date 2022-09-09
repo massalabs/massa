@@ -47,7 +47,7 @@ use massa_signature::KeyPair;
 fn test_simple_get_operations() {
     let config = PoolConfig::default();
     pool_test(
-        config.clone(),
+        config,
         |mut pool_controller, execution_receiver, mut storage| {
             let keypair = KeyPair::generate();
             storage.store_operations(create_some_operations(10, &keypair, 1));
@@ -156,7 +156,7 @@ fn test_get_operations_overflow() {
     };
     let creator_thread = creator_address.get_thread(config.thread_count);
     pool_test(
-        config.clone(),
+        config,
         |mut pool_controller, execution_receiver, mut storage| {
             storage.store_operations(operations);
 

@@ -230,8 +230,8 @@ fn test_take_batch() {
                 validity_start: Slot::new(1, 0),
                 validity_end: Slot::new(3, 0),
                 max_gas: i,
-                gas_price: Amount::from_str("0.1".into()).unwrap(),
-                coins: Amount::from_str("0.3".into()).unwrap(),
+                gas_price: Amount::from_str("0.1").unwrap(),
+                coins: Amount::from_str("0.3").unwrap(),
                 data: Vec::new(),
             },
         );

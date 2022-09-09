@@ -330,7 +330,7 @@ pub fn _create_roll_transaction(
         expire_period,
         op,
     };
-    Operation::new_wrapped(content, OperationSerializer::new(), &keypair).unwrap()
+    Operation::new_wrapped(content, OperationSerializer::new(), keypair).unwrap()
 }
 
 pub async fn _wait_pool_slot(
@@ -413,7 +413,7 @@ pub fn _create_roll_buy(
         expire_period,
         op,
     };
-    Operation::new_wrapped(content, OperationSerializer::new(), &keypair).unwrap()
+    Operation::new_wrapped(content, OperationSerializer::new(), keypair).unwrap()
 }
 
 pub fn create_roll_sell(
@@ -428,7 +428,7 @@ pub fn create_roll_sell(
         expire_period,
         op,
     };
-    Operation::new_wrapped(content, OperationSerializer::new(), &keypair).unwrap()
+    Operation::new_wrapped(content, OperationSerializer::new(), keypair).unwrap()
 }
 
 // returns hash and resulting discarded blocks
@@ -463,21 +463,19 @@ pub fn create_block_with_merkle_root(
             endorsements: Vec::new(),
         },
         BlockHeaderSerializer::new(),
-        &creator,
+        creator,
     )
     .unwrap();
 
-    let block = Block::new_wrapped(
+    Block::new_wrapped(
         Block {
             header,
             operations: Default::default(),
         },
         BlockSerializer::new(),
-        &creator,
+        creator,
     )
-    .unwrap();
-
-    block
+    .unwrap()
 }
 
 /// Creates an endorsement for use in consensus tests.
@@ -529,8 +527,8 @@ pub fn _get_export_active_test_block(
 
     ExportActiveBlock {
         parents,
-        block: block.clone(),
-        operations: operations.clone(),
+        block,
+        operations,
         is_final,
     }
 }
@@ -556,11 +554,11 @@ pub fn create_block_with_operations(
             endorsements: Vec::new(),
         },
         BlockHeaderSerializer::new(),
-        &creator,
+        creator,
     )
     .unwrap();
 
-    let block = Block::new_wrapped(
+    Block::new_wrapped(
         Block {
             header,
             operations: operations.into_iter().map(|op| op.id).collect(),
@@ -568,9 +566,7 @@ pub fn create_block_with_operations(
         BlockSerializer::new(),
         creator,
     )
-    .unwrap();
-
-    block
+    .unwrap()
 }
 
 pub fn create_block_with_operations_and_endorsements(
@@ -599,7 +595,7 @@ pub fn create_block_with_operations_and_endorsements(
     )
     .unwrap();
 
-    let block = Block::new_wrapped(
+    Block::new_wrapped(
         Block {
             header,
             operations: operations.into_iter().map(|op| op.id).collect(),
@@ -607,9 +603,7 @@ pub fn create_block_with_operations_and_endorsements(
         BlockSerializer::new(),
         creator,
     )
-    .unwrap();
-
-    block
+    .unwrap()
 }
 
 pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<KeyPair>) -> KeyPair {

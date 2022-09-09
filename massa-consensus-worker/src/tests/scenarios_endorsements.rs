@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::{
-    amount::Amount,
     block::BlockId,
     endorsement::{Endorsement, EndorsementSerializer},
     slot::Slot,
@@ -11,10 +10,9 @@ use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use serial_test::serial;
-use std::str::FromStr;
 
 use super::tools::*;
-use massa_consensus_exports::{test_exports::generate_default_roll_counts_file, ConsensusConfig};
+use massa_consensus_exports::ConsensusConfig;
 
 #[tokio::test]
 #[serial]
@@ -27,7 +25,7 @@ async fn test_endorsement_check() {
         .init()
         .unwrap();
     */
-    let mut cfg = ConsensusConfig {
+    let cfg = ConsensusConfig {
         delta_f0: 3,
         endorsement_count: 1,
         genesis_timestamp: MassaTime::now(0).unwrap().saturating_add(300.into()),

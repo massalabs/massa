@@ -159,11 +159,11 @@ impl Serializer<IpAddr> for IpAddrSerializer {
         match value {
             IpAddr::V4(ip_v4) => {
                 buffer.push(4u8);
-                buffer.extend(&ip_v4.octets());
+                buffer.extend(ip_v4.octets());
             }
             IpAddr::V6(ip_v6) => {
                 buffer.push(6u8);
-                buffer.extend(&ip_v6.octets());
+                buffer.extend(ip_v6.octets());
             }
         };
         Ok(())

@@ -3,13 +3,12 @@
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
 use super::tools::{protocol_test, protocol_test_with_storage};
-use massa_models::prehash::PreHashMap;
+use massa_models::prehash::PreHashSet;
 use massa_models::{self, address::Address, amount::Amount, block::BlockId, slot::Slot};
-use massa_models::{operation::OperationId, prehash::PreHashSet};
 use massa_network_exports::{BlockInfoReply, NetworkCommand};
 use massa_pool_exports::test_exports::MockPoolControllerMessage;
 use massa_protocol_exports::tests::tools::{self, assert_hash_asked_to_node};
-use massa_protocol_exports::{BlocksResults, ProtocolEvent};
+use massa_protocol_exports::ProtocolEvent;
 use serial_test::serial;
 use std::str::FromStr;
 use std::time::Duration;
@@ -586,10 +585,7 @@ async fn test_protocol_ask_operations_on_batch_received() {
             let expected_operation_id = operation.id;
             // 3. Send operation batch to protocol.
             network_controller
-                .send_operation_batch(
-                    creator_node.id,
-                    vec![expected_operation_id].iter().cloned().collect(),
-                )
+                .send_operation_batch(creator_node.id, vec![expected_operation_id])
                 .await;
 
             match network_controller

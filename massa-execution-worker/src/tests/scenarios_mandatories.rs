@@ -622,7 +622,7 @@ fn create_execute_sc_operation(
             op,
         },
         OperationSerializer::new(),
-        &sender_keypair,
+        sender_keypair,
     )?;
     Ok(op)
 }

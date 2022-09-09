@@ -32,7 +32,7 @@ fn basic_creation_with_operation() {
 
     let block = storage.read_blocks().get(&block_id).unwrap().clone();
     for op_id in block.content.operations.iter() {
-        storage.read_operations().get(&op_id).unwrap();
+        storage.read_operations().get(op_id).unwrap();
     }
     assert_eq!(block.content.operations.len(), 1);
 }
@@ -54,7 +54,7 @@ fn basic_creation_with_multiple_operations() {
 
     let block = storage.read_blocks().get(&block_id).unwrap().clone();
     for op_id in block.content.operations.iter() {
-        storage.read_operations().get(&op_id).unwrap();
+        storage.read_operations().get(op_id).unwrap();
     }
     assert_eq!(block.content.operations.len(), 2);
 }

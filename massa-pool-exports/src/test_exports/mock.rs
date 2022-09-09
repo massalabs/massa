@@ -110,11 +110,10 @@ impl PoolEventReceiver {
     where
         F: Fn(MockPoolControllerMessage) -> Option<T>,
     {
-        let msg = match self.0.recv_timeout(timeout.into()) {
+        match self.0.recv_timeout(timeout.into()) {
             Ok(msg) => filter_map(msg),
             Err(_) => None,
-        };
-        msg
+        }
     }
 }
 

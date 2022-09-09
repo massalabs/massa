@@ -168,7 +168,7 @@ async fn test_bootstrap_server() {
                 None => panic!("timeout waiting for get boot graph consensus command"),
             };
         let sent_graph = get_boot_state();
-        response.send(sent_graph.clone()).unwrap();
+        response.send(Box::new(sent_graph.clone())).await.unwrap();
         sent_graph
     };
 

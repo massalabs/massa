@@ -25,7 +25,7 @@ pub fn create_final_ledger(
     );
     db.load_initial_ledger(initial_ledger.unwrap_or_default());
     FinalLedger {
-        config: config,
+        config,
         sorted_ledger: db,
     }
 }
@@ -50,7 +50,7 @@ pub fn assert_eq_ledger_entry(v1: &LedgerEntry, v2: &LedgerEntry) {
 }
 
 /// asserts that two `FinalLedgerBootstrapState` are equal
-pub fn assert_eq_ledger(v1: &Box<dyn LedgerController>, v2: &Box<dyn LedgerController>) {
+pub fn assert_eq_ledger(v1: &dyn LedgerController, v2: &dyn LedgerController) {
     let ledger1: HashMap<Address, LedgerEntry> = v1
         .get_every_address()
         .iter()

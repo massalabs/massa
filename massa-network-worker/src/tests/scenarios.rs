@@ -867,8 +867,7 @@ async fn test_block_not_found() {
                     evt = conn1_r.next() => {
                         let evt = evt.unwrap().unwrap().1;
                         if let Message::AskForBlocks(list2) = evt {
-                            let list2: Vec<BlockId> = list2.iter().cloned().map(|(id, _)| id).collect();
-                            assert!(list2.contains(&get_dummy_block_id("default_val4")));
+                            assert!(list2.iter().cloned().map(|(id, _)| id).any(|x| x == get_dummy_block_id("default_val4")));
                             break;
                         }
                     },
