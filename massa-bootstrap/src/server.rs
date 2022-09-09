@@ -214,7 +214,8 @@ impl BootstrapServer {
                     let config = self.bootstrap_config.clone();
 
                     bootstrap_sessions.push(async move {
-                        let (data_peers, data_graph) = tokio::join!(network_command_sender.get_bootstrap_peers(), consensus_command_sender.get_bootstrap_state());
+                        let data_peers = network_command_sender.get_bootstrap_peers().await;
+                        let data_graph = consensus_command_sender.get_bootstrap_state().await;
                         let data_graph = match data_graph {
                             Ok(v) => v,
                             Err(err) => {
@@ -258,6 +259,8 @@ impl BootstrapServer {
                 }
             }
         }
+        // wait for bootstrap sessions to finish
+        while bootstrap_sessions.next().await.is_some() {}
 
         Ok(())
     }
@@ -424,7 +427,7 @@ pub async fn send_final_state_stream(
 async fn manage_bootstrap(
     bootstrap_config: &BootstrapConfig,
     server: &mut BootstrapServerBinder,
-    data_graph: BootstrapableGraph,
+    mut data_graph: BootstrapableGraph,
     data_peers: BootstrapPeers,
     final_state: Arc<RwLock<FinalState>>,
     compensation_millis: i64,
@@ -539,10 +542,15 @@ async fn manage_bootstrap(
                         )
                         .into()),
                         Ok(Err(e)) => Err(e),
-                        Ok(Ok(_)) => Ok(()),
+                        Ok(Ok(_)) => {
+                            data_graph.final_blocks = Vec::new();
+                            Ok(())
+                        },
                     }?;
                 }
-                BootstrapClientMessage::BootstrapSuccess => break Ok(()),
+                BootstrapClientMessage::BootstrapSuccess => {
+                    break Ok(())
+                },
                 BootstrapClientMessage::BootstrapError { error } => {
                     break Err(BootstrapError::ReceivedError(error));
                 }
