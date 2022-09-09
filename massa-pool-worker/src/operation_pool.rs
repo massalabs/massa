@@ -192,42 +192,26 @@ impl OperationPool {
 
             // exclude ops for which the block slot is outside of their validity range
             if !op_info.validity_period_range.contains(&slot.period) {
-                println!(
-                    "AURELIEN POOL: get_block_operations: op {} not valid anymore",
-                    op_info.id
-                );
                 continue;
             }
 
             // exclude ops that are too large
             if op_info.size > remaining_space {
-                println!(
-                    "AURELIEN POOL: get_block_operations: op {}, block don't have space",
-                    op_info.id
-                );
                 continue;
             }
 
             // exclude ops that require too much gas
             if op_info.max_gas > remaining_gas {
-                println!(
-                    "AURELIEN POOL: get_block_operations: op {}, too much gas",
-                    op_info.id
-                );
                 continue;
             }
 
             // check if the op was already executed
-            // TOOD batch this
+            // TODO batch this
             if self
                 .execution_controller
                 .unexecuted_ops_among(&vec![op_info.id].into_iter().collect(), slot.thread)
                 .is_empty()
             {
-                println!(
-                    "AURELIEN POOL: get_block_operations: op {}, operation unexecuted",
-                    op_info.id
-                );
                 continue;
             }
 

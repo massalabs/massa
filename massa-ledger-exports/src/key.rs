@@ -151,7 +151,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
     /// key.push(DATASTORE_IDENT);
     /// key.extend(store_key.to_bytes());
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
-    /// let (rest, key_deser) = KeyDeserializer::new(10000).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let (rest, key_deser) = KeyDeserializer::new(255).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(key_deser, key);
     ///
@@ -160,7 +160,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
     /// key.extend(address.to_bytes());
     /// key.push(SEQ_BALANCE_IDENT);
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
-    /// let (rest, key_deser) = KeyDeserializer::new(10000).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let (rest, key_deser) = KeyDeserializer::new(255).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(key_deser, key);
     /// ```

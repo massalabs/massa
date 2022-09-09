@@ -287,6 +287,7 @@ use tokio::time::sleep_until;
 ///         if key a created a block, assert it has chosen as parents expected blocks (no misses), and that it was sent to protocol around the time it was expected.
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_interleaving_block_creation_with_reception() {
     let thread_count = 1;
     // define addresses use for the test

@@ -12,6 +12,7 @@ use serial_test::serial;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_queueing() {
     // setup logging
     // stderrlog::new()
@@ -149,6 +150,7 @@ async fn test_queueing() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_doubles() {
     // setup logging
     // stderrlog::new()
@@ -253,6 +255,7 @@ async fn test_doubles() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_double_staking() {
     // setup logging
     // stderrlog::new()
@@ -395,6 +398,7 @@ async fn test_double_staking() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_test_parents() {
     // // setup logging
     // stderrlog::new()

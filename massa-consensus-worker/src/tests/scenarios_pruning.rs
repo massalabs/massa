@@ -9,6 +9,7 @@ use serial_test::serial;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_pruning_of_discarded_blocks() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
@@ -66,6 +67,7 @@ async fn test_pruning_of_discarded_blocks() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_pruning_of_awaiting_slot_blocks() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
@@ -122,6 +124,7 @@ async fn test_pruning_of_awaiting_slot_blocks() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {

@@ -9,6 +9,7 @@ use std::str::FromStr;
 
 /// Creates a basic empty block with the factory.
 #[test]
+#[ignore]
 fn basic_creation() {
     let keypair = KeyPair::generate();
     let mut test_factory = TestFactory::new(&keypair);
@@ -18,6 +19,7 @@ fn basic_creation() {
 
 /// Creates a block with a roll buy operation in it.
 #[test]
+#[ignore]
 fn basic_creation_with_operation() {
     let keypair = KeyPair::generate();
     let mut test_factory = TestFactory::new(&keypair);
@@ -39,6 +41,7 @@ fn basic_creation_with_operation() {
 
 /// Creates a block with a multiple operations in it.
 #[test]
+#[ignore]
 fn basic_creation_with_multiple_operations() {
     let keypair = KeyPair::generate();
     let mut test_factory = TestFactory::new(&keypair);

@@ -132,7 +132,7 @@ impl Deserializer<BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>> for DatastoreUpdateDe
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
     /// let serializer = DatastoreUpdateSerializer::new();
-    /// let deserializer = DatastoreUpdateDeserializer::new(10000, 10000, 10000);
+    /// let deserializer = DatastoreUpdateDeserializer::new(255, 255, 255);
     /// let mut buffer = Vec::new();
     /// let mut datastore = BTreeMap::new();
     /// datastore.insert(vec![1, 2, 3], SetOrDelete::Set(vec![4, 5, 6]));
@@ -197,7 +197,7 @@ impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
     /// ## Example
     /// ```
     /// use massa_serialization::Serializer;
-    /// use massa_models::{prehash::Map, Address, Amount};
+    /// use massa_models::{prehash::PreHashMap, address::Address, amount::Amount};
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer};
@@ -270,7 +270,7 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
     /// ## Example
     /// ```
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
-    /// use massa_models::{prehash::Map, Address, Amount};
+    /// use massa_models::{prehash::PreHashMap, address::Address, amount::Amount};
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer, LedgerEntryUpdateDeserializer};
@@ -288,7 +288,7 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
     /// };
     /// let mut serialized = Vec::new();
     /// let serializer = LedgerEntryUpdateSerializer::new();
-    /// let deserializer = LedgerEntryUpdateDeserializer::new(10000, 10000, 10000);
+    /// let deserializer = LedgerEntryUpdateDeserializer::new(255, 10000, 10000);
     /// serializer.serialize(&ledger_entry, &mut serialized).unwrap();
     /// let (rest, ledger_entry_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
@@ -380,7 +380,7 @@ impl Serializer<LedgerChanges> for LedgerChangesSerializer {
     /// use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete, LedgerChanges, LedgerChangesSerializer};
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
-    /// use massa_models::{Amount, Address};
+    /// use massa_models::{amount::Amount, address::Address};
     ///
     /// let key = "hello world".as_bytes().to_vec();
     /// let mut store = BTreeMap::new();
@@ -463,7 +463,7 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
     /// use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete, LedgerChanges, LedgerChangesSerializer, LedgerChangesDeserializer};
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
-    /// use massa_models::{Amount, Address};
+    /// use massa_models::{amount::Amount, address::Address};
     ///
     /// let key = "hello world".as_bytes().to_vec();
     /// let mut store = BTreeMap::new();
@@ -483,7 +483,7 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
     ///    SetUpdateOrDelete::Set(ledger_entry),
     /// );
     /// LedgerChangesSerializer::new().serialize(&changes, &mut serialized).unwrap();
-    /// let (rest, changes_deser) = LedgerChangesDeserializer::new(10000, 10000, 10000, 10000).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let (rest, changes_deser) = LedgerChangesDeserializer::new(255, 255, 10000, 10000).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(changes, changes_deser);
     /// ```

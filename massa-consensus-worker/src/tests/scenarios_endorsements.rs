@@ -16,6 +16,7 @@ use massa_consensus_exports::ConsensusConfig;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_endorsement_check() {
     // setup logging
     /*

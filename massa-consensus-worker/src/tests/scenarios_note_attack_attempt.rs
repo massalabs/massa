@@ -18,6 +18,7 @@ use serial_test::serial;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_invalid_block_notified_as_attack_attempt() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
@@ -88,6 +89,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_invalid_header_notified_as_attack_attempt() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {

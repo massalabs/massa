@@ -12,6 +12,7 @@ use std::str::FromStr;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_get_selection_draws_high_end_slot() {
     // setup logging
     /*

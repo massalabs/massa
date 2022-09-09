@@ -44,6 +44,7 @@ use std::{collections::HashSet, str::FromStr};
 /// This test ensures non-regression by making sure `B4` is propagated when `B1` is received.
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_inter_cycle_batch_finalization() {
     let t0: MassaTime = 1000.into();
     let staking_key =

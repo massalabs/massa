@@ -16,6 +16,7 @@ use serial_test::serial;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_ti() {
     /*    stderrlog::new()
     .verbosity(4)
@@ -175,6 +176,7 @@ async fn test_ti() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_gpi() {
     // // setup logging
     /*stderrlog::new()
@@ -339,6 +341,7 @@ async fn test_gpi() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_old_stale() {
     // // setup logging
     // stderrlog::new()

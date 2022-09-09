@@ -12,6 +12,7 @@ use serial_test::serial;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
@@ -83,6 +84,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_consensus_block_not_found() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {

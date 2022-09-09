@@ -17,6 +17,7 @@ use std::time::Duration;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_unsorted_block() {
     /*stderrlog::new()
     .verbosity(4)
@@ -170,6 +171,7 @@ async fn test_unsorted_block() {
 //test future_incoming_blocks block in the future with max_future_processing_blocks.
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_unsorted_block_with_to_much_in_the_future() {
     /*stderrlog::new()
     .verbosity(4)
@@ -289,6 +291,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_too_many_blocks_in_the_future() {
     /*stderrlog::new()
     .verbosity(4)
@@ -595,6 +598,7 @@ async fn test_dep_in_back_order() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_dep_in_back_order_with_max_dependency_blocks() {
     /*stderrlog::new()
     .verbosity(4)
@@ -748,6 +752,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_add_block_that_depends_on_invalid_block() {
     /*stderrlog::new()
     .verbosity(4)

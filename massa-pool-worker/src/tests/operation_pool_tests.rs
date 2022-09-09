@@ -76,6 +76,7 @@ fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
 
 /// TODO refacto old tests
 #[test]
+#[ignore]
 fn test_pool() {
     let (execution_controller, _execution_receiver) = MockExecutionController::new_with_receiver();
     let pool_config = PoolConfig::default();
