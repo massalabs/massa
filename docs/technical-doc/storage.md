@@ -145,7 +145,7 @@ When the `get_operations`, `get_endorsements`, `get_block` or `get_addresses` is
 
 Consensus and Graph only manage blocks.
 
-Each block managed by `Consensus/Graph` ia accompanied by its specific instance of `Storage` that owns references to:
+Each block managed by `Consensus/Graph` is accompanied by its specific instance of `Storage` that owns references to:
 * the block itself
 * the endorsements contained in the block
 * the operations contained in the block
@@ -164,4 +164,17 @@ When full graph is reconstructed, a pass is needed on every block to add its par
 
 ## Storage management in Protocol
 
-TODO @adrien-zinger @gterzian can you write this part ?
+The protocol module manages blocks, operations and endorsements through storages.
+
+The inputs of the module are possible thanks to the `ProtocolCommandSender` object that allow to:
+- propagate a block header with `integrated_block`, require a storage with the block we want to integrate and all it dependencies.
+- propagate operations with `propagate_operations`, require a storage with all operations we want to propagate.
+- propagate endorsements with `propagate_endorsements`, require a storage with all endorsements we want to propagate.
+- other functions that are not related to the storage.
+
+The outputs work with some events and one use the storage:
+- `ReceivedBlock`, that contains the block id and a storage with all dependencies exept the parents. The event signal that a block with a valid signature has been received.
+
+The module itself also contains his own storages.
+- One is a copy of the root storage and never claim anything. It is used to create storages while communicating with the pool and to construct responses when a foreign node ask for blocks information or operations.
+- The others are usefull to keep at least one owner of the operations, so we keep in the `block_info` the onerships while building the block.
