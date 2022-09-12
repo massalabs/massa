@@ -704,6 +704,9 @@ impl NetworkWorker {
             let max_datastore_value_length = self.cfg.max_datastore_value_length;
             let max_function_name_length = self.cfg.max_function_name_length;
             let max_parameters_size = self.cfg.max_parameters_size;
+            let max_op_datastore_entry_count = self.cfg.max_op_datastore_entry_count;
+            let max_op_datastore_key_length = self.cfg.max_op_datastore_key_length;
+            let max_op_datastore_value_length = self.cfg.max_op_datastore_value_length;
             self.handshake_peer_list_futures
                 .push(tokio::spawn(async move {
                     let mut writer = WriteBinder::new(writer, max_bytes_read, max_message_size);
@@ -722,6 +725,9 @@ impl NetworkWorker {
                             max_datastore_value_length,
                             max_function_name_length,
                             max_parameters_size,
+                            max_op_datastore_entry_count,
+                            max_op_datastore_key_length,
+                            max_op_datastore_value_length
                         ),
                     );
                     match tokio::time::timeout(

@@ -201,6 +201,9 @@ impl ExportActiveBlockDeserializer {
         max_datastore_value_length: u64,
         max_function_name_length: u16,
         max_parameters_size: u32,
+        max_op_datastore_entry_count: u64,
+        max_op_datastore_key_length : u8,
+        max_op_datastore_value_length: u64
     ) -> Self {
         ExportActiveBlockDeserializer {
             wrapped_block_deserializer: WrappedDeserializer::new(BlockDeserializer::new(
@@ -212,6 +215,9 @@ impl ExportActiveBlockDeserializer {
                 max_datastore_value_length,
                 max_function_name_length,
                 max_parameters_size,
+                max_op_datastore_entry_count,
+                max_op_datastore_key_length,
+                max_op_datastore_value_length
             )),
             operation_count_serializer: U32VarIntDeserializer::new(
                 Included(0),
@@ -289,7 +295,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///
     /// let mut serialized = Vec::new();
     /// ExportActiveBlockSerializer::new().serialize(&export_active_block, &mut serialized).unwrap();
-    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(32, 9, 1000, 1000, 1000, 1000, ).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(32, 9, 1000, 1000, 1000, 1000, 10, 255, 10_000).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert_eq!(export_deserialized.block.id, export_active_block.block.id);
     /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);
     /// assert_eq!(rest.len(), 0);

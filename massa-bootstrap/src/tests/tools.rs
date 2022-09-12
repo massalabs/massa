@@ -20,6 +20,8 @@ use massa_models::config::{
     MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DATA_ASYNC_MESSAGE,
     MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK,
     MAX_PARAMETERS_SIZE, PERIODS_PER_CYCLE, THREAD_COUNT,
+    MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH
 };
 use massa_models::prehash::PreHashMap;
 use massa_models::wrapped::WrappedContent;
@@ -251,6 +253,9 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         max_operations_per_blocks: MAX_OPERATIONS_PER_BLOCK,
         max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
+        max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_ledger_changes_count: MAX_LEDGER_CHANGES_COUNT,
         max_parameters_size: MAX_PARAMETERS_SIZE,
@@ -381,6 +386,9 @@ pub fn get_boot_state() -> BootstrapableGraph {
         MAX_FUNCTION_NAME_LENGTH,
         MAX_PARAMETERS_SIZE,
         MAX_OPERATIONS_PER_BLOCK,
+        MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        MAX_OPERATION_DATASTORE_KEY_LENGTH,
+        MAX_OPERATION_DATASTORE_VALUE_LENGTH
     );
 
     let mut bootstrapable_graph_serialized = Vec::new();

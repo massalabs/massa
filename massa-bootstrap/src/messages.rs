@@ -236,6 +236,9 @@ impl BootstrapServerMessageDeserializer {
         max_function_name_length: u16,
         max_parameters_size: u32,
         max_bootstrap_error_length: u32,
+        max_op_datastore_entry_count: u64,
+        max_op_datastore_key_length : u8,
+        max_op_datastore_value_length: u64
     ) -> Self {
         Self {
             message_id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
@@ -262,6 +265,9 @@ impl BootstrapServerMessageDeserializer {
                 max_function_name_length,
                 max_parameters_size,
                 max_operations_per_block,
+                max_op_datastore_entry_count,
+                max_op_datastore_key_length,
+                max_op_datastore_value_length
             ),
             final_state_parts_deserializer: VecU8Deserializer::new(
                 Included(0),
@@ -289,7 +295,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
-    /// let message_deserializer = BootstrapServerMessageDeserializer::new(16, 10, 100, 100, 1000, 1000, 1000, 1000, 1000, 255, 100000, 10000, 10000, 10000, 100000);
+    /// let message_deserializer = BootstrapServerMessageDeserializer::new(16, 10, 100, 100, 1000, 1000, 1000, 1000, 1000, 255, 100000, 10000, 10000, 10000, 100000, 10, 255, 10_000);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),
     ///    version: Version::from_str("TEST.1.0").unwrap(),

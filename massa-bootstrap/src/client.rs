@@ -377,6 +377,9 @@ async fn connect_to_server(
         bootstrap_config.max_function_name_length,
         bootstrap_config.max_parameters_size,
         bootstrap_config.max_ledger_changes_count,
+        bootstrap_config.max_op_datastore_entry_count,
+        bootstrap_config.max_op_datastore_key_length,
+        bootstrap_config.max_op_datastore_value_length,
     ))
 }
 
