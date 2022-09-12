@@ -27,7 +27,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::fmt::Formatter;
-use std::{collections::BTreeMap, ops::Bound::Included, ops::RangeInclusive, str::FromStr};
+use std::{ops::Bound::Included, ops::RangeInclusive, str::FromStr};
 
 /// Size in bytes of the serialized operation ID
 pub const OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
@@ -1300,6 +1300,7 @@ mod tests {
     use super::*;
     use massa_serialization::DeserializeError;
     use massa_signature::KeyPair;
+    use std::collections::BTreeMap;
     use serial_test::serial;
 
     #[test]
