@@ -489,7 +489,6 @@ impl Deserializer<BitVec<u8>> for BitVecDeserializer {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

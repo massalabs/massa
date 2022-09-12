@@ -25,6 +25,8 @@ pub mod clique;
 pub mod composite;
 /// node config
 pub mod config;
+/// datastore ser/der
+pub mod datastore;
 /// endorsements
 pub mod endorsement;
 /// models error
@@ -55,8 +57,6 @@ pub mod timeslots;
 pub mod version;
 /// trait for signed structure
 pub mod wrapped;
-/// datastore ser/der
-pub mod datastore;
 
 /// Test utils
 #[cfg(feature = "testing")]

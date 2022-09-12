@@ -23,7 +23,7 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use serde::Serialize;
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{BTreeMap, HashMap};
 use std::fmt::Write as _;
 use std::fmt::{Debug, Display};
 use std::net::IpAddr;
@@ -880,7 +880,7 @@ impl Command {
                         max_gas,
                         coins,
                         gas_price,
-                        datastore
+                        datastore,
                     },
                     fee,
                     addr,
