@@ -6,6 +6,7 @@ use crate::ledger_changes::LedgerEntryUpdate;
 use crate::types::{Applicable, SetOrDelete};
 use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
 use massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
+use massa_models::datastore::{Datastore, DatastoreSerializer, DatastoreDeserializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -31,8 +32,10 @@ pub struct LedgerEntry {
     pub bytecode: Vec<u8>,
 
     /// A key-value store associating a hash to arbitrary bytes
-    pub datastore: BTreeMap<Vec<u8>, Vec<u8>>,
+    pub datastore: Datastore,
 }
+
+/*
 
 /// Serializer for `Datastore` field in `LedgerEntry`
 #[derive(Default)]
@@ -158,6 +161,9 @@ impl Deserializer<BTreeMap<Vec<u8>, Vec<u8>>> for DatastoreDeserializer {
         .parse(buffer)
     }
 }
+
+*/
+
 
 /// Serializer for `LedgerEntry`
 pub struct LedgerEntrySerializer {
