@@ -205,7 +205,7 @@ impl Serializer<LedgerChange> for LedgerChangeSerializer {
     /// LedgerChangeSerializer::new().serialize(&ledger_change, &mut serialized).unwrap();
     /// ```
     fn serialize(&self, value: &LedgerChange, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        buffer.push(if value.balance_increment { 1 } else { 0 });
+        buffer.push(u8::from(value.balance_increment));
         self.amount_serializer
             .serialize(&value.balance_delta, buffer)?;
         Ok(())

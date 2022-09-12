@@ -60,6 +60,10 @@ impl ProtocolWorker {
                 if self.active_nodes.remove(&node_id).is_some() {
                     // deletes all node info
                     info!("Connection closed with {}", node_id);
+                    if self.active_nodes.is_empty() {
+                        // if no more active nodes, print
+                        info!("Not connected to any peers.");
+                    }
                     self.update_ask_block(block_ask_timer).await?;
                 }
             }
