@@ -1099,7 +1099,7 @@
                     production_stats: stats_iter.collect(),
                 })
             }
-            <span class="prelude-val">Ok</span>(<span class="self">self</span>.cycle_history.front().map(|v| v.cycle))
+            <span class="prelude-val">Ok</span>(<span class="self">self</span>.cycle_history.back().map(|v| v.cycle))
         } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(ModelsError::SerializeError(
                 <span class="string">&quot;data is left after set_cycle_history_part PoSFinalState part deserialization&quot;
