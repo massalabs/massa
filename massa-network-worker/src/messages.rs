@@ -279,8 +279,8 @@ impl MessageDeserializer {
         max_function_name_length: u16,
         max_parameters_size: u32,
         max_op_datastore_entry_count: u64,
-        max_op_datastore_key_length : u8,
-        max_op_datastore_value_length: u64
+        max_op_datastore_key_length: u8,
+        max_op_datastore_value_length: u64,
     ) -> Self {
         MessageDeserializer {
             public_key_deserializer: PublicKeyDeserializer::new(),
@@ -302,7 +302,7 @@ impl MessageDeserializer {
                 max_parameters_size,
                 max_op_datastore_entry_count,
                 max_op_datastore_key_length,
-                max_op_datastore_value_length
+                max_op_datastore_value_length,
             ),
             hash_deserializer: HashDeserializer::new(),
             block_header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new(
@@ -539,9 +539,9 @@ mod tests {
     use massa_models::config::{
         ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
         MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
-        MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_PARAMETERS_SIZE, THREAD_COUNT,
-        MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-        MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH
+        MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+        MAX_PARAMETERS_SIZE, THREAD_COUNT,
     };
     use massa_serialization::DeserializeError;
     use massa_signature::KeyPair;
@@ -566,7 +566,7 @@ mod tests {
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
-            MAX_OPERATION_DATASTORE_VALUE_LENGTH
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         );
         let mut random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut random_bytes);

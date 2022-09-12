@@ -1,14 +1,14 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
 use crate::prehash::{PreHashSet, PreHashed};
 use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
 use crate::{
     address::{Address, AddressDeserializer},
     amount::{Amount, AmountDeserializer, AmountSerializer},
     error::ModelsError,
-    serialization::{StringSerializer, StringDeserializer, VecU8Deserializer, VecU8Serializer},
+    serialization::{StringDeserializer, StringSerializer, VecU8Deserializer, VecU8Serializer},
 };
-use crate::datastore::{Datastore, DatastoreSerializer, DatastoreDeserializer};
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U16VarIntDeserializer, U16VarIntSerializer,
@@ -27,7 +27,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::fmt::Formatter;
-use std::{ops::Bound::Included, ops::RangeInclusive, str::FromStr, collections::BTreeMap};
+use std::{collections::BTreeMap, ops::Bound::Included, ops::RangeInclusive, str::FromStr};
 
 /// Size in bytes of the serialized operation ID
 pub const OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
@@ -274,8 +274,8 @@ impl OperationDeserializer {
         max_function_name_length: u16,
         max_parameters_size: u32,
         max_op_datastore_entry_count: u64,
-        max_op_datastore_key_length : u8,
-        max_op_datastore_value_length: u64
+        max_op_datastore_key_length: u8,
+        max_op_datastore_value_length: u64,
     ) -> Self {
         Self {
             expire_period_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
@@ -289,7 +289,7 @@ impl OperationDeserializer {
                 max_parameters_size,
                 max_op_datastore_entry_count,
                 max_op_datastore_key_length,
-                max_op_datastore_value_length
+                max_op_datastore_value_length,
             ),
         }
     }
@@ -624,7 +624,8 @@ impl OperationTypeDeserializer {
             datastore_deserializer: DatastoreDeserializer::new(
                 max_op_datastore_entry_count,
                 max_op_datastore_key_length,
-                max_op_datastore_value_length)
+                max_op_datastore_value_length,
+            ),
         }
     }
 }
@@ -1219,8 +1220,8 @@ impl OperationsDeserializer {
         max_function_name_length: u16,
         max_parameters_size: u32,
         max_op_datastore_entry_count: u64,
-        max_op_datastore_key_length : u8,
-        max_op_datastore_value_length: u64
+        max_op_datastore_key_length: u8,
+        max_op_datastore_value_length: u64,
     ) -> Self {
         Self {
             length_deserializer: U32VarIntDeserializer::new(
@@ -1233,7 +1234,7 @@ impl OperationsDeserializer {
                 max_parameters_size,
                 max_op_datastore_entry_count,
                 max_op_datastore_key_length,
-                max_op_datastore_value_length
+                max_op_datastore_value_length,
             )),
         }
     }
@@ -1291,10 +1292,9 @@ impl Deserializer<Vec<WrappedOperation>> for OperationsDeserializer {
 #[cfg(test)]
 mod tests {
     use crate::config::{
-        MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
-        MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-        MAX_OPERATION_DATASTORE_KEY_LENGTH,
-        MAX_OPERATION_DATASTORE_VALUE_LENGTH
+        MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+        MAX_PARAMETERS_SIZE,
     };
 
     use super::*;
@@ -1322,7 +1322,7 @@ mod tests {
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
-            MAX_OPERATION_DATASTORE_VALUE_LENGTH
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         )
         .deserialize::<DeserializeError>(&ser_type)
         .unwrap();
@@ -1344,7 +1344,7 @@ mod tests {
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
-            MAX_OPERATION_DATASTORE_VALUE_LENGTH
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         )
         .deserialize::<DeserializeError>(&ser_content)
         .unwrap();
@@ -1364,7 +1364,7 @@ mod tests {
                 MAX_PARAMETERS_SIZE,
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                 MAX_OPERATION_DATASTORE_KEY_LENGTH,
-                MAX_OPERATION_DATASTORE_VALUE_LENGTH
+                MAX_OPERATION_DATASTORE_VALUE_LENGTH,
             ))
             .deserialize::<DeserializeError>(&ser_op)
             .unwrap();
@@ -1385,8 +1385,8 @@ mod tests {
             data: vec![23u8, 123u8, 44u8],
             datastore: BTreeMap::from([
                 (vec![1, 2, 3], vec![4, 5, 6, 7, 8, 9]),
-                (vec![22, 33, 44, 55, 66, 77], vec![11])
-            ])
+                (vec![22, 33, 44, 55, 66, 77], vec![11]),
+            ]),
         };
         let mut ser_type = Vec::new();
         OperationTypeSerializer::new()
@@ -1398,7 +1398,7 @@ mod tests {
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
-            MAX_OPERATION_DATASTORE_VALUE_LENGTH
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         )
         .deserialize::<DeserializeError>(&ser_type)
         .unwrap();
@@ -1420,7 +1420,7 @@ mod tests {
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
-            MAX_OPERATION_DATASTORE_VALUE_LENGTH
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         )
         .deserialize::<DeserializeError>(&ser_content)
         .unwrap();
@@ -1440,7 +1440,7 @@ mod tests {
                 MAX_PARAMETERS_SIZE,
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                 MAX_OPERATION_DATASTORE_KEY_LENGTH,
-                MAX_OPERATION_DATASTORE_VALUE_LENGTH
+                MAX_OPERATION_DATASTORE_VALUE_LENGTH,
             ))
             .deserialize::<DeserializeError>(&ser_op)
             .unwrap();
@@ -1476,7 +1476,7 @@ mod tests {
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
-            MAX_OPERATION_DATASTORE_VALUE_LENGTH
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         )
         .deserialize::<DeserializeError>(&ser_type)
         .unwrap();
@@ -1498,7 +1498,7 @@ mod tests {
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
-            MAX_OPERATION_DATASTORE_VALUE_LENGTH
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         )
         .deserialize::<DeserializeError>(&ser_content)
         .unwrap();
@@ -1518,7 +1518,7 @@ mod tests {
                 MAX_PARAMETERS_SIZE,
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                 MAX_OPERATION_DATASTORE_KEY_LENGTH,
-                MAX_OPERATION_DATASTORE_VALUE_LENGTH
+                MAX_OPERATION_DATASTORE_VALUE_LENGTH,
             ))
             .deserialize::<DeserializeError>(&ser_op)
             .unwrap();

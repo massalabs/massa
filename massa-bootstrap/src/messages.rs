@@ -237,8 +237,8 @@ impl BootstrapServerMessageDeserializer {
         max_parameters_size: u32,
         max_bootstrap_error_length: u32,
         max_op_datastore_entry_count: u64,
-        max_op_datastore_key_length : u8,
-        max_op_datastore_value_length: u64
+        max_op_datastore_key_length: u8,
+        max_op_datastore_value_length: u64,
     ) -> Self {
         Self {
             message_id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
@@ -267,7 +267,7 @@ impl BootstrapServerMessageDeserializer {
                 max_operations_per_block,
                 max_op_datastore_entry_count,
                 max_op_datastore_key_length,
-                max_op_datastore_value_length
+                max_op_datastore_value_length,
             ),
             final_state_parts_deserializer: VecU8Deserializer::new(
                 Included(0),
