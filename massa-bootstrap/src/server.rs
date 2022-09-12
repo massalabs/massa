@@ -321,6 +321,11 @@ pub async fn send_final_state_stream(
             pos_credits_data = credits_data;
 
             if let Some(slot) = old_slot && slot != final_state_read.slot {
+                if slot > final_state_read.slot {
+                    return BootstrapError::GeneralError(
+                        "Bootstrap cursor set to future slot".to_string(),
+                    );
+                }
                 final_state_changes = final_state_read.get_state_changes_part(
                     slot,
                     old_key
