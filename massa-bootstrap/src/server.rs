@@ -352,8 +352,8 @@ pub async fn send_final_state_stream(
             if new_last_async_pool_id.is_some() || !async_pool_data.is_empty() {
                 old_last_async_id = new_last_async_pool_id;
             }
-            if new_last_cycle.is_some() || !pos_cycle_data.is_empty() {
-                old_cycle = new_last_cycle;
+            if !pos_cycle_data.is_empty() {
+                old_cycle = Some(new_last_cycle);
             }
             if new_last_credits_slot.is_some() || !pos_credits_data.is_empty() {
                 old_credits_slot = new_last_credits_slot;

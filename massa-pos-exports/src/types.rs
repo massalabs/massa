@@ -228,9 +228,6 @@ impl PoSFinalState {
     /// # Arguments
     /// `part`: the raw data received from `get_pos_state_part` and used to update PoS State
     pub fn set_cycle_history_part(&mut self, part: &[u8]) -> Result<Option<u64>, ModelsError> {
-        if part.is_empty() {
-            return Ok(None);
-        }
         let u64_deser = U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX));
         let bitvec_deser = BitVecDeserializer::new();
         let address_deser = AddressDeserializer::new();
@@ -310,9 +307,9 @@ impl PoSFinalState {
             info.rng_seed.extend(cycle.3);
             info.production_stats.extend(stats_iter);
         } else {
-            let next_cycle = cycle.0.saturating_add(1);
-            if let Some(b) = self.cycle_history.back() && b.cycle != next_cycle {
-                panic!("PoS self.cycle_history.back().cycle={} should be absent or consecutive to {}", b.cycle, next_cycle);
+            let opt_next_cycle = self.cycle_history.back().map(|info| info.cycle.saturating_add(1));
+            if let Some(next_cycle) = opt_next_cycle && cycle.0 != next_cycle {
+                panic!("PoS received cycle ({}) should be equal the next expected cycle ({})", cycle.0, next_cycle);
             }
             self.cycle_history.push_back(CycleInfo {
                 cycle: cycle.0,
@@ -331,9 +328,6 @@ impl PoSFinalState {
     /// # Arguments
     /// `part`: the raw data received from `get_pos_state_part` and used to update PoS State
     pub fn set_deferred_credits_part(&mut self, part: &[u8]) -> Result<Option<Slot>, ModelsError> {
-        if part.is_empty() {
-            return Ok(None);
-        }
         let (rest, credits): (&[u8], Vec<(Slot, Vec<(Address, Amount)>)>) = context(
             "deferred_credits",
             length_count(

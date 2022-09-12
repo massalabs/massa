@@ -692,6 +692,9 @@ impl ProtocolWorker {
     pub(crate) async fn ban_node(&mut self, node_id: &NodeId) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.ban_node", { "node": node_id });
         self.active_nodes.remove(node_id);
+        if self.active_nodes.is_empty() {
+            info!("Not connected to any peers.");
+        }
         self.network_command_sender
             .node_ban_by_ids(vec![*node_id])
             .await
