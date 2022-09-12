@@ -1452,7 +1452,7 @@ impl BlockGraph {
         .0;
 
         // check endorsements
-        match self.check_endorsements(header, parent_in_own_thread)? {
+        match self.check_endorsements(header, header.content.slot)? {
             EndorsementsCheckOutcome::Proceed => {}
             EndorsementsCheckOutcome::Discard(reason) => {
                 return Ok(HeaderCheckOutcome::Discard(reason))
@@ -1570,13 +1570,10 @@ impl BlockGraph {
     fn check_endorsements(
         &self,
         header: &WrappedHeader,
-        parent_in_own_thread: &ActiveBlock,
+        slot: Slot,
     ) -> Result<EndorsementsCheckOutcome> {
         // check endorsements
-        let endorsement_draws = match self
-            .selector_controller
-            .get_selection(parent_in_own_thread.slot)
-        {
+        let endorsement_draws = match self.selector_controller.get_selection(slot) {
             Ok(sel) => sel.endorsements,
             Err(_) => return Ok(EndorsementsCheckOutcome::WaitForSlot),
         };
@@ -1592,10 +1589,10 @@ impl BlockGraph {
                 )));
             }
             // check that the endorsement slot matches the endorsed block
-            if endorsement.content.slot != parent_in_own_thread.slot {
+            if endorsement.content.slot != slot {
                 return Ok(EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(
-                    format!("endorsement targets a block with wrong slot. Block's parent: {}, endorsement: {}",
-                            parent_in_own_thread.slot, endorsement.content.slot),
+                    format!("endorsement targets a block with wrong slot. Current slot: {}, endorsement: {}",
+                            slot, endorsement.content.slot),
                 )));
             }
 
@@ -1606,7 +1603,7 @@ impl BlockGraph {
             // * intra block index reuse
             // * slot in the same thread as block's slot
             // * slot is before the block's slot
-            // * the endorsed block is the parent in the same thread
+            // * the endorsed block is the current block at the slot
         }
 
         Ok(EndorsementsCheckOutcome::Proceed)
@@ -2676,6 +2673,59 @@ impl BlockGraph {
                 Some(BlockStatus::Active { a_block, .. }) => a_block.is_final,
                 _ => false,
             })
+    }
+
+    /// get the latest blockclique (or final) block ID at a given slot, if any
+    pub fn get_latest_blockclique_block_at_slot(&self, slot: &Slot) -> Option<BlockId> {
+        let (mut latest_final_block_id, mut latest_final_block_period) = self
+            .latest_final_blocks_periods
+            .get(slot.thread as usize)
+            .unwrap_or_else(|| panic!("unexpected not found latest final block period"));
+
+        let (blocks_in_thread, block_periods) = {
+            let storage_read = self.storage.read_blocks();
+            let blocks_in_thread = match storage_read.get_blocks_by_thread(slot.thread) {
+                Some(v) => v.clone(),
+                None => return None,
+            };
+            let block_periods: HashMap<BlockId, u64> = blocks_in_thread
+                .iter()
+                .map(|id| {
+                    (
+                        *id,
+                        storage_read
+                            .get(id)
+                            .expect("unexpected missing block in storage")
+                            .content
+                            .header
+                            .content
+                            .slot
+                            .period,
+                    )
+                })
+                .collect();
+            (blocks_in_thread, block_periods)
+        };
+
+        // search for the block in the blockclique
+        blocks_in_thread
+            .intersection(
+                &self
+                    .max_cliques
+                    .iter()
+                    .find(|c| c.is_blockclique)
+                    .expect("expected one clique to be the blockclique")
+                    .block_ids,
+            )
+            .for_each(|id| {
+                let period = *block_periods.get(id).unwrap();
+                if period > latest_final_block_period && period < slot.period {
+                    latest_final_block_period = period;
+                    latest_final_block_id = *id;
+                }
+            });
+
+        Some(latest_final_block_id)
     }
 
     /// Clones all stored final blocks, not only the still-useful ones

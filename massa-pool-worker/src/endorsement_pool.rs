@@ -148,17 +148,17 @@ impl EndorsementPool {
     /// get endorsements for block creation
     pub fn get_block_endorsements(
         &self,
-        target_slot: &Slot,
+        slot: &Slot, // slot of the block
         target_block: &BlockId,
     ) -> (Vec<Option<EndorsementId>>, Storage) {
-        // init list of selected operation IDs
+        // init list of selected endorsement IDs
         let mut endo_ids = Vec::with_capacity(self.config.max_block_endorsement_count as usize);
 
         // gather endorsements
         for index in 0..self.config.max_block_endorsement_count {
             endo_ids.push(
                 self.endorsements_indexed
-                    .get(&(*target_slot, index, *target_block))
+                    .get(&(*slot, index, *target_block))
                     .copied(),
             );
         }

@@ -118,7 +118,7 @@ impl EndorsementFactoryWorker {
         }
     }
 
-    /// Process a slot: produce a block at that slot if one of the managed keys is drawn.
+    /// Process a slot: produce an endorsement at that slot if one of the managed keys is drawn.
     fn process_slot(&mut self, slot: Slot) {
         // get endorsement producer addresses for that slot
         let producer_addrs = match self.channels.selector.get_selection(slot) {
@@ -156,23 +156,26 @@ impl EndorsementFactoryWorker {
         }
 
         // get consensus block ID for that slot
-        let endorsed_block: BlockId =
-            match self.channels.consensus.get_blockclique_block_at_slot(slot) {
-                // error getting block ID at target slot
-                Err(_) => {
-                    warn!(
-                        "could not get blockclique block to create endorsement targeting slot {}",
-                        slot
-                    );
-                    return;
-                }
+        let endorsed_block: BlockId = match self
+            .channels
+            .consensus
+            .get_latest_blockclique_block_at_slot(slot)
+        {
+            // error getting block ID at target slot
+            Err(_) => {
+                warn!(
+                    "could not get blockclique block to create endorsement targeting slot {}",
+                    slot
+                );
+                return;
+            }
 
-                // the target slot is a miss: ignore
-                Ok(None) => return,
+            // the target slot is a miss: ignore
+            Ok(None) => return,
 
-                // there is a block a the target slot
-                Ok(Some(b_id)) => b_id,
-            };
+            // there is a block a the target slot
+            Ok(Some(b_id)) => b_id,
+        };
 
         // produce endorsements
         let mut endorsements: Vec<WrappedEndorsement> = Vec::with_capacity(producers_indices.len());
