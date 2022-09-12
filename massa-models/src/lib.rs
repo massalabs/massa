@@ -55,6 +55,8 @@ pub mod timeslots;
 pub mod version;
 /// trait for signed structure
 pub mod wrapped;
+/// datastore ser/der
+pub mod datastore;
 
 /// Test utils
 #[cfg(feature = "testing")]

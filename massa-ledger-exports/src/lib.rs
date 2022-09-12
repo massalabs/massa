@@ -25,7 +25,7 @@ pub use ledger_changes::{
     LedgerEntryUpdateDeserializer, LedgerEntryUpdateSerializer,
 };
 pub use ledger_entry::{
-    DatastoreDeserializer, DatastoreSerializer, LedgerEntry, LedgerEntryDeserializer,
+    LedgerEntry, LedgerEntryDeserializer,
     LedgerEntrySerializer,
 };
 pub use types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
