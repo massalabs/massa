@@ -192,7 +192,6 @@ impl FinalState {
 
             // Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
             if pos_cycle_completion == false {
-                // TODO: update behaviour on false + changes
                 res_changes
                     .roll_state_changes
                     .deferred_credits
