@@ -44,7 +44,7 @@ pub struct ConsensusWorker {
     /// Final block stats `(time, creator, is_from_protocol)`
     final_block_stats: VecDeque<(MassaTime, Address, bool)>,
     /// Blocks that come from protocol used for stats and ids are removed when inserted in `final_block_stats`
-    protocol_blocks: PreHashSet<BlockId>,
+    protocol_blocks: VecDeque<(MassaTime, BlockId)>,
     /// Stale block timestamps
     stale_block_stats: VecDeque<MassaTime>,
     /// the time span considered for stats
@@ -494,7 +494,8 @@ impl ConsensusWorker {
                 );
                 self.block_db
                     .incoming_block(block_id, slot, self.previous_slot, storage)?;
-                self.protocol_blocks.insert(block_id);
+                let now = MassaTime::now(self.clock_compensation)?;
+                self.protocol_blocks.push_back((now, block_id));
                 self.block_db_changed().await?;
             }
             ProtocolEvent::ReceivedBlockHeader { block_id, header } => {
@@ -529,6 +530,13 @@ impl ConsensusWorker {
         while let Some(t) = self.stale_block_stats.front() {
             if t < &start_time {
                 self.stale_block_stats.pop_front();
+            } else {
+                break;
+            }
+        }
+        while let Some((t, _)) = self.protocol_blocks.front() {
+            if t < &start_time {
+                self.protocol_blocks.pop_front();
             } else {
                 break;
             }
@@ -609,7 +617,10 @@ impl ConsensusWorker {
         for b_id in new_final_block_ids.into_iter() {
             if let Some((a_block, _block_store)) = self.block_db.get_active_block(&b_id) {
                 // add to stats
-                let block_is_from_protocol = self.protocol_blocks.remove(&a_block.block_id);
+                let block_is_from_protocol = self
+                    .protocol_blocks
+                    .iter()
+                    .any(|(_, block_id)| block_id == &b_id);
                 self.final_block_stats.push_back((
                     timestamp,
                     a_block.creator_address,
