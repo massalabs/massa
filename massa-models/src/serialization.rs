@@ -7,8 +7,8 @@ use massa_serialization::{
     U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::bytes::complete::take;
-use nom::multi::{length_count, length_data};
-use nom::sequence::{preceded, tuple};
+use nom::multi::length_data;
+use nom::sequence::preceded;
 use nom::{branch::alt, Parser, ToUsize};
 use nom::{
     error::{context, ContextError, ErrorKind, ParseError},
@@ -18,7 +18,6 @@ use std::convert::TryInto;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::ops::Bound;
 use Bound::Included;
-use std::collections::BTreeMap;
 
 /// Serialize min big endian integer
 pub trait SerializeMinBEInt {

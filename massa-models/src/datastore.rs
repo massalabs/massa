@@ -133,3 +133,68 @@ impl Deserializer<Datastore> for DatastoreDeserializer {
             .parse(buffer)
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use crate::config::{
+         MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+         MAX_OPERATION_DATASTORE_KEY_LENGTH,
+         MAX_OPERATION_DATASTORE_VALUE_LENGTH
+    };
+
+    use super::*;
+    use massa_serialization::DeserializeError;
+
+    #[test]
+    fn test_ser_der() {
+
+        let datastore = BTreeMap::from([
+            (vec![1, 2], vec![3, 4]),
+            (vec![5, 6, 7], vec![8]),
+            (vec![9], vec![10, 11, 12, 13, 14]),
+            (vec![], vec![]),
+        ]);
+
+        let datastore_serializer = DatastoreSerializer::new();
+        let mut buffer = Vec::new();
+        datastore_serializer.serialize(&datastore, &mut buffer)
+            .expect("Should not fail while serializing Datastore");
+
+        let datastore_deserializer = DatastoreDeserializer::new(
+            MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+            MAX_OPERATION_DATASTORE_KEY_LENGTH,
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH
+        );
+        let (_, datastore_der) = datastore_deserializer.deserialize::<DeserializeError>(&buffer).unwrap();
+        assert_eq!(datastore, datastore_der);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_der_fail() {
+
+        let max_operation_datastore_entry_count: usize = 10;
+
+        // a datastore too much entries
+        let datastore = std::iter::repeat(())
+            .enumerate()
+            .map(|(i, _)| (vec![i as u8, 1, 2], vec![33, 44, 55]))
+            .take(max_operation_datastore_entry_count+1)
+            .collect();
+
+        let datastore_serializer = DatastoreSerializer::new();
+        let mut buffer = Vec::new();
+        datastore_serializer.serialize(&datastore, &mut buffer)
+            .expect("Should not fail while serializing Datastore");
+
+        let datastore_deserializer = DatastoreDeserializer::new(
+            max_operation_datastore_entry_count as u64,
+            MAX_OPERATION_DATASTORE_KEY_LENGTH,
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH
+        );
+        let (_, _datastore_der) = datastore_deserializer
+            .deserialize::<DeserializeError>(&buffer)
+            .unwrap();
+    }
+}
