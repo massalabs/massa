@@ -19,6 +19,7 @@ use massa_signature::{KeyPair, PublicKey};
 use massa_storage::Storage;
 use std::str::FromStr;
 use std::sync::mpsc::Receiver;
+use std::collections::BTreeMap;
 
 /// Tooling to create a transaction with an expire periods
 /// TODO move tooling in a dedicated module
@@ -136,6 +137,7 @@ pub fn _create_executesc(
         max_gas,
         coins: Amount::from_str(&coins.to_string()).unwrap(),
         gas_price: Amount::from_str(&gas_price.to_string()).unwrap(),
+        datastore: BTreeMap::new()
     };
 
     let content = Operation {
