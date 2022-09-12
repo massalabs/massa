@@ -512,6 +512,10 @@
 <span id="512">512</span>
 <span id="513">513</span>
 <span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Worker implementation for the network events
 //!
 //! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
@@ -574,6 +578,10 @@
                 <span class="kw">if </span><span class="self">self</span>.active_nodes.remove(<span class="kw-2">&amp;</span>node_id).is_some() {
                     <span class="comment">// deletes all node info
                     </span><span class="macro">info!</span>(<span class="string">&quot;Connection closed with {}&quot;</span>, node_id);
+                    <span class="kw">if </span><span class="self">self</span>.active_nodes.is_empty() {
+                        <span class="comment">// if no more active nodes, print
+                        </span><span class="macro">info!</span>(<span class="string">&quot;Not connected to any peers.&quot;</span>);
+                    }
                     <span class="self">self</span>.update_ask_block(block_ask_timer).<span class="kw">await</span><span class="question-mark">?</span>;
                 }
             }

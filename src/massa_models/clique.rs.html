@@ -264,7 +264,7 @@
             buffer.extend(block_id.<span class="number">0</span>.to_bytes())
         }
         <span class="self">self</span>.fitness_serializer.serialize(<span class="kw-2">&amp;</span>value.fitness, buffer)<span class="question-mark">?</span>;
-        buffer.push(<span class="kw">if </span>value.is_blockclique { <span class="number">1u8 </span>} <span class="kw">else </span>{ <span class="number">0u8 </span>});
+        buffer.push(u8::from(value.is_blockclique));
         <span class="prelude-val">Ok</span>(())
     }
 }

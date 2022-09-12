@@ -89,6 +89,18 @@
 <span id="89">89</span>
 <span id="90">90</span>
 <span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::CycleDraws;
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{address::Address, slot::Slot};
@@ -97,6 +109,7 @@
 <span class="kw">use </span>rand_distr::WeightedAliasIndex;
 <span class="kw">use </span>rand_xoshiro::Xoshiro256PlusPlus;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap};
+<span class="kw">use </span>tracing::debug;
 
 <span class="doccomment">/// Draws block and creators for a given cycle.
 ///
@@ -177,6 +190,17 @@
             PosError::OverflowError(<span class="macro">format!</span>(<span class="string">&quot;iteration slot overflow in perform_draws: {}&quot;</span>, err))
         })<span class="question-mark">?</span>;
     }
+
+    <span class="macro">debug!</span>(
+        <span class="string">&quot;Draws for cycle {} complete. Look_back seed was {:#?}. Five first selections is : {:#?}&quot;</span>,
+        cycle,
+        lookback_seed.to_bytes(),
+        cycle_draws
+            .draws
+            .iter()
+            .take(<span class="number">5</span>)
+            .collect::&lt;Vec&lt;(<span class="kw-2">&amp;</span>Slot, <span class="kw-2">&amp;</span>Selection)&gt;&gt;()
+    );
 
     <span class="prelude-val">Ok</span>(cycle_draws)
 }

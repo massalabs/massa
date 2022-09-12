@@ -1062,6 +1062,9 @@
 <span id="1062">1062</span>
 <span id="1063">1063</span>
 <span id="1064">1064</span>
+<span id="1065">1065</span>
+<span id="1066">1066</span>
+<span id="1067">1067</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::checked_operations::CheckedOperations;
@@ -1756,6 +1759,9 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>ban_node(<span class="kw-2">&amp;mut </span><span class="self">self</span>, node_id: <span class="kw-2">&amp;</span>NodeId) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.ban_node&quot;</span>, { <span class="string">&quot;node&quot;</span>: node_id });
         <span class="self">self</span>.active_nodes.remove(node_id);
+        <span class="kw">if </span><span class="self">self</span>.active_nodes.is_empty() {
+            <span class="macro">info!</span>(<span class="string">&quot;Not connected to any peers.&quot;</span>);
+        }
         <span class="self">self</span>.network_command_sender
             .node_ban_by_ids(<span class="macro">vec!</span>[<span class="kw-2">*</span>node_id])
             .<span class="kw">await

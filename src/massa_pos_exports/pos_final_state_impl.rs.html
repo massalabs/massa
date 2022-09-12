@@ -346,6 +346,15 @@
 <span id="346">346</span>
 <span id="347">347</span>
 <span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::BTreeMap,
     ops::Bound::{Excluded, Included},
@@ -361,6 +370,7 @@
     slot::{Slot, SlotDeserializer},
 };
 <span class="kw">use </span>massa_serialization::U64VarIntDeserializer;
+<span class="kw">use </span>tracing::debug;
 
 <span class="kw">use crate</span>::{
     CycleInfo, PoSChanges, PoSFinalState, PosError, PosResult, ProductionStats, SelectorController,
@@ -579,7 +589,15 @@
         <span class="comment">// feed the cycle if it is complete
         // notify the PoSDrawer about the newly ready draw data
         // to draw cycle + 2, we use the rng data from cycle - 1 and the seed from cycle
-        </span><span class="kw">if </span>cycle_completed {
+        </span><span class="macro">debug!</span>(
+            <span class="string">&quot;After slot {} PoS cycle list is {:#?}&quot;</span>,
+            slot,
+            <span class="self">self</span>.cycle_history
+                .iter()
+                .map(|c| (c.cycle, c.complete))
+                .collect::&lt;Vec&lt;(u64, bool)&gt;&gt;()
+        );
+        <span class="kw">if </span>cycle_completed {
             <span class="self">self</span>.feed_selector(cycle.checked_add(<span class="number">2</span>).ok_or_else(|| {
                 PosError::OverflowError(<span class="string">&quot;cycle overflow when feeding selector&quot;</span>.into())
             })<span class="question-mark">?</span>)
