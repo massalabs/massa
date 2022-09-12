@@ -87,7 +87,7 @@ impl Serializer<Clique> for CliqueSerializer {
             buffer.extend(block_id.0.to_bytes())
         }
         self.fitness_serializer.serialize(&value.fitness, buffer)?;
-        buffer.push(if value.is_blockclique { 1u8 } else { 0u8 });
+        buffer.push(u8::from(value.is_blockclique));
         Ok(())
     }
 }
