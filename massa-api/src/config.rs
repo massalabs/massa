@@ -17,6 +17,12 @@ pub struct APIConfig {
     pub max_arguments: u64,
     /// max datastore value length
     pub max_datastore_value_length: u64,
+    /// max op datastore entry
+    pub max_op_datastore_entry_count: u64,
+    /// max datastore key length
+    pub max_op_datastore_key_length: u8,
+    /// max datastore value length
+    pub max_op_datastore_value_length: u64,
     /// max function name length
     pub max_function_name_length: u16,
     /// max parameter size
