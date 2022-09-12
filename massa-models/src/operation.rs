@@ -1,13 +1,13 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::prehash::{PreHashSet, PreHashed};
-use crate::serialization::StringDeserializer;
 use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
 use crate::{
     address::{Address, AddressDeserializer},
     amount::{Amount, AmountDeserializer, AmountSerializer},
     error::ModelsError,
-    serialization::{StringSerializer, VecU8Deserializer, VecU8Serializer},
+    serialization::{StringSerializer, StringDeserializer, VecU8Deserializer, VecU8Serializer},
+    serialization::{DatastoreSerializer, DatastoreDeserializer}
 };
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
@@ -27,7 +27,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::fmt::Formatter;
-use std::{ops::Bound::Included, ops::RangeInclusive, str::FromStr};
+use std::{ops::Bound::Included, ops::RangeInclusive, str::FromStr, collections::BTreeMap};
 
 /// Size in bytes of the serialized operation ID
 pub const OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
@@ -382,6 +382,8 @@ pub enum OperationType {
         coins: Amount,
         /// The price per unit of gas that the caller is willing to pay for the execution.
         gas_price: Amount,
+        /// A key-value store associating a hash to arbitrary bytes
+        datastore: BTreeMap<Vec<u8>, Vec<u8>>,
     },
     /// Calls an exported function from a stored smart contract
     CallSC {
@@ -426,7 +428,7 @@ impl std::fmt::Display for OperationType {
                 coins,
                 gas_price,
                 ..
-                // data, // this field is ignored because bytes eh
+                // data & datastore, // these fields are ignored because bytes eh
             } => {
                 writeln!(f, "ExecuteSC: ")?;
                 writeln!(f, "\t- max_gas:{}", max_gas)?;
@@ -464,6 +466,7 @@ pub struct OperationTypeSerializer {
     amount_serializer: AmountSerializer,
     function_name_serializer: StringSerializer<U16VarIntSerializer, u16>,
     parameter_serializer: StringSerializer<U32VarIntSerializer, u32>,
+    datastore_serializer: DatastoreSerializer,
 }
 
 impl OperationTypeSerializer {
@@ -476,6 +479,7 @@ impl OperationTypeSerializer {
             amount_serializer: AmountSerializer::new(),
             function_name_serializer: StringSerializer::new(U16VarIntSerializer::new()),
             parameter_serializer: StringSerializer::new(U32VarIntSerializer::new()),
+            datastore_serializer: DatastoreSerializer::new(),
         }
     }
 }
@@ -489,6 +493,7 @@ impl Default for OperationTypeSerializer {
 impl Serializer<OperationType> for OperationTypeSerializer {
     /// ## Example:
     /// ```rust
+    /// use std::collections::BTreeMap;
     /// use massa_models::{operation::{OperationTypeSerializer, OperationTypeDeserializer,OperationType}, address::Address, amount::Amount};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
@@ -500,6 +505,7 @@ impl Serializer<OperationType> for OperationTypeSerializer {
     ///    max_gas: 100,
     ///    coins: Amount::from_str("300").unwrap(),
     ///    gas_price: Amount::from_str("1").unwrap(),
+    ///    datastore: BTreeMap::default(),
     /// };
     /// let mut buffer = Vec::new();
     /// OperationTypeSerializer::new().serialize(&op, &mut buffer).unwrap();
@@ -530,6 +536,7 @@ impl Serializer<OperationType> for OperationTypeSerializer {
                 max_gas,
                 coins,
                 gas_price,
+                datastore,
             } => {
                 self.u32_serializer
                     .serialize(&u32::from(OperationTypeId::ExecuteSC), buffer)?;
@@ -537,6 +544,7 @@ impl Serializer<OperationType> for OperationTypeSerializer {
                 self.amount_serializer.serialize(coins, buffer)?;
                 self.amount_serializer.serialize(gas_price, buffer)?;
                 self.vec_u8_serializer.serialize(data, buffer)?;
+                self.datastore_serializer.serialize(datastore, buffer)?;
             }
             OperationType::CallSC {
                 target_addr,
@@ -573,6 +581,7 @@ pub struct OperationTypeDeserializer {
     amount_deserializer: AmountDeserializer,
     function_name_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
     parameter_deserializer: StringDeserializer<U32VarIntDeserializer, u32>,
+    datastore_deserializer: DatastoreDeserializer,
 }
 
 impl OperationTypeDeserializer {
@@ -603,6 +612,11 @@ impl OperationTypeDeserializer {
                 Included(0),
                 Included(max_parameters_size),
             )),
+            // TODO: add constants
+            datastore_deserializer: DatastoreDeserializer::new(
+                10,
+                255,
+                10_000)
         }
     }
 }
@@ -610,6 +624,7 @@ impl OperationTypeDeserializer {
 impl Deserializer<OperationType> for OperationTypeDeserializer {
     /// ## Example:
     /// ```rust
+    /// use std::collections::BTreeMap;
     /// use massa_models::{operation::{OperationTypeSerializer, OperationTypeDeserializer, OperationType}, address::Address, amount::Amount};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
@@ -621,6 +636,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
     ///    max_gas: 100,
     ///    coins: Amount::from_str("300").unwrap(),
     ///    gas_price: Amount::from_str("1").unwrap(),
+    ///    datastore: BTreeMap::from([(vec![1, 2], vec![254, 255])])
     /// };
     /// let mut buffer = Vec::new();
     /// OperationTypeSerializer::new().serialize(&op, &mut buffer).unwrap();
@@ -631,13 +647,15 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
     ///      data,
     ///      max_gas,
     ///      coins,
-    ///      gas_price
+    ///      gas_price,
+    ///      datastore
     ///   } => {
     ///     assert_eq!(data, vec![0x01, 0x02, 0x03]);
     ///     assert_eq!(max_gas, 100);
     ///     assert_eq!(coins, Amount::from_str("300").unwrap());
     ///     assert_eq!(gas_price, Amount::from_str("1").unwrap());
-    ///   },
+    ///     assert_eq!(datastore, BTreeMap::from([(vec![1, 2], vec![254, 255])]))
+    ///   }
     ///   _ => panic!("Unexpected operation type"),
     /// };
     /// ```
@@ -695,14 +713,18 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                         context("Failed data deserialization", |input| {
                             self.data_deserializer.deserialize(input)
                         }),
+                        context("Failed data deserialization", |input| {
+                            self.datastore_deserializer.deserialize(input)
+                        }),
                     )),
                 )
                 .map(
-                    |(max_gas, coins, gas_price, data)| OperationType::ExecuteSC {
+                    |(max_gas, coins, gas_price, data, datastore)| OperationType::ExecuteSC {
                         data,
                         max_gas,
                         coins,
                         gas_price,
+                        datastore,
                     },
                 )
                 .parse(input),
@@ -1335,6 +1357,10 @@ mod tests {
             coins: Amount::from_str("456.789").unwrap(),
             gas_price: Amount::from_str("772.122").unwrap(),
             data: vec![23u8, 123u8, 44u8],
+            datastore: BTreeMap::from([
+                (vec![1, 2, 3], vec![4, 5, 6, 7, 8, 9]),
+                (vec![22, 33, 44, 55, 66, 77], vec![11])
+            ])
         };
         let mut ser_type = Vec::new();
         OperationTypeSerializer::new()
