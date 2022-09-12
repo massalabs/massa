@@ -151,10 +151,10 @@ impl NetworkCommandSender {
         self.0
             .send(NetworkCommand::GetStats { response_tx })
             .await
-            .map_err(|_| NetworkError::ChannelError("could not send GetPeers command".into()))?;
+            .map_err(|_| NetworkError::ChannelError("could not send GetStats command".into()))?;
         response_rx.await.map_err(|_| {
             NetworkError::ChannelError(
-                "could not send GetAdvertisablePeerListChannelError upstream".into(),
+                "could not send GetStats upstream".into(),
             )
         })
     }
