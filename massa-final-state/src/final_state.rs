@@ -129,7 +129,7 @@ impl FinalState {
         last_slot: Slot,
         last_address: Option<Address>,
         last_id_async_pool: Option<AsyncMessageId>,
-        pos_cycle_completion: Option<bool>,
+        pos_cycle_completion: bool,
     ) -> Result<StateChanges, FinalStateError> {
         let pos_slot = if !self.changes_history.is_empty() {
             // Safe because we checked that there is changes just above.
@@ -191,7 +191,8 @@ impl FinalState {
             }
 
             // Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
-            if pos_cycle_completion == Some(false) {
+            if pos_cycle_completion == false {
+                // TODO: update behaviour on false + changes
                 res_changes
                     .roll_state_changes
                     .deferred_credits
