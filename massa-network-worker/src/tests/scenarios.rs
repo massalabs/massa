@@ -19,6 +19,8 @@ use massa_models::config::{
     MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
     MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_PARAMETERS_SIZE,
     THREAD_COUNT,
+    MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH
 };
 use massa_models::{
     block::BlockId,
@@ -89,6 +91,9 @@ async fn test_node_worker_shutdown() {
             MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
+            MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+            MAX_OPERATION_DATASTORE_KEY_LENGTH,
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH
         ),
     );
     let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY, MAX_MESSAGE_SIZE);
@@ -158,6 +163,9 @@ async fn test_node_worker_operations_message() {
             MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
+            MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+            MAX_OPERATION_DATASTORE_KEY_LENGTH,
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH
         ),
     );
     let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY, MAX_MESSAGE_SIZE);
