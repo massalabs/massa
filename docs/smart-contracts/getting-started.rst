@@ -13,66 +13,36 @@ Setting up a new project
 
    .. code-block:: shell
 
-       npm init
-       npm install --global yarn npx
-       npm install --save-dev @as-pect/cli massa-sc-std
-       npx asinit .
-       npx asp --init
-
-.. collapse:: OK, but I would like to use docker. Can you help me?
-
-   Sure, no problem:
-
-   .. code-block:: shell
-
-       docker run -it --user $(id -u):$(id -g) -v $PWD:/app -v $PWD/.npm:/.npm -v $PWD/.config:/.config -w /app node:17.7-alpine npm init
-       docker run --user $(id -u):$(id -g) -v $PWD:/app -v $PWD/.npm:/.npm -v $PWD/.config:/.config -w /app node:17.7-alpine npm install --save-dev @as-pect/cli
-       docker run -it --user $(id -u):$(id -g) -v $PWD:/app -v $PWD/.npm:/.npm -v $PWD/.config:/.config -w /app node:17.7-alpinenpx asinit .
-       docker run --user $(id -u):$(id -g) -v $PWD:/app -v $PWD/.npm:/.npm -v $PWD/.config:/.config -w /app node:17.7-alpine npx asp --init
-
+       npx massa-sc-create my-sc
 
 Make sure you have a recent version of Node.js and npm. Update or `install <https://docs.npmjs.com/downloading-and-installing-node-js-and-npm>`_ them if needed.
 Create or go to the directory where you want to set up your project and run:
 
 .. code-block:: shell
 
-   npm init
    npm install --global yarn npx
+   npx massa-sc-create my-sc
 
-
-Don't bother with the different question, you can change all that by editing the `package.json` file.
-
-.. note::
-   You can add the parameter `--yes` to automatically set the default values.
-
-Now that the npm project is created, install the `as-pect` and `massa-sc-std` dependencies by executing the following command:
+Now that the npm project is created, go inside your smart-contract directory and install the dependencies using the following commands:
 
 .. code-block:: shell
 
-   npm install --save-dev @as-pect/cli massa-sc-std massa-sc-scripts
+   cd my-sc
+   npm install --legacy-peer-deps
 
-You have now installed AssemblyScript and as-pect modules. The first one will be used to generate bytecode from AssemblyScript code and the second one will let you perform unit tests.
+You have now installed AssemblyScript among other dependencies. It will be used to generate bytecode from AssemblyScript code.
 
 .. note::
-    * Massa smart contract module (massa-sc-std) contains the API you need to use to interact with the external world of the smart contract (the node, the ledger...).
+    * Massa smart contract module (@massalabs/massa-sc-std) contains the API you need to use to interact with the external world of the smart contract (the node, the ledger...).
     * Installing directly as-pect will automatically install the compatible version of AssemblyScript.
-    * All dependencies should be installed as dev dependencies as no module will be exported on this project.
-
-Now that AssemblyScript and as-pect dependencies are installed, you can finish setting up your project by running:
-
-.. code-block:: shell
-
-   npx asinit .
-   npx asp --init
 
 Congratulations! Now you have a fully set up project and you are ready to add some code.
 
 .. note::
    A few words on project folders:
 
-    * `assembly` is where the code goes;
-    * `assembly/__test__/` store the unit tests;
-    * `build` will contain the compiled smart contracts.
+    * `src` is where the code goes;
+    * `build` will be created during compilation and will contain the compiled smart contracts.
 
 Create your first smart contract
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -85,29 +55,29 @@ Your first smart contract will be no exception!
 
    I'm told that it has nothing to do with the beginning of mankind but Brian Kernighan used it for the first time in *a tutorial introduction to the language B* published in 1972.
 
-Create and open a new file called `helloworld.ts` in `assembly` directory at the root of your project. In this file, write or copy/paste the following code:
+Open the `main.ts` file in the `src` directory at the root of your project. Replace the code in the file by the following code:
 
 .. code-block:: typescript
 
-    import { print } from "massa-sc-std";
+   import { generateEvent } from "@massalabs/massa-sc-std";
 
-    export function main(_args: string): void {
-        print("Hello world!");
+   export function main(_args: string): void {
+        generateEvent("Hello world!");
     }
 
-Don't forget to save the file. Before starting compilation, just a few words to describe what you just wrote or pasted:
+Don’t forget to save the file. Before starting compilation, just a few words to describe what is used here:
 
-* line 1: `print` function is imported from Massa API (massa-sc-std). This function will write to stdout the string given as argument.
+* line 1: `generateEvent` function is imported from Massa API (@massalabs/massa-sc-std). This function will generate an event with the string given as argument. Events can be later recovered using a Massa client.
 * line 3: `main` function is exported. This means that the main function will be callable from the outside of the WebAssembly module (more about that later).
-* line 4: `print` function is called with "Hello world!". Brian, we are thinking of you!
+* line 4: `generateEvent` function is called with "Hello world!". Brian, we are thinking of you!
 
 Now that everything is in place, we can start the compilation step by running the following command:
 
 .. code-block:: shell
 
-   npx massa-sc-scripts build-sc assembly/helloworld.ts
+   npm run build
 
-Congratulations! You have generated your first smart contract: the `helloworld.wasm` file in `build` directory.
+Congratulations! You have generated your first smart contract: the `main.wasm` file in `build` directory.
 
 .. note::
 
@@ -124,46 +94,21 @@ Execute your smart contract on a node
 
 To execute the smart contract you will need:
 
-- A running node with a log level set to DEBUG.
 - A client configured with an address having coins.
 - A smart contract compiled in WebAssembly (see previous step).
 
 Let's go!
 
-Running a node in debug mode
-""""""""""""""""""""""""""""
-
-Make sure that you have the last version of the Massa node. If not, `install it <https://github.com/massalabs/massa/wiki/install>`_.
-
-Once the node is installed and before running it, set your log level to DEBUG:
-
-- open `massa-node/base_config/config.toml` file with your preferred editor;
-- set the log level to `3`.
-
-.. note::
-
-   Your file should look like the following:
-
-    .. code-block:: toml
-
-        [logging]
-        # Logging level. High log levels might impact performance. 0: ERROR, 1: WARN, 2: INFO, 3: DEBUG, 4: TRACE
-        level = 3
-
-.. warning::
-   A node configured with a verbose log level will write a lot of logs. You should restore default value as soon as this tutorial is finished.
-
-
-Now that the node is properly configured to log `print` function output you have to `run the node <https://github.com/massalabs/massa/wiki/run>`_.
-
 Configure the client
 """"""""""""""""""""
+
+Make sure that you have the last version of the Massa node. If not, `install it <https://github.com/massalabs/massa/wiki/install>`_.
 
 If you don't have any wallet configured yet, `create a new one <https://github.com/massalabs/massa/wiki/wallet>`_.
 
 If you're using a brand new wallet, add some coins by sending your address to `testnet-faucet discord channel <https://discord.com/channels/828270821042159636/866190913030193172>`_.
 
-If you are using an existing wallet, make sure that you have at least 1 coin on it.
+If you are using an existing wallet, make sure that you have some coins on it.
 
 In any case, keep the `address` of your wallet, you will use it later.
 
@@ -185,7 +130,6 @@ Everything is in place, we can now execute the `hello world` smart contract on y
    - 100000: the maximum amount of gas that the execution of your smart-contract is allowed to use.
    - Three 0 parameters that can be safely ignored by now. If you want more info on them, use the command `help send_smart_contract`.
 
-
 If everything went fine, the following prompted message should be prompted:
 
 .. code-block:: shell
@@ -193,18 +137,24 @@ If everything went fine, the following prompted message should be prompted:
    Sent operation IDs:
    <id with numbers and letters>
 
-In that case, return to the node tab and have a look at the log, you should see a message like the following:
+In that case, you should be able to retrieve the event with the `Hello world` emited. Use the following command inside the **client cli**:
 
 .. code-block:: shell
 
-   <date and time> DEBUG massa_execution_worker::interface_impl: SC print: Hello world!
+   get_filtered_sc_output_event operation_id=<id with numbers and letters>
 
+If everything went well you should see a message similar to this one:
 
-Congratulations! You have just executed your first smart contract on a node !!
+.. code-block:: shell
 
-Don't forget to change node's log level to INFO (value is 2).
+   Context: Slot: (period: 627, thread: 22) at index: 0
+   On chain execution
+   Block id: VaY6zeec2am5i1eKKPzuyvhbzxVU8mts7ykSDj5usHyobJee8
+   Origin operation id: wHGoVbp8QSwWxEMzM5nK9CpKL3SpNmxzUF3E4pHgn8fVkJmR5
+   Call stack: A12Lkz8mEZ4uXPrzW9WDo5HKWRoYgeYjiQZMrwbjE6cPeRxuSfAG
 
-Store a smart contract in the blockchain
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   Data: Hello world!
 
-TODO
+Congratulations! You have just executed your first smart contract !
+
+In the next tutorial you'll see a more involved example showing you how to create a Tictactoe smart-contract.
