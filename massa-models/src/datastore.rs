@@ -1,9 +1,11 @@
-use massa_serialization::{Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
 use crate::serialization::{VecU8Deserializer, VecU8Serializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 use nom::error::{context, ContextError, ParseError};
-use nom::{IResult, Parser};
 use nom::multi::length_count;
 use nom::sequence::tuple;
+use nom::{IResult, Parser};
 use std::collections::BTreeMap;
 use std::ops::Bound::Included;
 
@@ -129,8 +131,8 @@ impl Deserializer<Datastore> for DatastoreDeserializer {
                 )),
             ),
         )
-            .map(|elements| elements.into_iter().collect())
-            .parse(buffer)
+        .map(|elements| elements.into_iter().collect())
+        .parse(buffer)
     }
 }
 
@@ -138,9 +140,8 @@ impl Deserializer<Datastore> for DatastoreDeserializer {
 mod tests {
 
     use crate::config::{
-         MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-         MAX_OPERATION_DATASTORE_KEY_LENGTH,
-         MAX_OPERATION_DATASTORE_VALUE_LENGTH
+        MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
+        MAX_OPERATION_DATASTORE_VALUE_LENGTH,
     };
 
     use super::*;
@@ -148,7 +149,6 @@ mod tests {
 
     #[test]
     fn test_ser_der() {
-
         let datastore = BTreeMap::from([
             (vec![1, 2], vec![3, 4]),
             (vec![5, 6, 7], vec![8]),
@@ -158,40 +158,43 @@ mod tests {
 
         let datastore_serializer = DatastoreSerializer::new();
         let mut buffer = Vec::new();
-        datastore_serializer.serialize(&datastore, &mut buffer)
+        datastore_serializer
+            .serialize(&datastore, &mut buffer)
             .expect("Should not fail while serializing Datastore");
 
         let datastore_deserializer = DatastoreDeserializer::new(
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
-            MAX_OPERATION_DATASTORE_VALUE_LENGTH
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         );
-        let (_, datastore_der) = datastore_deserializer.deserialize::<DeserializeError>(&buffer).unwrap();
+        let (_, datastore_der) = datastore_deserializer
+            .deserialize::<DeserializeError>(&buffer)
+            .unwrap();
         assert_eq!(datastore, datastore_der);
     }
 
     #[test]
     #[should_panic]
     fn test_der_fail() {
-
         let max_operation_datastore_entry_count: usize = 10;
 
         // a datastore too much entries
         let datastore = std::iter::repeat(())
             .enumerate()
             .map(|(i, _)| (vec![i as u8, 1, 2], vec![33, 44, 55]))
-            .take(max_operation_datastore_entry_count+1)
+            .take(max_operation_datastore_entry_count + 1)
             .collect();
 
         let datastore_serializer = DatastoreSerializer::new();
         let mut buffer = Vec::new();
-        datastore_serializer.serialize(&datastore, &mut buffer)
+        datastore_serializer
+            .serialize(&datastore, &mut buffer)
             .expect("Should not fail while serializing Datastore");
 
         let datastore_deserializer = DatastoreDeserializer::new(
             max_operation_datastore_entry_count as u64,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
-            MAX_OPERATION_DATASTORE_VALUE_LENGTH
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         );
         let (_, _datastore_der) = datastore_deserializer
             .deserialize::<DeserializeError>(&buffer)

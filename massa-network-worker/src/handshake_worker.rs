@@ -15,8 +15,8 @@ use massa_models::{
     config::{
         constants::{MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE},
         ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_MESSAGE_SIZE,
-        MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
-        MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH
+        MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, THREAD_COUNT,
     },
     version::Version,
 };
@@ -108,7 +108,7 @@ impl HandshakeWorker {
                             MAX_PARAMETERS_SIZE,
                             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                             MAX_OPERATION_DATASTORE_KEY_LENGTH,
-                            MAX_OPERATION_DATASTORE_VALUE_LENGTH
+                            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
                         ),
                     ),
                     writer: WriteBinder::new(socket_writer, max_bytes_write, MAX_MESSAGE_SIZE),
