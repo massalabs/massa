@@ -9,6 +9,7 @@ use nom::{IResult, Parser};
 use std::collections::BTreeMap;
 use std::ops::Bound::Included;
 
+/// Datastore entry for Ledger & ExecuteSC Operation
 pub type Datastore = BTreeMap<Vec<u8>, Vec<u8>>;
 
 /// Serializer for `Datastore`
