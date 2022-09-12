@@ -192,7 +192,9 @@ pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
         slot,
         Box::new(final_ledger),
         async_pool,
-        changes_history,
+        // do not use changes_history for now
+        // testing changes requires better thinking
+        VecDeque::new(),
         get_random_pos_state(r_limit, pos),
         ExecutedOps::default(),
     )
