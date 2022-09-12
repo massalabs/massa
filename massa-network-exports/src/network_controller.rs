@@ -152,11 +152,9 @@ impl NetworkCommandSender {
             .send(NetworkCommand::GetStats { response_tx })
             .await
             .map_err(|_| NetworkError::ChannelError("could not send GetStats command".into()))?;
-        response_rx.await.map_err(|_| {
-            NetworkError::ChannelError(
-                "could not send GetStats upstream".into(),
-            )
-        })
+        response_rx
+            .await
+            .map_err(|_| NetworkError::ChannelError("could not send GetStats upstream".into()))
     }
 
     /// Send the order to get bootstrap peers.
