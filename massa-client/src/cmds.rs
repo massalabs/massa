@@ -23,7 +23,7 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 use std::fmt::Write as _;
 use std::fmt::{Debug, Display};
 use std::net::IpAddr;
@@ -870,6 +870,7 @@ impl Command {
                         client_warning!("bytecode size exceeded half of the maximum size of a block, operation will certainly be rejected");
                     }
                 }
+                let datastore = BTreeMap::new();
 
                 send_operation(
                     client,
@@ -879,6 +880,7 @@ impl Command {
                         max_gas,
                         coins,
                         gas_price,
+                        datastore
                     },
                     fee,
                     addr,
