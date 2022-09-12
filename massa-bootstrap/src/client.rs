@@ -72,20 +72,12 @@ async fn stream_final_state(
                     let last_last_async_id = write_final_state
                         .async_pool
                         .set_pool_part(async_pool_part.as_bytes())?;
-                    let last_cycle = if !pos_cycle_part.is_empty() {
-                        write_final_state
-                            .pos_state
-                            .set_cycle_history_part(pos_cycle_part.as_bytes())?
-                    } else {
-                        None
-                    };
-                    let last_credits_slot = if !pos_credits_part.is_empty() {
-                        write_final_state
-                            .pos_state
-                            .set_deferred_credits_part(pos_credits_part.as_bytes())?
-                    } else {
-                        None
-                    };
+                    let last_cycle = write_final_state
+                        .pos_state
+                        .set_cycle_history_part(pos_cycle_part.as_bytes())?;
+                    let last_credits_slot = write_final_state
+                        .pos_state
+                        .set_deferred_credits_part(pos_credits_part.as_bytes())?;
                     write_final_state
                         .ledger
                         .apply_changes(final_state_changes.ledger_changes.clone(), slot);

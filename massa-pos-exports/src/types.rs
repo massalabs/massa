@@ -228,6 +228,9 @@ impl PoSFinalState {
     /// # Arguments
     /// `part`: the raw data received from `get_pos_state_part` and used to update PoS State
     pub fn set_cycle_history_part(&mut self, part: &[u8]) -> Result<Option<u64>, ModelsError> {
+        if part.is_empty() {
+            return Ok(self.cycle_history.back().map(|v| v.cycle));
+        }
         let u64_deser = U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX));
         let bitvec_deser = BitVecDeserializer::new();
         let address_deser = AddressDeserializer::new();
@@ -328,6 +331,9 @@ impl PoSFinalState {
     /// # Arguments
     /// `part`: the raw data received from `get_pos_state_part` and used to update PoS State
     pub fn set_deferred_credits_part(&mut self, part: &[u8]) -> Result<Option<Slot>, ModelsError> {
+        if part.is_empty() {
+            return Ok(self.deferred_credits.0.last_key_value().map(|(k, _)| *k));
+        }
         let (rest, credits): (&[u8], Vec<(Slot, Vec<(Address, Amount)>)>) = context(
             "deferred_credits",
             length_count(
