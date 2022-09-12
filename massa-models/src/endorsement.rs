@@ -128,7 +128,7 @@ impl Default for EndorsementSerializer {
 impl Serializer<Endorsement> for EndorsementSerializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{Slot, BlockId, Endorsement, EndorsementSerializer};
+    /// use massa_models::{slot::Slot, block::BlockId, endorsement::{Endorsement, EndorsementSerializer}};
     /// use massa_serialization::Serializer;
     /// use massa_hash::Hash;
     ///
@@ -175,7 +175,7 @@ impl EndorsementDeserializer {
 impl Deserializer<Endorsement> for EndorsementDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{Slot, BlockId, Endorsement, EndorsementSerializer, EndorsementDeserializer};
+    /// use massa_models::{slot::Slot, block::BlockId, endorsement::{Endorsement, EndorsementSerializer, EndorsementDeserializer}};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_hash::Hash;
     ///

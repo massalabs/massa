@@ -280,8 +280,8 @@ impl Storage {
     /// Note that this also claims a local reference to the block
     pub fn store_block(&mut self, block: WrappedBlock) {
         let id = block.id;
-        let mut blocks = self.blocks.write();
         let mut owners = self.block_owners.write();
+        let mut blocks = self.blocks.write();
         blocks.insert(block);
         // update local reference counters
         Storage::internal_claim_refs(
@@ -366,8 +366,8 @@ impl Storage {
         if operations.is_empty() {
             return;
         }
-        let mut op_store = self.operations.write();
         let mut owners = self.operation_owners.write();
+        let mut op_store = self.operations.write();
         let ids: PreHashSet<OperationId> = operations.iter().map(|op| op.id).collect();
         for op in operations {
             op_store.insert(op);
@@ -409,7 +409,6 @@ impl Storage {
 
         // effectively add local ownership on the refs
         Storage::internal_claim_refs(&claimed, owners, &mut self.local_used_endorsements);
-
         claimed
     }
 
@@ -465,8 +464,8 @@ impl Storage {
         if endorsements.is_empty() {
             return;
         }
-        let mut endo_store = self.endorsements.write();
         let mut owners = self.endorsement_owners.write();
+        let mut endo_store = self.endorsements.write();
         let ids: PreHashSet<EndorsementId> = endorsements.iter().map(|op| op.id).collect();
         for endorsement in endorsements {
             endo_store.insert(endorsement);

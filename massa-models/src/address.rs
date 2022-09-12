@@ -167,7 +167,7 @@ impl Address {
     /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// # use massa_models::Address;
+    /// # use massa_models::address::Address;
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let bytes = address.into_bytes();
@@ -183,7 +183,7 @@ impl Address {
     /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// # use massa_models::Address;
+    /// # use massa_models::address::Address;
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let bytes = address.into_bytes();
@@ -199,7 +199,7 @@ impl Address {
     /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// # use massa_models::Address;
+    /// # use massa_models::address::Address;
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let bytes = address.to_bytes();
@@ -215,7 +215,7 @@ impl Address {
     /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// # use massa_models::Address;
+    /// # use massa_models::address::Address;
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let ser = address.to_bs58_check();
@@ -233,7 +233,7 @@ impl Address {
     /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// # use massa_models::Address;
+    /// # use massa_models::address::Address;
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let ser = address.to_bs58_check();
@@ -263,7 +263,7 @@ impl AddressDeserializer {
 impl Deserializer<Address> for AddressDeserializer {
     /// ## Example
     /// ```rust
-    /// use massa_models::{Address, AddressDeserializer};
+    /// use massa_models::address::{Address, AddressDeserializer};
     /// use massa_serialization::{Deserializer, DeserializeError};
     /// use std::str::FromStr;
     ///

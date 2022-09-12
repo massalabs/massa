@@ -13,11 +13,12 @@ use massa_models::{
 };
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use parking_lot::Mutex;
 use std::{
     collections::{BTreeMap, HashMap},
     sync::{
         mpsc::{self, Receiver},
-        Arc, Mutex,
+        Arc,
     },
     time::Duration,
 };
@@ -121,7 +122,6 @@ impl ExecutionController for MockExecutionController {
     ) {
         self.0
             .lock()
-            .unwrap()
             .send(MockExecutionControllerMessage::UpdateBlockcliqueStatus {
                 finalized_blocks,
                 blockclique,
@@ -133,7 +133,6 @@ impl ExecutionController for MockExecutionController {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
             .lock()
-            .unwrap()
             .send(MockExecutionControllerMessage::GetFilteredScOutputEvent {
                 filter,
                 response_tx,
@@ -147,7 +146,7 @@ impl ExecutionController for MockExecutionController {
         addresses: &[Address],
     ) -> Vec<(Option<Amount>, Option<Amount>)> {
         let (response_tx, response_rx) = mpsc::channel();
-        if let Err(err) = self.0.lock().unwrap().send(
+        if let Err(err) = self.0.lock().send(
             MockExecutionControllerMessage::GetFinalAndCandidateSequentialBalances {
                 addresses: addresses.to_vec(),
                 response_tx,
@@ -182,7 +181,6 @@ impl ExecutionController for MockExecutionController {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
             .lock()
-            .unwrap()
             .send(MockExecutionControllerMessage::ExecuteReadonlyRequest { req, response_tx })
             .unwrap();
         response_rx.recv().unwrap()
@@ -194,15 +192,14 @@ impl ExecutionController for MockExecutionController {
         thread: u8,
     ) -> PreHashSet<OperationId> {
         let (response_tx, response_rx) = mpsc::channel();
-        if let Err(err) =
-            self.0
-                .lock()
-                .unwrap()
-                .send(MockExecutionControllerMessage::UnexecutedOpsAmong {
-                    ops: ops.clone(),
-                    thread,
-                    response_tx,
-                })
+        if let Err(err) = self
+            .0
+            .lock()
+            .send(MockExecutionControllerMessage::UnexecutedOpsAmong {
+                ops: ops.clone(),
+                thread,
+                response_tx,
+            })
         {
             println!("mock error {err}");
         }

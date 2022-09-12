@@ -141,7 +141,7 @@ impl OperationPool {
         // prune excess operations
         self.sorted_ops_per_thread.iter_mut().for_each(|ops| {
             while ops.len() > self.config.max_operation_pool_size_per_thread {
-                // the unrap below won't panic because the loop condition tests for non-emptines of self.operations
+                // the unwrap below won't panic because the loop condition tests for non-emptines of self.operations
                 let cursor = ops.pop_last().unwrap();
                 let op_info = self
                     .operations
@@ -151,20 +151,23 @@ impl OperationPool {
                 if !self.ops_per_expiration.remove(&(end_slot, op_info.id)) {
                     panic!("the operation should be in self.ops_per_expiration at this point");
                 }
-                if !added.remove(&op_info.id) {
-                    removed.insert(op_info.id);
-                }
+                removed.insert(op_info.id);
             }
         });
 
-        // take ownership on added ops
+        // This will add the new ops to the storage without taking locks.
+        // It just take the local references from `ops_storage` if they are not in `self.storage` yet.
+        // If the objects are already in `self.storage` the references in ops_storage it will not add them to `self.storage` and
+        // at the end of the scope ops_storage will be dropped and so the references will be only in `self.storage`
+        // If the object wasn't in `self.storage` the reference will be transferred and so the number of owners doesn't change
+        // and when we will drop `ops_storage` it doesn't have the references anymore and so doesn't drop those objects.
         self.storage.extend(ops_storage.split_off(
             &Default::default(),
             &added,
             &Default::default(),
         ));
 
-        // drop removed ops from storage
+        // Clean the removed operations from storage.
         self.storage.drop_operation_refs(&removed);
     }
 
@@ -203,7 +206,7 @@ impl OperationPool {
             }
 
             // check if the op was already executed
-            // TOOD batch this
+            // TODO batch this
             if self
                 .execution_controller
                 .unexecuted_ops_among(&vec![op_info.id].into_iter().collect(), slot.thread)
@@ -213,16 +216,22 @@ impl OperationPool {
             }
 
             // check sequential balance
-            let creator_seq_balance = sequential_balance_cache
-                .entry(op_info.creator_address)
-                .or_insert_with(|| {
-                    self.execution_controller
-                        .get_final_and_candidate_sequential_balances(&[op_info.creator_address])
-                        .get(0)
-                        .unwrap_or(&(None, None))
-                        .1
-                        .unwrap_or_default()
-                });
+            let creator_seq_balance =
+                if let Some(amount) = sequential_balance_cache.get_mut(&op_info.creator_address) {
+                    amount
+                } else if let Some(final_amount) = self
+                    .execution_controller
+                    .get_final_and_candidate_sequential_balances(&[op_info.creator_address])
+                    .get(0)
+                    .unwrap_or(&(None, None))
+                    .1
+                {
+                    sequential_balance_cache
+                        .entry(op_info.creator_address)
+                        .or_insert(final_amount)
+                } else {
+                    continue;
+                };
 
             if *creator_seq_balance < op_info.fee {
                 continue;

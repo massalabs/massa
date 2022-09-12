@@ -33,6 +33,13 @@ pub enum ProtocolEvent {
         /// storage instance containing the block and its dependencies (except the parents)
         storage: Storage,
     },
+    /// A message to tell the consensus that a block is invalid
+    InvalidBlock {
+        /// block ID
+        block_id: BlockId,
+        /// header
+        header: WrappedHeader,
+    },
     /// A block header with a valid signature has been received.
     ReceivedBlockHeader {
         /// its id
@@ -67,7 +74,7 @@ pub enum ProtocolCommand {
     /// Wish list delta
     WishlistDelta {
         /// add to wish list
-        new: PreHashSet<BlockId>,
+        new: PreHashMap<BlockId, Option<WrappedHeader>>,
         /// remove from wish list
         remove: PreHashSet<BlockId>,
     },
@@ -123,7 +130,7 @@ impl ProtocolCommandSender {
     /// update the block wish list
     pub async fn send_wishlist_delta(
         &mut self,
-        new: PreHashSet<BlockId>,
+        new: PreHashMap<BlockId, Option<WrappedHeader>>,
         remove: PreHashSet<BlockId>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.send_wishlist_delta", { "new": new, "remove": remove });

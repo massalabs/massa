@@ -196,9 +196,11 @@ pub mod tests {
                     max_in_connections: 5,
                 }
             };
+            let bind = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), port);
+            let routable_ip = Some(IpAddr::V4(Ipv4Addr::new(200, 200, 200, 200)));
             Self {
-                bind: format!("0.0.0.0:{}", port).parse().unwrap(),
-                routable_ip: Some(format!("200.200.200.200:{}", port).parse().unwrap()),
+                bind,
+                routable_ip,
                 protocol_port: port,
                 connect_timeout: MassaTime::from_millis(3000),
                 peers_file: peers_file.to_path_buf(),

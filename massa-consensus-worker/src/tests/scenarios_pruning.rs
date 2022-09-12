@@ -9,12 +9,13 @@ use serial_test::serial;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_pruning_of_discarded_blocks() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        t0: 1000.into(),
+        t0: 32.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     consensus_without_pool_test(
@@ -66,12 +67,13 @@ async fn test_pruning_of_discarded_blocks() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_pruning_of_awaiting_slot_blocks() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        t0: 1000.into(),
+        t0: 32.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     consensus_without_pool_test(
@@ -122,12 +124,13 @@ async fn test_pruning_of_awaiting_slot_blocks() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 200.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     consensus_without_pool_test(

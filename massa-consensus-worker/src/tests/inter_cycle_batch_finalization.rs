@@ -2,9 +2,7 @@
 
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
-use massa_models::{
-    address::Address, amount::Amount, block::BlockId, ledger_models::LedgerData, slot::Slot,
-};
+use massa_models::{block::BlockId, slot::Slot};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
@@ -46,20 +44,11 @@ use std::{collections::HashSet, str::FromStr};
 /// This test ensures non-regression by making sure `B4` is propagated when `B1` is received.
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_inter_cycle_batch_finalization() {
     let t0: MassaTime = 1000.into();
     let staking_key =
         KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8").unwrap();
-    let creator_addr = Address::from_public_key(&staking_key.get_public_key());
-    let roll_price = Amount::from_str("42").unwrap();
-    let initial_ledger = vec![(
-        creator_addr,
-        LedgerData {
-            balance: roll_price, // allows the address to buy 1 roll
-        },
-    )]
-    .into_iter()
-    .collect();
     let warmup_time: MassaTime = 1000.into();
     let margin_time: MassaTime = 300.into();
     let cfg = ConsensusConfig {
@@ -72,10 +61,7 @@ async fn test_inter_cycle_batch_finalization() {
         future_block_processing_max_periods: 10,
         t0,
         genesis_timestamp: MassaTime::now(0).unwrap().saturating_add(warmup_time),
-        ..ConsensusConfig::default_with_staking_keys_and_ledger(
-            &[staking_key.clone()],
-            &initial_ledger,
-        )
+        ..ConsensusConfig::default()
     };
 
     consensus_pool_test_with_storage(

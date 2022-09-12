@@ -14,12 +14,13 @@ use std::iter::FromIterator;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_wishlist_delta_with_empty_remove() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        t0: 1000.into(),
+        t0: 32.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     consensus_without_pool_test(
@@ -69,12 +70,13 @@ async fn test_wishlist_delta_with_empty_remove() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_wishlist_delta_remove() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
-        t0: 1000.into(),
+        t0: 32.into(),
         future_block_processing_max_periods: 50,
-        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+        ..ConsensusConfig::default()
     };
 
     let mut storage = Storage::create_root();

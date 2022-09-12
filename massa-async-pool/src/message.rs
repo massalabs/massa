@@ -53,7 +53,7 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::Serializer;
-    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use std::str::FromStr;
     /// use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageIdSerializer};
     ///
@@ -117,7 +117,7 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use std::str::FromStr;
     /// use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageIdSerializer, AsyncMessageIdDeserializer};
     ///
@@ -248,7 +248,7 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
     /// ## Example
     /// ```
     /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer};
-    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
     /// let message = AsyncMessage {
@@ -284,7 +284,7 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
         let handler_name_len: u8 = handler_bytes.len().try_into().map_err(|_| {
             SerializeError::GeneralError("could not convert handler name length to u8".into())
         })?;
-        buffer.extend(&[handler_name_len]);
+        buffer.extend([handler_name_len]);
         buffer.extend(handler_bytes);
 
         self.u64_serializer.serialize(&value.max_gas, buffer)?;
@@ -337,7 +337,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     /// ## Example
     /// ```
     /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer, AsyncMessageDeserializer};
-    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
     /// let message = AsyncMessage {

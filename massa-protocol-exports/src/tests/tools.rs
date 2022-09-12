@@ -180,7 +180,9 @@ pub async fn send_and_propagate_block(
 
     protocol_command_sender
         .send_wishlist_delta(
-            vec![block.id].into_iter().collect(),
+            vec![(block.id, Some(block.content.header.clone()))]
+                .into_iter()
+                .collect(),
             PreHashSet::<BlockId>::default(),
         )
         .await

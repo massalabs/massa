@@ -35,7 +35,7 @@ async fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
             let mut block = tools::create_block(&creator_node.keypair);
 
             // 2. Change the id.
-            block.content.header.id = BlockId::new(Hash::compute_from(&"invalid".as_bytes()));
+            block.content.header.id = BlockId::new(Hash::compute_from("invalid".as_bytes()));
 
             // 3. Send header to protocol.
             network_controller
@@ -50,6 +50,7 @@ async fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
                 match evt {
                     evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
                     evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+                    evt @ ProtocolEvent::InvalidBlock { .. } => Some(evt),
                 }
             })
             .await
@@ -90,7 +91,7 @@ async fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
                 tools::create_operation_with_expire_period(&creator_node.keypair, 1);
 
             // 2. Change the id
-            operation.id = OperationId::new(Hash::compute_from(&"invalid".as_bytes()));
+            operation.id = OperationId::new(Hash::compute_from("invalid".as_bytes()));
 
             // 3. Send block to protocol.
             network_controller
@@ -157,7 +158,9 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
             // send wishlist
             protocol_command_sender
                 .send_wishlist_delta(
-                    vec![block.id].into_iter().collect(),
+                    vec![(block.id, Some(block.content.header))]
+                        .into_iter()
+                        .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
                 .await
@@ -199,6 +202,7 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
                 match evt {
                     evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
                     evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+                    evt @ ProtocolEvent::InvalidBlock { .. } => Some(evt),
                 }
             })
             .await
@@ -269,16 +273,18 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
             // New keypair to avoid getting same block id
             let keypair = KeyPair::generate();
             let mut block = tools::create_block(&keypair);
-            block.content.header.id = BlockId::new(Hash::compute_from(&"invalid".as_bytes()));
+            block.content.header.id = BlockId::new(Hash::compute_from("invalid".as_bytes()));
             network_controller
-                .send_header(creator_node.id, block.content.header)
+                .send_header(creator_node.id, block.content.header.clone())
                 .await;
             tools::assert_banned_nodes(vec![creator_node.id], &mut network_controller).await;
 
             // 5. Ask for block.
             protocol_command_sender
                 .send_wishlist_delta(
-                    vec![expected_hash].into_iter().collect(),
+                    vec![(expected_hash, Some(block.content.header.clone()))]
+                        .into_iter()
+                        .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
                 .await
@@ -336,7 +342,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
 
             // 3. Get one node banned.
             let mut bad_block = tools::create_block(&nodes[1].keypair);
-            bad_block.content.header.id = BlockId::new(Hash::compute_from(&"invalid".as_bytes()));
+            bad_block.content.header.id = BlockId::new(Hash::compute_from("invalid".as_bytes()));
             network_controller
                 .send_header(nodes[1].id, bad_block.content.header.clone())
                 .await;
@@ -517,7 +523,7 @@ async fn test_protocol_removes_banned_node_on_disconnection() {
 
             // Get the node banned.
             let mut block = tools::create_block(&creator_node.keypair);
-            block.content.header.id = BlockId::new(Hash::compute_from(&"invalid".as_bytes()));
+            block.content.header.id = BlockId::new(Hash::compute_from("invalid".as_bytes()));
             network_controller
                 .send_header(creator_node.id, block.content.header)
                 .await;

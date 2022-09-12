@@ -42,6 +42,8 @@ pub struct BootstrapConfig {
     pub max_bootstrap_message_size: u32,
     /// thread count
     pub thread_count: u8,
+    /// period per cycle
+    pub periods_per_cycle: u64,
     /// max datastore key length
     pub max_datastore_key_length: u8,
     /// randomness size bytes

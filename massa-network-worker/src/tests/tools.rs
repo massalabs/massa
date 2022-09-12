@@ -3,7 +3,7 @@
 use super::super::binders::{ReadBinder, WriteBinder};
 use super::tools;
 use crate::handshake_worker::HandshakeWorker;
-use crate::messages::{Message, MessageSerializer};
+use crate::messages::Message;
 use crate::start_network_controller;
 use crate::NetworkConfig;
 use crate::NetworkError;
@@ -23,9 +23,7 @@ use massa_network_exports::test_exports::mock_establisher::{self, MockEstablishe
 use massa_network_exports::{
     ConnectionId, NetworkCommandSender, NetworkEventReceiver, NetworkManager, PeerInfo,
 };
-use massa_serialization::Serializer;
 use massa_signature::KeyPair;
-use massa_storage::Storage;
 use massa_time::MassaTime;
 use std::str::FromStr;
 use std::{
@@ -312,13 +310,8 @@ pub async fn incoming_message_drain_start(
 }
 
 pub async fn advertise_peers_in_connection(write_binder: &mut WriteBinder, peer_list: Vec<IpAddr>) {
-    let message_serializer = MessageSerializer::new();
-    let mut message_serialized = Vec::new();
-    message_serializer
-        .serialize(&Message::PeerList(peer_list), &mut message_serialized)
-        .expect("Fail to serialize message");
     write_binder
-        .send(&message_serialized)
+        .send(&Message::PeerList(peer_list))
         .await
         .expect("could not send peer list");
 }
@@ -360,7 +353,6 @@ pub async fn network_test<F, V>(
         NetworkEventReceiver,
         NetworkManager,
         MockEstablisherInterface,
-        Storage,
     ) -> V,
     V: Future<
         Output = (
@@ -373,7 +365,6 @@ pub async fn network_test<F, V>(
 {
     // create establisher
     let (establisher, mock_interface) = mock_establisher::new();
-    let storage: Storage = Default::default();
     // launch network controller
     let (network_event_sender, network_event_receiver, network_manager, _keypair, _node_id) =
         start_network_controller(
@@ -381,7 +372,6 @@ pub async fn network_test<F, V>(
             establisher,
             0,
             None,
-            storage.clone(),
             Version::from_str("TEST.1.2").unwrap(),
         )
         .await
@@ -394,7 +384,6 @@ pub async fn network_test<F, V>(
         network_event_receiver,
         network_manager,
         mock_interface,
-        storage,
     )
     .await;
 

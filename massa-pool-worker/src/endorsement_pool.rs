@@ -66,6 +66,8 @@ impl EndorsementPool {
                         .remove(&(target_slot, index, block_id))
                         .expect("endorsement should be in endorsements_indexed at this point");
                     removed.insert(endo_id);
+                } else {
+                    break;
                 }
             }
         }

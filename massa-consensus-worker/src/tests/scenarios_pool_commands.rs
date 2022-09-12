@@ -151,7 +151,7 @@
 //         t0: 1000.into(),
 //         delta_f0: 2,
 //         genesis_timestamp: MassaTime::now(0).unwrap(),
-//         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+//         ..ConsensusConfig::default()
 //     };
 
 //     // define addresses use for the test

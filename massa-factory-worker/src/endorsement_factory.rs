@@ -11,8 +11,9 @@ use massa_models::{
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
+use parking_lot::RwLock;
 use std::{
-    sync::{mpsc, Arc, RwLock},
+    sync::{mpsc, Arc},
     thread,
     time::Instant,
 };
@@ -134,7 +135,7 @@ impl EndorsementFactoryWorker {
         // get creators if they are managed by our wallet
         let mut producers_indices: Vec<(KeyPair, usize)> = Vec::new();
         {
-            let wallet = self.wallet.read().expect("could not lock wallet");
+            let wallet = self.wallet.read();
             for (index, producer_addr) in producer_addrs.into_iter().enumerate() {
                 // check if the block producer address is handled by the wallet
                 let producer_keypair =

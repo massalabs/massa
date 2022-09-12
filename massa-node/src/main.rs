@@ -52,7 +52,8 @@ use massa_protocol_worker::start_protocol_controller;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
-use std::{mem, path::PathBuf, sync::RwLock};
+use parking_lot::RwLock;
+use std::{mem, path::PathBuf};
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
 use tokio::signal;
@@ -167,6 +168,7 @@ async fn launch(
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         thread_count: THREAD_COUNT,
+        periods_per_cycle: PERIODS_PER_CYCLE,
         endorsement_count: ENDORSEMENT_COUNT,
         max_advertise_length: MAX_ADVERTISE_LENGTH,
         max_bootstrap_async_pool_changes: MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
@@ -444,6 +446,31 @@ async fn launch(
     );
     let api_public_handle = api_public.serve(&SETTINGS.api.bind_public);
 
+    #[cfg(feature = "deadlock_detection")]
+    {
+        // only for #[cfg]
+        use parking_lot::deadlock;
+        use std::thread;
+        use std::time::Duration;
+        // Create a background thread which checks for deadlocks every 10s
+        let handler2 = thread::spawn(move || loop {
+            thread::sleep(Duration::from_secs(10));
+            let deadlocks = deadlock::check_deadlock();
+            println!("deadlocks check");
+            if deadlocks.is_empty() {
+                continue;
+            }
+
+            println!("{} deadlocks detected", deadlocks.len());
+            for (i, threads) in deadlocks.iter().enumerate() {
+                println!("Deadlock #{}", i);
+                for t in threads {
+                    println!("Thread Id {:#?}", t.thread_id());
+                    println!("{:#?}", t.backtrace());
+                }
+            }
+        });
+    }
     (
         consensus_event_receiver,
         bootstrap_manager,

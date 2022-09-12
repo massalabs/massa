@@ -1,5 +1,6 @@
+use parking_lot::RwLock;
 use std::{
-    sync::{mpsc::Receiver, Arc, RwLock},
+    sync::{mpsc::Receiver, Arc},
     thread::sleep,
     time::Duration,
 };
@@ -65,7 +66,7 @@ impl TestFactory {
 
         let mut genesis_blocks = vec![];
         for i in 0..factory_config.thread_count {
-            let block = create_empty_block(&producer_keypair, &Slot::new(0, i));
+            let block = create_empty_block(producer_keypair, &Slot::new(0, i));
             genesis_blocks.push((block.id, 0));
             storage.store_block(block);
         }
@@ -83,7 +84,7 @@ impl TestFactory {
                 selector: selector_controller.clone(),
                 consensus: consensus_command_sender,
                 pool: pool_controller.clone(),
-                protocol: protocol_command_sender.clone(),
+                protocol: protocol_command_sender,
                 storage: storage.clone_without_refs(),
             },
         );

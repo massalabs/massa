@@ -17,7 +17,10 @@ use massa_models::prehash::PreHashMap;
 use massa_models::{
     address::Address,
     amount::Amount,
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock},
+    block::{
+        Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock,
+        WrappedHeader,
+    },
     endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement},
     operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
     prehash::PreHashSet,
@@ -30,12 +33,9 @@ use massa_protocol_exports::ProtocolCommand;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use parking_lot::Mutex;
 use std::{collections::HashSet, future::Future, path::Path};
-use std::{
-    str::FromStr,
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::{str::FromStr, sync::Arc, time::Duration};
 
 use tracing::info;
 
@@ -155,7 +155,7 @@ pub async fn validate_ask_for_block(
         .await;
     match param {
         Some(new) => {
-            assert!(new.contains(&valid), "not the valid hash asked for");
+            assert!(new.contains_key(&valid), "not the valid hash asked for");
             assert_eq!(new.len(), 1);
             valid
         }
@@ -169,6 +169,8 @@ pub async fn validate_wishlist(
     remove: PreHashSet<BlockId>,
     timeout_ms: u64,
 ) {
+    let new: PreHashMap<BlockId, Option<WrappedHeader>> =
+        new.into_iter().map(|id| (id, None)).collect();
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
             ProtocolCommand::WishlistDelta { new, remove } => Some((new, remove)),
@@ -177,7 +179,9 @@ pub async fn validate_wishlist(
         .await;
     match param {
         Some((got_new, got_remove)) => {
-            assert_eq!(new, got_new);
+            for key in got_new.keys() {
+                assert!(new.contains_key(key));
+            }
             assert_eq!(remove, got_remove);
         }
         None => panic!("Wishlist delta not sent for before timeout."),
@@ -196,7 +200,7 @@ pub async fn validate_does_not_ask_for_block(
         })
         .await;
     if let Some(new) = param {
-        if new.contains(hash) {
+        if new.contains_key(hash) {
             panic!("unexpected ask for block {}", hash);
         }
     }
@@ -326,7 +330,7 @@ pub fn _create_roll_transaction(
         expire_period,
         op,
     };
-    Operation::new_wrapped(content, OperationSerializer::new(), &keypair).unwrap()
+    Operation::new_wrapped(content, OperationSerializer::new(), keypair).unwrap()
 }
 
 pub async fn _wait_pool_slot(
@@ -409,7 +413,7 @@ pub fn _create_roll_buy(
         expire_period,
         op,
     };
-    Operation::new_wrapped(content, OperationSerializer::new(), &keypair).unwrap()
+    Operation::new_wrapped(content, OperationSerializer::new(), keypair).unwrap()
 }
 
 pub fn create_roll_sell(
@@ -424,7 +428,7 @@ pub fn create_roll_sell(
         expire_period,
         op,
     };
-    Operation::new_wrapped(content, OperationSerializer::new(), &keypair).unwrap()
+    Operation::new_wrapped(content, OperationSerializer::new(), keypair).unwrap()
 }
 
 // returns hash and resulting discarded blocks
@@ -459,21 +463,19 @@ pub fn create_block_with_merkle_root(
             endorsements: Vec::new(),
         },
         BlockHeaderSerializer::new(),
-        &creator,
+        creator,
     )
     .unwrap();
 
-    let block = Block::new_wrapped(
+    Block::new_wrapped(
         Block {
             header,
             operations: Default::default(),
         },
         BlockSerializer::new(),
-        &creator,
+        creator,
     )
-    .unwrap();
-
-    block
+    .unwrap()
 }
 
 /// Creates an endorsement for use in consensus tests.
@@ -525,8 +527,8 @@ pub fn _get_export_active_test_block(
 
     ExportActiveBlock {
         parents,
-        block: block.clone(),
-        operations: operations.clone(),
+        block,
+        operations,
         is_final,
     }
 }
@@ -552,11 +554,11 @@ pub fn create_block_with_operations(
             endorsements: Vec::new(),
         },
         BlockHeaderSerializer::new(),
-        &creator,
+        creator,
     )
     .unwrap();
 
-    let block = Block::new_wrapped(
+    Block::new_wrapped(
         Block {
             header,
             operations: operations.into_iter().map(|op| op.id).collect(),
@@ -564,9 +566,7 @@ pub fn create_block_with_operations(
         BlockSerializer::new(),
         creator,
     )
-    .unwrap();
-
-    block
+    .unwrap()
 }
 
 pub fn create_block_with_operations_and_endorsements(
@@ -595,7 +595,7 @@ pub fn create_block_with_operations_and_endorsements(
     )
     .unwrap();
 
-    let block = Block::new_wrapped(
+    Block::new_wrapped(
         Block {
             header,
             operations: operations.into_iter().map(|op| op.id).collect(),
@@ -603,9 +603,7 @@ pub fn create_block_with_operations_and_endorsements(
         BlockSerializer::new(),
         creator,
     )
-    .unwrap();
-
-    block
+    .unwrap()
 }
 
 pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<KeyPair>) -> KeyPair {
@@ -627,7 +625,8 @@ pub async fn _load_initial_staking_keys(
         return Ok(PreHashMap::default());
     }
     let (_version, data) = decrypt(password, &tokio::fs::read(path).await?)?;
-    serde_json::from_slice::<Vec<KeyPair>>(&data)?
+    serde_json::from_slice::<Vec<KeyPair>>(&data)
+        .unwrap()
         .into_iter()
         .map(|key| Ok((Address::from_public_key(&key.get_public_key()), key)))
         .collect()
@@ -654,7 +653,7 @@ pub async fn _consensus_pool_test<F, V>(
         ),
     >,
 {
-    let mut storage: Storage = Default::default();
+    let mut storage: Storage = Storage::create_root();
     if let Some(ref graph) = boot_graph {
         for export_block in &graph.final_blocks {
             storage.store_block(export_block.block.clone());
@@ -669,11 +668,21 @@ pub async fn _consensus_pool_test<F, V>(
     let stop_sinks = Arc::new(Mutex::new(false));
     let stop_sinks_clone = stop_sinks.clone();
     let execution_sink = std::thread::spawn(move || {
-        while !*stop_sinks_clone.lock().unwrap() {
+        while !*stop_sinks_clone.lock() {
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
-    let selector_config = SelectorConfig::default();
+    let staking_key =
+        KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8").unwrap();
+    let genesis_address = Address::from_public_key(&staking_key.get_public_key());
+    let selector_config = SelectorConfig {
+        max_draw_cache: 12,
+        channel_size: 256,
+        thread_count: 2,
+        endorsement_count: 8,
+        periods_per_cycle: 2,
+        genesis_address,
+    };
     // launch consensus controller
     let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -716,7 +725,7 @@ pub async fn _consensus_pool_test<F, V>(
         .unwrap();
 
     // stop sinks
-    *stop_sinks.lock().unwrap() = true;
+    *stop_sinks.lock() = true;
     execution_sink.join().unwrap();
 }
 
@@ -744,7 +753,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
         ),
     >,
 {
-    let mut storage: Storage = Default::default();
+    let mut storage: Storage = Storage::create_root();
     if let Some(ref graph) = boot_graph {
         for export_block in &graph.final_blocks {
             storage.store_block(export_block.block.clone());
@@ -759,11 +768,21 @@ pub async fn consensus_pool_test_with_storage<F, V>(
     let stop_sinks = Arc::new(Mutex::new(false));
     let stop_sinks_clone = stop_sinks.clone();
     let execution_sink = std::thread::spawn(move || {
-        while !*stop_sinks_clone.lock().unwrap() {
+        while !*stop_sinks_clone.lock() {
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
-    let selector_config = SelectorConfig::default();
+    let staking_key =
+        KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8").unwrap();
+    let genesis_address = Address::from_public_key(&staking_key.get_public_key());
+    let selector_config = SelectorConfig {
+        max_draw_cache: 12,
+        channel_size: 256,
+        thread_count: 2,
+        endorsement_count: 8,
+        periods_per_cycle: 2,
+        genesis_address,
+    };
     let (mut selector_manager, selector_controller) =
         start_selector_worker(selector_config).unwrap();
     // launch consensus controller
@@ -810,7 +829,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
         .unwrap();
 
     // stop sinks
-    *stop_sinks.lock().unwrap() = true;
+    *stop_sinks.lock() = true;
     selector_manager.stop();
     execution_sink.join().unwrap();
 }
@@ -833,12 +852,22 @@ where
         ),
     >,
 {
-    let storage: Storage = Default::default();
+    let storage: Storage = Storage::create_root();
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let pool_controller = MockPoolController::new();
-    let selector_config = SelectorConfig::default();
+    let staking_key =
+        KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8").unwrap();
+    let genesis_address = Address::from_public_key(&staking_key.get_public_key());
+    let selector_config = SelectorConfig {
+        max_draw_cache: 12,
+        channel_size: 256,
+        thread_count: 2,
+        endorsement_count: 8,
+        periods_per_cycle: 2,
+        genesis_address,
+    };
     let (mut selector_manager, selector_controller) =
         start_selector_worker(selector_config).unwrap();
     // for now, execution_rx is ignored: clique updates to Execution pile up and are discarded
@@ -846,7 +875,7 @@ where
     let stop_sinks = Arc::new(Mutex::new(false));
     let stop_sinks_clone = stop_sinks.clone();
     let execution_sink = std::thread::spawn(move || {
-        while !*stop_sinks_clone.lock().unwrap() {
+        while !*stop_sinks_clone.lock() {
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
@@ -891,7 +920,7 @@ where
         .unwrap();
     selector_manager.stop();
     // stop sinks
-    *stop_sinks.lock().unwrap() = true;
+    *stop_sinks.lock() = true;
     execution_sink.join().unwrap();
 }
 
@@ -915,7 +944,7 @@ where
         ),
     >,
 {
-    let storage: Storage = Default::default();
+    let storage: Storage = Storage::create_root();
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
@@ -925,11 +954,21 @@ where
     let stop_sinks = Arc::new(Mutex::new(false));
     let stop_sinks_clone = stop_sinks.clone();
     let execution_sink = std::thread::spawn(move || {
-        while !*stop_sinks_clone.lock().unwrap() {
+        while !*stop_sinks_clone.lock() {
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
-    let selector_config = SelectorConfig::default();
+    let staking_key =
+        KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8").unwrap();
+    let genesis_address = Address::from_public_key(&staking_key.get_public_key());
+    let selector_config = SelectorConfig {
+        max_draw_cache: 12,
+        channel_size: 256,
+        thread_count: 2,
+        endorsement_count: 8,
+        periods_per_cycle: 2,
+        genesis_address,
+    };
     let (mut selector_manager, selector_controller) =
         start_selector_worker(selector_config).unwrap();
     // launch consensus controller
@@ -974,7 +1013,7 @@ where
         .unwrap();
     selector_manager.stop();
     // stop sinks
-    *stop_sinks.lock().unwrap() = true;
+    *stop_sinks.lock() = true;
     execution_sink.join().unwrap();
 }
 

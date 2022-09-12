@@ -102,6 +102,7 @@ impl ProtocolWorker {
                 self.asked_operations.insert(op_id, (now, vec![node_id]));
             }
         } // EndOf for op_id in op_batch:
+
         if count_reask > 0 {
             massa_trace!("re-ask operations.", { "count": count_reask });
         }
@@ -116,6 +117,7 @@ impl ProtocolWorker {
                 operations_prefix_ids: future_set,
             });
         }
+
         if !ask_set.is_empty() {
             self.network_command_sender
                 .send_ask_for_operations(node_id, ask_set)

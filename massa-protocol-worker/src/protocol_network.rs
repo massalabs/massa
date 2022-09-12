@@ -2,13 +2,15 @@
 //!
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::collections::hash_map::Entry;
+
 use crate::node_info::NodeInfo;
 use crate::protocol_worker::ProtocolWorker;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
-    block::{Block, WrappedBlock},
-    block::{BlockId, BlockSerializer},
+    block::Block,
+    block::{BlockId, BlockSerializer, WrappedHeader},
     node::NodeId,
     operation::{OperationId, WrappedOperation},
     prehash::{CapacityAllocator, PreHashSet},
@@ -86,7 +88,7 @@ impl ProtocolWorker {
                 header,
             } => {
                 massa_trace!(BLOCK_HEADER, { "node": source_node_id, "header": header});
-                if let Some((block_id, _endorsement_ids, is_new)) =
+                if let Some((block_id, is_new)) =
                     self.note_header_from_node(&header, &source_node_id).await?
                 {
                     if is_new {
@@ -164,8 +166,11 @@ impl ProtocolWorker {
         };
         let mut all_blocks_info = vec![];
         for (hash, info_wanted) in &list {
-            let operations_ids = match self.storage.read_blocks().get(hash) {
-                Some(wrapped_block) => wrapped_block.content.operations.clone(),
+            let (header, operations_ids) = match self.storage.read_blocks().get(hash) {
+                Some(wrapped_block) => (
+                    wrapped_block.content.header.clone(),
+                    wrapped_block.content.operations.clone(),
+                ),
                 None => {
                     // let the node know we don't have the block.
                     all_blocks_info.push((*hash, BlockInfoReply::NotFound));
@@ -173,6 +178,7 @@ impl ProtocolWorker {
                 }
             };
             let block_info = match info_wanted {
+                AskForBlocksInfo::Header => BlockInfoReply::Header(header),
                 AskForBlocksInfo::Info => BlockInfoReply::Info(operations_ids),
                 AskForBlocksInfo::Operations(op_ids) => {
                     // Mark the node as having the block.
@@ -221,6 +227,40 @@ impl ProtocolWorker {
         total
     }
 
+    /// On block header received from a node.
+    /// If the header is new, we propagate it to the consensus.
+    /// We pass the state of block_wishlist ot ask for information about the block.
+    async fn on_block_header_received(
+        &mut self,
+        from_node_id: NodeId,
+        block_id: BlockId,
+        header: WrappedHeader,
+    ) -> Result<(), ProtocolError> {
+        if let Some(info) = self.block_wishlist.get(&block_id) {
+            if info.header.is_some() {
+                let _ = self.ban_node(&from_node_id).await;
+                return Ok(());
+            }
+        }
+        if self
+            .note_header_from_node(&header, &from_node_id)
+            .await
+            .is_err()
+        {
+            let _ = self.ban_node(&from_node_id).await;
+            return Ok(());
+        };
+        if let Some(info) = self.block_wishlist.get_mut(&block_id) {
+            info.header = Some(header);
+        }
+
+        // Update ask block
+        let mut set = PreHashSet::<BlockId>::with_capacity(1);
+        set.insert(block_id);
+        self.remove_asked_blocks_of_node(&set)?;
+        Ok(())
+    }
+
     /// On block information received, manage when we get a list of operations.
     /// Ask for the missing operations that are not in the `checked_operations` cache variable.
     ///
@@ -244,8 +284,7 @@ impl ProtocolWorker {
         operation_ids: Vec<OperationId>,
     ) -> Result<(), ProtocolError> {
         // All operation ids sent into a set
-        let mut operation_ids_set: PreHashSet<OperationId> =
-            operation_ids.iter().cloned().collect();
+        let operation_ids_set: PreHashSet<OperationId> = operation_ids.iter().cloned().collect();
 
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
@@ -255,17 +294,25 @@ impl ProtocolWorker {
             );
         }
 
-        if self.block_wishlist.get(&block_id).is_none() {
+        let info = if let Some(info) = self.block_wishlist.get_mut(&block_id) {
+            info
+        } else {
+            let _ = self.ban_node(&from_node_id).await;
+            return Ok(());
+        };
+
+        let header = if let Some(header) = &info.header {
+            header
+        } else {
+            let _ = self.ban_node(&from_node_id).await;
+            return Ok(());
+        };
+
+        if info.operation_ids.is_some() {
+            let _ = self.ban_node(&from_node_id).await;
             return Ok(());
         }
 
-        let mut info = match self.checked_headers.get_mut(&block_id) {
-            Some(info) => info,
-            _ => {
-                warn!("Missing block header for {}", block_id);
-                return Ok(());
-            }
-        };
         let mut total_hash: Vec<u8> = vec![];
         operation_ids.iter().for_each(|op_id| {
             let op_hash = op_id.get_hash().into_bytes();
@@ -273,16 +320,12 @@ impl ProtocolWorker {
         });
 
         // Check operation_list against expected operations hash from header.
-        if info.header.content.operation_merkle_root == Hash::compute_from(&total_hash) {
+        if header.content.operation_merkle_root == Hash::compute_from(&total_hash) {
             // Add the ops of info.
-            info.operations = Some(operation_ids.clone());
-            let mut block_storage = self.storage.clone_without_refs();
-            let known_operations = block_storage.claim_operation_refs(&operation_ids_set);
+            info.operation_ids = Some(operation_ids.clone());
+            let known_operations = info.storage.claim_operation_refs(&operation_ids_set);
             // remember the claimed operation to prune them later
             self.checked_operations.extend(&known_operations);
-            // Compute the missing operations using `operation_ids_set`
-            let mut missing_operation = std::mem::take(&mut operation_ids_set);
-            missing_operation.retain(|id| !known_operations.contains(id));
 
             info.operations_size =
                 Self::get_total_operations_size(&self.storage, &known_operations);
@@ -295,16 +338,7 @@ impl ProtocolWorker {
             // Update ask block
             let mut set = PreHashSet::<BlockId>::with_capacity(1);
             set.insert(block_id);
-            self.stop_asking_blocks(set)?;
-
-            // Re-add to wishlist with new state.
-            self.block_wishlist.insert(
-                block_id,
-                (
-                    AskForBlocksInfo::Operations(missing_operation.into_iter().collect()),
-                    Some(block_storage),
-                ),
-            );
+            self.remove_asked_blocks_of_node(&set)?;
 
             // If the block is empty, go straight to processing the full block info.
             if operation_ids.is_empty() {
@@ -335,7 +369,7 @@ impl ProtocolWorker {
         &mut self,
         from_node_id: NodeId,
         block_id: BlockId,
-        operations: Vec<WrappedOperation>,
+        mut operations: Vec<WrappedOperation>,
     ) -> Result<(), ProtocolError> {
         if self
             .note_operations_from_node(operations.clone(), &from_node_id)
@@ -345,88 +379,96 @@ impl ProtocolWorker {
             return Ok(());
         }
 
-        let wanted_operation_ids = match self.block_wishlist.get(&block_id) {
-            Some((AskForBlocksInfo::Operations(ids), Some(_))) => {
-                ids.clone().into_iter().collect::<PreHashSet<OperationId>>()
+        let protocol_event_full_block = match self.block_wishlist.entry(block_id) {
+            Entry::Occupied(mut entry) => {
+                let info = entry.get_mut();
+                let header = if let Some(header) = &info.header {
+                    header.clone()
+                } else {
+                    let _ = self.ban_node(&from_node_id).await;
+                    return Ok(());
+                };
+                let block_operation_ids = if let Some(operations) = &info.operation_ids {
+                    operations
+                } else {
+                    let _ = self.ban_node(&from_node_id).await;
+                    return Ok(());
+                };
+                operations.retain(|op| block_operation_ids.contains(&op.id));
+                // add operations to local storage and claim ref
+                info.storage.store_operations(operations);
+                let block_ids_set = block_operation_ids.clone().into_iter().collect();
+                let known_operations = info.storage.claim_operation_refs(&block_ids_set);
+
+                // Ban the node if:
+                // - mismatch with asked operations (asked operations are the one that are not in storage) + operations already in storage and block operations
+                // - full operations serialized size overflow
+                let full_op_size: usize = {
+                    let stored_operations = info.storage.read_operations();
+                    known_operations
+                        .iter()
+                        .map(|id| stored_operations.get(id).unwrap().serialized_size())
+                        .sum()
+                };
+                if full_op_size > self.config.max_serialized_operations_size_per_block {
+                    let _ = self.ban_node(&from_node_id).await;
+                    self.block_wishlist.remove(&block_id);
+                    ProtocolEvent::InvalidBlock { block_id, header }
+                } else {
+                    if known_operations != block_ids_set {
+                        let _ = self.ban_node(&from_node_id).await;
+                        return Ok(());
+                    }
+
+                    // Re-constitute block.
+                    let block = Block {
+                        header: header.clone(),
+                        operations: block_operation_ids.clone(),
+                    };
+
+                    let mut content_serialized = Vec::new();
+                    BlockSerializer::new() // todo : keep the serializer in the struct to avoid recreating it
+                        .serialize(&block, &mut content_serialized)
+                        .unwrap();
+
+                    // wrap block
+                    let wrapped_block = Wrapped {
+                        signature: header.signature,
+                        creator_public_key: header.creator_public_key,
+                        creator_address: header.creator_address,
+                        id: block_id,
+                        content: block,
+                        serialized_data: content_serialized,
+                    };
+
+                    // create block storage (without parents)
+                    let mut block_storage = entry.remove().storage;
+                    // add endorsements to local storage and claim ref
+                    // TODO change this if we make endorsements separate from block header
+                    block_storage.store_endorsements(
+                        wrapped_block.content.header.content.endorsements.clone(),
+                    );
+                    let slot = wrapped_block.content.header.content.slot;
+                    // add block to local storage and claim ref
+                    block_storage.store_block(wrapped_block);
+                    ProtocolEvent::ReceivedBlock {
+                        slot,
+                        block_id,
+                        storage: block_storage,
+                    }
+                }
             }
-            _ => return Ok(()),
-        };
-
-        let info = match self.checked_headers.get(&block_id) {
-            Some(info) => info,
-            _ => {
-                warn!("Missing block info for {}", block_id);
-                return Ok(());
-            }
-        };
-
-        let mut received_ids: PreHashSet<OperationId> = Default::default();
-        let mut full_op_size = info.operations_size;
-
-        // Ban the node if:
-        // - thread incorrect for an operation
-        // - wanted operations doesn't match
-        // - duplicated operation
-        // - full operations serialized size overflow
-        for op in operations.iter() {
-            full_op_size = full_op_size.saturating_add(op.serialized_size());
-            let op_thread = op.creator_address.get_thread(self.config.thread_count);
-            if op_thread != info.header.content.slot.thread
-                || !received_ids.insert(op.id)
-                || full_op_size > self.config.max_serialized_operations_size_per_block
-            {
+            Entry::Vacant(_) => {
                 let _ = self.ban_node(&from_node_id).await;
                 return Ok(());
             }
-        }
-        if wanted_operation_ids != received_ids {
-            let _ = self.ban_node(&from_node_id).await;
-            return Ok(());
-        }
-
-        // Re-constitute block.
-        let block = Block {
-            header: info.header.clone(),
-            operations: info.operations.clone().unwrap(),
         };
-
-        let mut content_serialized = Vec::new();
-        BlockSerializer::new() // todo : usage of constants would avoid a lot of instanciations
-            .serialize(&block, &mut content_serialized)
-            .unwrap();
-
-        // wrap block
-        let wrapped_block: WrappedBlock = Wrapped {
-            signature: info.header.signature,
-            creator_public_key: info.header.creator_public_key,
-            creator_address: info.header.creator_address,
-            id: block_id,
-            content: block,
-            serialized_data: content_serialized,
-        };
-
-        // create block storage (without parents)
-        let mut block_storage = self.block_wishlist.remove(&block_id).unwrap().1.unwrap();
-        // add block to local storage and claim ref
-        block_storage.store_block(wrapped_block);
-        // add operations to local storage and claim ref
-        block_storage.store_operations(operations);
-        // add endorsements to local storage and claim ref
-        // TODO change this if we make endorsements separate from block header
-        block_storage.store_endorsements(info.header.content.endorsements.clone());
-
         // Send to graph
-        self.send_protocol_event(ProtocolEvent::ReceivedBlock {
-            slot: info.header.content.slot,
-            block_id,
-            storage: block_storage,
-        })
-        .await;
+        self.send_protocol_event(protocol_event_full_block).await;
 
         // Update ask block
-        let mut set = PreHashSet::<BlockId>::with_capacity(1);
-        set.insert(block_id);
-        self.stop_asking_blocks(set)
+        let remove_hashes = vec![block_id].into_iter().collect();
+        self.remove_asked_blocks_of_node(&remove_hashes)
     }
 
     async fn on_block_info_received(
@@ -436,6 +478,11 @@ impl ProtocolWorker {
         info: BlockInfoReply,
     ) -> Result<(), ProtocolError> {
         match info {
+            BlockInfoReply::Header(header) => {
+                // Verify and Send it consensus
+                self.on_block_header_received(from_node_id, block_id, header)
+                    .await
+            }
             BlockInfoReply::Info(operation_list) => {
                 // Ask for missing operations ids and print a warning if there is no header for
                 // that block.

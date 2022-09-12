@@ -7,10 +7,9 @@ use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::{
     address::Address, amount::Amount, block::BlockId, prehash::PreHashMap, slot::Slot,
 };
-use massa_pos_exports::{PoSChanges, ProductionStats};
+use massa_pos_exports::{DeferredCredits, PoSChanges, ProductionStats};
 use num::rational::Ratio;
 use parking_lot::RwLock;
-use std::collections::hash_map::Entry::Occupied;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
@@ -60,6 +59,20 @@ impl SpeculativeRollState {
         self.added_changes = snapshot;
     }
 
+    /// Internal function to retrieve the rolls of a given address
+    fn get_rolls(&self, addr: &Address) -> u64 {
+        self.added_changes
+            .roll_changes
+            .get(addr)
+            .copied()
+            .unwrap_or_else(|| {
+                self.active_history
+                    .read()
+                    .fetch_roll_count(addr)
+                    .unwrap_or_else(|| self.final_state.read().pos_state.get_rolls_for(addr))
+            })
+    }
+
     /// Add `roll_count` rolls to the buyer address.
     /// Validity checks must be performed _outside_ of this function.
     ///
@@ -94,23 +107,11 @@ impl SpeculativeRollState {
         thread_count: u8,
         roll_price: Amount,
     ) -> Result<(), ExecutionError> {
-        // take a read lock on the final state
-        let final_lock = self.final_state.read();
-
         // fetch the roll count from: current changes > active history > final state
-        let owned_count = self
-            .added_changes
-            .roll_changes
-            .entry(*seller_addr)
-            .or_insert_with(|| {
-                self.active_history
-                    .read()
-                    .fetch_roll_count(seller_addr)
-                    .unwrap_or_else(|| final_lock.pos_state.get_rolls_for(seller_addr))
-            });
+        let owned_count = self.get_rolls(seller_addr);
 
         // verify that the seller has enough rolls to sell
-        if *owned_count < roll_count {
+        if owned_count < roll_count {
             return Err(ExecutionError::RollSellError(format!(
                 "{} tried to sell {} rolls but only has {}",
                 seller_addr, roll_count, owned_count
@@ -120,7 +121,12 @@ impl SpeculativeRollState {
         let cur_cycle = slot.get_cycle(periods_per_cycle);
 
         // remove the rolls
-        *owned_count = owned_count.saturating_sub(roll_count);
+        let current_rolls = self
+            .added_changes
+            .roll_changes
+            .entry(*seller_addr)
+            .or_insert_with(|| owned_count);
+        *current_rolls = owned_count.saturating_sub(roll_count);
 
         // compute deferred credit slot
         let target_slot = Slot::new_last_of_cycle(
@@ -156,16 +162,19 @@ impl SpeculativeRollState {
         slot: Slot,
         block_id: Option<BlockId>,
     ) {
-        if let Some(production_stats) = self.added_changes.production_stats.get_mut(creator) {
-            if let Some(id) = block_id {
-                production_stats.block_success_count =
-                    production_stats.block_success_count.saturating_add(1);
-                self.added_changes.seed_bits.push(id.get_first_bit());
-            } else {
-                production_stats.block_failure_count =
-                    production_stats.block_failure_count.saturating_add(1);
-                self.added_changes.seed_bits.push(slot.get_first_bit());
-            }
+        let production_stats = self
+            .added_changes
+            .production_stats
+            .entry(*creator)
+            .or_default();
+        if let Some(id) = block_id {
+            production_stats.block_success_count =
+                production_stats.block_success_count.saturating_add(1);
+            self.added_changes.seed_bits.push(id.get_first_bit());
+        } else {
+            production_stats.block_failure_count =
+                production_stats.block_failure_count.saturating_add(1);
+            self.added_changes.seed_bits.push(slot.get_first_bit());
         }
     }
 
@@ -202,22 +211,25 @@ impl SpeculativeRollState {
         )
         .expect("unexpected slot overflow in settle_production_stats");
 
-        let credits = self
-            .added_changes
-            .deferred_credits
-            .0
-            .entry(target_slot)
-            .or_insert_with(PreHashMap::default);
-
+        let mut target_credits = PreHashMap::default();
         for (addr, stats) in production_stats {
             if !stats.is_satisfying(&max_miss_ratio) {
-                if let Occupied(mut entry) = self.added_changes.roll_changes.entry(addr) {
-                    if let Some(amount) = roll_price.checked_mul_u64(*entry.get()) {
-                        credits.insert(addr, amount);
+                let owned_count = self.get_rolls(&addr);
+                if owned_count != 0 {
+                    if let Some(amount) = roll_price.checked_mul_u64(owned_count) {
+                        target_credits.insert(addr, amount);
+                        self.added_changes
+                            .roll_changes
+                            .entry(addr)
+                            .or_insert_with(|| 0);
                     }
-                    *entry.get_mut() = 0;
                 }
             }
+        }
+        if !target_credits.is_empty() {
+            let mut credits = DeferredCredits::default();
+            credits.0.insert(target_slot, target_credits);
+            self.added_changes.deferred_credits.nested_extend(credits);
         }
     }
 

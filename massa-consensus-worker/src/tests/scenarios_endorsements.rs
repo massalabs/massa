@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::{
-    amount::Amount,
     block::BlockId,
     endorsement::{Endorsement, EndorsementSerializer},
     slot::Slot,
@@ -11,13 +10,13 @@ use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use serial_test::serial;
-use std::str::FromStr;
 
 use super::tools::*;
-use massa_consensus_exports::{test_exports::generate_default_roll_counts_file, ConsensusConfig};
+use massa_consensus_exports::ConsensusConfig;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_endorsement_check() {
     // setup logging
     /*
@@ -27,16 +26,14 @@ async fn test_endorsement_check() {
         .init()
         .unwrap();
     */
-    let mut cfg = ConsensusConfig {
-        block_reward: Amount::default(),
+    let cfg = ConsensusConfig {
         delta_f0: 3,
         endorsement_count: 1,
         genesis_timestamp: MassaTime::now(0).unwrap().saturating_add(300.into()),
         operation_validity_periods: 100,
         periods_per_cycle: 2,
-        roll_price: Amount::from_str("1000").unwrap(),
         t0: 500.into(),
-        ..ConsensusConfig::default_with_paths()
+        ..ConsensusConfig::default()
     };
     // define addresses use for the test
     // addresses 1 and 2 both in thread 0
@@ -44,9 +41,6 @@ async fn test_endorsement_check() {
     let (address_1, keypair_1) = random_address_on_thread(0, cfg.thread_count).into();
     let (address_2, keypair_2) = random_address_on_thread(0, cfg.thread_count).into();
     assert_eq!(0, address_2.get_thread(cfg.thread_count));
-    let initial_rolls_file =
-        generate_default_roll_counts_file(vec![keypair_1.clone(), keypair_2.clone()]);
-    cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
 
     let mut storage = Storage::create_root();
     consensus_without_pool_test(

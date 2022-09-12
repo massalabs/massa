@@ -2,7 +2,6 @@
 
 use super::tools::random_address_on_thread;
 use crate::tests::tools;
-use massa_consensus_exports::test_exports::generate_roll_counts_file;
 use massa_consensus_exports::ConsensusConfig;
 use massa_models::ledger_models::LedgerData;
 use massa_models::rolls::{RollCounts, RollUpdate, RollUpdates};
@@ -288,11 +287,12 @@ use tokio::time::sleep_until;
 ///         if key a created a block, assert it has chosen as parents expected blocks (no misses), and that it was sent to protocol around the time it was expected.
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_interleaving_block_creation_with_reception() {
     let thread_count = 1;
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let (address_1, keypair_1) = random_address_on_thread(0, thread_count).into();
+    let (address_1, _) = random_address_on_thread(0, thread_count).into();
     let (address_2, keypair_2) = random_address_on_thread(0, thread_count).into();
 
     let mut ledger = HashMap::new();
@@ -300,11 +300,11 @@ async fn test_interleaving_block_creation_with_reception() {
         address_2,
         LedgerData::new(Amount::from_mantissa_scale(1000, 0)),
     );
-    let mut cfg = ConsensusConfig {
+    let cfg = ConsensusConfig {
         thread_count,
         t0: 1000.into(),
         genesis_timestamp: MassaTime::now(0).unwrap().checked_add(1000.into()).unwrap(),
-        ..ConsensusConfig::default_with_staking_keys_and_ledger(&[keypair_1], &ledger)
+        ..ConsensusConfig::default()
     };
     // init roll count
     let mut roll_counts = RollCounts::default();
@@ -316,8 +316,6 @@ async fn test_interleaving_block_creation_with_reception() {
     updates.apply(&address_1, &update).unwrap();
     updates.apply(&address_2, &update).unwrap();
     roll_counts.apply_updates(&updates).unwrap();
-    let temp_roll_file = generate_roll_counts_file(&roll_counts);
-    cfg.initial_rolls_path = temp_roll_file.path().to_path_buf();
 
     tools::consensus_without_pool_with_storage_test(
         cfg.clone(),
@@ -361,13 +359,12 @@ async fn test_interleaving_block_creation_with_reception() {
                                 let block = storage
                                     .read_blocks()
                                     .get(&block_id)
-                                    .expect(&format!(
-                                        "Block id : {} not found in storage",
-                                        block_id
-                                    ))
+                                    .unwrap_or_else(|| {
+                                        panic!("Block id : {} not found in storage", block_id)
+                                    })
                                     .clone();
                                 if block.content.header.content.slot == cur_slot {
-                                    Some((block.content.header.clone(), block_id))
+                                    Some((block.content.header, block_id))
                                 } else {
                                     None
                                 }
@@ -448,7 +445,7 @@ async fn test_interleaving_block_creation_with_reception() {
 //         max_operations_per_block: 50,
 //         operation_validity_periods: 10,
 //         t0: 1000.into(),
-//         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+//         ..ConsensusConfig::default()
 //     };
 //     // define addresses use for the test
 //     // addresses a and b both in thread 0

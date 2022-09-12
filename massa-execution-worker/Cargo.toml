@@ -10,7 +10,7 @@ edition = "2021"
 anyhow = "1.0"
 rand = "0.8"
 rand_xoshiro = "0.6"
-parking_lot = "0.12"
+parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 tracing = "0.1"
 serde_json = "1.0"
 num = { version = "0.4", features = ["serde"] }
@@ -30,12 +30,12 @@ massa_final_state = { path = "../massa-final-state" }
 [dev-dependencies]
 serial_test = "0.9"
 tempfile = "3.2"
-massa_pos_worker = { path = "../massa-pos-worker" }
-
 # custom modules with testing enabled
 massa_execution_exports = { path = "../massa-execution-exports", features = [
     "testing",
 ] }
+massa_pos_exports = { path = "../massa-pos-exports", features = ["testing"] }
+massa_pos_worker = { path = "../massa-pos-worker", features = ["testing"] }
 massa_ledger_worker = { path = "../massa-ledger-worker", features = [
     "testing",
 ] }

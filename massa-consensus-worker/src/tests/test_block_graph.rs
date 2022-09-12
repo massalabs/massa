@@ -55,7 +55,7 @@ fn get_export_active_test_block() -> (WrappedBlock, ExportActiveBlock) {
                 (get_dummy_block_id("parent11"), 23),
                 (get_dummy_block_id("parent12"), 24),
             ],
-            block: block.clone(),
+            block,
             operations: vec![],
             is_final: true,
         },
@@ -65,7 +65,7 @@ fn get_export_active_test_block() -> (WrappedBlock, ExportActiveBlock) {
 #[test]
 #[serial]
 fn test_bootstrapable_graph_serialized() {
-    //let storage: Storage = Default::default();
+    //let storage: Storage = Storage::create_root();
 
     let (_, active_block) = get_export_active_test_block();
 
@@ -99,7 +99,7 @@ fn test_bootstrapable_graph_serialized() {
 // async fn test_clique_calculation() {
 //     let ledger_file = generate_ledger_file(&Map::default());
 //     let cfg = ConsensusConfig::from(ledger_file.path());
-//     let storage: Storage = Default::default();
+//     let storage: Storage = Storage::create_root();
 //     let selector_config = SelectorConfig {
 //         initial_rolls_path: cfg.initial_rolls_path.clone(),
 //         thread_count: 2,

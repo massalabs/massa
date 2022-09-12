@@ -195,7 +195,6 @@ impl<'a> BlockGraphExport {
                                     hash
                                 ))
                             })?;
-
                         export.active_blocks.insert(
                             *hash,
                             ExportCompiledBlock {
@@ -975,7 +974,6 @@ impl BlockGraph {
                             block_id
                         )));
                     };
-
                 let stored_block = storage
                     .read_blocks()
                     .get(&block_id)
@@ -1176,6 +1174,32 @@ impl BlockGraph {
         }
 
         Ok(reprocess)
+    }
+
+    /// Mark a block as invalid
+    pub fn invalid_block(
+        &mut self,
+        block_id: &BlockId,
+        header: WrappedHeader,
+    ) -> Result<(), GraphError> {
+        let reason = DiscardReason::Invalid("invalid".to_string());
+        self.maybe_note_attack_attempt(&reason, block_id);
+        massa_trace!("consensus.block_graph.process.invalid_block", {"block_id": block_id, "reason": reason});
+
+        // add to discard
+        self.block_statuses.insert(
+            *block_id,
+            BlockStatus::Discarded {
+                slot: header.content.slot,
+                creator: header.creator_address,
+                parents: header.content.parents,
+                reason,
+                sequence_number: BlockGraph::new_sequence_number(&mut self.sequence_counter),
+            },
+        );
+        self.discarded_index.insert(*block_id);
+
+        Ok(())
     }
 
     /// Note an attack attempt if the discard reason indicates one.
@@ -2575,8 +2599,8 @@ impl BlockGraph {
     }
 
     /// get the current block wish list, including the operations hash.
-    pub fn get_block_wishlist(&self) -> Result<PreHashSet<BlockId>> {
-        let mut wishlist = PreHashSet::<BlockId>::default();
+    pub fn get_block_wishlist(&self) -> Result<PreHashMap<BlockId, Option<WrappedHeader>>> {
+        let mut wishlist = PreHashMap::<BlockId, Option<WrappedHeader>>::default();
         for block_id in self.waiting_for_dependencies_index.iter() {
             if let Some(BlockStatus::WaitingForDependencies {
                 unsatisfied_dependencies,
@@ -2584,15 +2608,18 @@ impl BlockGraph {
             }) = self.block_statuses.get(block_id)
             {
                 for unsatisfied_h in unsatisfied_dependencies.iter() {
-                    if let Some(BlockStatus::WaitingForDependencies {
-                        header_or_block: HeaderOrBlock::Block { .. },
-                        ..
-                    }) = self.block_statuses.get(unsatisfied_h)
-                    {
-                        // the full block is already available
-                        continue;
+                    match self.block_statuses.get(unsatisfied_h) {
+                        Some(BlockStatus::WaitingForDependencies {
+                            header_or_block: HeaderOrBlock::Header(header),
+                            ..
+                        }) => {
+                            wishlist.insert(header.id, Some(header.clone()));
+                        }
+                        None => {
+                            wishlist.insert(*unsatisfied_h, None);
+                        }
+                        _ => {}
                     }
-                    wishlist.insert(*unsatisfied_h);
                 }
             }
         }
@@ -2620,10 +2647,11 @@ impl BlockGraph {
         // The list should be small: make a copy of it to avoid holding the storage lock.
         let blocks_at_slot = {
             let storage_read = self.storage.read_blocks();
-            match storage_read.get_blocks_by_slot(slot) {
+            let returned = match storage_read.get_blocks_by_slot(slot) {
                 Some(v) => v.clone(),
                 None => return None,
-            }
+            };
+            returned
         };
 
         // search for the block in the blockclique

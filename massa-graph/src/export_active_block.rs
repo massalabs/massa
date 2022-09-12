@@ -47,7 +47,6 @@ impl ExportActiveBlock {
             .get(&a_block.block_id)
             .expect("active block missing in storage")
             .clone();
-
         // get ops
         let operations = {
             let read_ops = storage.read_operations();
@@ -229,7 +228,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// ## Example:
     /// ```rust
     /// use massa_graph::export_active_block::{ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer};
-    /// use massa_models::{ledger_models::LedgerChanges, constants::THREAD_COUNT, rolls::RollUpdates, BlockId, Block, BlockSerializer, prehash::Set, Endorsement, EndorsementSerializer, Slot, BlockHeader, BlockHeaderSerializer, wrapped::WrappedContent};
+    /// use massa_models::{ledger_models::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{BlockId, Block, BlockSerializer, BlockHeader, BlockHeaderSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializer}, slot::Slot, wrapped::WrappedContent};
     /// use massa_hash::Hash;
     /// use std::collections::HashSet;
     /// use massa_signature::KeyPair;

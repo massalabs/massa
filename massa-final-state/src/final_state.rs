@@ -47,6 +47,7 @@ impl FinalState {
         let pos_state = PoSFinalState::new(
             &config.initial_seed_string,
             &config.initial_rolls_path,
+            config.periods_per_cycle,
             config.thread_count,
             selector,
         )
@@ -103,12 +104,7 @@ impl FinalState {
         self.async_pool
             .apply_changes_unchecked(&changes.async_pool_changes);
         self.pos_state
-            .settle_slot(
-                changes.roll_state_changes.clone(),
-                self.slot,
-                self.config.periods_per_cycle,
-                self.config.thread_count,
-            )
+            .apply_changes(changes.roll_state_changes.clone(), self.slot)
             .expect("could not settle slot in final state PoS"); //TODO do not panic here: it might just mean that the lookback cycle is not available
         self.executed_ops.extend(changes.executed_ops.clone());
         self.executed_ops.prune(self.slot);
@@ -170,7 +166,7 @@ impl FinalState {
                         })
                         .collect(),
                 );
-                res_changes.ledger_changes = ledger_changes;
+                res_changes.ledger_changes.0.extend(ledger_changes.0);
             }
 
             // Get async pool changes that concern ids <= last_id_async_pool
@@ -188,12 +184,30 @@ impl FinalState {
                         })
                         .collect(),
                 );
-                res_changes.async_pool_changes = async_pool_changes;
+                res_changes
+                    .async_pool_changes
+                    .0
+                    .extend(async_pool_changes.0);
             }
 
             // Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
             if pos_cycle_completion == Some(false) {
-                res_changes.roll_state_changes = changes.roll_state_changes.clone();
+                res_changes
+                    .roll_state_changes
+                    .deferred_credits
+                    .nested_extend(changes.roll_state_changes.deferred_credits.clone());
+                res_changes
+                    .roll_state_changes
+                    .production_stats
+                    .extend(changes.roll_state_changes.production_stats.clone());
+                res_changes
+                    .roll_state_changes
+                    .roll_changes
+                    .extend(changes.roll_state_changes.roll_changes.clone());
+                res_changes
+                    .roll_state_changes
+                    .seed_bits
+                    .extend(changes.roll_state_changes.seed_bits.clone());
             }
         }
         Ok(res_changes)
@@ -238,10 +252,7 @@ mod tests {
         state_changes
             .async_pool_changes
             .0
-            .push(massa_async_pool::Change::Add(
-                message.compute_id(),
-                message.clone(),
-            ));
+            .push(massa_async_pool::Change::Add(message.compute_id(), message));
         history_state_changes.push_front((Slot::new(3, 0), state_changes));
         let mut state_changes = StateChanges::default();
         state_changes

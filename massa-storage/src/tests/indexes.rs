@@ -40,7 +40,7 @@ fn test_block_fail_find() {
     let keypair2 = KeyPair::generate();
     let block = create_empty_block(&keypair, &slot);
 
-    storage.store_block(block.clone());
+    storage.store_block(block);
     let blocks = storage.read_blocks();
     assert!(blocks
         .get_blocks_created_by(&Address::from_public_key(&keypair2.get_public_key()))

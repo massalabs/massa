@@ -14,7 +14,11 @@ use crate::{
 };
 use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
 use massa_final_state::{test_exports::assert_eq_final_state, FinalState};
-use massa_models::{config::THREAD_COUNT, slot::Slot, version::Version};
+use massa_models::{
+    config::{PERIODS_PER_CYCLE, THREAD_COUNT},
+    slot::Slot,
+    version::Version,
+};
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
 use massa_pos_exports::{test_exports::assert_eq_pos_selection, PoSFinalState, SelectorConfig};
 use massa_pos_worker::start_selector_worker;
@@ -51,6 +55,7 @@ async fn test_bootstrap_server() {
         PoSFinalState::new(
             &"".to_string(),
             &rolls_path,
+            PERIODS_PER_CYCLE,
             THREAD_COUNT,
             server_selector_controller.clone(),
         )
@@ -77,6 +82,7 @@ async fn test_bootstrap_server() {
         PoSFinalState::new(
             &"".to_string(),
             &rolls_path,
+            PERIODS_PER_CYCLE,
             THREAD_COUNT,
             client_selector_controller.clone(),
         )
@@ -149,24 +155,25 @@ async fn test_bootstrap_server() {
         sent_peers
     };
 
-    // wait for peers
-    let sent_peers = wait_peers().await;
-
-    // here the ledger is queried directly. We don't intercept this
-
     // wait for bootstrap to ask consensus for bootstrap graph, send it
-    let response = match wait_consensus_command(&mut consensus_cmd_rx, 1000.into(), |cmd| match cmd
-    {
-        ConsensusCommand::GetBootstrapState(resp) => Some(resp),
-        _ => None,
-    })
-    .await
-    {
-        Some(resp) => resp,
-        None => panic!("timeout waiting for get boot graph consensus command"),
+    let wait_graph = async move || {
+        let response =
+            match wait_consensus_command(&mut consensus_cmd_rx, 1000.into(), |cmd| match cmd {
+                ConsensusCommand::GetBootstrapState(resp) => Some(resp),
+                _ => None,
+            })
+            .await
+            {
+                Some(resp) => resp,
+                None => panic!("timeout waiting for get boot graph consensus command"),
+            };
+        let sent_graph = get_boot_state();
+        response.send(Box::new(sent_graph.clone())).await.unwrap();
+        sent_graph
     };
-    let sent_graph = get_boot_state();
-    response.send(sent_graph.clone()).unwrap();
+
+    // wait for peers and graph
+    let (sent_peers, sent_graph) = tokio::join!(wait_peers(), wait_graph());
 
     // launch the modifier thread
     let (tx, rx) = std::sync::mpsc::channel();
@@ -206,7 +213,10 @@ async fn test_bootstrap_server() {
     );
 
     // remove bootstrap safety cycle from final_state before comparisons
-    final_state.write().pos_state.cycle_history.pop_front();
+    {
+        let mut final_state_write = final_state.write();
+        final_state_write.pos_state.cycle_history.pop_front();
+    }
 
     // check final states
     assert_eq_final_state(&final_state.read(), &final_state_client.read());

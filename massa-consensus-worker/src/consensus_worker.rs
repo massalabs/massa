@@ -6,13 +6,13 @@ use massa_consensus_exports::{
     ConsensusConfig,
 };
 use massa_graph::{BlockGraph, BlockGraphExport};
-use massa_models::prehash::PreHashSet;
-use massa_models::stats::ConsensusStats;
 use massa_models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
 use massa_models::{address::Address, block::BlockId, slot::Slot};
+use massa_models::{block::WrappedHeader, prehash::PreHashMap};
+use massa_models::{prehash::PreHashSet, stats::ConsensusStats};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
 use massa_time::MassaTime;
-use std::{cmp::max, collections::HashSet, collections::VecDeque};
+use std::{cmp::max, collections::VecDeque};
 use tokio::time::{sleep, sleep_until, Sleep};
 use tracing::{info, warn};
 
@@ -36,7 +36,7 @@ pub struct ConsensusWorker {
     /// Next slot
     next_slot: Slot,
     /// blocks we want
-    wishlist: PreHashSet<BlockId>,
+    wishlist: PreHashMap<BlockId, Option<WrappedHeader>>,
     /// latest final periods
     latest_final_periods: Vec<u64>,
     /// clock compensation
@@ -54,8 +54,6 @@ pub struct ConsensusWorker {
     stats_desync_detection_timespan: MassaTime,
     /// time at which the node was launched (used for desynchronization detection)
     launch_time: MassaTime,
-    /// endorsed slots cache
-    endorsed_slots: HashSet<Slot>,
 }
 
 impl ConsensusWorker {
@@ -152,7 +150,7 @@ impl ConsensusWorker {
             block_db,
             previous_slot,
             next_slot,
-            wishlist: PreHashSet::<BlockId>::default(),
+            wishlist: Default::default(),
             latest_final_periods,
             clock_compensation,
             channels,
@@ -163,7 +161,6 @@ impl ConsensusWorker {
             stats_history_timespan: max(stats_desync_detection_timespan, cfg.stats_timespan),
             cfg,
             launch_time: MassaTime::now(clock_compensation)?,
-            endorsed_slots: HashSet::new(),
         })
     }
 
@@ -403,7 +400,7 @@ impl ConsensusWorker {
                     {}
                 );
                 let resp = self.block_db.export_bootstrap_graph()?;
-                if response_tx.send(resp).is_err() {
+                if response_tx.send(Box::new(resp)).await.is_err() {
                     warn!("consensus: could not send GetBootstrapState answer");
                 }
                 Ok(())
@@ -505,6 +502,14 @@ impl ConsensusWorker {
                 self.block_db
                     .incoming_header(block_id, header, self.previous_slot)?;
                 self.block_db_changed().await?;
+            }
+            ProtocolEvent::InvalidBlock { block_id, header } => {
+                massa_trace!(
+                    "consensus.consensus_worker.process_protocol_event.invalid_block",
+                    { "block_id": block_id }
+                );
+                self.block_db.invalid_block(&block_id, header)?;
+                // Say it to consensus
             }
         }
         Ok(())
@@ -615,8 +620,27 @@ impl ConsensusWorker {
 
         // notify protocol of block wishlist
         let new_wishlist = self.block_db.get_block_wishlist()?;
-        let new_blocks = &new_wishlist - &self.wishlist;
-        let remove_blocks = &self.wishlist - &new_wishlist;
+        let new_blocks: PreHashMap<BlockId, Option<WrappedHeader>> = new_wishlist
+            .iter()
+            .filter_map(|(id, header)| {
+                if !self.wishlist.contains_key(id) {
+                    Some((*id, header.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let remove_blocks: PreHashSet<BlockId> = self
+            .wishlist
+            .iter()
+            .filter_map(|(id, _)| {
+                if !new_wishlist.contains_key(id) {
+                    Some(*id)
+                } else {
+                    None
+                }
+            })
+            .collect();
         if !new_blocks.is_empty() || !remove_blocks.is_empty() {
             massa_trace!("consensus.consensus_worker.block_db_changed.send_wishlist_delta", { "new": new_wishlist, "remove": remove_blocks });
             self.channels
@@ -635,10 +659,10 @@ impl ConsensusWorker {
             .collect();
         // if changed...
         if self.latest_final_periods != latest_final_periods {
-            // discard endorsed slots cache
-            self.endorsed_slots
-                .retain(|s| s.period >= latest_final_periods[s.thread as usize]);
-
+            // signal new last final periods to pool
+            self.channels
+                .pool_command_sender
+                .notify_final_cs_periods(&latest_final_periods);
             // update final periods
             self.latest_final_periods = latest_final_periods;
         }

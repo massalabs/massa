@@ -87,8 +87,6 @@ impl SelectorController for SelectorControllerImpl {
     /// Get [Selection] computed for a slot:
     /// # Arguments
     /// * `slot`: target slot of the selection
-    ///
-    /// Blocks until the draws are available if they are in the future.
     fn get_selection(&self, slot: Slot) -> PosResult<Selection> {
         let cycle = slot.get_cycle(self.periods_per_cycle);
         let (_cache_cv, cache_lock) = &*self.cache;
@@ -103,13 +101,12 @@ impl SelectorController for SelectorControllerImpl {
     /// Get [Address] of the selected block producer for a given slot
     /// # Arguments
     /// * `slot`: target slot of the selection
-    ///
-    /// Blocks until the draws are available if they are in the future.
     fn get_producer(&self, slot: Slot) -> PosResult<Address> {
         let cycle = slot.get_cycle(self.periods_per_cycle);
         let (_cache_cv, cache_lock) = &*self.cache;
         let cache_guard = cache_lock.read();
         let cache = cache_guard.as_ref().map_err(|err| err.clone())?;
+
         cache
             .get(cycle)
             .and_then(|selections| selections.draws.get(&slot).map(|s| s.producer))

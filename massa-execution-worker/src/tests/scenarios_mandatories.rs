@@ -7,11 +7,12 @@ use massa_execution_exports::{
 };
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
-use massa_ledger_exports::{LedgerConfig, LedgerError};
+use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerError};
 use massa_ledger_worker::FinalLedger;
 use massa_models::config::{
     ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, MAX_ASYNC_POOL_LENGTH, MAX_DATA_ASYNC_MESSAGE,
 };
+use massa_models::prehash::PreHashMap;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
     api::EventFilter,
@@ -26,16 +27,10 @@ use massa_signature::KeyPair;
 use massa_storage::Storage;
 use parking_lot::RwLock;
 use serial_test::serial;
-use std::{
-    cmp::Reverse,
-    collections::{BTreeMap, HashMap},
-    str::FromStr,
-    sync::Arc,
-    time::Duration,
-};
+use std::{cmp::Reverse, collections::HashMap, str::FromStr, sync::Arc, time::Duration};
 use tempfile::{NamedTempFile, TempDir};
 
-use super::mock::get_initial_rolls;
+use super::mock::get_initials;
 
 /// Same as `get_random_address()` and return `keypair` associated
 /// to the address.
@@ -44,18 +39,11 @@ pub fn get_random_address_full() -> (Address, KeyPair) {
     (Address::from_public_key(&keypair.get_public_key()), keypair)
 }
 
-/// Get a randomized address
-pub fn get_random_address() -> Address {
-    get_random_address_full().0
-}
-
 fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir), LedgerError> {
-    let mut initial: BTreeMap<Address, Amount> = Default::default();
-    initial.insert(get_random_address(), Amount::from_str("129").unwrap());
-    initial.insert(get_random_address(), Amount::from_str("878").unwrap());
-    let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&initial);
-    let file = get_initial_rolls();
-    let ledger = FinalLedger::new(ledger_config.clone()).expect("could not init final ledger");
+    let (rolls_file, ledger) = get_initials();
+    let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&ledger);
+    let mut ledger = FinalLedger::new(ledger_config.clone()).expect("could not init final ledger");
+    ledger.load_initial_ledger().unwrap();
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
         part_size_message_bytes: ASYNC_POOL_PART_SIZE_MESSAGE_BYTES,
@@ -67,31 +55,27 @@ fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir
         async_pool_config,
         final_history_length: 128,
         thread_count: THREAD_COUNT,
-        initial_rolls_path: file.path().to_path_buf(),
+        initial_rolls_path: rolls_file.path().to_path_buf(),
         initial_seed_string: "".to_string(),
         periods_per_cycle: 10,
     };
     let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
         .expect("could not start selector controller");
-    Ok((
-        Arc::new(RwLock::new(
-            FinalState::new(cfg, Box::new(ledger), selector_controller).unwrap(),
-        )),
-        tempfile,
-        tempdir,
-    ))
+    let mut final_state =
+        FinalState::new(cfg, Box::new(ledger), selector_controller.clone()).unwrap();
+    final_state.compute_initial_draws().unwrap();
+    final_state.pos_state.create_initial_cycle();
+    Ok((Arc::new(RwLock::new(final_state)), tempfile, tempdir))
 }
 
 #[test]
 #[serial]
 fn test_execution_shutdown() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(SelectorConfig::default()).unwrap();
-    let (mut manager, _) = start_execution_worker(
+    let (mut manager, _controller) = start_execution_worker(
         ExecutionConfig::default(),
-        sample_state,
-        selector_controller,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
     );
     manager.stop();
 }
@@ -100,12 +84,10 @@ fn test_execution_shutdown() {
 #[serial]
 fn test_sending_command() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(SelectorConfig::default()).unwrap();
     let (mut manager, controller) = start_execution_worker(
         ExecutionConfig::default(),
-        sample_state,
-        selector_controller,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
     );
     controller.update_blockclique_status(Default::default(), Default::default());
     manager.stop();
@@ -115,12 +97,10 @@ fn test_sending_command() {
 #[serial]
 fn test_sending_read_only_execution_command() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(SelectorConfig::default()).unwrap();
     let (mut manager, controller) = start_execution_worker(
         ExecutionConfig::default(),
-        sample_state,
-        selector_controller,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
     );
     controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
@@ -148,7 +128,7 @@ fn test_sending_read_only_execution_command() {
 fn test_nested_call_gas_usage() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
-        t0: 1000.into(),
+        t0: 100.into(),
         ..ExecutionConfig::default()
     };
     // get a sample final state
@@ -156,19 +136,20 @@ fn test_nested_call_gas_usage() {
     // init the storage
     let mut storage = Storage::create_root();
     // start the execution worker
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(SelectorConfig::default()).unwrap();
-    let (mut manager, controller) =
-        start_execution_worker(exec_cfg, sample_state, selector_controller);
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
     // get random keypair
-    let (_, keypair) = get_random_address_full();
-    // load bytecode you can check the source code of the
-    // following wasm file in massa-sc-examples
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    // load bytecode
+    // you can check the source code of the following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/nested_call.wasm");
     // create the block containing the smart contract execution operation
     let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
     storage.store_operations(vec![operation.clone()]);
-    let block = create_block(vec![operation], Slot::new(1, 0)).unwrap();
+    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
 
@@ -179,8 +160,6 @@ fn test_nested_call_gas_usage() {
         (block.id, storage.clone()),
     );
     controller.update_blockclique_status(finalized_blocks.clone(), Default::default());
-
-    // sleep for 300ms to reach the message execution period
     std::thread::sleep(Duration::from_millis(10));
     // retrieve events emitted by smart contracts
     let events = controller.get_filtered_sc_output_event(EventFilter {
@@ -204,7 +183,7 @@ fn test_nested_call_gas_usage() {
     // Init new storage for this block
     let mut storage = Storage::create_root();
     storage.store_operations(vec![operation.clone()]);
-    let block = create_block(vec![operation], Slot::new(1, 1)).unwrap();
+    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 1)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
     // set our block as a final block so the message is sent
@@ -214,7 +193,7 @@ fn test_nested_call_gas_usage() {
         (block.id, storage.clone()),
     );
     controller.update_blockclique_status(finalized_blocks, Default::default());
-    std::thread::sleep(Duration::from_millis(300));
+    std::thread::sleep(Duration::from_millis(10));
     // Get the events that give us the gas usage (refer to source in ts) without fetching the first slot because it emit a event with an address.
     let events = controller.get_filtered_sc_output_event(EventFilter {
         start: Some(Slot::new(1, 1)),
@@ -249,10 +228,9 @@ fn test_nested_call_gas_usage() {
 #[test]
 #[serial]
 fn send_and_receive_async_message() {
-    // setup the period duration and the maximum gas for
-    // asynchronous messages execution
+    // setup the period duration and the maximum gas for asynchronous messages execution
     let exec_cfg = ExecutionConfig {
-        t0: 10.into(),
+        t0: 100.into(),
         max_async_gas: 100_000,
         ..ExecutionConfig::default()
     };
@@ -262,20 +240,20 @@ fn send_and_receive_async_message() {
     // init the storage
     let mut storage = Storage::create_root();
     // start the execution worker
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(SelectorConfig::default()).unwrap();
-    let (mut manager, controller) =
-        start_execution_worker(exec_cfg, sample_state, selector_controller);
-    // get random keypair
-    let (_, keypair) = get_random_address_full();
-    // load send_message bytecode you can check the source code of the
-    // following wasm file in massa-sc-examples
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
+    // keypair associated to thread 0
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    // load send_message bytecode
+    // you can check the source code of the following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/send_message.wasm");
     // create the block contaning the smart contract execution operation
-
     let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
     storage.store_operations(vec![operation.clone()]);
-    let block = create_block(vec![operation], Slot::new(1, 0)).unwrap();
+    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
 
@@ -286,9 +264,8 @@ fn send_and_receive_async_message() {
         (block.id, storage.clone()),
     );
     controller.update_blockclique_status(finalized_blocks, Default::default());
-
-    // sleep for 300ms to reach the message execution period
-    std::thread::sleep(Duration::from_millis(300));
+    // sleep for 100ms to reach the message execution period
+    std::thread::sleep(Duration::from_millis(100));
 
     // retrieve events emitted by smart contracts
     let events = controller.get_filtered_sc_output_event(EventFilter {
@@ -305,31 +282,312 @@ fn send_and_receive_async_message() {
 
 #[test]
 #[serial]
+pub fn send_and_receive_transaction() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig {
+        t0: 100.into(),
+        ..ExecutionConfig::default()
+    };
+    // get a sample final state
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+    // init the storage
+    let mut storage = Storage::create_root();
+    // start the execution worker
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
+    // generate the sender_keypair and recipient_address
+    let sender_keypair =
+        KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    let (recipient_address, _keypair) = get_random_address_full();
+    // create the operation
+    let operation = Operation::new_wrapped(
+        Operation {
+            fee: Amount::zero(),
+            expire_period: 10,
+            op: OperationType::Transaction {
+                recipient_address,
+                amount: Amount::from_str("100").unwrap(),
+            },
+        },
+        OperationSerializer::new(),
+        &sender_keypair,
+    )
+    .unwrap();
+    // create the block contaning the transaction operation
+    storage.store_operations(vec![operation.clone()]);
+    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+    // store the block in storage
+    storage.store_block(block.clone());
+    // set our block as a final block so the transaction is processed
+    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
+    finalized_blocks.insert(
+        block.content.header.content.slot,
+        (block.id, storage.clone()),
+    );
+    controller.update_blockclique_status(finalized_blocks, Default::default());
+    std::thread::sleep(Duration::from_millis(10));
+    // check recipient sequential balance
+    assert_eq!(
+        sample_state
+            .read()
+            .ledger
+            .get_sequential_balance(&recipient_address)
+            .unwrap(),
+        Amount::from_str("100").unwrap()
+    );
+    // stop the execution controller
+    manager.stop();
+}
+
+#[test]
+#[serial]
+pub fn roll_buy() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig {
+        t0: 100.into(),
+        ..ExecutionConfig::default()
+    };
+    // get a sample final state
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+    // init the storage
+    let mut storage = Storage::create_root();
+    // start the execution worker
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
+    // generate the keypair and its corresponding address
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    let address = Address::from_public_key(&keypair.get_public_key());
+    // create the operation
+    let operation = Operation::new_wrapped(
+        Operation {
+            fee: Amount::zero(),
+            expire_period: 10,
+            op: OperationType::RollBuy { roll_count: 10 },
+        },
+        OperationSerializer::new(),
+        &keypair,
+    )
+    .unwrap();
+    // create the block contaning the roll buy operation
+    storage.store_operations(vec![operation.clone()]);
+    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+    // store the block in storage
+    storage.store_block(block.clone());
+    // set our block as a final block so the purchase is processed
+    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
+    finalized_blocks.insert(
+        block.content.header.content.slot,
+        (block.id, storage.clone()),
+    );
+    controller.update_blockclique_status(finalized_blocks, Default::default());
+    std::thread::sleep(Duration::from_millis(10));
+    // check roll count of the buyer address and its sequential balance
+    let sample_read = sample_state.read();
+    assert_eq!(sample_read.pos_state.get_rolls_for(&address), 110);
+    assert_eq!(
+        sample_read.ledger.get_sequential_balance(&address).unwrap(),
+        Amount::from_str("299_000").unwrap()
+    );
+    // stop the execution controller
+    manager.stop();
+}
+
+#[test]
+#[serial]
+pub fn roll_sell() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig {
+        t0: 2.into(),
+        periods_per_cycle: 2,
+        thread_count: 2,
+        ..Default::default()
+    };
+    // get a sample final state
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+    // init the storage
+    let mut storage = Storage::create_root();
+    // start the execution worker
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
+    // generate the keypair and its corresponding address
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    let address = Address::from_public_key(&keypair.get_public_key());
+    // create the operation
+    let operation = Operation::new_wrapped(
+        Operation {
+            fee: Amount::zero(),
+            expire_period: 10,
+            op: OperationType::RollSell { roll_count: 10 },
+        },
+        OperationSerializer::new(),
+        &keypair,
+    )
+    .unwrap();
+    // create the block contaning the roll buy operation
+    storage.store_operations(vec![operation.clone()]);
+    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+    // store the block in storage
+    storage.store_block(block.clone());
+    // set the block as final so the sell and credits are processed
+    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
+    finalized_blocks.insert(
+        block.content.header.content.slot,
+        (block.id, storage.clone()),
+    );
+    controller.update_blockclique_status(finalized_blocks, Default::default());
+    std::thread::sleep(Duration::from_millis(10));
+    // check roll count deferred credits and candidate balance of the seller address
+    let sample_read = sample_state.read();
+    let mut credits = PreHashMap::default();
+    credits.insert(address, Amount::from_str("1000").unwrap());
+    assert_eq!(sample_read.pos_state.get_rolls_for(&address), 90);
+    assert_eq!(
+        sample_read
+            .pos_state
+            .get_deferred_credits_at(&Slot::new(7, 1)),
+        credits
+    );
+    assert_eq!(
+        controller.get_final_and_candidate_sequential_balances(&[address]),
+        vec![(
+            Some(Amount::from_str("300_000").unwrap()),
+            Some(Amount::from_str("309_000").unwrap())
+        )]
+    );
+    // stop the execution controller
+    manager.stop();
+}
+
+#[test]
+#[serial]
+pub fn missed_blocks_roll_slash() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig {
+        t0: 2.into(),
+        periods_per_cycle: 2,
+        thread_count: 2,
+        ..Default::default()
+    };
+    // get a sample final state and make selections
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+    // start the execution worker
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
+    // sleep to get slashed on missed blocks and reach the reimbursment
+    std::thread::sleep(Duration::from_millis(100));
+    // get the initial selection address
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    let address = Address::from_public_key(&keypair.get_public_key());
+    // check its balances
+    assert_eq!(
+        controller.get_final_and_candidate_sequential_balances(&[address]),
+        vec![(
+            Some(Amount::from_str("300_000").unwrap()),
+            Some(Amount::from_str("310_000").unwrap())
+        )]
+    );
+    // stop the execution controller
+    manager.stop();
+}
+
+#[test]
+#[serial]
+fn sc_execution_error() {
+    // setup the period duration and the maximum gas for asynchronous messages execution
+    let exec_cfg = ExecutionConfig {
+        t0: 100.into(),
+        max_async_gas: 100_000,
+        ..ExecutionConfig::default()
+    };
+    // get a sample final state
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+    // init the storage
+    let mut storage = Storage::create_root();
+    // start the execution worker
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
+    // keypair associated to thread 0
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    // load bytecode
+    // you can check the source code of the following wasm file in massa-sc-examples
+    let bytecode = include_bytes!("./wasm/execution_error.wasm");
+    // create the block contaning the erroneous smart contract execution operation
+    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    storage.store_operations(vec![operation.clone()]);
+    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+    // store the block in storage
+    storage.store_block(block.clone());
+    // set our block as a final block
+    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
+    finalized_blocks.insert(
+        block.content.header.content.slot,
+        (block.id, storage.clone()),
+    );
+    controller.update_blockclique_status(finalized_blocks, Default::default());
+    std::thread::sleep(Duration::from_millis(10));
+
+    // retrieve the event emitted by the execution error
+    let events = controller.get_filtered_sc_output_event(EventFilter::default());
+    // match the events
+    assert!(!events.is_empty(), "One event was expected");
+    assert!(events[0].data.contains("massa_execution_error"));
+    assert!(events[0]
+        .data
+        .contains("runtime error when executing operation"));
+    assert!(events[0].data.contains("address parsing error"));
+    // stop the execution controller
+    manager.stop();
+}
+
+#[test]
+#[serial]
 fn generate_events() {
     // Compile the `./wasm_tests` and generate a block with `event_test.wasm`
     // as data. Then we check if we get an event as expected.
     let exec_cfg = ExecutionConfig {
-        t0: 10.into(),
+        t0: 100.into(),
         ..ExecutionConfig::default()
     };
-    let mut storage: Storage = Default::default();
+    let mut storage: Storage = Storage::create_root();
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(SelectorConfig::default()).unwrap();
-    let (mut manager, controller) =
-        start_execution_worker(exec_cfg, sample_state, selector_controller);
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
 
-    let (sender_address, keypair) = get_random_address_full();
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    let sender_address = Address::from_public_key(&keypair.get_public_key());
     let event_test_data = include_bytes!("./wasm/event_test.wasm");
     let operation = create_execute_sc_operation(&keypair, event_test_data).unwrap();
     storage.store_operations(vec![operation.clone()]);
-    let block = create_block(vec![operation], Slot::new(1, 0)).unwrap();
+    let block = create_block(keypair, vec![operation], Slot::new(1, 0)).unwrap();
     let slot = block.content.header.content.slot;
 
     storage.store_block(block.clone());
 
-    let finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
-    let mut blockclique: HashMap<Slot, (BlockId, Storage)> = Default::default();
+    let finalized_blocks: HashMap<Slot, (BlockId, Storage)> = HashMap::new();
+    let mut blockclique: HashMap<Slot, (BlockId, Storage)> = HashMap::new();
 
     blockclique.insert(slot, (block.id, storage.clone()));
 
@@ -353,8 +611,8 @@ fn create_execute_sc_operation(
 ) -> Result<WrappedOperation, ExecutionError> {
     let op = OperationType::ExecuteSC {
         data: data.to_vec(),
-        max_gas: u64::MAX,
-        coins: Amount::from_raw(u64::MAX),
+        max_gas: 100_000,
+        coins: Amount::from_str("10").unwrap(),
         gas_price: Amount::from_mantissa_scale(1, 0),
     };
     let op = Operation::new_wrapped(
@@ -364,7 +622,7 @@ fn create_execute_sc_operation(
             op,
         },
         OperationSerializer::new(),
-        &sender_keypair,
+        sender_keypair,
     )?;
     Ok(op)
 }
@@ -405,11 +663,10 @@ fn create_call_sc_operation(
 ///
 /// Return a result that should be unwrapped in the root `#[test]` routine.
 fn create_block(
+    creator_keypair: KeyPair,
     operations: Vec<WrappedOperation>,
     slot: Slot,
 ) -> Result<WrappedBlock, ExecutionError> {
-    let creator_keypair = KeyPair::generate();
-
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
             [acc, v.serialized_data.clone()].concat()

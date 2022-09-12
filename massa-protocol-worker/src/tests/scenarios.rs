@@ -67,7 +67,9 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
             // 5. Ask for block.
             protocol_command_sender
                 .send_wishlist_delta(
-                    vec![expected_hash].into_iter().collect(),
+                    vec![(expected_hash, Some(block.content.header.clone()))]
+                        .into_iter()
+                        .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
                 .await

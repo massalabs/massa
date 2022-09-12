@@ -93,7 +93,8 @@ pub(crate) enum MessageTypeId {
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u32)]
 pub(crate) enum BlockInfoType {
-    Info = 0u32,
+    Header = 0u32,
+    Info,
     Operations,
     NotFound,
 }
@@ -164,6 +165,7 @@ impl Serializer<Message> for MessageSerializer {
                 for (hash, info) in list {
                     buffer.extend(hash.to_bytes());
                     let info_type = match info {
+                        AskForBlocksInfo::Header => BlockInfoType::Header,
                         AskForBlocksInfo::Info => BlockInfoType::Info,
                         AskForBlocksInfo::Operations(_) => BlockInfoType::Operations,
                     };
@@ -182,12 +184,16 @@ impl Serializer<Message> for MessageSerializer {
                 for (hash, info) in list {
                     buffer.extend(hash.to_bytes());
                     let info_type = match info {
+                        BlockInfoReply::Header(_) => BlockInfoType::Header,
                         BlockInfoReply::Info(_) => BlockInfoType::Info,
                         BlockInfoReply::Operations(_) => BlockInfoType::Operations,
                         BlockInfoReply::NotFound => BlockInfoType::NotFound,
                     };
                     self.u32_serializer
                         .serialize(&u32::from(info_type), buffer)?;
+                    if let BlockInfoReply::Header(header) = info {
+                        self.wrapped_serializer.serialize(header, buffer)?;
+                    }
                     if let BlockInfoReply::Operations(ops) = info {
                         self.operations_serializer.serialize(ops, buffer)?;
                     }
@@ -254,7 +260,7 @@ pub struct MessageDeserializer {
     endorsements_length_deserializer: U32VarIntDeserializer,
     endorsement_deserializer: WrappedDeserializer<Endorsement, EndorsementDeserializer>,
     operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer,
-    operation_ids_deserializer: OperationIdsDeserializer,
+    infos_deserializer: OperationIdsDeserializer,
     ip_addr_deserializer: IpAddrDeserializer,
 }
 
@@ -308,7 +314,7 @@ impl MessageDeserializer {
             operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer::new(
                 max_operations_per_message,
             ),
-            operation_ids_deserializer: OperationIdsDeserializer::new(max_operations_per_message),
+            infos_deserializer: OperationIdsDeserializer::new(max_operations_per_block),
             ip_addr_deserializer: IpAddrDeserializer::new(),
         }
     }
@@ -390,9 +396,12 @@ impl Deserializer<Message> for MessageDeserializer {
                                             ))
                                         })?;
                                     match info_type {
+                                        BlockInfoType::Header => {
+                                            Ok((rest, AskForBlocksInfo::Header))
+                                        }
                                         BlockInfoType::Info => Ok((rest, AskForBlocksInfo::Info)),
                                         BlockInfoType::Operations => self
-                                            .operation_ids_deserializer
+                                            .infos_deserializer
                                             .deserialize(rest)
                                             .map(|(rest, operation_ids)| {
                                                 (rest, AskForBlocksInfo::Operations(operation_ids))
@@ -435,8 +444,14 @@ impl Deserializer<Message> for MessageDeserializer {
                                             ))
                                         })?;
                                     match info_type {
+                                        BlockInfoType::Header => self
+                                            .block_header_deserializer
+                                            .deserialize(rest)
+                                            .map(|(rest, header)| {
+                                                (rest, BlockInfoReply::Header(header))
+                                            }),
                                         BlockInfoType::Info => self
-                                            .operation_ids_deserializer
+                                            .infos_deserializer
                                             .deserialize(rest)
                                             .map(|(rest, operation_ids)| {
                                                 (rest, BlockInfoReply::Info(operation_ids))

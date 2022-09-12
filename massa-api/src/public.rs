@@ -366,8 +366,8 @@ impl Endpoints for API<Public> {
     ) -> BoxFuture<Result<Vec<OperationInfo>, ApiError>> {
         // get the operations and the list of blocks that contain them from storage
         let storage_info: Vec<(WrappedOperation, PreHashSet<BlockId>)> = {
-            let read_ops = self.0.storage.read_operations();
             let read_blocks = self.0.storage.read_blocks();
+            let read_ops = self.0.storage.read_operations();
             ops.iter()
                 .filter_map(|id| {
                     read_ops.get(id).cloned().map(|op| {
@@ -450,8 +450,8 @@ impl Endpoints for API<Public> {
     ) -> BoxFuture<Result<Vec<EndorsementInfo>, ApiError>> {
         // get the endorsements and the list of blocks that contain them from storage
         let storage_info: Vec<(WrappedEndorsement, PreHashSet<BlockId>)> = {
-            let read_endos = self.0.storage.read_endorsements();
             let read_blocks = self.0.storage.read_blocks();
+            let read_endos = self.0.storage.read_endorsements();
             eds.iter()
                 .filter_map(|id| {
                     read_endos.get(id).cloned().map(|ed| {
@@ -536,7 +536,9 @@ impl Endpoints for API<Public> {
         let closure = async move || {
             let block = match storage.read_blocks().get(&id).cloned() {
                 Some(b) => b.content,
-                None => return Ok(BlockInfo { id, content: None }),
+                None => {
+                    return Ok(BlockInfo { id, content: None });
+                }
             };
 
             let graph_status = consensus_command_sender

@@ -10,7 +10,7 @@ displaydoc = "0.2"
 nom = "7.1"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
-tokio = { version = "1.20", features = ["full"] }
+tokio = { version = "1.21", features = ["full"] }
 enum-map = { version = "2.4", features = ["serde"] }
 # custom modules
 massa_hash = { path = "../massa-hash" }

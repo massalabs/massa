@@ -7,14 +7,15 @@ edition = "2021"
 
 [dependencies]
 displaydoc = "0.2"
-jsonrpc-core = "18.0"
-jsonrpc-derive = "18.0"
-jsonrpc-http-server = "18.0"
+jsonrpc-core = { git = "https://github.com/massalabs/jsonrpc" }
+jsonrpc-derive = { git = "https://github.com/massalabs/jsonrpc" }
+jsonrpc-http-server = { git = "https://github.com/massalabs/jsonrpc" }
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
-tokio = { version = "1.20", features = ["full"] }
+tokio = { version = "1.21", features = ["full"] }
 tracing = "0.1"
 itertools = "0.10"
+parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 # custom modules
 massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_graph = { path = "../massa-graph" }

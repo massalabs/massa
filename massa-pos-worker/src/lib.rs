@@ -32,6 +32,7 @@ pub(crate) enum Command {
 }
 
 /// Draw cache (lowest index = oldest)
+#[derive(Debug)]
 pub(crate) struct DrawCache(pub VecDeque<CycleDraws>);
 
 impl DrawCache {
@@ -61,6 +62,7 @@ impl DrawCache {
 }
 
 /// Draws for a cycle, used in selector cache
+#[derive(Debug)]
 pub(crate) struct CycleDraws {
     /// cycle number
     pub cycle: u64,

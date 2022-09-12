@@ -3,7 +3,8 @@ use massa_models::{
 };
 use massa_pool_exports::{PoolConfig, PoolController};
 use massa_storage::Storage;
-use std::sync::{Arc, RwLock};
+use parking_lot::RwLock;
+use std::sync::Arc;
 
 use crate::{endorsement_pool::EndorsementPool, operation_pool::OperationPool};
 #[derive(Clone)]
@@ -16,38 +17,27 @@ pub struct PoolControllerImpl {
 impl PoolController for PoolControllerImpl {
     /// add operations to pool
     fn add_operations(&mut self, ops: Storage) {
-        self.operation_pool
-            .write()
-            .expect("could not w-lock operation pool")
-            .add_operations(ops);
+        self.operation_pool.write().add_operations(ops);
     }
 
     /// add endorsements to pool
     fn add_endorsements(&mut self, endorsements: Storage) {
-        self.endorsement_pool
-            .write()
-            .expect("could not w-lock endorsement pool")
-            .add_endorsements(endorsements);
+        self.endorsement_pool.write().add_endorsements(endorsements);
     }
 
     /// notify of new final consensus periods (1 per thread)
     fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
         self.operation_pool
             .write()
-            .expect("could not w-lock operation pool")
             .notify_final_cs_periods(final_cs_periods);
         self.endorsement_pool
             .write()
-            .expect("could not w-lock endorsement pool")
             .notify_final_cs_periods(final_cs_periods);
     }
 
     /// get operations for block creation
     fn get_block_operations(&self, slot: &Slot) -> (Vec<OperationId>, Storage) {
-        self.operation_pool
-            .read()
-            .expect("could not r-lock operation pool")
-            .get_block_operations(slot)
+        self.operation_pool.read().get_block_operations(slot)
     }
 
     /// get endorsements for a block
@@ -58,7 +48,6 @@ impl PoolController for PoolControllerImpl {
     ) -> (Vec<Option<EndorsementId>>, Storage) {
         self.endorsement_pool
             .read()
-            .expect("could not r-lock endorsement pool")
             .get_block_endorsements(target_slot, target_block)
     }
 
@@ -70,35 +59,23 @@ impl PoolController for PoolControllerImpl {
 
     /// Get the number of endorsements in the pool
     fn get_endorsement_count(&self) -> usize {
-        self.endorsement_pool
-            .read()
-            .expect("could not r-lock endorsement pool")
-            .len()
+        self.endorsement_pool.read().len()
     }
 
     /// Get the number of operations in the pool
     fn get_operation_count(&self) -> usize {
-        self.operation_pool
-            .read()
-            .expect("could not r-lock operation pool")
-            .len()
+        self.operation_pool.read().len()
     }
 
     /// Check if the pool contains a list of endorsements. Returns one boolean per item.
     fn contains_endorsements(&self, endorsements: &[EndorsementId]) -> Vec<bool> {
-        let lck = self
-            .endorsement_pool
-            .read()
-            .expect("could not r-lock endorsement pool");
+        let lck = self.endorsement_pool.read();
         endorsements.iter().map(|id| lck.contains(id)).collect()
     }
 
     /// Check if the pool contains a list of operations. Returns one boolean per item.
     fn contains_operations(&self, operations: &[OperationId]) -> Vec<bool> {
-        let lck = self
-            .operation_pool
-            .read()
-            .expect("could not r-lock operation pool");
+        let lck = self.operation_pool.read();
         operations.iter().map(|id| lck.contains(id)).collect()
     }
 }
