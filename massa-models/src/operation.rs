@@ -7,8 +7,8 @@ use crate::{
     amount::{Amount, AmountDeserializer, AmountSerializer},
     error::ModelsError,
     serialization::{StringSerializer, StringDeserializer, VecU8Deserializer, VecU8Serializer},
-    serialization::{DatastoreSerializer, DatastoreDeserializer}
 };
+use crate::datastore::{Datastore, DatastoreSerializer, DatastoreDeserializer};
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U16VarIntDeserializer, U16VarIntSerializer,
@@ -389,7 +389,7 @@ pub enum OperationType {
         /// The price per unit of gas that the caller is willing to pay for the execution.
         gas_price: Amount,
         /// A key-value store associating a hash to arbitrary bytes
-        datastore: BTreeMap<Vec<u8>, Vec<u8>>,
+        datastore: Datastore,
     },
     /// Calls an exported function from a stored smart contract
     CallSC {
