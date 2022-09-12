@@ -89,7 +89,7 @@ Create and open a new file called `helloworld.ts` in `assembly` directory at the
 
 .. code-block:: typescript
 
-    import { print } from "massa-sc-std";
+    import { print } from "@massalabs/massa-sc-std";
 
     export function main(_args: string): void {
         print("Hello world!");
