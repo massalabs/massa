@@ -303,8 +303,6 @@
 <span id="303">303</span>
 <span id="304">304</span>
 <span id="305">305</span>
-<span id="306">306</span>
-<span id="307">307</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{
@@ -458,12 +456,10 @@
         <span class="self">self</span>.<span class="number">0
             </span>.send(NetworkCommand::GetStats { response_tx })
             .<span class="kw">await
-            </span>.map_err(|<span class="kw">_</span>| NetworkError::ChannelError(<span class="string">&quot;could not send GetPeers command&quot;</span>.into()))<span class="question-mark">?</span>;
-        response_rx.<span class="kw">await</span>.map_err(|<span class="kw">_</span>| {
-            NetworkError::ChannelError(
-                <span class="string">&quot;could not send GetAdvertisablePeerListChannelError upstream&quot;</span>.into(),
-            )
-        })
+            </span>.map_err(|<span class="kw">_</span>| NetworkError::ChannelError(<span class="string">&quot;could not send GetStats command&quot;</span>.into()))<span class="question-mark">?</span>;
+        response_rx
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| NetworkError::ChannelError(<span class="string">&quot;could not send GetStats upstream&quot;</span>.into()))
     }
 
     <span class="doccomment">/// Send the order to get bootstrap peers.
@@ -613,4 +609,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (59e7a308e 2022-09-11)" ></div></body></html>
