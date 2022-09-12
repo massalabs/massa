@@ -318,7 +318,7 @@ impl PoSFinalState {
                     production_stats: stats_iter.collect(),
                 })
             }
-            Ok(self.cycle_history.front().map(|v| v.cycle))
+            Ok(self.cycle_history.back().map(|v| v.cycle))
         } else {
             Err(ModelsError::SerializeError(
                 "data is left after set_cycle_history_part PoSFinalState part deserialization"
