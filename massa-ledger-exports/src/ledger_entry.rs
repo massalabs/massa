@@ -8,14 +8,12 @@ use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
 use massa_models::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
 use massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, SerializeError, Serializer,
 };
 use nom::error::{context, ContextError, ParseError};
-use nom::multi::length_count;
 use nom::sequence::tuple;
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::ops::Bound::Included;
 
 /// Structure defining an entry associated to an address in the `FinalLedger`
