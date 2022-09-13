@@ -240,6 +240,12 @@
 <span id="240">240</span>
 <span id="241">241</span>
 <span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -431,7 +437,13 @@
 <span class="kw">impl </span>Version {
     <span class="doccomment">/// true if instance and major are the same
     </span><span class="kw">pub fn </span>is_compatible(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>Version) -&gt; bool {
-        <span class="self">self</span>.instance == other.instance &amp;&amp; <span class="self">self</span>.major == other.major
+        <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="self">self</span>.instance == other.instance &amp;&amp; <span class="self">self</span>.major == other.major;
+
+        <span class="kw">if </span><span class="self">self</span>.to_string() == <span class="string">&quot;TEST.14.0&quot; </span>|| other.to_string() == <span class="string">&quot;TEST.14.0&quot; </span>{
+            res = <span class="bool-val">false</span>;
+        }
+
+        res
     }
 }
 
@@ -483,4 +495,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (59e7a308e 2022-09-11)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (fa6ee9375 2022-09-12)" ></div></body></html>
