@@ -722,7 +722,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                         context("Failed data deserialization", |input| {
                             self.data_deserializer.deserialize(input)
                         }),
-                        context("Failed data deserialization", |input| {
+                        context("Failed datastore deserialization", |input| {
                             self.datastore_deserializer.deserialize(input)
                         }),
                     )),
