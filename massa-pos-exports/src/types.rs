@@ -114,11 +114,7 @@ impl PoSFinalState {
         // if not stream it
         //
         // TODO: use config
-        if self.cycle_history.len() >= 6 {
-            1
-        } else {
-            0
-        }
+        usize::from(self.cycle_history.len() >= 6)
     }
 
     /// Gets a part of the Proof of Stake cycle_history. Used only in the bootstrap process.
@@ -165,7 +161,7 @@ impl PoSFinalState {
         {
             // TODO: limit the whole info with CYCLE_INFO_SIZE_MESSAGE_BYTES
             u64_ser.serialize(cycle, &mut part)?;
-            part.push(if *complete { 1 } else { 0 });
+            part.push(u8::from(*complete));
             // TODO: limit this with ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES
             u64_ser.serialize(&(roll_counts.len() as u64), &mut part)?;
             for (addr, count) in roll_counts {
