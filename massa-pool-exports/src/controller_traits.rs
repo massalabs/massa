@@ -23,7 +23,7 @@ pub trait PoolController: Send + Sync {
     fn get_block_endorsements(
         &self,
         target_block: &BlockId,
-        target_slot: &Slot,
+        slot: &Slot,
     ) -> (Vec<Option<EndorsementId>>, Storage);
 
     /// Get the number of endorsements in the pool

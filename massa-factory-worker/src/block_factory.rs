@@ -167,13 +167,14 @@ impl BlockFactoryWorker {
 
         // get the parent in the same thread, with its period
         // will not panic because the thread is validated before the call
-        let (same_thread_parent_id, same_thread_parent_period) = parents[slot.thread as usize];
+        let (same_thread_parent_id, _) = parents[slot.thread as usize];
 
         // gather endorsements
-        let (endorsements_ids, endo_storage) = self.channels.pool.get_block_endorsements(
-            &same_thread_parent_id,
-            &Slot::new(same_thread_parent_period, slot.thread),
-        );
+        let (endorsements_ids, endo_storage) = self
+            .channels
+            .pool
+            .get_block_endorsements(&same_thread_parent_id, &slot);
+
         //TODO: Do we want ot populate only with endorsement id in the future ?
         let endorsements: Vec<WrappedEndorsement> = {
             let endo_read = endo_storage.read_endorsements();

@@ -60,15 +60,14 @@ impl EndorsementFactoryWorker {
     /// Extra safety against double-production caused by clock adjustments (this is the role of the previous_slot parameter).
     fn get_next_slot(&self, previous_slot: Option<Slot>) -> (Slot, Instant) {
         // get delayed time
-        let shifted_now = MassaTime::now(self.cfg.clock_compensation_millis)
-            .expect("could not get current time")
-            .saturating_sub(self.half_t0);
+        let now =
+            MassaTime::now(self.cfg.clock_compensation_millis).expect("could not get current time");
 
         // if it's the first computed slot, add a time shift to prevent double-production on node restart with clock skew
         let base_time = if previous_slot.is_none() {
-            shifted_now.saturating_add(self.cfg.initial_delay)
+            now.saturating_add(self.cfg.initial_delay)
         } else {
-            shifted_now
+            now
         };
 
         // get closest slot according to the current absolute time
@@ -88,6 +87,11 @@ impl EndorsementFactoryWorker {
             }
         }
 
+        // prevent triggering on period-zero slots
+        if next_slot.period == 0 {
+            next_slot = Slot::new(1, 0);
+        }
+
         // get the timestamp of the target slot
         let next_instant = get_block_slot_timestamp(
             self.cfg.thread_count,
@@ -96,7 +100,7 @@ impl EndorsementFactoryWorker {
             next_slot,
         )
         .expect("could not get block slot timestamp")
-        .saturating_add(self.half_t0)
+        .saturating_sub(self.half_t0)
         .estimate_instant(self.cfg.clock_compensation_millis)
         .expect("could not estimate block slot instant");
 
@@ -118,7 +122,7 @@ impl EndorsementFactoryWorker {
         }
     }
 
-    /// Process a slot: produce a block at that slot if one of the managed keys is drawn.
+    /// Process a slot: produce an endorsement at that slot if one of the managed keys is drawn.
     fn process_slot(&mut self, slot: Slot) {
         // get endorsement producer addresses for that slot
         let producer_addrs = match self.channels.selector.get_selection(slot) {
@@ -156,23 +160,23 @@ impl EndorsementFactoryWorker {
         }
 
         // get consensus block ID for that slot
-        let endorsed_block: BlockId =
-            match self.channels.consensus.get_blockclique_block_at_slot(slot) {
-                // error getting block ID at target slot
-                Err(_) => {
-                    warn!(
-                        "could not get blockclique block to create endorsement targeting slot {}",
-                        slot
-                    );
-                    return;
-                }
+        let endorsed_block: BlockId = match self
+            .channels
+            .consensus
+            .get_latest_blockclique_block_at_slot(slot)
+        {
+            // error getting block ID at target slot
+            Err(_) => {
+                warn!(
+                    "could not get latest blockclique block to create endorsement to be included at slot {}",
+                    slot
+                );
+                return;
+            }
 
-                // the target slot is a miss: ignore
-                Ok(None) => return,
-
-                // there is a block a the target slot
-                Ok(Some(b_id)) => b_id,
-            };
+            // latest block found
+            Ok(b_id) => b_id,
+        };
 
         // produce endorsements
         let mut endorsements: Vec<WrappedEndorsement> = Vec::with_capacity(producers_indices.len());
