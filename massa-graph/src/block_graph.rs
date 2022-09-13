@@ -2673,42 +2673,40 @@ impl BlockGraph {
 
     /// get the latest blockclique (or final) block ID at a given slot, if any
     pub fn get_latest_blockclique_block_at_slot(&self, slot: &Slot) -> BlockId {
-        let (mut latest_final_block_id, mut latest_final_block_period) = self
+        let (mut best_block_id, mut best_block_period) = self
             .latest_final_blocks_periods
             .get(slot.thread as usize)
             .unwrap_or_else(|| panic!("unexpected not found latest final block period"));
 
         self.max_cliques
             .iter()
-            .filter(|c| c.is_blockclique)
-            .for_each(|clique| {
-                clique
-                    .block_ids
-                    .iter()
-                    .for_each(|id| match self.block_statuses.get(id) {
-                        Some(BlockStatus::Active {
-                            a_block,
-                            storage: _,
-                        }) => {
-                            if a_block.is_final {
-                                panic!(
-                                    "unexpected final block on getting latest blockclique at slot"
-                                );
-                            }
-                            if a_block.slot.thread == slot.thread
-                                && a_block.slot.period <= slot.period
-                                && a_block.slot.period > latest_final_block_period
-                            {
-                                latest_final_block_period = a_block.slot.period;
-                                latest_final_block_id = *id;
-                            }
-                        }
-                        _ => {
-                            panic!("expected to find only active block but found another status")
-                        }
-                    })
+            .find(|c| c.is_blockclique)
+            .expect("expected one clique to be the blockclique")
+            .block_ids
+            .iter()
+            .for_each(|id| match self.block_statuses.get(id) {
+                Some(BlockStatus::Active {
+                    a_block,
+                    storage: _,
+                }) => {
+                    if a_block.is_final {
+                        panic!(
+                            "unexpected final block on getting latest blockclique block at slot"
+                        );
+                    }
+                    if a_block.slot.thread == slot.thread
+                        && a_block.slot.period < slot.period
+                        && a_block.slot.period > best_block_period
+                    {
+                        best_block_period = a_block.slot.period;
+                        best_block_id = *id;
+                    }
+                }
+                _ => {
+                    panic!("expected to find only active block but found another status")
+                }
             });
-        latest_final_block_id
+        best_block_id
     }
 
     /// Clones all stored final blocks, not only the still-useful ones

@@ -54,13 +54,13 @@ impl EndorsementPool {
         // update internal final CS period counter
         self.last_cs_final_periods = final_cs_periods.to_vec();
 
-        // remove old endorsements
+        // remove all endorsements whose periods <= last_cs_final_periods[endorsement.thread]
         let mut removed: PreHashSet<EndorsementId> = Default::default();
         for thread in 0..self.config.thread_count {
             while let Some((&(target_slot, index, block_id), &endo_id)) =
                 self.endorsements_sorted[thread as usize].first_key_value()
             {
-                if target_slot.period < self.last_cs_final_periods[thread as usize] {
+                if target_slot.period <= self.last_cs_final_periods[thread as usize] {
                     self.endorsements_sorted[thread as usize].pop_first();
                     self.endorsements_indexed
                         .remove(&(target_slot, index, block_id))

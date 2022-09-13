@@ -62,7 +62,7 @@ impl EndorsementFactoryWorker {
         // get delayed time
         let shifted_now = MassaTime::now(self.cfg.clock_compensation_millis)
             .expect("could not get current time")
-            .saturating_sub(self.half_t0);
+            .saturating_sub(self.cfg.t0);
 
         // if it's the first computed slot, add a time shift to prevent double-production on node restart with clock skew
         let base_time = if previous_slot.is_none() {
@@ -74,7 +74,7 @@ impl EndorsementFactoryWorker {
         // get closest slot according to the current absolute time
         let mut next_slot = get_closest_slot_to_timestamp(
             self.cfg.thread_count,
-            self.cfg.t0,
+            self.half_t0,
             self.cfg.genesis_timestamp,
             base_time,
         );
@@ -96,7 +96,7 @@ impl EndorsementFactoryWorker {
             next_slot,
         )
         .expect("could not get block slot timestamp")
-        .saturating_add(self.half_t0)
+        .saturating_sub(self.half_t0)
         .estimate_instant(self.cfg.clock_compensation_millis)
         .expect("could not estimate block slot instant");
 
