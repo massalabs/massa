@@ -16,7 +16,6 @@ use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender
 use massa_final_state::{test_exports::assert_eq_final_state, FinalState};
 use massa_models::{
     config::{PERIODS_PER_CYCLE, THREAD_COUNT},
-    slot::Slot,
     version::Version,
 };
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
@@ -178,17 +177,19 @@ async fn test_bootstrap_server() {
     // launch the modifier thread
     let (tx, rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
-        for i in 0u64.. {
+        for _ in 0u64.. {
             match rx.try_recv() {
                 Ok(_) | Err(std::sync::mpsc::TryRecvError::Disconnected) => {
                     break;
                 }
                 Err(std::sync::mpsc::TryRecvError::Empty) => {
                     std::thread::sleep(Duration::from_millis(100));
-                    final_state_clone.write().slot = Slot {
-                        period: i,
-                        thread: 0,
-                    };
+                    let next = final_state_clone
+                        .write()
+                        .slot
+                        .get_next_slot(PERIODS_PER_CYCLE as u8)
+                        .unwrap();
+                    final_state_clone.write().slot = next;
                 }
             }
         }

@@ -295,38 +295,44 @@ pub async fn send_final_state_stream(
         {
             // Get all data for the next message
             let final_state_read = final_state.read();
-            let (data, new_last_key) =
-                final_state_read
-                    .ledger
-                    .get_ledger_part(&old_key)
-                    .map_err(|_| {
-                        BootstrapError::GeneralError(
-                            "Error on fetching ledger part of execution".to_string(),
-                        )
-                    })?;
+            let (data, new_last_key) = final_state_read
+                .ledger
+                .get_ledger_part(&old_key)
+                .map_err(|_| {
+                    BootstrapError::GeneralError(
+                        "Error on fetching ledger part of execution".to_string(),
+                    )
+                })
+                .unwrap();
             ledger_data = data;
 
             let (pool_data, new_last_async_pool_id) = final_state_read
                 .async_pool
-                .get_pool_part(old_last_async_id)?;
+                .get_pool_part(old_last_async_id)
+                .unwrap();
             async_pool_data = pool_data;
 
             let (cycle_data, new_pos_step_cursor) = final_state_read
                 .pos_state
-                .get_cycle_history_part(old_pos_step_cursor)?;
+                .get_cycle_history_part(old_pos_step_cursor)
+                .unwrap();
             pos_cycle_data = cycle_data;
 
             let (credits_data, new_last_credits_slot) = final_state_read
                 .pos_state
-                .get_deferred_credits_part(old_credits_slot)?;
+                .get_deferred_credits_part(old_credits_slot)
+                .unwrap();
             pos_credits_data = credits_data;
 
+            dbg!(old_slot, final_state_read.slot);
             if let Some(slot) = old_slot && slot != final_state_read.slot {
                 if slot > final_state_read.slot {
+                dbg!("STARFULAH");
                     return Err(BootstrapError::GeneralError(
                         "Bootstrap cursor set to future slot".to_string(),
                     ));
                 }
+                dbg!("CHANGES");
                 final_state_changes = final_state_read.get_state_changes_part(
                     slot,
                     old_key
@@ -341,9 +347,9 @@ pub async fn send_final_state_stream(
                         .transpose()?,
                     old_last_async_id,
                     new_pos_step_cursor,
-                );
+                )?;
             } else {
-                final_state_changes = Ok(Vec::new());
+                final_state_changes = Vec::new();
             }
 
             // Assign value for next turn
@@ -367,46 +373,30 @@ pub async fn send_final_state_stream(
             || !async_pool_data.is_empty()
             || !pos_cycle_data.is_empty()
             || !pos_credits_data.is_empty()
+            || !final_state_changes.is_empty()
         {
-            if let Ok(final_state_changes) = final_state_changes {
-                match tokio::time::timeout(
-                    write_timeout,
-                    server.send(BootstrapServerMessage::FinalStatePart {
-                        ledger_data,
-                        slot: current_slot,
-                        async_pool_part: async_pool_data,
-                        pos_cycle_part: pos_cycle_data,
-                        pos_credits_part: pos_credits_data,
-                        final_state_changes,
-                    }),
+            dbg!(&final_state_changes);
+            match tokio::time::timeout(
+                write_timeout,
+                server.send(BootstrapServerMessage::FinalStatePart {
+                    ledger_data,
+                    slot: current_slot,
+                    async_pool_part: async_pool_data,
+                    pos_cycle_part: pos_cycle_data,
+                    pos_credits_part: pos_credits_data,
+                    final_state_changes,
+                }),
+            )
+            .await
+            {
+                Err(_) => Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "bootstrap ask ledger part send timed out",
                 )
-                .await
-                {
-                    Err(_) => Err(std::io::Error::new(
-                        std::io::ErrorKind::TimedOut,
-                        "bootstrap ask ledger part send timed out",
-                    )
-                    .into()),
-                    Ok(Err(e)) => Err(e),
-                    Ok(Ok(_)) => Ok(()),
-                }?;
-            } else {
-                match tokio::time::timeout(
-                    write_timeout,
-                    server.send(BootstrapServerMessage::SlotTooOld),
-                )
-                .await
-                {
-                    Err(_) => Err(std::io::Error::new(
-                        std::io::ErrorKind::TimedOut,
-                        "bootstrap ask ledger part send timed out",
-                    )
-                    .into()),
-                    Ok(Err(e)) => Err(e),
-                    Ok(Ok(_)) => Ok(()),
-                }?;
-                break;
-            }
+                .into()),
+                Ok(Err(e)) => Err(e),
+                Ok(Ok(_)) => Ok(()),
+            }?;
         } else {
             // There is no ledger data nor async pool data.
             match tokio::time::timeout(

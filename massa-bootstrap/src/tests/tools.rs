@@ -158,8 +158,8 @@ fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
 
 /// generates a random bootstrap state for the final state
 pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
-    let mut rng = rand::thread_rng();
-    let r_limit: u64 = rng.gen_range(25..50);
+    let mut _rng = rand::thread_rng();
+    let r_limit: u64 = 50;
 
     let mut sorted_ledger = HashMap::new();
     let mut messages = BTreeMap::new();
@@ -171,11 +171,11 @@ pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
 
-    let slot = Slot::new(0, rng.gen_range(0..THREAD_COUNT));
+    let slot = Slot::new(0, 0);
     let final_ledger = create_final_ledger(Some(sorted_ledger), Default::default());
     let async_pool = create_async_pool(Default::default(), messages);
     let mut changes_history = VecDeque::new();
-    for i in 0u64..r_limit {
+    for i in 0u64..10 {
         changes_history.push_back((
             Slot {
                 period: i,
@@ -194,7 +194,7 @@ pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
         async_pool,
         // do not use changes_history for now
         // testing changes requires better thinking
-        VecDeque::new(),
+        changes_history,
         get_random_pos_state(r_limit, pos),
         ExecutedOps::default(),
     )
