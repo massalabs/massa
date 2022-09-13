@@ -29,7 +29,7 @@ where
     let (network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
-    let (pool_controller, _pool_event_receiver) = MockPoolController::new_with_receiver();
+    let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
 
     // start protocol controller
     let (protocol_command_sender, protocol_event_receiver, protocol_manager): (
