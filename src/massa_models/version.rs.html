@@ -246,6 +246,8 @@
 <span id="246">246</span>
 <span id="247">247</span>
 <span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -439,7 +441,9 @@
     </span><span class="kw">pub fn </span>is_compatible(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>Version) -&gt; bool {
         <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="self">self</span>.instance == other.instance &amp;&amp; <span class="self">self</span>.major == other.major;
 
-        <span class="kw">if </span><span class="self">self</span>.to_string() == <span class="string">&quot;TEST.14.0&quot; </span>|| other.to_string() == <span class="string">&quot;TEST.14.0&quot; </span>{
+        <span class="kw">if </span>(<span class="self">self</span>.to_string() == <span class="string">&quot;TEST.14.0&quot; </span>&amp;&amp; other.to_string() == <span class="string">&quot;TEST.14.1&quot;</span>)
+            || (<span class="self">self</span>.to_string() == <span class="string">&quot;TEST.14.1&quot; </span>&amp;&amp; other.to_string() == <span class="string">&quot;TEST.14.0&quot;</span>)
+        {
             res = <span class="bool-val">false</span>;
         }
 
