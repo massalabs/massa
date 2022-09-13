@@ -662,7 +662,7 @@ pub async fn _consensus_pool_test<F, V>(
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
-    let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
+    let (pool_controller, _pool_event_receiver) = MockPoolController::new_with_receiver();
     // for now, execution_rx is ignored: cique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
     let stop_sinks = Arc::new(Mutex::new(false));
@@ -762,7 +762,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
-    let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
+    let (pool_controller, _pool_event_receiver) = MockPoolController::new_with_receiver();
     // for now, execution_rx is ignored: cique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
     let stop_sinks = Arc::new(Mutex::new(false));
@@ -856,7 +856,7 @@ where
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
-    let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
+    let (pool_controller, _pool_event_receiver) = MockPoolController::new_with_receiver();
     let staking_key =
         KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8").unwrap();
     let genesis_address = Address::from_public_key(&staking_key.get_public_key());
@@ -948,7 +948,7 @@ where
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
-    let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
+    let (pool_controller, _pool_event_receiver) = MockPoolController::new_with_receiver();
     // for now, execution_rx is ignored: clique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
     let stop_sinks = Arc::new(Mutex::new(false));

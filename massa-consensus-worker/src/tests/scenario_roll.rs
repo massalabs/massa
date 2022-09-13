@@ -809,7 +809,7 @@
 //     // mock protocol & pool
 //     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
 //         MockProtocolController::new();
-//     let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
+//     let (pool_controller, _pool_event_receiver) = MockPoolController::new_with_receiver();
 //     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
 //     let selector_config = SelectorConfig {
 //         initial_rolls_path: cfg.initial_rolls_path.clone(),
