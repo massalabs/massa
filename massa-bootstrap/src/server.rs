@@ -9,7 +9,7 @@ use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::ConsensusCommandSender;
-use massa_final_state::{FinalState, StateChanges};
+use massa_final_state::FinalState;
 use massa_graph::BootstrapableGraph;
 use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
@@ -343,7 +343,7 @@ pub async fn send_final_state_stream(
                     new_pos_step_cursor,
                 );
             } else {
-                final_state_changes = Ok(StateChanges::default());
+                final_state_changes = Ok(Vec::new());
             }
 
             // Assign value for next turn

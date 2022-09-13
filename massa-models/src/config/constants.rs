@@ -164,6 +164,8 @@ pub const IP_LIST_MAX_SIZE: usize = 10000;
 pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 /// Max size of the printed error
 pub const MAX_BOOTSTRAP_ERROR_LENGTH: u32 = 10000;
+/// Max number of slot of changes in a message for the bootstrap
+pub const MAX_SLOT_COUNT: u32 = 1000;
 
 // Protocol constants
 

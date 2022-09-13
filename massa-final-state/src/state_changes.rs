@@ -6,7 +6,6 @@ use massa_async_pool::{
     AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer,
 };
 use massa_ledger_exports::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
-use massa_models::slot::Slot;
 use massa_pos_exports::{PoSChanges, PoSChangesDeserializer, PoSChangesSerializer};
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::{

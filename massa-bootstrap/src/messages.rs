@@ -20,7 +20,7 @@ use massa_serialization::{
 };
 use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 use nom::error::context;
-use nom::multi::length_data;
+use nom::multi::{length_count, length_data};
 use nom::sequence::tuple;
 use nom::Parser;
 use nom::{
@@ -65,7 +65,7 @@ pub enum BootstrapServerMessage {
         /// Slot the state changes are attached to
         slot: Slot,
         /// Ledger change for addresses inferior to `address` of the client message until the actual slot.
-        final_state_changes: StateChanges,
+        final_state_changes: Vec<(Slot, StateChanges)>,
     },
     /// Message sent when there is no state part left
     FinalStateFinished,
@@ -177,8 +177,13 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 self.vec_u8_serializer.serialize(pos_cycle_part, buffer)?;
                 self.vec_u8_serializer.serialize(pos_credits_part, buffer)?;
                 self.slot_serializer.serialize(slot, buffer)?;
-                self.state_changes_serializer
-                    .serialize(final_state_changes, buffer)?;
+                self.u32_serializer
+                    .serialize(&(final_state_changes.len() as u32), buffer)?;
+                for (slot, state_changes) in final_state_changes {
+                    self.slot_serializer.serialize(slot, buffer)?;
+                    self.state_changes_serializer
+                        .serialize(state_changes, buffer)?;
+                }
             }
             BootstrapServerMessage::FinalStateFinished => {
                 self.u32_serializer
@@ -210,6 +215,7 @@ pub struct BootstrapServerMessageDeserializer {
     time_deserializer: MassaTimeDeserializer,
     version_deserializer: VersionDeserializer,
     peers_deserializer: BootstrapPeersDeserializer,
+    length_state_changes: U32VarIntDeserializer,
     state_changes_deserializer: StateChangesDeserializer,
     bootstrapable_graph_deserializer: BootstrapableGraphDeserializer,
     final_state_parts_deserializer: VecU8Deserializer,
@@ -236,6 +242,7 @@ impl BootstrapServerMessageDeserializer {
         max_function_name_length: u16,
         max_parameters_size: u32,
         max_bootstrap_error_length: u32,
+        max_slot_changes: u32,
     ) -> Self {
         Self {
             message_id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
@@ -253,6 +260,10 @@ impl BootstrapServerMessageDeserializer {
                 max_datastore_key_length,
                 max_datastore_value_length,
                 max_datastore_entry_count,
+            ),
+            length_state_changes: U32VarIntDeserializer::new(
+                Included(0),
+                Included(max_slot_changes),
             ),
             bootstrapable_graph_deserializer: BootstrapableGraphDeserializer::new(
                 thread_count,
@@ -370,9 +381,18 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                     context("Failed slot deserialization", |input| {
                         self.slot_deserializer.deserialize(input)
                     }),
-                    context("Failed final_state_changes deserialization", |input| {
-                        self.state_changes_deserializer.deserialize(input)
-                    }),
+                    context(
+                        "Failed final_state_changes deserialization",
+                        length_count(
+                            context("Failed length deserialization", |input| {
+                                self.length_state_changes.deserialize(input)
+                            }),
+                            tuple((
+                                |input| self.slot_deserializer.deserialize(input),
+                                |input| self.state_changes_deserializer.deserialize(input),
+                            )),
+                        ),
+                    ),
                 ))
                 .map(
                     |(

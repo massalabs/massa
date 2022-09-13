@@ -108,7 +108,7 @@ impl DeferredCredits {
 }
 
 /// TODO
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Copy, Clone)]
 pub enum PoSInfoStreamingStep {
     /// TODO
     Started,

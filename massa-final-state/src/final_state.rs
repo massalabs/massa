@@ -130,7 +130,7 @@ impl FinalState {
         last_address: Option<Address>,
         last_id_async_pool: Option<AsyncMessageId>,
         last_pos_step_cursor: PoSInfoStreamingStep,
-    ) -> Result<StateChanges, FinalStateError> {
+    ) -> Result<Vec<(Slot, StateChanges)>, FinalStateError> {
         let position_slot = if !self.changes_history.is_empty() {
             // Safe because we checked that there is changes just above.
             let index = last_slot
@@ -146,10 +146,11 @@ impl FinalState {
             }
             index
         } else {
-            return Ok(StateChanges::default());
+            return Ok(Vec::new());
         };
-        let mut res_changes: StateChanges = StateChanges::default();
+        let mut res_changes: Vec<(Slot, StateChanges)> = Vec::new();
         for (slot, changes) in self.changes_history.range((position_slot as usize)..) {
+            let mut slot_changes = StateChanges::default();
             // Get ledger change that concern address <= last_address.
             if let Some(addr) = last_address {
                 let ledger_changes: LedgerChanges = LedgerChanges(
@@ -166,7 +167,7 @@ impl FinalState {
                         })
                         .collect(),
                 );
-                res_changes.ledger_changes.0.extend(ledger_changes.0);
+                slot_changes.ledger_changes.0 = ledger_changes.0;
             }
 
             // Get async pool changes that concern ids <= last_id_async_pool
@@ -184,31 +185,21 @@ impl FinalState {
                         })
                         .collect(),
                 );
-                res_changes
-                    .async_pool_changes
-                    .0
-                    .extend(async_pool_changes.0);
+                slot_changes.async_pool_changes = async_pool_changes;
             }
 
             // Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
             if last_pos_step_cursor == PoSInfoStreamingStep::Finished {
-                res_changes
-                    .roll_state_changes
-                    .deferred_credits
-                    .nested_extend(changes.roll_state_changes.deferred_credits.clone());
-                res_changes
-                    .roll_state_changes
-                    .production_stats
-                    .extend(changes.roll_state_changes.production_stats.clone());
-                res_changes
-                    .roll_state_changes
-                    .roll_changes
-                    .extend(changes.roll_state_changes.roll_changes.clone());
-                res_changes
-                    .roll_state_changes
-                    .seed_bits
-                    .extend(changes.roll_state_changes.seed_bits.clone());
+                slot_changes.roll_state_changes.deferred_credits =
+                    changes.roll_state_changes.deferred_credits.clone();
+                slot_changes.roll_state_changes.production_stats =
+                    changes.roll_state_changes.production_stats.clone();
+                slot_changes.roll_state_changes.roll_changes =
+                    changes.roll_state_changes.roll_changes.clone();
+                slot_changes.roll_state_changes.seed_bits =
+                    changes.roll_state_changes.seed_bits.clone();
             }
+            res_changes.push((*slot, slot_changes));
         }
         Ok(res_changes)
     }
