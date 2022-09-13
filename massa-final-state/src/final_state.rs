@@ -11,7 +11,7 @@ use crate::{
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_ledger_exports::{LedgerChanges, LedgerController};
 use massa_models::{address::Address, slot::Slot};
-use massa_pos_exports::{PoSFinalState, SelectorController};
+use massa_pos_exports::{PoSFinalState, PoSInfoStreamingStep, SelectorController};
 use std::collections::VecDeque;
 
 /// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
@@ -129,9 +129,9 @@ impl FinalState {
         last_slot: Slot,
         last_address: Option<Address>,
         last_id_async_pool: Option<AsyncMessageId>,
-        pos_cycle_completion: bool,
+        last_pos_step_cursor: PoSInfoStreamingStep,
     ) -> Result<StateChanges, FinalStateError> {
-        let pos_slot = if !self.changes_history.is_empty() {
+        let position_slot = if !self.changes_history.is_empty() {
             // Safe because we checked that there is changes just above.
             let index = last_slot
                 .slots_since(&self.changes_history[0].0, self.config.thread_count)
@@ -149,7 +149,7 @@ impl FinalState {
             return Ok(StateChanges::default());
         };
         let mut res_changes: StateChanges = StateChanges::default();
-        for (_, changes) in self.changes_history.range((pos_slot as usize)..) {
+        for (slot, changes) in self.changes_history.range((position_slot as usize)..) {
             // Get ledger change that concern address <= last_address.
             if let Some(addr) = last_address {
                 let ledger_changes: LedgerChanges = LedgerChanges(
@@ -191,7 +191,7 @@ impl FinalState {
             }
 
             // Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
-            if pos_cycle_completion == false {
+            if last_pos_step_cursor == PoSInfoStreamingStep::Finished {
                 res_changes
                     .roll_state_changes
                     .deferred_credits

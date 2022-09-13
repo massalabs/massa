@@ -14,7 +14,6 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
-use std::collections::VecDeque;
 
 use crate::{executed_ops::ExecutedOpsSerializer, ExecutedOps, ExecutedOpsDeserializer};
 
@@ -26,7 +25,7 @@ pub struct StateChanges {
     /// asynchronous pool changes
     pub async_pool_changes: AsyncPoolChanges,
     /// roll state changes
-    pub roll_state_changes: VecDeque<(Slot, PoSChanges)>,
+    pub roll_state_changes: PoSChanges,
     /// executed operations: maps the operation ID to its validity slot end - included
     pub executed_ops: ExecutedOps,
 }

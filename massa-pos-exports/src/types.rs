@@ -107,6 +107,17 @@ impl DeferredCredits {
     }
 }
 
+/// TODO
+#[derive(PartialEq, Eq)]
+pub enum PoSInfoStreamingStep {
+    /// TODO
+    Started,
+    /// TODO
+    Ongoing(u64),
+    /// TODO
+    Finished,
+}
+
 impl PoSFinalState {
     fn get_first_cycle_index(&self) -> usize {
         // for bootstrap:
@@ -127,20 +138,24 @@ impl PoSFinalState {
     #[allow(clippy::type_complexity)]
     pub fn get_cycle_history_part(
         &self,
-        cursor: Option<u64>,
-    ) -> Result<(Vec<u8>, u64, bool), ModelsError> {
-        let cycle_index = if let Some(last_cycle) = cursor {
-            if let Some(index) = self.get_cycle_index(last_cycle) {
-                if index == self.cycle_history.len() - 1 {
-                    return Ok((Vec::default(), last_cycle, false));
+        cursor: PoSInfoStreamingStep,
+    ) -> Result<(Vec<u8>, PoSInfoStreamingStep), ModelsError> {
+        let cycle_index = match cursor {
+            PoSInfoStreamingStep::Started => self.get_first_cycle_index(),
+            PoSInfoStreamingStep::Ongoing(last_cycle) => {
+                if let Some(index) = self.get_cycle_index(last_cycle) {
+                    if index == self.cycle_history.len() - 1 {
+                        return Ok((Vec::default(), PoSInfoStreamingStep::Finished));
+                    }
+                    index.saturating_add(1)
+                } else {
+                    // if an outdated cycle is provided start from the beginning
+                    self.get_first_cycle_index()
                 }
-                index.saturating_add(1)
-            } else {
-                // if an outdated cycle is provided start from the beginning
-                self.get_first_cycle_index()
             }
-        } else {
-            self.get_first_cycle_index()
+            PoSInfoStreamingStep::Finished => {
+                return Ok((Vec::default(), PoSInfoStreamingStep::Finished))
+            }
         };
         let mut part = Vec::new();
         let u64_ser = U64VarIntSerializer::new();
@@ -176,7 +191,7 @@ impl PoSFinalState {
             u64_ser.serialize(&stats.block_failure_count, &mut part)?;
         }
 
-        Ok((part, *cycle, *complete))
+        Ok((part, PoSInfoStreamingStep::Ongoing(*cycle)))
     }
 
     /// Gets a part of the Proof of Stake deferred_credits. Used only in the bootstrap process.
