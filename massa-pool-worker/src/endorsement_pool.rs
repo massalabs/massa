@@ -148,7 +148,7 @@ impl EndorsementPool {
     /// get endorsements for block creation
     pub fn get_block_endorsements(
         &self,
-        slot: &Slot, // slot of the block
+        slot: &Slot, // slot of the block that will contain the endorsement
         target_block: &BlockId,
     ) -> (Vec<Option<EndorsementId>>, Storage) {
         // init list of selected endorsement IDs
