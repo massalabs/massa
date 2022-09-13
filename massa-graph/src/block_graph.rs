@@ -2676,56 +2676,43 @@ impl BlockGraph {
     }
 
     /// get the latest blockclique (or final) block ID at a given slot, if any
-    pub fn get_latest_blockclique_block_at_slot(&self, slot: &Slot) -> Option<BlockId> {
+    pub fn get_latest_blockclique_block_at_slot(&self, slot: &Slot) -> BlockId {
         let (mut latest_final_block_id, mut latest_final_block_period) = self
             .latest_final_blocks_periods
             .get(slot.thread as usize)
             .unwrap_or_else(|| panic!("unexpected not found latest final block period"));
 
-        let (blocks_in_thread, block_periods) = {
-            let storage_read = self.storage.read_blocks();
-            let blocks_in_thread = match storage_read.get_blocks_by_thread(slot.thread) {
-                Some(v) => v.clone(),
-                None => return None,
-            };
-            let block_periods: HashMap<BlockId, u64> = blocks_in_thread
-                .iter()
-                .map(|id| {
-                    (
-                        *id,
-                        storage_read
-                            .get(id)
-                            .expect("unexpected missing block in storage")
-                            .content
-                            .header
-                            .content
-                            .slot
-                            .period,
-                    )
-                })
-                .collect();
-            (blocks_in_thread, block_periods)
-        };
-
-        // search for the block in the blockclique
-        blocks_in_thread
-            .intersection(
-                &self
-                    .max_cliques
+        self.max_cliques
+            .iter()
+            .filter(|c| c.is_blockclique)
+            .for_each(|clique| {
+                clique
+                    .block_ids
                     .iter()
-                    .find(|c| c.is_blockclique)
-                    .expect("expected one clique to be the blockclique")
-                    .block_ids,
-            )
-            .for_each(|id| {
-                let period = *block_periods.get(id).unwrap();
-                if period > latest_final_block_period && period < slot.period {
-                    latest_final_block_period = period;
-                    latest_final_block_id = *id;
-                }
+                    .for_each(|id| match self.block_statuses.get(id) {
+                        Some(BlockStatus::Active {
+                            a_block,
+                            storage: _,
+                        }) => {
+                            if a_block.is_final {
+                                panic!(
+                                    "unexpected final block on getting latest blockclique at slot"
+                                );
+                            }
+                            if a_block.slot.thread == slot.thread
+                                && a_block.slot.period <= slot.period
+                                && a_block.slot.period > latest_final_block_period
+                            {
+                                latest_final_block_period = a_block.slot.period;
+                                latest_final_block_id = *id;
+                            }
+                        }
+                        _ => {
+                            panic!("expected to find only active block but found another status")
+                        }
+                    })
             });
-
-        Some(latest_final_block_id)
+        latest_final_block_id
     }
 
     /// Clones all stored final blocks, not only the still-useful ones

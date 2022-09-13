@@ -23,8 +23,6 @@ pub struct BlockIndexes {
     index_by_op: PreHashMap<OperationId, PreHashSet<BlockId>>,
     /// Structure mapping endorsement id with ids of blocks they are contained in
     index_by_endorsement: PreHashMap<EndorsementId, PreHashSet<BlockId>>,
-    /// Structure mapping threads with their Block id
-    index_by_thread: HashMap<u8, PreHashSet<BlockId>>,
 }
 
 impl BlockIndexes {
@@ -42,11 +40,6 @@ impl BlockIndexes {
             // update slot index
             self.index_by_slot
                 .entry(b.content.header.content.slot)
-                .or_default()
-                .insert(b.id);
-
-            self.index_by_thread
-                .entry(b.content.header.content.slot.thread)
                 .or_default()
                 .insert(b.id);
 
@@ -83,17 +76,6 @@ impl BlockIndexes {
             // update slot index
             if let hash_map::Entry::Occupied(mut occ) =
                 self.index_by_slot.entry(b.content.header.content.slot)
-            {
-                occ.get_mut().remove(&b.id);
-                if occ.get().is_empty() {
-                    occ.remove();
-                }
-            }
-
-            // update thread index
-            if let hash_map::Entry::Occupied(mut occ) = self
-                .index_by_thread
-                .entry(b.content.header.content.slot.thread)
             {
                 occ.get_mut().remove(&b.id);
                 if occ.get().is_empty() {
@@ -158,16 +140,6 @@ impl BlockIndexes {
     /// - the block ids of the blocks at the slot if any, None otherwise
     pub fn get_blocks_by_slot(&self, slot: &Slot) -> Option<&PreHashSet<BlockId>> {
         self.index_by_slot.get(slot)
-    }
-
-    /// Get the block ids of the blocks at a given slot.
-    /// Arguments:
-    /// - thread: index of the thread to get the block id of
-    ///
-    /// Returns:
-    /// - the block ids of the blocks at the thread if any, None otherwise
-    pub fn get_blocks_by_thread(&self, thread: u8) -> Option<&PreHashSet<BlockId>> {
-        self.index_by_thread.get(&thread)
     }
 
     /// Get the block ids of the blocks containing a given operation.

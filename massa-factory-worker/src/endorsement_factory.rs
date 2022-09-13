@@ -164,17 +164,14 @@ impl EndorsementFactoryWorker {
             // error getting block ID at target slot
             Err(_) => {
                 warn!(
-                    "could not get blockclique block to create endorsement targeting slot {}",
+                    "could not get latest blockclique block to create endorsement targeting slot {}",
                     slot
                 );
                 return;
             }
 
-            // the target slot is a miss: ignore
-            Ok(None) => return,
-
-            // there is a block a the target slot
-            Ok(Some(b_id)) => b_id,
+            // latest block found
+            Ok(b_id) => b_id,
         };
 
         // produce endorsements

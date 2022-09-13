@@ -43,7 +43,7 @@ pub enum ConsensusCommand {
         /// wanted slot
         slot: Slot,
         /// response channel
-        response_tx: oneshot::Sender<Option<BlockId>>,
+        response_tx: oneshot::Sender<BlockId>,
     },
     /// Get the best parents and their period
     GetBestParents {

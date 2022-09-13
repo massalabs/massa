@@ -161,7 +161,7 @@ impl ConsensusCommandSender {
     pub fn get_latest_blockclique_block_at_slot(
         &self,
         slot: Slot,
-    ) -> Result<Option<BlockId>, ConsensusError> {
+    ) -> Result<BlockId, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         self.0
             .blocking_send(ConsensusCommand::GetLatestBlockcliqueBlockAtSlot { slot, response_tx })
