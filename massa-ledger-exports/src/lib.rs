@@ -24,10 +24,7 @@ pub use ledger_changes::{
     LedgerChangesDeserializer, LedgerChangesSerializer, LedgerEntryUpdate,
     LedgerEntryUpdateDeserializer, LedgerEntryUpdateSerializer,
 };
-pub use ledger_entry::{
-    DatastoreDeserializer, DatastoreSerializer, LedgerEntry, LedgerEntryDeserializer,
-    LedgerEntrySerializer,
-};
+pub use ledger_entry::{LedgerEntry, LedgerEntryDeserializer, LedgerEntrySerializer};
 pub use types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 
 #[cfg(feature = "testing")]

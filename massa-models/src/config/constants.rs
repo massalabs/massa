@@ -113,8 +113,12 @@ pub const ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 pub const PRODUCTION_STATS_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 /// Maximum length of a datastore key
 pub const MAX_DATASTORE_KEY_LENGTH: u8 = 255;
+/// Maximum length of an operartion datastore key
+pub const MAX_OPERATION_DATASTORE_KEY_LENGTH: u8 = MAX_DATASTORE_KEY_LENGTH;
 /// Maximum length of a datastore value
 pub const MAX_DATASTORE_VALUE_LENGTH: u64 = 10_000_000;
+/// Maximum length of an operation datastore value
+pub const MAX_OPERATION_DATASTORE_VALUE_LENGTH: u64 = 1_000;
 /// Maximum ledger changes in a block
 pub const MAX_LEDGER_CHANGES_PER_SLOT: u32 = u32::MAX;
 /// Maximum production events in a block
@@ -124,6 +128,8 @@ pub const MAX_LEDGER_CHANGES_COUNT: u64 =
     100_u32.saturating_mul(MAX_LEDGER_CHANGES_PER_SLOT) as u64;
 /// Maximum number of key/values in the datastore of a ledger entry
 pub const MAX_DATASTORE_ENTRY_COUNT: u64 = u64::MAX;
+/// Maximum number of key/values in the datastore of a ExecuteSC op
+pub const MAX_OPERATION_DATASTORE_ENTRY_COUNT: u64 = 128;
 /// Maximum length function name in call sc
 pub const MAX_FUNCTION_NAME_LENGTH: u16 = u16::MAX;
 /// Maximum size of parameters in call sc
