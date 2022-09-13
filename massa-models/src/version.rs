@@ -191,9 +191,7 @@ impl Version {
     pub fn is_compatible(&self, other: &Version) -> bool {
         let mut res = self.instance == other.instance && self.major == other.major;
 
-        if (self.to_string() == "TEST.14.0" && other.to_string() == "TEST.14.1")
-            || (self.to_string() == "TEST.14.1" && other.to_string() == "TEST.14.0")
-        {
+        if self.to_string() == "TEST.14.0" || other.to_string() == "TEST.14.0" {
             res = false;
         }
 
