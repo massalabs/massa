@@ -1584,22 +1584,12 @@ impl BlockGraph {
                     ),
                 )));
             }
-            // check that the endorsement slot matches the endorsed block
-            if endorsement.content.slot != header.content.slot {
-                return Ok(EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(
-                    format!("endorsement slot does not match the slot of the block that contains it. Block slot: {}, endorsement slot: {}",
-                    header.content.slot, endorsement.content.slot),
-                )));
-            }
 
             // note that the following aspects are checked in protocol
-            // * PoS draws
             // * signature
-            // * intra block endorsement reuse
-            // * intra block index reuse
-            // * slot in the same thread as block's slot
-            // * slot is before the block's slot
-            // * the endorsed block is the current block at the slot
+            // * index reuse
+            // * slot matching the block's
+            // * the endorsed block is the containing block's parent
         }
 
         Ok(EndorsementsCheckOutcome::Proceed)

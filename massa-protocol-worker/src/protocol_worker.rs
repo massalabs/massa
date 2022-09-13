@@ -812,9 +812,7 @@ impl ProtocolWorker {
                 return Ok(None);
             }
             // check slot
-            if (endorsement.content.slot.thread != header.content.slot.thread)
-                || (endorsement.content.slot >= header.content.slot)
-            {
+            if endorsement.content.slot != header.content.slot {
                 massa_trace!("protocol.protocol_worker.check_header.err_endorsement_invalid_slot", { "header": header, "endorsement": endorsement});
                 return Ok(None);
             }
