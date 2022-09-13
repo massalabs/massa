@@ -6,6 +6,7 @@ use massa_async_pool::{
     AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer,
 };
 use massa_ledger_exports::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
+use massa_models::slot::Slot;
 use massa_pos_exports::{PoSChanges, PoSChangesDeserializer, PoSChangesSerializer};
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::{
@@ -24,7 +25,7 @@ pub struct StateChanges {
     /// asynchronous pool changes
     pub async_pool_changes: AsyncPoolChanges,
     /// roll state changes
-    pub roll_state_changes: PoSChanges,
+    pub roll_state_changes: Vec<(Slot, PoSChanges)>,
     /// executed operations: maps the operation ID to its validity slot end - included
     pub executed_ops: ExecutedOps,
 }
