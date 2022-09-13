@@ -345,6 +345,7 @@ impl PoSFinalState {
         if part.is_empty() {
             return Ok(self.deferred_credits.0.last_key_value().map(|(k, _)| *k));
         }
+        #[allow(clippy::type_complexity)]
         let (rest, credits): (&[u8], Vec<(Slot, Vec<(Address, Amount)>)>) = context(
             "deferred_credits",
             length_count(
