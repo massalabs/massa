@@ -17,8 +17,8 @@ pub struct EndorsementPool {
     /// endorsements indexed by slot, index and block ID
     endorsements_indexed: HashMap<(Slot, u32, BlockId), EndorsementId>,
 
-    /// endorsements sorted by increasing target slot for pruning
-    /// indexed by thread, then BTreeMap<(target_slot, index, target_block), endorsement_id>
+    /// endorsements sorted by increasing inclusion slot for pruning
+    /// indexed by thread, then BTreeMap<(inclusion_slot, index, target_block), endorsement_id>
     endorsements_sorted: Vec<BTreeMap<(Slot, u32, BlockId), EndorsementId>>,
 
     /// storage
@@ -57,13 +57,13 @@ impl EndorsementPool {
         // remove all endorsements whose periods <= last_cs_final_periods[endorsement.thread]
         let mut removed: PreHashSet<EndorsementId> = Default::default();
         for thread in 0..self.config.thread_count {
-            while let Some((&(target_slot, index, block_id), &endo_id)) =
+            while let Some((&(inclusion_slot, index, block_id), &endo_id)) =
                 self.endorsements_sorted[thread as usize].first_key_value()
             {
-                if target_slot.period <= self.last_cs_final_periods[thread as usize] {
+                if inclusion_slot.period <= self.last_cs_final_periods[thread as usize] {
                     self.endorsements_sorted[thread as usize].pop_first();
                     self.endorsements_indexed
-                        .remove(&(target_slot, index, block_id))
+                        .remove(&(inclusion_slot, index, block_id))
                         .expect("endorsement should be in endorsements_indexed at this point");
                     removed.insert(endo_id);
                 } else {

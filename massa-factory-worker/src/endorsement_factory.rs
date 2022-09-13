@@ -60,21 +60,20 @@ impl EndorsementFactoryWorker {
     /// Extra safety against double-production caused by clock adjustments (this is the role of the previous_slot parameter).
     fn get_next_slot(&self, previous_slot: Option<Slot>) -> (Slot, Instant) {
         // get delayed time
-        let shifted_now = MassaTime::now(self.cfg.clock_compensation_millis)
-            .expect("could not get current time")
-            .saturating_sub(self.cfg.t0);
+        let now =
+            MassaTime::now(self.cfg.clock_compensation_millis).expect("could not get current time");
 
         // if it's the first computed slot, add a time shift to prevent double-production on node restart with clock skew
         let base_time = if previous_slot.is_none() {
-            shifted_now.saturating_add(self.cfg.initial_delay)
+            now.saturating_add(self.cfg.initial_delay)
         } else {
-            shifted_now
+            now
         };
 
         // get closest slot according to the current absolute time
         let mut next_slot = get_closest_slot_to_timestamp(
             self.cfg.thread_count,
-            self.half_t0,
+            self.cfg.t0,
             self.cfg.genesis_timestamp,
             base_time,
         );
@@ -86,6 +85,11 @@ impl EndorsementFactoryWorker {
                     .get_next_slot(self.cfg.thread_count)
                     .expect("could not compute next slot");
             }
+        }
+
+        // prevent triggering on period-zero slots
+        if next_slot.period == 0 {
+            next_slot = Slot::new(1, 0);
         }
 
         // get the timestamp of the target slot
