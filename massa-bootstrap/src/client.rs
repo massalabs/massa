@@ -87,7 +87,7 @@ async fn stream_final_state(
                             .apply_changes_unchecked(&changes.async_pool_changes);
                         write_final_state
                             .pos_state
-                            .apply_changes(changes.roll_state_changes.clone(), *changes_slot)?;
+                            .apply_changes(changes.roll_state_changes.clone(), *changes_slot, false)?;
                     }
                     write_final_state.slot = slot;
                     if let BootstrapClientMessage::AskFinalStatePart {

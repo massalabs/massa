@@ -104,7 +104,7 @@ impl FinalState {
         self.async_pool
             .apply_changes_unchecked(&changes.async_pool_changes);
         self.pos_state
-            .apply_changes(changes.roll_state_changes.clone(), self.slot)
+            .apply_changes(changes.roll_state_changes.clone(), self.slot, true)
             .expect("could not settle slot in final state PoS"); //TODO do not panic here: it might just mean that the lookback cycle is not available
         self.executed_ops.extend(changes.executed_ops.clone());
         self.executed_ops.prune(self.slot);

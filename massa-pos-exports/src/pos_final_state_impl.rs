@@ -151,7 +151,12 @@ impl PoSFinalState {
     ///     set complete=true for cycle C in the history
     ///     compute the seed hash and notifies the PoSDrawer for cycle C+3
     ///
-    pub fn apply_changes(&mut self, changes: PoSChanges, slot: Slot) -> PosResult<()> {
+    pub fn apply_changes(
+        &mut self,
+        changes: PoSChanges,
+        slot: Slot,
+        feed_selector: bool,
+    ) -> PosResult<()> {
         let slots_per_cycle: usize = self
             .periods_per_cycle
             .saturating_mul(self.thread_count as u64)
@@ -240,7 +245,7 @@ impl PoSFinalState {
                 .map(|c| (c.cycle, c.complete))
                 .collect::<Vec<(u64, bool)>>()
         );
-        if cycle_completed {
+        if cycle_completed && feed_selector == true {
             self.feed_selector(cycle.checked_add(2).ok_or_else(|| {
                 PosError::OverflowError("cycle overflow when feeding selector".into())
             })?)
