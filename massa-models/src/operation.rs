@@ -1300,8 +1300,8 @@ mod tests {
     use super::*;
     use massa_serialization::DeserializeError;
     use massa_signature::KeyPair;
-    use std::collections::BTreeMap;
     use serial_test::serial;
+    use std::collections::BTreeMap;
 
     #[test]
     #[serial]

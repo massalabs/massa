@@ -7,9 +7,7 @@ use crate::types::{Applicable, SetOrDelete};
 use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
 use massa_models::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
 use massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
-use massa_serialization::{
-    Deserializer, SerializeError, Serializer,
-};
+use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::error::{context, ContextError, ParseError};
 use nom::sequence::tuple;
 use nom::{IResult, Parser};
