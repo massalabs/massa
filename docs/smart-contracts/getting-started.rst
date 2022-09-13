@@ -7,13 +7,6 @@ In this section you will learn how to compile your first Massa smart contract.
 
 Setting up a new project
 ^^^^^^^^^^^^^^^^^^^^^^^^
-.. collapse:: Wait, I know npm. Just give me the commands!
-
-    Here you go:
-
-   .. code-block:: shell
-
-       npx massa-sc-create my-sc
 
 Make sure you have a recent version of Node.js and npm. Update or `install <https://docs.npmjs.com/downloading-and-installing-node-js-and-npm>`_ them if needed.
 Create or go to the directory where you want to set up your project and run:
