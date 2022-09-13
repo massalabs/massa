@@ -2,7 +2,7 @@
     "openrpc": "1.2.4",
     "info": {
         "title": "Massa OpenRPC",
-        "version": "TEST.14.1",
+        "version": "TEST.15.0",
         "description": "Massa OpenRPC spec",
         "termsOfService": "https://open-rpc.org",
         "contact": {
