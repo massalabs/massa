@@ -92,6 +92,7 @@ Contents
    :caption: Technical documentation
 
    technical-doc/storage-costs.rst
+   technical-doc/architecture.rst
    technical-doc/api.rst
    technical-doc/glossary.rst
    technical-doc/concurrency.rst
