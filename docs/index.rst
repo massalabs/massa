@@ -91,6 +91,7 @@ Contents
    :maxdepth: 2
    :caption: Technical documentation
 
+   technical-doc/architecture.rst
    technical-doc/api.rst
    technical-doc/glossary.rst
    technical-doc/concurrency.rst
