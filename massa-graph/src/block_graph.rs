@@ -1452,7 +1452,7 @@ impl BlockGraph {
         .0;
 
         // check endorsements
-        match self.check_endorsements(header, header.content.slot)? {
+        match self.check_endorsements(header)? {
             EndorsementsCheckOutcome::Proceed => {}
             EndorsementsCheckOutcome::Discard(reason) => {
                 return Ok(HeaderCheckOutcome::Discard(reason))
@@ -1567,13 +1567,9 @@ impl BlockGraph {
     /// check endorsements:
     /// * endorser was selected for that (slot, index)
     /// * endorsed slot is `parent_in_own_thread` slot
-    fn check_endorsements(
-        &self,
-        header: &WrappedHeader,
-        slot: Slot,
-    ) -> Result<EndorsementsCheckOutcome> {
+    fn check_endorsements(&self, header: &WrappedHeader) -> Result<EndorsementsCheckOutcome> {
         // check endorsements
-        let endorsement_draws = match self.selector_controller.get_selection(slot) {
+        let endorsement_draws = match self.selector_controller.get_selection(header.content.slot) {
             Ok(sel) => sel.endorsements,
             Err(_) => return Ok(EndorsementsCheckOutcome::WaitForSlot),
         };
@@ -1589,10 +1585,10 @@ impl BlockGraph {
                 )));
             }
             // check that the endorsement slot matches the endorsed block
-            if endorsement.content.slot != slot {
+            if endorsement.content.slot != header.content.slot {
                 return Ok(EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(
-                    format!("endorsement targets a block with wrong slot. Current slot: {}, endorsement: {}",
-                            slot, endorsement.content.slot),
+                    format!("endorsement slot does not match the slot of the block that contains it. Block slot: {}, endorsement slot: {}",
+                    header.content.slot, endorsement.content.slot),
                 )));
             }
 

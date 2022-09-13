@@ -164,7 +164,7 @@ impl EndorsementFactoryWorker {
             // error getting block ID at target slot
             Err(_) => {
                 warn!(
-                    "could not get latest blockclique block to create endorsement targeting slot {}",
+                    "could not get latest blockclique block to create endorsement to be included at slot {}",
                     slot
                 );
                 return;
