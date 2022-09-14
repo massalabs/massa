@@ -107,14 +107,14 @@ impl DeferredCredits {
     }
 }
 
-/// TODO
+/// PoS bootstrap streaming steps enum
 #[derive(PartialEq, Eq, Copy, Clone)]
 pub enum PoSInfoStreamingStep {
-    /// TODO
+    /// Started step, only when launching the streaming
     Started,
-    /// TODO
+    /// Ongoing step, as long as you are streaming complete cycles
     Ongoing(u64),
-    /// TODO
+    /// Finished step, after the incomplete cycle was streamed
     Finished,
 }
 
@@ -149,9 +149,7 @@ impl PoSFinalState {
                     }
                     index.saturating_add(1)
                 } else {
-                    // TODO this should be an error
-                    // if an outdated cycle is provided start from the beginning
-                    self.get_first_cycle_index()
+                    return Err(ModelsError::OutdatedBootstrapCursor);
                 }
             }
             PoSInfoStreamingStep::Finished => {
