@@ -100,6 +100,7 @@ fn get_random_pos_cycles_info(
             },
         );
     }
+    // note: extra seed is used in the changes test to compensate that the update loop skips the first change
     if opt_seed {
         rng_seed.push(rng.gen_range(0..2) == 1);
     }

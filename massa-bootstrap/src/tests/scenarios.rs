@@ -221,9 +221,11 @@ async fn test_bootstrap_server() {
         "mismatch between sent and received peers"
     );
 
+    // apply the changes to the server state before matching with the clien
     {
         let mut final_state_write = final_state.write();
         let list_changes_read = list_changes.read().clone();
+        // note: skip the first change to match the update loop behaviour
         for change in list_changes_read.iter().skip(1) {
             final_state_write
                 .pos_state

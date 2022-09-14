@@ -300,15 +300,15 @@ pub async fn send_final_state_stream(
         {
             // Get all data for the next message
             let final_state_read = final_state.read();
-            let (data, new_last_key) = final_state_read
-                .ledger
-                .get_ledger_part(&old_key)
-                .map_err(|_| {
-                    BootstrapError::GeneralError(
-                        "Error on fetching ledger part of execution".to_string(),
-                    )
-                })
-                .unwrap();
+            let (data, new_last_key) =
+                final_state_read
+                    .ledger
+                    .get_ledger_part(&old_key)
+                    .map_err(|_| {
+                        BootstrapError::GeneralError(
+                            "Error on fetching ledger part of execution".to_string(),
+                        )
+                    })?;
             ledger_data = data;
 
             let (pool_data, new_last_async_pool_id) = final_state_read
