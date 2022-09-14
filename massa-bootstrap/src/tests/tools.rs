@@ -60,8 +60,7 @@ fn get_some_random_bytes() -> Vec<u8> {
 /// generates a random ledger entry
 fn get_random_ledger_entry() -> LedgerEntry {
     let mut rng = rand::thread_rng();
-    let parallel_balance = Amount::from_raw(rng.gen::<u64>());
-    let sequential_balance = Amount::from_raw(rng.gen::<u64>());
+    let balance = Amount::from_raw(rng.gen::<u64>());
     let bytecode: Vec<u8> = get_some_random_bytes();
     let mut datastore = BTreeMap::new();
     for _ in 0usize..rng.gen_range(0..10) {
@@ -70,8 +69,7 @@ fn get_random_ledger_entry() -> LedgerEntry {
         datastore.insert(key, value);
     }
     LedgerEntry {
-        sequential_balance,
-        parallel_balance,
+        balance,
         bytecode,
         datastore,
     }

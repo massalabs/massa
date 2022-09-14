@@ -81,8 +81,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
     /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntryUpdate {
-    ///    parallel_balance: SetOrKeep::Set(amount),
-    ///    sequential_balance: SetOrKeep::Set(amount),
+    ///    balance: SetOrKeep::Set(amount),
     ///    bytecode: SetOrKeep::Set(bytecode),
     ///    datastore: BTreeMap::default(),
     /// };
@@ -176,8 +175,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntryUpdate {
-    ///    parallel_balance: SetOrKeep::Set(amount),
-    ///    sequential_balance: SetOrKeep::Set(amount),
+    ///    balance: SetOrKeep::Set(amount),
     ///    bytecode: SetOrKeep::Set(bytecode),
     ///    datastore: BTreeMap::default(),
     /// };

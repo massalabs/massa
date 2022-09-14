@@ -68,7 +68,7 @@ pub enum MockExecutionControllerMessage {
         response_tx: mpsc::Sender<PreHashSet<OperationId>>,
     },
     /// Get final and candidate sequencial balances by addresses
-    GetFinalAndCandidateSequentialBalances {
+    GetFinalAndCandidateBalance {
         /// addresses to get
         addresses: Vec<Address>,
         /// response channel
@@ -141,13 +141,13 @@ impl ExecutionController for MockExecutionController {
         response_rx.recv().unwrap()
     }
 
-    fn get_final_and_candidate_sequential_balances(
+    fn get_final_and_candidate_balance(
         &self,
         addresses: &[Address],
     ) -> Vec<(Option<Amount>, Option<Amount>)> {
         let (response_tx, response_rx) = mpsc::channel();
         if let Err(err) = self.0.lock().send(
-            MockExecutionControllerMessage::GetFinalAndCandidateSequentialBalances {
+            MockExecutionControllerMessage::GetFinalAndCandidateBalance {
                 addresses: addresses.to_vec(),
                 response_tx,
             },

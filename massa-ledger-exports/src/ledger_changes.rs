@@ -25,10 +25,8 @@ use std::ops::Bound::Included;
 /// represents an update to one or more fields of a `LedgerEntry`
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct LedgerEntryUpdate {
-    /// change the sequential balance
-    pub sequential_balance: SetOrKeep<Amount>,
-    /// change the parallel balance
-    pub parallel_balance: SetOrKeep<Amount>,
+    /// change the balance
+    pub balance: SetOrKeep<Amount>,
     /// change the executable bytecode
     pub bytecode: SetOrKeep<Vec<u8>>,
     /// change datastore entries
@@ -203,15 +201,14 @@ impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
     /// use massa_ledger_exports::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer};
     ///
     /// let key = "hello world".as_bytes().to_vec();
-    /// let mut store = BTreeMap::default();
-    /// store.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
+    /// let mut datastore = BTreeMap::default();
+    /// datastore.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
     /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntryUpdate {
-    ///    parallel_balance: SetOrKeep::Keep,
-    ///    sequential_balance: SetOrKeep::Keep,
+    ///    balance: SetOrKeep::Keep,
     ///    bytecode: SetOrKeep::Set(bytecode.clone()),
-    ///    datastore: store,
+    ///    datastore,
     /// };
     /// let mut serialized = Vec::new();
     /// let serializer = LedgerEntryUpdateSerializer::new();
@@ -222,10 +219,7 @@ impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
         value: &LedgerEntryUpdate,
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
-        self.balance_serializer
-            .serialize(&value.sequential_balance, buffer)?;
-        self.balance_serializer
-            .serialize(&value.parallel_balance, buffer)?;
+        self.balance_serializer.serialize(&value.balance, buffer)?;
         self.bytecode_serializer
             .serialize(&value.bytecode, buffer)?;
         self.datastore_serializer
@@ -276,15 +270,14 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
     /// use massa_ledger_exports::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer, LedgerEntryUpdateDeserializer};
     ///
     /// let key = "hello world".as_bytes().to_vec();
-    /// let mut store = BTreeMap::default();
-    /// store.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
+    /// let mut datastore = BTreeMap::default();
+    /// datastore.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
     /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntryUpdate {
-    ///    parallel_balance: SetOrKeep::Keep,
-    ///    sequential_balance: SetOrKeep::Keep,
+    ///    balance: SetOrKeep::Keep,
     ///    bytecode: SetOrKeep::Set(bytecode.clone()),
-    ///    datastore: store,
+    ///    datastore,
     /// };
     /// let mut serialized = Vec::new();
     /// let serializer = LedgerEntryUpdateSerializer::new();
@@ -301,10 +294,7 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
         context(
             "Failed LedgerEntryUpdate deserialization",
             tuple((
-                context("Failed sequential_balance deserialization", |input| {
-                    self.amount_deserializer.deserialize(input)
-                }),
-                context("Failed parallel_balance deserialization", |input| {
+                context("Failed balance deserialization", |input| {
                     self.amount_deserializer.deserialize(input)
                 }),
                 context("Failed bytecode deserialization", |input| {
@@ -315,14 +305,11 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
                 }),
             )),
         )
-        .map(
-            |(sequential_balance, parallel_balance, bytecode, datastore)| LedgerEntryUpdate {
-                sequential_balance,
-                parallel_balance,
-                bytecode,
-                datastore,
-            },
-        )
+        .map(|(balance, bytecode, datastore)| LedgerEntryUpdate {
+            balance,
+            bytecode,
+            datastore,
+        })
         .parse(buffer)
     }
 }
@@ -330,8 +317,7 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
 impl Applicable<LedgerEntryUpdate> for LedgerEntryUpdate {
     /// extends the `LedgerEntryUpdate` with another one
     fn apply(&mut self, update: LedgerEntryUpdate) {
-        self.sequential_balance.apply(update.sequential_balance);
-        self.parallel_balance.apply(update.parallel_balance);
+        self.balance.apply(update.balance);
         self.bytecode.apply(update.bytecode);
         self.datastore.extend(update.datastore);
     }
@@ -383,15 +369,14 @@ impl Serializer<LedgerChanges> for LedgerChangesSerializer {
     /// use massa_models::{amount::Amount, address::Address};
     ///
     /// let key = "hello world".as_bytes().to_vec();
-    /// let mut store = BTreeMap::new();
-    /// store.insert(key, vec![1, 2, 3]);
-    /// let amount = Amount::from_str("1").unwrap();
+    /// let mut datastore = BTreeMap::new();
+    /// datastore.insert(key, vec![1, 2, 3]);
+    /// let balance = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {
-    ///    parallel_balance: amount,
-    ///    sequential_balance: amount,
+    ///    balance,
     ///    bytecode,
-    ///    datastore: store,
+    ///    datastore,
     /// };
     /// let mut serialized = Vec::new();
     /// let mut changes = LedgerChanges::default();
@@ -466,15 +451,14 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
     /// use massa_models::{amount::Amount, address::Address};
     ///
     /// let key = "hello world".as_bytes().to_vec();
-    /// let mut store = BTreeMap::new();
-    /// store.insert(key, vec![1, 2, 3]);
-    /// let amount = Amount::from_str("1").unwrap();
+    /// let mut datastore = BTreeMap::new();
+    /// datastore.insert(key, vec![1, 2, 3]);
+    /// let balance = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {
-    ///    parallel_balance: amount,
-    ///    sequential_balance: amount,
+    ///    balance,
     ///    bytecode,
-    ///    datastore: store,
+    ///    datastore,
     /// };
     /// let mut serialized = Vec::new();
     /// let mut changes = LedgerChanges::default();
@@ -539,7 +523,7 @@ impl LedgerChanges {
         self.0.get(addr)
     }
 
-    /// Tries to return the sequential balance of an entry
+    /// Tries to return the balance of an entry
     /// or gets it from a function if the entry's status is unknown.
     ///
     /// This function is used as an optimization:
@@ -554,7 +538,7 @@ impl LedgerChanges {
     /// * Some(v) if a value is present, where v is a copy of the value
     /// * None if the value is absent
     /// * f() if the value is unknown
-    pub fn get_sequential_balance_or_else<F: FnOnce() -> Option<Amount>>(
+    pub fn get_balance_or_else<F: FnOnce() -> Option<Amount>>(
         &self,
         addr: &Address,
         f: F,
@@ -562,59 +546,10 @@ impl LedgerChanges {
         // Get the changes for the provided address
         match self.0.get(addr) {
             // This entry is being replaced by a new one: get the balance from the new entry
-            Some(SetUpdateOrDelete::Set(v)) => Some(v.sequential_balance),
+            Some(SetUpdateOrDelete::Set(v)) => Some(v.balance),
 
             // This entry is being updated
-            Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                sequential_balance, ..
-            })) => match sequential_balance {
-                // The update sets a new balance: return it
-                SetOrKeep::Set(v) => Some(*v),
-                // The update keeps the old balance.
-                // We therefore have no info on the absolute value of the balance.
-                // We call the fallback function and return its output.
-                SetOrKeep::Keep => f(),
-            },
-
-            // This entry is being deleted: return None.
-            Some(SetUpdateOrDelete::Delete) => None,
-
-            // This entry is not being changed.
-            // We therefore have no info on the absolute value of the balance.
-            // We call the fallback function and return its output.
-            None => f(),
-        }
-    }
-
-    /// Tries to return the parallel balance of an entry
-    /// or gets it from a function if the entry's status is unknown.
-    ///
-    /// This function is used as an optimization:
-    /// if the value can be deduced unambiguously from the `LedgerChanges`,
-    /// no need to dig further (for example in the `FinalLedger`).
-    ///
-    /// # Arguments
-    /// * `addr`: address for which to get the value
-    /// * `f`: fallback function with no arguments and returning `Option<Amount>`
-    ///
-    /// # Returns
-    /// * Some(v) if a value is present, where v is a copy of the value
-    /// * None if the value is absent
-    /// * f() if the value is unknown
-    pub fn get_parallel_balance_or_else<F: FnOnce() -> Option<Amount>>(
-        &self,
-        addr: &Address,
-        f: F,
-    ) -> Option<Amount> {
-        // Get the changes for the provided address
-        match self.0.get(addr) {
-            // This entry is being replaced by a new one: get the balance from the new entry
-            Some(SetUpdateOrDelete::Set(v)) => Some(v.parallel_balance),
-
-            // This entry is being updated
-            Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                parallel_balance, ..
-            })) => match parallel_balance {
+            Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { balance, .. })) => match balance {
                 // The update sets a new balance: return it
                 SetOrKeep::Set(v) => Some(*v),
                 // The update keeps the old balance.
@@ -714,13 +649,13 @@ impl LedgerChanges {
         }
     }
 
-    /// Set the sequential balance of an address.
+    /// Set the balance of an address.
     /// If the address doesn't exist, its ledger entry is created.
     ///
     /// # Arguments
     /// * `addr`: target address
-    /// * `balance`: sequential balance to set for the provided address
-    pub fn set_sequential_balance(&mut self, addr: Address, balance: Amount) {
+    /// * `balance`: balance to set for the provided address
+    pub fn set_balance(&mut self, addr: Address, balance: Amount) {
         // Get the changes for the entry associated to the provided address
         match self.0.entry(addr) {
             // That entry is being changed
@@ -728,22 +663,22 @@ impl LedgerChanges {
                 match occ.get_mut() {
                     // The entry is being replaced by a new one
                     SetUpdateOrDelete::Set(v) => {
-                        // update the sequential_balance of the replacement entry
-                        v.sequential_balance = balance;
+                        // update the balance of the replacement entry
+                        v.balance = balance;
                     }
 
                     // The entry is being updated
                     SetUpdateOrDelete::Update(u) => {
-                        // Make sure the update sets the sequential balance of the entry to its new value
-                        u.sequential_balance = SetOrKeep::Set(balance);
+                        // Make sure the update sets the balance of the entry to its new value
+                        u.balance = SetOrKeep::Set(balance);
                     }
 
                     // The entry is being deleted
                     d @ SetUpdateOrDelete::Delete => {
                         // Replace that deletion with a replacement by a new default entry
-                        // for which the sequential balance was properly set
+                        // for which the balance was properly set
                         *d = SetUpdateOrDelete::Set(LedgerEntry {
-                            sequential_balance: balance,
+                            balance,
                             ..Default::default()
                         });
                     }
@@ -754,54 +689,7 @@ impl LedgerChanges {
             hash_map::Entry::Vacant(vac) => {
                 // Induce an Update to the entry that sets the balance to its new value
                 vac.insert(SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                    sequential_balance: SetOrKeep::Set(balance),
-                    ..Default::default()
-                }));
-            }
-        }
-    }
-
-    /// Set the parallel balance of an address.
-    /// If the address doesn't exist, its ledger entry is created.
-    ///
-    /// # Arguments
-    /// * `addr`: target address
-    /// * `balance`: parallel balance to set for the provided address
-    pub fn set_parallel_balance(&mut self, addr: Address, balance: Amount) {
-        // Get the changes for the entry associated to the provided address
-        match self.0.entry(addr) {
-            // That entry is being changed
-            hash_map::Entry::Occupied(mut occ) => {
-                match occ.get_mut() {
-                    // The entry is being replaced by a new one
-                    SetUpdateOrDelete::Set(v) => {
-                        // update the parallel_balance of the replacement entry
-                        v.parallel_balance = balance;
-                    }
-
-                    // The entry is being updated
-                    SetUpdateOrDelete::Update(u) => {
-                        // Make sure the update sets the parallel balance of the entry to its new value
-                        u.parallel_balance = SetOrKeep::Set(balance);
-                    }
-
-                    // The entry is being deleted
-                    d @ SetUpdateOrDelete::Delete => {
-                        // Replace that deletion with a replacement by a new default entry
-                        // for which the parallel balance was properly set
-                        *d = SetUpdateOrDelete::Set(LedgerEntry {
-                            parallel_balance: balance,
-                            ..Default::default()
-                        });
-                    }
-                }
-            }
-
-            // This entry is not being changed
-            hash_map::Entry::Vacant(vac) => {
-                // Induce an Update to the entry that sets the balance to its new value
-                vac.insert(SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                    parallel_balance: SetOrKeep::Set(balance),
+                    balance: SetOrKeep::Set(balance),
                     ..Default::default()
                 }));
             }

@@ -23,7 +23,7 @@ pub fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
     ledger.insert(
         addr_0,
         LedgerEntry {
-            sequential_balance: Amount::from_str("300_000").unwrap(),
+            balance: Amount::from_str("300_000").unwrap(),
             ..Default::default()
         },
     );
@@ -35,7 +35,7 @@ pub fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
     ledger.insert(
         addr_1,
         LedgerEntry {
-            sequential_balance: Amount::from_str("300_000").unwrap(),
+            balance: Amount::from_str("300_000").unwrap(),
             ..Default::default()
         },
     );

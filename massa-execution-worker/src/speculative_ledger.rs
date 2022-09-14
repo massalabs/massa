@@ -70,41 +70,19 @@ impl SpeculativeLedger {
         self.added_changes = snapshot;
     }
 
-    /// Gets the effective sequential balance of an address
+    /// Gets the effective balance of an address
     ///
     /// # Arguments:
     /// `addr`: the address to query
     ///
     /// # Returns
     /// Some(Amount) if the address was found, otherwise None
-    pub fn get_sequential_balance(&self, addr: &Address) -> Option<Amount> {
+    pub fn get_balance(&self, addr: &Address) -> Option<Amount> {
         // try to read from added changes > history > final_state
-        self.added_changes.get_sequential_balance_or_else(addr, || {
-            match self.active_history.read().fetch_sequential_balance(addr) {
-                HistorySearchResult::Present(seq_balance) => Some(seq_balance),
-                HistorySearchResult::NoInfo => {
-                    self.final_state.read().ledger.get_sequential_balance(addr)
-                }
-                HistorySearchResult::Absent => None,
-            }
-        })
-    }
-
-    /// Gets the effective parallel balance of an address
-    ///
-    /// # Arguments:
-    /// `addr`: the address to query
-    ///
-    /// # Returns
-    /// Some(Amount) if the address was found, otherwise None
-    pub fn get_parallel_balance(&self, addr: &Address) -> Option<Amount> {
-        // try to read from added changes > history > final_state
-        self.added_changes.get_parallel_balance_or_else(addr, || {
-            match self.active_history.read().fetch_parallel_balance(addr) {
+        self.added_changes.get_balance_or_else(addr, || {
+            match self.active_history.read().fetch_balance(addr) {
                 HistorySearchResult::Present(par_balance) => Some(par_balance),
-                HistorySearchResult::NoInfo => {
-                    self.final_state.read().ledger.get_parallel_balance(addr)
-                }
+                HistorySearchResult::NoInfo => self.final_state.read().ledger.get_balance(addr),
                 HistorySearchResult::Absent => None,
             }
         })
@@ -128,7 +106,7 @@ impl SpeculativeLedger {
         })
     }
 
-    /// Transfers sequential coins from one address to another.
+    /// Transfers coins from one address to another.
     /// No changes are retained in case of failure.
     /// The spending address, if defined, must exist.
     ///
@@ -136,7 +114,7 @@ impl SpeculativeLedger {
     /// * `from_addr`: optional spending address (use None for pure coin creation)
     /// * `to_addr`: optional crediting address (use None for pure coin destruction)
     /// * `amount`: amount of coins to transfer
-    pub fn transfer_sequential_coins(
+    pub fn transfer_coins(
         &mut self,
         from_addr: Option<Address>,
         to_addr: Option<Address>,
@@ -148,74 +126,26 @@ impl SpeculativeLedger {
         // simulate spending coins from sender address (if any)
         if let Some(from_addr) = from_addr {
             let new_balance = self
-                .get_sequential_balance(&from_addr)
+                .get_balance(&from_addr)
                 .ok_or_else(|| ExecutionError::RuntimeError("source address not found".into()))?
                 .checked_sub(amount)
                 .ok_or_else(|| {
                     ExecutionError::RuntimeError("insufficient from_addr balance".into())
                 })?;
-            changes.set_sequential_balance(from_addr, new_balance);
+            changes.set_balance(from_addr, new_balance);
         }
 
         // simulate crediting coins to destination address (if any)
         // note that to_addr can be the same as from_addr
         if let Some(to_addr) = to_addr {
             let new_balance = changes
-                .get_sequential_balance_or_else(&to_addr, || self.get_sequential_balance(&to_addr))
+                .get_balance_or_else(&to_addr, || self.get_balance(&to_addr))
                 .unwrap_or_default()
                 .checked_add(amount)
                 .ok_or_else(|| {
                     ExecutionError::RuntimeError("overflow in to_addr balance".into())
                 })?;
-            changes.set_sequential_balance(to_addr, new_balance);
-        }
-
-        // apply the simulated changes to the speculative ledger
-        self.added_changes.apply(changes);
-
-        Ok(())
-    }
-
-    /// Transfers parallel coins from one address to another.
-    /// No changes are retained in case of failure.
-    /// The spending address, if defined, must exist.
-    ///
-    /// # Parameters:
-    /// * `from_addr`: optional spending address (use None for pure coin creation)
-    /// * `to_addr`: optional crediting address (use None for pure coin destruction)
-    /// * `amount`: amount of coins to transfer
-    pub fn transfer_parallel_coins(
-        &mut self,
-        from_addr: Option<Address>,
-        to_addr: Option<Address>,
-        amount: Amount,
-    ) -> Result<(), ExecutionError> {
-        // init empty ledger changes
-        let mut changes = LedgerChanges::default();
-
-        // simulate spending coins from sender address (if any)
-        if let Some(from_addr) = from_addr {
-            let new_balance = self
-                .get_parallel_balance(&from_addr)
-                .ok_or_else(|| ExecutionError::RuntimeError("source address not found".into()))?
-                .checked_sub(amount)
-                .ok_or_else(|| {
-                    ExecutionError::RuntimeError("insufficient from_addr balance".into())
-                })?;
-            changes.set_parallel_balance(from_addr, new_balance);
-        }
-
-        // simulate crediting coins to destination address (if any)
-        // note that to_addr can be the same as from_addr
-        if let Some(to_addr) = to_addr {
-            let new_balance = changes
-                .get_parallel_balance_or_else(&to_addr, || self.get_parallel_balance(&to_addr))
-                .unwrap_or_default()
-                .checked_add(amount)
-                .ok_or_else(|| {
-                    ExecutionError::RuntimeError("overflow in to_addr balance".into())
-                })?;
-            changes.set_parallel_balance(to_addr, new_balance);
+            changes.set_balance(to_addr, new_balance);
         }
 
         // apply the simulated changes to the speculative ledger
@@ -234,7 +164,7 @@ impl SpeculativeLedger {
     pub fn entry_exists(&self, addr: &Address) -> bool {
         // try to read from added changes > history > final_state
         self.added_changes.entry_exists_or_else(addr, || {
-            match self.active_history.read().fetch_sequential_balance(addr) {
+            match self.active_history.read().fetch_balance(addr) {
                 HistorySearchResult::Present(_balance) => true,
                 HistorySearchResult::NoInfo => self.final_state.read().ledger.entry_exists(addr),
                 HistorySearchResult::Absent => false,

@@ -45,37 +45,15 @@ impl ActiveHistory {
         HistorySearchResult::NoInfo
     }
 
-    /// Lazily query (from end to beginning) the active sequential balance of an address after a given index.
+    /// Lazily query (from end to beginning) the active balance of an address after a given index.
     ///
     /// Returns a `HistorySearchResult`.
-    pub fn fetch_sequential_balance(&self, addr: &Address) -> HistorySearchResult<Amount> {
+    pub fn fetch_balance(&self, addr: &Address) -> HistorySearchResult<Amount> {
         for output in self.0.iter().rev() {
             match output.state_changes.ledger_changes.0.get(addr) {
-                Some(SetUpdateOrDelete::Set(v)) => {
-                    return HistorySearchResult::Present(v.sequential_balance)
-                }
+                Some(SetUpdateOrDelete::Set(v)) => return HistorySearchResult::Present(v.balance),
                 Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                    sequential_balance: SetOrKeep::Set(v),
-                    ..
-                })) => return HistorySearchResult::Present(*v),
-                Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Absent,
-                _ => (),
-            }
-        }
-        HistorySearchResult::NoInfo
-    }
-
-    /// Lazily query (from end to beginning) the active parallel balance of an address after a given index.
-    ///
-    /// Returns a `HistorySearchResult`.
-    pub fn fetch_parallel_balance(&self, addr: &Address) -> HistorySearchResult<Amount> {
-        for output in self.0.iter().rev() {
-            match output.state_changes.ledger_changes.0.get(addr) {
-                Some(SetUpdateOrDelete::Set(v)) => {
-                    return HistorySearchResult::Present(v.parallel_balance)
-                }
-                Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                    parallel_balance: SetOrKeep::Set(v),
+                    balance: SetOrKeep::Set(v),
                     ..
                 })) => return HistorySearchResult::Present(*v),
                 Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Absent,

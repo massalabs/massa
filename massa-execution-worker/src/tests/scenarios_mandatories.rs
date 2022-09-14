@@ -333,12 +333,12 @@ pub fn send_and_receive_transaction() {
     );
     controller.update_blockclique_status(finalized_blocks, Default::default());
     std::thread::sleep(Duration::from_millis(10));
-    // check recipient sequential balance
+    // check recipient balance
     assert_eq!(
         sample_state
             .read()
             .ledger
-            .get_sequential_balance(&recipient_address)
+            .get_balance(&recipient_address)
             .unwrap(),
         Amount::from_str("100").unwrap()
     );
@@ -392,11 +392,11 @@ pub fn roll_buy() {
     );
     controller.update_blockclique_status(finalized_blocks, Default::default());
     std::thread::sleep(Duration::from_millis(10));
-    // check roll count of the buyer address and its sequential balance
+    // check roll count of the buyer address and its balance
     let sample_read = sample_state.read();
     assert_eq!(sample_read.pos_state.get_rolls_for(&address), 110);
     assert_eq!(
-        sample_read.ledger.get_sequential_balance(&address).unwrap(),
+        sample_read.ledger.get_balance(&address).unwrap(),
         Amount::from_str("299_000").unwrap()
     );
     // stop the execution controller
@@ -463,7 +463,7 @@ pub fn roll_sell() {
         credits
     );
     assert_eq!(
-        controller.get_final_and_candidate_sequential_balances(&[address]),
+        controller.get_final_and_candidate_balance(&[address]),
         vec![(
             Some(Amount::from_str("300_000").unwrap()),
             Some(Amount::from_str("309_000").unwrap())
@@ -499,7 +499,7 @@ pub fn missed_blocks_roll_slash() {
     let address = Address::from_public_key(&keypair.get_public_key());
     // check its balances
     assert_eq!(
-        controller.get_final_and_candidate_sequential_balances(&[address]),
+        controller.get_final_and_candidate_balance(&[address]),
         vec![(
             Some(Amount::from_str("300_000").unwrap()),
             Some(Amount::from_str("310_000").unwrap())
@@ -644,8 +644,7 @@ fn create_call_sc_operation(
     let op = OperationType::CallSC {
         max_gas,
         target_addr,
-        parallel_coins: Amount::from_str("0").unwrap(),
-        sequential_coins: Amount::from_str("0").unwrap(),
+        coins: Amount::from_str("0").unwrap(),
         gas_price,
         target_func,
         param,

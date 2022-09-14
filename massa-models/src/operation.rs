@@ -401,10 +401,8 @@ pub enum OperationType {
         param: String,
         /// The maximum amount of gas that the execution of the contract is allowed to cost.
         max_gas: u64,
-        /// Extra coins that are spent from the caller's sequential balance and transferred to the target
-        sequential_coins: Amount,
-        /// Extra coins that are spent from the caller's parallel balance and transferred to the target
-        parallel_coins: Amount,
+        /// Extra coins that are spent from the caller's balance and transferred to the target
+        coins: Amount,
         /// The price per unit of gas that the caller is willing to pay for the execution.
         gas_price: Amount,
     },
@@ -443,8 +441,7 @@ impl std::fmt::Display for OperationType {
             },
             OperationType::CallSC {
                 max_gas,
-                parallel_coins,
-                sequential_coins,
+                coins,
                 gas_price,
                 target_addr,
                 target_func,
@@ -456,8 +453,7 @@ impl std::fmt::Display for OperationType {
                 writeln!(f, "\t- target parameter:{}", param)?;
                 writeln!(f, "\t- max_gas:{}", max_gas)?;
                 writeln!(f, "\t- gas_price:{}", gas_price)?;
-                writeln!(f, "\t- sequential coins:{}", sequential_coins)?;
-                writeln!(f, "\t- parallel coins:{}", parallel_coins)?;
+                writeln!(f, "\t- coins:{}", coins)?;
             }
         }
         Ok(())
@@ -557,15 +553,13 @@ impl Serializer<OperationType> for OperationTypeSerializer {
                 target_func,
                 param,
                 max_gas,
-                sequential_coins,
-                parallel_coins,
+                coins,
                 gas_price,
             } => {
                 self.u32_serializer
                     .serialize(&u32::from(OperationTypeId::CallSC), buffer)?;
                 self.u64_serializer.serialize(max_gas, buffer)?;
-                self.amount_serializer.serialize(parallel_coins, buffer)?;
-                self.amount_serializer.serialize(sequential_coins, buffer)?;
+                self.amount_serializer.serialize(coins, buffer)?;
                 self.amount_serializer.serialize(gas_price, buffer)?;
                 buffer.extend(target_addr.to_bytes());
                 self.function_name_serializer
@@ -743,10 +737,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                         context("Failed max_gas deserialization", |input| {
                             self.max_gas_deserializer.deserialize(input)
                         }),
-                        context("Failed parallel_coins deserialization", |input| {
-                            self.amount_deserializer.deserialize(input)
-                        }),
-                        context("Failed sequential_coins deserialization", |input| {
+                        context("Failed coins deserialization", |input| {
                             self.amount_deserializer.deserialize(input)
                         }),
                         context("Failed gas_price deserialization", |input| {
@@ -764,22 +755,15 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                     )),
                 )
                 .map(
-                    |(
-                        max_gas,
-                        parallel_coins,
-                        sequential_coins,
-                        gas_price,
-                        target_addr,
-                        target_func,
-                        param,
-                    )| OperationType::CallSC {
-                        target_addr,
-                        target_func,
-                        param,
-                        max_gas,
-                        sequential_coins,
-                        parallel_coins,
-                        gas_price,
+                    |(max_gas, coins, gas_price, target_addr, target_func, param)| {
+                        OperationType::CallSC {
+                            target_addr,
+                            target_func,
+                            param,
+                            max_gas,
+                            coins,
+                            gas_price,
+                        }
                     },
                 )
                 .parse(input),
@@ -854,17 +838,15 @@ impl WrappedOperation {
         res
     }
 
-    /// Gets the maximal amount of sequential coins that may be spent by this operation (incl. fee)
-    pub fn get_max_sequential_spending(&self, roll_price: Amount) -> Amount {
-        // compute the max amount of sequential coins spent outside of the fees
+    /// Gets the maximal amount of coins that may be spent by this operation (incl. fee)
+    pub fn get_max_spending(&self, roll_price: Amount) -> Amount {
+        // compute the max amount of coins spent outside of the fees
         let max_non_fee_seq_spending = match &self.content.op {
             OperationType::Transaction { amount, .. } => *amount,
             OperationType::RollBuy { roll_count } => roll_price.saturating_mul_u64(*roll_count),
             OperationType::RollSell { .. } => Amount::zero(),
             OperationType::ExecuteSC { coins, .. } => *coins,
-            OperationType::CallSC {
-                sequential_coins, ..
-            } => *sequential_coins,
+            OperationType::CallSC { coins, .. } => *coins,
         };
 
         // add all fees and return
@@ -1461,8 +1443,7 @@ mod tests {
         let op = OperationType::CallSC {
             max_gas: 123,
             target_addr,
-            parallel_coins: Amount::from_str("456.789").unwrap(),
-            sequential_coins: Amount::from_str("123.111").unwrap(),
+            coins: Amount::from_str("456.789").unwrap(),
             gas_price: Amount::from_str("772.122").unwrap(),
             target_func: "target function".to_string(),
             param: "parameter".to_string(),

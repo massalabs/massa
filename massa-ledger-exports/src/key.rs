@@ -6,24 +6,15 @@ use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serial
 use nom::error::{ContextError, ParseError};
 use std::ops::Bound::Included;
 
-pub const SEQ_BALANCE_IDENT: u8 = 0u8;
-pub const PAR_BALANCE_IDENT: u8 = 1u8;
-pub const BYTECODE_IDENT: u8 = 2u8;
-pub const DATASTORE_IDENT: u8 = 3u8;
+pub const BALANCE_IDENT: u8 = 0u8;
+pub const BYTECODE_IDENT: u8 = 1u8;
+pub const DATASTORE_IDENT: u8 = 2u8;
 
-/// Sequential balance key formatting macro
+/// Balance key formatting macro
 #[macro_export]
-macro_rules! seq_balance_key {
+macro_rules! balance_key {
     ($addr:expr) => {
-        [&$addr.to_bytes()[..], &[SEQ_BALANCE_IDENT]].concat()
-    };
-}
-
-/// Parallel balance key formatting macro
-#[macro_export]
-macro_rules! par_balance_key {
-    ($addr:expr) => {
-        [&$addr.to_bytes()[..], &[PAR_BALANCE_IDENT]].concat()
+        [&$addr.to_bytes()[..], &[BALANCE_IDENT]].concat()
     };
 }
 
@@ -137,7 +128,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
     /// ## Example
     /// ```
     /// use massa_models::address::Address;
-    /// use massa_ledger_exports::{KeyDeserializer, KeySerializer, DATASTORE_IDENT, SEQ_BALANCE_IDENT};
+    /// use massa_ledger_exports::{KeyDeserializer, KeySerializer, DATASTORE_IDENT, BALANCE_IDENT};
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use massa_hash::Hash;
     /// use std::str::FromStr;
@@ -158,7 +149,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
     /// let mut key = Vec::new();
     /// let mut serialized = Vec::new();
     /// key.extend(address.to_bytes());
-    /// key.push(SEQ_BALANCE_IDENT);
+    /// key.push(BALANCE_IDENT);
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// let (rest, key_deser) = KeyDeserializer::new(255).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
@@ -175,8 +166,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
         ));
         match rest.first() {
             Some(ident) => match *ident {
-                SEQ_BALANCE_IDENT => Ok((&rest[1..], seq_balance_key!(address))),
-                PAR_BALANCE_IDENT => Ok((&rest[1..], par_balance_key!(address))),
+                BALANCE_IDENT => Ok((&rest[1..], balance_key!(address))),
                 BYTECODE_IDENT => Ok((&rest[1..], bytecode_key!(address))),
                 DATASTORE_IDENT => {
                     let (rest, hash) = self.datastore_key_deserializer.deserialize(&rest[1..])?;

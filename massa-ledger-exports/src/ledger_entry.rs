@@ -17,12 +17,8 @@ use std::ops::Bound::Included;
 /// Structure defining an entry associated to an address in the `FinalLedger`
 #[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct LedgerEntry {
-    /// The parallel balance of that entry.
-    /// See lib.rs for an explanation on sequential vs parallel balance.
-    pub sequential_balance: Amount,
-
-    /// The parallel balance of that entry.
-    pub parallel_balance: Amount,
+    /// The balance of that entry.
+    pub balance: Amount,
 
     /// Executable bytecode
     pub bytecode: Vec<u8>,
@@ -65,25 +61,21 @@ impl Serializer<LedgerEntry> for LedgerEntrySerializer {
     /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer};
     ///
     /// let key = "hello world".as_bytes().to_vec();
-    /// let mut store = BTreeMap::new();
-    /// store.insert(key, vec![1, 2, 3]);
-    /// let amount = Amount::from_str("1").unwrap();
+    /// let mut datastore = BTreeMap::new();
+    /// datastore.insert(key, vec![1, 2, 3]);
+    /// let balance = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {
-    ///    parallel_balance: amount,
-    ///    sequential_balance: amount,
+    ///    balance,
     ///    bytecode,
-    ///    datastore: store,
+    ///    datastore,
     /// };
     /// let mut serialized = Vec::new();
     /// let serializer = LedgerEntrySerializer::new();
     /// serializer.serialize(&ledger_entry, &mut serialized).unwrap();
     /// ```
     fn serialize(&self, value: &LedgerEntry, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        self.amount_serializer
-            .serialize(&value.sequential_balance, buffer)?;
-        self.amount_serializer
-            .serialize(&value.parallel_balance, buffer)?;
+        self.amount_serializer.serialize(&value.balance, buffer)?;
         self.vec_u8_serializer.serialize(&value.bytecode, buffer)?;
         self.datastore_serializer
             .serialize(&value.datastore, buffer)?;
@@ -133,15 +125,14 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
     /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer, LedgerEntryDeserializer};
     ///
     /// let key = "hello world".as_bytes().to_vec();
-    /// let mut store = BTreeMap::new();
-    /// store.insert(key, vec![1, 2, 3]);
-    /// let amount = Amount::from_str("1").unwrap();
+    /// let mut datastore = BTreeMap::new();
+    /// datastore.insert(key, vec![1, 2, 3]);
+    /// let balance = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {
-    ///    parallel_balance: amount,
-    ///    sequential_balance: amount,
+    ///    balance,
     ///    bytecode,
-    ///    datastore: store,
+    ///    datastore,
     /// };
     /// let mut serialized = Vec::new();
     /// let serializer = LedgerEntrySerializer::new();
@@ -158,10 +149,7 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
         context(
             "Failed LedgerEntry deserialization",
             tuple((
-                context("Failed sequential_balance deserialization", |input| {
-                    self.amount_deserializer.deserialize(input)
-                }),
-                context("Failed parallel_balance deserialization", |input| {
+                context("Failed balance deserialization", |input| {
                     self.amount_deserializer.deserialize(input)
                 }),
                 context("Failed bytecode deserialization", |input| {
@@ -172,14 +160,11 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
                 }),
             )),
         )
-        .map(
-            |(sequential_balance, parallel_balance, bytecode, datastore)| LedgerEntry {
-                sequential_balance,
-                parallel_balance,
-                bytecode,
-                datastore,
-            },
-        )
+        .map(|(balance, bytecode, datastore)| LedgerEntry {
+            balance,
+            bytecode,
+            datastore,
+        })
         .parse(buffer)
     }
 }
@@ -187,8 +172,8 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
 /// A `LedgerEntryUpdate` can be applied to a `LedgerEntry`
 impl Applicable<LedgerEntryUpdate> for LedgerEntry {
     fn apply(&mut self, update: LedgerEntryUpdate) {
-        // apply updates to the parallel balance
-        update.parallel_balance.apply_to(&mut self.parallel_balance);
+        // apply updates to the balance
+        update.balance.apply_to(&mut self.balance);
 
         // apply updates to the executable bytecode
         update.bytecode.apply_to(&mut self.bytecode);

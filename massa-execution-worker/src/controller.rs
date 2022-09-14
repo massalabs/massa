@@ -112,18 +112,18 @@ impl ExecutionController for ExecutionControllerImpl {
         result
     }
 
-    /// Get the final and candidate values of sequential balances.
+    /// Get the final and candidate values of balance.
     ///
     /// # Return value
     /// * `(final_balance, candidate_balance)`
-    fn get_final_and_candidate_sequential_balances(
+    fn get_final_and_candidate_balance(
         &self,
         addresses: &[Address],
     ) -> Vec<(Option<Amount>, Option<Amount>)> {
         let lock = self.execution_state.read();
         let mut result = Vec::with_capacity(addresses.len());
         for addr in addresses {
-            result.push(lock.get_final_and_candidate_sequential_balance(addr));
+            result.push(lock.get_final_and_candidate_balance(addr));
         }
         result
     }
@@ -192,19 +192,15 @@ impl ExecutionController for ExecutionControllerImpl {
         for addr in addresses {
             let (final_datastore_keys, candidate_datastore_keys) =
                 exec_state.get_final_and_candidate_datastore_keys(addr);
-            let (final_parallel_balance, candidate_parallel_balance) =
-                exec_state.get_final_and_candidate_parallel_balance(addr);
-            let (final_sequential_balance, candidate_sequential_balance) =
-                exec_state.get_final_and_candidate_sequential_balance(addr);
+            let (final_balance, candidate_balance) =
+                exec_state.get_final_and_candidate_balance(addr);
             let (final_roll_count, candidate_roll_count) =
                 exec_state.get_final_and_candidate_rolls(addr);
             res.push(ExecutionAddressInfo {
                 final_datastore_keys,
                 candidate_datastore_keys,
-                final_parallel_balance: final_parallel_balance.unwrap_or_default(),
-                candidate_parallel_balance: candidate_parallel_balance.unwrap_or_default(),
-                final_sequential_balance: final_sequential_balance.unwrap_or_default(),
-                candidate_sequential_balance: candidate_sequential_balance.unwrap_or_default(),
+                final_balance: final_balance.unwrap_or_default(),
+                candidate_balance: candidate_balance.unwrap_or_default(),
                 final_roll_count,
                 candidate_roll_count,
                 future_deferred_credits: exec_state.get_address_future_deferred_credits(addr),
