@@ -4,7 +4,7 @@ use super::{
     mock_establisher,
     tools::{
         bridge_mock_streams, get_boot_state, get_peers, get_random_final_state_bootstrap,
-        wait_consensus_command, wait_network_command,
+        get_random_ledger_changes, wait_consensus_command, wait_network_command,
     },
 };
 use crate::tests::tools::get_random_pos_changes;
@@ -17,9 +17,7 @@ use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender
 use massa_final_state::{test_exports::assert_eq_final_state, FinalState, StateChanges};
 use massa_models::{address::Address, slot::Slot, version::Version};
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
-use massa_pos_exports::{
-    test_exports::assert_eq_pos_selection, PoSChanges, PoSFinalState, SelectorConfig,
-};
+use massa_pos_exports::{test_exports::assert_eq_pos_selection, PoSFinalState, SelectorConfig};
 use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -186,7 +184,7 @@ async fn test_bootstrap_server() {
     let (sent_peers, sent_graph) = tokio::join!(wait_peers(), wait_graph());
 
     // launch the modifier thread
-    let list_changes: Arc<RwLock<Vec<(Slot, PoSChanges)>>> = Arc::new(RwLock::new(Vec::new()));
+    let list_changes: Arc<RwLock<Vec<(Slot, StateChanges)>>> = Arc::new(RwLock::new(Vec::new()));
     let list_changes_clone = list_changes.clone();
     std::thread::spawn(move || {
         for _ in 0..10 {
@@ -196,13 +194,14 @@ async fn test_bootstrap_server() {
             final_write.slot = next;
             let changes = StateChanges {
                 pos_changes: get_random_pos_changes(10),
+                ledger_changes: get_random_ledger_changes(10),
                 ..Default::default()
             };
             final_write
                 .changes_history
                 .push_back((next, changes.clone()));
             let mut list_changes_write = list_changes_clone.write();
-            list_changes_write.push((next, changes.pos_changes));
+            list_changes_write.push((next, changes));
         }
     });
 
@@ -226,11 +225,14 @@ async fn test_bootstrap_server() {
         let mut final_state_write = final_state.write();
         let list_changes_read = list_changes.read().clone();
         // note: skip the first change to match the update loop behaviour
-        for change in list_changes_read.iter().skip(1) {
+        for (slot, change) in list_changes_read.iter().skip(1) {
             final_state_write
                 .pos_state
-                .apply_changes(change.1.clone(), change.0, false)
+                .apply_changes(change.pos_changes.clone(), *slot, false)
                 .unwrap();
+            final_state_write
+                .ledger
+                .apply_changes(change.ledger_changes.clone(), *slot);
         }
     }
 

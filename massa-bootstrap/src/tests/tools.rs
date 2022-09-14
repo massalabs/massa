@@ -11,7 +11,7 @@ use massa_graph::export_active_block::ExportActiveBlockSerializer;
 use massa_graph::{export_active_block::ExportActiveBlock, BootstrapableGraph};
 use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
 use massa_hash::Hash;
-use massa_ledger_exports::LedgerEntry;
+use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetUpdateOrDelete};
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH,
@@ -74,6 +74,22 @@ fn get_random_ledger_entry() -> LedgerEntry {
         bytecode,
         datastore,
     }
+}
+
+pub fn get_random_ledger_changes(r_limit: u64) -> LedgerChanges {
+    let mut changes = LedgerChanges::default();
+    for _ in 0..r_limit {
+        changes.0.insert(
+            get_random_address(),
+            SetUpdateOrDelete::Set(LedgerEntry {
+                sequential_balance: Amount::from_raw(r_limit),
+                parallel_balance: Amount::from_raw(r_limit),
+                bytecode: Vec::default(),
+                datastore: BTreeMap::default(),
+            }),
+        );
+    }
+    changes
 }
 
 /// generates random PoS cycles info

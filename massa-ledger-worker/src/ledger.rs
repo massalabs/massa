@@ -51,6 +51,7 @@ impl FinalLedger {
 impl LedgerController for FinalLedger {
     /// Allows applying `LedgerChanges` to the final ledger
     fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
+        dbg!(slot);
         self.sorted_ledger.apply_changes(changes, slot);
     }
 
