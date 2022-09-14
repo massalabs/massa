@@ -86,7 +86,7 @@ async fn stream_final_state(
                             .async_pool
                             .apply_changes_unchecked(&changes.async_pool_changes);
                         write_final_state.pos_state.apply_changes(
-                            changes.roll_state_changes.clone(),
+                            changes.pos_changes.clone(),
                             *changes_slot,
                             false,
                         )?

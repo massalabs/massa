@@ -104,7 +104,7 @@ impl FinalState {
         self.async_pool
             .apply_changes_unchecked(&changes.async_pool_changes);
         self.pos_state
-            .apply_changes(changes.roll_state_changes.clone(), self.slot, true)
+            .apply_changes(changes.pos_changes.clone(), self.slot, true)
             .expect("could not settle slot in final state PoS"); //TODO do not panic here: it might just mean that the lookback cycle is not available
         self.executed_ops.extend(changes.executed_ops.clone());
         self.executed_ops.prune(self.slot);
@@ -191,7 +191,7 @@ impl FinalState {
 
             // Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
             if last_pos_step_cursor == PoSInfoStreamingStep::Finished {
-                slot_changes.roll_state_changes = changes.roll_state_changes.clone();
+                slot_changes.pos_changes = changes.pos_changes.clone();
             }
             res_changes.push((*slot, slot_changes));
         }

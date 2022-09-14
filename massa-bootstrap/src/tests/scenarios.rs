@@ -195,14 +195,14 @@ async fn test_bootstrap_server() {
             let next = final_write.slot.get_next_slot(2).unwrap();
             final_write.slot = next;
             let changes = StateChanges {
-                roll_state_changes: get_random_pos_changes(10),
+                pos_changes: get_random_pos_changes(10),
                 ..Default::default()
             };
             final_write
                 .changes_history
                 .push_back((next, changes.clone()));
             let mut list_changes_write = list_changes_clone.write();
-            list_changes_write.push((next, changes.roll_state_changes));
+            list_changes_write.push((next, changes.pos_changes));
         }
     });
 
