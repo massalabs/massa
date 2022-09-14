@@ -189,7 +189,7 @@ async fn test_bootstrap_server() {
     let list_changes: Arc<RwLock<Vec<(Slot, PoSChanges)>>> = Arc::new(RwLock::new(Vec::new()));
     let list_changes_clone = list_changes.clone();
     std::thread::spawn(move || {
-        for _ in 0u64..10 {
+        for _ in 0..10 {
             std::thread::sleep(Duration::from_millis(500));
             let mut final_write = final_state_clone.write();
             let next = final_write.slot.get_next_slot(2).unwrap();

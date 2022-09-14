@@ -131,16 +131,14 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 /// generates a random PoS final state
 fn get_random_pos_state(r_limit: u64, pos: PoSFinalState) -> PoSFinalState {
     let mut cycle_history = VecDeque::new();
-    for i in 0u64..1 {
-        let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit, true);
-        cycle_history.push_back(CycleInfo {
-            cycle: i,
-            roll_counts,
-            complete: false, // if i == r_limit - 1 { false } else { true },
-            rng_seed,
-            production_stats,
-        });
-    }
+    let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit, true);
+    cycle_history.push_back(CycleInfo {
+        cycle: 0,
+        roll_counts,
+        complete: false,
+        rng_seed,
+        production_stats,
+    });
     let deferred_credits = get_random_deferred_credits(r_limit);
     PoSFinalState {
         cycle_history,
@@ -163,7 +161,6 @@ pub fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
 
 /// generates a random bootstrap state for the final state
 pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
-    let mut _rng = rand::thread_rng();
     let r_limit: u64 = 50;
 
     let mut sorted_ledger = HashMap::new();
