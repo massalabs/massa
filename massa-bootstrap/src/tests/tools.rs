@@ -89,7 +89,7 @@ fn get_random_pos_cycles_info(
     let mut production_stats = PreHashMap::default();
     let mut rng_seed: BitVec<u8> = BitVec::default();
 
-    for i in 0u64..(r_limit / 2) {
+    for i in 0u64..r_limit {
         roll_counts.insert(get_random_address(), i);
         production_stats.insert(
             get_random_address(),
@@ -98,8 +98,8 @@ fn get_random_pos_cycles_info(
                 block_failure_count: i,
             },
         );
-        rng_seed.push(rng.gen_range(0..2) == 1);
     }
+    rng_seed.push(rng.gen_range(0..2) == 1);
     (roll_counts, production_stats, rng_seed)
 }
 
@@ -109,7 +109,7 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 
     for i in 0u64..r_limit {
         let mut credits = PreHashMap::default();
-        for j in 0u64..(r_limit / 2) {
+        for j in 0u64..r_limit {
             credits.insert(get_random_address(), Amount::from_raw(j));
         }
         deferred_credits.0.insert(
@@ -126,7 +126,7 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 /// generates a random PoS final state
 fn get_random_pos_state(r_limit: u64, pos: PoSFinalState) -> PoSFinalState {
     let mut cycle_history = VecDeque::new();
-    for i in 0u64..r_limit {
+    for i in 0u64..1 {
         let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit);
         cycle_history.push_back(CycleInfo {
             cycle: i,
@@ -175,11 +175,11 @@ pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
     let final_ledger = create_final_ledger(Some(sorted_ledger), Default::default());
     let async_pool = create_async_pool(Default::default(), messages);
     let mut changes_history = VecDeque::new();
-    for i in 0u64..10 {
+    for i in 0u64..20 {
         for j in 0u8..2 {
             changes_history.push_back((
                 Slot {
-                    period: i + 2,
+                    period: i,
                     thread: j,
                 },
                 StateChanges {

@@ -380,7 +380,7 @@ pub async fn send_final_state_stream(
             || !pos_credits_data.is_empty()
             || !final_state_changes.is_empty()
         {
-            dbg!(&final_state_changes);
+            // dbg!(&final_state_changes);
             match tokio::time::timeout(
                 write_timeout,
                 server.send(BootstrapServerMessage::FinalStatePart {

@@ -80,6 +80,7 @@ async fn stream_final_state(
                         .set_deferred_credits_part(pos_credits_part.as_bytes())?;
                     for (changes_slot, changes) in final_state_changes.iter() {
                         dbg!("HEY ONE HERE");
+                        dbg!(&final_state_changes.len());
                         write_final_state
                             .ledger
                             .apply_changes(changes.ledger_changes.clone(), *changes_slot);
