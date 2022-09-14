@@ -245,7 +245,7 @@ impl PoSFinalState {
                 .map(|c| (c.cycle, c.complete))
                 .collect::<Vec<(u64, bool)>>()
         );
-        if cycle_completed && feed_selector == true {
+        if cycle_completed && feed_selector {
             self.feed_selector(cycle.checked_add(2).ok_or_else(|| {
                 PosError::OverflowError("cycle overflow when feeding selector".into())
             })?)
