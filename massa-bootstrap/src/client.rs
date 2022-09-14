@@ -79,19 +79,17 @@ async fn stream_final_state(
                         .pos_state
                         .set_deferred_credits_part(pos_credits_part.as_bytes())?;
                     for (changes_slot, changes) in final_state_changes.iter() {
-                        dbg!("HEY ONE HERE");
-                        dbg!(&final_state_changes.len());
                         write_final_state
                             .ledger
                             .apply_changes(changes.ledger_changes.clone(), *changes_slot);
                         write_final_state
                             .async_pool
                             .apply_changes_unchecked(&changes.async_pool_changes);
-                        write_final_state
-                            .pos_state
-                            .apply_changes(changes.roll_state_changes.clone(), *changes_slot, false)
-                            // TODO REMOVE THIS
-                            .unwrap();
+                        write_final_state.pos_state.apply_changes(
+                            changes.roll_state_changes.clone(),
+                            *changes_slot,
+                            false,
+                        )?
                     }
                     write_final_state.slot = slot;
                     if let BootstrapClientMessage::AskFinalStatePart {

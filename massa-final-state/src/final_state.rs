@@ -191,7 +191,6 @@ impl FinalState {
 
             // Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
             if last_pos_step_cursor == PoSInfoStreamingStep::Finished {
-                dbg!(slot);
                 slot_changes.roll_state_changes = changes.roll_state_changes.clone();
             }
             res_changes.push((*slot, slot_changes));

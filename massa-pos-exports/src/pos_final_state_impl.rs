@@ -163,7 +163,6 @@ impl PoSFinalState {
             .try_into()
             .unwrap();
 
-        dbg!(slot);
         // compute the current cycle from the given slot
         let cycle = slot.get_cycle(self.periods_per_cycle);
 
@@ -172,7 +171,7 @@ impl PoSFinalState {
         // pop_front from cycle_history until front() represents cycle C-4 or later
         // (not C-3 because we might need older endorsement draws on the limit between 2 cycles)
         if let Some(info) = self.cycle_history.back() {
-            dbg!(cycle, info.cycle, info.complete);
+            // dbg!(cycle, info.cycle, info.complete);
             if cycle == info.cycle && !info.complete {
                 // extend the last incomplete cycle
             } else if info.cycle.checked_add(1) == Some(cycle) && info.complete {
@@ -224,7 +223,6 @@ impl PoSFinalState {
             // check for completion
             current.complete = slot.is_last_of_cycle(self.periods_per_cycle, self.thread_count);
             // if the cycle just completed, check that it has the right number of seed bits
-            dbg!(current.rng_seed.len(), slots_per_cycle);
             if current.complete && current.rng_seed.len() != slots_per_cycle {
                 panic!("cycle completed with incorrect number of seed bits");
             }
@@ -255,50 +253,6 @@ impl PoSFinalState {
         } else {
             Ok(())
         }
-    }
-
-    /// Apply PoSChanges changes to the last cycle without performing checks
-    ///
-    /// IMPORTANT: this is only meant to be used by the bootstrap
-    pub fn apply_changes_unchecked(&mut self, changes: PoSChanges, slot: Slot) {
-        let slots_per_cycle: usize = self
-            .periods_per_cycle
-            .saturating_mul(self.thread_count as u64)
-            .try_into()
-            .unwrap();
-
-        let current = self
-            .cycle_history
-            .back_mut()
-            .expect("cycle history should not be empty at this state of the bootstrap");
-
-        // extend seed_bits with changes.seed_bits
-        current.rng_seed.extend(changes.seed_bits);
-
-        // extend roll counts
-        current.roll_counts.extend(changes.roll_changes);
-
-        // extend production stats
-        for (addr, stats) in changes.production_stats {
-            current
-                .production_stats
-                .entry(addr)
-                .and_modify(|cur| cur.extend(&stats))
-                .or_insert(stats);
-        }
-
-        // check for completion
-        current.complete = slot.is_last_of_cycle(self.periods_per_cycle, self.thread_count);
-        // if the cycle just completed, check that it has the right number of seed bits
-        if current.complete && current.rng_seed.len() != slots_per_cycle {
-            panic!("cycle completed with incorrect number of seed bits");
-        }
-
-        // extent deferred_credits with changes.deferred_credits
-        // remove zero-valued credits
-        self.deferred_credits
-            .nested_extend(changes.deferred_credits);
-        self.deferred_credits.remove_zeros();
     }
 
     /// Feeds the selector targeting a given draw cycle

@@ -287,7 +287,7 @@ pub async fn send_final_state_stream(
     loop {
         #[cfg(test)]
         {
-            dbg!("sleep");
+            // Necessary for test_bootstrap_server in tests/scenarios.rs
             tokio::time::sleep(Duration::from_millis(500)).await;
         }
         // Scope of the read in the final state
@@ -313,31 +313,25 @@ pub async fn send_final_state_stream(
 
             let (pool_data, new_last_async_pool_id) = final_state_read
                 .async_pool
-                .get_pool_part(old_last_async_id)
-                .unwrap();
+                .get_pool_part(old_last_async_id)?;
             async_pool_data = pool_data;
 
             let (cycle_data, new_pos_step_cursor) = final_state_read
                 .pos_state
-                .get_cycle_history_part(old_pos_step_cursor)
-                .unwrap();
+                .get_cycle_history_part(old_pos_step_cursor)?;
             pos_cycle_data = cycle_data;
 
             let (credits_data, new_last_credits_slot) = final_state_read
                 .pos_state
-                .get_deferred_credits_part(old_credits_slot)
-                .unwrap();
+                .get_deferred_credits_part(old_credits_slot)?;
             pos_credits_data = credits_data;
 
-            dbg!(old_slot, final_state_read.slot);
             if let Some(slot) = old_slot && slot != final_state_read.slot {
                 if slot > final_state_read.slot {
-                dbg!("STARFULAH");
                     return Err(BootstrapError::GeneralError(
                         "Bootstrap cursor set to future slot".to_string(),
                     ));
                 }
-                dbg!("CHANGES");
                 final_state_changes = final_state_read.get_state_changes_part(
                     slot,
                     old_key
@@ -352,7 +346,7 @@ pub async fn send_final_state_stream(
                         .transpose()?,
                     old_last_async_id,
                     new_pos_step_cursor,
-                ).unwrap();
+                )?;
             } else {
                 final_state_changes = Vec::new();
             }
@@ -380,7 +374,6 @@ pub async fn send_final_state_stream(
             || !pos_credits_data.is_empty()
             || !final_state_changes.is_empty()
         {
-            // dbg!(&final_state_changes);
             match tokio::time::timeout(
                 write_timeout,
                 server.send(BootstrapServerMessage::FinalStatePart {

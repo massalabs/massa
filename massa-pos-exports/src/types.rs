@@ -321,7 +321,6 @@ impl PoSFinalState {
             info.rng_seed.extend(cycle.3);
             info.production_stats.extend(stats_iter);
         } else {
-            dbg!("add", cycle.0);
             let opt_next_cycle = self.cycle_history.back().map(|info| info.cycle.saturating_add(1));
             if let Some(next_cycle) = opt_next_cycle && cycle.0 != next_cycle {
                 panic!("PoS received cycle ({}) should be equal to the next expected cycle ({})", cycle.0, next_cycle);
