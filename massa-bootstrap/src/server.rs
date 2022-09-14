@@ -285,6 +285,11 @@ pub async fn send_final_state_stream(
     let mut old_slot = slot;
 
     loop {
+        #[cfg(test)]
+        {
+            dbg!("tamer");
+            tokio::time::sleep(Duration::from_millis(500)).await;
+        }
         // Scope of the read in the final state
         let ledger_data;
         let async_pool_data;
@@ -347,7 +352,7 @@ pub async fn send_final_state_stream(
                         .transpose()?,
                     old_last_async_id,
                     new_pos_step_cursor,
-                )?;
+                ).unwrap();
             } else {
                 final_state_changes = Vec::new();
             }

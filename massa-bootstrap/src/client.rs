@@ -89,6 +89,7 @@ async fn stream_final_state(
                         write_final_state
                             .pos_state
                             .apply_changes(changes.roll_state_changes.clone(), *changes_slot, false)
+                            // TODO REMOVE THIS
                             .unwrap();
                     }
                     write_final_state.slot = slot;

@@ -176,16 +176,18 @@ pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
     let async_pool = create_async_pool(Default::default(), messages);
     let mut changes_history = VecDeque::new();
     for i in 0u64..10 {
-        changes_history.push_back((
-            Slot {
-                period: i,
-                thread: 0,
-            },
-            StateChanges {
-                roll_state_changes: get_random_pos_changes(r_limit),
-                ..Default::default()
-            },
-        ));
+        for j in 0u8..2 {
+            changes_history.push_back((
+                Slot {
+                    period: i + 2,
+                    thread: j,
+                },
+                StateChanges {
+                    roll_state_changes: get_random_pos_changes(r_limit),
+                    ..Default::default()
+                },
+            ));
+        }
     }
     create_final_state(
         Default::default(),

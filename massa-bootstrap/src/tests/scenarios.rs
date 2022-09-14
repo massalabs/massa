@@ -54,8 +54,8 @@ async fn test_bootstrap_server() {
         PoSFinalState::new(
             &"".to_string(),
             &rolls_path,
-            PERIODS_PER_CYCLE,
-            THREAD_COUNT,
+            2,
+            2,
             server_selector_controller.clone(),
         )
         .unwrap(),
@@ -81,8 +81,8 @@ async fn test_bootstrap_server() {
         PoSFinalState::new(
             &"".to_string(),
             &rolls_path,
-            PERIODS_PER_CYCLE,
-            THREAD_COUNT,
+            2,
+            2,
             client_selector_controller.clone(),
         )
         .unwrap(),
@@ -183,12 +183,8 @@ async fn test_bootstrap_server() {
                     break;
                 }
                 Err(std::sync::mpsc::TryRecvError::Empty) => {
-                    std::thread::sleep(Duration::from_millis(100));
-                    let next = final_state_clone
-                        .write()
-                        .slot
-                        .get_next_slot(PERIODS_PER_CYCLE as u8)
-                        .unwrap();
+                    std::thread::sleep(Duration::from_millis(500));
+                    let next = final_state_clone.write().slot.get_next_slot(2).unwrap();
                     final_state_clone.write().slot = next;
                 }
             }

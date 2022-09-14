@@ -133,6 +133,11 @@ impl FinalState {
     ) -> Result<Vec<(Slot, StateChanges)>, FinalStateError> {
         let position_slot = if !self.changes_history.is_empty() {
             // Safe because we checked that there is changes just above.
+            dbg!(
+                last_slot,
+                self.changes_history.len(),
+                &self.changes_history[0].0
+            );
             let index = last_slot
                 .slots_since(&self.changes_history[0].0, self.config.thread_count)
                 .map_err(|_| {
