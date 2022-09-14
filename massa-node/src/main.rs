@@ -182,7 +182,7 @@ async fn launch(
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_ledger_changes_count: MAX_LEDGER_CHANGES_COUNT,
         max_parameters_size: MAX_PARAMETERS_SIZE,
-        max_slot_count: SETTINGS.ledger.final_history_length as u32,
+        max_changes_slot_count: SETTINGS.ledger.final_history_length as u32,
     };
 
     // bootstrap

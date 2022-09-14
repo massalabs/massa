@@ -242,7 +242,7 @@ impl BootstrapServerMessageDeserializer {
         max_function_name_length: u16,
         max_parameters_size: u32,
         max_bootstrap_error_length: u32,
-        max_slot_changes: u32,
+        max_changes_slot_count: u32,
     ) -> Self {
         Self {
             message_id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
@@ -263,7 +263,7 @@ impl BootstrapServerMessageDeserializer {
             ),
             length_state_changes: U32VarIntDeserializer::new(
                 Included(0),
-                Included(max_slot_changes),
+                Included(max_changes_slot_count),
             ),
             bootstrapable_graph_deserializer: BootstrapableGraphDeserializer::new(
                 thread_count,
