@@ -131,14 +131,15 @@ impl FinalState {
         last_id_async_pool: Option<AsyncMessageId>,
         last_pos_step_cursor: PoSInfoStreamingStep,
     ) -> Result<Vec<(Slot, StateChanges)>, FinalStateError> {
-        let position_slot = if !self.changes_history.is_empty() {
+        let position_slot = if let Some((first_slot, _)) = self.changes_history.front() {
             // Safe because we checked that there is changes just above.
             let index = last_slot
-                .slots_since(&self.changes_history[0].0, self.config.thread_count)
+                .slots_since(first_slot, self.config.thread_count)
                 .map_err(|_| {
                     FinalStateError::LedgerError("Last slot is overflowing history.".to_string())
                 })?
                 .saturating_add(1);
+
             // Check if `last_slot` isn't in the future
             if self.changes_history.len() as u64 <= index {
                 return Err(FinalStateError::LedgerError(

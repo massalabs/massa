@@ -149,6 +149,7 @@ impl PoSFinalState {
                     }
                     index.saturating_add(1)
                 } else {
+                    // TODO this should be an error
                     // if an outdated cycle is provided start from the beginning
                     self.get_first_cycle_index()
                 }
