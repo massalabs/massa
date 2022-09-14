@@ -15,7 +15,7 @@ use crate::{
 };
 use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
 use massa_final_state::{test_exports::assert_eq_final_state, FinalState, StateChanges};
-use massa_models::{slot::Slot, version::Version};
+use massa_models::{address::Address, slot::Slot, version::Version};
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
 use massa_pos_exports::{
     test_exports::assert_eq_pos_selection, PoSChanges, PoSFinalState, SelectorConfig,
@@ -41,12 +41,23 @@ async fn test_bootstrap_server() {
     let (bootstrap_config, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
 
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
+    let genesis_address = Address::from_public_key(&KeyPair::generate().get_public_key());
     let (mut server_selector_manager, server_selector_controller) =
-        start_selector_worker(SelectorConfig::default())
-            .expect("could not start server selector controller");
+        start_selector_worker(SelectorConfig {
+            thread_count: 2,
+            periods_per_cycle: 2,
+            genesis_address,
+            ..Default::default()
+        })
+        .expect("could not start server selector controller");
     let (mut client_selector_manager, client_selector_controller) =
-        start_selector_worker(SelectorConfig::default())
-            .expect("could not start client selector controller");
+        start_selector_worker(SelectorConfig {
+            thread_count: 2,
+            periods_per_cycle: 2,
+            genesis_address,
+            ..Default::default()
+        })
+        .expect("could not start client selector controller");
 
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
