@@ -287,7 +287,7 @@ pub async fn send_final_state_stream(
     loop {
         #[cfg(test)]
         {
-            dbg!("tamer");
+            dbg!("sleep");
             tokio::time::sleep(Duration::from_millis(500)).await;
         }
         // Scope of the read in the final state

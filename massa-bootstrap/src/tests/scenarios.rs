@@ -7,19 +7,19 @@ use super::{
         wait_consensus_command, wait_network_command,
     },
 };
+use crate::tests::tools::get_random_pos_changes;
 use crate::BootstrapConfig;
 use crate::{
     get_state, start_bootstrap_server,
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
 };
 use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
-use massa_final_state::{test_exports::assert_eq_final_state, FinalState};
-use massa_models::{
-    config::{PERIODS_PER_CYCLE, THREAD_COUNT},
-    version::Version,
-};
+use massa_final_state::{test_exports::assert_eq_final_state, FinalState, StateChanges};
+use massa_models::{slot::Slot, version::Version};
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
-use massa_pos_exports::{test_exports::assert_eq_pos_selection, PoSFinalState, SelectorConfig};
+use massa_pos_exports::{
+    test_exports::assert_eq_pos_selection, PoSChanges, PoSFinalState, SelectorConfig,
+};
 use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -175,19 +175,24 @@ async fn test_bootstrap_server() {
     let (sent_peers, sent_graph) = tokio::join!(wait_peers(), wait_graph());
 
     // launch the modifier thread
-    let (tx, rx) = std::sync::mpsc::channel();
+    let list_changes: Arc<RwLock<Vec<(Slot, PoSChanges)>>> = Arc::new(RwLock::new(Vec::new()));
+    let list_changes_clone = list_changes.clone();
     std::thread::spawn(move || {
-        for _ in 0u64.. {
-            match rx.try_recv() {
-                Ok(_) | Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                    break;
-                }
-                Err(std::sync::mpsc::TryRecvError::Empty) => {
-                    std::thread::sleep(Duration::from_millis(500));
-                    let next = final_state_clone.write().slot.get_next_slot(2).unwrap();
-                    final_state_clone.write().slot = next;
-                }
-            }
+        for _ in 0u64..10 {
+            std::thread::sleep(Duration::from_millis(500));
+            let mut final_write = final_state_clone.write();
+            let next = final_write.slot.get_next_slot(2).unwrap();
+            dbg!(next);
+            final_write.slot = next;
+            let changes = StateChanges {
+                roll_state_changes: get_random_pos_changes(10),
+                ..Default::default()
+            };
+            final_write
+                .changes_history
+                .push_back((next, changes.clone()));
+            let mut list_changes_write = list_changes_clone.write();
+            list_changes_write.push((next, changes.roll_state_changes));
         }
     });
 
@@ -195,9 +200,6 @@ async fn test_bootstrap_server() {
     let bootstrap_res = get_state_h
         .await
         .expect("error while waiting for get_state to finish");
-
-    // stop the modifier thread
-    tx.send(()).unwrap();
 
     // wait for bridge
     bridge.await.expect("bridge join failed");
@@ -209,10 +211,15 @@ async fn test_bootstrap_server() {
         "mismatch between sent and received peers"
     );
 
-    // remove bootstrap safety cycle from final_state before comparisons
     {
         let mut final_state_write = final_state.write();
-        final_state_write.pos_state.cycle_history.pop_front();
+        let list_changes_read = list_changes.read().clone();
+        for change in list_changes_read.iter().skip(1) {
+            final_state_write
+                .pos_state
+                .apply_changes(change.1.clone(), change.0, false)
+                .unwrap();
+        }
     }
 
     // check final states

@@ -6,7 +6,7 @@ use bitvec::vec::BitVec;
 use massa_async_pool::test_exports::{create_async_pool, get_random_message};
 use massa_consensus_exports::commands::ConsensusCommand;
 use massa_final_state::test_exports::create_final_state;
-use massa_final_state::{ExecutedOps, FinalState, StateChanges};
+use massa_final_state::{ExecutedOps, FinalState};
 use massa_graph::export_active_block::ExportActiveBlockSerializer;
 use massa_graph::{export_active_block::ExportActiveBlock, BootstrapableGraph};
 use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
@@ -79,6 +79,7 @@ fn get_random_ledger_entry() -> LedgerEntry {
 /// generates random PoS cycles info
 fn get_random_pos_cycles_info(
     r_limit: u64,
+    opt_seed: bool,
 ) -> (
     BTreeMap<Address, u64>,
     PreHashMap<Address, ProductionStats>,
@@ -98,6 +99,9 @@ fn get_random_pos_cycles_info(
                 block_failure_count: i,
             },
         );
+    }
+    if opt_seed {
+        rng_seed.push(rng.gen_range(0..2) == 1);
     }
     rng_seed.push(rng.gen_range(0..2) == 1);
     (roll_counts, production_stats, rng_seed)
@@ -127,7 +131,7 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 fn get_random_pos_state(r_limit: u64, pos: PoSFinalState) -> PoSFinalState {
     let mut cycle_history = VecDeque::new();
     for i in 0u64..1 {
-        let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit);
+        let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit, true);
         cycle_history.push_back(CycleInfo {
             cycle: i,
             roll_counts,
@@ -145,9 +149,9 @@ fn get_random_pos_state(r_limit: u64, pos: PoSFinalState) -> PoSFinalState {
 }
 
 /// generates random PoS changes
-fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
+pub fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
     let deferred_credits = get_random_deferred_credits(r_limit);
-    let (roll_counts, production_stats, seed_bits) = get_random_pos_cycles_info(r_limit);
+    let (roll_counts, production_stats, seed_bits) = get_random_pos_cycles_info(r_limit, false);
     PoSChanges {
         seed_bits,
         roll_changes: roll_counts.into_iter().collect(),
@@ -174,29 +178,13 @@ pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
     let slot = Slot::new(0, 0);
     let final_ledger = create_final_ledger(Some(sorted_ledger), Default::default());
     let async_pool = create_async_pool(Default::default(), messages);
-    let mut changes_history = VecDeque::new();
-    for i in 0u64..20 {
-        for j in 0u8..2 {
-            changes_history.push_back((
-                Slot {
-                    period: i,
-                    thread: j,
-                },
-                StateChanges {
-                    roll_state_changes: get_random_pos_changes(r_limit),
-                    ..Default::default()
-                },
-            ));
-        }
-    }
+
     create_final_state(
         Default::default(),
         slot,
         Box::new(final_ledger),
         async_pool,
-        // do not use changes_history for now
-        // testing changes requires better thinking
-        changes_history,
+        VecDeque::new(),
         get_random_pos_state(r_limit, pos),
         ExecutedOps::default(),
     )

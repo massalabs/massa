@@ -163,6 +163,7 @@ impl PoSFinalState {
             .try_into()
             .unwrap();
 
+        dbg!(slot);
         // compute the current cycle from the given slot
         let cycle = slot.get_cycle(self.periods_per_cycle);
 
@@ -171,7 +172,7 @@ impl PoSFinalState {
         // pop_front from cycle_history until front() represents cycle C-4 or later
         // (not C-3 because we might need older endorsement draws on the limit between 2 cycles)
         if let Some(info) = self.cycle_history.back() {
-            dbg!(cycle, info.cycle);
+            dbg!(cycle, info.cycle, info.complete);
             if cycle == info.cycle && !info.complete {
                 // extend the last incomplete cycle
             } else if info.cycle.checked_add(1) == Some(cycle) && info.complete {

@@ -30,7 +30,7 @@ pub struct FinalState {
     pub executed_ops: ExecutedOps,
     /// history of recent final state changes, useful for streaming bootstrap
     /// `front = oldest`, `back = newest`
-    pub(crate) changes_history: VecDeque<(Slot, StateChanges)>,
+    pub changes_history: VecDeque<(Slot, StateChanges)>,
 }
 
 impl FinalState {
@@ -133,12 +133,12 @@ impl FinalState {
     ) -> Result<Vec<(Slot, StateChanges)>, FinalStateError> {
         let position_slot = if !self.changes_history.is_empty() {
             // Safe because we checked that there is changes just above.
-            dbg!(last_slot, self.changes_history.len(),);
             let index = last_slot
                 .slots_since(&self.changes_history[0].0, self.config.thread_count)
                 .map_err(|_| {
                     FinalStateError::LedgerError("Last slot is overflowing history.".to_string())
-                })?;
+                })?
+                .saturating_add(1);
             // Check if `last_slot` isn't in the future
             if self.changes_history.len() as u64 <= index {
                 return Err(FinalStateError::LedgerError(
@@ -190,9 +190,8 @@ impl FinalState {
             }
 
             // Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
-            dbg!("OUT");
             if last_pos_step_cursor == PoSInfoStreamingStep::Finished {
-                dbg!("IN");
+                dbg!(slot);
                 slot_changes.roll_state_changes = changes.roll_state_changes.clone();
             }
             res_changes.push((*slot, slot_changes));
