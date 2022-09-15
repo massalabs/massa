@@ -615,6 +615,7 @@ fn sc_datastore() {
     // match the events
     assert!(!events.is_empty(), "One event was expected");
     assert_eq!(events[0].data, "keys: 9,65,66");
+    assert_eq!(events[1].data, "has_key_1: true - has_key_2: false");
 
     // stop the execution controller
     manager.stop();
