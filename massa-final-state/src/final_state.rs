@@ -170,7 +170,6 @@ impl FinalState {
                         .collect(),
                 );
                 slot_changes.ledger_changes.0 = ledger_changes.0;
-                dbg!(slot_changes.ledger_changes.0.len());
             }
 
             // Get async pool changes that concern ids <= last_id_async_pool

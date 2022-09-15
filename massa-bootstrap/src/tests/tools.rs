@@ -4,6 +4,7 @@ use super::mock_establisher::Duplex;
 use crate::settings::BootstrapConfig;
 use bitvec::vec::BitVec;
 use massa_async_pool::test_exports::{create_async_pool, get_random_message};
+use massa_async_pool::{AsyncPoolChanges, Change};
 use massa_consensus_exports::commands::ConsensusCommand;
 use massa_final_state::test_exports::create_final_state;
 use massa_final_state::{ExecutedOps, FinalState};
@@ -38,7 +39,6 @@ use massa_signature::{KeyPair, PublicKey, Signature};
 use massa_time::MassaTime;
 use rand::Rng;
 use std::collections::{HashMap, VecDeque};
-use std::ops::Add;
 use std::str::FromStr;
 use std::{
     collections::BTreeMap,
@@ -175,6 +175,16 @@ pub fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
         production_stats,
         deferred_credits,
     }
+}
+
+pub fn get_random_async_pool_changes(r_limit: u64) -> AsyncPoolChanges {
+    let mut changes = AsyncPoolChanges::default();
+    for _ in 0..r_limit {
+        let mut message = get_random_message();
+        message.gas_price = Amount::from_str("1_000_000").unwrap();
+        changes.0.push(Change::Add(message.compute_id(), message));
+    }
+    changes
 }
 
 /// generates a random bootstrap state for the final state
