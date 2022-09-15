@@ -108,8 +108,6 @@ checksum = "8da52d66c7071e2e3fa2a1e5c6d088fec47b593032b254f5e980de8ea54454d6"
 [[package]]
 name = "as-ffi-bindings"
 version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82c7fe2580391708e70230111157d17423d62c510fe5ed1c3fc60f94a8065f12"
 dependencies = [
  "anyhow",
  "wasmer",
@@ -1612,7 +1610,6 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.6.9"
-source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.6.10#504acde47f2097affebeec16dab7aef5feecc42f"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -1620,6 +1617,8 @@ dependencies = [
  "cornetto",
  "lazy_static",
  "loupe",
+ "parking_lot",
+ "rand 0.8.5",
  "serde 1.0.144",
  "serde_json",
  "serial_test 0.8.0",
