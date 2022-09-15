@@ -90,9 +90,9 @@ impl Display for Endorsement {
 /// an endorsement, as sent in the network
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Endorsement {
-    /// slot of endorsed block
+    /// slot in which the endorsement can be included
     pub slot: Slot,
-    /// endorsement index inside the block
+    /// endorsement index inside the including block
     pub index: u32,
     /// hash of endorsed block
     pub endorsed_block: BlockId,
