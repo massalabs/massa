@@ -633,7 +633,7 @@ mod tests {
     use tempfile::TempDir;
 
     #[cfg(test)]
-    fn init_test_ledger(addr: Address) -> (LedgerDB, BTreeMap<Vec<u8>, Vec<u8>>) {
+    fn init_test_ledger(addr: Address) -> (LedgerDB, BTreeMap<Vec<u8>, Vec<u8>>, Hash) {
         // init data
         let mut data = BTreeMap::new();
         data.insert(b"1".to_vec(), b"a".to_vec());
@@ -655,12 +655,13 @@ mod tests {
         let mut db = LedgerDB::new(temp_dir.path().to_path_buf(), 32, 255, 1_000_000);
         let mut batch = WriteBatch::default();
         let mut ledger_hash = Hash::from_bytes(&[0; 32]);
+        let initial_hash = ledger_hash.clone();
         db.put_entry(&addr, entry, &mut batch, &mut ledger_hash);
         db.update_entry(&addr, entry_update, &mut batch, &mut ledger_hash);
         db.write_batch(batch);
 
         // return db and initial data
-        (db, data)
+        (db, data, initial_hash)
     }
 
     /// Functional test of LedgerDB
@@ -671,7 +672,7 @@ mod tests {
         let pub_b = KeyPair::generate().get_public_key();
         let a = Address::from_public_key(&pub_a);
         let b = Address::from_public_key(&pub_b);
-        let (db, data) = init_test_ledger(a);
+        let (db, data, initial_hash) = init_test_ledger(a);
         let amount_deserializer =
             AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
         // first assert
@@ -695,6 +696,7 @@ mod tests {
         db.write_batch(batch);
 
         // second assert
+        assert_eq!(initial_hash, db.get_ledger_hash());
         assert!(db.get_sub_entry(&a, LedgerSubEntry::ParBalance).is_none());
         assert!(db.get_entire_datastore(&a).is_empty());
     }
@@ -703,7 +705,7 @@ mod tests {
     fn test_ledger_parts() {
         let pub_a = KeyPair::generate().get_public_key();
         let a = Address::from_public_key(&pub_a);
-        let (db, _) = init_test_ledger(a);
+        let (db, _, _) = init_test_ledger(a);
         let res = db.get_ledger_part(&None).unwrap();
         db.set_ledger_part(&res.0[..]).unwrap();
     }
