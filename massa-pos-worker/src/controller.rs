@@ -9,11 +9,9 @@ use crate::{Command, DrawCachePtr};
 use massa_hash::Hash;
 use massa_models::{address::Address, api::IndexedSlot, slot::Slot};
 use massa_pos_exports::{PosError, PosResult, Selection, SelectorController, SelectorManager};
+use std::collections::{HashMap, VecDeque};
 use std::sync::mpsc::SyncSender;
 use tracing::{info, warn};
-
-#[cfg(feature = "testing")]
-use std::collections::{HashMap, VecDeque};
 
 #[derive(Clone)]
 /// implementation of the selector controller
@@ -157,7 +155,6 @@ impl SelectorController for SelectorControllerImpl {
     /// Get every [Selection]
     ///
     /// Only used in tests for post-bootstrap selection matching.
-    #[cfg(feature = "testing")]
     fn get_entire_selection(&self) -> VecDeque<(u64, HashMap<Slot, Selection>)> {
         let (_, lock) = &*self.cache;
         let cache_guard = lock.read();

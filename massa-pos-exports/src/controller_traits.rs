@@ -11,8 +11,6 @@ use massa_hash::Hash;
 use massa_models::address::Address;
 use massa_models::api::IndexedSlot;
 use massa_models::slot::Slot;
-
-#[cfg(feature = "testing")]
 use std::collections::{HashMap, VecDeque};
 
 /// interface that communicates with the selector worker thread
@@ -62,7 +60,6 @@ pub trait SelectorController: Send + Sync {
     /// Get every [Selection]
     ///
     /// Only used in tests for post-bootstrap selection matching.
-    #[cfg(feature = "testing")]
     fn get_entire_selection(&self) -> VecDeque<(u64, HashMap<Slot, Selection>)>;
 }
 
