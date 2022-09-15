@@ -224,10 +224,9 @@ impl OperationPool {
                         .execution_controller
                         .get_final_and_candidate_sequential_balances(&[op_info.creator_address])
                         .get(0)
-                        .map_or_else(
-                            || Amount::default(),
-                            |(_final, candidate)| candidate.unwrap_or_default(),
-                        );
+                        .map_or_else(Amount::default, |(_final, candidate)| {
+                            candidate.unwrap_or_default()
+                        });
                     sequential_balance_cache
                         .entry(op_info.creator_address)
                         .or_insert(candidate_balance)
