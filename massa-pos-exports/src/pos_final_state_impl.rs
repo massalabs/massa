@@ -238,7 +238,7 @@ impl PoSFinalState {
         // notify the PoSDrawer about the newly ready draw data
         // to draw cycle + 2, we use the rng data from cycle - 1 and the seed from cycle
         debug!(
-            "After slot {} PoS cycle list is {:#?}",
+            "After slot {} PoS cycle list is {:?}",
             slot,
             self.cycle_history
                 .iter()
