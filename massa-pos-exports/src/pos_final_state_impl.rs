@@ -13,6 +13,7 @@ use massa_models::{
     slot::{Slot, SlotDeserializer},
 };
 use massa_serialization::U64VarIntDeserializer;
+use tracing::debug;
 
 use crate::{
     CycleInfo, PoSChanges, PoSFinalState, PosError, PosResult, ProductionStats, SelectorController,
@@ -150,7 +151,12 @@ impl PoSFinalState {
     ///     set complete=true for cycle C in the history
     ///     compute the seed hash and notifies the PoSDrawer for cycle C+3
     ///
-    pub fn apply_changes(&mut self, changes: PoSChanges, slot: Slot) -> PosResult<()> {
+    pub fn apply_changes(
+        &mut self,
+        changes: PoSChanges,
+        slot: Slot,
+        feed_selector: bool,
+    ) -> PosResult<()> {
         let slots_per_cycle: usize = self
             .periods_per_cycle
             .saturating_mul(self.thread_count as u64)
@@ -231,7 +237,15 @@ impl PoSFinalState {
         // feed the cycle if it is complete
         // notify the PoSDrawer about the newly ready draw data
         // to draw cycle + 2, we use the rng data from cycle - 1 and the seed from cycle
-        if cycle_completed {
+        debug!(
+            "After slot {} PoS cycle list is {:?}",
+            slot,
+            self.cycle_history
+                .iter()
+                .map(|c| (c.cycle, c.complete))
+                .collect::<Vec<(u64, bool)>>()
+        );
+        if cycle_completed && feed_selector {
             self.feed_selector(cycle.checked_add(2).ok_or_else(|| {
                 PosError::OverflowError("cycle overflow when feeding selector".into())
             })?)

@@ -21,3 +21,4 @@ shell.nix
 docs/_build
 massa.iml
 ledger
+docs/venv

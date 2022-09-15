@@ -290,7 +290,7 @@ impl MessageDeserializer {
             ),
             peer_list_length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Excluded(max_advertise_length),
+                Included(max_advertise_length),
             ),
             operations_deserializer: OperationsDeserializer::new(
                 max_operations_per_block,
