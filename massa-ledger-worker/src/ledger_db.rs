@@ -34,7 +34,9 @@ const METADATA_CF: &str = "metadata";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
+const LEDGER_HASH_ERROR: &str = "critical: saved ledger hash is corrupted";
 const SLOT_KEY: &[u8; 1] = b"s";
+const LEDGER_HASH_KEY: &[u8; 1] = b"h";
 
 /// Ledger sub entry enum
 pub enum LedgerSubEntry {
@@ -136,12 +138,15 @@ impl LedgerDB {
     /// # Arguments
     pub fn load_initial_ledger(&mut self, initial_ledger: HashMap<Address, LedgerEntry>) {
         let mut batch = WriteBatch::default();
+        // TODO: think twice about this
+        let mut ledger_hash = Hash::from_bytes(&[0; 32]);
         for (address, entry) in initial_ledger {
-            self.put_entry(&address, entry, &mut batch);
+            self.put_entry(&address, entry, &mut batch, &mut ledger_hash);
         }
         self.set_metadata(
             Slot::new(0, self.thread_count.saturating_sub(1)),
             &mut batch,
+            &mut ledger_hash,
         );
         self.write_batch(batch);
     }
@@ -154,16 +159,22 @@ impl LedgerDB {
     pub fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
         // create the batch
         let mut batch = WriteBatch::default();
-        // TODO: get current ledger hash
-        // TODO: find a solution for the no hash case
-        // TODO: consider implemententing Hash functions instead of overloading XOR operator
+        // TODO: think twice about this
+        let handle = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        let mut ledger_hash = if let Some(ledger_hash_bytes) =
+            self.db.get_cf(handle, LEDGER_HASH_KEY).expect(CRUD_ERROR)
+        {
+            Hash::from_bytes(&ledger_hash_bytes.try_into().expect(LEDGER_HASH_ERROR))
+        } else {
+            Hash::from_bytes(&[0; 32])
+        };
         // for all incoming changes
         for (addr, change) in changes.0 {
             match change {
                 // the incoming change sets a ledger entry to a new one
                 SetUpdateOrDelete::Set(new_entry) => {
                     // inserts/overwrites the entry with the incoming one
-                    self.put_entry(&addr, new_entry, &mut batch);
+                    self.put_entry(&addr, new_entry, &mut batch, &mut ledger_hash);
                 }
                 // the incoming change updates an existing ledger entry
                 SetUpdateOrDelete::Update(entry_update) => {
@@ -179,7 +190,7 @@ impl LedgerDB {
             }
         }
         // set the associated slot in metadata
-        self.set_metadata(slot, &mut batch);
+        self.set_metadata(slot, &mut batch, &mut ledger_hash);
         // write the batch
         self.write_batch(batch);
     }
