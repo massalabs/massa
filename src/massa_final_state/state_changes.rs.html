@@ -263,7 +263,7 @@
     <span class="doccomment">/// asynchronous pool changes
     </span><span class="kw">pub </span>async_pool_changes: AsyncPoolChanges,
     <span class="doccomment">/// roll state changes
-    </span><span class="kw">pub </span>roll_state_changes: PoSChanges,
+    </span><span class="kw">pub </span>pos_changes: PoSChanges,
     <span class="doccomment">/// executed operations: maps the operation ID to its validity slot end - included
     </span><span class="kw">pub </span>executed_ops: ExecutedOps,
 }
@@ -273,7 +273,7 @@
 </span><span class="kw">pub struct </span>StateChangesSerializer {
     ledger_changes_serializer: LedgerChangesSerializer,
     async_pool_changes_serializer: AsyncPoolChangesSerializer,
-    roll_state_changes_serializer: PoSChangesSerializer,
+    pos_changes_serializer: PoSChangesSerializer,
     executed_ops_serializer: ExecutedOpsSerializer,
 }
 
@@ -283,7 +283,7 @@
         <span class="self">Self </span>{
             ledger_changes_serializer: LedgerChangesSerializer::new(),
             async_pool_changes_serializer: AsyncPoolChangesSerializer::new(),
-            roll_state_changes_serializer: PoSChangesSerializer::new(),
+            pos_changes_serializer: PoSChangesSerializer::new(),
             executed_ops_serializer: ExecutedOpsSerializer::new(),
         }
     }
@@ -339,8 +339,8 @@
             .serialize(<span class="kw-2">&amp;</span>value.ledger_changes, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.async_pool_changes_serializer
             .serialize(<span class="kw-2">&amp;</span>value.async_pool_changes, buffer)<span class="question-mark">?</span>;
-        <span class="self">self</span>.roll_state_changes_serializer
-            .serialize(<span class="kw-2">&amp;</span>value.roll_state_changes, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.pos_changes_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.pos_changes, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.executed_ops_serializer
             .serialize(<span class="kw-2">&amp;</span>value.executed_ops, buffer)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
@@ -351,7 +351,7 @@
 </span><span class="kw">pub struct </span>StateChangesDeserializer {
     ledger_changes_deserializer: LedgerChangesDeserializer,
     async_pool_changes_deserializer: AsyncPoolChangesDeserializer,
-    roll_state_changes_deserializer: PoSChangesDeserializer,
+    pos_changes_deserializer: PoSChangesDeserializer,
     executed_ops_deserializer: ExecutedOpsDeserializer,
 }
 
@@ -378,7 +378,7 @@
                 max_async_pool_changes,
                 max_data_async_message,
             ),
-            roll_state_changes_deserializer: PoSChangesDeserializer::new(thread_count),
+            pos_changes_deserializer: PoSChangesDeserializer::new(thread_count),
             executed_ops_deserializer: ExecutedOpsDeserializer::new(thread_count),
         }
     }
@@ -447,7 +447,7 @@
                     <span class="self">self</span>.async_pool_changes_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed roll_state_changes deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.roll_state_changes_deserializer.deserialize(input)
+                    <span class="self">self</span>.pos_changes_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed executed_ops deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.executed_ops_deserializer.deserialize(input)
@@ -458,7 +458,7 @@
             |(ledger_changes, async_pool_changes, roll_state_changes, executed_ops)| StateChanges {
                 ledger_changes,
                 async_pool_changes,
-                roll_state_changes,
+                pos_changes: roll_state_changes,
                 executed_ops,
             },
         )
@@ -472,9 +472,9 @@
         <span class="kw">use </span>massa_ledger_exports::Applicable;
         <span class="self">self</span>.ledger_changes.apply(changes.ledger_changes);
         <span class="self">self</span>.async_pool_changes.extend(changes.async_pool_changes);
-        <span class="self">self</span>.roll_state_changes.extend(changes.roll_state_changes);
+        <span class="self">self</span>.pos_changes.extend(changes.pos_changes);
         <span class="self">self</span>.executed_ops.extend(changes.executed_ops);
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (fa6ee9375 2022-09-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>

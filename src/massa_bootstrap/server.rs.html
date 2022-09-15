@@ -553,9 +553,6 @@
 <span id="553">553</span>
 <span id="554">554</span>
 <span id="555">555</span>
-<span id="556">556</span>
-<span id="557">557</span>
-<span id="558">558</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map, HashMap},
     net::{IpAddr, SocketAddr},
@@ -567,12 +564,13 @@
 <span class="kw">use </span>futures::StreamExt;
 <span class="kw">use </span>massa_async_pool::AsyncMessageId;
 <span class="kw">use </span>massa_consensus_exports::ConsensusCommandSender;
-<span class="kw">use </span>massa_final_state::{FinalState, StateChanges};
+<span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_graph::BootstrapableGraph;
 <span class="kw">use </span>massa_ledger_exports::get_address_from_key;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{slot::Slot, version::Version};
 <span class="kw">use </span>massa_network_exports::{BootstrapPeers, NetworkCommandSender};
+<span class="kw">use </span>massa_pos_exports::PoSInfoStreamingStep;
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>parking_lot::RwLock;
@@ -831,17 +829,22 @@
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
     slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
     last_async_message_id: <span class="prelude-ty">Option</span>&lt;AsyncMessageId&gt;,
-    last_cycle: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+    last_pos_step_cursor: PoSInfoStreamingStep,
     last_credits_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
     write_timeout: Duration,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>old_key = last_key;
     <span class="kw">let </span><span class="kw-2">mut </span>old_last_async_id = last_async_message_id;
-    <span class="kw">let </span><span class="kw-2">mut </span>old_cycle = last_cycle;
+    <span class="kw">let </span><span class="kw-2">mut </span>old_pos_step_cursor = last_pos_step_cursor;
     <span class="kw">let </span><span class="kw-2">mut </span>old_credits_slot = last_credits_slot;
     <span class="kw">let </span><span class="kw-2">mut </span>old_slot = slot;
 
     <span class="kw">loop </span>{
+        <span class="attribute">#[cfg(test)]
+        </span>{
+            <span class="comment">// Necessary for test_bootstrap_server in tests/scenarios.rs
+            </span>tokio::time::sleep(Duration::from_millis(<span class="number">500</span>)).<span class="kw">await</span>;
+        }
         <span class="comment">// Scope of the read in the final state
         </span><span class="kw">let </span>ledger_data;
         <span class="kw">let </span>async_pool_data;
@@ -868,9 +871,9 @@
                 .get_pool_part(old_last_async_id)<span class="question-mark">?</span>;
             async_pool_data = pool_data;
 
-            <span class="kw">let </span>(cycle_data, new_last_cycle, cycle_completion) = final_state_read
+            <span class="kw">let </span>(cycle_data, new_pos_step_cursor) = final_state_read
                 .pos_state
-                .get_cycle_history_part(old_cycle)<span class="question-mark">?</span>;
+                .get_cycle_history_part(old_pos_step_cursor)<span class="question-mark">?</span>;
             pos_cycle_data = cycle_data;
 
             <span class="kw">let </span>(credits_data, new_last_credits_slot) = final_state_read
@@ -879,6 +882,11 @@
             pos_credits_data = credits_data;
 
             <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = old_slot &amp;&amp; slot != final_state_read.slot {
+                <span class="kw">if </span>slot &gt; final_state_read.slot {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
+                        <span class="string">&quot;Bootstrap cursor set to future slot&quot;</span>.to_string(),
+                    ));
+                }
                 final_state_changes = final_state_read.get_state_changes_part(
                     slot,
                     old_key
@@ -892,10 +900,10 @@
                         })
                         .transpose()<span class="question-mark">?</span>,
                     old_last_async_id,
-                    cycle_completion,
-                );
+                    new_pos_step_cursor,
+                )<span class="question-mark">?</span>;
             } <span class="kw">else </span>{
-                final_state_changes = <span class="prelude-val">Ok</span>(StateChanges::default());
+                final_state_changes = Vec::new();
             }
 
             <span class="comment">// Assign value for next turn
@@ -905,8 +913,8 @@
             <span class="kw">if </span>new_last_async_pool_id.is_some() || !async_pool_data.is_empty() {
                 old_last_async_id = new_last_async_pool_id;
             }
-            <span class="kw">if </span>new_last_cycle.is_some() || !pos_cycle_data.is_empty() {
-                old_cycle = new_last_cycle;
+            <span class="kw">if </span>!pos_cycle_data.is_empty() {
+                old_pos_step_cursor = new_pos_step_cursor;
             }
             <span class="kw">if </span>new_last_credits_slot.is_some() || !pos_credits_data.is_empty() {
                 old_credits_slot = new_last_credits_slot;
@@ -919,46 +927,29 @@
             || !async_pool_data.is_empty()
             || !pos_cycle_data.is_empty()
             || !pos_credits_data.is_empty()
+            || !final_state_changes.is_empty()
         {
-            <span class="kw">if let </span><span class="prelude-val">Ok</span>(final_state_changes) = final_state_changes {
-                <span class="kw">match </span>tokio::time::timeout(
-                    write_timeout,
-                    server.send(BootstrapServerMessage::FinalStatePart {
-                        ledger_data,
-                        slot: current_slot,
-                        async_pool_part: async_pool_data,
-                        pos_cycle_part: pos_cycle_data,
-                        pos_credits_part: pos_credits_data,
-                        final_state_changes,
-                    }),
+            <span class="kw">match </span>tokio::time::timeout(
+                write_timeout,
+                server.send(BootstrapServerMessage::FinalStatePart {
+                    ledger_data,
+                    slot: current_slot,
+                    async_pool_part: async_pool_data,
+                    pos_cycle_part: pos_cycle_data,
+                    pos_credits_part: pos_credits_data,
+                    final_state_changes,
+                }),
+            )
+            .<span class="kw">await
+            </span>{
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    <span class="string">&quot;bootstrap ask ledger part send timed out&quot;</span>,
                 )
-                .<span class="kw">await
-                </span>{
-                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(
-                        std::io::ErrorKind::TimedOut,
-                        <span class="string">&quot;bootstrap ask ledger part send timed out&quot;</span>,
-                    )
-                    .into()),
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="prelude-val">Err</span>(e),
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(()),
-                }<span class="question-mark">?</span>;
-            } <span class="kw">else </span>{
-                <span class="kw">match </span>tokio::time::timeout(
-                    write_timeout,
-                    server.send(BootstrapServerMessage::SlotTooOld),
-                )
-                .<span class="kw">await
-                </span>{
-                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(
-                        std::io::ErrorKind::TimedOut,
-                        <span class="string">&quot;bootstrap ask ledger part send timed out&quot;</span>,
-                    )
-                    .into()),
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="prelude-val">Err</span>(e),
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(()),
-                }<span class="question-mark">?</span>;
-                <span class="kw">break</span>;
-            }
+                .into()),
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="prelude-val">Err</span>(e),
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(()),
+            }<span class="question-mark">?</span>;
         } <span class="kw">else </span>{
             <span class="comment">// There is no ledger data nor async pool data.
             </span><span class="kw">match </span>tokio::time::timeout(
@@ -1079,7 +1070,10 @@
                         final_state.clone(),
                         slot,
                         last_async_message_id,
-                        last_cycle,
+                        <span class="kw">match </span>last_cycle {
+                            <span class="prelude-val">Some</span>(cycle) =&gt; PoSInfoStreamingStep::Ongoing(cycle),
+                            <span class="prelude-val">None </span>=&gt; PoSInfoStreamingStep::Started,
+                        },
                         last_credits_slot,
                         write_timeout,
                     )
@@ -1115,4 +1109,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (fa6ee9375 2022-09-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>

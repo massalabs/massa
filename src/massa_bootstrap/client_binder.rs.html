@@ -226,6 +226,10 @@
 <span id="226">226</span>
 <span id="227">227</span>
 <span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
@@ -269,6 +273,7 @@
     max_function_name_length: u16,
     max_parameters_size: u32,
     max_ledger_changes_count: u64,
+    max_changes_slot_count: u32,
 }
 
 <span class="kw">impl </span>BootstrapClientBinder {
@@ -299,6 +304,7 @@
         max_function_name_length: u16,
         max_parameters_size: u32,
         max_ledger_changes_count: u64,
+        max_changes_slot_count: u32,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapClientBinder {
@@ -324,6 +330,7 @@
             max_function_name_length,
             max_parameters_size,
             max_ledger_changes_count,
+            max_changes_slot_count,
         }
     }
 }
@@ -383,6 +390,7 @@
             <span class="self">self</span>.max_function_name_length,
             <span class="self">self</span>.max_parameters_size,
             <span class="self">self</span>.max_bootstrap_error_length,
+            <span class="self">self</span>.max_changes_slot_count,
         );
         <span class="kw">let </span>message = {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(prev_message) = <span class="self">self</span>.prev_message {
@@ -455,4 +463,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (fa6ee9375 2022-09-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>

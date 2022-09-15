@@ -477,10 +477,6 @@
 <span id="477">477</span>
 <span id="478">478</span>
 <span id="479">479</span>
-<span id="480">480</span>
-<span id="481">481</span>
-<span id="482">482</span>
-<span id="483">483</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
@@ -737,7 +733,7 @@
             <span class="kw">for </span>hist_item <span class="kw">in </span>hist.<span class="number">0</span>.iter().rev() {
                 <span class="kw">for </span>(slot, addr_amount) <span class="kw">in </span>hist_item
                     .state_changes
-                    .roll_state_changes
+                    .pos_changes
                     .deferred_credits
                     .<span class="number">0
                     </span>.range(min_slot..)
@@ -811,7 +807,7 @@
                 <span class="comment">// accumulate active stats
                 </span><span class="kw">if let </span><span class="prelude-val">Some</span>(stats) = hist_elt
                     .state_changes
-                    .roll_state_changes
+                    .pos_changes
                     .production_stats
                     .get(address)
                 {
@@ -882,11 +878,7 @@
             underflow = loc_underflow;
             overflow = loc_overflow;
             <span class="kw">for </span>idx <span class="kw">in </span>range {
-                <span class="kw">for </span>(addr, stats) <span class="kw">in </span><span class="kw-2">&amp;</span>hist.<span class="number">0</span>[idx]
-                    .state_changes
-                    .roll_state_changes
-                    .production_stats
-                {
+                <span class="kw">for </span>(addr, stats) <span class="kw">in </span><span class="kw-2">&amp;</span>hist.<span class="number">0</span>[idx].state_changes.pos_changes.production_stats {
                     accumulated_stats
                         .entry(<span class="kw-2">*</span>addr)
                         .and_modify(|cur| cur.extend(stats))
@@ -965,4 +957,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (fa6ee9375 2022-09-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>

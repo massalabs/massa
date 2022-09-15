@@ -262,20 +262,6 @@
 <span id="262">262</span>
 <span id="263">263</span>
 <span id="264">264</span>
-<span id="265">265</span>
-<span id="266">266</span>
-<span id="267">267</span>
-<span id="268">268</span>
-<span id="269">269</span>
-<span id="270">270</span>
-<span id="271">271</span>
-<span id="272">272</span>
-<span id="273">273</span>
-<span id="274">274</span>
-<span id="275">275</span>
-<span id="276">276</span>
-<span id="277">277</span>
-<span id="278">278</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -289,7 +275,7 @@
 <span class="kw">use </span>massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 <span class="kw">use </span>massa_ledger_exports::{LedgerChanges, LedgerController};
 <span class="kw">use </span>massa_models::{address::Address, slot::Slot};
-<span class="kw">use </span>massa_pos_exports::{PoSFinalState, SelectorController};
+<span class="kw">use </span>massa_pos_exports::{PoSFinalState, PoSInfoStreamingStep, SelectorController};
 <span class="kw">use </span>std::collections::VecDeque;
 
 <span class="doccomment">/// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
@@ -308,7 +294,7 @@
     </span><span class="kw">pub </span>executed_ops: ExecutedOps,
     <span class="doccomment">/// history of recent final state changes, useful for streaming bootstrap
     /// `front = oldest`, `back = newest`
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) changes_history: VecDeque&lt;(Slot, StateChanges)&gt;,
+    </span><span class="kw">pub </span>changes_history: VecDeque&lt;(Slot, StateChanges)&gt;,
 }
 
 <span class="kw">impl </span>FinalState {
@@ -382,7 +368,7 @@
         <span class="self">self</span>.async_pool
             .apply_changes_unchecked(<span class="kw-2">&amp;</span>changes.async_pool_changes);
         <span class="self">self</span>.pos_state
-            .apply_changes(changes.roll_state_changes.clone(), <span class="self">self</span>.slot)
+            .apply_changes(changes.pos_changes.clone(), <span class="self">self</span>.slot, <span class="bool-val">true</span>)
             .expect(<span class="string">&quot;could not settle slot in final state PoS&quot;</span>); <span class="comment">//TODO do not panic here: it might just mean that the lookback cycle is not available
         </span><span class="self">self</span>.executed_ops.extend(changes.executed_ops.clone());
         <span class="self">self</span>.executed_ops.prune(<span class="self">self</span>.slot);
@@ -407,15 +393,17 @@
         last_slot: Slot,
         last_address: <span class="prelude-ty">Option</span>&lt;Address&gt;,
         last_id_async_pool: <span class="prelude-ty">Option</span>&lt;AsyncMessageId&gt;,
-        pos_cycle_completion: <span class="prelude-ty">Option</span>&lt;bool&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;StateChanges, FinalStateError&gt; {
-        <span class="kw">let </span>pos_slot = <span class="kw">if </span>!<span class="self">self</span>.changes_history.is_empty() {
+        last_pos_step_cursor: PoSInfoStreamingStep,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(Slot, StateChanges)&gt;, FinalStateError&gt; {
+        <span class="kw">let </span>position_slot = <span class="kw">if let </span><span class="prelude-val">Some</span>((first_slot, <span class="kw">_</span>)) = <span class="self">self</span>.changes_history.front() {
             <span class="comment">// Safe because we checked that there is changes just above.
             </span><span class="kw">let </span>index = last_slot
-                .slots_since(<span class="kw-2">&amp;</span><span class="self">self</span>.changes_history[<span class="number">0</span>].<span class="number">0</span>, <span class="self">self</span>.config.thread_count)
+                .slots_since(first_slot, <span class="self">self</span>.config.thread_count)
                 .map_err(|<span class="kw">_</span>| {
                     FinalStateError::LedgerError(<span class="string">&quot;Last slot is overflowing history.&quot;</span>.to_string())
-                })<span class="question-mark">?</span>;
+                })<span class="question-mark">?
+                </span>.saturating_add(<span class="number">1</span>);
+
             <span class="comment">// Check if `last_slot` isn&#39;t in the future
             </span><span class="kw">if </span><span class="self">self</span>.changes_history.len() <span class="kw">as </span>u64 &lt;= index {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(FinalStateError::LedgerError(
@@ -424,10 +412,11 @@
             }
             index
         } <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(StateChanges::default());
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(Vec::new());
         };
-        <span class="kw">let </span><span class="kw-2">mut </span>res_changes: StateChanges = StateChanges::default();
-        <span class="kw">for </span>(<span class="kw">_</span>, changes) <span class="kw">in </span><span class="self">self</span>.changes_history.range((pos_slot <span class="kw">as </span>usize)..) {
+        <span class="kw">let </span><span class="kw-2">mut </span>res_changes: Vec&lt;(Slot, StateChanges)&gt; = Vec::new();
+        <span class="kw">for </span>(slot, changes) <span class="kw">in </span><span class="self">self</span>.changes_history.range((position_slot <span class="kw">as </span>usize)..) {
+            <span class="kw">let </span><span class="kw-2">mut </span>slot_changes = StateChanges::default();
             <span class="comment">// Get ledger change that concern address &lt;= last_address.
             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = last_address {
                 <span class="kw">let </span>ledger_changes: LedgerChanges = LedgerChanges(
@@ -444,7 +433,7 @@
                         })
                         .collect(),
                 );
-                res_changes.ledger_changes.<span class="number">0</span>.extend(ledger_changes.<span class="number">0</span>);
+                slot_changes.ledger_changes.<span class="number">0 </span>= ledger_changes.<span class="number">0</span>;
             }
 
             <span class="comment">// Get async pool changes that concern ids &lt;= last_id_async_pool
@@ -462,31 +451,14 @@
                         })
                         .collect(),
                 );
-                res_changes
-                    .async_pool_changes
-                    .<span class="number">0
-                    </span>.extend(async_pool_changes.<span class="number">0</span>);
+                slot_changes.async_pool_changes = async_pool_changes;
             }
 
             <span class="comment">// Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
-            </span><span class="kw">if </span>pos_cycle_completion == <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) {
-                res_changes
-                    .roll_state_changes
-                    .deferred_credits
-                    .nested_extend(changes.roll_state_changes.deferred_credits.clone());
-                res_changes
-                    .roll_state_changes
-                    .production_stats
-                    .extend(changes.roll_state_changes.production_stats.clone());
-                res_changes
-                    .roll_state_changes
-                    .roll_changes
-                    .extend(changes.roll_state_changes.roll_changes.clone());
-                res_changes
-                    .roll_state_changes
-                    .seed_bits
-                    .extend(changes.roll_state_changes.seed_bits.clone());
+            </span><span class="kw">if </span>last_pos_step_cursor == PoSInfoStreamingStep::Finished {
+                slot_changes.pos_changes = changes.pos_changes.clone();
             }
+            res_changes.push((<span class="kw-2">*</span>slot, slot_changes));
         }
         <span class="prelude-val">Ok</span>(res_changes)
     }
@@ -555,4 +527,4 @@
     </span>}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (fa6ee9375 2022-09-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>

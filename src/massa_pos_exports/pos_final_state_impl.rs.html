@@ -355,6 +355,11 @@
 <span id="355">355</span>
 <span id="356">356</span>
 <span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::BTreeMap,
     ops::Bound::{Excluded, Included},
@@ -508,7 +513,12 @@
     ///     set complete=true for cycle C in the history
     ///     compute the seed hash and notifies the PoSDrawer for cycle C+3
     ///
-    </span><span class="kw">pub fn </span>apply_changes(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: PoSChanges, slot: Slot) -&gt; PosResult&lt;()&gt; {
+    </span><span class="kw">pub fn </span>apply_changes(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        changes: PoSChanges,
+        slot: Slot,
+        feed_selector: bool,
+    ) -&gt; PosResult&lt;()&gt; {
         <span class="kw">let </span>slots_per_cycle: usize = <span class="self">self
             </span>.periods_per_cycle
             .saturating_mul(<span class="self">self</span>.thread_count <span class="kw">as </span>u64)
@@ -590,14 +600,14 @@
         // notify the PoSDrawer about the newly ready draw data
         // to draw cycle + 2, we use the rng data from cycle - 1 and the seed from cycle
         </span><span class="macro">debug!</span>(
-            <span class="string">&quot;After slot {} PoS cycle list is {:#?}&quot;</span>,
+            <span class="string">&quot;After slot {} PoS cycle list is {:?}&quot;</span>,
             slot,
             <span class="self">self</span>.cycle_history
                 .iter()
                 .map(|c| (c.cycle, c.complete))
                 .collect::&lt;Vec&lt;(u64, bool)&gt;&gt;()
         );
-        <span class="kw">if </span>cycle_completed {
+        <span class="kw">if </span>cycle_completed &amp;&amp; feed_selector {
             <span class="self">self</span>.feed_selector(cycle.checked_add(<span class="number">2</span>).ok_or_else(|| {
                 PosError::OverflowError(<span class="string">&quot;cycle overflow when feeding selector&quot;</span>.into())
             })<span class="question-mark">?</span>)
@@ -713,4 +723,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pos_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (fa6ee9375 2022-09-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pos_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>

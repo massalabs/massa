@@ -541,8 +541,8 @@
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(from_addr) = from_addr {
             <span class="kw">let </span>new_balance = <span class="self">self
                 </span>.get_sequential_balance(<span class="kw-2">&amp;</span>from_addr)
-                .ok_or_else(|| ExecutionError::RuntimeError(<span class="string">&quot;source address not found&quot;</span>.into()))<span class="question-mark">?
-                </span>.checked_sub(amount)
+                .unwrap_or_default()
+                .checked_sub(amount)
                 .ok_or_else(|| {
                     ExecutionError::RuntimeError(<span class="string">&quot;insufficient from_addr balance&quot;</span>.into())
                 })<span class="question-mark">?</span>;
@@ -589,8 +589,8 @@
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(from_addr) = from_addr {
             <span class="kw">let </span>new_balance = <span class="self">self
                 </span>.get_parallel_balance(<span class="kw-2">&amp;</span>from_addr)
-                .ok_or_else(|| ExecutionError::RuntimeError(<span class="string">&quot;source address not found&quot;</span>.into()))<span class="question-mark">?
-                </span>.checked_sub(amount)
+                .unwrap_or_default()
+                .checked_sub(amount)
                 .ok_or_else(|| {
                     ExecutionError::RuntimeError(<span class="string">&quot;insufficient from_addr balance&quot;</span>.into())
                 })<span class="question-mark">?</span>;
@@ -783,4 +783,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (fa6ee9375 2022-09-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>

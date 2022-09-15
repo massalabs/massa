@@ -882,7 +882,7 @@
     </span><span class="kw">pub </span>executed_ops: ExecutedOps,
 
     <span class="doccomment">/// speculative roll state changes caused so far in the context
-    </span><span class="kw">pub </span>roll_state_changes: PoSChanges,
+    </span><span class="kw">pub </span>pos_changes: PoSChanges,
 
     <span class="doccomment">/// counter of newly created addresses so far at this slot during this execution
     </span><span class="kw">pub </span>created_addr_index: u64,
@@ -1012,7 +1012,7 @@
         ExecutionContextSnapshot {
             ledger_changes: <span class="self">self</span>.speculative_ledger.get_snapshot(),
             async_pool_changes: <span class="self">self</span>.speculative_async_pool.get_snapshot(),
-            roll_state_changes: <span class="self">self</span>.speculative_roll_state.get_snapshot(),
+            pos_changes: <span class="self">self</span>.speculative_roll_state.get_snapshot(),
             executed_ops: <span class="self">self</span>.speculative_executed_ops.get_snapshot(),
             created_addr_index: <span class="self">self</span>.created_addr_index,
             created_event_index: <span class="self">self</span>.created_event_index,
@@ -1047,7 +1047,7 @@
         <span class="self">self</span>.speculative_async_pool
             .reset_to_snapshot(snapshot.async_pool_changes);
         <span class="self">self</span>.speculative_roll_state
-            .reset_to_snapshot(snapshot.roll_state_changes);
+            .reset_to_snapshot(snapshot.pos_changes);
         <span class="self">self</span>.speculative_executed_ops
             .reset_to_snapshot(snapshot.executed_ops);
         <span class="self">self</span>.created_addr_index = snapshot.created_addr_index;
@@ -1560,7 +1560,7 @@
         </span><span class="kw">let </span>state_changes = StateChanges {
             ledger_changes: <span class="self">self</span>.speculative_ledger.take(),
             async_pool_changes: <span class="self">self</span>.speculative_async_pool.take(),
-            roll_state_changes: <span class="self">self</span>.speculative_roll_state.take(),
+            pos_changes: <span class="self">self</span>.speculative_roll_state.take(),
             executed_ops: <span class="self">self</span>.speculative_executed_ops.take(),
         };
         ExecutionOutput {
@@ -1669,4 +1669,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (fa6ee9375 2022-09-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>

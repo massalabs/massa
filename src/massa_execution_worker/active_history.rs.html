@@ -425,7 +425,7 @@
         <span class="self">self</span>.<span class="number">0</span>.iter().rev().find_map(|output| {
             output
                 .state_changes
-                .roll_state_changes
+                .pos_changes
                 .roll_changes
                 .get(addr)
                 .cloned()
@@ -448,7 +448,7 @@
             .flat_map(|output| {
                 output
                     .state_changes
-                    .roll_state_changes
+                    .pos_changes
                     .deferred_credits
                     .<span class="number">0
                     </span>.range(slot..)
@@ -467,7 +467,7 @@
             .filter_map(|output| {
                 output
                     .state_changes
-                    .roll_state_changes
+                    .pos_changes
                     .deferred_credits
                     .<span class="number">0
                     </span>.get(slot)
@@ -559,4 +559,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (fa6ee9375 2022-09-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>

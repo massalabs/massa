@@ -463,6 +463,9 @@
 <span id="463">463</span>
 <span id="464">464</span>
 <span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{net::SocketAddr, sync::Arc, time::Duration};
 
 <span class="kw">use </span>massa_final_state::FinalState;
@@ -543,17 +546,19 @@
                     <span class="kw">let </span>last_credits_slot = write_final_state
                         .pos_state
                         .set_deferred_credits_part(pos_credits_part.as_bytes())<span class="question-mark">?</span>;
-                    write_final_state
-                        .ledger
-                        .apply_changes(final_state_changes.ledger_changes.clone(), slot);
-                    write_final_state
-                        .async_pool
-                        .apply_changes_unchecked(<span class="kw-2">&amp;</span>final_state_changes.async_pool_changes);
-                    <span class="kw">if </span>!final_state_changes.roll_state_changes.is_empty() {
+                    <span class="kw">for </span>(changes_slot, changes) <span class="kw">in </span>final_state_changes.iter() {
                         write_final_state
-                            .pos_state
-                            .apply_changes(final_state_changes.roll_state_changes, slot)<span class="question-mark">?</span>;
-                    }
+                            .ledger
+                            .apply_changes(changes.ledger_changes.clone(), <span class="kw-2">*</span>changes_slot);
+                        write_final_state
+                            .async_pool
+                            .apply_changes_unchecked(<span class="kw-2">&amp;</span>changes.async_pool_changes);
+                        write_final_state.pos_state.apply_changes(
+                            changes.pos_changes.clone(),
+                            <span class="kw-2">*</span>changes_slot,
+                            <span class="bool-val">false</span>,
+                        )<span class="question-mark">?
+                    </span>}
                     write_final_state.slot = slot;
                     <span class="kw">if let </span>BootstrapClientMessage::AskFinalStatePart {
                         last_key: old_key,
@@ -561,7 +566,7 @@
                         ..
                     } = <span class="kw-2">&amp;</span>next_bootstrap_message
                     {
-                        <span class="macro">debug!</span>(<span class="string">&quot;Received ledger batch from {:#?} to {:#?}, an async pool batch from {:#?} to {:#?} a batch of ledger changes of size {:#?} and a batch of async pool changes of size {:#?}. for slot: {:#?}&quot;</span>, old_key.clone().map(|key| get_address_from_key(<span class="kw-2">&amp;</span>key)), last_key.clone().map(|key| get_address_from_key(<span class="kw-2">&amp;</span>key)), old_message_id, last_last_async_id, final_state_changes.ledger_changes.<span class="number">0</span>.len(), final_state_changes.async_pool_changes.<span class="number">0</span>.len(), slot);
+                        <span class="macro">debug!</span>(<span class="string">&quot;Received ledger batch from {:#?} to {:#?}, an async pool batch from {:#?} to {:#?} a batch of ledger changes of size {:#?} and a batch of async pool changes of size {:#?}. for slot: {:#?}&quot;</span>, old_key.clone().map(|key| get_address_from_key(<span class="kw-2">&amp;</span>key)), last_key.clone().map(|key| get_address_from_key(<span class="kw-2">&amp;</span>key)), old_message_id, last_last_async_id, final_state_changes.iter().map(|(<span class="kw">_</span>, elem)| elem.ledger_changes.<span class="number">0</span>.len()).sum::&lt;usize&gt;(), final_state_changes.iter().map(|(<span class="kw">_</span>, elem)| elem.async_pool_changes.<span class="number">0</span>.len()).sum::&lt;usize&gt;(), slot);
                     }
                     <span class="comment">// Set new message in case of disconnection
                     </span><span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::AskFinalStatePart {
@@ -842,6 +847,7 @@
         bootstrap_config.max_function_name_length,
         bootstrap_config.max_parameters_size,
         bootstrap_config.max_ledger_changes_count,
+        bootstrap_config.max_changes_slot_count,
     ))
 }
 
@@ -929,4 +935,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (fa6ee9375 2022-09-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>

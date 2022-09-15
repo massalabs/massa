@@ -261,7 +261,6 @@
 <span id="261">261</span>
 <span id="262">262</span>
 <span id="263">263</span>
-<span id="264">264</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_execution_exports::ExecutionController;
@@ -483,18 +482,17 @@
             </span><span class="kw">let </span>creator_seq_balance =
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(amount) = sequential_balance_cache.get_mut(<span class="kw-2">&amp;</span>op_info.creator_address) {
                     amount
-                } <span class="kw">else if let </span><span class="prelude-val">Some</span>(final_amount) = <span class="self">self
-                    </span>.execution_controller
-                    .get_final_and_candidate_sequential_balances(<span class="kw-2">&amp;</span>[op_info.creator_address])
-                    .get(<span class="number">0</span>)
-                    .unwrap_or(<span class="kw-2">&amp;</span>(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>))
-                    .<span class="number">1
-                </span>{
+                } <span class="kw">else </span>{
+                    <span class="kw">let </span>candidate_balance = <span class="self">self
+                        </span>.execution_controller
+                        .get_final_and_candidate_sequential_balances(<span class="kw-2">&amp;</span>[op_info.creator_address])
+                        .get(<span class="number">0</span>)
+                        .map_or_else(Amount::default, |(_final, candidate)| {
+                            candidate.unwrap_or_default()
+                        });
                     sequential_balance_cache
                         .entry(op_info.creator_address)
-                        .or_insert(final_amount)
-                } <span class="kw">else </span>{
-                    <span class="kw">continue</span>;
+                        .or_insert(candidate_balance)
                 };
 
             <span class="kw">if </span><span class="kw-2">*</span>creator_seq_balance &lt; op_info.fee {
@@ -527,4 +525,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (fa6ee9375 2022-09-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>

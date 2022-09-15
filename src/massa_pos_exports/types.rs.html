@@ -779,6 +779,17 @@
 <span id="779">779</span>
 <span id="780">780</span>
 <span id="781">781</span>
+<span id="782">782</span>
+<span id="783">783</span>
+<span id="784">784</span>
+<span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
+<span id="789">789</span>
+<span id="790">790</span>
+<span id="791">791</span>
+<span id="792">792</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::collections::{BTreeMap, VecDeque};
@@ -888,6 +899,17 @@
     }
 }
 
+<span class="doccomment">/// PoS bootstrap streaming steps enum
+</span><span class="attribute">#[derive(PartialEq, Eq, Copy, Clone)]
+</span><span class="kw">pub enum </span>PoSInfoStreamingStep {
+    <span class="doccomment">/// Started step, only when launching the streaming
+    </span>Started,
+    <span class="doccomment">/// Ongoing step, as long as you are streaming complete cycles
+    </span>Ongoing(u64),
+    <span class="doccomment">/// Finished step, after the incomplete cycle was streamed
+    </span>Finished,
+}
+
 <span class="kw">impl </span>PoSFinalState {
     <span class="kw">fn </span>get_first_cycle_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="comment">// for bootstrap:
@@ -895,11 +917,7 @@
         // if not stream it
         //
         // TODO: use config
-        </span><span class="kw">if </span><span class="self">self</span>.cycle_history.len() &gt;= <span class="number">6 </span>{
-            <span class="number">1
-        </span>} <span class="kw">else </span>{
-            <span class="number">0
-        </span>}
+        </span>usize::from(<span class="self">self</span>.cycle_history.len() &gt;= <span class="number">6</span>)
     }
 
     <span class="doccomment">/// Gets a part of the Proof of Stake cycle_history. Used only in the bootstrap process.
@@ -912,59 +930,59 @@
     </span><span class="attribute">#[allow(clippy::type_complexity)]
     </span><span class="kw">pub fn </span>get_cycle_history_part(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        cursor: <span class="prelude-ty">Option</span>&lt;u64&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;u64&gt;, <span class="prelude-ty">Option</span>&lt;bool&gt;), ModelsError&gt; {
-        <span class="kw">let </span>cycle_index = <span class="kw">if let </span><span class="prelude-val">Some</span>(last_cycle) = cursor {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(index) = <span class="self">self
-                </span>.cycle_history
-                .iter()
-                .position(|cycle| cycle.cycle == last_cycle)
-            {
-                <span class="kw">if </span>index == <span class="self">self</span>.cycle_history.len() - <span class="number">1 </span>{
-                    <span class="kw">return </span><span class="prelude-val">Ok</span>((Vec::default(), cursor, <span class="prelude-val">Some</span>(<span class="bool-val">false</span>)));
+        cursor: PoSInfoStreamingStep,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;u8&gt;, PoSInfoStreamingStep), ModelsError&gt; {
+        <span class="kw">let </span>cycle_index = <span class="kw">match </span>cursor {
+            PoSInfoStreamingStep::Started =&gt; <span class="self">self</span>.get_first_cycle_index(),
+            PoSInfoStreamingStep::Ongoing(last_cycle) =&gt; {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(index) = <span class="self">self</span>.get_cycle_index(last_cycle) {
+                    <span class="kw">if </span>index == <span class="self">self</span>.cycle_history.len() - <span class="number">1 </span>{
+                        <span class="kw">return </span><span class="prelude-val">Ok</span>((Vec::default(), PoSInfoStreamingStep::Finished));
+                    }
+                    index.saturating_add(<span class="number">1</span>)
+                } <span class="kw">else </span>{
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::OutdatedBootstrapCursor);
                 }
-                index.saturating_add(<span class="number">1</span>)
-            } <span class="kw">else </span>{
-                <span class="comment">// if an outdated cycle is provided start from the beginning
-                </span><span class="self">self</span>.get_first_cycle_index()
             }
-        } <span class="kw">else </span>{
-            <span class="self">self</span>.get_first_cycle_index()
+            PoSInfoStreamingStep::Finished =&gt; {
+                <span class="kw">return </span><span class="prelude-val">Ok</span>((Vec::default(), PoSInfoStreamingStep::Finished))
+            }
         };
         <span class="kw">let </span><span class="kw-2">mut </span>part = Vec::new();
-        <span class="kw">let </span><span class="kw-2">mut </span>last_cycle = <span class="prelude-val">None</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>complete_ident = <span class="prelude-val">None</span>;
         <span class="kw">let </span>u64_ser = U64VarIntSerializer::new();
         <span class="kw">let </span>bitvec_ser = BitVecSerializer::new();
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(CycleInfo {
+        <span class="kw">let </span>CycleInfo {
             cycle,
             complete,
             roll_counts,
             rng_seed,
             production_stats,
-        }) = <span class="self">self</span>.cycle_history.get(cycle_index)
-        {
-            <span class="comment">// TODO: limit the whole info with CYCLE_INFO_SIZE_MESSAGE_BYTES
-            </span>u64_ser.serialize(cycle, <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
-            part.push(<span class="kw">if </span><span class="kw-2">*</span>complete { <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>});
-            <span class="comment">// TODO: limit this with ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES
-            </span>u64_ser.serialize(<span class="kw-2">&amp;</span>(roll_counts.len() <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
-            <span class="kw">for </span>(addr, count) <span class="kw">in </span>roll_counts {
-                part.extend(addr.to_bytes());
-                u64_ser.serialize(count, <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
-            }
-            bitvec_ser.serialize(rng_seed, <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
-            <span class="comment">// TODO: limit this with PRODUCTION_STATS_PART_SIZE_MESSAGE_BYTES
-            </span>u64_ser.serialize(<span class="kw-2">&amp;</span>(production_stats.len() <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
-            <span class="kw">for </span>(addr, stats) <span class="kw">in </span>production_stats {
-                part.extend(addr.to_bytes());
-                u64_ser.serialize(<span class="kw-2">&amp;</span>stats.block_success_count, <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
-                u64_ser.serialize(<span class="kw-2">&amp;</span>stats.block_failure_count, <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
-            }
-            last_cycle = <span class="prelude-val">Some</span>(<span class="kw-2">*</span>cycle);
-            complete_ident = <span class="prelude-val">Some</span>(<span class="kw-2">*</span>complete);
+        } = <span class="self">self
+            </span>.cycle_history
+            .get(cycle_index)
+            .expect(<span class="string">&quot;a cycle should be available here&quot;</span>);
+
+        <span class="comment">// TODO: move this serialization into CycleInfo::Serialize
+
+        // TODO: limit the whole info with CYCLE_INFO_SIZE_MESSAGE_BYTES
+        </span>u64_ser.serialize(cycle, <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
+        part.push(<span class="kw-2">*</span>complete <span class="kw">as </span>u8);
+        <span class="comment">// TODO: limit this with ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES
+        </span>u64_ser.serialize(<span class="kw-2">&amp;</span>(roll_counts.len() <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
+        <span class="kw">for </span>(addr, count) <span class="kw">in </span>roll_counts {
+            part.extend(addr.to_bytes());
+            u64_ser.serialize(count, <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
         }
-        <span class="prelude-val">Ok</span>((part, last_cycle, complete_ident))
+        bitvec_ser.serialize(rng_seed, <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
+        <span class="comment">// TODO: limit this with PRODUCTION_STATS_PART_SIZE_MESSAGE_BYTES
+        </span>u64_ser.serialize(<span class="kw-2">&amp;</span>(production_stats.len() <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
+        <span class="kw">for </span>(addr, stats) <span class="kw">in </span>production_stats {
+            part.extend(addr.to_bytes());
+            u64_ser.serialize(<span class="kw-2">&amp;</span>stats.block_success_count, <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
+            u64_ser.serialize(<span class="kw-2">&amp;</span>stats.block_failure_count, <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
+        }
+
+        <span class="prelude-val">Ok</span>((part, PoSInfoStreamingStep::Ongoing(<span class="kw-2">*</span>cycle)))
     }
 
     <span class="doccomment">/// Gets a part of the Proof of Stake deferred_credits. Used only in the bootstrap process.
@@ -978,27 +996,22 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         cursor: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;Slot&gt;), ModelsError&gt; {
-        <span class="kw">let </span>last_slot = <span class="kw">if let </span><span class="prelude-val">Some</span>(last_slot) = cursor {
+        <span class="kw">let </span>dl_range_start = <span class="kw">if let </span><span class="prelude-val">Some</span>(last_slot) = cursor {
             Excluded(last_slot)
         } <span class="kw">else </span>{
             Unbounded
         };
         <span class="kw">let </span><span class="kw-2">mut </span>part = Vec::new();
-        <span class="kw">let </span><span class="kw-2">mut </span>last_credits_slot = <span class="prelude-val">None</span>;
         <span class="kw">let </span>slot_ser = SlotSerializer::new();
         <span class="kw">let </span>u64_ser = U64VarIntSerializer::new();
         <span class="kw">let </span>amount_ser = AmountSerializer::new();
-        <span class="kw">if </span><span class="self">self
-            </span>.deferred_credits
-            .<span class="number">0
-            </span>.range((last_slot, Unbounded))
-            .last()
-            .is_some()
-        {
-            u64_ser.serialize(<span class="kw-2">&amp;</span>(<span class="self">self</span>.deferred_credits.<span class="number">0</span>.len() <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
+        <span class="comment">// TODO return an option directly, and upstream we should check part.is_none() instead of part.is_empty()
+        </span><span class="kw">let </span>range = <span class="self">self</span>.deferred_credits.<span class="number">0</span>.range((dl_range_start, Unbounded));
+        <span class="kw">if </span>range.clone().last().is_some() {
+            u64_ser.serialize(<span class="kw-2">&amp;</span>(range.clone().count() <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
         }
         <span class="comment">// TODO: iterate in reverse order to avoid steaming credits that will be soon removed
-        </span><span class="kw">for </span>(slot, credits) <span class="kw">in </span><span class="self">self</span>.deferred_credits.<span class="number">0</span>.range((last_slot, Unbounded)) {
+        </span><span class="kw">for </span>(slot, credits) <span class="kw">in </span>range.clone() {
             <span class="comment">// TODO: limit this with DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES
             // NOTE: above will prevent the use of lenght_count combinator, many0 did not do the job
             </span>slot_ser.serialize(slot, <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
@@ -1007,8 +1020,8 @@
                 part.extend(addr.to_bytes());
                 amount_ser.serialize(amount, <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
             }
-            last_credits_slot = <span class="prelude-val">Some</span>(<span class="kw-2">*</span>slot);
         }
+        <span class="kw">let </span>last_credits_slot = range.last().map(|(s, <span class="kw">_</span>)| <span class="kw-2">*</span>s);
         <span class="prelude-val">Ok</span>((part, last_credits_slot))
     }
 
@@ -1018,21 +1031,21 @@
     /// `part`: the raw data received from `get_pos_state_part` and used to update PoS State
     </span><span class="kw">pub fn </span>set_cycle_history_part(<span class="kw-2">&amp;mut </span><span class="self">self</span>, part: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;u64&gt;, ModelsError&gt; {
         <span class="kw">if </span>part.is_empty() {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="self">self</span>.cycle_history.back().map(|v| v.cycle));
         }
         <span class="kw">let </span>u64_deser = U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX));
         <span class="kw">let </span>bitvec_deser = BitVecDeserializer::new();
         <span class="kw">let </span>address_deser = AddressDeserializer::new();
         <span class="attribute">#[allow(clippy::type_complexity)]
         </span><span class="kw">let </span>(rest, cycle): (
-            <span class="kw-2">&amp;</span>[u8],
-            (
-                u64,
-                bool,
-                Vec&lt;(Address, u64)&gt;,
-                bitvec::vec::BitVec&lt;u8&gt;,
-                Vec&lt;(Address, u64, u64)&gt;,
-            ),
+            <span class="kw-2">&amp;</span>[u8], <span class="comment">// non-deserialized buffer remainder
+            </span>(
+                u64,                      <span class="comment">// cycle
+                </span>bool,                     <span class="comment">// complete
+                </span>Vec&lt;(Address, u64)&gt;,      <span class="comment">// roll counts
+                </span>bitvec::vec::BitVec&lt;u8&gt;,  <span class="comment">// seed
+                </span>Vec&lt;(Address, u64, u64)&gt;, <span class="comment">// production stats (address, n_success, n_fail)
+            </span>),
         ) = context(
             <span class="string">&quot;cycle_history&quot;</span>,
             tuple((
@@ -1071,6 +1084,14 @@
         )
         .parse(part)
         .map_err(|err| ModelsError::DeserializeError(err.to_string()))<span class="question-mark">?</span>;
+
+        <span class="kw">if </span>!rest.is_empty() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::SerializeError(
+                <span class="string">&quot;data is left after set_cycle_history_part PoSFinalState part deserialization&quot;
+                    </span>.to_string(),
+            ));
+        }
+
         <span class="kw">let </span>stats_iter =
             cycle
                 .<span class="number">4
@@ -1084,28 +1105,27 @@
                         },
                     )
                 });
-        <span class="kw">if </span>rest.is_empty() {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = <span class="self">self</span>.cycle_history.back_mut() &amp;&amp; info.cycle == cycle.<span class="number">0 </span>{
-                info.complete = cycle.<span class="number">1</span>;
-                info.roll_counts.extend(cycle.<span class="number">2</span>);
-                info.rng_seed.extend(cycle.<span class="number">3</span>);
-                info.production_stats.extend(stats_iter);
-            } <span class="kw">else </span>{
-                <span class="self">self</span>.cycle_history.push_back(CycleInfo {
-                    cycle: cycle.<span class="number">0</span>,
-                    complete: cycle.<span class="number">1</span>,
-                    roll_counts: cycle.<span class="number">2</span>.into_iter().collect(),
-                    rng_seed: cycle.<span class="number">3</span>,
-                    production_stats: stats_iter.collect(),
-                })
-            }
-            <span class="prelude-val">Ok</span>(<span class="self">self</span>.cycle_history.back().map(|v| v.cycle))
+
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = <span class="self">self</span>.cycle_history.back_mut() &amp;&amp; info.cycle == cycle.<span class="number">0 </span>{
+            info.complete = cycle.<span class="number">1</span>;
+            info.roll_counts.extend(cycle.<span class="number">2</span>);
+            info.rng_seed.extend(cycle.<span class="number">3</span>);
+            info.production_stats.extend(stats_iter);
         } <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(ModelsError::SerializeError(
-                <span class="string">&quot;data is left after set_cycle_history_part PoSFinalState part deserialization&quot;
-                    </span>.to_string(),
-            ))
+            <span class="kw">let </span>opt_next_cycle = <span class="self">self</span>.cycle_history.back().map(|info| info.cycle.saturating_add(<span class="number">1</span>));
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(next_cycle) = opt_next_cycle &amp;&amp; cycle.<span class="number">0 </span>!= next_cycle {
+                <span class="macro">panic!</span>(<span class="string">&quot;PoS received cycle ({}) should be equal to the next expected cycle ({})&quot;</span>, cycle.<span class="number">0</span>, next_cycle);
+            }
+            <span class="self">self</span>.cycle_history.push_back(CycleInfo {
+                cycle: cycle.<span class="number">0</span>,
+                complete: cycle.<span class="number">1</span>,
+                roll_counts: cycle.<span class="number">2</span>.into_iter().collect(),
+                rng_seed: cycle.<span class="number">3</span>,
+                production_stats: stats_iter.collect(),
+            })
         }
+
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.cycle_history.back().map(|v| v.cycle))
     }
 
     <span class="doccomment">/// Sets a part of the Proof of Stake deferred_credits. Used only in the bootstrap process.
@@ -1114,9 +1134,10 @@
     /// `part`: the raw data received from `get_pos_state_part` and used to update PoS State
     </span><span class="kw">pub fn </span>set_deferred_credits_part(<span class="kw-2">&amp;mut </span><span class="self">self</span>, part: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Slot&gt;, ModelsError&gt; {
         <span class="kw">if </span>part.is_empty() {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="self">self</span>.deferred_credits.<span class="number">0</span>.last_key_value().map(|(k, <span class="kw">_</span>)| <span class="kw-2">*</span>k));
         }
-        <span class="kw">let </span>(rest, credits) = context(
+        <span class="attribute">#[allow(clippy::type_complexity)]
+        </span><span class="kw">let </span>(rest, credits): (<span class="kw-2">&amp;</span>[u8], Vec&lt;(Slot, Vec&lt;(Address, Amount)&gt;)&gt;) = context(
             <span class="string">&quot;deferred_credits&quot;</span>,
             length_count(
                 context(<span class="string">&quot;deferred_credits length&quot;</span>, |input| {
@@ -1148,21 +1169,22 @@
         )
         .parse(part)
         .map_err(|err| ModelsError::DeserializeError(err.to_string()))<span class="question-mark">?</span>;
-        <span class="kw">if </span>rest.is_empty() {
-            <span class="kw">let </span>new_credits = DeferredCredits(
-                credits
-                    .into_iter()
-                    .map(|(slot, credits)| (slot, credits.into_iter().collect()))
-                    .collect(),
-            );
-            <span class="self">self</span>.deferred_credits.nested_extend(new_credits);
-            <span class="prelude-val">Ok</span>(<span class="self">self</span>.deferred_credits.<span class="number">0</span>.last_key_value().map(|(k, <span class="kw">_</span>)| <span class="kw-2">*</span>k))
-        } <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(ModelsError::SerializeError(
+        <span class="kw">if </span>!rest.is_empty() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::SerializeError(
                 <span class="string">&quot;data is left after set_deferred_credits_part PoSFinalState part deserialization&quot;
                     </span>.to_string(),
-            ))
+            ));
         }
+
+        <span class="kw">let </span>new_credits = DeferredCredits(
+            credits
+                .into_iter()
+                .map(|(slot, credits)| (slot, credits.into_iter().collect()))
+                .collect(),
+        );
+        <span class="self">self</span>.deferred_credits.nested_extend(new_credits);
+
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.deferred_credits.<span class="number">0</span>.last_key_value().map(|(k, <span class="kw">_</span>)| <span class="kw-2">*</span>k))
     }
 }
 
@@ -1561,4 +1583,4 @@
     </span><span class="kw">pub </span>producer: Address,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pos_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (fa6ee9375 2022-09-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pos_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>
