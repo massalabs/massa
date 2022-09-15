@@ -143,7 +143,7 @@ impl LedgerDB {
         for (address, entry) in initial_ledger {
             self.put_entry(&address, entry, &mut batch, &mut ledger_hash);
         }
-        self.set_metadata(
+        self.set_slot(
             Slot::new(0, self.thread_count.saturating_sub(1)),
             &mut batch,
             &mut ledger_hash,
@@ -159,15 +159,7 @@ impl LedgerDB {
     pub fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
         // create the batch
         let mut batch = WriteBatch::default();
-        let handle = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
-        let mut ledger_hash = if let Some(ledger_hash_bytes) =
-            self.db.get_cf(handle, LEDGER_HASH_KEY).expect(CRUD_ERROR)
-        {
-            Hash::from_bytes(&ledger_hash_bytes.try_into().expect(LEDGER_HASH_ERROR))
-        } else {
-            // TODO: think twice about this
-            Hash::from_bytes(&[0; 32])
-        };
+        let mut ledger_hash = self.get_ledger_hash();
         // for all incoming changes
         for (addr, change) in changes.0 {
             match change {
@@ -185,12 +177,12 @@ impl LedgerDB {
                 // the incoming change deletes a ledger entry
                 SetUpdateOrDelete::Delete => {
                     // delete the entry, if it exists
-                    self.delete_entry(&addr, &mut batch);
+                    self.delete_entry(&addr, &mut batch, &mut ledger_hash);
                 }
             }
         }
         // set the associated slot in metadata
-        self.set_metadata(slot, &mut batch, &mut ledger_hash);
+        self.set_slot(slot, &mut batch, &mut ledger_hash);
         // write the batch
         self.write_batch(batch);
     }
@@ -202,14 +194,12 @@ impl LedgerDB {
         self.db.write(batch).expect(CRUD_ERROR);
     }
 
-    /// Set the disk ledger metadata
+    /// Set the disk ledger slot metadata
     ///
     /// # Arguments
     /// * slot: associated slot of the current ledger
     /// * batch: the given operation batch to update
-    ///
-    /// NOTE: right now the metadata is only a Slot, use a struct in the future
-    fn set_metadata(&self, slot: Slot, batch: &mut WriteBatch, ledger_hash: &mut Hash) {
+    fn set_slot(&self, slot: Slot, batch: &mut WriteBatch, ledger_hash: &mut Hash) {
         let handle = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
         let mut slot_bytes = Vec::new();
         // Slot serialization never fails
@@ -222,6 +212,18 @@ impl LedgerDB {
             ledger_hash.xor(Hash::compute_from(&prev_bytes));
         }
         ledger_hash.xor(Hash::compute_from(&slot_bytes));
+    }
+
+    /// Get the current disk ledger hash
+    pub fn get_ledger_hash(&self) -> Hash {
+        let handle = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        if let Some(ledger_hash_bytes) = self.db.get_cf(handle, LEDGER_HASH_KEY).expect(CRUD_ERROR)
+        {
+            Hash::from_bytes(&ledger_hash_bytes.try_into().expect(LEDGER_HASH_ERROR))
+        } else {
+            // TODO: think twice about this
+            Hash::from_bytes(&[0; 32])
+        }
     }
 
     /// Add every sub-entry individually for a given entry.
@@ -586,7 +588,7 @@ impl LedgerDB {
     ///
     /// # Returns
     /// A BTreeMap with the entry hash as key and the data bytes as value
-    #[cfg(feature = "testing")]
+    #[cfg(any(test, feature = "testing"))]
     pub fn get_entire_datastore(
         &self,
         addr: &Address,
@@ -617,6 +619,7 @@ impl LedgerDB {
 mod tests {
     use super::LedgerDB;
     use crate::ledger_db::LedgerSubEntry;
+    use massa_hash::Hash;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
     use massa_models::{
         address::Address,
@@ -651,8 +654,9 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let mut db = LedgerDB::new(temp_dir.path().to_path_buf(), 32, 255, 1_000_000);
         let mut batch = WriteBatch::default();
-        db.put_entry(&addr, entry, &mut batch);
-        db.update_entry(&addr, entry_update, &mut batch);
+        let mut ledger_hash = Hash::from_bytes(&[0; 32]);
+        db.put_entry(&addr, entry, &mut batch, &mut ledger_hash);
+        db.update_entry(&addr, entry_update, &mut batch, &mut ledger_hash);
         db.write_batch(batch);
 
         // return db and initial data
@@ -686,7 +690,8 @@ mod tests {
 
         // delete entry
         let mut batch = WriteBatch::default();
-        db.delete_entry(&a, &mut batch);
+        let mut hash = db.get_ledger_hash();
+        db.delete_entry(&a, &mut batch, &mut hash);
         db.write_batch(batch);
 
         // second assert
