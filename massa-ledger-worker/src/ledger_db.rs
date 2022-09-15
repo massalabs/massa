@@ -139,7 +139,6 @@ impl LedgerDB {
     /// # Arguments
     pub fn load_initial_ledger(&mut self, initial_ledger: HashMap<Address, LedgerEntry>) {
         let mut batch = WriteBatch::default();
-        // TODO: think twice about this
         let mut ledger_hash = Hash::from_bytes(&[0; 32]);
         for (address, entry) in initial_ledger {
             self.put_entry(&address, entry, &mut batch, &mut ledger_hash);
@@ -160,13 +159,13 @@ impl LedgerDB {
     pub fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
         // create the batch
         let mut batch = WriteBatch::default();
-        // TODO: think twice about this
         let handle = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
         let mut ledger_hash = if let Some(ledger_hash_bytes) =
             self.db.get_cf(handle, LEDGER_HASH_KEY).expect(CRUD_ERROR)
         {
             Hash::from_bytes(&ledger_hash_bytes.try_into().expect(LEDGER_HASH_ERROR))
         } else {
+            // TODO: think twice about this
             Hash::from_bytes(&[0; 32])
         };
         // for all incoming changes
@@ -404,9 +403,24 @@ impl LedgerDB {
                     &data_key!(addr, hash),
                     &entry,
                 ),
-                // TODO: update ledger hash here too
-                SetOrDelete::Delete => batch.delete_cf(handle, data_key!(addr, hash)),
+                SetOrDelete::Delete => {
+                    self.delete_key(handle, batch, ledger_hash, &data_key!(addr, hash))
+                }
             }
+        }
+    }
+
+    /// Internal function to delete the key and perform the ledger hash XOR
+    fn delete_key(
+        &self,
+        handle: &ColumnFamily,
+        batch: &mut WriteBatch,
+        ledger_hash: &mut Hash,
+        key: &[u8],
+    ) {
+        if let Some(prev_bytes) = self.db.get_cf(handle, key).expect(CRUD_ERROR) {
+            ledger_hash.xor(Hash::compute_from(&[key, &prev_bytes].concat()));
+            batch.delete_cf(handle, key);
         }
     }
 
@@ -414,17 +428,17 @@ impl LedgerDB {
     ///
     /// # Arguments
     /// * batch: the given operation batch to update
-    fn delete_entry(&self, addr: &Address, batch: &mut WriteBatch) {
+    fn delete_entry(&self, addr: &Address, batch: &mut WriteBatch, ledger_hash: &mut Hash) {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         // sequential balance
-        batch.delete_cf(handle, seq_balance_key!(addr));
+        self.delete_key(handle, batch, ledger_hash, &seq_balance_key!(addr));
 
         // parallel balance
-        batch.delete_cf(handle, par_balance_key!(addr));
+        self.delete_key(handle, batch, ledger_hash, &par_balance_key!(addr));
 
         // bytecode
-        batch.delete_cf(handle, bytecode_key!(addr));
+        self.delete_key(handle, batch, ledger_hash, &bytecode_key!(addr));
 
         // datastore
         let mut opt = ReadOptions::default();
@@ -438,7 +452,7 @@ impl LedgerDB {
             )
             .flatten()
         {
-            batch.delete_cf(handle, key);
+            self.delete_key(handle, batch, ledger_hash, &key);
         }
     }
 
