@@ -327,6 +327,11 @@ impl Interface for InterfaceImpl {
         Ok(keys)
     }
 
+    fn has_op_key(&self, key: &Vec<u8>) -> Result<bool> {
+        let context = context_guard!(self);
+        Ok(context.datastore.contains_key(key))
+    }
+
     /// Hashes arbitrary data
     ///
     /// # Arguments
