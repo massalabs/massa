@@ -38,6 +38,8 @@ use massa_signature::{KeyPair, PublicKey, Signature};
 use massa_time::MassaTime;
 use rand::Rng;
 use std::collections::{HashMap, VecDeque};
+use std::ops::Add;
+use std::str::FromStr;
 use std::{
     collections::BTreeMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -188,6 +190,8 @@ pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
     for _ in 0..r_limit {
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
+    // insert the last possible address to prevent the last cursor to move when testing the changes
+    sorted_ledger.insert(Address::from_bytes(&[255; 32]), get_random_ledger_entry());
 
     let slot = Slot::new(0, 0);
     let final_ledger = create_final_ledger(Some(sorted_ledger), Default::default());
