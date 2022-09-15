@@ -4,21 +4,18 @@ use super::{
     mock_establisher,
     tools::{
         bridge_mock_streams, get_boot_state, get_peers, get_random_final_state_bootstrap,
-        wait_consensus_command, wait_network_command,
+        get_random_ledger_changes, wait_consensus_command, wait_network_command,
     },
 };
+use crate::tests::tools::{get_random_async_pool_changes, get_random_pos_changes};
 use crate::BootstrapConfig;
 use crate::{
     get_state, start_bootstrap_server,
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
 };
 use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
-use massa_final_state::{test_exports::assert_eq_final_state, FinalState};
-use massa_models::{
-    config::{PERIODS_PER_CYCLE, THREAD_COUNT},
-    slot::Slot,
-    version::Version,
-};
+use massa_final_state::{test_exports::assert_eq_final_state, FinalState, StateChanges};
+use massa_models::{address::Address, slot::Slot, version::Version};
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
 use massa_pos_exports::{test_exports::assert_eq_pos_selection, PoSFinalState, SelectorConfig};
 use massa_pos_worker::start_selector_worker;
@@ -42,12 +39,23 @@ async fn test_bootstrap_server() {
     let (bootstrap_config, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
 
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
+    let genesis_address = Address::from_public_key(&KeyPair::generate().get_public_key());
     let (mut server_selector_manager, server_selector_controller) =
-        start_selector_worker(SelectorConfig::default())
-            .expect("could not start server selector controller");
+        start_selector_worker(SelectorConfig {
+            thread_count: 2,
+            periods_per_cycle: 2,
+            genesis_address,
+            ..Default::default()
+        })
+        .expect("could not start server selector controller");
     let (mut client_selector_manager, client_selector_controller) =
-        start_selector_worker(SelectorConfig::default())
-            .expect("could not start client selector controller");
+        start_selector_worker(SelectorConfig {
+            thread_count: 2,
+            periods_per_cycle: 2,
+            genesis_address,
+            ..Default::default()
+        })
+        .expect("could not start client selector controller");
 
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
@@ -55,8 +63,8 @@ async fn test_bootstrap_server() {
         PoSFinalState::new(
             &"".to_string(),
             &rolls_path,
-            PERIODS_PER_CYCLE,
-            THREAD_COUNT,
+            2,
+            2,
             server_selector_controller.clone(),
         )
         .unwrap(),
@@ -82,8 +90,8 @@ async fn test_bootstrap_server() {
         PoSFinalState::new(
             &"".to_string(),
             &rolls_path,
-            PERIODS_PER_CYCLE,
-            THREAD_COUNT,
+            2,
+            2,
             client_selector_controller.clone(),
         )
         .unwrap(),
@@ -176,21 +184,25 @@ async fn test_bootstrap_server() {
     let (sent_peers, sent_graph) = tokio::join!(wait_peers(), wait_graph());
 
     // launch the modifier thread
-    let (tx, rx) = std::sync::mpsc::channel();
+    let list_changes: Arc<RwLock<Vec<(Slot, StateChanges)>>> = Arc::new(RwLock::new(Vec::new()));
+    let list_changes_clone = list_changes.clone();
     std::thread::spawn(move || {
-        for i in 0u64.. {
-            match rx.try_recv() {
-                Ok(_) | Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                    break;
-                }
-                Err(std::sync::mpsc::TryRecvError::Empty) => {
-                    std::thread::sleep(Duration::from_millis(100));
-                    final_state_clone.write().slot = Slot {
-                        period: i,
-                        thread: 0,
-                    };
-                }
-            }
+        for _ in 0..10 {
+            std::thread::sleep(Duration::from_millis(500));
+            let mut final_write = final_state_clone.write();
+            let next = final_write.slot.get_next_slot(2).unwrap();
+            final_write.slot = next;
+            let changes = StateChanges {
+                pos_changes: get_random_pos_changes(10),
+                ledger_changes: get_random_ledger_changes(10),
+                async_pool_changes: get_random_async_pool_changes(10),
+                ..Default::default()
+            };
+            final_write
+                .changes_history
+                .push_back((next, changes.clone()));
+            let mut list_changes_write = list_changes_clone.write();
+            list_changes_write.push((next, changes));
         }
     });
 
@@ -198,9 +210,6 @@ async fn test_bootstrap_server() {
     let bootstrap_res = get_state_h
         .await
         .expect("error while waiting for get_state to finish");
-
-    // stop the modifier thread
-    tx.send(()).unwrap();
 
     // wait for bridge
     bridge.await.expect("bridge join failed");
@@ -212,10 +221,23 @@ async fn test_bootstrap_server() {
         "mismatch between sent and received peers"
     );
 
-    // remove bootstrap safety cycle from final_state before comparisons
+    // apply the changes to the server state before matching with the client
     {
         let mut final_state_write = final_state.write();
-        final_state_write.pos_state.cycle_history.pop_front();
+        let list_changes_read = list_changes.read().clone();
+        // note: skip the first change to match the update loop behaviour
+        for (slot, change) in list_changes_read.iter().skip(1) {
+            final_state_write
+                .pos_state
+                .apply_changes(change.pos_changes.clone(), *slot, false)
+                .unwrap();
+            final_state_write
+                .ledger
+                .apply_changes(change.ledger_changes.clone(), *slot);
+            final_state_write
+                .async_pool
+                .apply_changes_unchecked(&change.async_pool_changes);
+        }
     }
 
     // check final states
