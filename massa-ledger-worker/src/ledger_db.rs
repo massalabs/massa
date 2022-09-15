@@ -15,7 +15,8 @@ use massa_serialization::{Deserializer, Serializer};
 use nom::multi::many0;
 use nom::sequence::tuple;
 use rocksdb::{
-    ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
+    ColumnFamily, ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions,
+    WriteBatch, DB,
 };
 use std::fmt::Debug;
 use std::ops::Bound;
@@ -180,7 +181,7 @@ impl LedgerDB {
                 SetUpdateOrDelete::Update(entry_update) => {
                     // applies the updates to the entry
                     // if the entry does not exist, inserts a default one and applies the updates to it
-                    self.update_entry(&addr, entry_update, &mut batch);
+                    self.update_entry(&addr, entry_update, &mut batch, &mut ledger_hash);
                 }
                 // the incoming change deletes a ledger entry
                 SetUpdateOrDelete::Delete => {
@@ -257,20 +258,30 @@ impl LedgerDB {
             seq_balance_key!(addr),
             bytes_sequential_balance.clone(),
         );
-        // TODO: XOR other operations as well
-        let seq_balance_hash =
-            Hash::compute_from(&[seq_balance_key!(addr), bytes_sequential_balance].concat());
-        ledger_hash.xor(seq_balance_hash);
+        ledger_hash.xor(Hash::compute_from(
+            &[seq_balance_key!(addr), bytes_sequential_balance].concat(),
+        ));
 
         // parallel balance
-        batch.put_cf(handle, par_balance_key!(addr), bytes_parallel_balance);
+        batch.put_cf(
+            handle,
+            par_balance_key!(addr),
+            bytes_parallel_balance.clone(),
+        );
+        ledger_hash.xor(Hash::compute_from(
+            &[par_balance_key!(addr), bytes_parallel_balance].concat(),
+        ));
 
         // bytecode
-        batch.put_cf(handle, bytecode_key!(addr), ledger_entry.bytecode);
+        batch.put_cf(handle, bytecode_key!(addr), ledger_entry.bytecode.clone());
+        ledger_hash.xor(Hash::compute_from(
+            &[bytecode_key!(addr), ledger_entry.bytecode].concat(),
+        ));
 
         // datastore
         for (hash, entry) in ledger_entry.datastore {
-            batch.put_cf(handle, data_key!(addr, hash), entry);
+            batch.put_cf(handle, data_key!(addr, hash), entry.clone());
+            ledger_hash.xor(Hash::compute_from(&[data_key!(addr, hash), entry].concat()));
         }
     }
 
@@ -326,6 +337,22 @@ impl LedgerDB {
             .collect()
     }
 
+    /// Internal function to update the key & value and perform the ledger hash XORs
+    fn update_key_value(
+        &self,
+        handle: &ColumnFamily,
+        batch: &mut WriteBatch,
+        ledger_hash: &mut Hash,
+        key: &[u8],
+        value: &[u8],
+    ) {
+        if let Some(prev_bytes) = self.db.get_cf(handle, key).expect(CRUD_ERROR) {
+            ledger_hash.xor(Hash::compute_from(&[key, &prev_bytes].concat()));
+        }
+        batch.put_cf(handle, key, value);
+        ledger_hash.xor(Hash::compute_from(&[key, value].concat()));
+    }
+
     /// Update the ledger entry of a given address.
     ///
     /// # Arguments
@@ -336,6 +363,7 @@ impl LedgerDB {
         addr: &Address,
         entry_update: LedgerEntryUpdate,
         batch: &mut WriteBatch,
+        ledger_hash: &mut Hash,
     ) {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
@@ -347,7 +375,7 @@ impl LedgerDB {
             self.amount_serializer
                 .serialize(&balance, &mut bytes)
                 .unwrap();
-            batch.put_cf(handle, seq_balance_key!(addr), bytes);
+            self.update_key_value(handle, batch, ledger_hash, &seq_balance_key!(addr), &bytes);
         }
 
         // parallel balance
@@ -357,18 +385,26 @@ impl LedgerDB {
             self.amount_serializer
                 .serialize(&balance, &mut bytes)
                 .unwrap();
-            batch.put_cf(handle, par_balance_key!(addr), bytes);
+            self.update_key_value(handle, batch, ledger_hash, &par_balance_key!(addr), &bytes);
         }
 
         // bytecode
         if let SetOrKeep::Set(bytecode) = entry_update.bytecode {
-            batch.put_cf(handle, bytecode_key!(addr), bytecode);
+            batch.put_cf(handle, bytecode_key!(addr), bytecode.clone());
+            self.update_key_value(handle, batch, ledger_hash, &bytecode_key!(addr), &bytecode);
         }
 
         // datastore
         for (hash, update) in entry_update.datastore {
             match update {
-                SetOrDelete::Set(entry) => batch.put_cf(handle, data_key!(addr, hash), entry),
+                SetOrDelete::Set(entry) => self.update_key_value(
+                    handle,
+                    batch,
+                    ledger_hash,
+                    &data_key!(addr, hash),
+                    &entry,
+                ),
+                // TODO: update ledger hash here too
                 SetOrDelete::Delete => batch.delete_cf(handle, data_key!(addr, hash)),
             }
         }
