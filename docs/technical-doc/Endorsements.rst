@@ -63,7 +63,7 @@ Lifecycle of an endorsement
 
 To produce endorsements for slot `S`, the Endorsement Factory wakes up at `timestamp(S) - t0/2` so that the previous block of thread `S.thread` had the time to propagate,
 and so that the endorsement itself has the time to propagate to be included in blocks of slot `S`.
-It then checks the endorsement producer draws for slot `S`. At every slot, there are `E` endorsement producer draws, one for each endorsement index from 0 (inlcuded) to `E-1` (inlcuded).
+It then checks the endorsement producer draws for slot `S`. At every slot, there are `E` endorsement producer draws, one for each endorsement index from 0 (included) to `E-1` (included).
 The factory will attempt to create all the endorsements that need to be produced by keypairs its wallet manages.
 To choose the block to endorse, the factory asks Consensus for the ID of latest blockclique (or final) block `B` in thread `S.thread` that has a strictly lower period than `S.period`.
 Every created endorsement is then sent to the Endorsement Pool for future inclusion in blocks, and to Protocol for propagation to other nodes.
