@@ -366,11 +366,15 @@ impl LedgerDB {
         key: &[u8],
         value: &[u8],
     ) {
+        let mut len_bytes = Vec::new();
+        self.len_serializer
+            .serialize(&(key.len() as u64), &mut len_bytes)
+            .expect(KEY_LEN_SER_ERROR);
         if let Some(prev_bytes) = self.db.get_cf(handle, key).expect(CRUD_ERROR) {
-            ledger_hash.xor(Hash::compute_from(&[key, &prev_bytes].concat()));
+            ledger_hash.xor(Hash::compute_from(&[&len_bytes, key, &prev_bytes].concat()));
         }
         batch.put_cf(handle, key, value);
-        ledger_hash.xor(Hash::compute_from(&[key, value].concat()));
+        ledger_hash.xor(Hash::compute_from(&[&len_bytes, key, value].concat()));
     }
 
     /// Update the ledger entry of a given address.
@@ -440,7 +444,11 @@ impl LedgerDB {
         key: &[u8],
     ) {
         if let Some(prev_bytes) = self.db.get_cf(handle, key).expect(CRUD_ERROR) {
-            ledger_hash.xor(Hash::compute_from(&[key, &prev_bytes].concat()));
+            let mut len_bytes = Vec::new();
+            self.len_serializer
+                .serialize(&(key.len() as u64), &mut len_bytes)
+                .expect(KEY_LEN_SER_ERROR);
+            ledger_hash.xor(Hash::compute_from(&[&len_bytes, key, &prev_bytes].concat()));
             batch.delete_cf(handle, key);
         }
     }
@@ -652,7 +660,7 @@ mod tests {
     use tempfile::TempDir;
 
     #[cfg(test)]
-    fn init_test_ledger(addr: Address) -> (LedgerDB, BTreeMap<Vec<u8>, Vec<u8>>, Hash) {
+    fn init_test_ledger(addr: Address) -> (LedgerDB, BTreeMap<Vec<u8>, Vec<u8>>) {
         // init data
         let mut data = BTreeMap::new();
         data.insert(b"1".to_vec(), b"a".to_vec());
@@ -674,13 +682,12 @@ mod tests {
         let mut db = LedgerDB::new(temp_dir.path().to_path_buf(), 32, 255, 1_000_000);
         let mut batch = WriteBatch::default();
         let mut ledger_hash = Hash::from_bytes(&[0; 32]);
-        let initial_hash = ledger_hash.clone();
         db.put_entry(&addr, entry, &mut batch, &mut ledger_hash);
         db.update_entry(&addr, entry_update, &mut batch, &mut ledger_hash);
         db.write_batch(batch);
 
         // return db and initial data
-        (db, data, initial_hash)
+        (db, data)
     }
 
     /// Functional test of LedgerDB
@@ -691,7 +698,7 @@ mod tests {
         let pub_b = KeyPair::generate().get_public_key();
         let a = Address::from_public_key(&pub_a);
         let b = Address::from_public_key(&pub_b);
-        let (db, data, initial_hash) = init_test_ledger(a);
+        let (db, data) = init_test_ledger(a);
         let amount_deserializer =
             AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
         // first assert
@@ -715,7 +722,8 @@ mod tests {
         db.write_batch(batch);
 
         // second assert
-        assert_eq!(initial_hash, db.get_ledger_hash());
+        // TODO: improve this assert
+        assert_eq!(dbg!(Hash::from_bytes(&[0; 32])), dbg!(db.get_ledger_hash()));
         assert!(db.get_sub_entry(&a, LedgerSubEntry::ParBalance).is_none());
         assert!(db.get_entire_datastore(&a).is_empty());
     }
@@ -724,7 +732,7 @@ mod tests {
     fn test_ledger_parts() {
         let pub_a = KeyPair::generate().get_public_key();
         let a = Address::from_public_key(&pub_a);
-        let (db, _, _) = init_test_ledger(a);
+        let (db, _) = init_test_ledger(a);
         let res = db.get_ledger_part(&None).unwrap();
         db.set_ledger_part(&res.0[..]).unwrap();
     }
