@@ -17,11 +17,14 @@ use nom::sequence::tuple;
 use rocksdb::{
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
-use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 use std::ops::Bound;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::{
+    collections::{BTreeSet, HashMap},
+    convert::TryInto,
+};
 
 #[cfg(feature = "testing")]
 use massa_models::amount::{Amount, AmountDeserializer};
@@ -197,14 +200,17 @@ impl LedgerDB {
     /// NOTE: right now the metadata is only a Slot, use a struct in the future
     fn set_metadata(&self, slot: Slot, batch: &mut WriteBatch, ledger_hash: &mut Hash) {
         let handle = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
-        let mut bytes = Vec::new();
+        let mut slot_bytes = Vec::new();
         // Slot serialization never fails
-        self.slot_serializer.serialize(&slot, &mut bytes).unwrap();
-        batch.put_cf(handle, SLOT_KEY, bytes.clone());
+        self.slot_serializer
+            .serialize(&slot, &mut slot_bytes)
+            .unwrap();
+        batch.put_cf(handle, SLOT_KEY, slot_bytes.clone());
         // XOR previous slot and new one
-        // TODO: get and XOR previous first
-        let new_hash = Hash::from_bytes(bytes);
-        *ledger_hash = *ledger_hash ^ new_hash;
+        if let Some(prev_bytes) = self.db.get_cf(handle, SLOT_KEY).expect(CRUD_ERROR) {
+            ledger_hash.xor(Hash::compute_from(&prev_bytes));
+        }
+        ledger_hash.xor(Hash::compute_from(&slot_bytes));
     }
 
     /// Add every sub-entry individually for a given entry.
@@ -243,7 +249,7 @@ impl LedgerDB {
         // TODO: XOR other operations as well
         let seq_balance_hash =
             Hash::compute_from(&[seq_balance_key!(addr), bytes_sequential_balance].concat());
-        *ledger_hash = *ledger_hash ^ seq_balance_hash;
+        ledger_hash.xor(seq_balance_hash);
 
         // parallel balance
         batch.put_cf(handle, par_balance_key!(addr), bytes_parallel_balance);

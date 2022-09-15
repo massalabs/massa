@@ -137,6 +137,11 @@ impl Hash {
     pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Hash {
         Hash(blake3::Hash::from(*data))
     }
+
+    /// XOR the current hash with another
+    pub fn xor(&mut self, other: Hash) {
+        *self = *self ^ other;
+    }
 }
 
 /// Deserializer for `Hash`
