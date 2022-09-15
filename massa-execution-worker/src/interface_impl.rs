@@ -318,6 +318,15 @@ impl Interface for InterfaceImpl {
         Ok(context.has_data_entry(&addr, key.as_bytes()))
     }
 
+    fn get_op_keys(&self) -> Result<Vec<Vec<u8>>> {
+        let context = context_guard!(self);
+        let keys: Vec<Vec<u8>> = context.datastore
+            .keys()
+            .cloned()
+            .collect();
+        Ok(keys)
+    }
+
     /// Hashes arbitrary data
     ///
     /// # Arguments

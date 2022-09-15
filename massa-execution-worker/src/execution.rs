@@ -553,13 +553,14 @@ impl ExecutionState {
         sender_addr: Address,
     ) -> Result<(), ExecutionError> {
         // process ExecuteSC operations only
-        let (bytecode, max_gas, coins) = match &operation {
+        let (bytecode, max_gas, coins, datastore) = match &operation {
             OperationType::ExecuteSC {
                 data,
                 max_gas,
                 coins,
+                datastore,
                 ..
-            } => (data, max_gas, coins),
+            } => (data, max_gas, coins, datastore),
             _ => panic!("unexpected operation type"),
         };
 
@@ -577,6 +578,7 @@ impl ExecutionState {
                 coins: *coins,
                 owned_addresses: vec![sender_addr],
             }];
+            context.datastore = (*datastore).clone();
 
             // Debit the sender's sequential balance with the coins to transfer
             if let Err(err) =

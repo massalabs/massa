@@ -33,6 +33,7 @@ use rand_xoshiro::Xoshiro256PlusPlus;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use tracing::debug;
+use massa_models::datastore::Datastore;
 
 /// A snapshot taken from an `ExecutionContext` and that represents its current state.
 /// The `ExecutionContext` state can then be restored later from this snapshot.
@@ -111,6 +112,9 @@ pub(crate) struct ExecutionContext {
     /// address call stack, most recent is at the back
     pub stack: Vec<ExecutionStackElement>,
 
+    // FIXME: should be in stack?
+    pub datastore: Datastore,
+
     /// True if it's a read-only context
     pub read_only: bool,
 
@@ -163,6 +167,7 @@ impl ExecutionContext {
             created_message_index: Default::default(),
             opt_block_id: Default::default(),
             stack: Default::default(),
+            datastore: Default::default(),
             read_only: Default::default(),
             events: Default::default(),
             unsafe_rng: Xoshiro256PlusPlus::from_seed([0u8; 32]),
