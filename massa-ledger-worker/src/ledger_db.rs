@@ -11,7 +11,7 @@ use massa_models::{
     serialization::{VecU8Deserializer, VecU8Serializer},
     slot::{Slot, SlotSerializer},
 };
-use massa_serialization::{Deserializer, Serializer};
+use massa_serialization::{Deserializer, Serializer, U64VarIntSerializer};
 use nom::multi::many0;
 use nom::sequence::tuple;
 use rocksdb::{
@@ -36,6 +36,7 @@ const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
 const LEDGER_HASH_ERROR: &str = "critical: saved ledger hash is corrupted";
+const KEY_LEN_SER_ERROR: &str = "critical: key length serialization failed";
 const SLOT_KEY: &[u8; 1] = b"s";
 const LEDGER_HASH_KEY: &[u8; 1] = b"h";
 
@@ -59,6 +60,7 @@ pub(crate) struct LedgerDB {
     thread_count: u8,
     amount_serializer: AmountSerializer,
     slot_serializer: SlotSerializer,
+    len_serializer: U64VarIntSerializer,
     max_datastore_key_length: u8,
     ledger_part_size_message_bytes: u64,
     #[cfg(feature = "testing")]
@@ -124,6 +126,7 @@ impl LedgerDB {
             thread_count,
             amount_serializer: AmountSerializer::new(),
             slot_serializer: SlotSerializer::new(),
+            len_serializer: U64VarIntSerializer::new(),
             max_datastore_key_length,
             ledger_part_size_message_bytes,
             #[cfg(feature = "testing")]
@@ -221,9 +224,25 @@ impl LedgerDB {
         {
             Hash::from_bytes(&ledger_hash_bytes.try_into().expect(LEDGER_HASH_ERROR))
         } else {
-            // TODO: think twice about this
             Hash::from_bytes(&[0; 32])
         }
+    }
+
+    /// Internal function to put a key & value and perform the ledger hash XORs
+    pub fn put_entry_value(
+        &self,
+        handle: &ColumnFamily,
+        batch: &mut WriteBatch,
+        ledger_hash: &mut Hash,
+        key: &[u8],
+        value: &[u8],
+    ) {
+        let mut len_bytes = Vec::new();
+        self.len_serializer
+            .serialize(&(key.len() as u64), &mut len_bytes)
+            .expect(KEY_LEN_SER_ERROR);
+        batch.put_cf(handle, key, value);
+        ledger_hash.xor(Hash::compute_from(&[&len_bytes, key, value].concat()));
     }
 
     /// Add every sub-entry individually for a given entry.
@@ -254,35 +273,35 @@ impl LedgerDB {
             .unwrap();
 
         // sequential balance
-        batch.put_cf(
+        self.put_entry_value(
             handle,
-            seq_balance_key!(addr),
-            bytes_sequential_balance.clone(),
+            batch,
+            ledger_hash,
+            &seq_balance_key!(addr),
+            &bytes_sequential_balance,
         );
-        ledger_hash.xor(Hash::compute_from(
-            &[seq_balance_key!(addr), bytes_sequential_balance].concat(),
-        ));
 
         // parallel balance
-        batch.put_cf(
+        self.put_entry_value(
             handle,
-            par_balance_key!(addr),
-            bytes_parallel_balance.clone(),
+            batch,
+            ledger_hash,
+            &par_balance_key!(addr),
+            &bytes_parallel_balance,
         );
-        ledger_hash.xor(Hash::compute_from(
-            &[par_balance_key!(addr), bytes_parallel_balance].concat(),
-        ));
 
         // bytecode
-        batch.put_cf(handle, bytecode_key!(addr), ledger_entry.bytecode.clone());
-        ledger_hash.xor(Hash::compute_from(
-            &[bytecode_key!(addr), ledger_entry.bytecode].concat(),
-        ));
+        self.put_entry_value(
+            handle,
+            batch,
+            ledger_hash,
+            &bytecode_key!(addr),
+            &bytes_parallel_balance,
+        );
 
         // datastore
         for (hash, entry) in ledger_entry.datastore {
-            batch.put_cf(handle, data_key!(addr, hash), entry.clone());
-            ledger_hash.xor(Hash::compute_from(&[data_key!(addr, hash), entry].concat()));
+            self.put_entry_value(handle, batch, ledger_hash, &data_key!(addr, hash), &entry);
         }
     }
 
@@ -338,7 +357,7 @@ impl LedgerDB {
             .collect()
     }
 
-    /// Internal function to update the key & value and perform the ledger hash XORs
+    /// Internal function to update a key & value and perform the ledger hash XORs
     fn update_key_value(
         &self,
         handle: &ColumnFamily,
@@ -412,7 +431,7 @@ impl LedgerDB {
         }
     }
 
-    /// Internal function to delete the key and perform the ledger hash XOR
+    /// Internal function to delete a key and perform the ledger hash XOR
     fn delete_key(
         &self,
         handle: &ColumnFamily,
