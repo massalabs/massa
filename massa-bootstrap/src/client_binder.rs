@@ -41,6 +41,7 @@ pub struct BootstrapClientBinder {
     max_function_name_length: u16,
     max_parameters_size: u32,
     max_ledger_changes_count: u64,
+    max_changes_slot_count: u32,
 }
 
 impl BootstrapClientBinder {
@@ -71,6 +72,7 @@ impl BootstrapClientBinder {
         max_function_name_length: u16,
         max_parameters_size: u32,
         max_ledger_changes_count: u64,
+        max_changes_slot_count: u32,
     ) -> Self {
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapClientBinder {
@@ -96,6 +98,7 @@ impl BootstrapClientBinder {
             max_function_name_length,
             max_parameters_size,
             max_ledger_changes_count,
+            max_changes_slot_count,
         }
     }
 }
@@ -155,6 +158,7 @@ impl BootstrapClientBinder {
             self.max_function_name_length,
             self.max_parameters_size,
             self.max_bootstrap_error_length,
+            self.max_changes_slot_count,
         );
         let message = {
             if let Some(prev_message) = self.prev_message {

@@ -9,12 +9,13 @@ use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::ConsensusCommandSender;
-use massa_final_state::{FinalState, StateChanges};
+use massa_final_state::FinalState;
 use massa_graph::BootstrapableGraph;
 use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::{slot::Slot, version::Version};
 use massa_network_exports::{BootstrapPeers, NetworkCommandSender};
+use massa_pos_exports::PoSInfoStreamingStep;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
@@ -273,17 +274,22 @@ pub async fn send_final_state_stream(
     final_state: Arc<RwLock<FinalState>>,
     slot: Option<Slot>,
     last_async_message_id: Option<AsyncMessageId>,
-    last_cycle: Option<u64>,
+    last_pos_step_cursor: PoSInfoStreamingStep,
     last_credits_slot: Option<Slot>,
     write_timeout: Duration,
 ) -> Result<(), BootstrapError> {
     let mut old_key = last_key;
     let mut old_last_async_id = last_async_message_id;
-    let mut old_cycle = last_cycle;
+    let mut old_pos_step_cursor = last_pos_step_cursor;
     let mut old_credits_slot = last_credits_slot;
     let mut old_slot = slot;
 
     loop {
+        #[cfg(test)]
+        {
+            // Necessary for test_bootstrap_server in tests/scenarios.rs
+            tokio::time::sleep(Duration::from_millis(500)).await;
+        }
         // Scope of the read in the final state
         let ledger_data;
         let async_pool_data;
@@ -310,9 +316,9 @@ pub async fn send_final_state_stream(
                 .get_pool_part(old_last_async_id)?;
             async_pool_data = pool_data;
 
-            let (cycle_data, new_last_cycle, cycle_completion) = final_state_read
+            let (cycle_data, new_pos_step_cursor) = final_state_read
                 .pos_state
-                .get_cycle_history_part(old_cycle)?;
+                .get_cycle_history_part(old_pos_step_cursor)?;
             pos_cycle_data = cycle_data;
 
             let (credits_data, new_last_credits_slot) = final_state_read
@@ -321,6 +327,11 @@ pub async fn send_final_state_stream(
             pos_credits_data = credits_data;
 
             if let Some(slot) = old_slot && slot != final_state_read.slot {
+                if slot > final_state_read.slot {
+                    return Err(BootstrapError::GeneralError(
+                        "Bootstrap cursor set to future slot".to_string(),
+                    ));
+                }
                 final_state_changes = final_state_read.get_state_changes_part(
                     slot,
                     old_key
@@ -334,10 +345,10 @@ pub async fn send_final_state_stream(
                         })
                         .transpose()?,
                     old_last_async_id,
-                    cycle_completion,
-                );
+                    new_pos_step_cursor,
+                )?;
             } else {
-                final_state_changes = Ok(StateChanges::default());
+                final_state_changes = Vec::new();
             }
 
             // Assign value for next turn
@@ -347,8 +358,8 @@ pub async fn send_final_state_stream(
             if new_last_async_pool_id.is_some() || !async_pool_data.is_empty() {
                 old_last_async_id = new_last_async_pool_id;
             }
-            if new_last_cycle.is_some() || !pos_cycle_data.is_empty() {
-                old_cycle = new_last_cycle;
+            if !pos_cycle_data.is_empty() {
+                old_pos_step_cursor = new_pos_step_cursor;
             }
             if new_last_credits_slot.is_some() || !pos_credits_data.is_empty() {
                 old_credits_slot = new_last_credits_slot;
@@ -361,46 +372,29 @@ pub async fn send_final_state_stream(
             || !async_pool_data.is_empty()
             || !pos_cycle_data.is_empty()
             || !pos_credits_data.is_empty()
+            || !final_state_changes.is_empty()
         {
-            if let Ok(final_state_changes) = final_state_changes {
-                match tokio::time::timeout(
-                    write_timeout,
-                    server.send(BootstrapServerMessage::FinalStatePart {
-                        ledger_data,
-                        slot: current_slot,
-                        async_pool_part: async_pool_data,
-                        pos_cycle_part: pos_cycle_data,
-                        pos_credits_part: pos_credits_data,
-                        final_state_changes,
-                    }),
+            match tokio::time::timeout(
+                write_timeout,
+                server.send(BootstrapServerMessage::FinalStatePart {
+                    ledger_data,
+                    slot: current_slot,
+                    async_pool_part: async_pool_data,
+                    pos_cycle_part: pos_cycle_data,
+                    pos_credits_part: pos_credits_data,
+                    final_state_changes,
+                }),
+            )
+            .await
+            {
+                Err(_) => Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "bootstrap ask ledger part send timed out",
                 )
-                .await
-                {
-                    Err(_) => Err(std::io::Error::new(
-                        std::io::ErrorKind::TimedOut,
-                        "bootstrap ask ledger part send timed out",
-                    )
-                    .into()),
-                    Ok(Err(e)) => Err(e),
-                    Ok(Ok(_)) => Ok(()),
-                }?;
-            } else {
-                match tokio::time::timeout(
-                    write_timeout,
-                    server.send(BootstrapServerMessage::SlotTooOld),
-                )
-                .await
-                {
-                    Err(_) => Err(std::io::Error::new(
-                        std::io::ErrorKind::TimedOut,
-                        "bootstrap ask ledger part send timed out",
-                    )
-                    .into()),
-                    Ok(Err(e)) => Err(e),
-                    Ok(Ok(_)) => Ok(()),
-                }?;
-                break;
-            }
+                .into()),
+                Ok(Err(e)) => Err(e),
+                Ok(Ok(_)) => Ok(()),
+            }?;
         } else {
             // There is no ledger data nor async pool data.
             match tokio::time::timeout(
@@ -521,7 +515,10 @@ async fn manage_bootstrap(
                         final_state.clone(),
                         slot,
                         last_async_message_id,
-                        last_cycle,
+                        match last_cycle {
+                            Some(cycle) => PoSInfoStreamingStep::Ongoing(cycle),
+                            None => PoSInfoStreamingStep::Started,
+                        },
                         last_credits_slot,
                         write_timeout,
                     )

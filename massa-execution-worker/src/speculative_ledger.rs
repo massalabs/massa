@@ -149,7 +149,7 @@ impl SpeculativeLedger {
         if let Some(from_addr) = from_addr {
             let new_balance = self
                 .get_sequential_balance(&from_addr)
-                .ok_or_else(|| ExecutionError::RuntimeError("source address not found".into()))?
+                .unwrap_or_default()
                 .checked_sub(amount)
                 .ok_or_else(|| {
                     ExecutionError::RuntimeError("insufficient from_addr balance".into())
@@ -197,7 +197,7 @@ impl SpeculativeLedger {
         if let Some(from_addr) = from_addr {
             let new_balance = self
                 .get_parallel_balance(&from_addr)
-                .ok_or_else(|| ExecutionError::RuntimeError("source address not found".into()))?
+                .unwrap_or_default()
                 .checked_sub(amount)
                 .ok_or_else(|| {
                     ExecutionError::RuntimeError("insufficient from_addr balance".into())

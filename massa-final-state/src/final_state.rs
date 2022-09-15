@@ -11,7 +11,7 @@ use crate::{
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_ledger_exports::{LedgerChanges, LedgerController};
 use massa_models::{address::Address, slot::Slot};
-use massa_pos_exports::{PoSFinalState, SelectorController};
+use massa_pos_exports::{PoSFinalState, PoSInfoStreamingStep, SelectorController};
 use std::collections::VecDeque;
 
 /// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
@@ -30,7 +30,7 @@ pub struct FinalState {
     pub executed_ops: ExecutedOps,
     /// history of recent final state changes, useful for streaming bootstrap
     /// `front = oldest`, `back = newest`
-    pub(crate) changes_history: VecDeque<(Slot, StateChanges)>,
+    pub changes_history: VecDeque<(Slot, StateChanges)>,
 }
 
 impl FinalState {
@@ -104,7 +104,7 @@ impl FinalState {
         self.async_pool
             .apply_changes_unchecked(&changes.async_pool_changes);
         self.pos_state
-            .apply_changes(changes.roll_state_changes.clone(), self.slot)
+            .apply_changes(changes.pos_changes.clone(), self.slot, true)
             .expect("could not settle slot in final state PoS"); //TODO do not panic here: it might just mean that the lookback cycle is not available
         self.executed_ops.extend(changes.executed_ops.clone());
         self.executed_ops.prune(self.slot);
@@ -129,15 +129,17 @@ impl FinalState {
         last_slot: Slot,
         last_address: Option<Address>,
         last_id_async_pool: Option<AsyncMessageId>,
-        pos_cycle_completion: Option<bool>,
-    ) -> Result<StateChanges, FinalStateError> {
-        let pos_slot = if !self.changes_history.is_empty() {
+        last_pos_step_cursor: PoSInfoStreamingStep,
+    ) -> Result<Vec<(Slot, StateChanges)>, FinalStateError> {
+        let position_slot = if let Some((first_slot, _)) = self.changes_history.front() {
             // Safe because we checked that there is changes just above.
             let index = last_slot
-                .slots_since(&self.changes_history[0].0, self.config.thread_count)
+                .slots_since(first_slot, self.config.thread_count)
                 .map_err(|_| {
                     FinalStateError::LedgerError("Last slot is overflowing history.".to_string())
-                })?;
+                })?
+                .saturating_add(1);
+
             // Check if `last_slot` isn't in the future
             if self.changes_history.len() as u64 <= index {
                 return Err(FinalStateError::LedgerError(
@@ -146,10 +148,11 @@ impl FinalState {
             }
             index
         } else {
-            return Ok(StateChanges::default());
+            return Ok(Vec::new());
         };
-        let mut res_changes: StateChanges = StateChanges::default();
-        for (_, changes) in self.changes_history.range((pos_slot as usize)..) {
+        let mut res_changes: Vec<(Slot, StateChanges)> = Vec::new();
+        for (slot, changes) in self.changes_history.range((position_slot as usize)..) {
+            let mut slot_changes = StateChanges::default();
             // Get ledger change that concern address <= last_address.
             if let Some(addr) = last_address {
                 let ledger_changes: LedgerChanges = LedgerChanges(
@@ -166,7 +169,7 @@ impl FinalState {
                         })
                         .collect(),
                 );
-                res_changes.ledger_changes.0.extend(ledger_changes.0);
+                slot_changes.ledger_changes.0 = ledger_changes.0;
             }
 
             // Get async pool changes that concern ids <= last_id_async_pool
@@ -184,31 +187,14 @@ impl FinalState {
                         })
                         .collect(),
                 );
-                res_changes
-                    .async_pool_changes
-                    .0
-                    .extend(async_pool_changes.0);
+                slot_changes.async_pool_changes = async_pool_changes;
             }
 
             // Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
-            if pos_cycle_completion == Some(false) {
-                res_changes
-                    .roll_state_changes
-                    .deferred_credits
-                    .nested_extend(changes.roll_state_changes.deferred_credits.clone());
-                res_changes
-                    .roll_state_changes
-                    .production_stats
-                    .extend(changes.roll_state_changes.production_stats.clone());
-                res_changes
-                    .roll_state_changes
-                    .roll_changes
-                    .extend(changes.roll_state_changes.roll_changes.clone());
-                res_changes
-                    .roll_state_changes
-                    .seed_bits
-                    .extend(changes.roll_state_changes.seed_bits.clone());
+            if last_pos_step_cursor == PoSInfoStreamingStep::Finished {
+                slot_changes.pos_changes = changes.pos_changes.clone();
             }
+            res_changes.push((*slot, slot_changes));
         }
         Ok(res_changes)
     }
