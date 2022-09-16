@@ -2,7 +2,9 @@
 
 use massa_async_pool::{AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer};
 use massa_final_state::{
-    ExecutedOpsStreamingStep, StateChanges, StateChangesDeserializer, StateChangesSerializer,
+    ExecutedOpsStreamingStep, ExecutedOpsStreamingStepDeserializer,
+    ExecutedOpsStreamingStepSerializer, StateChanges, StateChangesDeserializer,
+    StateChangesSerializer,
 };
 use massa_graph::{
     BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
@@ -16,10 +18,12 @@ use massa_models::{
     version::{Version, VersionDeserializer, VersionSerializer},
 };
 use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
-use massa_pos_exports::{PoSCycleStreamingStep, PoSCycleStreamingStepSerializer, PoSCycleStreamingStepDeserializer};
+use massa_pos_exports::{
+    PoSCycleStreamingStep, PoSCycleStreamingStepDeserializer, PoSCycleStreamingStepSerializer,
+};
 use massa_serialization::{
     Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
-    U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer,
+    U32VarIntDeserializer, U32VarIntSerializer,
 };
 use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 use nom::error::context;
@@ -486,6 +490,7 @@ pub struct BootstrapClientMessageSerializer {
     key_serializer: KeySerializer,
     cycle_step_serializer: PoSCycleStreamingStepSerializer,
     opt_slot_serializer: OptionSerializer<Slot, SlotSerializer>,
+    exec_ops_step_serializer: ExecutedOpsStreamingStepSerializer,
 }
 
 impl BootstrapClientMessageSerializer {
@@ -498,6 +503,7 @@ impl BootstrapClientMessageSerializer {
             key_serializer: KeySerializer::new(),
             cycle_step_serializer: PoSCycleStreamingStepSerializer::new(),
             opt_slot_serializer: OptionSerializer::new(SlotSerializer::new()),
+            exec_ops_step_serializer: ExecutedOpsStreamingStepSerializer::new(),
         }
     }
 }
@@ -553,7 +559,7 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                     self.async_message_id_serializer.serialize(last_async_message_id, buffer)?;
                     self.cycle_step_serializer.serialize(last_cycle_step, buffer)?;
                     self.opt_slot_serializer.serialize(last_credits_slot, buffer)?;
-                    // TODO: ser last_exec_ops_step here
+                    self.exec_ops_step_serializer.serialize(last_exec_ops_step, buffer)?;
                 }
             }
             BootstrapClientMessage::BootstrapError { error } => {
@@ -585,6 +591,7 @@ pub struct BootstrapClientMessageDeserializer {
     key_deserializer: KeyDeserializer,
     cycle_step_deserializer: PoSCycleStreamingStepDeserializer,
     opt_slot_deserializer: OptionDeserializer<Slot, SlotDeserializer>,
+    exec_ops_step_serializer: ExecutedOpsStreamingStepDeserializer,
 }
 
 impl BootstrapClientMessageDeserializer {
@@ -604,6 +611,7 @@ impl BootstrapClientMessageDeserializer {
                 (Included(0), Included(u64::MAX)),
                 (Included(0), Excluded(thread_count)),
             )),
+            exec_ops_step_serializer: ExecutedOpsStreamingStepDeserializer::new(),
         }
     }
 }
@@ -677,11 +685,14 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                             context("Failed async_message_id deserialization", |input| {
                                 self.async_message_id_deserializer.deserialize(input)
                             }),
-                            context("Failed cycle step deserialization", |input| {
+                            context("Failed cycle_step deserialization", |input| {
                                 self.cycle_step_deserializer.deserialize(input)
                             }),
                             context("Failed credits_slot deserialization", |input| {
                                 self.opt_slot_deserializer.deserialize(input)
+                            }),
+                            context("Failed exec_ops_step deserialization", |input| {
+                                self.exec_ops_step_serializer.deserialize(input)
                             }),
                         ))
                         .map(
@@ -691,6 +702,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                                 last_async_message_id,
                                 last_cycle_step,
                                 last_credits_slot,
+                                last_exec_ops_step,
                             )| {
                                 BootstrapClientMessage::AskFinalStatePart {
                                     last_slot: Some(last_slot),
@@ -698,7 +710,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                                     last_async_message_id: Some(last_async_message_id),
                                     last_cycle_step,
                                     last_credits_slot,
-                                    last_exec_ops_step: ExecutedOpsStreamingStep::Finished, // TODO: update this
+                                    last_exec_ops_step, // TODO: update this
                                 }
                             },
                         )

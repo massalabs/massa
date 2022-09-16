@@ -119,6 +119,7 @@ pub enum PoSCycleStreamingStep {
 }
 
 /// PoS bootstrap streaming steps serializer
+#[derive(Default)]
 pub struct PoSCycleStreamingStepSerializer {
     u64_serializer: U64VarIntSerializer,
 }
@@ -155,6 +156,12 @@ pub struct PoSCycleStreamingStepDeserializer {
     u64_deserializer: U64VarIntDeserializer,
 }
 
+impl Default for PoSCycleStreamingStepDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PoSCycleStreamingStepDeserializer {
     /// Creates a new PoS bootstrap streaming steps deserializer
     pub fn new() -> Self {
@@ -176,7 +183,7 @@ impl Deserializer<PoSCycleStreamingStep> for PoSCycleStreamingStepDeserializer {
         match ident {
             0u64 => Ok((rest, PoSCycleStreamingStep::Started)),
             1u64 => context("cycle", |input| self.u64_deserializer.deserialize(input))
-                .map(|cycle| PoSCycleStreamingStep::Ongoing(cycle))
+                .map(PoSCycleStreamingStep::Ongoing)
                 .parse(rest),
 
             2u64 => Ok((rest, PoSCycleStreamingStep::Finished)),
