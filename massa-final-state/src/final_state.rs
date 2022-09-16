@@ -11,7 +11,7 @@ use crate::{
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_ledger_exports::{LedgerChanges, LedgerController};
 use massa_models::{address::Address, slot::Slot};
-use massa_pos_exports::{PoSFinalState, PoSInfoStreamingStep, SelectorController};
+use massa_pos_exports::{PoSCycleStreamingStep, PoSFinalState, SelectorController};
 use std::collections::VecDeque;
 
 /// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
@@ -129,7 +129,7 @@ impl FinalState {
         last_slot: Slot,
         last_address: Option<Address>,
         last_id_async_pool: Option<AsyncMessageId>,
-        last_pos_step_cursor: PoSInfoStreamingStep,
+        last_pos_step_cursor: PoSCycleStreamingStep,
     ) -> Result<Vec<(Slot, StateChanges)>, FinalStateError> {
         let position_slot = if let Some((first_slot, _)) = self.changes_history.front() {
             // Safe because we checked that there is changes just above.
@@ -191,7 +191,7 @@ impl FinalState {
             }
 
             // Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
-            if last_pos_step_cursor == PoSInfoStreamingStep::Finished {
+            if last_pos_step_cursor == PoSCycleStreamingStep::Finished {
                 slot_changes.pos_changes = changes.pos_changes.clone();
             }
             res_changes.push((*slot, slot_changes));

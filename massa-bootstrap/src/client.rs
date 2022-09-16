@@ -1,9 +1,10 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
-use massa_final_state::FinalState;
+use massa_final_state::{ExecutedOpsStreamingStep, FinalState};
 use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::version::Version;
+use massa_pos_exports::PoSCycleStreamingStep;
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use nom::AsBytes;
@@ -72,7 +73,7 @@ async fn stream_final_state(
                     let last_last_async_id = write_final_state
                         .async_pool
                         .set_pool_part(async_pool_part.as_bytes())?;
-                    let last_cycle = write_final_state
+                    let last_cycle_step = write_final_state
                         .pos_state
                         .set_cycle_history_part(pos_cycle_part.as_bytes())?;
                     let last_credits_slot = write_final_state
@@ -102,11 +103,12 @@ async fn stream_final_state(
                     }
                     // Set new message in case of disconnection
                     *next_bootstrap_message = BootstrapClientMessage::AskFinalStatePart {
+                        last_slot: Some(slot),
                         last_key,
-                        slot: Some(slot),
                         last_async_message_id: last_last_async_id,
-                        last_cycle,
+                        last_cycle_step,
                         last_credits_slot,
+                        last_exec_ops_step: ExecutedOpsStreamingStep::Started, // IMPORTANT TODO: CHANGE
                     };
                 }
                 BootstrapServerMessage::FinalStateFinished => {
@@ -117,11 +119,12 @@ async fn stream_final_state(
                 BootstrapServerMessage::SlotTooOld => {
                     info!("Slot is too old retry bootstrap from scratch");
                     *next_bootstrap_message = BootstrapClientMessage::AskFinalStatePart {
+                        last_slot: None,
                         last_key: None,
-                        slot: None,
                         last_async_message_id: None,
-                        last_cycle: None,
+                        last_cycle_step: PoSCycleStreamingStep::Started,
                         last_credits_slot: None,
+                        last_exec_ops_step: ExecutedOpsStreamingStep::Started,
                     };
                     return Ok(());
                 }
@@ -422,14 +425,14 @@ pub async fn get_state(
     }
     let mut shuffled_list = bootstrap_config.bootstrap_list.clone();
     shuffled_list.shuffle(&mut StdRng::from_entropy());
-    // Will be none when bootstrap is over
     let mut next_bootstrap_message: BootstrapClientMessage =
         BootstrapClientMessage::AskFinalStatePart {
+            last_slot: None,
             last_key: None,
-            slot: None,
             last_async_message_id: None,
-            last_cycle: None,
+            last_cycle_step: PoSCycleStreamingStep::Started,
             last_credits_slot: None,
+            last_exec_ops_step: ExecutedOpsStreamingStep::Started,
         };
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
     loop {

@@ -82,7 +82,7 @@ impl ExecutedOps {
 }
 
 /// Executed operations bootstrap streaming steps
-#[derive(PartialEq, Eq, Copy, Clone)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum ExecutedOpsStreamingStep {
     /// Started step, only when launching the streaming
     Started,

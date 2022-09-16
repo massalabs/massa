@@ -1,7 +1,9 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_async_pool::{AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer};
-use massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
+use massa_final_state::{
+    ExecutedOpsStreamingStep, StateChanges, StateChangesDeserializer, StateChangesSerializer,
+};
 use massa_graph::{
     BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
 };
@@ -14,6 +16,7 @@ use massa_models::{
     version::{Version, VersionDeserializer, VersionSerializer},
 };
 use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
+use massa_pos_exports::PoSCycleStreamingStep;
 use massa_serialization::{
     Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
     U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -443,16 +446,18 @@ pub enum BootstrapClientMessage {
     AskConsensusState,
     /// Ask for a part of the final state
     AskFinalStatePart {
+        /// Slot we are attached to for changes
+        last_slot: Option<Slot>,
         /// Last key of the ledger we received from the server
         last_key: Option<Vec<u8>>,
-        /// Slot we are attached to for ledger changes
-        slot: Option<Slot>,
         /// Last async message id  of the async message pool we received from the server
         last_async_message_id: Option<AsyncMessageId>,
         /// Last received Proof of Stake cycle
-        last_cycle: Option<u64>,
+        last_cycle_step: PoSCycleStreamingStep,
         /// Last receive Proof of Stake credits slot
         last_credits_slot: Option<Slot>,
+        /// Last executed operations streaming step
+        last_exec_ops_step: ExecutedOpsStreamingStep,
     },
     /// Bootstrap error
     BootstrapError {
@@ -532,20 +537,21 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                     .serialize(&u32::from(MessageClientTypeId::AskConsensusState), buffer)?;
             }
             BootstrapClientMessage::AskFinalStatePart {
+                last_slot,
                 last_key,
-                slot,
                 last_async_message_id,
-                last_cycle,
+                last_cycle_step,
                 last_credits_slot,
+                last_exec_ops_step,
             } => {
                 self.u32_serializer
                     .serialize(&u32::from(MessageClientTypeId::AskFinalStatePart), buffer)?;
                 // If we have a cursor we must have also a slot
-                if let Some(key) = last_key && let Some(slot) = slot && let Some(last_async_message_id) = last_async_message_id  {
+                if let Some(key) = last_key && let Some(slot) = last_slot && let Some(last_async_message_id) = last_async_message_id  {
                     self.key_serializer.serialize(key, buffer)?;
                     self.slot_serializer.serialize(slot, buffer)?;
                     self.async_message_id_serializer.serialize(last_async_message_id, buffer)?;
-                    self.opt_u64_serializer.serialize(last_cycle, buffer)?;
+                    self.opt_u64_serializer.serialize(last_cycle_step, buffer)?;
                     self.opt_slot_serializer.serialize(last_credits_slot, buffer)?;
                 }
             }
@@ -654,8 +660,8 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                         Ok((
                             input,
                             BootstrapClientMessage::AskFinalStatePart {
+                                last_slot: None,
                                 last_key: None,
-                                slot: None,
                                 last_async_message_id: None,
                                 last_cycle: None,
                                 last_credits_slot: None,
