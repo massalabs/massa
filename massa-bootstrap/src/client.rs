@@ -139,7 +139,7 @@ async fn stream_final_state(
                         last_credits_slot: None,
                         last_exec_ops_step: ExecutedOpsStreamingStep::Started,
                     };
-                    return Ok(());
+                    panic!("Bootstrap failed, try to bootstrap again.");
                 }
                 _ => {
                     return Err(
