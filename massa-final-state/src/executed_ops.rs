@@ -90,7 +90,7 @@ impl ExecutedOps {
         &mut self,
         part: &[u8],
     ) -> Result<ExecutedOpsStreamingStep, ModelsError> {
-        let ops_deserializer = ExecutedOpsDeserializer::new(32);
+        let ops_deserializer = ExecutedOpsDeserializer::new(32); // TODO: use config
         let (rest, ops) = ops_deserializer.deserialize(part)?;
         if !rest.is_empty() {
             return Err(ModelsError::SerializeError(

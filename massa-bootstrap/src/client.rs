@@ -65,6 +65,7 @@ async fn stream_final_state(
                     async_pool_part,
                     pos_cycle_part,
                     pos_credits_part,
+                    exec_ops_part,
                     slot,
                     final_state_changes,
                 } => {
@@ -79,6 +80,9 @@ async fn stream_final_state(
                     let last_credits_slot = write_final_state
                         .pos_state
                         .set_deferred_credits_part(pos_credits_part.as_bytes())?;
+                    let last_exec_ops_step = write_final_state
+                        .executed_ops
+                        .set_executed_ops_part(exec_ops_part.as_bytes())?;
                     for (changes_slot, changes) in final_state_changes.iter() {
                         write_final_state
                             .ledger
@@ -91,6 +95,7 @@ async fn stream_final_state(
                             *changes_slot,
                             false,
                         )?
+                        // TODO: apply executed operations changes
                     }
                     write_final_state.slot = slot;
                     if let BootstrapClientMessage::AskFinalStatePart {
@@ -108,7 +113,7 @@ async fn stream_final_state(
                         last_async_message_id: last_last_async_id,
                         last_cycle_step,
                         last_credits_slot,
-                        last_exec_ops_step: ExecutedOpsStreamingStep::Started, // IMPORTANT TODO: CHANGE
+                        last_exec_ops_step,
                     };
                 }
                 BootstrapServerMessage::FinalStateFinished => {

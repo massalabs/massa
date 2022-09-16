@@ -350,6 +350,7 @@ pub async fn send_final_state_stream(
                     last_async_message_id,
                     new_cycle_step,
                 )?;
+                // TODO: retrieve executed operations changes
             } else {
                 final_state_changes = Vec::new();
             }
@@ -378,6 +379,7 @@ pub async fn send_final_state_stream(
             || !async_pool_data.is_empty()
             || !pos_cycle_data.is_empty()
             || !pos_credits_data.is_empty()
+            || !exec_ops_data.is_empty()
             || !final_state_changes.is_empty()
         {
             match tokio::time::timeout(
@@ -388,6 +390,7 @@ pub async fn send_final_state_stream(
                     async_pool_part: async_pool_data,
                     pos_cycle_part: pos_cycle_data,
                     pos_credits_part: pos_credits_data,
+                    exec_ops_part: exec_ops_data,
                     final_state_changes,
                 }),
             )

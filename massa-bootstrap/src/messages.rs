@@ -69,6 +69,8 @@ pub enum BootstrapServerMessage {
         pos_cycle_part: Vec<u8>,
         /// Part of the Proof of Stake deferred_credits
         pos_credits_part: Vec<u8>,
+        /// Part of the executed operations
+        exec_ops_part: Vec<u8>,
         /// Slot the state changes are attached to
         slot: Slot,
         /// Ledger change for addresses inferior to `address` of the client message until the actual slot.
@@ -174,6 +176,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 async_pool_part,
                 pos_cycle_part,
                 pos_credits_part,
+                exec_ops_part,
                 slot,
                 final_state_changes,
             } => {
@@ -183,6 +186,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 self.vec_u8_serializer.serialize(async_pool_part, buffer)?;
                 self.vec_u8_serializer.serialize(pos_cycle_part, buffer)?;
                 self.vec_u8_serializer.serialize(pos_credits_part, buffer)?;
+                self.vec_u8_serializer.serialize(exec_ops_part, buffer)?;
                 self.slot_serializer.serialize(slot, buffer)?;
                 self.u32_serializer
                     .serialize(&(final_state_changes.len() as u32), buffer)?;
@@ -385,6 +389,9 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                     context("Failed pos_credits_part deserialization", |input| {
                         self.final_state_parts_deserializer.deserialize(input)
                     }),
+                    context("Failed exec_ops_part deserialization", |input| {
+                        self.final_state_parts_deserializer.deserialize(input)
+                    }),
                     context("Failed slot deserialization", |input| {
                         self.slot_deserializer.deserialize(input)
                     }),
@@ -407,6 +414,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                         async_pool_part,
                         pos_cycle_part,
                         pos_credits_part,
+                        exec_ops_part,
                         slot,
                         final_state_changes,
                     )| {
@@ -415,6 +423,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                             async_pool_part,
                             pos_cycle_part,
                             pos_credits_part,
+                            exec_ops_part,
                             slot,
                             final_state_changes,
                         }
