@@ -21,7 +21,7 @@ use nom::{
 use std::ops::Bound::{Excluded, Included};
 
 /// A structure to list and prune previously executed operations
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct ExecutedOps(PreHashMap<OperationId, Slot>);
 
 impl ExecutedOps {
