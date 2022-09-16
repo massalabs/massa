@@ -16,10 +16,10 @@ use massa_models::{
     version::{Version, VersionDeserializer, VersionSerializer},
 };
 use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
-use massa_pos_exports::{PoSCycleStreamingStep, PoSCycleStreamingStepSerializer};
+use massa_pos_exports::{PoSCycleStreamingStep, PoSCycleStreamingStepSerializer, PoSCycleStreamingStepDeserializer};
 use massa_serialization::{
     Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
-    U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
+    U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer,
 };
 use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 use nom::error::context;
@@ -553,7 +553,7 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                     self.async_message_id_serializer.serialize(last_async_message_id, buffer)?;
                     self.cycle_step_serializer.serialize(last_cycle_step, buffer)?;
                     self.opt_slot_serializer.serialize(last_credits_slot, buffer)?;
-                    // TODO: ser last_exec_ops_step
+                    // TODO: ser last_exec_ops_step here
                 }
             }
             BootstrapClientMessage::BootstrapError { error } => {
@@ -583,7 +583,7 @@ pub struct BootstrapClientMessageDeserializer {
     async_message_id_deserializer: AsyncMessageIdDeserializer,
     length_error_deserializer: U32VarIntDeserializer,
     key_deserializer: KeyDeserializer,
-    opt_u64_deserializer: OptionDeserializer<u64, U64VarIntDeserializer>,
+    cycle_step_deserializer: PoSCycleStreamingStepDeserializer,
     opt_slot_deserializer: OptionDeserializer<Slot, SlotDeserializer>,
 }
 
@@ -599,10 +599,7 @@ impl BootstrapClientMessageDeserializer {
             async_message_id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
             key_deserializer: KeyDeserializer::new(max_datastore_key_length),
             length_error_deserializer: U32VarIntDeserializer::new(Included(0), Included(100000)),
-            opt_u64_deserializer: OptionDeserializer::new(U64VarIntDeserializer::new(
-                Included(0),
-                Included(100000),
-            )),
+            cycle_step_deserializer: PoSCycleStreamingStepDeserializer::new(),
             opt_slot_deserializer: OptionDeserializer::new(SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
                 (Included(0), Excluded(thread_count)),
@@ -664,8 +661,9 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                                 last_slot: None,
                                 last_key: None,
                                 last_async_message_id: None,
-                                last_cycle: None,
+                                last_cycle_step: PoSCycleStreamingStep::Started,
                                 last_credits_slot: None,
+                                last_exec_ops_step: ExecutedOpsStreamingStep::Started,
                             },
                         ))
                     } else {
@@ -679,8 +677,8 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                             context("Failed async_message_id deserialization", |input| {
                                 self.async_message_id_deserializer.deserialize(input)
                             }),
-                            context("Failed cycle deserialization", |input| {
-                                self.opt_u64_deserializer.deserialize(input)
+                            context("Failed cycle step deserialization", |input| {
+                                self.cycle_step_deserializer.deserialize(input)
                             }),
                             context("Failed credits_slot deserialization", |input| {
                                 self.opt_slot_deserializer.deserialize(input)
@@ -689,17 +687,18 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                         .map(
                             |(
                                 last_key,
-                                slot,
+                                last_slot,
                                 last_async_message_id,
-                                last_cycle,
+                                last_cycle_step,
                                 last_credits_slot,
                             )| {
                                 BootstrapClientMessage::AskFinalStatePart {
+                                    last_slot: Some(last_slot),
                                     last_key: Some(last_key),
-                                    slot: Some(slot),
                                     last_async_message_id: Some(last_async_message_id),
-                                    last_cycle,
+                                    last_cycle_step,
                                     last_credits_slot,
+                                    last_exec_ops_step: ExecutedOpsStreamingStep::Finished, // TODO: update this
                                 }
                             },
                         )

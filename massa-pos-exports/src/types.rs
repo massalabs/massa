@@ -150,6 +150,44 @@ impl Serializer<PoSCycleStreamingStep> for PoSCycleStreamingStepSerializer {
     }
 }
 
+/// PoS bootstrap streaming steps deserializer
+pub struct PoSCycleStreamingStepDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+}
+
+impl PoSCycleStreamingStepDeserializer {
+    /// Creates a new PoS bootstrap streaming steps deserializer
+    pub fn new() -> Self {
+        Self {
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+        }
+    }
+}
+
+impl Deserializer<PoSCycleStreamingStep> for PoSCycleStreamingStepDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], PoSCycleStreamingStep, E> {
+        let (rest, ident) = context("identifier", |input| {
+            self.u64_deserializer.deserialize(input)
+        })
+        .parse(buffer)?;
+        match ident {
+            0u64 => Ok((rest, PoSCycleStreamingStep::Started)),
+            1u64 => context("cycle", |input| self.u64_deserializer.deserialize(input))
+                .map(|cycle| PoSCycleStreamingStep::Ongoing(cycle))
+                .parse(rest),
+
+            2u64 => Ok((rest, PoSCycleStreamingStep::Finished)),
+            _ => Err(nom::Err::Error(ParseError::from_error_kind(
+                buffer,
+                nom::error::ErrorKind::Digit,
+            ))),
+        }
+    }
+}
+
 impl PoSFinalState {
     fn get_first_cycle_index(&self) -> usize {
         // for bootstrap:
