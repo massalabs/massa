@@ -553,6 +553,14 @@
 <span id="553">553</span>
 <span id="554">554</span>
 <span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map, HashMap},
     net::{IpAddr, SocketAddr},
@@ -564,13 +572,13 @@
 <span class="kw">use </span>futures::StreamExt;
 <span class="kw">use </span>massa_async_pool::AsyncMessageId;
 <span class="kw">use </span>massa_consensus_exports::ConsensusCommandSender;
-<span class="kw">use </span>massa_final_state::FinalState;
+<span class="kw">use </span>massa_final_state::{ExecutedOpsStreamingStep, FinalState};
 <span class="kw">use </span>massa_graph::BootstrapableGraph;
 <span class="kw">use </span>massa_ledger_exports::get_address_from_key;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{slot::Slot, version::Version};
 <span class="kw">use </span>massa_network_exports::{BootstrapPeers, NetworkCommandSender};
-<span class="kw">use </span>massa_pos_exports::PoSInfoStreamingStep;
+<span class="kw">use </span>massa_pos_exports::PoSCycleStreamingStep;
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>parking_lot::RwLock;
@@ -825,40 +833,38 @@
 <span class="attribute">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub async fn </span>send_final_state_stream(
     server: <span class="kw-2">&amp;mut </span>BootstrapServerBinder,
-    last_key: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
-    slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
-    last_async_message_id: <span class="prelude-ty">Option</span>&lt;AsyncMessageId&gt;,
-    last_pos_step_cursor: PoSInfoStreamingStep,
-    last_credits_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
+    <span class="kw-2">mut </span>last_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
+    <span class="kw-2">mut </span>last_key: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
+    <span class="kw-2">mut </span>last_async_message_id: <span class="prelude-ty">Option</span>&lt;AsyncMessageId&gt;,
+    <span class="kw-2">mut </span>last_cycle_step: PoSCycleStreamingStep,
+    <span class="kw-2">mut </span>last_credits_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
+    <span class="kw-2">mut </span>last_exec_ops_step: ExecutedOpsStreamingStep,
     write_timeout: Duration,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>old_key = last_key;
-    <span class="kw">let </span><span class="kw-2">mut </span>old_last_async_id = last_async_message_id;
-    <span class="kw">let </span><span class="kw-2">mut </span>old_pos_step_cursor = last_pos_step_cursor;
-    <span class="kw">let </span><span class="kw-2">mut </span>old_credits_slot = last_credits_slot;
-    <span class="kw">let </span><span class="kw-2">mut </span>old_slot = slot;
-
     <span class="kw">loop </span>{
         <span class="attribute">#[cfg(test)]
         </span>{
             <span class="comment">// Necessary for test_bootstrap_server in tests/scenarios.rs
             </span>tokio::time::sleep(Duration::from_millis(<span class="number">500</span>)).<span class="kw">await</span>;
         }
-        <span class="comment">// Scope of the read in the final state
-        </span><span class="kw">let </span>ledger_data;
+
+        <span class="kw">let </span>current_slot;
+        <span class="kw">let </span>ledger_data;
         <span class="kw">let </span>async_pool_data;
         <span class="kw">let </span>pos_cycle_data;
         <span class="kw">let </span>pos_credits_data;
+        <span class="kw">let </span>exec_ops_data;
         <span class="kw">let </span>final_state_changes;
-        <span class="kw">let </span>current_slot;
-        {
-            <span class="comment">// Get all data for the next message
+
+        <span class="comment">// Scope of the final state read
+        </span>{
+            <span class="comment">// Get all the next message data
             </span><span class="kw">let </span>final_state_read = final_state.read();
             <span class="kw">let </span>(data, new_last_key) =
                 final_state_read
                     .ledger
-                    .get_ledger_part(<span class="kw-2">&amp;</span>old_key)
+                    .get_ledger_part(<span class="kw-2">&amp;</span>last_key)
                     .map_err(|<span class="kw">_</span>| {
                         BootstrapError::GeneralError(
                             <span class="string">&quot;Error on fetching ledger part of execution&quot;</span>.to_string(),
@@ -868,20 +874,25 @@
 
             <span class="kw">let </span>(pool_data, new_last_async_pool_id) = final_state_read
                 .async_pool
-                .get_pool_part(old_last_async_id)<span class="question-mark">?</span>;
+                .get_pool_part(last_async_message_id)<span class="question-mark">?</span>;
             async_pool_data = pool_data;
 
-            <span class="kw">let </span>(cycle_data, new_pos_step_cursor) = final_state_read
+            <span class="kw">let </span>(cycle_data, new_cycle_step) = final_state_read
                 .pos_state
-                .get_cycle_history_part(old_pos_step_cursor)<span class="question-mark">?</span>;
+                .get_cycle_history_part(last_cycle_step)<span class="question-mark">?</span>;
             pos_cycle_data = cycle_data;
 
             <span class="kw">let </span>(credits_data, new_last_credits_slot) = final_state_read
                 .pos_state
-                .get_deferred_credits_part(old_credits_slot)<span class="question-mark">?</span>;
+                .get_deferred_credits_part(last_credits_slot)<span class="question-mark">?</span>;
             pos_credits_data = credits_data;
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = old_slot &amp;&amp; slot != final_state_read.slot {
+            <span class="kw">let </span>(ops_data, new_exec_ops_step) = final_state_read
+                .executed_ops
+                .get_executed_ops_part(last_exec_ops_step)<span class="question-mark">?</span>;
+            exec_ops_data = ops_data;
+
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot &amp;&amp; slot != final_state_read.slot {
                 <span class="kw">if </span>slot &gt; final_state_read.slot {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
                         <span class="string">&quot;Bootstrap cursor set to future slot&quot;</span>.to_string(),
@@ -889,7 +900,7 @@
                 }
                 final_state_changes = final_state_read.get_state_changes_part(
                     slot,
-                    old_key
+                    last_key
                         .clone()
                         .map(|key| {
                             get_address_from_key(<span class="kw-2">&amp;</span>key).ok_or_else(|| {
@@ -899,8 +910,9 @@
                             })
                         })
                         .transpose()<span class="question-mark">?</span>,
-                    old_last_async_id,
-                    new_pos_step_cursor,
+                    last_async_message_id,
+                    new_cycle_step,
+                    new_exec_ops_step,
                 )<span class="question-mark">?</span>;
             } <span class="kw">else </span>{
                 final_state_changes = Vec::new();
@@ -908,18 +920,21 @@
 
             <span class="comment">// Assign value for next turn
             </span><span class="kw">if </span>new_last_key.is_some() || !ledger_data.is_empty() {
-                old_key = new_last_key;
+                last_key = new_last_key;
             }
             <span class="kw">if </span>new_last_async_pool_id.is_some() || !async_pool_data.is_empty() {
-                old_last_async_id = new_last_async_pool_id;
+                last_async_message_id = new_last_async_pool_id;
             }
             <span class="kw">if </span>!pos_cycle_data.is_empty() {
-                old_pos_step_cursor = new_pos_step_cursor;
+                last_cycle_step = new_cycle_step;
             }
             <span class="kw">if </span>new_last_credits_slot.is_some() || !pos_credits_data.is_empty() {
-                old_credits_slot = new_last_credits_slot;
+                last_credits_slot = new_last_credits_slot;
             }
-            old_slot = <span class="prelude-val">Some</span>(final_state_read.slot);
+            <span class="kw">if </span>!exec_ops_data.is_empty() {
+                last_exec_ops_step = new_exec_ops_step;
+            }
+            last_slot = <span class="prelude-val">Some</span>(final_state_read.slot);
             current_slot = final_state_read.slot;
         }
 
@@ -927,6 +942,7 @@
             || !async_pool_data.is_empty()
             || !pos_cycle_data.is_empty()
             || !pos_credits_data.is_empty()
+            || !exec_ops_data.is_empty()
             || !final_state_changes.is_empty()
         {
             <span class="kw">match </span>tokio::time::timeout(
@@ -937,6 +953,7 @@
                     async_pool_part: async_pool_data,
                     pos_cycle_part: pos_cycle_data,
                     pos_credits_part: pos_credits_data,
+                    exec_ops_part: exec_ops_data,
                     final_state_changes,
                 }),
             )
@@ -1059,22 +1076,21 @@
                 }
                 BootstrapClientMessage::AskFinalStatePart {
                     last_key,
-                    slot,
+                    last_slot,
                     last_async_message_id,
-                    last_cycle,
+                    last_cycle_step,
                     last_credits_slot,
+                    last_exec_ops_step,
                 } =&gt; {
                     send_final_state_stream(
                         server,
-                        last_key,
                         final_state.clone(),
-                        slot,
+                        last_slot,
+                        last_key,
                         last_async_message_id,
-                        <span class="kw">match </span>last_cycle {
-                            <span class="prelude-val">Some</span>(cycle) =&gt; PoSInfoStreamingStep::Ongoing(cycle),
-                            <span class="prelude-val">None </span>=&gt; PoSInfoStreamingStep::Started,
-                        },
+                        last_cycle_step,
                         last_credits_slot,
+                        last_exec_ops_step,
                         write_timeout,
                     )
                     .<span class="kw">await</span><span class="question-mark">?</span>;

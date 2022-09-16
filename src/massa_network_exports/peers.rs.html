@@ -288,6 +288,7 @@
 <span id="288">288</span>
 <span id="289">289</span>
 <span id="290">290</span>
+<span id="291">291</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::settings::PeerTypeConnectionConfig;
 <span class="kw">use </span>displaydoc::Display;
 <span class="kw">use </span>enum_map::Enum;
@@ -500,6 +501,7 @@
     </span><span class="kw">pub fn </span>cleanup(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// canonicalize IP
         </span><span class="self">self</span>.ip = <span class="self">self</span>.ip.to_canonical();
+        <span class="self">self</span>.banned = <span class="bool-val">false</span>;
         <span class="comment">// ensure that connections are set to zero
         </span><span class="self">self</span>.active_out_connection_attempts = <span class="number">0</span>;
         <span class="self">self</span>.active_out_connections = <span class="number">0</span>;

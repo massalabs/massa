@@ -134,12 +134,155 @@
 <span id="134">134</span>
 <span id="135">135</span>
 <span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed operations.
 //! Used to detect operation reuse.
 
 </span><span class="kw">use </span>massa_models::{
+    error::ModelsError,
     operation::{OperationId, OperationIdDeserializer},
     prehash::PreHashMap,
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -156,7 +299,7 @@
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 
 <span class="doccomment">/// A structure to list and prune previously executed operations
-</span><span class="attribute">#[derive(Debug, Default, Clone)]
+</span><span class="attribute">#[derive(Debug, Default, Clone, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>ExecutedOps(PreHashMap&lt;OperationId, Slot&gt;);
 
 <span class="kw">impl </span>ExecutedOps {
@@ -190,6 +333,147 @@
         <span class="comment">// TODO use slot-sorted structure for more efficient pruning (this has a linear complexity currently)
         </span><span class="self">self</span>.<span class="number">0
             </span>.retain(|_id, last_valid_slot| <span class="kw-2">*</span>last_valid_slot &gt;= max_slot);
+    }
+
+    <span class="doccomment">/// Get a part of the executed operations.
+    ///
+    /// Solely used by the bootstrap.
+    ///
+    /// # Returns
+    /// A tuple containing the data and the next executed ops streaming step
+    </span><span class="kw">pub fn </span>get_executed_ops_part(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        cursor: ExecutedOpsStreamingStep,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;u8&gt;, ExecutedOpsStreamingStep), ModelsError&gt; {
+        <span class="comment">// TODO: stream in multiple parts
+        </span><span class="kw">match </span>cursor {
+            ExecutedOpsStreamingStep::Started =&gt; (), <span class="comment">// TODO: when parts start at unbounded left range
+            </span>ExecutedOpsStreamingStep::Ongoing(_op_id) =&gt; (), <span class="comment">// TODO: when parts start at op_id left range
+            </span>ExecutedOpsStreamingStep::Finished =&gt; {
+                <span class="kw">return </span><span class="prelude-val">Ok</span>((Vec::new(), ExecutedOpsStreamingStep::Finished))
+            }
+        }
+        <span class="kw">let </span><span class="kw-2">mut </span>part = Vec::new();
+        <span class="kw">let </span>ops_serializer = ExecutedOpsSerializer::new();
+        ops_serializer.serialize(<span class="self">self</span>, <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>((part, ExecutedOpsStreamingStep::Finished))
+    }
+
+    <span class="doccomment">/// Set a part of the executed operations.
+    ///
+    /// Solely used by the bootstrap.
+    ///
+    /// # Returns
+    /// The next executed ops streaming step
+    </span><span class="kw">pub fn </span>set_executed_ops_part(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        part: <span class="kw-2">&amp;</span>[u8],
+        thread_count: u8,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutedOpsStreamingStep, ModelsError&gt; {
+        <span class="kw">if </span>part.is_empty() {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(ExecutedOpsStreamingStep::Finished);
+        }
+        <span class="kw">let </span>ops_deserializer = ExecutedOpsDeserializer::new(thread_count);
+        <span class="kw">let </span>(rest, ops) = ops_deserializer.deserialize(part)<span class="question-mark">?</span>;
+        <span class="kw">if </span>!rest.is_empty() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::SerializeError(
+                <span class="string">&quot;data is left after set_executed_ops_part deserialization&quot;</span>.to_string(),
+            ));
+        }
+        <span class="self">self</span>.extend(ops);
+        <span class="prelude-val">Ok</span>(ExecutedOpsStreamingStep::Finished)
+    }
+}
+
+<span class="doccomment">/// Executed operations bootstrap streaming steps
+</span><span class="attribute">#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+</span><span class="kw">pub enum </span>ExecutedOpsStreamingStep {
+    <span class="doccomment">/// Started step, only when launching the streaming
+    </span>Started,
+    <span class="doccomment">/// Ongoing step, as long as there are operations to stream
+    </span>Ongoing(OperationId),
+    <span class="doccomment">/// Finished step, after the last operations where streamed
+    </span>Finished,
+}
+
+<span class="doccomment">/// Executed operations bootstrap streaming steps serializer
+</span><span class="attribute">#[derive(Default)]
+</span><span class="kw">pub struct </span>ExecutedOpsStreamingStepSerializer {
+    u64_serializer: U64VarIntSerializer,
+}
+
+<span class="kw">impl </span>ExecutedOpsStreamingStepSerializer {
+    <span class="doccomment">/// Creates a new executed operations bootstrap streaming steps serializer
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u64_serializer: U64VarIntSerializer,
+        }
+    }
+}
+
+<span class="kw">impl </span>Serializer&lt;ExecutedOpsStreamingStep&gt; <span class="kw">for </span>ExecutedOpsStreamingStepSerializer {
+    <span class="kw">fn </span>serialize(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        value: <span class="kw-2">&amp;</span>ExecutedOpsStreamingStep,
+        buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="kw">match </span>value {
+            ExecutedOpsStreamingStep::Started =&gt; <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span><span class="number">0u64</span>, buffer)<span class="question-mark">?</span>,
+            ExecutedOpsStreamingStep::Ongoing(op_id) =&gt; {
+                <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span><span class="number">1u64</span>, buffer)<span class="question-mark">?</span>;
+                buffer.extend(op_id.to_bytes());
+            }
+            ExecutedOpsStreamingStep::Finished =&gt; <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span><span class="number">2u64</span>, buffer)<span class="question-mark">?</span>,
+        };
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
+<span class="doccomment">/// Executed operations bootstrap streaming steps deserializer
+</span><span class="kw">pub struct </span>ExecutedOpsStreamingStepDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    op_id_deserializer: OperationIdDeserializer,
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>ExecutedOpsStreamingStepDeserializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
+    }
+}
+
+<span class="kw">impl </span>ExecutedOpsStreamingStepDeserializer {
+    <span class="doccomment">/// Creates a new executed operations bootstrap streaming steps deserializer
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            op_id_deserializer: OperationIdDeserializer::new(),
+        }
+    }
+}
+
+<span class="kw">impl </span>Deserializer&lt;ExecutedOpsStreamingStep&gt; <span class="kw">for </span>ExecutedOpsStreamingStepDeserializer {
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], ExecutedOpsStreamingStep, E&gt; {
+        <span class="kw">let </span>(rest, ident) = context(<span class="string">&quot;identifier&quot;</span>, |input| {
+            <span class="self">self</span>.u64_deserializer.deserialize(input)
+        })
+        .parse(buffer)<span class="question-mark">?</span>;
+        <span class="kw">match </span>ident {
+            <span class="number">0u64 </span>=&gt; <span class="prelude-val">Ok</span>((rest, ExecutedOpsStreamingStep::Started)),
+            <span class="number">1u64 </span>=&gt; context(<span class="string">&quot;operation_id&quot;</span>, |input| {
+                <span class="self">self</span>.op_id_deserializer.deserialize(input)
+            })
+            .map(ExecutedOpsStreamingStep::Ongoing)
+            .parse(rest),
+
+            <span class="number">2u64 </span>=&gt; <span class="prelude-val">Ok</span>((rest, ExecutedOpsStreamingStep::Finished)),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
+                buffer,
+                nom::error::ErrorKind::Digit,
+            ))),
+        }
     }
 }
 

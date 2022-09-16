@@ -790,6 +790,91 @@
 <span id="790">790</span>
 <span id="791">791</span>
 <span id="792">792</span>
+<span id="793">793</span>
+<span id="794">794</span>
+<span id="795">795</span>
+<span id="796">796</span>
+<span id="797">797</span>
+<span id="798">798</span>
+<span id="799">799</span>
+<span id="800">800</span>
+<span id="801">801</span>
+<span id="802">802</span>
+<span id="803">803</span>
+<span id="804">804</span>
+<span id="805">805</span>
+<span id="806">806</span>
+<span id="807">807</span>
+<span id="808">808</span>
+<span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
+<span id="817">817</span>
+<span id="818">818</span>
+<span id="819">819</span>
+<span id="820">820</span>
+<span id="821">821</span>
+<span id="822">822</span>
+<span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
+<span id="826">826</span>
+<span id="827">827</span>
+<span id="828">828</span>
+<span id="829">829</span>
+<span id="830">830</span>
+<span id="831">831</span>
+<span id="832">832</span>
+<span id="833">833</span>
+<span id="834">834</span>
+<span id="835">835</span>
+<span id="836">836</span>
+<span id="837">837</span>
+<span id="838">838</span>
+<span id="839">839</span>
+<span id="840">840</span>
+<span id="841">841</span>
+<span id="842">842</span>
+<span id="843">843</span>
+<span id="844">844</span>
+<span id="845">845</span>
+<span id="846">846</span>
+<span id="847">847</span>
+<span id="848">848</span>
+<span id="849">849</span>
+<span id="850">850</span>
+<span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::collections::{BTreeMap, VecDeque};
@@ -899,15 +984,92 @@
     }
 }
 
-<span class="doccomment">/// PoS bootstrap streaming steps enum
-</span><span class="attribute">#[derive(PartialEq, Eq, Copy, Clone)]
-</span><span class="kw">pub enum </span>PoSInfoStreamingStep {
+<span class="doccomment">/// PoS bootstrap streaming steps
+</span><span class="attribute">#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+</span><span class="kw">pub enum </span>PoSCycleStreamingStep {
     <span class="doccomment">/// Started step, only when launching the streaming
     </span>Started,
     <span class="doccomment">/// Ongoing step, as long as you are streaming complete cycles
     </span>Ongoing(u64),
     <span class="doccomment">/// Finished step, after the incomplete cycle was streamed
     </span>Finished,
+}
+
+<span class="doccomment">/// PoS bootstrap streaming steps serializer
+</span><span class="attribute">#[derive(Default)]
+</span><span class="kw">pub struct </span>PoSCycleStreamingStepSerializer {
+    u64_serializer: U64VarIntSerializer,
+}
+
+<span class="kw">impl </span>PoSCycleStreamingStepSerializer {
+    <span class="doccomment">/// Creates a new PoS bootstrap streaming steps serializer
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u64_serializer: U64VarIntSerializer,
+        }
+    }
+}
+
+<span class="kw">impl </span>Serializer&lt;PoSCycleStreamingStep&gt; <span class="kw">for </span>PoSCycleStreamingStepSerializer {
+    <span class="kw">fn </span>serialize(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        value: <span class="kw-2">&amp;</span>PoSCycleStreamingStep,
+        buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="kw">match </span>value {
+            PoSCycleStreamingStep::Started =&gt; <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span><span class="number">0u64</span>, buffer)<span class="question-mark">?</span>,
+            PoSCycleStreamingStep::Ongoing(last_cycle) =&gt; {
+                <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span><span class="number">1u64</span>, buffer)<span class="question-mark">?</span>;
+                <span class="self">self</span>.u64_serializer.serialize(last_cycle, buffer)<span class="question-mark">?</span>;
+            }
+            PoSCycleStreamingStep::Finished =&gt; <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span><span class="number">2u64</span>, buffer)<span class="question-mark">?</span>,
+        };
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
+<span class="doccomment">/// PoS bootstrap streaming steps deserializer
+</span><span class="kw">pub struct </span>PoSCycleStreamingStepDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>PoSCycleStreamingStepDeserializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
+    }
+}
+
+<span class="kw">impl </span>PoSCycleStreamingStepDeserializer {
+    <span class="doccomment">/// Creates a new PoS bootstrap streaming steps deserializer
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+        }
+    }
+}
+
+<span class="kw">impl </span>Deserializer&lt;PoSCycleStreamingStep&gt; <span class="kw">for </span>PoSCycleStreamingStepDeserializer {
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], PoSCycleStreamingStep, E&gt; {
+        <span class="kw">let </span>(rest, ident) = context(<span class="string">&quot;identifier&quot;</span>, |input| {
+            <span class="self">self</span>.u64_deserializer.deserialize(input)
+        })
+        .parse(buffer)<span class="question-mark">?</span>;
+        <span class="kw">match </span>ident {
+            <span class="number">0u64 </span>=&gt; <span class="prelude-val">Ok</span>((rest, PoSCycleStreamingStep::Started)),
+            <span class="number">1u64 </span>=&gt; context(<span class="string">&quot;cycle&quot;</span>, |input| <span class="self">self</span>.u64_deserializer.deserialize(input))
+                .map(PoSCycleStreamingStep::Ongoing)
+                .parse(rest),
+
+            <span class="number">2u64 </span>=&gt; <span class="prelude-val">Ok</span>((rest, PoSCycleStreamingStep::Finished)),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
+                buffer,
+                nom::error::ErrorKind::Digit,
+            ))),
+        }
+    }
 }
 
 <span class="kw">impl </span>PoSFinalState {
@@ -930,22 +1092,22 @@
     </span><span class="attribute">#[allow(clippy::type_complexity)]
     </span><span class="kw">pub fn </span>get_cycle_history_part(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        cursor: PoSInfoStreamingStep,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;u8&gt;, PoSInfoStreamingStep), ModelsError&gt; {
+        cursor: PoSCycleStreamingStep,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;u8&gt;, PoSCycleStreamingStep), ModelsError&gt; {
         <span class="kw">let </span>cycle_index = <span class="kw">match </span>cursor {
-            PoSInfoStreamingStep::Started =&gt; <span class="self">self</span>.get_first_cycle_index(),
-            PoSInfoStreamingStep::Ongoing(last_cycle) =&gt; {
+            PoSCycleStreamingStep::Started =&gt; <span class="self">self</span>.get_first_cycle_index(),
+            PoSCycleStreamingStep::Ongoing(last_cycle) =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(index) = <span class="self">self</span>.get_cycle_index(last_cycle) {
                     <span class="kw">if </span>index == <span class="self">self</span>.cycle_history.len() - <span class="number">1 </span>{
-                        <span class="kw">return </span><span class="prelude-val">Ok</span>((Vec::default(), PoSInfoStreamingStep::Finished));
+                        <span class="kw">return </span><span class="prelude-val">Ok</span>((Vec::default(), PoSCycleStreamingStep::Finished));
                     }
                     index.saturating_add(<span class="number">1</span>)
                 } <span class="kw">else </span>{
                     <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::OutdatedBootstrapCursor);
                 }
             }
-            PoSInfoStreamingStep::Finished =&gt; {
-                <span class="kw">return </span><span class="prelude-val">Ok</span>((Vec::default(), PoSInfoStreamingStep::Finished))
+            PoSCycleStreamingStep::Finished =&gt; {
+                <span class="kw">return </span><span class="prelude-val">Ok</span>((Vec::default(), PoSCycleStreamingStep::Finished))
             }
         };
         <span class="kw">let </span><span class="kw-2">mut </span>part = Vec::new();
@@ -982,7 +1144,7 @@
             u64_ser.serialize(<span class="kw-2">&amp;</span>stats.block_failure_count, <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
         }
 
-        <span class="prelude-val">Ok</span>((part, PoSInfoStreamingStep::Ongoing(<span class="kw-2">*</span>cycle)))
+        <span class="prelude-val">Ok</span>((part, PoSCycleStreamingStep::Ongoing(<span class="kw-2">*</span>cycle)))
     }
 
     <span class="doccomment">/// Gets a part of the Proof of Stake deferred_credits. Used only in the bootstrap process.
@@ -1029,9 +1191,12 @@
     ///
     /// # Arguments
     /// `part`: the raw data received from `get_pos_state_part` and used to update PoS State
-    </span><span class="kw">pub fn </span>set_cycle_history_part(<span class="kw-2">&amp;mut </span><span class="self">self</span>, part: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;u64&gt;, ModelsError&gt; {
+    </span><span class="kw">pub fn </span>set_cycle_history_part(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        part: <span class="kw-2">&amp;</span>[u8],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PoSCycleStreamingStep, ModelsError&gt; {
         <span class="kw">if </span>part.is_empty() {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="self">self</span>.cycle_history.back().map(|v| v.cycle));
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(PoSCycleStreamingStep::Finished);
         }
         <span class="kw">let </span>u64_deser = U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX));
         <span class="kw">let </span>bitvec_deser = BitVecDeserializer::new();
@@ -1125,7 +1290,12 @@
             })
         }
 
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.cycle_history.back().map(|v| v.cycle))
+        <span class="prelude-val">Ok</span>(PoSCycleStreamingStep::Ongoing(
+            <span class="self">self</span>.cycle_history
+                .back()
+                .map(|v| v.cycle)
+                .expect(<span class="string">&quot;should contain at least one cycle&quot;</span>),
+        ))
     }
 
     <span class="doccomment">/// Sets a part of the Proof of Stake deferred_credits. Used only in the bootstrap process.

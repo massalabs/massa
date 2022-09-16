@@ -262,6 +262,16 @@
 <span id="262">262</span>
 <span id="263">263</span>
 <span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -271,11 +281,12 @@
 
 </span><span class="kw">use crate</span>::{
     config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges, ExecutedOps,
+    ExecutedOpsStreamingStep,
 };
 <span class="kw">use </span>massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 <span class="kw">use </span>massa_ledger_exports::{LedgerChanges, LedgerController};
 <span class="kw">use </span>massa_models::{address::Address, slot::Slot};
-<span class="kw">use </span>massa_pos_exports::{PoSFinalState, PoSInfoStreamingStep, SelectorController};
+<span class="kw">use </span>massa_pos_exports::{PoSCycleStreamingStep, PoSFinalState, SelectorController};
 <span class="kw">use </span>std::collections::VecDeque;
 
 <span class="doccomment">/// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
@@ -393,7 +404,8 @@
         last_slot: Slot,
         last_address: <span class="prelude-ty">Option</span>&lt;Address&gt;,
         last_id_async_pool: <span class="prelude-ty">Option</span>&lt;AsyncMessageId&gt;,
-        last_pos_step_cursor: PoSInfoStreamingStep,
+        last_pos_step_cursor: PoSCycleStreamingStep,
+        last_exec_ops_cursor: ExecutedOpsStreamingStep,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(Slot, StateChanges)&gt;, FinalStateError&gt; {
         <span class="kw">let </span>position_slot = <span class="kw">if let </span><span class="prelude-val">Some</span>((first_slot, <span class="kw">_</span>)) = <span class="self">self</span>.changes_history.front() {
             <span class="comment">// Safe because we checked that there is changes just above.
@@ -417,6 +429,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>res_changes: Vec&lt;(Slot, StateChanges)&gt; = Vec::new();
         <span class="kw">for </span>(slot, changes) <span class="kw">in </span><span class="self">self</span>.changes_history.range((position_slot <span class="kw">as </span>usize)..) {
             <span class="kw">let </span><span class="kw-2">mut </span>slot_changes = StateChanges::default();
+
             <span class="comment">// Get ledger change that concern address &lt;= last_address.
             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = last_address {
                 <span class="kw">let </span>ledger_changes: LedgerChanges = LedgerChanges(
@@ -455,10 +468,17 @@
             }
 
             <span class="comment">// Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
-            </span><span class="kw">if </span>last_pos_step_cursor == PoSInfoStreamingStep::Finished {
+            </span><span class="kw">if </span>last_pos_step_cursor == PoSCycleStreamingStep::Finished {
                 slot_changes.pos_changes = changes.pos_changes.clone();
             }
-            res_changes.push((<span class="kw-2">*</span>slot, slot_changes));
+
+            <span class="comment">// Get executed operations changes if classic bootstrap finished
+            </span><span class="kw">if </span>last_exec_ops_cursor == ExecutedOpsStreamingStep::Finished {
+                slot_changes.executed_ops = changes.executed_ops.clone();
+            }
+
+            <span class="comment">// Push the slot changes
+            </span>res_changes.push((<span class="kw-2">*</span>slot, slot_changes));
         }
         <span class="prelude-val">Ok</span>(res_changes)
     }
