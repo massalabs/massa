@@ -57,6 +57,7 @@ pub(crate) fn perform_draws(
         ),
     };
 
+    let mut five_first_slots: Vec<(Slot, Selection)> = Vec::new();
     loop {
         // draw block creator
         let producer = if cur_slot.period > 0 {
@@ -71,14 +72,13 @@ pub(crate) fn perform_draws(
             .map(|_index| addresses[dist.sample(&mut rng)])
             .collect();
 
+        let selection = Selection {
+            producer,
+            endorsements,
+        };
+        five_first_slots.push((cur_slot, selection.clone()));
         // add to draws
-        cycle_draws.draws.insert(
-            cur_slot,
-            Selection {
-                producer,
-                endorsements,
-            },
-        );
+        cycle_draws.draws.insert(cur_slot, selection);
 
         if cur_slot == last_slot {
             break;
@@ -92,11 +92,7 @@ pub(crate) fn perform_draws(
         "Draws for cycle {} complete. Look_back seed was {:#?}. Five first selections is : {:#?}",
         cycle,
         lookback_seed.to_bytes(),
-        cycle_draws
-            .draws
-            .iter()
-            .take(5)
-            .collect::<Vec<(&Slot, &Selection)>>()
+        five_first_slots
     );
 
     Ok(cycle_draws)
