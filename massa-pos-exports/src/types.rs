@@ -107,15 +107,92 @@ impl DeferredCredits {
     }
 }
 
-/// PoS bootstrap streaming steps enum
-#[derive(PartialEq, Eq, Copy, Clone)]
-pub enum PoSInfoStreamingStep {
+/// PoS bootstrap streaming steps
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub enum PoSCycleStreamingStep {
     /// Started step, only when launching the streaming
     Started,
     /// Ongoing step, as long as you are streaming complete cycles
     Ongoing(u64),
     /// Finished step, after the incomplete cycle was streamed
     Finished,
+}
+
+/// PoS bootstrap streaming steps serializer
+#[derive(Default)]
+pub struct PoSCycleStreamingStepSerializer {
+    u64_serializer: U64VarIntSerializer,
+}
+
+impl PoSCycleStreamingStepSerializer {
+    /// Creates a new PoS bootstrap streaming steps serializer
+    pub fn new() -> Self {
+        Self {
+            u64_serializer: U64VarIntSerializer,
+        }
+    }
+}
+
+impl Serializer<PoSCycleStreamingStep> for PoSCycleStreamingStepSerializer {
+    fn serialize(
+        &self,
+        value: &PoSCycleStreamingStep,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        match value {
+            PoSCycleStreamingStep::Started => self.u64_serializer.serialize(&0u64, buffer)?,
+            PoSCycleStreamingStep::Ongoing(last_cycle) => {
+                self.u64_serializer.serialize(&1u64, buffer)?;
+                self.u64_serializer.serialize(last_cycle, buffer)?;
+            }
+            PoSCycleStreamingStep::Finished => self.u64_serializer.serialize(&2u64, buffer)?,
+        };
+        Ok(())
+    }
+}
+
+/// PoS bootstrap streaming steps deserializer
+pub struct PoSCycleStreamingStepDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+}
+
+impl Default for PoSCycleStreamingStepDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PoSCycleStreamingStepDeserializer {
+    /// Creates a new PoS bootstrap streaming steps deserializer
+    pub fn new() -> Self {
+        Self {
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+        }
+    }
+}
+
+impl Deserializer<PoSCycleStreamingStep> for PoSCycleStreamingStepDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], PoSCycleStreamingStep, E> {
+        let (rest, ident) = context("identifier", |input| {
+            self.u64_deserializer.deserialize(input)
+        })
+        .parse(buffer)?;
+        match ident {
+            0u64 => Ok((rest, PoSCycleStreamingStep::Started)),
+            1u64 => context("cycle", |input| self.u64_deserializer.deserialize(input))
+                .map(PoSCycleStreamingStep::Ongoing)
+                .parse(rest),
+
+            2u64 => Ok((rest, PoSCycleStreamingStep::Finished)),
+            _ => Err(nom::Err::Error(ParseError::from_error_kind(
+                buffer,
+                nom::error::ErrorKind::Digit,
+            ))),
+        }
+    }
 }
 
 impl PoSFinalState {
@@ -138,22 +215,22 @@ impl PoSFinalState {
     #[allow(clippy::type_complexity)]
     pub fn get_cycle_history_part(
         &self,
-        cursor: PoSInfoStreamingStep,
-    ) -> Result<(Vec<u8>, PoSInfoStreamingStep), ModelsError> {
+        cursor: PoSCycleStreamingStep,
+    ) -> Result<(Vec<u8>, PoSCycleStreamingStep), ModelsError> {
         let cycle_index = match cursor {
-            PoSInfoStreamingStep::Started => self.get_first_cycle_index(),
-            PoSInfoStreamingStep::Ongoing(last_cycle) => {
+            PoSCycleStreamingStep::Started => self.get_first_cycle_index(),
+            PoSCycleStreamingStep::Ongoing(last_cycle) => {
                 if let Some(index) = self.get_cycle_index(last_cycle) {
                     if index == self.cycle_history.len() - 1 {
-                        return Ok((Vec::default(), PoSInfoStreamingStep::Finished));
+                        return Ok((Vec::default(), PoSCycleStreamingStep::Finished));
                     }
                     index.saturating_add(1)
                 } else {
                     return Err(ModelsError::OutdatedBootstrapCursor);
                 }
             }
-            PoSInfoStreamingStep::Finished => {
-                return Ok((Vec::default(), PoSInfoStreamingStep::Finished))
+            PoSCycleStreamingStep::Finished => {
+                return Ok((Vec::default(), PoSCycleStreamingStep::Finished))
             }
         };
         let mut part = Vec::new();
@@ -174,7 +251,7 @@ impl PoSFinalState {
 
         // TODO: limit the whole info with CYCLE_INFO_SIZE_MESSAGE_BYTES
         u64_ser.serialize(cycle, &mut part)?;
-        part.push(*complete as u8);
+        part.push(u8::from(*complete));
         // TODO: limit this with ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES
         u64_ser.serialize(&(roll_counts.len() as u64), &mut part)?;
         for (addr, count) in roll_counts {
@@ -190,7 +267,7 @@ impl PoSFinalState {
             u64_ser.serialize(&stats.block_failure_count, &mut part)?;
         }
 
-        Ok((part, PoSInfoStreamingStep::Ongoing(*cycle)))
+        Ok((part, PoSCycleStreamingStep::Ongoing(*cycle)))
     }
 
     /// Gets a part of the Proof of Stake deferred_credits. Used only in the bootstrap process.
@@ -237,9 +314,12 @@ impl PoSFinalState {
     ///
     /// # Arguments
     /// `part`: the raw data received from `get_pos_state_part` and used to update PoS State
-    pub fn set_cycle_history_part(&mut self, part: &[u8]) -> Result<Option<u64>, ModelsError> {
+    pub fn set_cycle_history_part(
+        &mut self,
+        part: &[u8],
+    ) -> Result<PoSCycleStreamingStep, ModelsError> {
         if part.is_empty() {
-            return Ok(self.cycle_history.back().map(|v| v.cycle));
+            return Ok(PoSCycleStreamingStep::Finished);
         }
         let u64_deser = U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX));
         let bitvec_deser = BitVecDeserializer::new();
@@ -333,7 +413,12 @@ impl PoSFinalState {
             })
         }
 
-        Ok(self.cycle_history.back().map(|v| v.cycle))
+        Ok(PoSCycleStreamingStep::Ongoing(
+            self.cycle_history
+                .back()
+                .map(|v| v.cycle)
+                .expect("should contain at least one cycle"),
+        ))
     }
 
     /// Sets a part of the Proof of Stake deferred_credits. Used only in the bootstrap process.
