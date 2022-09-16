@@ -118,6 +118,38 @@ pub enum PoSCycleStreamingStep {
     Finished,
 }
 
+/// PoS bootstrap streaming steps serializer
+pub struct PoSCycleStreamingStepSerializer {
+    u64_serializer: U64VarIntSerializer,
+}
+
+impl PoSCycleStreamingStepSerializer {
+    /// Creates a new PoS bootstrap streaming steps serializer
+    pub fn new() -> Self {
+        Self {
+            u64_serializer: U64VarIntSerializer,
+        }
+    }
+}
+
+impl Serializer<PoSCycleStreamingStep> for PoSCycleStreamingStepSerializer {
+    fn serialize(
+        &self,
+        value: &PoSCycleStreamingStep,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        match value {
+            PoSCycleStreamingStep::Started => self.u64_serializer.serialize(&0u64, buffer)?,
+            PoSCycleStreamingStep::Ongoing(last_cycle) => {
+                self.u64_serializer.serialize(&1u64, buffer)?;
+                self.u64_serializer.serialize(last_cycle, buffer)?;
+            }
+            PoSCycleStreamingStep::Finished => self.u64_serializer.serialize(&2u64, buffer)?,
+        };
+        Ok(())
+    }
+}
+
 impl PoSFinalState {
     fn get_first_cycle_index(&self) -> usize {
         // for bootstrap:

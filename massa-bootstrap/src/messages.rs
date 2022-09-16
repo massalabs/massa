@@ -16,7 +16,7 @@ use massa_models::{
     version::{Version, VersionDeserializer, VersionSerializer},
 };
 use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
-use massa_pos_exports::PoSCycleStreamingStep;
+use massa_pos_exports::{PoSCycleStreamingStep, PoSCycleStreamingStepSerializer};
 use massa_serialization::{
     Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
     U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -484,7 +484,7 @@ pub struct BootstrapClientMessageSerializer {
     slot_serializer: SlotSerializer,
     async_message_id_serializer: AsyncMessageIdSerializer,
     key_serializer: KeySerializer,
-    opt_u64_serializer: OptionSerializer<u64, U64VarIntSerializer>,
+    cycle_step_serializer: PoSCycleStreamingStepSerializer,
     opt_slot_serializer: OptionSerializer<Slot, SlotSerializer>,
 }
 
@@ -496,7 +496,7 @@ impl BootstrapClientMessageSerializer {
             slot_serializer: SlotSerializer::new(),
             async_message_id_serializer: AsyncMessageIdSerializer::new(),
             key_serializer: KeySerializer::new(),
-            opt_u64_serializer: OptionSerializer::new(U64VarIntSerializer::new()),
+            cycle_step_serializer: PoSCycleStreamingStepSerializer::new(),
             opt_slot_serializer: OptionSerializer::new(SlotSerializer::new()),
         }
     }
@@ -551,8 +551,9 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                     self.key_serializer.serialize(key, buffer)?;
                     self.slot_serializer.serialize(slot, buffer)?;
                     self.async_message_id_serializer.serialize(last_async_message_id, buffer)?;
-                    self.opt_u64_serializer.serialize(last_cycle_step, buffer)?;
+                    self.cycle_step_serializer.serialize(last_cycle_step, buffer)?;
                     self.opt_slot_serializer.serialize(last_credits_slot, buffer)?;
+                    // TODO: ser last_exec_ops_step
                 }
             }
             BootstrapClientMessage::BootstrapError { error } => {
