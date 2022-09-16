@@ -62,7 +62,7 @@ impl ExecutedOps {
     /// Solely used by the bootstrap.
     ///
     /// # Returns
-    /// A tuple containing the data and the last returned key
+    /// A tuple containing the data and the next executed ops streaming step
     pub fn get_executed_ops_part(
         &self,
         cursor: ExecutedOpsStreamingStep,
@@ -78,6 +78,27 @@ impl ExecutedOps {
         let ops_serializer = ExecutedOpsSerializer::new();
         ops_serializer.serialize(self, &mut part)?;
         Ok((part, ExecutedOpsStreamingStep::Finished))
+    }
+
+    /// Set a part of the executed operations.
+    ///
+    /// Solely used by the bootstrap.
+    ///
+    /// # Returns
+    /// The next executed ops streaming step
+    pub fn set_executed_ops_part(
+        &mut self,
+        part: &[u8],
+    ) -> Result<ExecutedOpsStreamingStep, ModelsError> {
+        let ops_deserializer = ExecutedOpsDeserializer::new(32);
+        let (rest, ops) = ops_deserializer.deserialize(part)?;
+        if !rest.is_empty() {
+            return Err(ModelsError::SerializeError(
+                "data is left after set_executed_ops_part deserialization".to_string(),
+            ));
+        }
+        self.extend(ops);
+        Ok(ExecutedOpsStreamingStep::Finished)
     }
 }
 
