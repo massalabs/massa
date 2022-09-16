@@ -137,11 +137,8 @@ impl ProtocolWorker {
         node_id: NodeId,
         operations: Vec<WrappedOperation>,
     ) {
-        if self
-            .note_operations_from_node(operations, &node_id)
-            .is_err()
-        {
-            warn!("node {} sent us critically incorrect operation, which may be an attack attempt by the remote node or a loss of sync between us and the remote node", node_id,);
+        if let Err(err) = self.note_operations_from_node(operations, &node_id) {
+            warn!("node {} sent us critically incorrect operation, which may be an attack attempt by the remote node or a loss of sync between us and the remote node. Err = {}", node_id, err);
             let _ = self.ban_node(&node_id).await;
         }
     }
