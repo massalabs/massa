@@ -402,13 +402,10 @@ impl ProtocolWorker {
         block_id: BlockId,
         mut operations: Vec<WrappedOperation>,
     ) -> Result<(), ProtocolError> {
-        if self
-            .note_operations_from_node(operations.clone(), &from_node_id)
-            .is_err()
-        {
+        if let Err(err) = self.note_operations_from_node(operations.clone(), &from_node_id) {
             warn!(
-                "Node id {} sent us operations for block id {} but they have bad signatures.",
-                from_node_id, block_id
+                "Node id {} sent us operations for block id {} but they failed at verifications. Err = {}",
+                from_node_id, block_id, err
             );
             let _ = self.ban_node(&from_node_id).await;
             return Ok(());
