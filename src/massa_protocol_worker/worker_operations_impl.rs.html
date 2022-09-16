@@ -219,9 +219,6 @@
 <span id="219">219</span>
 <span id="220">220</span>
 <span id="221">221</span>
-<span id="222">222</span>
-<span id="223">223</span>
-<span id="224">224</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Contains the implementation of the life cycle of operations
 //!
 //! Implement the propagation algorithm written here [redirect to GitHub]
@@ -361,11 +358,8 @@
         node_id: NodeId,
         operations: Vec&lt;WrappedOperation&gt;,
     ) {
-        <span class="kw">if </span><span class="self">self
-            </span>.note_operations_from_node(operations, <span class="kw-2">&amp;</span>node_id)
-            .is_err()
-        {
-            <span class="macro">warn!</span>(<span class="string">&quot;node {} sent us critically incorrect operation, which may be an attack attempt by the remote node or a loss of sync between us and the remote node&quot;</span>, node_id,);
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.note_operations_from_node(operations, <span class="kw-2">&amp;</span>node_id) {
+            <span class="macro">warn!</span>(<span class="string">&quot;node {} sent us critically incorrect operation, which may be an attack attempt by the remote node or a loss of sync between us and the remote node. Err = {}&quot;</span>, node_id, err);
             <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>node_id).<span class="kw">await</span>;
         }
     }

@@ -516,6 +516,54 @@
 <span id="516">516</span>
 <span id="517">517</span>
 <span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Worker implementation for the network events
 //!
 //! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
@@ -637,15 +685,12 @@
             }
             NetworkEvent::ReceivedEndorsements { node, endorsements } =&gt; {
                 <span class="macro">massa_trace!</span>(ENDORSEMENTS, { <span class="string">&quot;node&quot;</span>: node, <span class="string">&quot;endorsements&quot;</span>: endorsements});
-                <span class="kw">if </span><span class="self">self
-                    </span>.note_endorsements_from_node(endorsements, <span class="kw-2">&amp;</span>node, <span class="bool-val">true</span>)
-                    .is_err()
-                {
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.note_endorsements_from_node(endorsements, <span class="kw-2">&amp;</span>node, <span class="bool-val">true</span>) {
                     <span class="macro">warn!</span>(
                         <span class="string">&quot;node {} sent us critically incorrect endorsements, \
                         which may be an attack attempt by the remote node or a \
-                        loss of sync between us and the remote node&quot;</span>,
-                        node,
+                        loss of sync between us and the remote node. Err = {}&quot;</span>,
+                        node, err
                     );
                     <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>node).<span class="kw">await</span>;
                 }
@@ -760,15 +805,25 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = <span class="self">self</span>.block_wishlist.get(<span class="kw-2">&amp;</span>block_id) {
             <span class="kw">if </span>info.header.is_some() {
-                <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>from_node_id).<span class="kw">await</span>;
+                <span class="macro">warn!</span>(
+                    <span class="string">&quot;Node {} sent us header for block id {} but we already received it.&quot;</span>,
+                    from_node_id, block_id
+                );
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(node) = <span class="self">self</span>.active_nodes.get_mut(<span class="kw-2">&amp;</span>from_node_id) &amp;&amp; node.asked_blocks.contains_key(<span class="kw-2">&amp;</span>block_id) {
+                    node.asked_blocks.remove(<span class="kw-2">&amp;</span>block_id);
+                    node.insert_known_blocks(<span class="kw-2">&amp;</span>[block_id], <span class="bool-val">false</span>, Instant::now(), <span class="self">self</span>.config.max_node_known_blocks_size);
+                }
+
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(());
             }
         }
-        <span class="kw">if </span><span class="self">self
-            </span>.note_header_from_node(<span class="kw-2">&amp;</span>header, <span class="kw-2">&amp;</span>from_node_id)
-            .<span class="kw">await
-            </span>.is_err()
-        {
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.note_header_from_node(<span class="kw-2">&amp;</span>header, <span class="kw-2">&amp;</span>from_node_id).<span class="kw">await </span>{
+            <span class="macro">warn!</span>(
+                <span class="string">&quot;node {} sent us critically incorrect header through protocol, \
+                which may be an attack attempt by the remote node \
+                or a loss of sync between us and the remote node. Err = {}&quot;</span>,
+                from_node_id, err
+            );
             <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>from_node_id).<span class="kw">await</span>;
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         };
@@ -819,19 +874,37 @@
         <span class="kw">let </span>info = <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = <span class="self">self</span>.block_wishlist.get_mut(<span class="kw-2">&amp;</span>block_id) {
             info
         } <span class="kw">else </span>{
-            <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>from_node_id).<span class="kw">await</span>;
+            <span class="macro">warn!</span>(
+                <span class="string">&quot;Node {} sent us an operation list but we don&#39;t have block id {} in our wishlist.&quot;</span>,
+                from_node_id, block_id
+            );
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(node) = <span class="self">self</span>.active_nodes.get_mut(<span class="kw-2">&amp;</span>from_node_id) &amp;&amp; node.asked_blocks.contains_key(<span class="kw-2">&amp;</span>block_id) {
+                node.asked_blocks.remove(<span class="kw-2">&amp;</span>block_id);
+                node.insert_known_blocks(<span class="kw-2">&amp;</span>[block_id], <span class="bool-val">false</span>, Instant::now(), <span class="self">self</span>.config.max_node_known_blocks_size);
+            }
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         };
 
         <span class="kw">let </span>header = <span class="kw">if let </span><span class="prelude-val">Some</span>(header) = <span class="kw-2">&amp;</span>info.header {
             header
         } <span class="kw">else </span>{
-            <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>from_node_id).<span class="kw">await</span>;
+            <span class="macro">warn!</span>(<span class="string">&quot;Node {} sent us an operation list but we don&#39;t have receive the header of block id {} yet.&quot;</span>, from_node_id, block_id);
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(node) = <span class="self">self</span>.active_nodes.get_mut(<span class="kw-2">&amp;</span>from_node_id) &amp;&amp; node.asked_blocks.contains_key(<span class="kw-2">&amp;</span>block_id) {
+                node.asked_blocks.remove(<span class="kw-2">&amp;</span>block_id);
+                node.insert_known_blocks(<span class="kw-2">&amp;</span>[block_id], <span class="bool-val">false</span>, Instant::now(), <span class="self">self</span>.config.max_node_known_blocks_size);
+            }
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         };
 
         <span class="kw">if </span>info.operation_ids.is_some() {
-            <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>from_node_id).<span class="kw">await</span>;
+            <span class="macro">warn!</span>(
+                <span class="string">&quot;Node {} sent us an operation list for block id {} but we already received it.&quot;</span>,
+                from_node_id, block_id
+            );
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(node) = <span class="self">self</span>.active_nodes.get_mut(<span class="kw-2">&amp;</span>from_node_id) &amp;&amp; node.asked_blocks.contains_key(<span class="kw-2">&amp;</span>block_id) {
+                node.asked_blocks.remove(<span class="kw-2">&amp;</span>block_id);
+                node.insert_known_blocks(<span class="kw-2">&amp;</span>[block_id], <span class="bool-val">false</span>, Instant::now(), <span class="self">self</span>.config.max_node_known_blocks_size);
+            }
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
 
@@ -853,6 +926,7 @@
                 <span class="self">Self</span>::get_total_operations_size(<span class="kw-2">&amp;</span><span class="self">self</span>.storage, <span class="kw-2">&amp;</span>known_operations);
 
             <span class="kw">if </span>info.operations_size &gt; <span class="self">self</span>.config.max_serialized_operations_size_per_block {
+                <span class="macro">warn!</span>(<span class="string">&quot;Node id {} sent us a operation list for block id {} but the operations we already have in our records exceed max size.&quot;</span>, from_node_id, block_id);
                 <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>from_node_id).<span class="kw">await</span>;
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(());
             }
@@ -869,6 +943,7 @@
                     .<span class="kw">await</span>;
             }
         } <span class="kw">else </span>{
+            <span class="macro">warn!</span>(<span class="string">&quot;Node id {} sent us a operation list for block id {} but the hash in header doesn&#39;t match.&quot;</span>, from_node_id, block_id);
             <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>from_node_id).<span class="kw">await</span>;
         }
         <span class="prelude-val">Ok</span>(())
@@ -893,10 +968,11 @@
         block_id: BlockId,
         <span class="kw-2">mut </span>operations: Vec&lt;WrappedOperation&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="kw">if </span><span class="self">self
-            </span>.note_operations_from_node(operations.clone(), <span class="kw-2">&amp;</span>from_node_id)
-            .is_err()
-        {
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.note_operations_from_node(operations.clone(), <span class="kw-2">&amp;</span>from_node_id) {
+            <span class="macro">warn!</span>(
+                <span class="string">&quot;Node id {} sent us operations for block id {} but they failed at verifications. Err = {}&quot;</span>,
+                from_node_id, block_id, err
+            );
             <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>from_node_id).<span class="kw">await</span>;
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
@@ -907,13 +983,21 @@
                 <span class="kw">let </span>header = <span class="kw">if let </span><span class="prelude-val">Some</span>(header) = <span class="kw-2">&amp;</span>info.header {
                     header.clone()
                 } <span class="kw">else </span>{
-                    <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>from_node_id).<span class="kw">await</span>;
+                    <span class="macro">warn!</span>(<span class="string">&quot;Node {} sent us full operations but we don&#39;t have receive the header of block id {} yet.&quot;</span>, from_node_id, block_id);
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(node) = <span class="self">self</span>.active_nodes.get_mut(<span class="kw-2">&amp;</span>from_node_id) &amp;&amp; node.asked_blocks.contains_key(<span class="kw-2">&amp;</span>block_id) {
+                        node.asked_blocks.remove(<span class="kw-2">&amp;</span>block_id);
+                        node.insert_known_blocks(<span class="kw-2">&amp;</span>[block_id], <span class="bool-val">false</span>, Instant::now(), <span class="self">self</span>.config.max_node_known_blocks_size);
+                    }
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                 };
                 <span class="kw">let </span>block_operation_ids = <span class="kw">if let </span><span class="prelude-val">Some</span>(operations) = <span class="kw-2">&amp;</span>info.operation_ids {
                     operations
                 } <span class="kw">else </span>{
-                    <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>from_node_id).<span class="kw">await</span>;
+                    <span class="macro">warn!</span>(<span class="string">&quot;Node {} sent us full operations but we don&#39;t have received the operation list of block id {} yet.&quot;</span>, from_node_id, block_id);
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(node) = <span class="self">self</span>.active_nodes.get_mut(<span class="kw-2">&amp;</span>from_node_id) &amp;&amp; node.asked_blocks.contains_key(<span class="kw-2">&amp;</span>block_id) {
+                        node.asked_blocks.remove(<span class="kw-2">&amp;</span>block_id);
+                        node.insert_known_blocks(<span class="kw-2">&amp;</span>[block_id], <span class="bool-val">false</span>, Instant::now(), <span class="self">self</span>.config.max_node_known_blocks_size);
+                    }
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                 };
                 operations.retain(|op| block_operation_ids.contains(<span class="kw-2">&amp;</span>op.id));
@@ -933,12 +1017,20 @@
                         .sum()
                 };
                 <span class="kw">if </span>full_op_size &gt; <span class="self">self</span>.config.max_serialized_operations_size_per_block {
+                    <span class="macro">warn!</span>(<span class="string">&quot;Node id {} sent us full operations for block id {} but they exceed max size.&quot;</span>, from_node_id, block_id);
                     <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>from_node_id).<span class="kw">await</span>;
                     <span class="self">self</span>.block_wishlist.remove(<span class="kw-2">&amp;</span>block_id);
                     ProtocolEvent::InvalidBlock { block_id, header }
                 } <span class="kw">else </span>{
                     <span class="kw">if </span>known_operations != block_ids_set {
-                        <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>from_node_id).<span class="kw">await</span>;
+                        <span class="macro">warn!</span>(
+                            <span class="string">&quot;Node id {} didn&#39;t sent us all the full operations for block id {}.&quot;</span>,
+                            from_node_id, block_id
+                        );
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(node) = <span class="self">self</span>.active_nodes.get_mut(<span class="kw-2">&amp;</span>from_node_id) &amp;&amp; node.asked_blocks.contains_key(<span class="kw-2">&amp;</span>block_id) {
+                            node.asked_blocks.remove(<span class="kw-2">&amp;</span>block_id);
+                            node.insert_known_blocks(<span class="kw-2">&amp;</span>[block_id], <span class="bool-val">false</span>, Instant::now(), <span class="self">self</span>.config.max_node_known_blocks_size);
+                        }
                         <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                     }
 
@@ -981,7 +1073,11 @@
                 }
             }
             Entry::Vacant(<span class="kw">_</span>) =&gt; {
-                <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>from_node_id).<span class="kw">await</span>;
+                <span class="macro">warn!</span>(<span class="string">&quot;Node {} sent us full operations but we don&#39;t have the block id {} in our wishlist.&quot;</span>, from_node_id, block_id);
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(node) = <span class="self">self</span>.active_nodes.get_mut(<span class="kw-2">&amp;</span>from_node_id) &amp;&amp; node.asked_blocks.contains_key(<span class="kw-2">&amp;</span>block_id) {
+                    node.asked_blocks.remove(<span class="kw-2">&amp;</span>block_id);
+                    node.insert_known_blocks(<span class="kw-2">&amp;</span>[block_id], <span class="bool-val">false</span>, Instant::now(), <span class="self">self</span>.config.max_node_known_blocks_size);
+                }
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(());
             }
         };

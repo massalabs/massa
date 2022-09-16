@@ -160,6 +160,8 @@
         ),
     };
 
+    <span class="kw">let </span><span class="kw-2">mut </span>five_first_slots: Vec&lt;(Slot, Selection)&gt; = Vec::new();
+    <span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
     <span class="kw">loop </span>{
         <span class="comment">// draw block creator
         </span><span class="kw">let </span>producer = <span class="kw">if </span>cur_slot.period &gt; <span class="number">0 </span>{
@@ -174,14 +176,16 @@
             .map(|_index| addresses[dist.sample(<span class="kw-2">&amp;mut </span>rng)])
             .collect();
 
+        <span class="kw">let </span>selection = Selection {
+            producer,
+            endorsements,
+        };
+        <span class="kw">if </span>count &lt; <span class="number">5 </span>{
+            five_first_slots.push((cur_slot, selection.clone()));
+            count += <span class="number">1</span>;
+        }
         <span class="comment">// add to draws
-        </span>cycle_draws.draws.insert(
-            cur_slot,
-            Selection {
-                producer,
-                endorsements,
-            },
-        );
+        </span>cycle_draws.draws.insert(cur_slot, selection);
 
         <span class="kw">if </span>cur_slot == last_slot {
             <span class="kw">break</span>;
@@ -195,11 +199,7 @@
         <span class="string">&quot;Draws for cycle {} complete. Look_back seed was {:#?}. Five first selections is : {:#?}&quot;</span>,
         cycle,
         lookback_seed.to_bytes(),
-        cycle_draws
-            .draws
-            .iter()
-            .take(<span class="number">5</span>)
-            .collect::&lt;Vec&lt;(<span class="kw-2">&amp;</span>Slot, <span class="kw-2">&amp;</span>Selection)&gt;&gt;()
+        five_first_slots
     );
 
     <span class="prelude-val">Ok</span>(cycle_draws)
