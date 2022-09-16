@@ -367,13 +367,14 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // because of the previously integrated block.
             let mut sender = protocol_command_sender.clone();
             thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(100));
                 let mut storage = Storage::create_root();
                 storage.store_endorsements(vec![endorsement]);
                 sender.propagate_endorsements(storage).unwrap();
             });
 
             match network_controller
-                .wait_command(1000.into(), |cmd| match cmd {
+                .wait_command(300.into(), |cmd| match cmd {
                     cmd @ NetworkCommand::SendEndorsements { .. } => Some(cmd),
                     _ => None,
                 })

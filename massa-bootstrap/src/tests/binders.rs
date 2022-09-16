@@ -62,6 +62,7 @@ async fn test_binders() {
         MAX_FUNCTION_NAME_LENGTH,
         MAX_PARAMETERS_SIZE,
         MAX_LEDGER_CHANGES_COUNT,
+        1000,
     );
 
     let server_thread = tokio::spawn(async move {
@@ -175,6 +176,7 @@ async fn test_binders_double_send_server_works() {
         MAX_FUNCTION_NAME_LENGTH,
         MAX_PARAMETERS_SIZE,
         MAX_LEDGER_CHANGES_COUNT,
+        1000,
     );
 
     let server_thread = tokio::spawn(async move {
@@ -273,6 +275,7 @@ async fn test_binders_try_double_send_client_works() {
         MAX_FUNCTION_NAME_LENGTH,
         MAX_PARAMETERS_SIZE,
         MAX_LEDGER_CHANGES_COUNT,
+        1000,
     );
 
     let server_thread = tokio::spawn(async move {

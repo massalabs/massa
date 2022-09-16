@@ -254,7 +254,7 @@ impl SpeculativeRollState {
             for hist_item in hist.0.iter().rev() {
                 for (slot, addr_amount) in hist_item
                     .state_changes
-                    .roll_state_changes
+                    .pos_changes
                     .deferred_credits
                     .0
                     .range(min_slot..)
@@ -328,7 +328,7 @@ impl SpeculativeRollState {
                 // accumulate active stats
                 if let Some(stats) = hist_elt
                     .state_changes
-                    .roll_state_changes
+                    .pos_changes
                     .production_stats
                     .get(address)
                 {
@@ -399,11 +399,7 @@ impl SpeculativeRollState {
             underflow = loc_underflow;
             overflow = loc_overflow;
             for idx in range {
-                for (addr, stats) in &hist.0[idx]
-                    .state_changes
-                    .roll_state_changes
-                    .production_stats
-                {
+                for (addr, stats) in &hist.0[idx].state_changes.pos_changes.production_stats {
                     accumulated_stats
                         .entry(*addr)
                         .and_modify(|cur| cur.extend(stats))
