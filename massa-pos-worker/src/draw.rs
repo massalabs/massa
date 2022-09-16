@@ -58,6 +58,7 @@ pub(crate) fn perform_draws(
     };
 
     let mut five_first_slots: Vec<(Slot, Selection)> = Vec::new();
+    let mut count = 0;
     loop {
         // draw block creator
         let producer = if cur_slot.period > 0 {
@@ -76,7 +77,10 @@ pub(crate) fn perform_draws(
             producer,
             endorsements,
         };
-        five_first_slots.push((cur_slot, selection.clone()));
+        if count < 5 {
+            five_first_slots.push((cur_slot, selection.clone()));
+            count += 1;
+        }
         // add to draws
         cycle_draws.draws.insert(cur_slot, selection);
 
