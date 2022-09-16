@@ -6,7 +6,7 @@
 //! See the definition of Interface in the massa-sc-runtime crate for functional details.
 
 use crate::context::ExecutionContext;
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
@@ -330,6 +330,14 @@ impl Interface for InterfaceImpl {
     fn has_op_key(&self, key: &Vec<u8>) -> Result<bool> {
         let context = context_guard!(self);
         Ok(context.datastore.contains_key(key))
+    }
+
+    fn get_op_data(&self, key: &Vec<u8>) -> Result<Vec<u8>> {
+        let context = context_guard!(self);
+        context.datastore
+            .get(key)
+            .cloned()
+            .ok_or(anyhow!("Unknown key: {:?}", key).into())
     }
 
     /// Hashes arbitrary data
