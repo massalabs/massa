@@ -4,6 +4,7 @@
 //! Used to detect operation reuse.
 
 use massa_models::{
+    error::ModelsError,
     operation::{OperationId, OperationIdDeserializer},
     prehash::PreHashMap,
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -55,6 +56,40 @@ impl ExecutedOps {
         self.0
             .retain(|_id, last_valid_slot| *last_valid_slot >= max_slot);
     }
+
+    /// Get a part of the executed operations.
+    ///
+    /// Solely used by the bootstrap.
+    ///
+    /// # Returns
+    /// A tuple containing the data and the last returned key
+    pub fn get_executed_ops_part(
+        &self,
+        cursor: ExecutedOpsStreamingStep,
+    ) -> Result<(Vec<u8>, ExecutedOpsStreamingStep), ModelsError> {
+        match cursor {
+            ExecutedOpsStreamingStep::Started => (), // TODO: start at unbounded left range
+            ExecutedOpsStreamingStep::Ongoing(_op_id) => (), // TODO: start at op_id left range
+            ExecutedOpsStreamingStep::Finished => {
+                return Ok((Vec::new(), ExecutedOpsStreamingStep::Finished))
+            }
+        }
+        let mut part = Vec::new();
+        let ops_serializer = ExecutedOpsSerializer::new();
+        ops_serializer.serialize(self, &mut part)?;
+        Ok((part, ExecutedOpsStreamingStep::Finished))
+    }
+}
+
+/// Executed operations bootstrap streaming steps
+#[derive(PartialEq, Eq, Copy, Clone)]
+pub enum ExecutedOpsStreamingStep {
+    /// Started step, only when launching the streaming
+    Started,
+    /// Ongoing step, as long as there are operations to stream
+    Ongoing(OperationId),
+    /// Finished step, after the last operations where streamed
+    Finished,
 }
 
 /// `ExecutedOps` Serializer

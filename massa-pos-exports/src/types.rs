@@ -107,7 +107,7 @@ impl DeferredCredits {
     }
 }
 
-/// PoS bootstrap streaming steps enum
+/// PoS bootstrap streaming steps
 #[derive(PartialEq, Eq, Copy, Clone)]
 pub enum PoSInfoStreamingStep {
     /// Started step, only when launching the streaming
