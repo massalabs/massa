@@ -966,7 +966,7 @@
 
         // TODO: limit the whole info with CYCLE_INFO_SIZE_MESSAGE_BYTES
         </span>u64_ser.serialize(cycle, <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
-        part.push(<span class="kw-2">*</span>complete <span class="kw">as </span>u8);
+        part.push(u8::from(<span class="kw-2">*</span>complete));
         <span class="comment">// TODO: limit this with ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES
         </span>u64_ser.serialize(<span class="kw-2">&amp;</span>(roll_counts.len() <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
         <span class="kw">for </span>(addr, count) <span class="kw">in </span>roll_counts {
@@ -1583,4 +1583,4 @@
     </span><span class="kw">pub </span>producer: Address,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pos_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pos_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (cf9ed0dd5 2022-09-15)" ></div></body></html>
