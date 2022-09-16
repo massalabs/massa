@@ -67,9 +67,10 @@ impl ExecutedOps {
         &self,
         cursor: ExecutedOpsStreamingStep,
     ) -> Result<(Vec<u8>, ExecutedOpsStreamingStep), ModelsError> {
+        // TODO: stream in multiple parts
         match cursor {
-            ExecutedOpsStreamingStep::Started => (), // TODO: start at unbounded left range
-            ExecutedOpsStreamingStep::Ongoing(_op_id) => (), // TODO: start at op_id left range
+            ExecutedOpsStreamingStep::Started => (), // TODO: when parts start at unbounded left range
+            ExecutedOpsStreamingStep::Ongoing(_op_id) => (), // TODO: when parts start at op_id left range
             ExecutedOpsStreamingStep::Finished => {
                 return Ok((Vec::new(), ExecutedOpsStreamingStep::Finished))
             }
@@ -89,8 +90,9 @@ impl ExecutedOps {
     pub fn set_executed_ops_part(
         &mut self,
         part: &[u8],
+        thread_count: u8,
     ) -> Result<ExecutedOpsStreamingStep, ModelsError> {
-        let ops_deserializer = ExecutedOpsDeserializer::new(32); // TODO: use config
+        let ops_deserializer = ExecutedOpsDeserializer::new(thread_count);
         let (rest, ops) = ops_deserializer.deserialize(part)?;
         if !rest.is_empty() {
             return Err(ModelsError::SerializeError(
