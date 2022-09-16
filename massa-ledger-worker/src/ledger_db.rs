@@ -151,6 +151,7 @@ impl LedgerDB {
             &mut batch,
             &mut ledger_hash,
         );
+        self.set_ledger_hash(&mut batch, ledger_hash);
         self.write_batch(batch);
     }
 
@@ -186,6 +187,8 @@ impl LedgerDB {
         }
         // set the associated slot in metadata
         self.set_slot(slot, &mut batch, &mut ledger_hash);
+        // write the ledger hash
+        self.set_ledger_hash(&mut batch, ledger_hash);
         // write the batch
         self.write_batch(batch);
     }
@@ -226,6 +229,12 @@ impl LedgerDB {
         } else {
             Hash::from_bytes(&[0; 32])
         }
+    }
+
+    /// Set the disk ledger hash
+    pub fn set_ledger_hash(&self, batch: &mut WriteBatch, ledger_hash: Hash) {
+        let handle = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        batch.put_cf(handle, LEDGER_HASH_KEY, ledger_hash.to_bytes());
     }
 
     /// Internal function to put a key & value and perform the ledger hash XORs
@@ -366,6 +375,7 @@ impl LedgerDB {
         key: &[u8],
         value: &[u8],
     ) {
+        // TODO: Fix XOR update (cf test)
         let mut len_bytes = Vec::new();
         self.len_serializer
             .serialize(&(key.len() as u64), &mut len_bytes)
@@ -657,22 +667,24 @@ mod tests {
     use rocksdb::WriteBatch;
     use std::collections::BTreeMap;
     use std::ops::Bound::Included;
+    use std::str::FromStr;
     use tempfile::TempDir;
 
     #[cfg(test)]
     fn init_test_ledger(addr: Address) -> (LedgerDB, BTreeMap<Vec<u8>, Vec<u8>>) {
         // init data
+
         let mut data = BTreeMap::new();
         data.insert(b"1".to_vec(), b"a".to_vec());
         data.insert(b"2".to_vec(), b"b".to_vec());
         data.insert(b"3".to_vec(), b"c".to_vec());
         let entry = LedgerEntry {
-            parallel_balance: Amount::from_mantissa_scale(42, 0),
+            parallel_balance: Amount::from_str("42").unwrap(),
             datastore: data.clone(),
             ..Default::default()
         };
         let entry_update = LedgerEntryUpdate {
-            parallel_balance: SetOrKeep::Set(Amount::from_mantissa_scale(21, 0)),
+            parallel_balance: SetOrKeep::Set(Amount::from_str("21").unwrap()),
             bytecode: SetOrKeep::Keep,
             ..Default::default()
         };
@@ -684,6 +696,7 @@ mod tests {
         let mut ledger_hash = Hash::from_bytes(&[0; 32]);
         db.put_entry(&addr, entry, &mut batch, &mut ledger_hash);
         db.update_entry(&addr, entry_update, &mut batch, &mut ledger_hash);
+        db.set_ledger_hash(&mut batch, ledger_hash);
         db.write_batch(batch);
 
         // return db and initial data
@@ -717,13 +730,13 @@ mod tests {
 
         // delete entry
         let mut batch = WriteBatch::default();
-        let mut hash = db.get_ledger_hash();
-        db.delete_entry(&a, &mut batch, &mut hash);
+        let mut ledger_hash = db.get_ledger_hash();
+        db.delete_entry(&a, &mut batch, &mut ledger_hash);
+        db.set_ledger_hash(&mut batch, ledger_hash);
         db.write_batch(batch);
 
         // second assert
-        // TODO: improve this assert
-        assert_eq!(dbg!(Hash::from_bytes(&[0; 32])), dbg!(db.get_ledger_hash()));
+        assert_eq!(Hash::from_bytes(&[0; 32]), db.get_ledger_hash());
         assert!(db.get_sub_entry(&a, LedgerSubEntry::ParBalance).is_none());
         assert!(db.get_entire_datastore(&a).is_empty());
     }
