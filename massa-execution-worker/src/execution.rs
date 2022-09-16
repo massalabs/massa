@@ -345,6 +345,9 @@ impl ExecutionState {
             // set the context max gas to match the one defined in the operation
             context.max_gas = operation.get_gas_usage();
 
+            // set the creator address
+            context.creator_address = Some(operation.creator_address);
+
             // set the context origin operation ID
             context.origin_operation_id = Some(operation_id);
 
@@ -714,6 +717,7 @@ impl ExecutionState {
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
             context.gas_price = message.gas_price;
+            context.creator_address = None;
             context.stack = vec![
                 ExecutionStackElement {
                     address: message.sender,

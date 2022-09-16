@@ -120,6 +120,9 @@ pub(crate) struct ExecutionContext {
     /// Unsafe random state (can be predicted and manipulated)
     pub unsafe_rng: Xoshiro256PlusPlus,
 
+    /// Creator address. The bytecode of this address can't be modified
+    pub creator_address: Option<Address>,
+
     /// operation id that originally caused this execution (if any)
     pub origin_operation_id: Option<OperationId>,
 }
@@ -166,6 +169,7 @@ impl ExecutionContext {
             read_only: Default::default(),
             events: Default::default(),
             unsafe_rng: Xoshiro256PlusPlus::from_seed([0u8; 32]),
+            creator_address: Default::default(),
             origin_operation_id: Default::default(),
             config,
         }
@@ -721,6 +725,12 @@ impl ExecutionContext {
                 "setting the bytecode of address {} is not allowed in this context",
                 address
             )));
+        }
+
+        if let Some(creator_address) = self.creator_address && &creator_address == address {
+            return Err(ExecutionError::RuntimeError(format!("
+                can't set the bytecode of address {} because this is not a smart contract address",
+                address)))
         }
 
         // set data entry
