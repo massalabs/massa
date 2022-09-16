@@ -82,7 +82,8 @@ async fn stream_final_state(
                         .set_deferred_credits_part(pos_credits_part.as_bytes())?;
                     let last_exec_ops_step = write_final_state
                         .executed_ops
-                        .set_executed_ops_part(exec_ops_part.as_bytes(), cfg.thread_count)?;
+                        .set_executed_ops_part(exec_ops_part.as_bytes(), cfg.thread_count)
+                        .unwrap();
                     for (changes_slot, changes) in final_state_changes.iter() {
                         write_final_state
                             .ledger

@@ -92,6 +92,9 @@ impl ExecutedOps {
         part: &[u8],
         thread_count: u8,
     ) -> Result<ExecutedOpsStreamingStep, ModelsError> {
+        if part.is_empty() {
+            return Ok(ExecutedOpsStreamingStep::Finished);
+        }
         let ops_deserializer = ExecutedOpsDeserializer::new(thread_count);
         let (rest, ops) = ops_deserializer.deserialize(part)?;
         if !rest.is_empty() {
