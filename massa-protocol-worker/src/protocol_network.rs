@@ -119,15 +119,12 @@ impl ProtocolWorker {
             }
             NetworkEvent::ReceivedEndorsements { node, endorsements } => {
                 massa_trace!(ENDORSEMENTS, { "node": node, "endorsements": endorsements});
-                if self
-                    .note_endorsements_from_node(endorsements, &node, true)
-                    .is_err()
-                {
+                if let Err(err) = self.note_endorsements_from_node(endorsements, &node, true) {
                     warn!(
                         "node {} sent us critically incorrect endorsements, \
                         which may be an attack attempt by the remote node or a \
-                        loss of sync between us and the remote node",
-                        node,
+                        loss of sync between us and the remote node. Err = {}",
+                        node, err
                     );
                     let _ = self.ban_node(&node).await;
                 }
@@ -254,16 +251,12 @@ impl ProtocolWorker {
                 return Ok(());
             }
         }
-        if self
-            .note_header_from_node(&header, &from_node_id)
-            .await
-            .is_err()
-        {
+        if let Err(err) = self.note_header_from_node(&header, &from_node_id).await {
             warn!(
                 "node {} sent us critically incorrect header through protocol, \
                 which may be an attack attempt by the remote node \
-                or a loss of sync between us and the remote node",
-                from_node_id,
+                or a loss of sync between us and the remote node. Err = {}",
+                from_node_id, err
             );
             let _ = self.ban_node(&from_node_id).await;
             return Ok(());
