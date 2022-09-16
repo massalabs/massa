@@ -7,6 +7,7 @@
 
 use crate::{
     config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges, ExecutedOps,
+    ExecutedOpsStreamingStep,
 };
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_ledger_exports::{LedgerChanges, LedgerController};
@@ -130,6 +131,7 @@ impl FinalState {
         last_address: Option<Address>,
         last_id_async_pool: Option<AsyncMessageId>,
         last_pos_step_cursor: PoSCycleStreamingStep,
+        last_exec_ops_cursor: ExecutedOpsStreamingStep,
     ) -> Result<Vec<(Slot, StateChanges)>, FinalStateError> {
         let position_slot = if let Some((first_slot, _)) = self.changes_history.front() {
             // Safe because we checked that there is changes just above.
@@ -153,6 +155,7 @@ impl FinalState {
         let mut res_changes: Vec<(Slot, StateChanges)> = Vec::new();
         for (slot, changes) in self.changes_history.range((position_slot as usize)..) {
             let mut slot_changes = StateChanges::default();
+
             // Get ledger change that concern address <= last_address.
             if let Some(addr) = last_address {
                 let ledger_changes: LedgerChanges = LedgerChanges(
@@ -194,6 +197,13 @@ impl FinalState {
             if last_pos_step_cursor == PoSCycleStreamingStep::Finished {
                 slot_changes.pos_changes = changes.pos_changes.clone();
             }
+
+            // Get executed operations changes if classic bootstrap finished
+            if last_exec_ops_cursor == ExecutedOpsStreamingStep::Finished {
+                slot_changes.executed_ops = changes.executed_ops.clone();
+            }
+
+            // Push the slot changes
             res_changes.push((*slot, slot_changes));
         }
         Ok(res_changes)

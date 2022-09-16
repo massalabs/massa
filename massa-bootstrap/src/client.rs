@@ -94,8 +94,10 @@ async fn stream_final_state(
                             changes.pos_changes.clone(),
                             *changes_slot,
                             false,
-                        )?
-                        // TODO: apply executed operations changes
+                        )?;
+                        write_final_state
+                            .executed_ops
+                            .extend(changes.executed_ops.clone());
                     }
                     write_final_state.slot = slot;
                     if let BootstrapClientMessage::AskFinalStatePart {
@@ -118,6 +120,11 @@ async fn stream_final_state(
                 }
                 BootstrapServerMessage::FinalStateFinished => {
                     info!("State bootstrap complete");
+                    // Prune executed operations
+                    let mut write_final_state = global_bootstrap_state.final_state.write();
+                    let slot = write_final_state.slot;
+                    write_final_state.executed_ops.prune(slot);
+                    // Set next bootstrap message
                     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
                     return Ok(());
                 }

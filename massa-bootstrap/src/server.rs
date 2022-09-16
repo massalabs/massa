@@ -349,8 +349,8 @@ pub async fn send_final_state_stream(
                         .transpose()?,
                     last_async_message_id,
                     new_cycle_step,
+                    new_exec_ops_step,
                 )?;
-                // TODO: retrieve executed operations changes
             } else {
                 final_state_changes = Vec::new();
             }
