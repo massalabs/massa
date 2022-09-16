@@ -1,10 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 #![allow(clippy::ptr_arg)] // this allow &Vec<..> as function argument type
 
-use super::mock_pool_controller::MockPoolController;
 use crate::start_consensus_controller;
-use massa_protocol_exports::test_exports::MockProtocolController;
-
 use massa_cipher::decrypt;
 use massa_consensus_exports::error::ConsensusResult;
 use massa_consensus_exports::{
@@ -27,8 +24,11 @@ use massa_models::{
     slot::Slot,
     wrapped::{Id, WrappedContent},
 };
+use massa_pool_exports::test_exports::MockPoolController;
+use massa_pool_exports::PoolController;
 use massa_pos_exports::{SelectorConfig, SelectorController};
 use massa_pos_worker::start_selector_worker;
+use massa_protocol_exports::test_exports::MockProtocolController;
 use massa_protocol_exports::ProtocolCommand;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
@@ -639,14 +639,14 @@ pub async fn _consensus_pool_test<F, V>(
     test: F,
 ) where
     F: FnOnce(
-        MockPoolController,
+        Box<dyn PoolController>,
         MockProtocolController,
         ConsensusCommandSender,
         ConsensusEventReceiver,
     ) -> V,
     V: Future<
         Output = (
-            MockPoolController,
+            Box<dyn PoolController>,
             MockProtocolController,
             ConsensusCommandSender,
             ConsensusEventReceiver,
@@ -662,7 +662,7 @@ pub async fn _consensus_pool_test<F, V>(
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
-    let pool_controller = MockPoolController::new();
+    let (pool_controller, _pool_event_receiver) = MockPoolController::new_with_receiver();
     // for now, execution_rx is ignored: cique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
     let stop_sinks = Arc::new(Mutex::new(false));
@@ -692,7 +692,7 @@ pub async fn _consensus_pool_test<F, V>(
                 execution_controller,
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
-                pool_command_sender: Box::new(pool_controller.clone()),
+                pool_command_sender: pool_controller.clone(),
                 selector_controller,
             },
             boot_graph,
@@ -736,7 +736,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
     test: F,
 ) where
     F: FnOnce(
-        MockPoolController,
+        Box<dyn PoolController>,
         MockProtocolController,
         ConsensusCommandSender,
         ConsensusEventReceiver,
@@ -745,7 +745,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
     ) -> V,
     V: Future<
         Output = (
-            MockPoolController,
+            Box<dyn PoolController>,
             MockProtocolController,
             ConsensusCommandSender,
             ConsensusEventReceiver,
@@ -762,7 +762,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
-    let pool_controller = MockPoolController::new();
+    let (pool_controller, _pool_event_receiver) = MockPoolController::new_with_receiver();
     // for now, execution_rx is ignored: cique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
     let stop_sinks = Arc::new(Mutex::new(false));
@@ -793,7 +793,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
                 execution_controller,
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
-                pool_command_sender: Box::new(pool_controller.clone()),
+                pool_command_sender: pool_controller.clone(),
                 selector_controller: selector_controller.clone(),
             },
             boot_graph,
@@ -856,7 +856,7 @@ where
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
-    let pool_controller = MockPoolController::new();
+    let (pool_controller, _pool_event_receiver) = MockPoolController::new_with_receiver();
     let staking_key =
         KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8").unwrap();
     let genesis_address = Address::from_public_key(&staking_key.get_public_key());
@@ -887,7 +887,7 @@ where
                 execution_controller,
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
-                pool_command_sender: Box::new(pool_controller),
+                pool_command_sender: pool_controller,
                 selector_controller: selector_controller.clone(),
             },
             None,
@@ -948,7 +948,7 @@ where
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
-    let pool_controller = MockPoolController::new();
+    let (pool_controller, _pool_event_receiver) = MockPoolController::new_with_receiver();
     // for now, execution_rx is ignored: clique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
     let stop_sinks = Arc::new(Mutex::new(false));
@@ -979,7 +979,7 @@ where
                 execution_controller,
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
-                pool_command_sender: Box::new(pool_controller),
+                pool_command_sender: pool_controller,
                 selector_controller: selector_controller.clone(),
             },
             None,

@@ -174,7 +174,7 @@ impl PoSFinalState {
 
         // TODO: limit the whole info with CYCLE_INFO_SIZE_MESSAGE_BYTES
         u64_ser.serialize(cycle, &mut part)?;
-        part.push(*complete as u8);
+        part.push(u8::from(*complete));
         // TODO: limit this with ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES
         u64_ser.serialize(&(roll_counts.len() as u64), &mut part)?;
         for (addr, count) in roll_counts {
