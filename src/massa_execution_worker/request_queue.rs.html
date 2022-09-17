@@ -155,6 +155,8 @@
 <span id="155">155</span>
 <span id="156">156</span>
 <span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file defines a generic finite-size execution request queue with an MPSC-based result sender.
@@ -164,6 +166,7 @@
 <span class="kw">use </span>std::sync::mpsc::Sender;
 
 <span class="doccomment">/// Represents an execution request T coupled with an MPSC sender for a result of type R
+</span><span class="attribute">#[derive(Debug)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>RequestWithResponseSender&lt;T, R&gt; {
     <span class="doccomment">/// The underlying execution request
     </span>request: T,
@@ -204,6 +207,7 @@
 <span class="doccomment">/// Structure representing an execution request queue with maximal length.
 /// Each request is a `RequestWithResponseSender` that comes with an MPSC sender
 /// to return the execution result when the execution is over (or an error).
+</span><span class="attribute">#[derive(Debug)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>RequestQueue&lt;T, R&gt; {
     <span class="doccomment">/// Max number of item in the queue.
     /// When the queue is full, extra new items are cancelled and dropped.
@@ -313,4 +317,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (cf9ed0dd5 2022-09-15)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (95a992a68 2022-09-16)" ></div></body></html>

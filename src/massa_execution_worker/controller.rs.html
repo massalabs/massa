@@ -254,6 +254,26 @@
 <span id="254">254</span>
 <span id="255">255</span>
 <span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module implements an execution controller.
@@ -274,6 +294,7 @@
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>parking_lot::{Condvar, Mutex, RwLock};
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap};
+<span class="kw">use </span>std::fmt::Display;
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>tracing::info;
 
@@ -287,6 +308,25 @@
     </span><span class="kw">pub </span>new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, (BlockId, Storage)&gt;&gt;,
     <span class="doccomment">/// queue for read-only execution requests and response MPSCs to send back their outputs
     </span><span class="kw">pub </span>readonly_requests: RequestQueue&lt;ReadOnlyExecutionRequest, ExecutionOutput&gt;,
+}
+
+<span class="kw">impl </span>Display <span class="kw">for </span>ExecutionInputData {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="macro">write!</span>(
+            f,
+            <span class="string">&quot;stop={:?}, finalized={:?}, blockclique={:?}, readonly={:?}&quot;</span>,
+            <span class="self">self</span>.stop,
+            <span class="self">self</span>.finalized_blocks
+                .iter()
+                .map(|(slot, (id, <span class="kw">_</span>))| (<span class="kw-2">*</span>slot, <span class="kw-2">*</span>id))
+                .collect::&lt;BTreeMap&lt;Slot, BlockId&gt;&gt;(),
+            <span class="self">self</span>.new_blockclique.as_ref().map(|bq| bq
+                .iter()
+                .map(|(slot, (id, <span class="kw">_</span>))| (<span class="kw-2">*</span>slot, <span class="kw-2">*</span>id))
+                .collect::&lt;BTreeMap&lt;Slot, BlockId&gt;&gt;()),
+            <span class="self">self</span>.readonly_requests
+        )
+    }
 }
 
 <span class="kw">impl </span>ExecutionInputData {
@@ -511,4 +551,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (cf9ed0dd5 2022-09-15)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (95a992a68 2022-09-16)" ></div></body></html>

@@ -631,6 +631,34 @@
 <span id="631">631</span>
 <span id="632">632</span>
 <span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
+<span id="641">641</span>
+<span id="642">642</span>
+<span id="643">643</span>
+<span id="644">644</span>
+<span id="645">645</span>
+<span id="646">646</span>
+<span id="647">647</span>
+<span id="648">648</span>
+<span id="649">649</span>
+<span id="650">650</span>
+<span id="651">651</span>
+<span id="652">652</span>
+<span id="653">653</span>
+<span id="654">654</span>
+<span id="655">655</span>
+<span id="656">656</span>
+<span id="657">657</span>
+<span id="658">658</span>
+<span id="659">659</span>
+<span id="660">660</span>
+<span id="661">661</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module allows launching the execution worker thread, returning objects to communicate with it.
@@ -656,7 +684,7 @@
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>parking_lot::{Condvar, Mutex, RwLock};
 <span class="kw">use </span>std::{collections::HashMap, sync::Arc};
-<span class="kw">use </span>tracing::{info, warn};
+<span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="doccomment">/// Structure gathering all elements needed by the execution thread
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ExecutionThread {
@@ -885,8 +913,12 @@
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
+        <span class="macro">debug!</span>(<span class="string">&quot;entered execute_one_final_slot&quot;</span>);
+
         <span class="comment">// w-lock execution state
         </span><span class="kw">let </span><span class="kw-2">mut </span>exec_state = <span class="self">self</span>.execution_state.write();
+
+        <span class="macro">debug!</span>(<span class="string">&quot;locked execution state in execute_one_final_slot&quot;</span>);
 
         <span class="comment">// get the slot just after the last executed final slot
         </span><span class="kw">let </span>slot = exec_state
@@ -902,12 +934,19 @@
         <span class="kw">let </span>target_id = exec_target.as_ref().map(|(b_id, <span class="kw">_</span>)| <span class="kw-2">*</span>b_id);
 
         <span class="comment">// check if the final slot is cached at the front of the speculative execution history
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(exec_out) = exec_state.pop_first_execution_result() {
+        </span><span class="macro">debug!</span>(
+            <span class="string">&quot;execute_one_final_slot: checking cache for slot {} target {:?}&quot;</span>,
+            slot,
+            exec_target.as_ref().map(|(s, <span class="kw">_</span>)| <span class="kw-2">*</span>s)
+        );
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(exec_out) = exec_state.pop_first_execution_result() {
             <span class="kw">if </span>exec_out.slot == slot &amp;&amp; exec_out.block_id == target_id {
                 <span class="comment">// speculative execution front result matches what we want to compute
 
                 // apply the cached output and return
                 </span>exec_state.apply_final_execution_output(exec_out);
+
+                <span class="macro">debug!</span>(<span class="string">&quot;execute_one_final_slot: found in cache, applied cache&quot;</span>);
                 <span class="kw">return </span><span class="bool-val">true</span>;
             } <span class="kw">else </span>{
                 <span class="comment">// speculative cache mismatch
@@ -928,10 +967,13 @@
         </span>exec_state.clear_history();
 
         <span class="comment">// execute slot
-        </span><span class="kw">let </span>exec_out = exec_state.execute_slot(slot, exec_target, <span class="kw-2">&amp;</span><span class="self">self</span>.selector);
+        </span><span class="macro">debug!</span>(<span class="string">&quot;execute_one_final_slot: execution started&quot;</span>);
+        <span class="kw">let </span>exec_out = exec_state.execute_slot(slot, exec_target, <span class="kw-2">&amp;</span><span class="self">self</span>.selector);
+        <span class="macro">debug!</span>(<span class="string">&quot;execute_one_final_slot: execution finished&quot;</span>);
 
         <span class="comment">// apply execution output to final state
         </span>exec_state.apply_final_execution_output(exec_out);
+        <span class="macro">debug!</span>(<span class="string">&quot;execute_one_final_slot: execution result applied&quot;</span>);
 
         <span class="bool-val">true
     </span>}
@@ -955,7 +997,9 @@
     /// returns true if something was executed
     </span><span class="kw">fn </span>execute_one_active_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
         <span class="comment">// write-lock the execution state
-        </span><span class="kw">let </span><span class="kw-2">mut </span>exec_state = <span class="self">self</span>.execution_state.write();
+        </span><span class="macro">debug!</span>(<span class="string">&quot;execute_one_active_slot: execution started&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>exec_state = <span class="self">self</span>.execution_state.write();
+        <span class="macro">debug!</span>(<span class="string">&quot;execute_one_active_slot: execution state locked&quot;</span>);
 
         <span class="comment">// get the next active slot
         </span><span class="kw">let </span>slot = exec_state
@@ -966,14 +1010,24 @@
         <span class="comment">// choose the execution target
         </span><span class="kw">let </span>exec_target = <span class="kw">match </span><span class="self">self</span>.active_slots.get(<span class="kw-2">&amp;</span>slot) {
             <span class="prelude-val">Some</span>(b_store) =&gt; b_store.as_ref().map(|(b_id, bs)| (<span class="kw-2">*</span>b_id, bs.clone())),
-            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="bool-val">false</span>,
+            <span class="kw">_ </span>=&gt; {
+                <span class="macro">debug!</span>(<span class="string">&quot;execute_one_active_slot: no target for slot {}&quot;</span>, slot);
+                <span class="kw">return </span><span class="bool-val">false</span>;
+            }
         };
 
         <span class="comment">// execute the slot
-        </span><span class="kw">let </span>exec_out = exec_state.execute_slot(slot, exec_target, <span class="kw-2">&amp;</span><span class="self">self</span>.selector);
+        </span><span class="macro">debug!</span>(
+            <span class="string">&quot;execute_one_active_slot: executing slot {} target = {:?}&quot;</span>,
+            slot,
+            exec_target.as_ref().map(|(s, <span class="kw">_</span>)| <span class="kw-2">*</span>s)
+        );
+        <span class="kw">let </span>exec_out = exec_state.execute_slot(slot, exec_target, <span class="kw-2">&amp;</span><span class="self">self</span>.selector);
+        <span class="macro">debug!</span>(<span class="string">&quot;execute_one_active_slot: execution sfinished&quot;</span>);
 
         <span class="comment">// apply execution output to active state
         </span>exec_state.apply_active_execution_output(exec_out);
+        <span class="macro">debug!</span>(<span class="string">&quot;execute_one_active_slot: execution state applied&quot;</span>);
 
         <span class="bool-val">true
     </span>}
@@ -1172,6 +1226,8 @@
         // 2 - speculative executions
         // 3 - read-only executions
         </span><span class="kw">while let </span><span class="prelude-val">Some</span>(input_data) = <span class="self">self</span>.wait_loop_event() {
+            <span class="macro">debug!</span>(<span class="string">&quot;Execution loop triggered, input_data = {}&quot;</span>, input_data);
+
             <span class="comment">// update the sequence of final slots given the newly finalized blocks
             </span><span class="self">self</span>.update_final_slots(input_data.finalized_blocks);
 
@@ -1265,4 +1321,4 @@
     </span>(Box::new(manager), Box::new(controller))
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (cf9ed0dd5 2022-09-15)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (95a992a68 2022-09-16)" ></div></body></html>
