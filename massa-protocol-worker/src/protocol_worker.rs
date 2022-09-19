@@ -792,7 +792,7 @@ impl ProtocolWorker {
         }
 
         let (_endorsement_ids, endorsements_reused) = match self
-            .note_endorsements_from_node(header.content.endorsements.clone(), source_node_id, false)
+            .note_endorsements_from_node(header.content.endorsements.clone(), source_node_id)
             .await
         {
             Err(_) => {
@@ -969,7 +969,6 @@ impl ProtocolWorker {
         &mut self,
         endorsements: Vec<WrappedEndorsement>,
         source_node_id: &NodeId,
-        propagate: bool,
     ) -> Result<(PreHashMap<EndorsementId, u32>, bool), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": source_node_id, "endorsements": endorsements});
         let length = endorsements.len();
@@ -1001,7 +1000,7 @@ impl ProtocolWorker {
             );
         }
 
-        if !new_endorsements.is_empty() && propagate {
+        if !new_endorsements.is_empty() {
             self.prune_checked_endorsements();
 
             let mut endorsements = self.storage.clone_without_refs();

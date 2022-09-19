@@ -119,10 +119,7 @@ impl ProtocolWorker {
             }
             NetworkEvent::ReceivedEndorsements { node, endorsements } => {
                 massa_trace!(ENDORSEMENTS, { "node": node, "endorsements": endorsements});
-                if let Err(err) = self
-                    .note_endorsements_from_node(endorsements, &node, true)
-                    .await
-                {
+                if let Err(err) = self.note_endorsements_from_node(endorsements, &node).await {
                     warn!(
                         "node {} sent us critically incorrect endorsements, \
                         which may be an attack attempt by the remote node or a \
