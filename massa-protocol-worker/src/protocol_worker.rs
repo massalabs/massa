@@ -307,6 +307,41 @@ impl ProtocolWorker {
         Ok(self.network_event_receiver)
     }
 
+    /// request the propagation of a set of operations
+    async fn propagate_ops(&mut self, storage: Storage) {
+        let operation_ids = storage.get_op_refs();
+        massa_trace!("protocol.protocol_worker.propagate_operations.begin", {
+            "operation_ids": operation_ids
+        });
+        self.prune_checked_operations();
+        for id in operation_ids.iter() {
+            self.checked_operations.insert(id);
+        }
+        for (node, node_info) in self.active_nodes.iter_mut() {
+            let new_ops: PreHashSet<OperationId> = operation_ids
+                .iter()
+                .filter(|id| !node_info.knows_op(id))
+                .copied()
+                .collect();
+            node_info.insert_known_ops(
+                new_ops.iter().cloned().collect(),
+                self.config.max_node_known_ops_size,
+            );
+            if !new_ops.is_empty() {
+                let res = self
+                    .network_command_sender
+                    .send_operations_batch(
+                        *node,
+                        new_ops.iter().map(|id| id.into_prefix()).collect(),
+                    )
+                    .await;
+                if let Err(err) = res {
+                    debug!("could not send operation batch to node {}: {}", node, err);
+                }
+            }
+        }
+    }
+
     async fn process_command(
         &mut self,
         cmd: ProtocolCommand,
@@ -398,34 +433,7 @@ impl ProtocolWorker {
                 );
             }
             ProtocolCommand::PropagateOperations(storage) => {
-                let operation_ids = storage.get_op_refs();
-                massa_trace!(
-                    "protocol.protocol_worker.process_command.propagate_operations.begin",
-                    { "operation_ids": operation_ids }
-                );
-                self.prune_checked_operations();
-                for id in operation_ids.iter() {
-                    self.checked_operations.insert(id);
-                }
-                for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_ops: PreHashSet<OperationId> = operation_ids
-                        .iter()
-                        .filter(|id| !node_info.knows_op(id))
-                        .copied()
-                        .collect();
-                    node_info.insert_known_ops(
-                        new_ops.iter().cloned().collect(),
-                        self.config.max_node_known_ops_size,
-                    );
-                    if !new_ops.is_empty() {
-                        self.network_command_sender
-                            .send_operations_batch(
-                                *node,
-                                new_ops.iter().map(|id| id.into_prefix()).collect(),
-                            )
-                            .await?;
-                    }
-                }
+                self.propagate_ops(storage).await;
             }
             ProtocolCommand::PropagateEndorsements(endorsements) => {
                 massa_trace!(
@@ -890,7 +898,7 @@ impl ProtocolWorker {
     ///
     /// Checks performed:
     /// - Valid signature
-    pub(crate) fn note_operations_from_node(
+    pub(crate) async fn note_operations_from_node(
         &mut self,
         operations: Vec<WrappedOperation>,
         source_node_id: &NodeId,
@@ -929,7 +937,10 @@ impl ProtocolWorker {
             ops.store_operations(new_operations.into_values().collect());
 
             // Add to pool, propagate when received outside of a header.
-            self.pool_controller.add_operations(ops);
+            self.pool_controller.add_operations(ops.clone());
+
+            // Request propagation
+            self.propagate_ops(ops).await;
         }
 
         Ok((seen_ops, received_ids))

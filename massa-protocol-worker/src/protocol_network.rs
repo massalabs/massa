@@ -402,7 +402,10 @@ impl ProtocolWorker {
         block_id: BlockId,
         mut operations: Vec<WrappedOperation>,
     ) -> Result<(), ProtocolError> {
-        if let Err(err) = self.note_operations_from_node(operations.clone(), &from_node_id) {
+        if let Err(err) = self
+            .note_operations_from_node(operations.clone(), &from_node_id)
+            .await
+        {
             warn!(
                 "Node id {} sent us operations for block id {} but they failed at verifications. Err = {}",
                 from_node_id, block_id, err
