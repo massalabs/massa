@@ -23,7 +23,7 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::{collections::HashMap, sync::Arc};
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 /// Structure gathering all elements needed by the execution thread
 pub(crate) struct ExecutionThread {
@@ -252,8 +252,12 @@ impl ExecutionThread {
             return false;
         }
 
+        debug!("entered execute_one_final_slot");
+
         // w-lock execution state
         let mut exec_state = self.execution_state.write();
+
+        debug!("locked execution state in execute_one_final_slot");
 
         // get the slot just after the last executed final slot
         let slot = exec_state
@@ -269,12 +273,19 @@ impl ExecutionThread {
         let target_id = exec_target.as_ref().map(|(b_id, _)| *b_id);
 
         // check if the final slot is cached at the front of the speculative execution history
+        debug!(
+            "execute_one_final_slot: checking cache for slot {} target {:?}",
+            slot,
+            exec_target.as_ref().map(|(s, _)| *s)
+        );
         if let Some(exec_out) = exec_state.pop_first_execution_result() {
             if exec_out.slot == slot && exec_out.block_id == target_id {
                 // speculative execution front result matches what we want to compute
 
                 // apply the cached output and return
                 exec_state.apply_final_execution_output(exec_out);
+
+                debug!("execute_one_final_slot: found in cache, applied cache");
                 return true;
             } else {
                 // speculative cache mismatch
@@ -295,10 +306,13 @@ impl ExecutionThread {
         exec_state.clear_history();
 
         // execute slot
+        debug!("execute_one_final_slot: execution started");
         let exec_out = exec_state.execute_slot(slot, exec_target, &self.selector);
+        debug!("execute_one_final_slot: execution finished");
 
         // apply execution output to final state
         exec_state.apply_final_execution_output(exec_out);
+        debug!("execute_one_final_slot: execution result applied");
 
         true
     }
@@ -322,7 +336,9 @@ impl ExecutionThread {
     /// returns true if something was executed
     fn execute_one_active_slot(&mut self) -> bool {
         // write-lock the execution state
+        debug!("execute_one_active_slot: execution started");
         let mut exec_state = self.execution_state.write();
+        debug!("execute_one_active_slot: execution state locked");
 
         // get the next active slot
         let slot = exec_state
@@ -333,14 +349,24 @@ impl ExecutionThread {
         // choose the execution target
         let exec_target = match self.active_slots.get(&slot) {
             Some(b_store) => b_store.as_ref().map(|(b_id, bs)| (*b_id, bs.clone())),
-            _ => return false,
+            _ => {
+                debug!("execute_one_active_slot: no target for slot {}", slot);
+                return false;
+            }
         };
 
         // execute the slot
+        debug!(
+            "execute_one_active_slot: executing slot {} target = {:?}",
+            slot,
+            exec_target.as_ref().map(|(s, _)| *s)
+        );
         let exec_out = exec_state.execute_slot(slot, exec_target, &self.selector);
+        debug!("execute_one_active_slot: execution sfinished");
 
         // apply execution output to active state
         exec_state.apply_active_execution_output(exec_out);
+        debug!("execute_one_active_slot: execution state applied");
 
         true
     }
@@ -539,6 +565,8 @@ impl ExecutionThread {
         // 2 - speculative executions
         // 3 - read-only executions
         while let Some(input_data) = self.wait_loop_event() {
+            debug!("Execution loop triggered, input_data = {}", input_data);
+
             // update the sequence of final slots given the newly finalized blocks
             self.update_final_slots(input_data.finalized_blocks);
 

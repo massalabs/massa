@@ -7,7 +7,9 @@ use super::{
         get_random_ledger_changes, wait_consensus_command, wait_network_command,
     },
 };
-use crate::tests::tools::{get_random_async_pool_changes, get_random_pos_changes};
+use crate::tests::tools::{
+    get_random_async_pool_changes, get_random_executed_ops, get_random_pos_changes,
+};
 use crate::BootstrapConfig;
 use crate::{
     get_state, start_bootstrap_server,
@@ -80,7 +82,7 @@ async fn test_bootstrap_server() {
         bootstrap_establisher,
         keypair.clone(),
         0,
-        Version::from_str("TEST.1.2").unwrap(),
+        Version::from_str("TEST.1.10").unwrap(),
     )
     .await
     .unwrap()
@@ -106,7 +108,7 @@ async fn test_bootstrap_server() {
             bootstrap_config,
             final_state_client_clone,
             remote_establisher,
-            Version::from_str("TEST.1.2").unwrap(),
+            Version::from_str("TEST.1.10").unwrap(),
             MassaTime::now(0).unwrap().saturating_sub(1000.into()),
             None,
         )
@@ -196,7 +198,7 @@ async fn test_bootstrap_server() {
                 pos_changes: get_random_pos_changes(10),
                 ledger_changes: get_random_ledger_changes(10),
                 async_pool_changes: get_random_async_pool_changes(10),
-                ..Default::default()
+                executed_ops: get_random_executed_ops(10),
             };
             final_write
                 .changes_history
@@ -237,6 +239,9 @@ async fn test_bootstrap_server() {
             final_state_write
                 .async_pool
                 .apply_changes_unchecked(&change.async_pool_changes);
+            final_state_write
+                .executed_ops
+                .extend(change.executed_ops.clone());
         }
     }
 

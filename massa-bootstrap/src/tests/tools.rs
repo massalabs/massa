@@ -22,16 +22,19 @@ use massa_models::config::{
     MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK,
     MAX_PARAMETERS_SIZE, PERIODS_PER_CYCLE, THREAD_COUNT,
 };
-use massa_models::prehash::PreHashMap;
-use massa_models::wrapped::WrappedContent;
 use massa_models::{
     address::Address,
     amount::Amount,
+    block::BlockSerializer,
     block::{Block, BlockHeader, BlockHeaderSerializer, BlockId},
     endorsement::Endorsement,
+    endorsement::EndorsementSerializer,
+    operation::OperationId,
+    prehash::PreHashMap,
     slot::Slot,
+    wrapped::Id,
+    wrapped::WrappedContent,
 };
-use massa_models::{block::BlockSerializer, endorsement::EndorsementSerializer};
 use massa_network_exports::{BootstrapPeers, NetworkCommand};
 use massa_pos_exports::{CycleInfo, DeferredCredits, PoSChanges, PoSFinalState, ProductionStats};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -187,6 +190,20 @@ pub fn get_random_async_pool_changes(r_limit: u64) -> AsyncPoolChanges {
     changes
 }
 
+pub fn get_random_executed_ops(r_limit: u64) -> ExecutedOps {
+    let mut ops = ExecutedOps::default();
+    for _ in 0..r_limit {
+        ops.insert(
+            OperationId::new(Hash::compute_from(&get_some_random_bytes())),
+            Slot {
+                period: 500,
+                thread: 0,
+            },
+        );
+    }
+    ops
+}
+
 /// generates a random bootstrap state for the final state
 pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
     let r_limit: u64 = 50;
@@ -214,7 +231,7 @@ pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
         async_pool,
         VecDeque::new(),
         get_random_pos_state(r_limit, pos),
-        ExecutedOps::default(),
+        get_random_executed_ops(r_limit),
     )
 }
 

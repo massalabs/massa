@@ -90,7 +90,7 @@ pub async fn full_connection_to_controller(
         mock_node_id,
         keypair,
         rw_timeout_ms.into(),
-        Version::from_str("TEST.1.2").unwrap(),
+        Version::from_str("TEST.1.10").unwrap(),
         connection_id,
         f64::INFINITY,
         f64::INFINITY,
@@ -149,7 +149,7 @@ pub async fn rejected_connection_to_controller(
         mock_node_id,
         keypair,
         rw_timeout_ms.into(),
-        Version::from_str("TEST.1.2").unwrap(),
+        Version::from_str("TEST.1.10").unwrap(),
         connection_id,
         f64::INFINITY,
         f64::INFINITY,
@@ -234,7 +234,7 @@ pub async fn full_connection_from_controller(
         mock_node_id,
         keypair,
         rw_timeout_ms.into(),
-        Version::from_str("TEST.1.2").unwrap(),
+        Version::from_str("TEST.1.10").unwrap(),
         connection_id,
         f64::INFINITY,
         f64::INFINITY,
@@ -372,7 +372,7 @@ pub async fn network_test<F, V>(
             establisher,
             0,
             None,
-            Version::from_str("TEST.1.2").unwrap(),
+            Version::from_str("TEST.1.10").unwrap(),
         )
         .await
         .expect("could not start network controller");

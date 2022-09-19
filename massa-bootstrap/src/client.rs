@@ -1,9 +1,10 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
-use massa_final_state::FinalState;
+use massa_final_state::{ExecutedOpsStreamingStep, FinalState};
 use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::version::Version;
+use massa_pos_exports::PoSCycleStreamingStep;
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use nom::AsBytes;
@@ -64,6 +65,7 @@ async fn stream_final_state(
                     async_pool_part,
                     pos_cycle_part,
                     pos_credits_part,
+                    exec_ops_part,
                     slot,
                     final_state_changes,
                 } => {
@@ -72,12 +74,16 @@ async fn stream_final_state(
                     let last_last_async_id = write_final_state
                         .async_pool
                         .set_pool_part(async_pool_part.as_bytes())?;
-                    let last_cycle = write_final_state
+                    let last_cycle_step = write_final_state
                         .pos_state
                         .set_cycle_history_part(pos_cycle_part.as_bytes())?;
                     let last_credits_slot = write_final_state
                         .pos_state
                         .set_deferred_credits_part(pos_credits_part.as_bytes())?;
+                    let last_exec_ops_step = write_final_state
+                        .executed_ops
+                        .set_executed_ops_part(exec_ops_part.as_bytes(), cfg.thread_count)
+                        .unwrap();
                     for (changes_slot, changes) in final_state_changes.iter() {
                         write_final_state
                             .ledger
@@ -89,7 +95,10 @@ async fn stream_final_state(
                             changes.pos_changes.clone(),
                             *changes_slot,
                             false,
-                        )?
+                        )?;
+                        write_final_state
+                            .executed_ops
+                            .extend(changes.executed_ops.clone());
                     }
                     write_final_state.slot = slot;
                     if let BootstrapClientMessage::AskFinalStatePart {
@@ -102,28 +111,35 @@ async fn stream_final_state(
                     }
                     // Set new message in case of disconnection
                     *next_bootstrap_message = BootstrapClientMessage::AskFinalStatePart {
+                        last_slot: Some(slot),
                         last_key,
-                        slot: Some(slot),
                         last_async_message_id: last_last_async_id,
-                        last_cycle,
+                        last_cycle_step,
                         last_credits_slot,
+                        last_exec_ops_step,
                     };
                 }
                 BootstrapServerMessage::FinalStateFinished => {
                     info!("State bootstrap complete");
+                    // Prune executed operations
+                    let mut write_final_state = global_bootstrap_state.final_state.write();
+                    let slot = write_final_state.slot;
+                    write_final_state.executed_ops.prune(slot);
+                    // Set next bootstrap message
                     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
                     return Ok(());
                 }
                 BootstrapServerMessage::SlotTooOld => {
                     info!("Slot is too old retry bootstrap from scratch");
                     *next_bootstrap_message = BootstrapClientMessage::AskFinalStatePart {
+                        last_slot: None,
                         last_key: None,
-                        slot: None,
                         last_async_message_id: None,
-                        last_cycle: None,
+                        last_cycle_step: PoSCycleStreamingStep::Started,
                         last_credits_slot: None,
+                        last_exec_ops_step: ExecutedOpsStreamingStep::Started,
                     };
-                    return Ok(());
+                    panic!("Bootstrap failed, try to bootstrap again.");
                 }
                 _ => {
                     return Err(
@@ -422,14 +438,14 @@ pub async fn get_state(
     }
     let mut shuffled_list = bootstrap_config.bootstrap_list.clone();
     shuffled_list.shuffle(&mut StdRng::from_entropy());
-    // Will be none when bootstrap is over
     let mut next_bootstrap_message: BootstrapClientMessage =
         BootstrapClientMessage::AskFinalStatePart {
+            last_slot: None,
             last_key: None,
-            slot: None,
             last_async_message_id: None,
-            last_cycle: None,
+            last_cycle_step: PoSCycleStreamingStep::Started,
             last_credits_slot: None,
+            last_exec_ops_step: ExecutedOpsStreamingStep::Started,
         };
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
     loop {
