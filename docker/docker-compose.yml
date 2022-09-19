@@ -1,7 +1,7 @@
 ---
 version: "3.9"
 services:
-  haqq-node:
+  massa-node:
     container_name: massa-node
     image: massa-node:TEST.14.4
     environment:
