@@ -379,6 +379,7 @@ impl LedgerDB {
         key: &[u8],
         value: &[u8],
     ) {
+        // TODO: USE YOUR OWN BATCH TYPE!
         let mut len_bytes = Vec::new();
         self.len_serializer
             .serialize(&(key.len() as u64), &mut len_bytes)
