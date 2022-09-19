@@ -82,7 +82,7 @@ async fn test_bootstrap_server() {
         bootstrap_establisher,
         keypair.clone(),
         0,
-        Version::from_str("TEST.1.2").unwrap(),
+        Version::from_str("TEST.1.10").unwrap(),
     )
     .await
     .unwrap()
@@ -108,7 +108,7 @@ async fn test_bootstrap_server() {
             bootstrap_config,
             final_state_client_clone,
             remote_establisher,
-            Version::from_str("TEST.1.2").unwrap(),
+            Version::from_str("TEST.1.10").unwrap(),
             MassaTime::now(0).unwrap().saturating_sub(1000.into()),
             None,
         )
