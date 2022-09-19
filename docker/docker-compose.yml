@@ -16,8 +16,7 @@ services:
     - /opt/massa/config/massa-client/base_config:/app/massa-client/base_config
     - /opt/massa/config/massa-node/config:/app/massa-node/config
     - /opt/massa/config/massa-node/base_config:/app/massa-node/base_config
-    - /opt/massa/storage:/app/massa-node/storage
-    # entrypoint: ["/bin/bash", "-c", "sleep 50000 && echo test"]
+    - /opt/massa/storage:/app/massa-node/storage    
     deploy:
       resources:
         limits:
