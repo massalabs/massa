@@ -5,22 +5,22 @@ services:
     container_name: massa-node
     image: massa-node:TEST.14.4
     environment:
-      - PASSWORD=6JXR3xt5JMimV52
+      - PASSWORD=<insert password>
       - NETWORK=testnet
       - LOGGING=true
     ports:
     - "31244:31244"
     - "31245:31245"
     volumes:
-    - ./config/massa-client/config:/app/massa-client/config
-    - ./config/massa-client/base_config:/app/massa-client/base_config
-    - ./config/massa-node/config:/app/massa-node/config
-    - ./config/massa-node/base_config:/app/massa-node/base_config
-    - ./storage:/app/massa-node/storage
+    - /opt/massa/config/massa-client/config:/app/massa-client/config
+    - /opt/massa/config/massa-client/base_config:/app/massa-client/base_config
+    - /opt/massa/config/massa-node/config:/app/massa-node/config
+    - /opt/massa/config/massa-node/base_config:/app/massa-node/base_config
+    - /opt/massa/storage:/app/massa-node/storage
     # entrypoint: ["/bin/bash", "-c", "sleep 50000 && echo test"]
     deploy:
       resources:
         limits:
-          cpus: 6
-          memory: 15gb
+          cpus: 4
+          memory: 8gb
     restart: unless-stopped
