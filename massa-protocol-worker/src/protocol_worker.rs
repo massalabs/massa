@@ -940,7 +940,7 @@ impl ProtocolWorker {
             self.propagate_ops(&ops).await;
 
             // Add to pool
-            self.pool_controller.add_operations(ops.clone());
+            self.pool_controller.add_operations(ops);
         }
 
         Ok((seen_ops, received_ids))
