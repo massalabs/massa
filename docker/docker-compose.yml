@@ -3,10 +3,11 @@ version: "3.9"
 services:
   haqq-node:
     container_name: massa-node
-    image: massa-node:v14.4
+    image: massa-node:TEST.14.4
     environment:
       - PASSWORD=6JXR3xt5JMimV52
       - NETWORK=testnet
+      - LOGGING=true
     ports:
     - "31244:31244"
     - "31245:31245"

@@ -2,7 +2,7 @@
 FROM rust:1.63.0 AS builder
 WORKDIR /app
 
-COPY ./massa-repo .
+COPY . .
 
 RUN apt-get update && apt-get install -y build-essential libclang-dev
 RUN rustup toolchain install nightly && rustup default nightly    
@@ -12,13 +12,14 @@ RUN cargo build --release --bin massa-node --bin massa-client
 FROM debian:bullseye-slim AS runtime
 WORKDIR /app
 
-# ARG BUILD_DATE
-# ARG GIT_REVISION
-# LABEL build-date=$BUILD_DATE
-# LABEL git-revision=$GIT_REVISION
+ARG BUILD_DATE
+ARG GIT_REVISION
+LABEL build-date=$BUILD_DATE
+LABEL git-revision=$GIT_REVISION
+
 COPY --from=builder /app/target/release/massa-client ./massa-client/
 COPY --from=builder /app/target/release/massa-node ./massa-node/
-COPY run_node.sh .
+COPY --from=builder /app/docker/run_node.sh .
 
 RUN apt-get update && apt-get install -y tzdata ca-certificates jq curl wget expect\
     && apt-get -y purge && apt-get -y clean \
