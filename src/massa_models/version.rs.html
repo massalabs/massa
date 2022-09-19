@@ -335,7 +335,7 @@
     /// use massa_serialization::Serializer;
     /// use massa_models::version::{Version, VersionSerializer};
     ///
-    /// let version: Version = Version::from_str(&quot;TEST.1.0&quot;).unwrap();
+    /// let version: Version = Version::from_str(&quot;TEST.1.10&quot;).unwrap();
     /// let serializer = VersionSerializer::new();
     /// let mut buffer = Vec::new();
     /// serializer.serialize(&amp;version, &amp;mut buffer).unwrap();
@@ -379,7 +379,7 @@
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_models::version::{Version, VersionSerializer, VersionDeserializer};
     ///
-    /// let version: Version = Version::from_str(&quot;TEST.1.3&quot;).unwrap();
+    /// let version: Version = Version::from_str(&quot;TEST.1.10&quot;).unwrap();
     /// let mut serialized = Vec::new();
     /// let serializer = VersionSerializer::new();
     /// let deserializer = VersionDeserializer::new();
@@ -445,8 +445,8 @@
     <span class="doccomment">/// ```rust
     /// # use massa_models::*;
     /// # use std::str::FromStr;
-    /// let v: version::Version = version::Version::from_str(&quot;TEST.1.2&quot;).unwrap();
-    /// assert_eq!(v.to_string(), &quot;TEST.1.2&quot;);
+    /// let v: version::Version = version::Version::from_str(&quot;TEST.1.10&quot;).unwrap();
+    /// assert_eq!(v.to_string(), &quot;TEST.1.10&quot;);
     /// ```
     </span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
         <span class="kw">let </span>network_str: String = <span class="self">self</span>.instance.iter().cloned().collect();
@@ -489,4 +489,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (95a992a68 2022-09-16)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (a37499ae6 2022-09-18)" ></div></body></html>

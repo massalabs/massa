@@ -886,7 +886,7 @@
     /// let message_serializer = BootstrapServerMessageSerializer::new();
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),
-    ///    version: Version::from_str(&quot;TEST.1.0&quot;).unwrap(),
+    ///    version: Version::from_str(&quot;TEST.1.10&quot;).unwrap(),
     /// };
     /// let mut message_serialized = Vec::new();
     /// message_serializer.serialize(&amp;bootstrap_server_message, &amp;mut message_serialized).unwrap();
@@ -1060,7 +1060,7 @@
     /// let message_deserializer = BootstrapServerMessageDeserializer::new(16, 10, 100, 100, 1000, 1000, 1000, 1000, 1000, 255, 100000, 10000, 10000, 10000, 100000, 1000);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),
-    ///    version: Version::from_str(&quot;TEST.1.0&quot;).unwrap(),
+    ///    version: Version::from_str(&quot;TEST.1.10&quot;).unwrap(),
     /// };
     /// let mut message_serialized = Vec::new();
     /// message_serializer.serialize(&amp;bootstrap_server_message, &amp;mut message_serialized).unwrap();
@@ -1071,7 +1071,7 @@
     ///        version,
     ///    } =&gt; {
     ///     assert_eq!(server_time, MassaTime::from(0));
-    ///     assert_eq!(version, Version::from_str(&quot;TEST.1.0&quot;).unwrap());
+    ///     assert_eq!(version, Version::from_str(&quot;TEST.1.10&quot;).unwrap());
     ///   },
     ///   _ =&gt; panic!(&quot;Unexpected message&quot;),
     /// }
@@ -1491,4 +1491,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (95a992a68 2022-09-16)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (a37499ae6 2022-09-18)" ></div></body></html>

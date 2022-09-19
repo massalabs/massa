@@ -564,6 +564,9 @@
 <span id="564">564</span>
 <span id="565">565</span>
 <span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Worker implementation for the network events
 //!
 //! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
@@ -685,7 +688,7 @@
             }
             NetworkEvent::ReceivedEndorsements { node, endorsements } =&gt; {
                 <span class="macro">massa_trace!</span>(ENDORSEMENTS, { <span class="string">&quot;node&quot;</span>: node, <span class="string">&quot;endorsements&quot;</span>: endorsements});
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.note_endorsements_from_node(endorsements, <span class="kw-2">&amp;</span>node, <span class="bool-val">true</span>) {
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.note_endorsements_from_node(endorsements, <span class="kw-2">&amp;</span>node).<span class="kw">await </span>{
                     <span class="macro">warn!</span>(
                         <span class="string">&quot;node {} sent us critically incorrect endorsements, \
                         which may be an attack attempt by the remote node or a \
@@ -968,7 +971,10 @@
         block_id: BlockId,
         <span class="kw-2">mut </span>operations: Vec&lt;WrappedOperation&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.note_operations_from_node(operations.clone(), <span class="kw-2">&amp;</span>from_node_id) {
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
+            </span>.note_operations_from_node(operations.clone(), <span class="kw-2">&amp;</span>from_node_id)
+            .<span class="kw">await
+        </span>{
             <span class="macro">warn!</span>(
                 <span class="string">&quot;Node id {} sent us operations for block id {} but they failed at verifications. Err = {}&quot;</span>,
                 from_node_id, block_id, err
@@ -1131,4 +1137,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (95a992a68 2022-09-16)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (a37499ae6 2022-09-18)" ></div></body></html>

@@ -1065,6 +1065,29 @@
 <span id="1065">1065</span>
 <span id="1066">1066</span>
 <span id="1067">1067</span>
+<span id="1068">1068</span>
+<span id="1069">1069</span>
+<span id="1070">1070</span>
+<span id="1071">1071</span>
+<span id="1072">1072</span>
+<span id="1073">1073</span>
+<span id="1074">1074</span>
+<span id="1075">1075</span>
+<span id="1076">1076</span>
+<span id="1077">1077</span>
+<span id="1078">1078</span>
+<span id="1079">1079</span>
+<span id="1080">1080</span>
+<span id="1081">1081</span>
+<span id="1082">1082</span>
+<span id="1083">1083</span>
+<span id="1084">1084</span>
+<span id="1085">1085</span>
+<span id="1086">1086</span>
+<span id="1087">1087</span>
+<span id="1088">1088</span>
+<span id="1089">1089</span>
+<span id="1090">1090</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::checked_operations::CheckedOperations;
@@ -1374,6 +1397,83 @@
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.network_event_receiver)
     }
 
+    <span class="doccomment">/// request the propagation of a set of operations
+    </span><span class="kw">async fn </span>propagate_ops(<span class="kw-2">&amp;mut </span><span class="self">self</span>, storage: <span class="kw-2">&amp;</span>Storage) {
+        <span class="kw">let </span>operation_ids = storage.get_op_refs();
+        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.propagate_operations.begin&quot;</span>, {
+            <span class="string">&quot;operation_ids&quot;</span>: operation_ids
+        });
+        <span class="self">self</span>.prune_checked_operations();
+        <span class="kw">for </span>id <span class="kw">in </span>operation_ids.iter() {
+            <span class="self">self</span>.checked_operations.insert(id);
+        }
+        <span class="kw">for </span>(node, node_info) <span class="kw">in </span><span class="self">self</span>.active_nodes.iter_mut() {
+            <span class="kw">let </span>new_ops: PreHashSet&lt;OperationId&gt; = operation_ids
+                .iter()
+                .filter(|id| !node_info.knows_op(id))
+                .copied()
+                .collect();
+            node_info.insert_known_ops(
+                new_ops.iter().cloned().collect(),
+                <span class="self">self</span>.config.max_node_known_ops_size,
+            );
+            <span class="kw">if </span>!new_ops.is_empty() {
+                <span class="kw">let </span>res = <span class="self">self
+                    </span>.network_command_sender
+                    .send_operations_batch(
+                        <span class="kw-2">*</span>node,
+                        new_ops.iter().map(|id| id.into_prefix()).collect(),
+                    )
+                    .<span class="kw">await</span>;
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = res {
+                    <span class="macro">debug!</span>(<span class="string">&quot;could not send operation batch to node {}: {}&quot;</span>, node, err);
+                }
+            }
+        }
+    }
+
+    <span class="kw">async fn </span>propagate_endorsements(<span class="kw-2">&amp;mut </span><span class="self">self</span>, storage: <span class="kw-2">&amp;</span>Storage) {
+        <span class="macro">massa_trace!</span>(
+            <span class="string">&quot;protocol.protocol_worker.process_command.propagate_endorsements.begin&quot;</span>,
+            { <span class="string">&quot;endorsements&quot;</span>: storage.get_endorsement_refs() }
+        );
+        <span class="kw">for </span>(node, node_info) <span class="kw">in </span><span class="self">self</span>.active_nodes.iter_mut() {
+            <span class="kw">let </span>new_endorsements: PreHashMap&lt;EndorsementId, WrappedEndorsement&gt; = {
+                <span class="kw">let </span>endorsements_reader = storage.read_endorsements();
+                storage
+                    .get_endorsement_refs()
+                    .iter()
+                    .filter_map(|id| {
+                        <span class="kw">if </span>node_info.knows_endorsement(id) {
+                            <span class="kw">return </span><span class="prelude-val">None</span>;
+                        }
+                        <span class="prelude-val">Some</span>((<span class="kw-2">*</span>id, endorsements_reader.get(id).cloned().unwrap()))
+                    })
+                    .collect()
+            };
+            node_info.insert_known_endorsements(
+                new_endorsements.keys().copied().collect(),
+                <span class="self">self</span>.config.max_node_known_endorsements_size,
+            );
+            <span class="kw">let </span>to_send = new_endorsements
+                .into_iter()
+                .map(|(<span class="kw">_</span>, op)| op)
+                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+            <span class="kw">if </span>!to_send.is_empty() {
+                <span class="kw">let </span>res = <span class="self">self
+                    </span>.network_command_sender
+                    .send_endorsements(<span class="kw-2">*</span>node, to_send)
+                    .<span class="kw">await</span>;
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = res {
+                    <span class="macro">debug!</span>(
+                        <span class="string">&quot;could not send endorsements batch to node {}: {}&quot;</span>,
+                        node, err
+                    );
+                }
+            }
+        }
+    }
+
     <span class="kw">async fn </span>process_command(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         cmd: ProtocolCommand,
@@ -1465,68 +1565,10 @@
                 );
             }
             ProtocolCommand::PropagateOperations(storage) =&gt; {
-                <span class="kw">let </span>operation_ids = storage.get_op_refs();
-                <span class="macro">massa_trace!</span>(
-                    <span class="string">&quot;protocol.protocol_worker.process_command.propagate_operations.begin&quot;</span>,
-                    { <span class="string">&quot;operation_ids&quot;</span>: operation_ids }
-                );
-                <span class="self">self</span>.prune_checked_operations();
-                <span class="kw">for </span>id <span class="kw">in </span>operation_ids.iter() {
-                    <span class="self">self</span>.checked_operations.insert(id);
-                }
-                <span class="kw">for </span>(node, node_info) <span class="kw">in </span><span class="self">self</span>.active_nodes.iter_mut() {
-                    <span class="kw">let </span>new_ops: PreHashSet&lt;OperationId&gt; = operation_ids
-                        .iter()
-                        .filter(|id| !node_info.knows_op(id))
-                        .copied()
-                        .collect();
-                    node_info.insert_known_ops(
-                        new_ops.iter().cloned().collect(),
-                        <span class="self">self</span>.config.max_node_known_ops_size,
-                    );
-                    <span class="kw">if </span>!new_ops.is_empty() {
-                        <span class="self">self</span>.network_command_sender
-                            .send_operations_batch(
-                                <span class="kw-2">*</span>node,
-                                new_ops.iter().map(|id| id.into_prefix()).collect(),
-                            )
-                            .<span class="kw">await</span><span class="question-mark">?</span>;
-                    }
-                }
+                <span class="self">self</span>.propagate_ops(<span class="kw-2">&amp;</span>storage).<span class="kw">await</span>;
             }
             ProtocolCommand::PropagateEndorsements(endorsements) =&gt; {
-                <span class="macro">massa_trace!</span>(
-                    <span class="string">&quot;protocol.protocol_worker.process_command.propagate_endorsements.begin&quot;</span>,
-                    { <span class="string">&quot;endorsements&quot;</span>: endorsements.get_endorsement_refs() }
-                );
-                <span class="kw">for </span>(node, node_info) <span class="kw">in </span><span class="self">self</span>.active_nodes.iter_mut() {
-                    <span class="kw">let </span>new_endorsements: PreHashMap&lt;EndorsementId, WrappedEndorsement&gt; = {
-                        <span class="kw">let </span>endorsements_reader = endorsements.read_endorsements();
-                        endorsements
-                            .get_endorsement_refs()
-                            .iter()
-                            .filter_map(|id| {
-                                <span class="kw">if </span>node_info.knows_endorsement(id) {
-                                    <span class="kw">return </span><span class="prelude-val">None</span>;
-                                }
-                                <span class="prelude-val">Some</span>((<span class="kw-2">*</span>id, endorsements_reader.get(id).cloned().unwrap()))
-                            })
-                            .collect()
-                    };
-                    node_info.insert_known_endorsements(
-                        new_endorsements.keys().copied().collect(),
-                        <span class="self">self</span>.config.max_node_known_endorsements_size,
-                    );
-                    <span class="kw">let </span>to_send = new_endorsements
-                        .into_iter()
-                        .map(|(<span class="kw">_</span>, op)| op)
-                        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-                    <span class="kw">if </span>!to_send.is_empty() {
-                        <span class="self">self</span>.network_command_sender
-                            .send_endorsements(<span class="kw-2">*</span>node, to_send)
-                            .<span class="kw">await</span><span class="question-mark">?</span>;
-                    }
-                }
+                <span class="self">self</span>.propagate_endorsements(<span class="kw-2">&amp;</span>endorsements).<span class="kw">await</span>;
             }
         }
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.end&quot;</span>, {});
@@ -1839,11 +1881,10 @@
             <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((block_id, <span class="bool-val">false</span>)));
         }
 
-        <span class="kw">let </span>(_endorsement_ids, endorsements_reused) = <span class="kw">match </span><span class="self">self</span>.note_endorsements_from_node(
-            header.content.endorsements.clone(),
-            source_node_id,
-            <span class="bool-val">false</span>,
-        ) {
+        <span class="kw">let </span>(_endorsement_ids, endorsements_reused) = <span class="kw">match </span><span class="self">self
+            </span>.note_endorsements_from_node(header.content.endorsements.clone(), source_node_id)
+            .<span class="kw">await
+        </span>{
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <span class="macro">warn!</span>(
                     <span class="string">&quot;node {} sent us a header containing critically incorrect endorsements&quot;</span>,
@@ -1957,7 +1998,7 @@
     ///
     /// Checks performed:
     /// - Valid signature
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>note_operations_from_node(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>note_operations_from_node(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         operations: Vec&lt;WrappedOperation&gt;,
         source_node_id: <span class="kw-2">&amp;</span>NodeId,
@@ -1995,7 +2036,10 @@
             </span><span class="kw">let </span><span class="kw-2">mut </span>ops = <span class="self">self</span>.storage.clone_without_refs();
             ops.store_operations(new_operations.into_values().collect());
 
-            <span class="comment">// Add to pool, propagate when received outside of a header.
+            <span class="comment">// Request propagation
+            </span><span class="self">self</span>.propagate_ops(<span class="kw-2">&amp;</span>ops).<span class="kw">await</span>;
+
+            <span class="comment">// Add to pool
             </span><span class="self">self</span>.pool_controller.add_operations(ops);
         }
 
@@ -2011,11 +2055,10 @@
     ///
     /// Checks performed:
     /// - Valid signature.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>note_endorsements_from_node(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>note_endorsements_from_node(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         endorsements: Vec&lt;WrappedEndorsement&gt;,
         source_node_id: <span class="kw-2">&amp;</span>NodeId,
-        propagate: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(PreHashMap&lt;EndorsementId, u32&gt;, bool), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_endorsements_from_node&quot;</span>, { <span class="string">&quot;node&quot;</span>: source_node_id, <span class="string">&quot;endorsements&quot;</span>: endorsements});
         <span class="kw">let </span>length = endorsements.len();
@@ -2047,13 +2090,16 @@
             );
         }
 
-        <span class="kw">if </span>!new_endorsements.is_empty() &amp;&amp; propagate {
+        <span class="kw">if </span>!new_endorsements.is_empty() {
             <span class="self">self</span>.prune_checked_endorsements();
 
             <span class="kw">let </span><span class="kw-2">mut </span>endorsements = <span class="self">self</span>.storage.clone_without_refs();
             endorsements.store_endorsements(new_endorsements.into_values().collect());
 
-            <span class="comment">// Add to pool, propagate if required
+            <span class="comment">// Propagate endorsements
+            </span><span class="self">self</span>.propagate_endorsements(<span class="kw-2">&amp;</span>endorsements).<span class="kw">await</span>;
+
+            <span class="comment">// Add to pool
             </span><span class="self">self</span>.pool_controller.add_endorsements(endorsements);
         }
 
@@ -2133,4 +2179,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (95a992a68 2022-09-16)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (a37499ae6 2022-09-18)" ></div></body></html>
