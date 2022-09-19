@@ -18,10 +18,10 @@ use rocksdb::{
     ColumnFamily, ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions,
     WriteBatch, DB,
 };
-use std::fmt::Debug;
 use std::ops::Bound;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::{collections::BTreeMap, fmt::Debug};
 use std::{
     collections::{BTreeSet, HashMap},
     convert::TryInto,
@@ -57,6 +57,7 @@ pub enum LedgerSubEntry {
 /// Contains a RocksDB DB instance
 pub(crate) struct LedgerDB {
     db: DB,
+    new_batch_hashes: BTreeMap<Vec<u8>, Hash>,
     thread_count: u8,
     amount_serializer: AmountSerializer,
     slot_serializer: SlotSerializer,
@@ -123,6 +124,7 @@ impl LedgerDB {
 
         LedgerDB {
             db,
+            new_batch_hashes: BTreeMap::new(),
             thread_count,
             amount_serializer: AmountSerializer::new(),
             slot_serializer: SlotSerializer::new(),
@@ -251,7 +253,9 @@ impl LedgerDB {
             .serialize(&(key.len() as u64), &mut len_bytes)
             .expect(KEY_LEN_SER_ERROR);
         batch.put_cf(handle, key, value);
-        ledger_hash.xor(Hash::compute_from(&[&len_bytes, key, value].concat()));
+        let hash = Hash::compute_from(&[&len_bytes, key, value].concat());
+        ledger_hash.xor(hash);
+        self.new_batch_hashes.insert(key.to_vec(), hash);
     }
 
     /// Add every sub-entry individually for a given entry.
@@ -375,16 +379,22 @@ impl LedgerDB {
         key: &[u8],
         value: &[u8],
     ) {
-        // TODO: Fix XOR update (cf test)
         let mut len_bytes = Vec::new();
         self.len_serializer
             .serialize(&(key.len() as u64), &mut len_bytes)
             .expect(KEY_LEN_SER_ERROR);
-        if let Some(prev_bytes) = self.db.get_cf(handle, key).expect(CRUD_ERROR) {
+        if let Some(added_hash) = self.new_batch_hashes.get(key) {
+            dbg!("A");
+            ledger_hash.xor(*added_hash);
+        } else if let Some(prev_bytes) = self.db.get_cf(handle, key).expect(CRUD_ERROR) {
+            dbg!("B");
             ledger_hash.xor(Hash::compute_from(&[&len_bytes, key, &prev_bytes].concat()));
         }
+        dbg!("C");
         batch.put_cf(handle, key, value);
-        ledger_hash.xor(Hash::compute_from(&[&len_bytes, key, value].concat()));
+        let hash = Hash::compute_from(&[&len_bytes, key, value].concat());
+        ledger_hash.xor(hash);
+        self.new_batch_hashes.insert(key.to_vec(), hash);
     }
 
     /// Update the ledger entry of a given address.
@@ -453,6 +463,7 @@ impl LedgerDB {
         ledger_hash: &mut Hash,
         key: &[u8],
     ) {
+        // TODO: Fix delete_key beahviour when interating with batch changes
         if let Some(prev_bytes) = self.db.get_cf(handle, key).expect(CRUD_ERROR) {
             let mut len_bytes = Vec::new();
             self.len_serializer
@@ -673,7 +684,6 @@ mod tests {
     #[cfg(test)]
     fn init_test_ledger(addr: Address) -> (LedgerDB, BTreeMap<Vec<u8>, Vec<u8>>) {
         // init data
-
         let mut data = BTreeMap::new();
         data.insert(b"1".to_vec(), b"a".to_vec());
         data.insert(b"2".to_vec(), b"b".to_vec());
@@ -723,7 +733,7 @@ mod tests {
                 )
                 .unwrap()
                 .1,
-            Amount::from_mantissa_scale(21, 0)
+            Amount::from_str("21").unwrap()
         );
         assert!(db.get_sub_entry(&b, LedgerSubEntry::ParBalance).is_none());
         assert_eq!(data, db.get_entire_datastore(&a));
