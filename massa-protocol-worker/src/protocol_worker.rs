@@ -308,7 +308,7 @@ impl ProtocolWorker {
     }
 
     /// request the propagation of a set of operations
-    async fn propagate_ops(&mut self, storage: Storage) {
+    async fn propagate_ops(&mut self, storage: &Storage) {
         let operation_ids = storage.get_op_refs();
         massa_trace!("protocol.protocol_worker.propagate_operations.begin", {
             "operation_ids": operation_ids
@@ -433,7 +433,7 @@ impl ProtocolWorker {
                 );
             }
             ProtocolCommand::PropagateOperations(storage) => {
-                self.propagate_ops(storage).await;
+                self.propagate_ops(&storage).await;
             }
             ProtocolCommand::PropagateEndorsements(endorsements) => {
                 massa_trace!(
@@ -936,11 +936,11 @@ impl ProtocolWorker {
             let mut ops = self.storage.clone_without_refs();
             ops.store_operations(new_operations.into_values().collect());
 
-            // Add to pool, propagate when received outside of a header.
-            self.pool_controller.add_operations(ops.clone());
-
             // Request propagation
-            self.propagate_ops(ops).await;
+            self.propagate_ops(&ops).await;
+
+            // Add to pool
+            self.pool_controller.add_operations(ops.clone());
         }
 
         Ok((seen_ops, received_ids))
