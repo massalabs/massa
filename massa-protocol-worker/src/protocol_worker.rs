@@ -964,15 +964,19 @@ impl ProtocolWorker {
                             self.config.t0,
                             self.config.genesis_timestamp,
                             Slot::new(expire_period, 0),
-                        )
-                        .ok()?;
-                        if expire_period_timestamp
-                            .saturating_add(self.config.max_operations_propagation_time)
-                            < now
-                        {
-                            Some(*op_id)
-                        } else {
-                            None
+                        );
+                        match expire_period_timestamp {
+                            Ok(slot_timestamp) => {
+                                if slot_timestamp
+                                    .saturating_add(self.config.max_endorsements_propagation_time)
+                                    < now
+                                {
+                                    Some(*op_id)
+                                } else {
+                                    None
+                                }
+                            }
+                            Err(_) => Some(*op_id),
                         }
                     })
                     .collect()
@@ -1056,15 +1060,19 @@ impl ProtocolWorker {
                                 self.config.t0,
                                 self.config.genesis_timestamp,
                                 slot_endorsed_block,
-                            )
-                            .ok()?;
-                            if slot_timestamp
-                                .saturating_add(self.config.max_endorsements_propagation_time)
-                                < now
-                            {
-                                Some(*endorsement_id)
-                            } else {
-                                None
+                            );
+                            match slot_timestamp {
+                                Ok(slot_timestamp) => {
+                                    if slot_timestamp.saturating_add(
+                                        self.config.max_endorsements_propagation_time,
+                                    ) < now
+                                    {
+                                        Some(*endorsement_id)
+                                    } else {
+                                        None
+                                    }
+                                }
+                                Err(_) => Some(*endorsement_id),
                             }
                         })
                         .collect()

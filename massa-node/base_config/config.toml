@@ -87,6 +87,10 @@
     asked_operations_pruning_period = 100000
     # Max number of operation per message, same as network param but can be smaller
     max_operations_per_message = 1024
+    # Time threshold after which operation are not propagated
+    max_operations_propagation_time = 32000
+    # Time threshold after which operation are not propagated
+    max_endorsements_propagation_time = 48000
 
 [network]
     # port on which to listen for protocol communication

@@ -37,8 +37,7 @@ use massa_models::config::constants::{
     PERIODS_PER_CYCLE, ROLL_PRICE, T0, THREAD_COUNT, VERSION,
 };
 use massa_models::config::{
-    ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, CHANNEL_SIZE, DELTA_F0, MAX_ENDORSEMENTS_PROPAGATION_TIME,
-    MAX_OPERATIONS_PROPAGATION_TIME, NETWORK_NODE_COMMAND_CHANNEL_SIZE,
+    ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, CHANNEL_SIZE, DELTA_F0, NETWORK_NODE_COMMAND_CHANNEL_SIZE,
     NETWORK_NODE_EVENT_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
     PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE,
 };
@@ -326,8 +325,8 @@ async fn launch(
         event_channel_size: PROTOCOL_EVENT_CHANNEL_SIZE,
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
-        max_operations_propagation_time: MAX_OPERATIONS_PROPAGATION_TIME,
-        max_endorsements_propagation_time: MAX_ENDORSEMENTS_PROPAGATION_TIME,
+        max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
+        max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
     };
     let (protocol_command_sender, protocol_event_receiver, protocol_manager) =
         start_protocol_controller(
