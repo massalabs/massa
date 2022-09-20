@@ -4,6 +4,7 @@
 //! Used to detect operation reuse.
 
 use massa_models::{
+    error::ModelsError,
     operation::{OperationId, OperationIdDeserializer},
     prehash::PreHashMap,
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -20,7 +21,7 @@ use nom::{
 use std::ops::Bound::{Excluded, Included};
 
 /// A structure to list and prune previously executed operations
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct ExecutedOps(PreHashMap<OperationId, Slot>);
 
 impl ExecutedOps {
@@ -54,6 +55,147 @@ impl ExecutedOps {
         // TODO use slot-sorted structure for more efficient pruning (this has a linear complexity currently)
         self.0
             .retain(|_id, last_valid_slot| *last_valid_slot >= max_slot);
+    }
+
+    /// Get a part of the executed operations.
+    ///
+    /// Solely used by the bootstrap.
+    ///
+    /// # Returns
+    /// A tuple containing the data and the next executed ops streaming step
+    pub fn get_executed_ops_part(
+        &self,
+        cursor: ExecutedOpsStreamingStep,
+    ) -> Result<(Vec<u8>, ExecutedOpsStreamingStep), ModelsError> {
+        // TODO: stream in multiple parts
+        match cursor {
+            ExecutedOpsStreamingStep::Started => (), // TODO: when parts start at unbounded left range
+            ExecutedOpsStreamingStep::Ongoing(_op_id) => (), // TODO: when parts start at op_id left range
+            ExecutedOpsStreamingStep::Finished => {
+                return Ok((Vec::new(), ExecutedOpsStreamingStep::Finished))
+            }
+        }
+        let mut part = Vec::new();
+        let ops_serializer = ExecutedOpsSerializer::new();
+        ops_serializer.serialize(self, &mut part)?;
+        Ok((part, ExecutedOpsStreamingStep::Finished))
+    }
+
+    /// Set a part of the executed operations.
+    ///
+    /// Solely used by the bootstrap.
+    ///
+    /// # Returns
+    /// The next executed ops streaming step
+    pub fn set_executed_ops_part(
+        &mut self,
+        part: &[u8],
+        thread_count: u8,
+    ) -> Result<ExecutedOpsStreamingStep, ModelsError> {
+        if part.is_empty() {
+            return Ok(ExecutedOpsStreamingStep::Finished);
+        }
+        let ops_deserializer = ExecutedOpsDeserializer::new(thread_count);
+        let (rest, ops) = ops_deserializer.deserialize(part)?;
+        if !rest.is_empty() {
+            return Err(ModelsError::SerializeError(
+                "data is left after set_executed_ops_part deserialization".to_string(),
+            ));
+        }
+        self.extend(ops);
+        Ok(ExecutedOpsStreamingStep::Finished)
+    }
+}
+
+/// Executed operations bootstrap streaming steps
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub enum ExecutedOpsStreamingStep {
+    /// Started step, only when launching the streaming
+    Started,
+    /// Ongoing step, as long as there are operations to stream
+    Ongoing(OperationId),
+    /// Finished step, after the last operations where streamed
+    Finished,
+}
+
+/// Executed operations bootstrap streaming steps serializer
+#[derive(Default)]
+pub struct ExecutedOpsStreamingStepSerializer {
+    u64_serializer: U64VarIntSerializer,
+}
+
+impl ExecutedOpsStreamingStepSerializer {
+    /// Creates a new executed operations bootstrap streaming steps serializer
+    pub fn new() -> Self {
+        Self {
+            u64_serializer: U64VarIntSerializer,
+        }
+    }
+}
+
+impl Serializer<ExecutedOpsStreamingStep> for ExecutedOpsStreamingStepSerializer {
+    fn serialize(
+        &self,
+        value: &ExecutedOpsStreamingStep,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        match value {
+            ExecutedOpsStreamingStep::Started => self.u64_serializer.serialize(&0u64, buffer)?,
+            ExecutedOpsStreamingStep::Ongoing(op_id) => {
+                self.u64_serializer.serialize(&1u64, buffer)?;
+                buffer.extend(op_id.to_bytes());
+            }
+            ExecutedOpsStreamingStep::Finished => self.u64_serializer.serialize(&2u64, buffer)?,
+        };
+        Ok(())
+    }
+}
+
+/// Executed operations bootstrap streaming steps deserializer
+pub struct ExecutedOpsStreamingStepDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    op_id_deserializer: OperationIdDeserializer,
+}
+
+impl Default for ExecutedOpsStreamingStepDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ExecutedOpsStreamingStepDeserializer {
+    /// Creates a new executed operations bootstrap streaming steps deserializer
+    pub fn new() -> Self {
+        Self {
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            op_id_deserializer: OperationIdDeserializer::new(),
+        }
+    }
+}
+
+impl Deserializer<ExecutedOpsStreamingStep> for ExecutedOpsStreamingStepDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], ExecutedOpsStreamingStep, E> {
+        let (rest, ident) = context("identifier", |input| {
+            self.u64_deserializer.deserialize(input)
+        })
+        .parse(buffer)?;
+        match ident {
+            0u64 => Ok((rest, ExecutedOpsStreamingStep::Started)),
+            1u64 => context("operation_id", |input| {
+                self.op_id_deserializer.deserialize(input)
+            })
+            .map(ExecutedOpsStreamingStep::Ongoing)
+            .parse(rest),
+
+            2u64 => Ok((rest, ExecutedOpsStreamingStep::Finished)),
+            _ => Err(nom::Err::Error(ParseError::from_error_kind(
+                buffer,
+                nom::error::ErrorKind::Digit,
+            ))),
+        }
     }
 }
 

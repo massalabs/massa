@@ -210,6 +210,7 @@ impl PeerInfo {
     pub fn cleanup(&mut self) {
         // canonicalize IP
         self.ip = self.ip.to_canonical();
+        self.banned = false;
         // ensure that connections are set to zero
         self.active_out_connection_attempts = 0;
         self.active_out_connections = 0;

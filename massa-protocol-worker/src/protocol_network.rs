@@ -119,15 +119,12 @@ impl ProtocolWorker {
             }
             NetworkEvent::ReceivedEndorsements { node, endorsements } => {
                 massa_trace!(ENDORSEMENTS, { "node": node, "endorsements": endorsements});
-                if self
-                    .note_endorsements_from_node(endorsements, &node, true)
-                    .is_err()
-                {
+                if let Err(err) = self.note_endorsements_from_node(endorsements, &node).await {
                     warn!(
                         "node {} sent us critically incorrect endorsements, \
                         which may be an attack attempt by the remote node or a \
-                        loss of sync between us and the remote node",
-                        node,
+                        loss of sync between us and the remote node. Err = {}",
+                        node, err
                     );
                     let _ = self.ban_node(&node).await;
                 }
@@ -242,15 +239,25 @@ impl ProtocolWorker {
     ) -> Result<(), ProtocolError> {
         if let Some(info) = self.block_wishlist.get(&block_id) {
             if info.header.is_some() {
-                let _ = self.ban_node(&from_node_id).await;
+                warn!(
+                    "Node {} sent us header for block id {} but we already received it.",
+                    from_node_id, block_id
+                );
+                if let Some(node) = self.active_nodes.get_mut(&from_node_id) && node.asked_blocks.contains_key(&block_id) {
+                    node.asked_blocks.remove(&block_id);
+                    node.insert_known_blocks(&[block_id], false, Instant::now(), self.config.max_node_known_blocks_size);
+                }
+
                 return Ok(());
             }
         }
-        if self
-            .note_header_from_node(&header, &from_node_id)
-            .await
-            .is_err()
-        {
+        if let Err(err) = self.note_header_from_node(&header, &from_node_id).await {
+            warn!(
+                "node {} sent us critically incorrect header through protocol, \
+                which may be an attack attempt by the remote node \
+                or a loss of sync between us and the remote node. Err = {}",
+                from_node_id, err
+            );
             let _ = self.ban_node(&from_node_id).await;
             return Ok(());
         };
@@ -301,19 +308,37 @@ impl ProtocolWorker {
         let info = if let Some(info) = self.block_wishlist.get_mut(&block_id) {
             info
         } else {
-            let _ = self.ban_node(&from_node_id).await;
+            warn!(
+                "Node {} sent us an operation list but we don't have block id {} in our wishlist.",
+                from_node_id, block_id
+            );
+            if let Some(node) = self.active_nodes.get_mut(&from_node_id) && node.asked_blocks.contains_key(&block_id) {
+                node.asked_blocks.remove(&block_id);
+                node.insert_known_blocks(&[block_id], false, Instant::now(), self.config.max_node_known_blocks_size);
+            }
             return Ok(());
         };
 
         let header = if let Some(header) = &info.header {
             header
         } else {
-            let _ = self.ban_node(&from_node_id).await;
+            warn!("Node {} sent us an operation list but we don't have receive the header of block id {} yet.", from_node_id, block_id);
+            if let Some(node) = self.active_nodes.get_mut(&from_node_id) && node.asked_blocks.contains_key(&block_id) {
+                node.asked_blocks.remove(&block_id);
+                node.insert_known_blocks(&[block_id], false, Instant::now(), self.config.max_node_known_blocks_size);
+            }
             return Ok(());
         };
 
         if info.operation_ids.is_some() {
-            let _ = self.ban_node(&from_node_id).await;
+            warn!(
+                "Node {} sent us an operation list for block id {} but we already received it.",
+                from_node_id, block_id
+            );
+            if let Some(node) = self.active_nodes.get_mut(&from_node_id) && node.asked_blocks.contains_key(&block_id) {
+                node.asked_blocks.remove(&block_id);
+                node.insert_known_blocks(&[block_id], false, Instant::now(), self.config.max_node_known_blocks_size);
+            }
             return Ok(());
         }
 
@@ -335,6 +360,7 @@ impl ProtocolWorker {
                 Self::get_total_operations_size(&self.storage, &known_operations);
 
             if info.operations_size > self.config.max_serialized_operations_size_per_block {
+                warn!("Node id {} sent us a operation list for block id {} but the operations we already have in our records exceed max size.", from_node_id, block_id);
                 let _ = self.ban_node(&from_node_id).await;
                 return Ok(());
             }
@@ -351,6 +377,7 @@ impl ProtocolWorker {
                     .await;
             }
         } else {
+            warn!("Node id {} sent us a operation list for block id {} but the hash in header doesn't match.", from_node_id, block_id);
             let _ = self.ban_node(&from_node_id).await;
         }
         Ok(())
@@ -375,10 +402,14 @@ impl ProtocolWorker {
         block_id: BlockId,
         mut operations: Vec<WrappedOperation>,
     ) -> Result<(), ProtocolError> {
-        if self
+        if let Err(err) = self
             .note_operations_from_node(operations.clone(), &from_node_id)
-            .is_err()
+            .await
         {
+            warn!(
+                "Node id {} sent us operations for block id {} but they failed at verifications. Err = {}",
+                from_node_id, block_id, err
+            );
             let _ = self.ban_node(&from_node_id).await;
             return Ok(());
         }
@@ -389,13 +420,21 @@ impl ProtocolWorker {
                 let header = if let Some(header) = &info.header {
                     header.clone()
                 } else {
-                    let _ = self.ban_node(&from_node_id).await;
+                    warn!("Node {} sent us full operations but we don't have receive the header of block id {} yet.", from_node_id, block_id);
+                    if let Some(node) = self.active_nodes.get_mut(&from_node_id) && node.asked_blocks.contains_key(&block_id) {
+                        node.asked_blocks.remove(&block_id);
+                        node.insert_known_blocks(&[block_id], false, Instant::now(), self.config.max_node_known_blocks_size);
+                    }
                     return Ok(());
                 };
                 let block_operation_ids = if let Some(operations) = &info.operation_ids {
                     operations
                 } else {
-                    let _ = self.ban_node(&from_node_id).await;
+                    warn!("Node {} sent us full operations but we don't have received the operation list of block id {} yet.", from_node_id, block_id);
+                    if let Some(node) = self.active_nodes.get_mut(&from_node_id) && node.asked_blocks.contains_key(&block_id) {
+                        node.asked_blocks.remove(&block_id);
+                        node.insert_known_blocks(&[block_id], false, Instant::now(), self.config.max_node_known_blocks_size);
+                    }
                     return Ok(());
                 };
                 operations.retain(|op| block_operation_ids.contains(&op.id));
@@ -415,12 +454,20 @@ impl ProtocolWorker {
                         .sum()
                 };
                 if full_op_size > self.config.max_serialized_operations_size_per_block {
+                    warn!("Node id {} sent us full operations for block id {} but they exceed max size.", from_node_id, block_id);
                     let _ = self.ban_node(&from_node_id).await;
                     self.block_wishlist.remove(&block_id);
                     ProtocolEvent::InvalidBlock { block_id, header }
                 } else {
                     if known_operations != block_ids_set {
-                        let _ = self.ban_node(&from_node_id).await;
+                        warn!(
+                            "Node id {} didn't sent us all the full operations for block id {}.",
+                            from_node_id, block_id
+                        );
+                        if let Some(node) = self.active_nodes.get_mut(&from_node_id) && node.asked_blocks.contains_key(&block_id) {
+                            node.asked_blocks.remove(&block_id);
+                            node.insert_known_blocks(&[block_id], false, Instant::now(), self.config.max_node_known_blocks_size);
+                        }
                         return Ok(());
                     }
 
@@ -463,7 +510,11 @@ impl ProtocolWorker {
                 }
             }
             Entry::Vacant(_) => {
-                let _ = self.ban_node(&from_node_id).await;
+                warn!("Node {} sent us full operations but we don't have the block id {} in our wishlist.", from_node_id, block_id);
+                if let Some(node) = self.active_nodes.get_mut(&from_node_id) && node.asked_blocks.contains_key(&block_id) {
+                    node.asked_blocks.remove(&block_id);
+                    node.insert_known_blocks(&[block_id], false, Instant::now(), self.config.max_node_known_blocks_size);
+                }
                 return Ok(());
             }
         };

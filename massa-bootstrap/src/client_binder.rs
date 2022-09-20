@@ -44,6 +44,7 @@ pub struct BootstrapClientBinder {
     max_op_datastore_entry_count: u64,
     max_op_datastore_key_length: u8,
     max_op_datastore_value_length: u64,
+    max_changes_slot_count: u32,
 }
 
 impl BootstrapClientBinder {
@@ -77,6 +78,7 @@ impl BootstrapClientBinder {
         max_op_datastore_entry_count: u64,
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
+        max_changes_slot_count: u32,
     ) -> Self {
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapClientBinder {
@@ -105,6 +107,7 @@ impl BootstrapClientBinder {
             max_op_datastore_entry_count,
             max_op_datastore_key_length,
             max_op_datastore_value_length,
+            max_changes_slot_count,
         }
     }
 }
@@ -167,6 +170,7 @@ impl BootstrapClientBinder {
             self.max_op_datastore_entry_count,
             self.max_op_datastore_key_length,
             self.max_op_datastore_value_length,
+            self.max_changes_slot_count,
         );
         let message = {
             if let Some(prev_message) = self.prev_message {

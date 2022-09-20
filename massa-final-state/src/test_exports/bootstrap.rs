@@ -44,4 +44,5 @@ pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
         &v2.async_pool,
     );
     massa_pos_exports::test_exports::assert_eq_pos_state(&v1.pos_state, &v2.pos_state);
+    assert_eq!(v1.executed_ops, v2.executed_ops);
 }
