@@ -374,15 +374,12 @@ impl LedgerDB {
             .serialize(&(key.len() as u64), &mut len_bytes)
             .expect(KEY_LEN_SER_ERROR);
         if let Some(added_hash) = batch.aeh_list.get(key) {
-            dbg!("A");
             batch.ledger_hash.xor(*added_hash);
         } else if let Some(prev_bytes) = self.db.get_cf(handle, key).expect(CRUD_ERROR) {
-            dbg!("B");
             batch
                 .ledger_hash
                 .xor(Hash::compute_from(&[&len_bytes, key, &prev_bytes].concat()));
         }
-        dbg!("C");
         let hash = Hash::compute_from(&[&len_bytes, key, value].concat());
         batch.ledger_hash.xor(hash);
         batch.aeh_list.insert(key.to_vec(), hash);
@@ -646,7 +643,7 @@ impl LedgerDB {
 #[cfg(test)]
 mod tests {
     use super::LedgerDB;
-    use crate::ledger_db::LedgerSubEntry;
+    use crate::ledger_db::{LedgerBatch, LedgerSubEntry};
     use massa_hash::Hash;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
     use massa_models::{
@@ -655,7 +652,6 @@ mod tests {
     };
     use massa_serialization::{DeserializeError, Deserializer};
     use massa_signature::KeyPair;
-    use rocksdb::LedgerBatch;
     use std::collections::BTreeMap;
     use std::ops::Bound::Included;
     use std::str::FromStr;
@@ -682,11 +678,9 @@ mod tests {
         // write data
         let temp_dir = TempDir::new().unwrap();
         let mut db = LedgerDB::new(temp_dir.path().to_path_buf(), 32, 255, 1_000_000);
-        let mut batch = LedgerBatch::default();
-        let mut ledger_hash = Hash::from_bytes(&[0; 32]);
-        db.put_entry(&addr, entry, &mut batch, &mut ledger_hash);
-        db.update_entry(&addr, entry_update, &mut batch, &mut ledger_hash);
-        db.set_ledger_hash(&mut batch, ledger_hash);
+        let mut batch = LedgerBatch::new(Hash::from_bytes(&[0; 32]));
+        db.put_entry(&addr, entry, &mut batch);
+        db.update_entry(&addr, entry_update, &mut batch);
         db.write_batch(batch);
 
         // return db and initial data
@@ -696,39 +690,37 @@ mod tests {
     /// Functional test of LedgerDB
     #[test]
     fn test_ledger_db() {
-        // init addresses
-        let pub_a = KeyPair::generate().get_public_key();
-        let pub_b = KeyPair::generate().get_public_key();
-        let a = Address::from_public_key(&pub_a);
-        let b = Address::from_public_key(&pub_b);
-        let (db, data) = init_test_ledger(a);
+        let addr = Address::from_public_key(&KeyPair::generate().get_public_key());
+        let (db, data) = init_test_ledger(addr);
         let amount_deserializer =
             AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
-        // first assert
-        assert!(db.get_sub_entry(&a, LedgerSubEntry::ParBalance).is_some());
+
+        // check initial state and entry update
+        assert!(db
+            .get_sub_entry(&addr, LedgerSubEntry::ParBalance)
+            .is_some());
         assert_eq!(
             amount_deserializer
                 .deserialize::<DeserializeError>(
-                    &db.get_sub_entry(&a, LedgerSubEntry::ParBalance).unwrap()
+                    &db.get_sub_entry(&addr, LedgerSubEntry::ParBalance).unwrap()
                 )
                 .unwrap()
                 .1,
             Amount::from_str("21").unwrap()
         );
-        assert!(db.get_sub_entry(&b, LedgerSubEntry::ParBalance).is_none());
-        assert_eq!(data, db.get_entire_datastore(&a));
+        assert_eq!(data, db.get_entire_datastore(&addr));
 
         // delete entry
-        let mut batch = LedgerBatch::default();
-        let mut ledger_hash = db.get_ledger_hash();
-        db.delete_entry(&a, &mut batch, &mut ledger_hash);
-        db.set_ledger_hash(&mut batch, ledger_hash);
+        let mut batch = LedgerBatch::new(db.get_ledger_hash());
+        db.delete_entry(&addr, &mut batch);
         db.write_batch(batch);
 
-        // second assert
+        // check deleted address and ledger hash
         assert_eq!(Hash::from_bytes(&[0; 32]), db.get_ledger_hash());
-        assert!(db.get_sub_entry(&a, LedgerSubEntry::ParBalance).is_none());
-        assert!(db.get_entire_datastore(&a).is_empty());
+        assert!(db
+            .get_sub_entry(&addr, LedgerSubEntry::ParBalance)
+            .is_none());
+        assert!(db.get_entire_datastore(&addr).is_empty());
     }
 
     #[test]
