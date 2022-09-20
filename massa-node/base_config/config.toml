@@ -75,9 +75,9 @@
     # max cache size for which operations a foreign node knows about
     max_node_known_ops_size = 20000
     # max cache size for which endorsements our node knows about
-    max_known_endorsements_size = 1024
+    max_known_endorsements_size = 2048
     # max cache size for which endorsements a foreign node knows about
-    max_node_known_endorsements_size = 1024
+    max_node_known_endorsements_size = 2048
     # Maximum number of batches in the memory buffer.
     # Dismiss the new batches if overflow
     operation_batch_buffer_capacity = 10024
@@ -182,7 +182,7 @@
     # max size of recently bootstrapped IP cache
     ip_list_max_size = 10000
     # refuse consecutive bootstrap attempts from a given IP when the interval between them is lower than per_ip_min_interval milliseconds
-    per_ip_min_interval = 180000
+    per_ip_min_interval = 10
     # Read-Write limitation for a connection in bytes per seconds (about the bootstrap specifically)
     max_bytes_read_write = 20_000_000.0
 
