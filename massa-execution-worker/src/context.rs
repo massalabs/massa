@@ -150,6 +150,7 @@ impl ExecutionContext {
                 config.max_datastore_key_length,
                 config.ledger_cost_per_byte,
                 config.ledger_cost_per_datastore_key,
+                config.ledger_cost_per_balance,
             ),
             speculative_async_pool: SpeculativeAsyncPool::new(
                 final_state.clone(),

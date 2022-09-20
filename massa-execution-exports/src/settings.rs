@@ -47,4 +47,6 @@ pub struct ExecutionConfig {
     pub ledger_cost_per_byte: Amount,
     /// Cost per datastore key in ledger
     pub ledger_cost_per_datastore_key: Amount,
+    /// Cost per balance in ledger
+    pub ledger_cost_per_balance: Amount,
 }

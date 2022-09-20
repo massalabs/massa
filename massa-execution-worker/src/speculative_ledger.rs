@@ -8,11 +8,17 @@
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
 use massa_ledger_exports::{Applicable, LedgerChanges};
-use massa_models::{address::Address, amount::Amount};
+use massa_models::{
+    address::{Address, ADDRESS_SIZE_BYTES},
+    amount::Amount,
+};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
 use crate::active_history::{ActiveHistory, HistorySearchResult};
+
+/// Size of an identifier in database
+pub const IDENTIFIER_DB: usize = 1;
 
 /// The `SpeculativeLedger` contains an thread-safe shared reference to the final ledger (read-only),
 /// a list of existing changes that happened o the ledger since its finality,
@@ -39,6 +45,9 @@ pub(crate) struct SpeculativeLedger {
 
     /// ledger cost per datastore key
     ledger_cost_per_datastore_key: Amount,
+
+    /// ledger cost for a balance
+    ledger_cost_for_balance: Amount,
 }
 
 impl SpeculativeLedger {
@@ -53,6 +62,7 @@ impl SpeculativeLedger {
         max_datastore_key_length: u8,
         ledger_cost_per_byte: Amount,
         ledger_cost_per_datastore_key: Amount,
+        ledger_cost_for_balance: Amount,
     ) -> Self {
         SpeculativeLedger {
             final_state,
@@ -61,6 +71,7 @@ impl SpeculativeLedger {
             max_datastore_key_length,
             ledger_cost_per_byte,
             ledger_cost_per_datastore_key,
+            ledger_cost_for_balance,
         }
     }
 
@@ -137,7 +148,7 @@ impl SpeculativeLedger {
         if let Some(from_addr) = from_addr {
             let new_balance = self
                 .get_balance(&from_addr)
-                .unwrap_or_default()
+                .ok_or_else(|| ExecutionError::RuntimeError("source addr not found".to_string()))?
                 .checked_sub(amount)
                 .ok_or_else(|| {
                     ExecutionError::RuntimeError("insufficient from_addr balance".into())
@@ -148,14 +159,36 @@ impl SpeculativeLedger {
         // simulate crediting coins to destination address (if any)
         // note that to_addr can be the same as from_addr
         if let Some(to_addr) = to_addr {
-            let new_balance = changes
-                .get_balance_or_else(&to_addr, || self.get_balance(&to_addr))
-                .unwrap_or_default()
-                .checked_add(amount)
-                .ok_or_else(|| {
+            let old_balance = changes.get_balance_or_else(&to_addr, || self.get_balance(&to_addr));
+            if let Some(old_balance) = old_balance {
+                let new_balance = old_balance.checked_add(amount).ok_or_else(|| {
                     ExecutionError::RuntimeError("overflow in to_addr balance".into())
                 })?;
-            changes.set_balance(to_addr, new_balance);
+                changes.set_balance(to_addr, new_balance);
+            } else if from_addr.is_some() {
+                // Debit sender to create receiver address
+                // TODO: If we allow delete address, need to keep track of creator
+                self.transfer_coins(
+                    from_addr,
+                    None,
+                    self.ledger_cost_per_byte
+                        .checked_mul_u64((ADDRESS_SIZE_BYTES + IDENTIFIER_DB).try_into().map_err(
+                            |_| ExecutionError::RuntimeError("Internal error".to_string()),
+                        )?)
+                        .ok_or_else(|| {
+                            ExecutionError::RuntimeError(
+                                "overflow in ledger cost for addr".to_string(),
+                            )
+                        })?
+                        .checked_add(self.ledger_cost_for_balance)
+                        .ok_or_else(|| {
+                            ExecutionError::RuntimeError(
+                                "overflow in ledger cost for balance".to_string(),
+                            )
+                        })?,
+                )?;
+                changes.set_balance(to_addr, amount);
+            }
         }
 
         // apply the simulated changes to the speculative ledger
