@@ -290,7 +290,7 @@ impl MessageDeserializer {
             ),
             peer_list_length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Excluded(max_advertise_length),
+                Included(max_advertise_length),
             ),
             operations_deserializer: OperationsDeserializer::new(
                 max_operations_per_block,
@@ -563,7 +563,7 @@ mod tests {
         let msg = Message::HandshakeInitiation {
             public_key: keypair.get_public_key(),
             random_bytes,
-            version: Version::from_str("TEST.1.2").unwrap(),
+            version: Version::from_str("TEST.1.10").unwrap(),
         };
         let mut ser = Vec::new();
         message_serializer.serialize(&msg, &mut ser).unwrap();

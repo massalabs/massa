@@ -273,6 +273,68 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
 #[tokio::test]
 #[serial]
+async fn test_protocol_propagates_operations_received_over_the_network_only_to_nodes_that_dont_know_about_it(
+) {
+    let protocol_config = &tools::PROTOCOL_CONFIG;
+    protocol_test_with_storage(
+        protocol_config,
+        async move |mut network_controller,
+                    protocol_event_receiver,
+                    protocol_command_sender,
+                    protocol_manager,
+                    mut pool_event_receiver,
+                    _storage| {
+            // Create 2 nodes.
+            let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
+
+            // 1. Create an operation
+            let operation = tools::create_operation_with_expire_period(&nodes[0].keypair, 1);
+
+            // Send operation and wait for the protocol pool event.
+            network_controller
+                .send_operations(nodes[0].id, vec![operation.clone()])
+                .await;
+            pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+                MockPoolControllerMessage::AddOperations { .. } => {
+                    panic!("Unexpected or no protocol event.")
+                }
+                _ => Some(MockPoolControllerMessage::Any),
+            });
+
+            let expected_operation_id = operation.id;
+
+            // Assert the operation is propagated to the node that doesn't know about it.
+            loop {
+                match network_controller
+                    .wait_command(1000.into(), |cmd| match cmd {
+                        cmd @ NetworkCommand::SendOperationAnnouncements { .. } => Some(cmd),
+                        _ => None,
+                    })
+                    .await
+                {
+                    Some(NetworkCommand::SendOperationAnnouncements { to_node, batch }) => {
+                        assert_eq!(batch.len(), 1);
+                        assert!(batch.contains(&expected_operation_id.prefix()));
+                        assert_eq!(nodes[1].id, to_node);
+                        break;
+                    }
+                    _ => panic!("Unexpected or no network command."),
+                };
+            }
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                pool_event_receiver,
+            )
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[serial]
 async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_indirect_knowledge_via_header(
 ) {
     let protocol_config = &tools::PROTOCOL_CONFIG;

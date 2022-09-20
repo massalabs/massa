@@ -186,6 +186,10 @@ pub struct ProtocolSettings {
     pub asked_operations_pruning_period: MassaTime,
     /// Maximum of operations sent in one message.
     pub max_operations_per_message: u64,
+    /// Time threshold after which operation are not propagated
+    pub max_operations_propagation_time: MassaTime,
+    /// Time threshold after which operation are not propagated
+    pub max_endorsements_propagation_time: MassaTime,
 }
 
 #[cfg(test)]

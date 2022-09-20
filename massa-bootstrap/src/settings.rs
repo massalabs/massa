@@ -74,4 +74,6 @@ pub struct BootstrapConfig {
     pub max_parameters_size: u32,
     /// max ledger changes
     pub max_ledger_changes_count: u64,
+    /// maximum of slot in state changes
+    pub max_changes_slot_count: u32,
 }

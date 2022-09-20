@@ -6,6 +6,7 @@ use rand::{distributions::Distribution, SeedableRng};
 use rand_distr::WeightedAliasIndex;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use std::collections::{BTreeMap, HashMap};
+use tracing::debug;
 
 /// Draws block and creators for a given cycle.
 ///
@@ -56,6 +57,8 @@ pub(crate) fn perform_draws(
         ),
     };
 
+    let mut five_first_slots: Vec<(Slot, Selection)> = Vec::new();
+    let mut count = 0;
     loop {
         // draw block creator
         let producer = if cur_slot.period > 0 {
@@ -70,14 +73,16 @@ pub(crate) fn perform_draws(
             .map(|_index| addresses[dist.sample(&mut rng)])
             .collect();
 
+        let selection = Selection {
+            producer,
+            endorsements,
+        };
+        if count < 5 {
+            five_first_slots.push((cur_slot, selection.clone()));
+            count += 1;
+        }
         // add to draws
-        cycle_draws.draws.insert(
-            cur_slot,
-            Selection {
-                producer,
-                endorsements,
-            },
-        );
+        cycle_draws.draws.insert(cur_slot, selection);
 
         if cur_slot == last_slot {
             break;
@@ -86,6 +91,13 @@ pub(crate) fn perform_draws(
             PosError::OverflowError(format!("iteration slot overflow in perform_draws: {}", err))
         })?;
     }
+
+    debug!(
+        "Draws for cycle {} complete. Look_back seed was {:#?}. Five first selections is : {:#?}",
+        cycle,
+        lookback_seed.to_bytes(),
+        five_first_slots
+    );
 
     Ok(cycle_draws)
 }

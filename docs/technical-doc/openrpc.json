@@ -2,7 +2,7 @@
     "openrpc": "1.2.4",
     "info": {
         "title": "Massa OpenRPC",
-        "version": "TEST.14.0",
+        "version": "TEST.14.6",
         "description": "Massa OpenRPC spec",
         "termsOfService": "https://open-rpc.org",
         "contact": {
@@ -547,8 +547,6 @@
             "summary": "Ban given id(s)",
             "description": "Ban given id(s)."
         },
-    
-
         {
             "tags": [
                 {
@@ -854,7 +852,6 @@
                     "context",
                     "data"
                 ],
-                
                 "type": "object",
                 "properties": {
                     "context": {
@@ -2282,14 +2279,6 @@
                 "description": "A PubkeySig object",
                 "schema": {
                     "$ref": "#/components/schemas/PubkeySig"
-                }
-            },
-            "Operation": {
-                "name": "Operation",
-                "summary": "Operation",
-                "description": "A Operation object",
-                "schema": {
-                    "$ref": "#/components/schemas/Operation"
                 }
             },
             "SCOutputEvent": {

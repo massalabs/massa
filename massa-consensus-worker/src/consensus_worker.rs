@@ -16,6 +16,13 @@ use std::{cmp::max, collections::VecDeque};
 use tokio::time::{sleep, sleep_until, Sleep};
 use tracing::{info, warn};
 
+#[cfg(not(feature = "sandbox"))]
+use massa_consensus_exports::events::ConsensusEvent;
+#[cfg(not(feature = "sandbox"))]
+use tokio::sync::mpsc::error::SendTimeoutError;
+#[cfg(not(feature = "sandbox"))]
+use tracing::debug;
+
 /// Manages consensus.
 pub struct ConsensusWorker {
     /// Consensus Configuration
@@ -34,8 +41,10 @@ pub struct ConsensusWorker {
     latest_final_periods: Vec<u64>,
     /// clock compensation
     clock_compensation: i64,
-    /// Final block stats `(time, creator)`
-    final_block_stats: VecDeque<(MassaTime, Address)>,
+    /// Final block stats `(time, creator, is_from_protocol)`
+    final_block_stats: VecDeque<(MassaTime, Address, bool)>,
+    /// Blocks that come from protocol used for stats and ids are removed when inserted in `final_block_stats`
+    protocol_blocks: VecDeque<(MassaTime, BlockId)>,
     /// Stale block timestamps
     stale_block_stats: VecDeque<MassaTime>,
     /// the time span considered for stats
@@ -110,6 +119,7 @@ impl ConsensusWorker {
                     Slot::new(0, thread),
                 )?,
                 genesis_addr,
+                false,
             ))
         }
 
@@ -145,6 +155,7 @@ impl ConsensusWorker {
             clock_compensation,
             channels,
             final_block_stats,
+            protocol_blocks: Default::default(),
             stale_block_stats: VecDeque::new(),
             stats_desync_detection_timespan,
             stats_history_timespan: max(stats_desync_detection_timespan, cfg.stats_timespan),
@@ -286,23 +297,23 @@ impl ConsensusWorker {
             info!("Started cycle {}", observed_cycle);
         }
 
-        // check if there are any final blocks not produced by us
+        // check if there are any final blocks is coming from protocol
         // if none => we are probably desync
-        /*
-        TODO put this back
         #[cfg(not(feature = "sandbox"))]
         if now
             > max(self.cfg.genesis_timestamp, self.launch_time)
                 .saturating_add(self.stats_desync_detection_timespan)
-            && !self.final_block_stats.iter().any(|(time, _, addr)| {
-                time > &now.saturating_sub(self.stats_desync_detection_timespan)
-                    && !self.staking_keys.contains_key(addr)
-            })
+            && !self
+                .final_block_stats
+                .iter()
+                .any(|(time, _, is_from_protocol)| {
+                    time > &now.saturating_sub(self.stats_desync_detection_timespan)
+                        && *is_from_protocol
+                })
         {
             warn!("desynchronization detected because the recent final block history is empty or contains only blocks produced by this node");
             let _ = self.send_consensus_event(ConsensusEvent::NeedSync).await;
         }
-        */
 
         self.previous_slot = Some(observed_slot);
         self.next_slot = observed_slot.get_next_slot(self.cfg.thread_count)?;
@@ -449,7 +460,7 @@ impl ConsensusWorker {
         let final_block_count = self
             .final_block_stats
             .iter()
-            .filter(|(t, _)| *t >= timespan_start && *t < timespan_end)
+            .filter(|(t, _, _)| *t >= timespan_start && *t < timespan_end)
             .count() as u64;
         let stale_block_count = self
             .stale_block_stats
@@ -483,6 +494,8 @@ impl ConsensusWorker {
                 );
                 self.block_db
                     .incoming_block(block_id, slot, self.previous_slot, storage)?;
+                let now = MassaTime::now(self.clock_compensation)?;
+                self.protocol_blocks.push_back((now, block_id));
                 self.block_db_changed().await?;
             }
             ProtocolEvent::ReceivedBlockHeader { block_id, header } => {
@@ -507,8 +520,27 @@ impl ConsensusWorker {
     fn prune_stats(&mut self) -> Result<()> {
         let start_time =
             MassaTime::now(self.clock_compensation)?.saturating_sub(self.stats_history_timespan);
-        self.final_block_stats.retain(|(t, _)| t >= &start_time);
-        self.stale_block_stats.retain(|t| t >= &start_time);
+        while let Some((t, _, _)) = self.final_block_stats.front() {
+            if t < &start_time {
+                self.final_block_stats.pop_front();
+            } else {
+                break;
+            }
+        }
+        while let Some(t) = self.stale_block_stats.front() {
+            if t < &start_time {
+                self.stale_block_stats.pop_front();
+            } else {
+                break;
+            }
+        }
+        while let Some((t, _)) = self.protocol_blocks.front() {
+            if t < &start_time {
+                self.protocol_blocks.pop_front();
+            } else {
+                break;
+            }
+        }
         Ok(())
     }
 
@@ -585,8 +617,15 @@ impl ConsensusWorker {
         for b_id in new_final_block_ids.into_iter() {
             if let Some((a_block, _block_store)) = self.block_db.get_active_block(&b_id) {
                 // add to stats
-                self.final_block_stats
-                    .push_back((timestamp, a_block.creator_address));
+                let block_is_from_protocol = self
+                    .protocol_blocks
+                    .iter()
+                    .any(|(_, block_id)| block_id == &b_id);
+                self.final_block_stats.push_back((
+                    timestamp,
+                    a_block.creator_address,
+                    block_is_from_protocol,
+                ));
             }
         }
 
@@ -655,5 +694,30 @@ impl ConsensusWorker {
         }
 
         Ok(())
+    }
+
+    /// Channel management stuff
+    /// todo delete
+    /// or at least introduce some generic
+    #[cfg(not(feature = "sandbox"))]
+    async fn send_consensus_event(&self, event: ConsensusEvent) -> Result<()> {
+        let result = self
+            .channels
+            .controller_event_tx
+            .send_timeout(event, self.cfg.max_send_wait.to_duration())
+            .await;
+        match result {
+            Ok(()) => return Ok(()),
+            Err(SendTimeoutError::Closed(event)) => {
+                debug!(
+                    "failed to send ConsensusEvent due to channel closure: {:?}",
+                    event
+                );
+            }
+            Err(SendTimeoutError::Timeout(event)) => {
+                debug!("failed to send ConsensusEvent due to timeout: {:?}", event);
+            }
+        }
+        Err(ConsensusError::ChannelError("failed to send event".into()))
     }
 }
