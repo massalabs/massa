@@ -5,6 +5,8 @@ use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 
 use massa_logging::massa_trace;
 
+use massa_models::slot::Slot;
+use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
     block::{BlockId, WrappedHeader},
     endorsement::{EndorsementId, WrappedEndorsement},
@@ -21,7 +23,7 @@ use massa_protocol_exports::{
 };
 
 use massa_storage::Storage;
-use massa_time::TimeError;
+use massa_time::{MassaTime, TimeError};
 use std::collections::{HashMap, HashSet};
 use tokio::{
     sync::mpsc,
@@ -946,8 +948,37 @@ impl ProtocolWorker {
             let mut ops = self.storage.clone_without_refs();
             ops.store_operations(new_operations.into_values().collect());
 
-            // Request propagation
-            self.propagate_ops(&ops).await;
+            // Propagate operations when their expire period isn't `max_operations_propagation_time` old.
+            let mut ops_to_propagate = ops.clone();
+            let operations_to_not_propagate = {
+                let now = MassaTime::now(0)?;
+                let read_operations = ops_to_propagate.read_operations();
+                ops_to_propagate
+                    .get_op_refs()
+                    .iter()
+                    .filter_map(|op_id| {
+                        let expire_period =
+                            read_operations.get(op_id).unwrap().content.expire_period;
+                        let expire_period_timestamp = get_block_slot_timestamp(
+                            self.config.thread_count,
+                            self.config.t0,
+                            self.config.genesis_timestamp,
+                            Slot::new(expire_period, 0),
+                        )
+                        .ok()?;
+                        if expire_period_timestamp
+                            .saturating_add(self.config.max_operations_propagation_time)
+                            < now
+                        {
+                            Some(*op_id)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            };
+            ops_to_propagate.drop_operation_refs(&operations_to_not_propagate);
+            self.propagate_ops(&ops_to_propagate).await;
 
             // Add to pool
             self.pool_controller.add_operations(ops);
@@ -1009,7 +1040,38 @@ impl ProtocolWorker {
 
             // Propagate endorsements
             if propagate {
-                self.propagate_endorsements(&endorsements).await;
+                // Propagate endorsements when the slot of the block they endorse isn't `max_endorsements_propagation_time` old.
+                let mut endorsements_to_propagate = endorsements.clone();
+                let endorsements_to_not_propagate = {
+                    let now = MassaTime::now(0)?;
+                    let read_endorsements = endorsements_to_propagate.read_endorsements();
+                    endorsements_to_propagate
+                        .get_endorsement_refs()
+                        .iter()
+                        .filter_map(|endorsement_id| {
+                            let slot_endorsed_block =
+                                read_endorsements.get(endorsement_id).unwrap().content.slot;
+                            let slot_timestamp = get_block_slot_timestamp(
+                                self.config.thread_count,
+                                self.config.t0,
+                                self.config.genesis_timestamp,
+                                slot_endorsed_block,
+                            )
+                            .ok()?;
+                            if slot_timestamp
+                                .saturating_add(self.config.max_endorsements_propagation_time)
+                                < now
+                            {
+                                Some(*endorsement_id)
+                            } else {
+                                None
+                            }
+                        })
+                        .collect()
+                };
+                endorsements_to_propagate.drop_endorsement_refs(&endorsements_to_not_propagate);
+                self.propagate_endorsements(&endorsements_to_propagate)
+                    .await;
             }
 
             // Add to pool

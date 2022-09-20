@@ -171,7 +171,10 @@ pub const MAX_BOOTSTRAP_ERROR_LENGTH: u32 = 10000;
 pub const PROTOCOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
 /// Event channel size
 pub const PROTOCOL_EVENT_CHANNEL_SIZE: usize = 1024;
-
+/// Time threshold after which operation are not propagated
+pub const MAX_OPERATIONS_PROPAGATION_TIME: MassaTime = MassaTime::from_millis(30000);
+/// Time threshold after which operation are not propagated
+pub const MAX_ENDORSEMENTS_PROPAGATION_TIME: MassaTime = MassaTime::from_millis(30000);
 // ***********************
 // Constants used for execution module (injected from ConsensusConfig)
 //
