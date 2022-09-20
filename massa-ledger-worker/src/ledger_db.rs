@@ -96,9 +96,13 @@ fn test_end_prefix() {
     assert_eq!(end_prefix(&[5, 6, 255]), Some(vec![5, 7]));
 }
 
+/// Batch containing write operations to perform on disk and cache for the ledger hash computing
 pub struct LedgerBatch {
+    // Rocksdb write batch
     write_batch: WriteBatch,
+    // Ledger hash state in the current batch
     ledger_hash: Hash,
+    // Added entry hashes in the current batch
     aeh_list: BTreeMap<Vec<u8>, Hash>,
 }
 
