@@ -195,7 +195,6 @@
 <span id="195">195</span>
 <span id="196">196</span>
 <span id="197">197</span>
-<span id="198">198</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module implements a selector controller.
@@ -207,11 +206,10 @@
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{address::Address, api::IndexedSlot, slot::Slot};
 <span class="kw">use </span>massa_pos_exports::{PosError, PosResult, Selection, SelectorController, SelectorManager};
-<span class="kw">use </span>std::sync::mpsc::SyncSender;
-<span class="kw">use </span>tracing::{info, warn};
-
 <span class="attribute">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
 </span><span class="kw">use </span>std::collections::{HashMap, VecDeque};
+<span class="kw">use </span>std::sync::mpsc::SyncSender;
+<span class="kw">use </span>tracing::{info, warn};
 
 <span class="attribute">#[derive(Clone)]
 </span><span class="doccomment">/// implementation of the selector controller
