@@ -34,21 +34,24 @@ The SCE Ledger can become large (up to 1TB). For now, it is in RAM but this need
 The SCE Ledger is represented by the `SCELedger` structure which acts as a hashmap associating an `Address` to a `SCELedgerEntry`.
 
 The `SCELedgerEntry` structure represents an entry in the ledger and has the following properties:
-* `balance`: the SCE balance of the address
-* `opt_module`: an optional executable module
-* `data: HHashMap<Hash, Vec<u8>>`: a generic datastore associating a hash to bytes
+
+- **balance**: the SCE balance of the address.
+- **opt_module**: an optional executable module.
+- **data: HHashMap<Hash, Vec<u8>>**: a generic datastore associating a hash to bytes.
 
 **Ledger changes**
 
 The `SCELedgerChanges` struct is a hashmap associating an `Address` to a `SCELedgerChange` and represents the entries of the SCE ledger that have changed. The exact change to each entry is described by the `SCELedgerChange` enum that can be:
-* `Delete`: the entry was deleted
-* `Set(SCELedgerEntry)`: a new entry was inserted or an existing entry was reset to a completely new value
-* `Update(SCELedgerEntryUpdate)`: an existing entry was modified. The modifications are described by `SCELedgerEntryUpdate`
+
+- **Delete**: the entry was deleted.
+- **Set(SCELedgerEntry)**: a new entry was inserted or an existing entry was reset to a completely new value.
+- **Update(SCELedgerEntryUpdate)**: an existing entry was modified. The modifications are described by `SCELedgerEntryUpdate`.
 
 The `SCELedgerEntryUpdate` struct describes modifications to an SCE ledger entry and has the following fields:
-* `update_balance: Option<Amount>`: optionally updates the balance of the entry to a new value
-* `update_opt_module: Option<Option<Bytecode>>`: optionally updates the module of the entry to a new one (or to None)
-* `update_data: HHashMap<Hash, Option<Vec<u8>>>`: a list of datastore entries that have been updated to a new value (or deleted if the hashmap value is None)
+
+- **update_balance: Option<Amount>**: optionally updates the balance of the entry to a new value.
+- **update_opt_module: Option<Option<Bytecode>>**: optionally updates the module of the entry to a new one (or to None).
+- **update_data: HHashMap<Hash, Option<Vec<u8>>>**: a list of datastore entries that have been updated to a new value (or deleted if the hashmap value is None).
 
 
 VM structure
@@ -57,18 +60,20 @@ VM structure
 **Overview**
 
 The VM is represented by the `VM` structure with the following properties:
-* `step_history`: a history of active execution steps
-* `execution_interface`: an interface for the interpreter
-* `execution_context`: an execution context
+
+- **step_history**: a history of active execution steps.
+- **execution_interface**: an interface for the interpreter.
+- **execution_context**: an execution context.
 
 Those fields are described in the next subsections.
 
 **Step history**
 
 The VM contains a `step_history` property which is a list of `StepHistoryItem` active steps that have been executed on top of the current final SCE ledger. Each `StepHistoryItem` represents the summarized consequences of a given active step and has the following properties:
-* `slot`: the slot to which the step is associated
-* `opt_block_id`: an optional block ID if a block is present at that slot, or None if there is a miss
-* `ledger_changes`: a `SCELedgerChanges` object listing the SCE ledger changes caused by that step
+
+- **slot**: the slot to which the step is associated.
+- **opt_block_id**: an optional block ID if a block is present at that slot, or None if there is a miss.
+- **ledger_changes**: a `SCELedgerChanges` object listing the SCE ledger changes caused by that step.
 
 The state of an entry of the SCE ledger at the output of a given active execution step can be retrieved by taking the corresponding entry in the final SCE ledger (available in the execution context, see below) and applying ledger changes from the `step_history` one after the other until the desired active step (included).
 
@@ -81,19 +86,21 @@ TODO
 The `execution_context` field of the `VM` sturct represents the context in which the current execution runs.
 `ExecutionContext` has the following fields:
 
-* `ledger_step` is a `SCELedgerStep` that represents the state of the SCE ledger up to the latest point of the execution of the latest active step
-* `max_gas` is the max amount of gas for the execution
-* `coins` is the amount of coins that have been transferred to the called SC in the context of the call
-* `gas_price` is the price (in coins) per unit of gas for the execution
-* `slot` is the slot of the execution step
-* `opt_block_id` block id being executed (None if absent)
-* `opt_block_creator_addr` address of the block producer (None if block absent)
-* `call_stack`: call stack listing calling addresses. The latest one is rightmost and should be the address of the called SC when applicable
+- **ledger_step**: is a `SCELedgerStep` that represents the state of the SCE ledger up to the latest point of the execution of the latest active step.
+- **max_gas**: is the max amount of gas for the execution.
+- **coins**: is the amount of coins that have been transferred to the called SC in the context of the call.
+- **gas_price**: is the price (in coins) per unit of gas for the execution.
+- **slot**: is the slot of the execution step.
+- **opt_block_id**: block id being executed (None if absent).
+- **opt_block_creator_addr**: address of the block producer (None if block absent).
+- **call_stack**: call stack listing calling addresses. The latest one is rightmost and should be the address of the called SC when applicable.
 
-The `SCELedgerStep` struct allows accumulating changes caused by the step execution and reading the latest SCE ledger state during execution. Fields:
-* `final_ledger_slot` a `FinalLedger` structure containing the current final `SCELedger` as well as the slot at the output of which the final ledger is attached
-* `cumulative_history_changes` is a `SCELedgerChanges` obtained by accumulating the `ledger_changes` of all the previous elements of the VM's `step_history`
-* `caused_changes` is a `SCELedgerChanges` representing all the changes that happened so far in the current execution
+The `SCELedgerStep` struct allows accumulating changes caused by the step execution and reading the latest SCE ledger state during execution.
+`SCELedgerStep` has the following fields:
+
+- **final_ledger_slot**: a `FinalLedger` structure containing the current final `SCELedger` as well as the slot at the output of which the final ledger is attached.
+- **cumulative_history_changes**: is a `SCELedgerChanges` obtained by accumulating the `ledger_changes` of all the previous elements of the VM's `step_history`.
+- **caused_changes**: is a `SCELedgerChanges` representing all the changes that happened so far in the current execution.
 
 In order to transparently obtain a ledger entry at the current point of the execution, `SCELedgerStep` provides convenience methods that gather entries from the final ledger, apply the `cumulative_history_changes` and then the `caused_changes`. It also provides convenience methods for applying changes to `caused_changes`.
 
