@@ -96,7 +96,7 @@ fn test_end_prefix() {
     assert_eq!(end_prefix(&[5, 6, 255]), Some(vec![5, 7]));
 }
 
-struct LedgerBatch {
+pub struct LedgerBatch {
     write_batch: WriteBatch,
     ledger_hash: Hash,
     aeh_list: BTreeMap<Vec<u8>, Hash>,
@@ -109,10 +109,6 @@ impl LedgerBatch {
             ledger_hash,
             aeh_list: BTreeMap::new(),
         }
-    }
-
-    pub fn init_ledger_hash(&mut self, hash: Hash) {
-        self.ledger_hash = hash;
     }
 }
 
@@ -208,7 +204,7 @@ impl LedgerDB {
     }
 
     /// Apply the given operation batch to the disk ledger
-    fn write_batch(&self, batch: LedgerBatch) {
+    fn write_batch(&self, mut batch: LedgerBatch) {
         let handle = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
         batch
             .write_batch
@@ -261,10 +257,10 @@ impl LedgerDB {
         self.len_serializer
             .serialize(&(key.len() as u64), &mut len_bytes)
             .expect(KEY_LEN_SER_ERROR);
-        batch.write_batch.put_cf(handle, key, value);
         let hash = Hash::compute_from(&[&len_bytes, key, value].concat());
         batch.ledger_hash.xor(hash);
         batch.aeh_list.insert(key.to_vec(), hash);
+        batch.write_batch.put_cf(handle, key, value);
     }
 
     /// Add every sub-entry individually for a given entry.
@@ -275,7 +271,7 @@ impl LedgerDB {
     /// * batch: the given operation batch to update
     fn put_entry(&mut self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut LedgerBatch) {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
-        // note that Amount serialization never fails
+        // Amount serialization never fails
         let mut bytes_parallel_balance = Vec::new();
         self.amount_serializer
             .serialize(&ledger_entry.parallel_balance, &mut bytes_parallel_balance)
@@ -373,7 +369,6 @@ impl LedgerDB {
         key: &[u8],
         value: &[u8],
     ) {
-        // TODO: USE YOUR OWN BATCH TYPE!
         let mut len_bytes = Vec::new();
         self.len_serializer
             .serialize(&(key.len() as u64), &mut len_bytes)
@@ -388,10 +383,10 @@ impl LedgerDB {
                 .xor(Hash::compute_from(&[&len_bytes, key, &prev_bytes].concat()));
         }
         dbg!("C");
-        batch.write_batch.put_cf(handle, key, value);
         let hash = Hash::compute_from(&[&len_bytes, key, value].concat());
         batch.ledger_hash.xor(hash);
         batch.aeh_list.insert(key.to_vec(), hash);
+        batch.write_batch.put_cf(handle, key, value);
     }
 
     /// Update the ledger entry of a given address.
@@ -408,7 +403,6 @@ impl LedgerDB {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         // sequential balance
-        // note that Amount::to_bytes_compact() never fails
         if let SetOrKeep::Set(balance) = entry_update.sequential_balance {
             let mut bytes = Vec::new();
             // Amount serialization never fails
@@ -446,15 +440,18 @@ impl LedgerDB {
 
     /// Internal function to delete a key and perform the ledger hash XOR
     fn delete_key(&self, handle: &ColumnFamily, batch: &mut LedgerBatch, key: &[u8]) {
-        // TODO: Fix delete_key beahviour when interating with batch changes
-        if let Some(prev_bytes) = self.db.get_cf(handle, key).expect(CRUD_ERROR) {
+        if let Some(added_hash) = batch.aeh_list.get(key) {
+            batch.ledger_hash.xor(*added_hash);
+        } else if let Some(prev_bytes) = self.db.get_cf(handle, key).expect(CRUD_ERROR) {
             let mut len_bytes = Vec::new();
             self.len_serializer
                 .serialize(&(key.len() as u64), &mut len_bytes)
                 .expect(KEY_LEN_SER_ERROR);
-            ledger_hash.xor(Hash::compute_from(&[&len_bytes, key, &prev_bytes].concat()));
-            batch.delete_cf(handle, key);
+            batch
+                .ledger_hash
+                .xor(Hash::compute_from(&[&len_bytes, key, &prev_bytes].concat()));
         }
+        batch.write_batch.delete_cf(handle, key);
     }
 
     /// Delete every sub-entry associated to the given address.
@@ -549,7 +546,7 @@ impl LedgerDB {
             VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
         let key_deserializer = KeyDeserializer::new(self.max_datastore_key_length);
         let mut last_key = Rc::new(None);
-        let mut batch = LedgerBatch::default();
+        let mut batch = LedgerBatch::new(self.get_ledger_hash());
 
         // Since this data is coming from the network, deser to address and ser back to bytes for a security check.
         let (rest, _) = many0(|input: &'a [u8]| {
@@ -560,14 +557,14 @@ impl LedgerDB {
             *Rc::get_mut(&mut last_key).ok_or_else(|| {
                 nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Fail))
             })? = Some(key.clone());
-            batch.put_cf(handle, key, value);
+            batch.write_batch.put_cf(handle, key, value);
             Ok((rest, ()))
         })(data)
         .map_err(|_| ModelsError::SerializeError("Error in deserialization".to_string()))?;
 
         // Every byte should have been read
         if rest.is_empty() {
-            self.db.write(batch).expect(CRUD_ERROR);
+            self.write_batch(batch);
             Ok((*last_key).clone())
         } else {
             Err(ModelsError::SerializeError(
