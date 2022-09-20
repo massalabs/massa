@@ -9,11 +9,10 @@ use crate::{Command, DrawCachePtr};
 use massa_hash::Hash;
 use massa_models::{address::Address, api::IndexedSlot, slot::Slot};
 use massa_pos_exports::{PosError, PosResult, Selection, SelectorController, SelectorManager};
-use std::sync::mpsc::SyncSender;
-use tracing::{info, warn};
-
 #[cfg(feature = "testing")]
 use std::collections::{HashMap, VecDeque};
+use std::sync::mpsc::SyncSender;
+use tracing::{info, warn};
 
 #[derive(Clone)]
 /// implementation of the selector controller

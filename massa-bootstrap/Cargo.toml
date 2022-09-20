@@ -48,6 +48,7 @@ massa_ledger_worker = { path = "../massa-ledger-worker", features = [
 ] }
 massa_pos_worker = { path = "../massa-pos-worker", features = ["testing"] }
 lazy_static = "1.4"
+massa_pos_exports = { path = "../massa-pos-exports", features = ["testing"] }
 
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
