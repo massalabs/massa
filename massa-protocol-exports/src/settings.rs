@@ -42,4 +42,12 @@ pub struct ProtocolConfig {
     pub controller_channel_size: usize,
     /// Event channel size
     pub event_channel_size: usize,
+    /// t0
+    pub t0: MassaTime,
+    /// genesis_timestamp
+    pub genesis_timestamp: MassaTime,
+    /// max time we propagate operations
+    pub max_operations_propagation_time: MassaTime,
+    /// max time we propagate endorsements
+    pub max_endorsements_propagation_time: MassaTime,
 }

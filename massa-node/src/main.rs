@@ -323,6 +323,10 @@ async fn launch(
         max_serialized_operations_size_per_block: MAX_BLOCK_SIZE as usize,
         controller_channel_size: PROTOCOL_CONTROLLER_CHANNEL_SIZE,
         event_channel_size: PROTOCOL_EVENT_CHANNEL_SIZE,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
+        t0: T0,
+        max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
+        max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
     };
     let (protocol_command_sender, protocol_event_receiver, protocol_manager) =
         start_protocol_controller(
