@@ -148,6 +148,8 @@ impl ExecutionContext {
                 final_state.clone(),
                 active_history.clone(),
                 config.max_datastore_key_length,
+                config.ledger_cost_per_byte,
+                config.ledger_cost_per_datastore_key,
             ),
             speculative_async_pool: SpeculativeAsyncPool::new(
                 final_state.clone(),

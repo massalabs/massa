@@ -33,6 +33,12 @@ pub(crate) struct SpeculativeLedger {
 
     /// max datastore key length
     max_datastore_key_length: u8,
+
+    /// ledger cost per bytes
+    ledger_cost_per_byte: Amount,
+
+    /// ledger cost per datastore key
+    ledger_cost_per_datastore_key: Amount,
 }
 
 impl SpeculativeLedger {
@@ -45,12 +51,16 @@ impl SpeculativeLedger {
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         max_datastore_key_length: u8,
+        ledger_cost_per_byte: Amount,
+        ledger_cost_per_datastore_key: Amount,
     ) -> Self {
         SpeculativeLedger {
             final_state,
             added_changes: Default::default(),
             active_history,
             max_datastore_key_length,
+            ledger_cost_per_byte,
+            ledger_cost_per_datastore_key,
         }
     }
 
@@ -206,6 +216,20 @@ impl SpeculativeLedger {
             )));
         }
 
+        let existing_bytecode_size = self.get_bytecode(addr).map(|b| b.len()).unwrap_or_default();
+        let diff_size_storage: i64 = (bytecode.len() as i64) - (existing_bytecode_size as i64);
+        let amount_transfer = self
+            .ledger_cost_per_byte
+            .checked_mul_u64(diff_size_storage.unsigned_abs())
+            .ok_or_else(|| {
+                ExecutionError::RuntimeError("Try to store too much data".to_string())
+            })?;
+
+        if diff_size_storage > 0 {
+            self.transfer_coins(Some(*addr), None, amount_transfer)?;
+        } else {
+            self.transfer_coins(None, Some(*addr), amount_transfer)?;
+        }
         // set the bytecode of that address
         self.added_changes.set_bytecode(*addr, bytecode);
 

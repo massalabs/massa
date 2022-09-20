@@ -75,6 +75,10 @@ lazy_static::lazy_static! {
 pub const ROLL_PRICE: Amount = Amount::from_mantissa_scale(100, 0);
 /// Block reward is given for each block creation
 pub const BLOCK_REWARD: Amount = Amount::from_mantissa_scale(3, 1);
+/// Cost to store one byte in the ledger
+pub const LEDGER_COST_PER_BYTE: Amount = Amount::from_mantissa_scale(2, 4);
+/// Cost for a datastore key in the ledger
+pub const LEDGER_COST_PER_DATASTORE_KEY: Amount = LEDGER_COST_PER_BYTE.saturating_mul_u64(10);
 /// Time between the periods in the same thread.
 pub const T0: MassaTime = MassaTime::from_millis(16000);
 /// Proof of stake seed for the initial draw

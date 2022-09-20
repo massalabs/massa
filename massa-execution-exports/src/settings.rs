@@ -43,4 +43,8 @@ pub struct ExecutionConfig {
     pub max_miss_ratio: Ratio<u64>,
     /// Max size of a datastore key
     pub max_datastore_key_length: u8,
+    /// Cost per byte in ledger
+    pub ledger_cost_per_byte: Amount,
+    /// Cost per datastore key in ledger
+    pub ledger_cost_per_datastore_key: Amount,
 }
