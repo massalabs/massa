@@ -18,6 +18,7 @@ use massa_models::{block::BlockId, slot::Slot};
 use massa_storage::Storage;
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::collections::{BTreeMap, HashMap};
+use std::fmt::Display;
 use std::sync::Arc;
 use tracing::info;
 
@@ -31,6 +32,25 @@ pub(crate) struct ExecutionInputData {
     pub new_blockclique: Option<HashMap<Slot, (BlockId, Storage)>>,
     /// queue for read-only execution requests and response MPSCs to send back their outputs
     pub readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
+}
+
+impl Display for ExecutionInputData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "stop={:?}, finalized={:?}, blockclique={:?}, readonly={:?}",
+            self.stop,
+            self.finalized_blocks
+                .iter()
+                .map(|(slot, (id, _))| (*slot, *id))
+                .collect::<BTreeMap<Slot, BlockId>>(),
+            self.new_blockclique.as_ref().map(|bq| bq
+                .iter()
+                .map(|(slot, (id, _))| (*slot, *id))
+                .collect::<BTreeMap<Slot, BlockId>>()),
+            self.readonly_requests
+        )
+    }
 }
 
 impl ExecutionInputData {

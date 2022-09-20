@@ -185,6 +185,7 @@ async fn launch(
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+        max_changes_slot_count: SETTINGS.ledger.final_history_length as u32,
     };
 
     // bootstrap

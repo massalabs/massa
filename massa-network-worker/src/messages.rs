@@ -574,7 +574,7 @@ mod tests {
         let msg = Message::HandshakeInitiation {
             public_key: keypair.get_public_key(),
             random_bytes,
-            version: Version::from_str("TEST.1.2").unwrap(),
+            version: Version::from_str("TEST.1.10").unwrap(),
         };
         let mut ser = Vec::new();
         message_serializer.serialize(&msg, &mut ser).unwrap();

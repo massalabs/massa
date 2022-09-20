@@ -123,7 +123,7 @@ impl ActiveHistory {
         self.0.iter().rev().find_map(|output| {
             output
                 .state_changes
-                .roll_state_changes
+                .pos_changes
                 .roll_changes
                 .get(addr)
                 .cloned()
@@ -146,7 +146,7 @@ impl ActiveHistory {
             .flat_map(|output| {
                 output
                     .state_changes
-                    .roll_state_changes
+                    .pos_changes
                     .deferred_credits
                     .0
                     .range(slot..)
@@ -165,7 +165,7 @@ impl ActiveHistory {
             .filter_map(|output| {
                 output
                     .state_changes
-                    .roll_state_changes
+                    .pos_changes
                     .deferred_credits
                     .0
                     .get(slot)

@@ -50,6 +50,8 @@ pub enum ModelsError {
     WrongPrefix(String, String),
     /// Wrong operation id size deduced on join
     OperationPrefixJoinError,
+    /// Outdated bootstrap cursor
+    OutdatedBootstrapCursor,
     /// Error raised {0}
     ErrorRaised(String),
 }
