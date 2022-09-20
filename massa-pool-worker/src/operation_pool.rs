@@ -219,18 +219,17 @@ impl OperationPool {
             let creator_balance =
                 if let Some(amount) = balance_cache.get_mut(&op_info.creator_address) {
                     amount
-                } else if let Some(final_amount) = self
-                    .execution_controller
-                    .get_final_and_candidate_balance(&[op_info.creator_address])
-                    .get(0)
-                    .unwrap_or(&(None, None))
-                    .1
-                {
+                } else {
+                    let final_amount = self
+                        .execution_controller
+                        .get_final_and_candidate_balance(&[op_info.creator_address])
+                        .get(0)
+                        .map_or_else(Amount::default, |(_final, candidate)| {
+                            candidate.unwrap_or_default()
+                        });
                     balance_cache
                         .entry(op_info.creator_address)
                         .or_insert(final_amount)
-                } else {
-                    continue;
                 };
 
             if *creator_balance < op_info.fee {

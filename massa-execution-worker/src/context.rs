@@ -47,7 +47,7 @@ pub(crate) struct ExecutionContextSnapshot {
     pub executed_ops: ExecutedOps,
 
     /// speculative roll state changes caused so far in the context
-    pub roll_state_changes: PoSChanges,
+    pub pos_changes: PoSChanges,
 
     /// counter of newly created addresses so far at this slot during this execution
     pub created_addr_index: u64,
@@ -181,7 +181,7 @@ impl ExecutionContext {
         ExecutionContextSnapshot {
             ledger_changes: self.speculative_ledger.get_snapshot(),
             async_pool_changes: self.speculative_async_pool.get_snapshot(),
-            roll_state_changes: self.speculative_roll_state.get_snapshot(),
+            pos_changes: self.speculative_roll_state.get_snapshot(),
             executed_ops: self.speculative_executed_ops.get_snapshot(),
             created_addr_index: self.created_addr_index,
             created_event_index: self.created_event_index,
@@ -216,7 +216,7 @@ impl ExecutionContext {
         self.speculative_async_pool
             .reset_to_snapshot(snapshot.async_pool_changes);
         self.speculative_roll_state
-            .reset_to_snapshot(snapshot.roll_state_changes);
+            .reset_to_snapshot(snapshot.pos_changes);
         self.speculative_executed_ops
             .reset_to_snapshot(snapshot.executed_ops);
         self.created_addr_index = snapshot.created_addr_index;
@@ -697,7 +697,7 @@ impl ExecutionContext {
         let state_changes = StateChanges {
             ledger_changes: self.speculative_ledger.take(),
             async_pool_changes: self.speculative_async_pool.take(),
-            roll_state_changes: self.speculative_roll_state.take(),
+            pos_changes: self.speculative_roll_state.take(),
             executed_ops: self.speculative_executed_ops.take(),
         };
         ExecutionOutput {

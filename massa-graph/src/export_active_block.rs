@@ -175,7 +175,7 @@ impl Serializer<ExportActiveBlock> for ExportActiveBlockSerializer {
         }
 
         // finality
-        buffer.push(if value.is_final { 1u8 } else { 0u8 });
+        buffer.push(u8::from(value.is_final));
 
         Ok(())
     }
