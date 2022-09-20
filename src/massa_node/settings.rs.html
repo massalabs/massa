@@ -193,6 +193,10 @@
 <span id="193">193</span>
 <span id="194">194</span>
 <span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -381,6 +385,10 @@
     </span><span class="kw">pub </span>asked_operations_pruning_period: MassaTime,
     <span class="doccomment">/// Maximum of operations sent in one message.
     </span><span class="kw">pub </span>max_operations_per_message: u64,
+    <span class="doccomment">/// Time threshold after which operation are not propagated
+    </span><span class="kw">pub </span>max_operations_propagation_time: MassaTime,
+    <span class="doccomment">/// Time threshold after which operation are not propagated
+    </span><span class="kw">pub </span>max_endorsements_propagation_time: MassaTime,
 }
 
 <span class="attribute">#[cfg(test)]
@@ -389,4 +397,4 @@
     <span class="kw">let _ </span>= <span class="kw-2">*</span>SETTINGS;
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (a37499ae6 2022-09-18)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (2019147c5 2022-09-19)" ></div></body></html>

@@ -567,6 +567,9 @@
 <span id="567">567</span>
 <span id="568">568</span>
 <span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Worker implementation for the network events
 //!
 //! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
@@ -688,7 +691,10 @@
             }
             NetworkEvent::ReceivedEndorsements { node, endorsements } =&gt; {
                 <span class="macro">massa_trace!</span>(ENDORSEMENTS, { <span class="string">&quot;node&quot;</span>: node, <span class="string">&quot;endorsements&quot;</span>: endorsements});
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.note_endorsements_from_node(endorsements, <span class="kw-2">&amp;</span>node).<span class="kw">await </span>{
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
+                    </span>.note_endorsements_from_node(endorsements, <span class="kw-2">&amp;</span>node, <span class="bool-val">true</span>)
+                    .<span class="kw">await
+                </span>{
                     <span class="macro">warn!</span>(
                         <span class="string">&quot;node {} sent us critically incorrect endorsements, \
                         which may be an attack attempt by the remote node or a \
@@ -1137,4 +1143,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (a37499ae6 2022-09-18)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (2019147c5 2022-09-19)" ></div></body></html>
