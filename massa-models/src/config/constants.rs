@@ -80,7 +80,7 @@ pub const LEDGER_COST_PER_BYTE: Amount = Amount::from_mantissa_scale(2, 4);
 /// Cost for a datastore key in the ledger
 pub const LEDGER_COST_PER_DATASTORE_KEY: Amount = LEDGER_COST_PER_BYTE.saturating_mul_u64(10);
 /// Cost for a balance in the ledger
-pub const LEDGER_COST_PER_BALANCE: Amount = LEDGER_COST_PER_BYTE.saturating_mul_u64(10);
+pub const LEDGER_COST_PER_BALANCE: Amount = LEDGER_COST_PER_BYTE.saturating_mul_u64(5);
 /// Time between the periods in the same thread.
 pub const T0: MassaTime = MassaTime::from_millis(16000);
 /// Proof of stake seed for the initial draw
