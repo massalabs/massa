@@ -9,6 +9,7 @@ use massa_models::{
     slot::Slot,
 };
 use std::collections::{BTreeMap, BTreeSet};
+use massa_models::datastore::Datastore;
 
 /// Execution info about an address
 #[derive(Clone, Debug)]
@@ -115,8 +116,11 @@ pub struct ExecutionStackElement {
     /// to allow write access on newly created addresses in order to set them up,
     /// but only within the scope of the current stack element.
     /// That way, only the current scope and neither its caller not the functions it calls gain this write access,
-    /// which is important for security.  
+    /// which is important for security.
     /// Note that we use a vector instead of a pre-hashed set to ensure order determinism,
     /// the performance hit of linear search remains minimal because `owned_addresses` will always contain very few elements.
     pub owned_addresses: Vec<Address>,
+    /// Datastore (key value store) for ExecuteSC Operation
+    pub operation_datastore: Option<Datastore>,
+
 }

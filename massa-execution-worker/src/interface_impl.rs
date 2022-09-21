@@ -114,6 +114,7 @@ impl Interface for InterfaceImpl {
             address: to_address,
             coins,
             owned_addresses: vec![to_address],
+            operation_datastore: None
         });
 
         // return the target bytecode
@@ -320,7 +321,11 @@ impl Interface for InterfaceImpl {
 
     fn get_op_keys(&self) -> Result<Vec<Vec<u8>>> {
         let context = context_guard!(self);
-        let keys: Vec<Vec<u8>> = context.datastore
+        let stack = context.stack.last()
+            .ok_or(anyhow!("No stack"))?;
+        let datastore = stack.operation_datastore.as_ref()
+            .ok_or(anyhow!("No datastore in stack"))?;
+        let keys: Vec<Vec<u8>> = datastore
             .keys()
             .cloned()
             .collect();
@@ -329,12 +334,20 @@ impl Interface for InterfaceImpl {
 
     fn has_op_key(&self, key: &[u8]) -> Result<bool> {
         let context = context_guard!(self);
-        Ok(context.datastore.contains_key(key))
+        let stack = context.stack.last()
+            .ok_or(anyhow!("No stack"))?;
+        let datastore = stack.operation_datastore.as_ref()
+            .ok_or(anyhow!("No datastore in stack"))?;
+        Ok(datastore.contains_key(key))
     }
 
     fn get_op_data(&self, key: &[u8]) -> Result<Vec<u8>> {
         let context = context_guard!(self);
-        context.datastore
+        let stack = context.stack.last()
+            .ok_or(anyhow!("No stack"))?;
+        let datastore = stack.operation_datastore.as_ref()
+            .ok_or(anyhow!("No datastore in stack"))?;
+        datastore
             .get(key)
             .cloned()
             .ok_or(anyhow!("Unknown key: {:?}", key).into())
