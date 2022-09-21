@@ -1,3 +1,6 @@
+/** ***********************
+ * Smart contract testing all the operation datastore functions
+ **/
 import { print, generateEvent, getOpKeys, hasOpKey } from "@massalabs/massa-sc-std";
 
 export function main(_args: string): void {

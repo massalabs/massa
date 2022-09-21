@@ -319,6 +319,11 @@ impl Interface for InterfaceImpl {
         Ok(context.has_data_entry(&addr, key.as_bytes()))
     }
 
+    /// Get the operation datastore keys (aka entries).
+    /// Note that the datastore is only accessible to the initial caller level.
+    ///
+    /// # Returns
+    /// A list of keys (keys are byte arrays)
     fn get_op_keys(&self) -> Result<Vec<Vec<u8>>> {
         let context = context_guard!(self);
         let stack = context.stack.last()
@@ -332,6 +337,14 @@ impl Interface for InterfaceImpl {
         Ok(keys)
     }
 
+    /// Checks if an operation datastore entry exists in the operation datastore.
+    /// Note that the datastore is only accessible to the initial caller level.
+    ///
+    /// # Arguments
+    /// * key: bytearry key of the datastore entry to retrieve
+    ///
+    /// # Returns
+    /// true if the entry is matching the provided key in its operation datastore, otherwise false
     fn has_op_key(&self, key: &[u8]) -> Result<bool> {
         let context = context_guard!(self);
         let stack = context.stack.last()
@@ -341,6 +354,15 @@ impl Interface for InterfaceImpl {
         Ok(datastore.contains_key(key))
     }
 
+
+    /// Gets an operation datastore value by key.
+    /// Note that the datastore is only accessible to the initial caller level.
+    ///
+    /// # Arguments
+    /// * key: bytearray key of the datastore entry to retrieve
+    ///
+    /// # Returns
+    /// The operation datastore value matching the provided key, if found, otherwise an error.
     fn get_op_data(&self, key: &[u8]) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let stack = context.stack.last()

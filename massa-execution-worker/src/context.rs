@@ -163,7 +163,6 @@ impl ExecutionContext {
             created_message_index: Default::default(),
             opt_block_id: Default::default(),
             stack: Default::default(),
-            // datastore: Default::default(),
             read_only: Default::default(),
             events: Default::default(),
             unsafe_rng: Xoshiro256PlusPlus::from_seed([0u8; 32]),
