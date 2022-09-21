@@ -21,7 +21,7 @@ and contains the "endorsed" hash of the block that `C` would choose as the paren
 Blocks in slot `S` can only include endorsements that endorse the block's parent block in the thread of `S`.
 In other words, endorsement producers vote for which parent should be chosen by blocks in their own thread.
 
-The likelihood of the attacker getting lucky and being selected for `N` consecutive PoS draws to attack/censor the system decays exponentially with `N`.
+The likelihood of the attacker getting lucky and being selected for `N` consecutive PoS draws to attack/censor the system decays exponentially.
 With endorsements, we don't have to wait for `N` blocks to account for `N` proof-of-stake draws to happen as `E+1` draws happen at every slot.
 In the consensus algorithm, we choose the clique of highest fitness as the blockclique.
 A block including `e` endorsements out of the maximum `E` contributes a fitness `e + 1` to the cliques it belongs to.
