@@ -45,7 +45,7 @@ lazy_static::lazy_static! {
                 .saturating_add(MassaTime::from_millis(1000 * 10))
         )
     } else {
-        1662717600000.into()  // Friday, September 9, 2022 10:00:00 UTC
+        1663754400000.into()  //  Wednesday, September 21, 2022 10:00:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
@@ -64,7 +64,7 @@ lazy_static::lazy_static! {
         if cfg!(feature = "sandbox") {
             "SAND.0.0"
         } else {
-            "TEST.14.1"
+            "TEST.14.7"
         }
         .parse()
         .unwrap()
@@ -157,7 +157,7 @@ pub const MAX_BOOTSTRAP_POS_ENTRIES: u32 = 1000000000;
 /// Max async pool changes
 pub const MAX_BOOTSTRAP_ASYNC_POOL_CHANGES: u64 = 100_000;
 /// Max bytes in final states parts
-pub const MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u64 = 10_000_000;
+pub const MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u64 = 1_000_000_000;
 /// Max size of the IP list
 pub const IP_LIST_MAX_SIZE: usize = 10000;
 /// Size of the random bytes array used for the bootstrap, safe to import
@@ -171,7 +171,6 @@ pub const MAX_BOOTSTRAP_ERROR_LENGTH: u32 = 10000;
 pub const PROTOCOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
 /// Event channel size
 pub const PROTOCOL_EVENT_CHANNEL_SIZE: usize = 1024;
-
 // ***********************
 // Constants used for execution module (injected from ConsensusConfig)
 //

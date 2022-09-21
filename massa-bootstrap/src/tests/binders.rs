@@ -62,6 +62,7 @@ async fn test_binders() {
         MAX_FUNCTION_NAME_LENGTH,
         MAX_PARAMETERS_SIZE,
         MAX_LEDGER_CHANGES_COUNT,
+        1000,
     );
 
     let server_thread = tokio::spawn(async move {
@@ -71,7 +72,7 @@ async fn test_binders() {
             peers: BootstrapPeers(vector_peers.clone()),
         };
 
-        let version: Version = Version::from_str("TEST.1.2").unwrap();
+        let version: Version = Version::from_str("TEST.1.10").unwrap();
 
         server.handshake(version).await.unwrap();
         server.send(test_peers_message.clone()).await.unwrap();
@@ -101,7 +102,7 @@ async fn test_binders() {
         // Test message 1
         let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
 
-        let version: Version = Version::from_str("TEST.1.2").unwrap();
+        let version: Version = Version::from_str("TEST.1.10").unwrap();
 
         client.handshake(version).await.unwrap();
         let message = client.next().await.unwrap();
@@ -175,6 +176,7 @@ async fn test_binders_double_send_server_works() {
         MAX_FUNCTION_NAME_LENGTH,
         MAX_PARAMETERS_SIZE,
         MAX_LEDGER_CHANGES_COUNT,
+        1000,
     );
 
     let server_thread = tokio::spawn(async move {
@@ -184,7 +186,7 @@ async fn test_binders_double_send_server_works() {
             peers: BootstrapPeers(vector_peers.clone()),
         };
 
-        let version: Version = Version::from_str("TEST.1.2").unwrap();
+        let version: Version = Version::from_str("TEST.1.10").unwrap();
 
         server.handshake(version).await.unwrap();
         server.send(test_peers_message.clone()).await.unwrap();
@@ -206,7 +208,7 @@ async fn test_binders_double_send_server_works() {
         // Test message 1
         let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
 
-        let version: Version = Version::from_str("TEST.1.2").unwrap();
+        let version: Version = Version::from_str("TEST.1.10").unwrap();
 
         client.handshake(version).await.unwrap();
         let message = client.next().await.unwrap();
@@ -273,6 +275,7 @@ async fn test_binders_try_double_send_client_works() {
         MAX_FUNCTION_NAME_LENGTH,
         MAX_PARAMETERS_SIZE,
         MAX_LEDGER_CHANGES_COUNT,
+        1000,
     );
 
     let server_thread = tokio::spawn(async move {
@@ -281,7 +284,7 @@ async fn test_binders_try_double_send_client_works() {
         let test_peers_message = BootstrapServerMessage::BootstrapPeers {
             peers: BootstrapPeers(vector_peers.clone()),
         };
-        let version: Version = Version::from_str("TEST.1.2").unwrap();
+        let version: Version = Version::from_str("TEST.1.10").unwrap();
 
         server.handshake(version).await.unwrap();
         server.send(test_peers_message.clone()).await.unwrap();
@@ -308,7 +311,7 @@ async fn test_binders_try_double_send_client_works() {
     let client_thread = tokio::spawn(async move {
         // Test message 1
         let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
-        let version: Version = Version::from_str("TEST.1.2").unwrap();
+        let version: Version = Version::from_str("TEST.1.10").unwrap();
 
         client.handshake(version).await.unwrap();
         let message = client.next().await.unwrap();

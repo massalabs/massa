@@ -7,6 +7,7 @@ use std::collections::VecDeque;
 use std::sync::mpsc::Sender;
 
 /// Represents an execution request T coupled with an MPSC sender for a result of type R
+#[derive(Debug)]
 pub(crate) struct RequestWithResponseSender<T, R> {
     /// The underlying execution request
     request: T,
@@ -47,6 +48,7 @@ impl<T, R> RequestWithResponseSender<T, R> {
 /// Structure representing an execution request queue with maximal length.
 /// Each request is a `RequestWithResponseSender` that comes with an MPSC sender
 /// to return the execution result when the execution is over (or an error).
+#[derive(Debug)]
 pub(crate) struct RequestQueue<T, R> {
     /// Max number of item in the queue.
     /// When the queue is full, extra new items are cancelled and dropped.

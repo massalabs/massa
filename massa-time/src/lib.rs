@@ -362,7 +362,7 @@ impl MassaTime {
     /// assert_eq!(res,MassaTime::from(42*7))
     /// ```
     #[must_use]
-    pub fn saturating_mul(self, n: u64) -> MassaTime {
+    pub const fn saturating_mul(self, n: u64) -> MassaTime {
         MassaTime(self.0.saturating_mul(n))
     }
 

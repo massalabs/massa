@@ -4,14 +4,15 @@ use super::mock_establisher::Duplex;
 use crate::settings::BootstrapConfig;
 use bitvec::vec::BitVec;
 use massa_async_pool::test_exports::{create_async_pool, get_random_message};
+use massa_async_pool::{AsyncPoolChanges, Change};
 use massa_consensus_exports::commands::ConsensusCommand;
 use massa_final_state::test_exports::create_final_state;
-use massa_final_state::{ExecutedOps, FinalState, StateChanges};
+use massa_final_state::{ExecutedOps, FinalState};
 use massa_graph::export_active_block::ExportActiveBlockSerializer;
 use massa_graph::{export_active_block::ExportActiveBlock, BootstrapableGraph};
 use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
 use massa_hash::Hash;
-use massa_ledger_exports::LedgerEntry;
+use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetUpdateOrDelete};
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH,
@@ -21,16 +22,19 @@ use massa_models::config::{
     MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK,
     MAX_PARAMETERS_SIZE, PERIODS_PER_CYCLE, THREAD_COUNT,
 };
-use massa_models::prehash::PreHashMap;
-use massa_models::wrapped::WrappedContent;
 use massa_models::{
     address::Address,
     amount::Amount,
+    block::BlockSerializer,
     block::{Block, BlockHeader, BlockHeaderSerializer, BlockId},
     endorsement::Endorsement,
+    endorsement::EndorsementSerializer,
+    operation::OperationId,
+    prehash::PreHashMap,
     slot::Slot,
+    wrapped::Id,
+    wrapped::WrappedContent,
 };
-use massa_models::{block::BlockSerializer, endorsement::EndorsementSerializer};
 use massa_network_exports::{BootstrapPeers, NetworkCommand};
 use massa_pos_exports::{CycleInfo, DeferredCredits, PoSChanges, PoSFinalState, ProductionStats};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -38,6 +42,7 @@ use massa_signature::{KeyPair, PublicKey, Signature};
 use massa_time::MassaTime;
 use rand::Rng;
 use std::collections::{HashMap, VecDeque};
+use std::str::FromStr;
 use std::{
     collections::BTreeMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -76,9 +81,26 @@ fn get_random_ledger_entry() -> LedgerEntry {
     }
 }
 
+pub fn get_random_ledger_changes(r_limit: u64) -> LedgerChanges {
+    let mut changes = LedgerChanges::default();
+    for _ in 0..r_limit {
+        changes.0.insert(
+            get_random_address(),
+            SetUpdateOrDelete::Set(LedgerEntry {
+                sequential_balance: Amount::from_raw(r_limit),
+                parallel_balance: Amount::from_raw(r_limit),
+                bytecode: Vec::default(),
+                datastore: BTreeMap::default(),
+            }),
+        );
+    }
+    changes
+}
+
 /// generates random PoS cycles info
 fn get_random_pos_cycles_info(
     r_limit: u64,
+    opt_seed: bool,
 ) -> (
     BTreeMap<Address, u64>,
     PreHashMap<Address, ProductionStats>,
@@ -89,7 +111,7 @@ fn get_random_pos_cycles_info(
     let mut production_stats = PreHashMap::default();
     let mut rng_seed: BitVec<u8> = BitVec::default();
 
-    for i in 0u64..(r_limit / 2) {
+    for i in 0u64..r_limit {
         roll_counts.insert(get_random_address(), i);
         production_stats.insert(
             get_random_address(),
@@ -98,8 +120,12 @@ fn get_random_pos_cycles_info(
                 block_failure_count: i,
             },
         );
+    }
+    // note: extra seed is used in the changes test to compensate for the update loop skipping the first change
+    if opt_seed {
         rng_seed.push(rng.gen_range(0..2) == 1);
     }
+    rng_seed.push(rng.gen_range(0..2) == 1);
     (roll_counts, production_stats, rng_seed)
 }
 
@@ -109,7 +135,7 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 
     for i in 0u64..r_limit {
         let mut credits = PreHashMap::default();
-        for j in 0u64..(r_limit / 2) {
+        for j in 0u64..r_limit {
             credits.insert(get_random_address(), Amount::from_raw(j));
         }
         deferred_credits.0.insert(
@@ -126,16 +152,14 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 /// generates a random PoS final state
 fn get_random_pos_state(r_limit: u64, pos: PoSFinalState) -> PoSFinalState {
     let mut cycle_history = VecDeque::new();
-    for i in 0u64..r_limit {
-        let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit);
-        cycle_history.push_back(CycleInfo {
-            cycle: i,
-            roll_counts,
-            complete: false, // if i == r_limit - 1 { false } else { true },
-            rng_seed,
-            production_stats,
-        });
-    }
+    let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit, true);
+    cycle_history.push_back(CycleInfo {
+        cycle: 0,
+        roll_counts,
+        complete: false,
+        rng_seed,
+        production_stats,
+    });
     let deferred_credits = get_random_deferred_credits(r_limit);
     PoSFinalState {
         cycle_history,
@@ -145,9 +169,9 @@ fn get_random_pos_state(r_limit: u64, pos: PoSFinalState) -> PoSFinalState {
 }
 
 /// generates random PoS changes
-fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
+pub fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
     let deferred_credits = get_random_deferred_credits(r_limit);
-    let (roll_counts, production_stats, seed_bits) = get_random_pos_cycles_info(r_limit);
+    let (roll_counts, production_stats, seed_bits) = get_random_pos_cycles_info(r_limit, false);
     PoSChanges {
         seed_bits,
         roll_changes: roll_counts.into_iter().collect(),
@@ -156,10 +180,33 @@ fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
     }
 }
 
+pub fn get_random_async_pool_changes(r_limit: u64) -> AsyncPoolChanges {
+    let mut changes = AsyncPoolChanges::default();
+    for _ in 0..r_limit {
+        let mut message = get_random_message();
+        message.gas_price = Amount::from_str("1_000_000").unwrap();
+        changes.0.push(Change::Add(message.compute_id(), message));
+    }
+    changes
+}
+
+pub fn get_random_executed_ops(r_limit: u64) -> ExecutedOps {
+    let mut ops = ExecutedOps::default();
+    for _ in 0..r_limit {
+        ops.insert(
+            OperationId::new(Hash::compute_from(&get_some_random_bytes())),
+            Slot {
+                period: 500,
+                thread: 0,
+            },
+        );
+    }
+    ops
+}
+
 /// generates a random bootstrap state for the final state
 pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
-    let mut rng = rand::thread_rng();
-    let r_limit: u64 = rng.gen_range(25..50);
+    let r_limit: u64 = 50;
 
     let mut sorted_ledger = HashMap::new();
     let mut messages = BTreeMap::new();
@@ -170,33 +217,21 @@ pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
     for _ in 0..r_limit {
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
+    // insert the last possible address to prevent the last cursor to move when testing the changes
+    sorted_ledger.insert(Address::from_bytes(&[255; 32]), get_random_ledger_entry());
 
-    let slot = Slot::new(0, rng.gen_range(0..THREAD_COUNT));
+    let slot = Slot::new(0, 0);
     let final_ledger = create_final_ledger(Some(sorted_ledger), Default::default());
     let async_pool = create_async_pool(Default::default(), messages);
-    let mut changes_history = VecDeque::new();
-    for i in 0u64..r_limit {
-        changes_history.push_back((
-            Slot {
-                period: i,
-                thread: 0,
-            },
-            StateChanges {
-                roll_state_changes: get_random_pos_changes(r_limit),
-                ..Default::default()
-            },
-        ));
-    }
+
     create_final_state(
         Default::default(),
         slot,
         Box::new(final_ledger),
         async_pool,
-        // do not use changes_history for now
-        // testing changes requires better thinking
         VecDeque::new(),
         get_random_pos_state(r_limit, pos),
-        ExecutedOps::default(),
+        get_random_executed_ops(r_limit),
     )
 }
 
@@ -254,6 +289,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_ledger_changes_count: MAX_LEDGER_CHANGES_COUNT,
         max_parameters_size: MAX_PARAMETERS_SIZE,
+        max_changes_slot_count: 1000,
     }
 }
 

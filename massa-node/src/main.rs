@@ -182,6 +182,7 @@ async fn launch(
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_ledger_changes_count: MAX_LEDGER_CHANGES_COUNT,
         max_parameters_size: MAX_PARAMETERS_SIZE,
+        max_changes_slot_count: SETTINGS.ledger.final_history_length as u32,
     };
 
     // bootstrap
@@ -322,6 +323,10 @@ async fn launch(
         max_serialized_operations_size_per_block: MAX_BLOCK_SIZE as usize,
         controller_channel_size: PROTOCOL_CONTROLLER_CHANNEL_SIZE,
         event_channel_size: PROTOCOL_EVENT_CHANNEL_SIZE,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
+        t0: T0,
+        max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
+        max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
     };
     let (protocol_command_sender, protocol_event_receiver, protocol_manager) =
         start_protocol_controller(
