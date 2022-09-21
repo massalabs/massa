@@ -180,8 +180,8 @@ impl OperationPool {
         let mut remaining_space = self.config.max_block_size as usize;
         // init remaining gas
         let mut remaining_gas = self.config.max_block_gas;
-        // cache of sequential balances
-        let mut sequential_balance_cache: PreHashMap<Address, Amount> = Default::default();
+        // cache of balances
+        let mut balance_cache: PreHashMap<Address, Amount> = Default::default();
 
         // iterate over pool operations in the right thread, from best to worst
         for cursor in self.sorted_ops_per_thread[slot.thread as usize].iter() {
@@ -215,24 +215,24 @@ impl OperationPool {
                 continue;
             }
 
-            // check sequential balance
-            let creator_seq_balance =
-                if let Some(amount) = sequential_balance_cache.get_mut(&op_info.creator_address) {
+            // check balance
+            let creator_balance =
+                if let Some(amount) = balance_cache.get_mut(&op_info.creator_address) {
                     amount
                 } else {
-                    let candidate_balance = self
+                    let final_amount = self
                         .execution_controller
-                        .get_final_and_candidate_sequential_balances(&[op_info.creator_address])
+                        .get_final_and_candidate_balance(&[op_info.creator_address])
                         .get(0)
                         .map_or_else(Amount::default, |(_final, candidate)| {
                             candidate.unwrap_or_default()
                         });
-                    sequential_balance_cache
+                    balance_cache
                         .entry(op_info.creator_address)
-                        .or_insert(candidate_balance)
+                        .or_insert(final_amount)
                 };
 
-            if *creator_seq_balance < op_info.fee {
+            if *creator_balance < op_info.fee {
                 continue;
             }
 
@@ -245,9 +245,8 @@ impl OperationPool {
             // update remaining block gas
             remaining_gas -= op_info.max_gas;
 
-            // update sequential balance cache
-            *creator_seq_balance =
-                creator_seq_balance.saturating_sub(op_info.max_sequential_spending);
+            // update balance cache
+            *creator_balance = creator_balance.saturating_sub(op_info.max_spending);
         }
 
         // generate storage

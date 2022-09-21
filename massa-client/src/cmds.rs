@@ -694,7 +694,7 @@ impl Command {
                             {
                                 match addresses_info.get(0) {
                                     Some(info) => {
-                                        if info.candidate_sequential_balance < total {
+                                        if info.candidate_balance < total {
                                             client_warning!("this operation may be rejected due to insufficient balance");
                                         }
                                     }
@@ -737,7 +737,7 @@ impl Command {
                     if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
                         match addresses_info.get(0) {
                             Some(info) => {
-                                if info.candidate_sequential_balance < fee
+                                if info.candidate_balance < fee
                                     || roll_count > info.candidate_roll_count
                                 {
                                     client_warning!("this operation may be rejected due to insufficient balance or roll count");
@@ -772,7 +772,7 @@ impl Command {
                     if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
                         match addresses_info.get(0) {
                             Some(info) => {
-                                if info.candidate_sequential_balance < fee {
+                                if info.candidate_balance < fee {
                                     client_warning!("this operation may be rejected due to insufficient balance");
                                 }
                             }
@@ -845,7 +845,7 @@ impl Command {
                             {
                                 match addresses_info.get(0) {
                                     Some(info) => {
-                                        if info.candidate_sequential_balance < total {
+                                        if info.candidate_balance < total {
                                             client_warning!("this operation may be rejected due to insufficient balance");
                                         }
                                     }
@@ -911,7 +911,7 @@ impl Command {
                             {
                                 match addresses_info.get(0) {
                                     Some(info) => {
-                                        if info.candidate_sequential_balance < total {
+                                        if info.candidate_balance < total {
                                             client_warning!("this operation may be rejected due to insufficient balance");
                                         }
                                     }
@@ -937,8 +937,7 @@ impl Command {
                         target_func,
                         param,
                         max_gas,
-                        sequential_coins: Amount::zero(),
-                        parallel_coins: coins,
+                        coins,
                         gas_price,
                     },
                     fee,

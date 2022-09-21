@@ -69,7 +69,7 @@ fn test_simple_get_operations() {
                     Err(_) => panic!("execution never called"),
                 }
                 match execution_receiver.recv_timeout(Duration::from_millis(100)) {
-                    Ok(ControllerMsg::GetFinalAndCandidateSequentialBalances {
+                    Ok(ControllerMsg::GetFinalAndCandidateBalance {
                         addresses,
                         response_tx,
                         ..
@@ -109,7 +109,7 @@ fn launch_basic_get_block_operation_execution_mock(
 ) {
     let receive = |er: &Receiver<ControllerMsg>| er.recv_timeout(Duration::from_millis(10));
     std::thread::spawn(move || {
-        use ControllerMsg::GetFinalAndCandidateSequentialBalances as GetFinal;
+        use ControllerMsg::GetFinalAndCandidateBalance as GetFinal;
         use ControllerMsg::UnexecutedOpsAmong as Unexecuted;
 
         if let Ok(Unexecuted { response_tx, .. }) = receive(&recvr) {

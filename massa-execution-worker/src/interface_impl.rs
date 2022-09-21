@@ -72,7 +72,7 @@ impl Interface for InterfaceImpl {
     ///
     /// # Arguments
     /// * `address`: string representation of the target address on which the bytecode will be called
-    /// * `raw_coins`: raw representation (without decimal factor) of the amount of parallel coins to transfer from the caller address to the target address at the beginning of the call
+    /// * `raw_coins`: raw representation (without decimal factor) of the amount of coins to transfer from the caller address to the target address at the beginning of the call
     ///
     /// # Returns
     /// The target bytecode or an error
@@ -97,11 +97,10 @@ impl Interface for InterfaceImpl {
 
         // transfer coins from caller to target address
         let coins = massa_models::amount::Amount::from_raw(raw_coins);
-        if let Err(err) =
-            context.transfer_parallel_coins(Some(from_address), Some(to_address), coins, true)
+        if let Err(err) = context.transfer_coins(Some(from_address), Some(to_address), coins, true)
         {
             bail!(
-                "error transferring {} parallel coins from {} to {}: {}",
+                "error transferring {} coins from {} to {}: {}",
                 coins,
                 from_address,
                 to_address,
@@ -132,32 +131,29 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
-    /// Gets the parallel balance of the current address address (top of the stack).
+    /// Gets the balance of the current address address (top of the stack).
     ///
     /// # Returns
-    /// The raw representation (no decimal factor) of the parallel balance of the address,
+    /// The raw representation (no decimal factor) of the balance of the address,
     /// or zero if the address is not found in the ledger.
     fn get_balance(&self) -> Result<u64> {
         let context = context_guard!(self);
         let address = context.get_current_address()?;
-        Ok(context
-            .get_parallel_balance(&address)
-            .unwrap_or_default()
-            .to_raw())
+        Ok(context.get_balance(&address).unwrap_or_default().to_raw())
     }
 
-    /// Gets the parallel balance of arbitrary address passed as argument.
+    /// Gets the balance of arbitrary address passed as argument.
     ///
     /// # Arguments
     /// * address: string representation of the address for which to get the balance
     ///
     /// # Returns
-    /// The raw representation (no decimal factor) of the parallel balance of the address,
+    /// The raw representation (no decimal factor) of the balance of the address,
     /// or zero if the address is not found in the ledger.
     fn get_balance_for(&self, address: &str) -> Result<u64> {
         let address = massa_models::address::Address::from_str(address)?;
         Ok(context_guard!(self)
-            .get_parallel_balance(&address)
+            .get_balance(&address)
             .unwrap_or_default()
             .to_raw())
     }
@@ -364,7 +360,7 @@ impl Interface for InterfaceImpl {
         Ok(public_key.verify_signature(&h, &signature).is_ok())
     }
 
-    /// Transfer parallel coins from the current address (top of the call stack) towards a target address.
+    /// Transfer coins from the current address (top of the call stack) towards a target address.
     ///
     /// # Arguments
     /// * `to_address`: string representation of the address to which the coins are sent
@@ -374,11 +370,11 @@ impl Interface for InterfaceImpl {
         let amount = massa_models::amount::Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
         let from_address = context.get_current_address()?;
-        context.transfer_parallel_coins(Some(from_address), Some(to_address), amount, true)?;
+        context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
         Ok(())
     }
 
-    /// Transfer parallel coins from a given address towards a target address.
+    /// Transfer coins from a given address towards a target address.
     ///
     /// # Arguments
     /// * `from_address`: string representation of the address that is sending the coins
@@ -394,7 +390,7 @@ impl Interface for InterfaceImpl {
         let to_address = massa_models::address::Address::from_str(to_address)?;
         let amount = massa_models::amount::Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
-        context.transfer_parallel_coins(Some(from_address), Some(to_address), amount, true)?;
+        context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
         Ok(())
     }
 

@@ -34,10 +34,8 @@ const SLOT_KEY: &[u8; 1] = b"s";
 
 /// Ledger sub entry enum
 pub enum LedgerSubEntry {
-    /// Sequential Balance
-    SeqBalance,
-    /// Parallel Balance
-    ParBalance,
+    /// Balance
+    Balance,
     /// Bytecode
     Bytecode,
     /// Datastore entry
@@ -208,22 +206,13 @@ impl LedgerDB {
     fn put_entry(&mut self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut WriteBatch) {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         // note that Amount serialization never fails
-        let mut bytes_parallel_balance = Vec::new();
+        let mut bytes_balance = Vec::new();
         self.amount_serializer
-            .serialize(&ledger_entry.parallel_balance, &mut bytes_parallel_balance)
+            .serialize(&ledger_entry.balance, &mut bytes_balance)
             .unwrap();
-        let mut bytes_sequential_balance = Vec::new();
-        self.amount_serializer
-            .serialize(
-                &ledger_entry.sequential_balance,
-                &mut bytes_sequential_balance,
-            )
-            .unwrap();
-        // sequential balance
-        batch.put_cf(handle, seq_balance_key!(addr), bytes_sequential_balance);
 
-        // parallel balance
-        batch.put_cf(handle, par_balance_key!(addr), bytes_parallel_balance);
+        // balance
+        batch.put_cf(handle, balance_key!(addr), bytes_balance);
 
         // bytecode
         batch.put_cf(handle, bytecode_key!(addr), ledger_entry.bytecode);
@@ -246,13 +235,9 @@ impl LedgerDB {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         match ty {
-            LedgerSubEntry::SeqBalance => self
+            LedgerSubEntry::Balance => self
                 .db
-                .get_cf(handle, seq_balance_key!(addr))
-                .expect(CRUD_ERROR),
-            LedgerSubEntry::ParBalance => self
-                .db
-                .get_cf(handle, par_balance_key!(addr))
+                .get_cf(handle, balance_key!(addr))
                 .expect(CRUD_ERROR),
             LedgerSubEntry::Bytecode => self
                 .db
@@ -299,25 +284,15 @@ impl LedgerDB {
     ) {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
-        // sequential balance
+        // balance
         // note that Amount::to_bytes_compact() never fails
-        if let SetOrKeep::Set(balance) = entry_update.sequential_balance {
+        if let SetOrKeep::Set(balance) = entry_update.balance {
             let mut bytes = Vec::new();
             // Amount serialization never fails
             self.amount_serializer
                 .serialize(&balance, &mut bytes)
                 .unwrap();
-            batch.put_cf(handle, seq_balance_key!(addr), bytes);
-        }
-
-        // parallel balance
-        if let SetOrKeep::Set(balance) = entry_update.parallel_balance {
-            let mut bytes = Vec::new();
-            // Amount serialization never fails
-            self.amount_serializer
-                .serialize(&balance, &mut bytes)
-                .unwrap();
-            batch.put_cf(handle, par_balance_key!(addr), bytes);
+            batch.put_cf(handle, balance_key!(addr), bytes);
         }
 
         // bytecode
@@ -341,11 +316,8 @@ impl LedgerDB {
     fn delete_entry(&self, addr: &Address, batch: &mut WriteBatch) {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
-        // sequential balance
-        batch.delete_cf(handle, seq_balance_key!(addr));
-
-        // parallel balance
-        batch.delete_cf(handle, par_balance_key!(addr));
+        // balance balance
+        batch.delete_cf(handle, balance_key!(addr));
 
         // bytecode
         batch.delete_cf(handle, bytecode_key!(addr));
@@ -479,7 +451,7 @@ impl LedgerDB {
             let (rest, address) = address_deserializer
                 .deserialize::<DeserializeError>(&key[..])
                 .unwrap();
-            if rest.first() == Some(&SEQ_BALANCE_IDENT) {
+            if rest.first() == Some(&BALANCE_IDENT) {
                 let (_, amount) = self
                     .amount_deserializer
                     .deserialize::<DeserializeError>(entry)
@@ -547,12 +519,12 @@ mod tests {
         data.insert(b"2".to_vec(), b"b".to_vec());
         data.insert(b"3".to_vec(), b"c".to_vec());
         let entry = LedgerEntry {
-            parallel_balance: Amount::from_mantissa_scale(42, 0),
+            balance: Amount::from_mantissa_scale(42, 0),
             datastore: data.clone(),
             ..Default::default()
         };
         let entry_update = LedgerEntryUpdate {
-            parallel_balance: SetOrKeep::Set(Amount::from_mantissa_scale(21, 0)),
+            balance: SetOrKeep::Set(Amount::from_mantissa_scale(21, 0)),
             bytecode: SetOrKeep::Keep,
             ..Default::default()
         };
@@ -581,17 +553,17 @@ mod tests {
         let amount_deserializer =
             AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
         // first assert
-        assert!(db.get_sub_entry(&a, LedgerSubEntry::ParBalance).is_some());
+        assert!(db.get_sub_entry(&a, LedgerSubEntry::Balance).is_some());
         assert_eq!(
             amount_deserializer
                 .deserialize::<DeserializeError>(
-                    &db.get_sub_entry(&a, LedgerSubEntry::ParBalance).unwrap()
+                    &db.get_sub_entry(&a, LedgerSubEntry::Balance).unwrap()
                 )
                 .unwrap()
                 .1,
             Amount::from_mantissa_scale(21, 0)
         );
-        assert!(db.get_sub_entry(&b, LedgerSubEntry::ParBalance).is_none());
+        assert!(db.get_sub_entry(&b, LedgerSubEntry::Balance).is_none());
         assert_eq!(data, db.get_entire_datastore(&a));
 
         // delete entry
@@ -600,7 +572,7 @@ mod tests {
         db.write_batch(batch);
 
         // second assert
-        assert!(db.get_sub_entry(&a, LedgerSubEntry::ParBalance).is_none());
+        assert!(db.get_sub_entry(&a, LedgerSubEntry::Balance).is_none());
         assert!(db.get_entire_datastore(&a).is_empty());
     }
 
