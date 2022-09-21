@@ -7,7 +7,12 @@ use nom::{
     error::{context, ContextError, ParseError},
     IResult,
 };
-use std::{cmp::Ordering, convert::TryInto, ops::BitXor, str::FromStr};
+use std::{
+    cmp::Ordering,
+    convert::TryInto,
+    ops::{BitXor, BitXorAssign},
+    str::FromStr,
+};
 
 /// Hash wrapper, the underlying hash type is Blake3
 #[derive(Eq, PartialEq, Copy, Clone, Hash)]
@@ -34,6 +39,12 @@ impl std::fmt::Display for Hash {
 impl std::fmt::Debug for Hash {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.to_bs58_check())
+    }
+}
+
+impl BitXorAssign for Hash {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        *self = *self ^ rhs;
     }
 }
 
@@ -136,11 +147,6 @@ impl Hash {
     /// ```
     pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Hash {
         Hash(blake3::Hash::from(*data))
-    }
-
-    /// XOR the current hash with another
-    pub fn xor(&mut self, other: Hash) {
-        *self = *self ^ other;
     }
 }
 

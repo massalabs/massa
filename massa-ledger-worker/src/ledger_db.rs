@@ -2,7 +2,7 @@
 
 //! Module to interact with the disk ledger
 
-use massa_hash::Hash;
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::*;
 use massa_models::{
     address::{Address, ADDRESS_SIZE_BYTES},
@@ -161,7 +161,10 @@ impl LedgerDB {
     ///
     /// # Arguments
     pub fn load_initial_ledger(&mut self, initial_ledger: HashMap<Address, LedgerEntry>) {
-        let mut batch = LedgerBatch::new(Hash::from_bytes(&[0; 32]));
+        // initial ledger_hash value to avoid matching an option in every XOR operation
+        // because of a one time case being an empty ledger
+        let ledger_hash = Hash::from_bytes(&[0; HASH_SIZE_BYTES]);
+        let mut batch = LedgerBatch::new(ledger_hash);
         for (address, entry) in initial_ledger {
             self.put_entry(&address, entry, &mut batch);
         }
@@ -233,9 +236,9 @@ impl LedgerDB {
             .put_cf(handle, SLOT_KEY, slot_bytes.clone());
         // XOR previous slot and new one
         if let Some(prev_bytes) = self.db.get_cf(handle, SLOT_KEY).expect(CRUD_ERROR) {
-            batch.ledger_hash.xor(Hash::compute_from(&prev_bytes));
+            batch.ledger_hash ^= Hash::compute_from(&prev_bytes);
         }
-        batch.ledger_hash.xor(Hash::compute_from(&slot_bytes));
+        batch.ledger_hash ^= Hash::compute_from(&slot_bytes);
     }
 
     /// Get the current disk ledger hash
@@ -245,12 +248,14 @@ impl LedgerDB {
         {
             Hash::from_bytes(&ledger_hash_bytes.try_into().expect(LEDGER_HASH_ERROR))
         } else {
-            Hash::from_bytes(&[0; 32])
+            // initial ledger_hash value to avoid matching an option in every XOR operation
+            // because of a one time case being an empty ledger
+            Hash::from_bytes(&[0; HASH_SIZE_BYTES])
         }
     }
 
     /// Internal function to put a key & value and perform the ledger hash XORs
-    pub fn put_entry_value(
+    fn put_entry_value(
         &self,
         handle: &ColumnFamily,
         batch: &mut LedgerBatch,
@@ -262,7 +267,7 @@ impl LedgerDB {
             .serialize(&(key.len() as u64), &mut len_bytes)
             .expect(KEY_LEN_SER_ERROR);
         let hash = Hash::compute_from(&[&len_bytes, key, value].concat());
-        batch.ledger_hash.xor(hash);
+        batch.ledger_hash ^= hash;
         batch.aeh_list.insert(key.to_vec(), hash);
         batch.write_batch.put_cf(handle, key, value);
     }
@@ -378,14 +383,12 @@ impl LedgerDB {
             .serialize(&(key.len() as u64), &mut len_bytes)
             .expect(KEY_LEN_SER_ERROR);
         if let Some(added_hash) = batch.aeh_list.get(key) {
-            batch.ledger_hash.xor(*added_hash);
+            batch.ledger_hash ^= *added_hash;
         } else if let Some(prev_bytes) = self.db.get_cf(handle, key).expect(CRUD_ERROR) {
-            batch
-                .ledger_hash
-                .xor(Hash::compute_from(&[&len_bytes, key, &prev_bytes].concat()));
+            batch.ledger_hash ^= Hash::compute_from(&[&len_bytes, key, &prev_bytes].concat());
         }
         let hash = Hash::compute_from(&[&len_bytes, key, value].concat());
-        batch.ledger_hash.xor(hash);
+        batch.ledger_hash ^= hash;
         batch.aeh_list.insert(key.to_vec(), hash);
         batch.write_batch.put_cf(handle, key, value);
     }
@@ -442,15 +445,13 @@ impl LedgerDB {
     /// Internal function to delete a key and perform the ledger hash XOR
     fn delete_key(&self, handle: &ColumnFamily, batch: &mut LedgerBatch, key: &[u8]) {
         if let Some(added_hash) = batch.aeh_list.get(key) {
-            batch.ledger_hash.xor(*added_hash);
+            batch.ledger_hash ^= *added_hash;
         } else if let Some(prev_bytes) = self.db.get_cf(handle, key).expect(CRUD_ERROR) {
             let mut len_bytes = Vec::new();
             self.len_serializer
                 .serialize(&(key.len() as u64), &mut len_bytes)
                 .expect(KEY_LEN_SER_ERROR);
-            batch
-                .ledger_hash
-                .xor(Hash::compute_from(&[&len_bytes, key, &prev_bytes].concat()));
+            batch.ledger_hash ^= Hash::compute_from(&[&len_bytes, key, &prev_bytes].concat());
         }
         batch.write_batch.delete_cf(handle, key);
     }
@@ -696,6 +697,7 @@ mod tests {
     fn test_ledger_db() {
         let addr = Address::from_public_key(&KeyPair::generate().get_public_key());
         let (db, data) = init_test_ledger(addr);
+        let ledger_hash = db.get_ledger_hash();
         let amount_deserializer =
             AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
 
@@ -713,9 +715,10 @@ mod tests {
             Amount::from_str("21").unwrap()
         );
         assert_eq!(data, db.get_entire_datastore(&addr));
+        assert_ne!(Hash::from_bytes(&[0; 32]), db.get_ledger_hash());
 
         // delete entry
-        let mut batch = LedgerBatch::new(db.get_ledger_hash());
+        let mut batch = LedgerBatch::new(ledger_hash);
         db.delete_entry(&addr, &mut batch);
         db.write_batch(batch);
 
