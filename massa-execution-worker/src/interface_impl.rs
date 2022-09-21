@@ -327,12 +327,12 @@ impl Interface for InterfaceImpl {
         Ok(keys)
     }
 
-    fn has_op_key(&self, key: &Vec<u8>) -> Result<bool> {
+    fn has_op_key(&self, key: &[u8]) -> Result<bool> {
         let context = context_guard!(self);
         Ok(context.datastore.contains_key(key))
     }
 
-    fn get_op_data(&self, key: &Vec<u8>) -> Result<Vec<u8>> {
+    fn get_op_data(&self, key: &[u8]) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         context.datastore
             .get(key)
