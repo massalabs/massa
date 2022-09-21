@@ -45,7 +45,7 @@ lazy_static::lazy_static! {
                 .saturating_add(MassaTime::from_millis(1000 * 10))
         )
     } else {
-        1663754400000.into()  //  Saturday, September 21, 2022 10:00:00 PM UTC
+        1663754400000.into()  //  Wednesday, September 21, 2022 10:00:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
