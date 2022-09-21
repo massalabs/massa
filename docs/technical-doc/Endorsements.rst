@@ -14,15 +14,22 @@ To achieve this, we draw inspiration from Tezos and introduce the concept of End
 Basic principle
 ===============
 
-At every slot `S`, we use the existing Proof-of-Stake selection mechanism to not only draw the block creator for that slot,
-but also `E` other stakers that are responsible for creating Endorsements that can be included in the blocks of slot `S`.
-Every endorsement that is selected to be included in blocks of slot `S` is signed by its creator `C`
-and contains the "endorsed" hash of the block that `C` would choose as the parent of a block at slot `S` in thread `S.thread`.
-Blocks in slot `S` can only include endorsements that endorse the block's parent block in the thread of `S`.
-In other words, endorsement producers vote for which parent should be chosen by blocks in their own thread.
+Each block header has `E` ordered endorsement slots: each one can include an endorsement or not. 
+Each endorsement contains:
+* The slot `S` in which it is meant to be included. The endorsement can only be included in blocks of slot `S`.
+* The hash of the endorsed block. This is the hash of the latest blockclique block of thread `S.thread` according to the endorsement creator at the moment the endorsement was created.
+* The index of the endorsement slot within the header from `0` (included) to `E-1` (included). The endorsement can only be included at that endorsement slot index within the block eader.
+* The public key of the creator of the endorsement
+* The signature of all the previous fields with the private key of the creator of the endorsement
 
-The likelihood of the attacker getting lucky and being selected for `N` consecutive PoS draws to attack/censor the system decays exponentially.
-With endorsements, we don't have to wait for `N` blocks to account for `N` proof-of-stake draws to happen as `E+1` draws happen at every slot.
+At every slot `S`, we use the existing Proof-of-Stake selection mechanism to not only draw the block creator for that slot,
+but also `E` other stakers indexed from `0` (included) to `E-1` (included) that can create Endorsements meant to be included in block headers of slot `S` at their respective endorsement slot index.
+
+Conceptually, each endorsement meant to be included at a slot `S` can be seen as a single vote endorsing the parent in thread `S.thread`
+that the endorsement creator would have chosen if they had to create a block at slot `S`.
+
+The likelihood of the attacker getting lucky and being selected for `N` consecutive PoS draws to attack/censor the system decays exponentially with `N`.
+With endorsements, we don't have to wait for `N` blocks to account for `N` proof-of-stake draws to happen as `E+1` draws happen at every slot (1 for the block creator and `E` for endorsement creators).
 In the consensus algorithm, we choose the clique of highest fitness as the blockclique.
 A block including `e` endorsements out of the maximum `E` contributes a fitness `e + 1` to the cliques it belongs to.
 The fitness of a block is therefore reflected by the number of PoS draws that were involved in creating it.
@@ -62,9 +69,9 @@ A header is invalidated if:
 Lifecycle of an endorsement
 ===========================
 
-To produce endorsements for slot `S`, the Endorsement Factory wakes up at `timestamp(S) - t0/2` so that the previous block of thread `S.thread` had the time to propagate,
+To produce endorsements for slot `S`, the Endorsement Factory wakes up at `timestamp(S) - t0/2` so that the previous block of thread `S.thread` (the endorsed block) had the time to propagate,
 and so that the endorsement itself has the time to propagate to be included in blocks of slot `S`.
-It then checks the endorsement producer draws for slot `S`. At every slot, there are `E` endorsement producer draws, one for each endorsement index from 0 (included) to `E-1` (included).
+It then checks the endorsement producer draws for slot `S`. At every slot, there are `E` endorsement producer draws, one for each endorsement index from `0` (included) to `E-1` (included).
 The factory will attempt to create all the endorsements that need to be produced by keypairs its wallet manages.
 To choose the block to endorse, the factory asks Consensus for the ID of latest blockclique (or final) block `B` in thread `S.thread` that has a strictly lower period than `S.period`.
 Every created endorsement is then sent to the Endorsement Pool for future inclusion in blocks, and to Protocol for propagation to other nodes.
@@ -106,7 +113,9 @@ Choosing the value of `E`
 =========================
 
 
-TODO  delta f0, choice of E justification
+See Massa's technical paper for an explanation on how `E` is chosen given performance and security considerations.
+
+Current testnet value: `E = 9`
 
 
 TODOS
