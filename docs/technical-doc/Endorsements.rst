@@ -41,7 +41,8 @@ Structure of an endorsement
     pub slot: Slot,
     /// endorsement index inside the including block
     pub index: u32,
-    /// hash of endorsed block
+    /// Hash of endorsed block.
+    /// This is the parent in thread `self.slot.thread` of the block in which the endorsement is included
     pub endorsed_block: BlockId,
   }
 
