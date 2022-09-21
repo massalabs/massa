@@ -86,8 +86,7 @@ pub fn get_random_ledger_changes(r_limit: u64) -> LedgerChanges {
         changes.0.insert(
             get_random_address(),
             SetUpdateOrDelete::Set(LedgerEntry {
-                sequential_balance: Amount::from_raw(r_limit),
-                parallel_balance: Amount::from_raw(r_limit),
+                balance: Amount::from_raw(r_limit),
                 bytecode: Vec::default(),
                 datastore: BTreeMap::default(),
             }),
