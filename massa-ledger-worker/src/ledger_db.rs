@@ -39,6 +39,7 @@ const LEDGER_HASH_ERROR: &str = "critical: saved ledger hash is corrupted";
 const KEY_LEN_SER_ERROR: &str = "critical: key length serialization failed";
 const SLOT_KEY: &[u8; 1] = b"s";
 const LEDGER_HASH_KEY: &[u8; 1] = b"h";
+const LEDGER_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 /// Ledger sub entry enum
 pub enum LedgerSubEntry {
@@ -163,7 +164,7 @@ impl LedgerDB {
     pub fn load_initial_ledger(&mut self, initial_ledger: HashMap<Address, LedgerEntry>) {
         // initial ledger_hash value to avoid matching an option in every XOR operation
         // because of a one time case being an empty ledger
-        let ledger_hash = Hash::from_bytes(&[0; HASH_SIZE_BYTES]);
+        let ledger_hash = Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES);
         let mut batch = LedgerBatch::new(ledger_hash);
         for (address, entry) in initial_ledger {
             self.put_entry(&address, entry, &mut batch);
@@ -250,7 +251,7 @@ impl LedgerDB {
         } else {
             // initial ledger_hash value to avoid matching an option in every XOR operation
             // because of a one time case being an empty ledger
-            Hash::from_bytes(&[0; HASH_SIZE_BYTES])
+            Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES)
         }
     }
 
@@ -648,7 +649,7 @@ impl LedgerDB {
 #[cfg(test)]
 mod tests {
     use super::LedgerDB;
-    use crate::ledger_db::{LedgerBatch, LedgerSubEntry};
+    use crate::ledger_db::{LedgerBatch, LedgerSubEntry, LEDGER_HASH_INITIAL_BYTES};
     use massa_hash::Hash;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
     use massa_models::{
@@ -683,7 +684,7 @@ mod tests {
         // write data
         let temp_dir = TempDir::new().unwrap();
         let mut db = LedgerDB::new(temp_dir.path().to_path_buf(), 32, 255, 1_000_000);
-        let mut batch = LedgerBatch::new(Hash::from_bytes(&[0; 32]));
+        let mut batch = LedgerBatch::new(Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES));
         db.put_entry(&addr, entry, &mut batch);
         db.update_entry(&addr, entry_update, &mut batch);
         db.write_batch(batch);
@@ -715,7 +716,10 @@ mod tests {
             Amount::from_str("21").unwrap()
         );
         assert_eq!(data, db.get_entire_datastore(&addr));
-        assert_ne!(Hash::from_bytes(&[0; 32]), db.get_ledger_hash());
+        assert_ne!(
+            Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES),
+            db.get_ledger_hash()
+        );
 
         // delete entry
         let mut batch = LedgerBatch::new(ledger_hash);
@@ -723,7 +727,10 @@ mod tests {
         db.write_batch(batch);
 
         // check deleted address and ledger hash
-        assert_eq!(Hash::from_bytes(&[0; 32]), db.get_ledger_hash());
+        assert_eq!(
+            Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES),
+            db.get_ledger_hash()
+        );
         assert!(db
             .get_sub_entry(&addr, LedgerSubEntry::ParBalance)
             .is_none());
