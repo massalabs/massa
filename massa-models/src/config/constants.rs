@@ -45,7 +45,7 @@ lazy_static::lazy_static! {
                 .saturating_add(MassaTime::from_millis(1000 * 10))
         )
     } else {
-        1663605000000.into()  //  Saturday, September 19, 2022 16:30:00 PM UTC
+        1663754400000.into()  //  Wednesday, September 21, 2022 10:00:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
@@ -183,7 +183,6 @@ pub const MAX_BOOTSTRAP_ERROR_LENGTH: u32 = 10000;
 pub const PROTOCOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
 /// Event channel size
 pub const PROTOCOL_EVENT_CHANNEL_SIZE: usize = 1024;
-
 // ***********************
 // Constants used for execution module (injected from ConsensusConfig)
 //

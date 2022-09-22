@@ -490,7 +490,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
 #[tokio::test]
 #[serial]
-async fn test_protocol_does_propagates_endorsements_when_receiving_those_inside_a_header() {
+async fn test_protocol_does_not_propagates_endorsements_when_receiving_those_inside_a_header() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
         protocol_config,
@@ -535,7 +535,7 @@ async fn test_protocol_does_propagates_endorsements_when_receiving_those_inside_
                     }) => {
                         let id = endorsements[0].id;
                         assert_eq!(id, expected_endorsement_id);
-                        break;
+                        panic!("Unexpected propagation of endorsement.");
                     }
                     Some(_) => panic!("Unexpected network command.."),
                     None => break,

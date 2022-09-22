@@ -733,6 +733,8 @@ impl ExecutionContext {
             )));
         }
 
+        // We define that set the bytecode of a non-SC address is impossible to avoid problems for block creator.
+        // See: https://github.com/massalabs/massa/discussions/2952
         if let Some(creator_address) = self.creator_address && &creator_address == address {
             return Err(ExecutionError::RuntimeError(format!("
                 can't set the bytecode of address {} because this is not a smart contract address",
