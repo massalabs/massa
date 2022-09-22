@@ -29,6 +29,9 @@ impl Default for ExecutionConfig {
             stats_time_window_duration: MassaTime::from_millis(30000),
             max_miss_ratio: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+            ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
+            ledger_cost_per_balance: LEDGER_COST_PER_BALANCE,
+            ledger_cost_per_datastore_key: LEDGER_COST_PER_DATASTORE_KEY,
         }
     }
 }

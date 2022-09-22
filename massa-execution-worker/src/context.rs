@@ -412,8 +412,11 @@ impl ExecutionContext {
         let address = Address(massa_hash::Hash::compute_from(&data));
 
         // add this address with its bytecode to the speculative ledger
-        self.speculative_ledger
-            .create_new_sc_address(address, bytecode)?;
+        self.speculative_ledger.create_new_sc_address(
+            self.get_current_address()?,
+            address,
+            bytecode,
+        )?;
 
         // add the address to owned addresses
         // so that the current call has write access to it

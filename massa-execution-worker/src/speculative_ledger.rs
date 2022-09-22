@@ -182,7 +182,14 @@ impl SpeculativeLedger {
                     })?;
                 // TODO: If we allow delete address, need to keep track of creator
                 self.transfer_coins(from_addr, None, address_storage_cost)?;
-                changes.set_balance(to_addr, amount);
+                changes.set_balance(
+                    to_addr,
+                    amount.checked_sub(address_storage_cost).ok_or_else(|| {
+                        ExecutionError::RuntimeError(
+                            "overflow in subtract ledger cost for addr".to_string(),
+                        )
+                    })?,
+                );
             }
         }
 
@@ -213,14 +220,63 @@ impl SpeculativeLedger {
     /// Creates a new smart contract address with initial bytecode.
     ///
     /// # Arguments
+    /// * `creator_address`: address that asked for this creation. Will pay the storage costs.
     /// * `addr`: address to create
     /// * `bytecode`: bytecode to set in the new ledger entry
     pub fn create_new_sc_address(
         &mut self,
+        creator_address: Address,
         addr: Address,
         bytecode: Vec<u8>,
     ) -> Result<(), ExecutionError> {
-        // set bytecode (create if do not exist)
+        // check for address existence
+        if !self.entry_exists(&creator_address) {
+            return Err(ExecutionError::RuntimeError(format!(
+                "could not set bytecode for address {}: entry does not exist",
+                addr
+            )));
+        }
+
+        // check that we don't collide with existing address
+        if self.entry_exists(&addr) {
+            return Err(ExecutionError::RuntimeError(format!(
+                "could not set bytecode for address {}: address generated to store bytecode already exist. Try again.",
+                addr
+            )));
+        }
+
+        // calculate the cost of storing the address and bytecode
+        let address_storage_cost = self
+            .ledger_cost_per_byte
+            .checked_mul_u64(ADDRESS_SIZE_BYTES.try_into().map_err(|_| {
+                ExecutionError::RuntimeError("overflow calculating size key for addr".to_string())
+            })?)
+            .ok_or_else(|| {
+                ExecutionError::RuntimeError("overflow in ledger cost for addr".to_string())
+            })?
+            .checked_add(self.ledger_cost_for_balance)
+            .ok_or_else(|| {
+                ExecutionError::RuntimeError("overflow in ledger cost for balance".to_string())
+            })?
+            .checked_add(
+                self.ledger_cost_per_byte
+                    .checked_mul_u64(bytecode.len().try_into().map_err(|_| {
+                        ExecutionError::RuntimeError(
+                            "overflow calculating size key for bytecode".to_string(),
+                        )
+                    })?)
+                    .ok_or_else(|| {
+                        ExecutionError::RuntimeError(
+                            "overflow in ledger cost for bytecode".to_string(),
+                        )
+                    })?,
+            )
+            .ok_or_else(|| {
+                ExecutionError::RuntimeError("overflow in ledger cost for bytecode".to_string())
+            })?;
+
+        //TODO: If we allow delete address, need to keep track of creator
+        self.transfer_coins(Some(creator_address), None, address_storage_cost)?;
         self.added_changes.set_bytecode(addr, bytecode);
         Ok(())
     }
