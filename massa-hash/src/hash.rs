@@ -7,7 +7,12 @@ use nom::{
     error::{context, ContextError, ParseError},
     IResult,
 };
-use std::{cmp::Ordering, convert::TryInto, str::FromStr};
+use std::{
+    cmp::Ordering,
+    convert::TryInto,
+    ops::{BitXor, BitXorAssign},
+    str::FromStr,
+};
 
 /// Hash wrapper, the underlying hash type is Blake3
 #[derive(Eq, PartialEq, Copy, Clone, Hash)]
@@ -34,6 +39,28 @@ impl std::fmt::Display for Hash {
 impl std::fmt::Debug for Hash {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.to_bs58_check())
+    }
+}
+
+impl BitXorAssign for Hash {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        *self = *self ^ rhs;
+    }
+}
+
+impl BitXor for Hash {
+    type Output = Self;
+
+    fn bitxor(self, other: Self) -> Self {
+        let xored_bytes: Vec<u8> = self
+            .to_bytes()
+            .iter()
+            .zip(other.to_bytes())
+            .map(|(x, y)| x ^ y)
+            .collect();
+        // unwrap won't fail because of the intial byte arrays size
+        let input_bytes: [u8; HASH_SIZE_BYTES] = xored_bytes.try_into().unwrap();
+        Hash::from_bytes(&input_bytes)
     }
 }
 
