@@ -3,11 +3,13 @@
 //! This file defines a structure to list and prune previously executed operations.
 //! Used to detect operation reuse.
 
+use massa_hash::Hash;
 use massa_models::{
     error::ModelsError,
     operation::{OperationId, OperationIdDeserializer},
     prehash::PreHashMap,
     slot::{Slot, SlotDeserializer, SlotSerializer},
+    wrapped::Id,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -22,39 +24,57 @@ use std::ops::Bound::{Excluded, Included};
 
 /// A structure to list and prune previously executed operations
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct ExecutedOps(PreHashMap<OperationId, Slot>);
+pub struct ExecutedOps {
+    ops: PreHashMap<OperationId, Slot>,
+    hash: Option<Hash>,
+}
 
 impl ExecutedOps {
     /// returns the number of executed operations
     pub fn len(&self) -> usize {
-        self.0.len()
+        self.ops.len()
     }
 
     /// Check is there is no executed ops
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.ops.is_empty()
     }
 
     /// extends with another ExecutedOps
     pub fn extend(&mut self, other: ExecutedOps) {
-        self.0.extend(other.0);
+        self.ops.extend(other.ops);
     }
 
     /// check if an operation was executed
     pub fn contains(&self, op_id: &OperationId) -> bool {
-        self.0.contains_key(op_id)
+        self.ops.contains_key(op_id)
     }
 
     /// marks an op as executed
     pub fn insert(&mut self, op_id: OperationId, last_valid_slot: Slot) {
-        self.0.insert(op_id, last_valid_slot);
+        if let Some(hash) = self.hash.as_mut() {
+            *hash ^= *op_id.get_hash();
+        } else {
+            self.hash = Some(*op_id.get_hash());
+        }
+        self.ops.insert(op_id, last_valid_slot);
     }
 
     /// Prune all operations that expire strictly before max_slot
     pub fn prune(&mut self, max_slot: Slot) {
         // TODO use slot-sorted structure for more efficient pruning (this has a linear complexity currently)
-        self.0
-            .retain(|_id, last_valid_slot| *last_valid_slot >= max_slot);
+        let (kept, removed): (PreHashMap<OperationId, Slot>, PreHashMap<OperationId, Slot>) = self
+            .ops
+            .iter()
+            .partition(|(_, &last_valid_slot)| last_valid_slot >= max_slot);
+        let hash = self
+            .hash
+            .as_mut()
+            .expect("critical: an ExecutedOps object with ops must also contain a hash");
+        for (op_id, _) in removed {
+            *hash ^= *op_id.get_hash();
+        }
+        self.ops = kept;
     }
 
     /// Get a part of the executed operations.
@@ -219,17 +239,18 @@ impl ExecutedOpsSerializer {
 impl Serializer<ExecutedOps> for ExecutedOpsSerializer {
     fn serialize(&self, value: &ExecutedOps, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         // encode the number of entries
-        let entry_count: u64 = value.0.len().try_into().map_err(|err| {
+        let entry_count: u64 = value.ops.len().try_into().map_err(|err| {
             SerializeError::GeneralError(format!("too many entries in ExecutedOps: {}", err))
         })?;
         self.u64_serializer.serialize(&entry_count, buffer)?;
 
         // encode entries
-        for (op_id, slot) in &value.0 {
+        for (op_id, slot) in &value.ops {
             buffer.extend(op_id.to_bytes());
             self.slot_serializer.serialize(slot, buffer)?;
         }
 
+        // TODO: ser hash
         Ok(())
     }
 }
@@ -272,7 +293,11 @@ impl Deserializer<ExecutedOps> for ExecutedOpsDeserializer {
                 )),
             ),
         )
-        .map(|elements| ExecutedOps(elements.into_iter().collect()))
+        .map(|elements| ExecutedOps {
+            ops: elements.into_iter().collect(),
+            // TODO: deser hash
+            hash: None,
+        })
         .parse(buffer)
     }
 }
