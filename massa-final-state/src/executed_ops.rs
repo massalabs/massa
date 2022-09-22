@@ -25,8 +25,10 @@ use std::ops::Bound::{Excluded, Included};
 /// A structure to list and prune previously executed operations
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct ExecutedOps {
+    /// Map of the executed operations
     ops: PreHashMap<OperationId, Slot>,
-    hash: Option<Hash>,
+    /// Cumulated hash of the executed operations
+    pub hash: Option<Hash>,
 }
 
 impl ExecutedOps {
@@ -42,6 +44,13 @@ impl ExecutedOps {
 
     /// extends with another ExecutedOps
     pub fn extend(&mut self, other: ExecutedOps) {
+        if let Some(other_hash) = other.hash {
+            if let Some(current_hash) = self.hash.as_mut() {
+                *current_hash ^= other_hash;
+            } else {
+                self.hash = Some(other_hash);
+            }
+        }
         self.ops.extend(other.ops);
     }
 
@@ -52,8 +61,8 @@ impl ExecutedOps {
 
     /// marks an op as executed
     pub fn insert(&mut self, op_id: OperationId, last_valid_slot: Slot) {
-        if let Some(hash) = self.hash.as_mut() {
-            *hash ^= *op_id.get_hash();
+        if let Some(current_hash) = self.hash.as_mut() {
+            *current_hash ^= *op_id.get_hash();
         } else {
             self.hash = Some(*op_id.get_hash());
         }
