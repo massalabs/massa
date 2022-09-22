@@ -3,7 +3,7 @@
 //! This file defines a structure to list and prune previously executed operations.
 //! Used to detect operation reuse.
 
-use massa_hash::Hash;
+use massa_hash::{Hash, HashDeserializer};
 use massa_models::{
     error::ModelsError,
     operation::{OperationId, OperationIdDeserializer},
@@ -12,7 +12,8 @@ use massa_models::{
     wrapped::Id,
 };
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, OptionDeserializer, SerializeError, Serializer, U64VarIntDeserializer,
+    U64VarIntSerializer,
 };
 use nom::{
     error::{context, ContextError, ParseError},
@@ -259,7 +260,13 @@ impl Serializer<ExecutedOps> for ExecutedOpsSerializer {
             self.slot_serializer.serialize(slot, buffer)?;
         }
 
-        // TODO: ser hash
+        // note: mimic the behaviour of OptionSerializer because we have not hash serializer
+        if let Some(current_hash) = value.hash {
+            buffer.push(b'1');
+            buffer.extend(current_hash.to_bytes());
+        } else {
+            buffer.push(b'0');
+        }
         Ok(())
     }
 }
@@ -269,6 +276,7 @@ pub struct ExecutedOpsDeserializer {
     operation_id_deserializer: OperationIdDeserializer,
     slot_deserializer: SlotDeserializer,
     u64_deserializer: U64VarIntDeserializer,
+    opt_hash_deserializer: OptionDeserializer<Hash, HashDeserializer>,
 }
 
 impl ExecutedOpsDeserializer {
@@ -281,6 +289,7 @@ impl ExecutedOpsDeserializer {
                 (Included(0), Excluded(thread_count)),
             ),
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            opt_hash_deserializer: OptionDeserializer::new(HashDeserializer::new()),
         }
     }
 }
@@ -292,20 +301,22 @@ impl Deserializer<ExecutedOps> for ExecutedOpsDeserializer {
     ) -> IResult<&'a [u8], ExecutedOps, E> {
         context(
             "Failed ExecutedOps deserialization",
-            length_count(
-                context("Failed length deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
-                }),
-                tuple((
-                    |input| self.operation_id_deserializer.deserialize(input),
-                    |input| self.slot_deserializer.deserialize(input),
-                )),
-            ),
+            tuple((
+                length_count(
+                    context("Failed length deserialization", |input| {
+                        self.u64_deserializer.deserialize(input)
+                    }),
+                    tuple((
+                        |input| self.operation_id_deserializer.deserialize(input),
+                        |input| self.slot_deserializer.deserialize(input),
+                    )),
+                ),
+                |input| self.opt_hash_deserializer.deserialize(input),
+            )),
         )
-        .map(|elements| ExecutedOps {
+        .map(|(elements, hash)| ExecutedOps {
             ops: elements.into_iter().collect(),
-            // TODO: deser hash
-            hash: None,
+            hash,
         })
         .parse(buffer)
     }
