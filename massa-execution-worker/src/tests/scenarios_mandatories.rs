@@ -5,6 +5,7 @@ use crate::tests::mock::{create_block, get_random_address_full, get_sample_state
 use massa_execution_exports::{
     ExecutionConfig, ExecutionError, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
+use massa_models::address::ADDRESS_SIZE_BYTES;
 use massa_models::prehash::PreHashMap;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
@@ -89,7 +90,7 @@ fn test_nested_call_gas_usage() {
     let mut storage = Storage::create_root();
     // start the execution worker
     let (mut manager, controller) = start_execution_worker(
-        exec_cfg,
+        exec_cfg.clone(),
         sample_state.clone(),
         sample_state.read().pos_state.selector.clone(),
     );
@@ -113,14 +114,31 @@ fn test_nested_call_gas_usage() {
     );
     controller.update_blockclique_status(finalized_blocks.clone(), Default::default());
     std::thread::sleep(Duration::from_millis(10));
+    let bytecode_sub_contract_len = 9367;
     assert_eq!(
         sample_state
             .read()
             .ledger
             .get_balance(&Address::from_public_key(&keypair.get_public_key()))
             .unwrap(),
-        // Gas and storage cost applied
-        Amount::from_str("199998.1192").unwrap()
+        Amount::from_str("300000")
+            .unwrap()
+            // Gas fee
+            .saturating_sub(Amount::from_str("100000").unwrap())
+            // Storage cost address
+            .saturating_sub(
+                exec_cfg
+                    .ledger_cost_per_byte
+                    .saturating_mul_u64(ADDRESS_SIZE_BYTES as u64)
+            )
+            // Storage cost balance
+            .saturating_sub(exec_cfg.ledger_cost_per_balance)
+            // Storage cost bytecode
+            .saturating_sub(
+                exec_cfg
+                    .ledger_cost_per_byte
+                    .saturating_mul_u64(bytecode_sub_contract_len)
+            )
     );
     // retrieve events emitted by smart contracts
     let events = controller.get_filtered_sc_output_event(EventFilter {
@@ -256,7 +274,7 @@ pub fn send_and_receive_transaction() {
     let mut storage = Storage::create_root();
     // start the execution worker
     let (mut manager, controller) = start_execution_worker(
-        exec_cfg,
+        exec_cfg.clone(),
         sample_state.clone(),
         sample_state.read().pos_state.selector.clone(),
     );
@@ -299,7 +317,16 @@ pub fn send_and_receive_transaction() {
             .get_balance(&recipient_address)
             .unwrap(),
         // Storage cost applied
-        Amount::from_str("99.9926").unwrap()
+        Amount::from_str("100")
+            .unwrap()
+            // Storage cost address
+            .saturating_sub(
+                exec_cfg
+                    .ledger_cost_per_byte
+                    .saturating_mul_u64(ADDRESS_SIZE_BYTES as u64)
+            )
+            // Storage cost balance
+            .saturating_sub(exec_cfg.ledger_cost_per_balance)
     );
     // stop the execution controller
     manager.stop();
