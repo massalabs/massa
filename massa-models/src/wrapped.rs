@@ -15,7 +15,7 @@ use nom::{
 use serde::{Deserialize, Serialize};
 
 /// Wrapped structure T where U is the associated id
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Wrapped<T, U>
 where
     T: Display + WrappedContent,
