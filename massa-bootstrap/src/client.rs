@@ -90,7 +90,7 @@ async fn stream_final_state(
                             .apply_changes(changes.ledger_changes.clone(), *changes_slot);
                         write_final_state
                             .async_pool
-                            .apply_changes(&changes.async_pool_changes);
+                            .apply_changes_unchecked(&changes.async_pool_changes);
                         write_final_state.pos_state.apply_changes(
                             changes.pos_changes.clone(),
                             *changes_slot,
