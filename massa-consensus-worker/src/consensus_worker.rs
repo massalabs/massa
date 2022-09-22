@@ -253,8 +253,6 @@ impl ConsensusWorker {
 
     /// this function is called around every slot tick
     /// it checks for cycle increment
-    /// creates block and endorsement if a staking address has been drawn
-    /// it signals the new slot to other components
     /// detects desynchronization
     /// produce quite more logs than actual stuff
     async fn slot_tick(&mut self, next_slot_timer: &mut std::pin::Pin<&mut Sleep>) -> Result<()> {
@@ -432,6 +430,15 @@ impl ConsensusWorker {
                 }
                 Ok(())
             }
+            ConsensusCommand::GetLatestBlockcliqueBlockAtSlot { slot, response_tx } => {
+                let res = self.block_db.get_latest_blockclique_block_at_slot(&slot);
+                if response_tx.send(res).is_err() {
+                    warn!(
+                        "consensus: could not send get latest block clique block at slot response"
+                    );
+                }
+                Ok(())
+            }
             ConsensusCommand::SendBlock {
                 block_id,
                 slot,
@@ -545,8 +552,7 @@ impl ConsensusWorker {
     }
 
     /// call me if the block database changed
-    /// Processing of final blocks, pruning and producing endorsement.
-    /// Please refactor me
+    /// Processing of final blocks, pruning.
     ///
     /// 1. propagate blocks
     /// 2. Notify of attack attempts
@@ -558,8 +564,7 @@ impl ConsensusWorker {
     /// 8. Notify PoS of final blocks
     /// 9. notify protocol of block wish list
     /// 10. note new latest final periods (prune graph if changed)
-    /// 11. Produce endorsements
-    /// 12. add stale blocks to stats
+    /// 11. add stale blocks to stats
     async fn block_db_changed(&mut self) -> Result<()> {
         massa_trace!("consensus.consensus_worker.block_db_changed", {});
 

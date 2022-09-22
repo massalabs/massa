@@ -1452,7 +1452,7 @@ impl BlockGraph {
         .0;
 
         // check endorsements
-        match self.check_endorsements(header, parent_in_own_thread)? {
+        match self.check_endorsements(header)? {
             EndorsementsCheckOutcome::Proceed => {}
             EndorsementsCheckOutcome::Discard(reason) => {
                 return Ok(HeaderCheckOutcome::Discard(reason))
@@ -1567,16 +1567,9 @@ impl BlockGraph {
     /// check endorsements:
     /// * endorser was selected for that (slot, index)
     /// * endorsed slot is `parent_in_own_thread` slot
-    fn check_endorsements(
-        &self,
-        header: &WrappedHeader,
-        parent_in_own_thread: &ActiveBlock,
-    ) -> Result<EndorsementsCheckOutcome> {
+    fn check_endorsements(&self, header: &WrappedHeader) -> Result<EndorsementsCheckOutcome> {
         // check endorsements
-        let endorsement_draws = match self
-            .selector_controller
-            .get_selection(parent_in_own_thread.slot)
-        {
+        let endorsement_draws = match self.selector_controller.get_selection(header.content.slot) {
             Ok(sel) => sel.endorsements,
             Err(_) => return Ok(EndorsementsCheckOutcome::WaitForSlot),
         };
@@ -1591,22 +1584,12 @@ impl BlockGraph {
                     ),
                 )));
             }
-            // check that the endorsement slot matches the endorsed block
-            if endorsement.content.slot != parent_in_own_thread.slot {
-                return Ok(EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(
-                    format!("endorsement targets a block with wrong slot. Block's parent: {}, endorsement: {}",
-                            parent_in_own_thread.slot, endorsement.content.slot),
-                )));
-            }
 
             // note that the following aspects are checked in protocol
-            // * PoS draws
             // * signature
-            // * intra block endorsement reuse
-            // * intra block index reuse
-            // * slot in the same thread as block's slot
-            // * slot is before the block's slot
-            // * the endorsed block is the parent in the same thread
+            // * index reuse
+            // * slot matching the block's
+            // * the endorsed block is the containing block's parent
         }
 
         Ok(EndorsementsCheckOutcome::Proceed)
@@ -2676,6 +2659,44 @@ impl BlockGraph {
                 Some(BlockStatus::Active { a_block, .. }) => a_block.is_final,
                 _ => false,
             })
+    }
+
+    /// get the latest blockclique (or final) block ID at a given slot, if any
+    pub fn get_latest_blockclique_block_at_slot(&self, slot: &Slot) -> BlockId {
+        let (mut best_block_id, mut best_block_period) = self
+            .latest_final_blocks_periods
+            .get(slot.thread as usize)
+            .unwrap_or_else(|| panic!("unexpected not found latest final block period"));
+
+        self.max_cliques
+            .iter()
+            .find(|c| c.is_blockclique)
+            .expect("expected one clique to be the blockclique")
+            .block_ids
+            .iter()
+            .for_each(|id| match self.block_statuses.get(id) {
+                Some(BlockStatus::Active {
+                    a_block,
+                    storage: _,
+                }) => {
+                    if a_block.is_final {
+                        panic!(
+                            "unexpected final block on getting latest blockclique block at slot"
+                        );
+                    }
+                    if a_block.slot.thread == slot.thread
+                        && a_block.slot.period < slot.period
+                        && a_block.slot.period > best_block_period
+                    {
+                        best_block_period = a_block.slot.period;
+                        best_block_id = *id;
+                    }
+                }
+                _ => {
+                    panic!("expected to find only active block but found another status")
+                }
+            });
+        best_block_id
     }
 
     /// Clones all stored final blocks, not only the still-useful ones

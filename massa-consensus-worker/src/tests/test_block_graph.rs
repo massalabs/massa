@@ -77,8 +77,9 @@ fn test_bootstrapable_graph_serialized() {
     };
 
     let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();
-    let bootstrapable_graph_deserializer =
-        BootstrapableGraphDeserializer::new(2, 8, 10000, 10000, 10000, 10000, 10000);
+    let bootstrapable_graph_deserializer = BootstrapableGraphDeserializer::new(
+        2, 8, 10000, 10000, 10000, 10000, 10000, 10, 255, 10_000,
+    );
     let mut bytes = Vec::new();
 
     bootstrapable_graph_serializer

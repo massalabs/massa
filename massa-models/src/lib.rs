@@ -25,6 +25,8 @@ pub mod clique;
 pub mod composite;
 /// node config
 pub mod config;
+/// datastore ser/der
+pub mod datastore;
 /// endorsements
 pub mod endorsement;
 /// models error

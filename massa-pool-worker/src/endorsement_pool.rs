@@ -17,8 +17,8 @@ pub struct EndorsementPool {
     /// endorsements indexed by slot, index and block ID
     endorsements_indexed: HashMap<(Slot, u32, BlockId), EndorsementId>,
 
-    /// endorsements sorted by increasing target slot for pruning
-    /// indexed by thread, then BTreeMap<(target_slot, index, target_block), endorsement_id>
+    /// endorsements sorted by increasing inclusion slot for pruning
+    /// indexed by thread, then BTreeMap<(inclusion_slot, index, target_block), endorsement_id>
     endorsements_sorted: Vec<BTreeMap<(Slot, u32, BlockId), EndorsementId>>,
 
     /// storage
@@ -54,16 +54,16 @@ impl EndorsementPool {
         // update internal final CS period counter
         self.last_cs_final_periods = final_cs_periods.to_vec();
 
-        // remove old endorsements
+        // remove all endorsements whose periods <= last_cs_final_periods[endorsement.thread]
         let mut removed: PreHashSet<EndorsementId> = Default::default();
         for thread in 0..self.config.thread_count {
-            while let Some((&(target_slot, index, block_id), &endo_id)) =
+            while let Some((&(inclusion_slot, index, block_id), &endo_id)) =
                 self.endorsements_sorted[thread as usize].first_key_value()
             {
-                if target_slot.period < self.last_cs_final_periods[thread as usize] {
+                if inclusion_slot.period <= self.last_cs_final_periods[thread as usize] {
                     self.endorsements_sorted[thread as usize].pop_first();
                     self.endorsements_indexed
-                        .remove(&(target_slot, index, block_id))
+                        .remove(&(inclusion_slot, index, block_id))
                         .expect("endorsement should be in endorsements_indexed at this point");
                     removed.insert(endo_id);
                 } else {
@@ -148,17 +148,17 @@ impl EndorsementPool {
     /// get endorsements for block creation
     pub fn get_block_endorsements(
         &self,
-        target_slot: &Slot,
+        slot: &Slot, // slot of the block that will contain the endorsement
         target_block: &BlockId,
     ) -> (Vec<Option<EndorsementId>>, Storage) {
-        // init list of selected operation IDs
+        // init list of selected endorsement IDs
         let mut endo_ids = Vec::with_capacity(self.config.max_block_endorsement_count as usize);
 
         // gather endorsements
         for index in 0..self.config.max_block_endorsement_count {
             endo_ids.push(
                 self.endorsements_indexed
-                    .get(&(*target_slot, index, *target_block))
+                    .get(&(*slot, index, *target_block))
                     .copied(),
             );
         }

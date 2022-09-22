@@ -764,8 +764,7 @@ impl Endpoints for API<Public> {
                 thread: address.get_thread(self.0.consensus_config.thread_count),
 
                 // final execution info
-                final_parallel_balance: execution_infos.final_parallel_balance,
-                final_sequential_balance: execution_infos.final_sequential_balance,
+                final_balance: execution_infos.final_balance,
                 final_roll_count: execution_infos.final_roll_count,
                 final_datastore_keys: execution_infos
                     .final_datastore_keys
@@ -773,8 +772,7 @@ impl Endpoints for API<Public> {
                     .collect::<Vec<_>>(),
 
                 // candidate execution info
-                candidate_parallel_balance: execution_infos.candidate_parallel_balance,
-                candidate_sequential_balance: execution_infos.candidate_sequential_balance,
+                candidate_balance: execution_infos.candidate_balance,
                 candidate_roll_count: execution_infos.candidate_roll_count,
                 candidate_datastore_keys: execution_infos
                     .candidate_datastore_keys
@@ -822,6 +820,9 @@ impl Endpoints for API<Public> {
                 api_cfg.max_datastore_value_length,
                 api_cfg.max_function_name_length,
                 api_cfg.max_parameter_size,
+                api_cfg.max_op_datastore_entry_count,
+                api_cfg.max_op_datastore_key_length,
+                api_cfg.max_op_datastore_value_length,
             ));
             let verified_ops = ops
                 .into_iter()

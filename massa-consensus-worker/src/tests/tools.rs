@@ -36,7 +36,7 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::Mutex;
 use std::sync::mpsc::Receiver;
-use std::{collections::HashSet, future::Future, path::Path};
+use std::{collections::BTreeMap, collections::HashSet, future::Future, path::Path};
 use std::{str::FromStr, sync::Arc, time::Duration};
 
 use tracing::info;
@@ -393,6 +393,7 @@ pub fn _create_executesc(
         max_gas,
         coins: Amount::from_str(&coins.to_string()).unwrap(),
         gas_price: Amount::from_str(&gas_price.to_string()).unwrap(),
+        datastore: BTreeMap::new(),
     };
 
     let content = Operation {

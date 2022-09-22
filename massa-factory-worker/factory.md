@@ -22,7 +22,7 @@ The factory will need to call other modules:
 * ask selector for draws
 * ask consensus for best_parents and for blockclique blocks present in a given slot
 * ask pool for operations and endorsements
-* ask execution for the speculative sequential balances of involved addresses, as well as previously executed op IDs
+* ask execution for the speculative balances of involved addresses, as well as previously executed op IDs
 * send the created block/endorsement to storage
 * send created block/endorsement to pool
 * notify protocol of new endorsements to propagate
@@ -53,7 +53,7 @@ The production of a block `B` at slot `S` happens in steps:
 * ask pool for the endorsmeents to add to the header given the `BlockId` of `B`'s parent in `B`'s thread
 * define `remaining_gas = MAX_BLOCk_GAS`  which is the remaining gas in the block
 * define `remaining_space = MAX_BLOCK_SIZE` which is the remaining operation space in the block in bytes
-* define `sequential_balance_cache: Map<Address, Amount> = Default::default()` which is a cache of sequential balances
+* define `balance_cache: Map<Address, Amount> = Default::default()` which is a cache of balance
 * define `excluded_ops: Set<OperationId>` which is the list of operations to exclude
 * pre-fill`excluded_ops` by asking the `execution` execution module for the list of operations that have been executed previously in `B`'s thread
 * define `start_time = MassaTime::now(0)` which is the time when we started producing the block
@@ -64,13 +64,13 @@ The production of a block `B` at slot `S` happens in steps:
   * extend `excluded_ops` with the obtained batch
   * for each operation `op` in the ordered batch:
     * if `op.get_gas_usage() > remaining_gas`, it means that there is not enough remaining block gas to execute the operation => continue loop
-    * if `op.serialized_version.len() > remaining_space`, it means that there is nout enough remaining space to include the operation => continue loop
-    * if `op`'s creator address is not in `sequential_balance_cache`, ask `execution` for the sequential balance of `op.creator` and insert it inside `sequential_balance_cache`
-    * if `sequential_balance_cache[op.creator_addr] < op.fee + op.get_gas_coins()`, it means that the sender cannot pay for the fees => continue loop
+    * if `op.serialized_version.len() > remaining_space`, it means that there is not enough remaining space to include the operation => continue loop
+    * if `op`'s creator address is not in `balance_cache`, ask `execution` for the balance of `op.creator` and insert it inside `balance_cache`
+    * if `balance_cache[op.creator_addr] < op.fee + op.get_gas_coins()`, it means that the sender cannot pay for the fees => continue loop
     * add the operation to the block's operation list
     * update `remaining_gas -= op.get_gas_usage()`
     * update `remaining_space -= op.serialized_version.len()`
-    * update `sequential_balance_cache[op.creator_addr] -= (op.fee + op.get_gas_coins())`
+    * update `balance_cache[op.creator_addr] -= (op.fee + op.get_gas_coins())`
 * deduce operation count in the header from the operation list length
 * deduce the operation hash in the header by hashing the concatenation of the contained operation IDs, in the order they appear in the block
 * produce the header and sign it
