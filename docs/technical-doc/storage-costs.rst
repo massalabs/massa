@@ -22,6 +22,8 @@ Example
 -------
 
 To create your address on the blockchain someone need to send at least 0.0002 * (32 + 5) = 0.0064 MASS when sending the operation that will create your address (a transfer for example). This is the cost of creating your address and balance.
+
 You want to store your birthday that is 30 bytes long in your datastore so you need to send an operation that will create a key in your datastore using a SC. This operation will cost you in storage costs at least 0.0002 * (32 + 10 + 30) = 0.0144 MASS.
+
 Now you want to delete this entry on your datastore then you will do it with a SC and you will be refunded of the storage costs (0.0144 MASS).
 
