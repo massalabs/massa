@@ -8,11 +8,16 @@ use crate::{
     message::{AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
     AsyncMessageDeserializer, AsyncMessageSerializer,
 };
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::{error::ModelsError, slot::Slot};
 use massa_serialization::{Deserializer, Serializer};
 use nom::{multi::many0, sequence::tuple};
 use std::collections::BTreeMap;
 use std::ops::Bound::{Excluded, Unbounded};
+
+const MESSAGE_SER_ERROR: &str = "critical: message serialization failed";
+const MESSAGE_ID_SER_ERROR: &str = "critical: message id serialization failed";
+const MISSING_DELETED_ELEM: &str = "critical: message that is set to be deleted is missing";
 
 /// Represents a pool of sorted messages in a deterministic way.
 /// The final asynchronous pool is attached to the output of the latest final slot within the context of massa-final-state.
@@ -24,6 +29,9 @@ pub struct AsyncPool {
 
     /// Messages sorted by decreasing ID (decreasing priority)
     pub(crate) messages: BTreeMap<AsyncMessageId, AsyncMessage>,
+
+    /// Asyncronous pool hash
+    hash: Hash,
 }
 
 impl AsyncPool {
@@ -32,6 +40,7 @@ impl AsyncPool {
         AsyncPool {
             config,
             messages: Default::default(),
+            hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
         }
     }
 
@@ -50,6 +59,46 @@ impl AsyncPool {
 
                 // delete a message from the pool
                 Change::Delete(msg_id) => {
+                    self.messages.remove(msg_id);
+                }
+            }
+        }
+    }
+
+    /// Applies speculative execution changes to the final asynchronous pool.
+    /// Also computes the pool hash.
+    ///
+    /// # arguments
+    /// * `changes`: `AsyncPoolChanges` listing all asynchronous pool changes (message insertions/deletions)
+    pub fn apply_final_changes(&mut self, changes: &AsyncPoolChanges) {
+        let message_id_ser = AsyncMessageIdSerializer::new();
+        let message_ser = AsyncMessageSerializer::new();
+
+        for change in changes.0.iter() {
+            let mut hash_bytes = Vec::new();
+            match change {
+                // add a new message to the pool
+                Change::Add(msg_id, msg) => {
+                    message_id_ser
+                        .serialize(msg_id, &mut hash_bytes)
+                        .expect(MESSAGE_ID_SER_ERROR);
+                    message_ser
+                        .serialize(msg, &mut hash_bytes)
+                        .expect(MESSAGE_SER_ERROR);
+                    self.hash ^= Hash::compute_from(&hash_bytes);
+                    self.messages.insert(*msg_id, msg.clone());
+                }
+
+                // delete a message from the pool
+                Change::Delete(msg_id) => {
+                    let msg = self.messages.get(msg_id).expect(MISSING_DELETED_ELEM);
+                    message_id_ser
+                        .serialize(msg_id, &mut hash_bytes)
+                        .expect(MESSAGE_ID_SER_ERROR);
+                    message_ser
+                        .serialize(msg, &mut hash_bytes)
+                        .expect(MESSAGE_SER_ERROR);
+                    self.hash ^= Hash::compute_from(&hash_bytes);
                     self.messages.remove(msg_id);
                 }
             }
