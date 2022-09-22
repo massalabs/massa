@@ -26,6 +26,7 @@ use massa_models::{
 };
 use massa_pool_exports::test_exports::MockPoolController;
 use massa_pool_exports::PoolController;
+use massa_pos_exports::test_exports::{MockSelectorController, MockSelectorControllerMessage};
 use massa_pos_exports::{SelectorConfig, SelectorController};
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::test_exports::MockProtocolController;
@@ -742,7 +743,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
         ConsensusCommandSender,
         ConsensusEventReceiver,
         Storage,
-        Box<dyn SelectorController>,
+        Receiver<MockSelectorControllerMessage>,
     ) -> V,
     V: Future<
         Output = (
@@ -750,7 +751,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
             MockProtocolController,
             ConsensusCommandSender,
             ConsensusEventReceiver,
-            Box<dyn SelectorController>,
+            Receiver<MockSelectorControllerMessage>,
         ),
     >,
 {
@@ -773,19 +774,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
-    let staking_key =
-        KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8").unwrap();
-    let genesis_address = Address::from_public_key(&staking_key.get_public_key());
-    let selector_config = SelectorConfig {
-        max_draw_cache: 12,
-        channel_size: 256,
-        thread_count: 2,
-        endorsement_count: 8,
-        periods_per_cycle: 2,
-        genesis_address,
-    };
-    let (mut selector_manager, selector_controller) =
-        start_selector_worker(selector_config).unwrap();
+    let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
@@ -795,7 +784,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
                 pool_command_sender: pool_controller.clone(),
-                selector_controller: selector_controller.clone(),
+                selector_controller: selector_controller,
             },
             boot_graph,
             storage.clone(),
@@ -817,7 +806,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
         consensus_command_sender,
         consensus_event_receiver,
         storage,
-        selector_controller,
+        selector_receiver,
     )
     .await;
 
@@ -831,7 +820,6 @@ pub async fn consensus_pool_test_with_storage<F, V>(
 
     // stop sinks
     *stop_sinks.lock() = true;
-    selector_manager.stop();
     execution_sink.join().unwrap();
 }
 

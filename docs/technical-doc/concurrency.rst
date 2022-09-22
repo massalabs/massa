@@ -89,8 +89,12 @@ Current state of communication links
         -   Pool
         -   Network
 
-.. code-block:: mermaid
+.. image:: massa_communication_links.svg
+   :alt: Current state of communication links
+   :align: center
 
+..
+    code-block:: mermaid
     graph LR
         MN[Massa-node]
         C[Consensus] -->|events| MN
