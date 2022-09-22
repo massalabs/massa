@@ -603,6 +603,71 @@ fn set_bytecode_error() {
 
 #[test]
 #[serial]
+fn datastore_manipulations() {
+    // setup the period duration and the maximum gas for asynchronous messages execution
+    let exec_cfg = ExecutionConfig {
+        t0: 100.into(),
+        max_async_gas: 100_000,
+        ..ExecutionConfig::default()
+    };
+    // get a sample final state
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+    // init the storage
+    let mut storage = Storage::create_root();
+    // start the execution worker
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg.clone(),
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
+    // keypair associated to thread 0
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    // load bytecode
+    // you can check the source code of the following wasm file in massa-sc-examples
+    let bytecode = include_bytes!("./wasm/datastore_manipulations.wasm");
+    // create the block contaning the erroneous smart contract execution operation
+    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    storage.store_operations(vec![operation.clone()]);
+    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+    // store the block in storage
+    storage.store_block(block.clone());
+    // set our block as a final block
+    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
+    finalized_blocks.insert(
+        block.content.header.content.slot,
+        (block.id, storage.clone()),
+    );
+    controller.update_blockclique_status(finalized_blocks, Default::default());
+    std::thread::sleep(Duration::from_millis(10));
+
+    assert_eq!(
+        sample_state
+            .read()
+            .ledger
+            .get_balance(&Address::from_public_key(&keypair.get_public_key()))
+            .unwrap(),
+        Amount::from_str("300000")
+            .unwrap()
+            // Gas fee
+            .saturating_sub(Amount::from_str("100000").unwrap())
+            // Storage cost key
+            .saturating_sub(
+                exec_cfg
+                    .ledger_cost_per_byte
+                    .saturating_mul_u64(ADDRESS_SIZE_BYTES as u64)
+                    .saturating_add(exec_cfg.ledger_cost_per_datastore_key)
+            )
+            // Storage cost value
+            .saturating_sub(exec_cfg.ledger_cost_per_byte.saturating_mul_u64(10))
+    );
+
+    // stop the execution controller
+    manager.stop();
+}
+
+#[test]
+#[serial]
 fn generate_events() {
     // Compile the `./wasm_tests` and generate a block with `event_test.wasm`
     // as data. Then we check if we get an event as expected.

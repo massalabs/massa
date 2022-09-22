@@ -405,7 +405,7 @@ impl SpeculativeLedger {
         })
     }
 
-    pub fn get_storage_cost_datastore_key(&self) -> Result<Amount, ExecutionError> {
+    fn get_storage_cost_datastore_key(&self) -> Result<Amount, ExecutionError> {
         self.ledger_cost_per_byte
             .checked_mul_u64(ADDRESS_SIZE_BYTES.try_into().map_err(|_| {
                 ExecutionError::RuntimeError(
@@ -421,6 +421,18 @@ impl SpeculativeLedger {
             .ok_or_else(|| {
                 ExecutionError::RuntimeError(
                     "overflow when calculating storage cost for datastore key".to_string(),
+                )
+            })
+    }
+
+    fn get_storage_cost_datastore_value(&self, value: &Vec<u8>) -> Result<Amount, ExecutionError> {
+        self.ledger_cost_per_byte
+            .checked_mul_u64(value.len().try_into().map_err(|_| {
+                ExecutionError::RuntimeError("value in datastore is too big".to_string())
+            })?)
+            .ok_or_else(|| {
+                ExecutionError::RuntimeError(
+                    "overflow when calculating storage cost for datastore value".to_string(),
                 )
             })
     }
@@ -472,16 +484,7 @@ impl SpeculativeLedger {
                 self.transfer_coins(None, Some(*addr), storage_cost_value)?;
             }
         } else {
-            let value_storage_cost = self
-                .ledger_cost_per_byte
-                .checked_mul_u64(value.len().try_into().map_err(|_| {
-                    ExecutionError::RuntimeError("value in datastore is too big".to_string())
-                })?)
-                .ok_or_else(|| {
-                    ExecutionError::RuntimeError(
-                        "overflow when calculating storage cost for datastore value".to_string(),
-                    )
-                })?;
+            let value_storage_cost = self.get_storage_cost_datastore_value(&value)?;
             self.transfer_coins(
                 Some(*addr),
                 None,
@@ -511,16 +514,7 @@ impl SpeculativeLedger {
     pub fn delete_data_entry(&mut self, addr: &Address, key: &[u8]) -> Result<(), ExecutionError> {
         // check if the entry exists
         if let Some(value) = self.get_data_entry(addr, key) {
-            let value_storage_cost = self
-                .ledger_cost_per_byte
-                .checked_mul_u64(value.len().try_into().map_err(|_| {
-                    ExecutionError::RuntimeError("value in datastore is too big.".to_string())
-                })?)
-                .ok_or_else(|| {
-                    ExecutionError::RuntimeError(
-                        "overflow when calculating storage cost for datastore value".to_string(),
-                    )
-                })?;
+            let value_storage_cost = self.get_storage_cost_datastore_value(&value)?;
             self.transfer_coins(
                 None,
                 Some(*addr),
