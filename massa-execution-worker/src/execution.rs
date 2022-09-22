@@ -549,13 +549,8 @@ impl ExecutionState {
         sender_addr: Address,
     ) -> Result<(), ExecutionError> {
         // process ExecuteSC operations only
-        let (bytecode, max_gas, coins) = match &operation {
-            OperationType::ExecuteSC {
-                data,
-                max_gas,
-                coins,
-                ..
-            } => (data, max_gas, coins),
+        let (bytecode, max_gas) = match &operation {
+            OperationType::ExecuteSC { data, max_gas, .. } => (data, max_gas),
             _ => panic!("unexpected operation type"),
         };
 
@@ -565,12 +560,11 @@ impl ExecutionState {
 
             // Set the call stack to a single element:
             // * the execution will happen in the context of the address of the operation's sender
-            // * the context will signal that `coins` were credited to the balance of the sender during that call
             // * the context will give the operation's sender write access to its own ledger entry
             // This needs to be defined before anything can fail, so that the emitted event contains the right stack
             context.stack = vec![ExecutionStackElement {
                 address: sender_addr,
-                coins: *coins,
+                coins: Amount::zero(),
                 owned_addresses: vec![sender_addr],
             }];
         };

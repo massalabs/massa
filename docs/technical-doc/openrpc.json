@@ -1376,7 +1376,6 @@
                 "title": "ExecuteSC",
                 "description": "Execute Smart Contract",
                 "required": [
-                    "coins",
                     "data",
                     "gas_price",
                     "max_gas"
@@ -1393,10 +1392,6 @@
                     "max_gas": {
                         "description": "Maximum amount of gas that the execution of the contract is allowed to cost.",
                         "type": "number"
-                    },
-                    "coins": {
-                        "description": "Represent an Amount in coins that are spent by consensus and are available in the execution context of the contract",
-                        "type": "string"
                     },
                     "gas_price": {
                         "description": "Represent an Amount in coins, price per unit of gas that the caller is willing to pay for the execution.",

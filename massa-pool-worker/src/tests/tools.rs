@@ -130,12 +130,10 @@ pub fn _create_executesc(
     let keypair = KeyPair::generate();
 
     let data = vec![42; 7];
-    let coins = 0_u64;
 
     let op = OperationType::ExecuteSC {
         data,
         max_gas,
-        coins: Amount::from_str(&coins.to_string()).unwrap(),
         gas_price: Amount::from_str(&gas_price.to_string()).unwrap(),
         datastore: BTreeMap::new(),
     };
