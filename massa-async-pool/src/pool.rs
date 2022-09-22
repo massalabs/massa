@@ -65,12 +65,12 @@ impl AsyncPool {
         }
     }
 
-    /// Applies speculative execution changes to the final asynchronous pool.
-    /// Also computes the pool hash.
+    /// Applies speculative execution changes to the final asynchronous pool and computes the hash.
+    /// To be used on finality and in bootstrap only.
     ///
     /// # arguments
     /// * `changes`: `AsyncPoolChanges` listing all asynchronous pool changes (message insertions/deletions)
-    pub fn apply_final_changes(&mut self, changes: &AsyncPoolChanges) {
+    pub fn apply_changes(&mut self, changes: &AsyncPoolChanges) {
         let message_id_ser = AsyncMessageIdSerializer::new();
         let message_ser = AsyncMessageSerializer::new();
 

@@ -157,7 +157,6 @@ impl PoSFinalState {
         slot: Slot,
         feed_selector: bool,
     ) -> PosResult<()> {
-        // TODO
         let slots_per_cycle: usize = self
             .periods_per_cycle
             .saturating_mul(self.thread_count as u64)
