@@ -573,22 +573,6 @@ impl ExecutionState {
                 coins: *coins,
                 owned_addresses: vec![sender_addr],
             }];
-
-            // Debit the sender's balance with the coins to transfer
-            if let Err(err) = context.transfer_coins(Some(sender_addr), None, *coins, false) {
-                return Err(ExecutionError::RuntimeError(format!(
-                    "failed to debit operation sender {} with {} operation coins: {}",
-                    sender_addr, *coins, err
-                )));
-            }
-
-            // Credit the operation sender with `coins` coins.
-            if let Err(err) = context.transfer_coins(None, Some(sender_addr), *coins, false) {
-                return Err(ExecutionError::RuntimeError(format!(
-                    "failed to credit operation sender {} with {} operation coins: {}",
-                    sender_addr, *coins, err
-                )));
-            }
         };
 
         // run the VM on the bytecode contained in the operation
