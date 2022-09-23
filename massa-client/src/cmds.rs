@@ -226,9 +226,7 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(
-            args = "SenderAddress TargetAddress FunctionName Parameter MaxGas GasPrice Coins Fee",
-        ),
+        props(args = "SenderAddress TargetAddress FunctionName Parameter MaxGas GasPrice Fee",),
         message = "create and send an operation to call a function of a smart contract"
     )]
     call_smart_contract,
@@ -824,14 +822,13 @@ impl Command {
                 Ok(Box::new(()))
             }
             Command::send_smart_contract => {
-                if parameters.len() != 6 {
+                if parameters.len() != 5 {
                     bail!("wrong number of parameters");
                 }
                 let addr = parameters[0].parse::<Address>()?;
                 let path = parameters[1].parse::<PathBuf>()?;
                 let max_gas = parameters[2].parse::<u64>()?;
                 let gas_price = parameters[3].parse::<Amount>()?;
-                let coins = parameters[4].parse::<Amount>()?;
                 let fee = parameters[5].parse::<Amount>()?;
 
                 if !json {
@@ -878,7 +875,6 @@ impl Command {
                     OperationType::ExecuteSC {
                         data,
                         max_gas,
-                        coins,
                         gas_price,
                         datastore,
                     },
