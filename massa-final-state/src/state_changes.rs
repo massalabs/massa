@@ -30,12 +30,17 @@ pub struct StateChanges {
 }
 
 /// Basic `StateChanges` serializer.
-#[derive(Default)]
 pub struct StateChangesSerializer {
     ledger_changes_serializer: LedgerChangesSerializer,
     async_pool_changes_serializer: AsyncPoolChangesSerializer,
     pos_changes_serializer: PoSChangesSerializer,
     executed_ops_serializer: ExecutedOpsSerializer,
+}
+
+impl Default for StateChangesSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl StateChangesSerializer {

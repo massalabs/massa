@@ -100,7 +100,6 @@ enum MessageServerTypeId {
 }
 
 /// Serializer for `BootstrapServerMessage`
-#[derive(Default)]
 pub struct BootstrapServerMessageSerializer {
     u32_serializer: U32VarIntSerializer,
     time_serializer: MassaTimeSerializer,
@@ -110,6 +109,12 @@ pub struct BootstrapServerMessageSerializer {
     bootstrapable_graph_serializer: BootstrapableGraphSerializer,
     vec_u8_serializer: VecU8Serializer,
     slot_serializer: SlotSerializer,
+}
+
+impl Default for BootstrapServerMessageSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BootstrapServerMessageSerializer {

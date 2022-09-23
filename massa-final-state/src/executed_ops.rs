@@ -3,7 +3,7 @@
 //! This file defines a structure to list and prune previously executed operations.
 //! Used to detect operation reuse.
 
-use massa_hash::{Hash, HashDeserializer};
+use massa_hash::{Hash, HashDeserializer, HashSerializer};
 use massa_models::{
     error::ModelsError,
     operation::{OperationId, OperationIdDeserializer},
@@ -12,8 +12,8 @@ use massa_models::{
     wrapped::Id,
 };
 use massa_serialization::{
-    Deserializer, OptionDeserializer, SerializeError, Serializer, U64VarIntDeserializer,
-    U64VarIntSerializer,
+    Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
+    U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::{
     error::{context, ContextError, ParseError},
@@ -233,10 +233,16 @@ impl Deserializer<ExecutedOpsStreamingStep> for ExecutedOpsStreamingStepDeserial
 }
 
 /// `ExecutedOps` Serializer
-#[derive(Default)]
 pub struct ExecutedOpsSerializer {
     slot_serializer: SlotSerializer,
     u64_serializer: U64VarIntSerializer,
+    opt_hash_serializer: OptionSerializer<Hash, HashSerializer>,
+}
+
+impl Default for ExecutedOpsSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ExecutedOpsSerializer {
@@ -245,6 +251,7 @@ impl ExecutedOpsSerializer {
         ExecutedOpsSerializer {
             slot_serializer: SlotSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
+            opt_hash_serializer: OptionSerializer::new(HashSerializer::new()),
         }
     }
 }
@@ -263,13 +270,8 @@ impl Serializer<ExecutedOps> for ExecutedOpsSerializer {
             self.slot_serializer.serialize(slot, buffer)?;
         }
 
-        // note: mimic the behaviour of OptionSerializer because we have not hash serializer
-        if let Some(current_hash) = value.hash {
-            buffer.push(b'1');
-            buffer.extend(current_hash.to_bytes());
-        } else {
-            buffer.push(b'0');
-        }
+        // encode the hash
+        self.opt_hash_serializer.serialize(&value.hash, buffer)?;
         Ok(())
     }
 }
