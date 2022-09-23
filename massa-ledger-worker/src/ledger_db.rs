@@ -522,7 +522,7 @@ impl LedgerDB {
             *Rc::get_mut(&mut last_key).ok_or_else(|| {
                 nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Fail))
             })? = Some(key.clone());
-            batch.write_batch.put_cf(handle, key, value);
+            self.put_entry_value(handle, &mut batch, &key, &value);
             Ok((rest, ()))
         })(data)
         .map_err(|_| ModelsError::SerializeError("Error in deserialization".to_string()))?;
