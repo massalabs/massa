@@ -123,6 +123,7 @@ impl Endpoints for API<Public> {
             address,
             simulated_gas_price,
             bytecode,
+            operation_datastore,
         } in reqs
         {
             let address = address.unwrap_or_else(|| {
@@ -144,8 +145,7 @@ impl Endpoints for API<Public> {
                     address,
                     coins: Default::default(),
                     owned_addresses: vec![address],
-                    //TODO: Get this from the api parameters
-                    operation_datastore: None
+                    operation_datastore,
                 }],
             };
 
@@ -214,15 +214,13 @@ impl Endpoints for API<Public> {
                         address: caller_address,
                         coins: Default::default(),
                         owned_addresses: vec![caller_address],
-                        //TODO: Get this from the api parameters
-                        operation_datastore: None
+                        operation_datastore: None, // should always be None
                     },
                     ExecutionStackElement {
                         address: target_address,
                         coins: Default::default(),
                         owned_addresses: vec![target_address],
-                        //TODO: Get this from the api parameters
-                        operation_datastore: None
+                        operation_datastore: None, // should always be None
                     },
                 ],
             };

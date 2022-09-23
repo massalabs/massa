@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::address::ExecutionAddressCycleInfo;
+use crate::datastore::Datastore;
 use crate::endorsement::{EndorsementId, WrappedEndorsement};
 use crate::ledger_models::LedgerData;
 use crate::node::NodeId;
@@ -554,6 +555,8 @@ pub struct ReadOnlyBytecodeExecution {
     pub bytecode: Vec<u8>,
     /// caller's address, optional
     pub address: Option<Address>,
+    /// Operation datastore, optional
+    pub operation_datastore: Option<Datastore>,
 }
 
 /// read SC call request

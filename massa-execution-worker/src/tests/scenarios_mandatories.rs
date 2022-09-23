@@ -18,9 +18,9 @@ use massa_models::{
     api::EventFilter,
     block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock},
     config::THREAD_COUNT,
+    datastore::Datastore,
     operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
     wrapped::WrappedContent,
-    datastore::Datastore
 };
 use massa_pos_exports::SelectorConfig;
 use massa_pos_worker::start_selector_worker;
@@ -589,13 +589,11 @@ fn sc_datastore() {
     // you can check the source code of the following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/datastore.wasm");
 
-    let datastore = BTreeMap::from([
-        (vec![65, 66], vec![255]),
-        (vec![9], vec![10, 11]),
-    ]);
+    let datastore = BTreeMap::from([(vec![65, 66], vec![255]), (vec![9], vec![10, 11])]);
 
     // create the block contaning the erroneous smart contract execution operation
-    let operation = create_execute_sc_operation_with_datastore(&keypair, bytecode, datastore).unwrap();
+    let operation =
+        create_execute_sc_operation_with_datastore(&keypair, bytecode, datastore).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
@@ -621,7 +619,6 @@ fn sc_datastore() {
     // stop the execution controller
     manager.stop();
 }
-
 
 #[test]
 #[serial]
@@ -665,13 +662,13 @@ fn set_bytecode_error() {
 
     // retrieve the event emitted by the execution error
     let events = controller.get_filtered_sc_output_event(EventFilter::default());
-        // match the events
-        assert!(!events.is_empty(), "One event was expected");
-        assert!(events[0].data.contains("massa_execution_error"));
-        assert!(events[0]
-            .data
-            .contains("runtime error when executing operation"));
-        assert!(events[0].data.contains("can't set the bytecode of address"));
+    // match the events
+    assert!(!events.is_empty(), "One event was expected");
+    assert!(events[0].data.contains("massa_execution_error"));
+    assert!(events[0]
+        .data
+        .contains("runtime error when executing operation"));
+    assert!(events[0].data.contains("can't set the bytecode of address"));
 }
 
 #[test]
@@ -747,7 +744,7 @@ fn create_execute_sc_operation(
 fn create_execute_sc_operation_with_datastore(
     sender_keypair: &KeyPair,
     data: &[u8],
-    datastore: Datastore
+    datastore: Datastore,
 ) -> Result<WrappedOperation, ExecutionError> {
     let op = OperationType::ExecuteSC {
         data: data.to_vec(),
