@@ -22,7 +22,7 @@ pub enum ModelsError {
     BufferError(String),
     /// `MassaHash` error: {0}
     MassaHashError(#[from] massa_hash::MassaHashError),
-    /// massa_signature error: {0}
+    /// `massa_signature` error: {0}
     MassaSignatureError(#[from] massa_signature::MassaSignatureError),
     /// thread overflow error
     ThreadOverflowError,

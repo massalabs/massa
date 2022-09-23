@@ -68,7 +68,7 @@ pub struct NetworkSettings {
     pub max_bytes_write: f64,
 }
 
-/// Bootstrap config.
+/// Bootstrap configuration.
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapSettings {
     pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
@@ -154,7 +154,7 @@ pub struct ConsensusSettings {
     pub max_item_return_count: usize,
 }
 
-/// Protocol Configuration, read from toml user config file
+/// Protocol Configuration, read from toml user configuration file
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct ProtocolSettings {
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node

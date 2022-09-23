@@ -45,7 +45,7 @@ pub struct ConsensusWorker {
     final_block_stats: VecDeque<(MassaTime, Address, bool)>,
     /// Blocks that come from protocol used for stats and ids are removed when inserted in `final_block_stats`
     protocol_blocks: VecDeque<(MassaTime, BlockId)>,
-    /// Stale block timestamps
+    /// Stale block timestamp
     stale_block_stats: VecDeque<MassaTime>,
     /// the time span considered for stats
     stats_history_timespan: MassaTime,

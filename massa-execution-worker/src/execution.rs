@@ -295,7 +295,7 @@ impl ExecutionState {
 
         // check block/op thread compatibility
         if op_thread != block_slot.thread {
-            return Err(ExecutionError::InlcudeOperationError(
+            return Err(ExecutionError::IncludeOperationError(
                 "operation vs block thread mismatch".to_string(),
             ));
         }
@@ -314,7 +314,7 @@ impl ExecutionState {
 
             // ignore the operation if it was already executed
             if context.is_op_executed(&operation_id) {
-                return Err(ExecutionError::InlcudeOperationError(
+                return Err(ExecutionError::IncludeOperationError(
                     "operation was executed previously".to_string(),
                 ));
             }
@@ -322,7 +322,7 @@ impl ExecutionState {
             // debit the fee and coins from the operation sender
             // fail execution if there are not enough coins
             if let Err(err) = context.transfer_coins(Some(sender_addr), None, op_fees, false) {
-                return Err(ExecutionError::InlcudeOperationError(format!(
+                return Err(ExecutionError::IncludeOperationError(format!(
                     "could not spend fees: {}",
                     err
                 )));
@@ -793,7 +793,7 @@ impl ExecutionState {
     ///
     /// # Arguments
     /// * `slot`: slot to execute
-    /// * `opt_block`: Storage owning a ref to the block (+ its endorsements, ops, aparents) if there is a block a that slot, otherwise None
+    /// * `opt_block`: Storage owning a ref to the block (+ its endorsements, ops, parents) if there is a block a that slot, otherwise None
     /// * `selector`: Reference to the selector
     ///
     /// # Returns
@@ -1141,7 +1141,7 @@ impl ExecutionState {
     }
 
     /// Returns for a given cycle the stakers taken into account
-    /// by the selector. That correspond to the roll_counts in `cycle - 3`.
+    /// by the selector. That correspond to the `roll_counts` in `cycle - 3`.
     ///
     /// By default it returns an empty map.
     pub fn get_cycle_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64> {

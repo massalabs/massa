@@ -78,9 +78,9 @@ pub struct NetworkConfig {
     pub max_op_datastore_key_length: u8,
     /// Maximum length of an operation datastore value
     pub max_op_datastore_value_length: u64,
-    /// Maximum length function name in call sc
+    /// Maximum length function name in call SC
     pub max_function_name_length: u16,
-    /// Maximum size of parameters in call sc
+    /// Maximum size of parameters in call SC
     pub max_parameters_size: u32,
     /// Controller channel size
     pub controller_channel_size: usize,

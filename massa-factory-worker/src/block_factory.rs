@@ -53,7 +53,7 @@ impl BlockFactoryWorker {
 
     /// Gets the next slot and the instant when it will happen.
     /// Slots can be skipped if we waited too much in-between.
-    /// Extra safety against double-production caused by clock adjustments (this is the role of the previous_slot parameter).
+    /// Extra safety against double-production caused by clock adjustments (this is the role of the `previous_slot` parameter).
     fn get_next_slot(&self, previous_slot: Option<Slot>) -> (Slot, Instant) {
         // get current absolute time
         let now =
@@ -102,7 +102,7 @@ impl BlockFactoryWorker {
         (next_slot, next_instant)
     }
 
-    /// Interruptibly wait until an instant or a stop signal
+    /// Wait and interrupt or wait until an instant or a stop signal
     ///
     /// # Return value
     /// Returns `true` if the instant was reached, otherwise `false` if there was an interruption.

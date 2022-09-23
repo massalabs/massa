@@ -131,13 +131,13 @@ impl RpcClient {
         self.call_method("node_ban_by_id", "()", vec![ids]).await
     }
 
-    /// Unbans given ip address(es)
+    /// Unban given ip address(es)
     /// No confirmation to expect.
     pub async fn node_unban_by_ip(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.call_method("node_unban_by_ip", "()", vec![ips]).await
     }
 
-    /// Unbans given node id(s)
+    /// Unban given node id(s)
     /// No confirmation to expect.
     pub async fn node_unban_by_id(&self, ids: Vec<NodeId>) -> RpcResult<()> {
         self.call_method("node_unban_by_id", "()", vec![ids]).await

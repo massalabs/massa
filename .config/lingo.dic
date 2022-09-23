@@ -1,4 +1,4 @@
-85
+110
 hashmap
 todo/M
 json/M
@@ -80,3 +80,18 @@ dereferenced
 sortable
 rentability
 genericity
+RNG
+wishlist
+workflow
+keypair
+XOR/S
+metadata
+enum
+async
+keypairs
+nom
+deserializers
+Nonces
+NCC
+AEAD
+wasm/MS

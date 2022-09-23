@@ -4,11 +4,11 @@
 //! modules to be tested.
 //!
 //! # Add operations
-//! Fonction: [test_add_operation]
-//! Classic usage of internal `add_operations` function from the [OperationPool].
+//! Function: [`test_add_operation`]
+//! Classic usage of internal `add_operations` function from the [`OperationPool`].
 //!
 //! # Add irrelevant operation
-//! Function: [test_add_irrelevant_operation]
+//! Function: [`test_add_irrelevant_operation`]
 //! Same as classic but we try to add irrelevant operation. (See the definition
 //! chapter below)
 //!
@@ -43,8 +43,7 @@ fn test_add_operation() {
 }
 
 /// Test if adding irrelevant operations make simply skip the add.
-/// # Initilization
-/// Init an
+/// # Initialization
 #[test]
 fn test_add_irrelevant_operation() {
     let pool_config = PoolConfig::default();
@@ -74,7 +73,7 @@ fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
     Operation::new_wrapped(content, OperationSerializer::new(), &sender_keypair).unwrap()
 }
 
-/// TODO refacto old tests
+/// TODO refactor old tests
 #[test]
 #[ignore]
 fn test_pool() {

@@ -42,6 +42,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: spellcheck
+          args: -m 1
 
   check:
     if: github.ref != 'refs/heads/staging'

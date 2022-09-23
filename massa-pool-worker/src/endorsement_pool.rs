@@ -11,14 +11,14 @@ use massa_storage::Storage;
 use std::collections::{BTreeMap, HashMap};
 
 pub struct EndorsementPool {
-    /// config
+    /// configuration
     config: PoolConfig,
 
     /// endorsements indexed by slot, index and block ID
     endorsements_indexed: HashMap<(Slot, u32, BlockId), EndorsementId>,
 
     /// endorsements sorted by increasing inclusion slot for pruning
-    /// indexed by thread, then BTreeMap<(inclusion_slot, index, target_block), endorsement_id>
+    /// indexed by thread, then `BTreeMap<(inclusion_slot, index, target_block), endorsement_id>`
     endorsements_sorted: Vec<BTreeMap<(Slot, u32, BlockId), EndorsementId>>,
 
     /// storage

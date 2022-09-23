@@ -15,7 +15,7 @@ use std::collections::BTreeSet;
 use crate::types::{OperationInfo, PoolOperationCursor};
 
 pub struct OperationPool {
-    /// config
+    /// configuration
     config: PoolConfig,
 
     /// operations map
