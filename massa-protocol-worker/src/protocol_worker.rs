@@ -367,10 +367,7 @@ impl ProtocolWorker {
                 new_endorsements.keys().copied().collect(),
                 self.config.max_node_known_endorsements_size,
             );
-            let to_send = new_endorsements
-                .into_iter()
-                .map(|(_, op)| op)
-                .collect::<Vec<_>>();
+            let to_send: Vec<WrappedEndorsement> = new_endorsements.into_values().collect();
             if !to_send.is_empty() {
                 let res = self
                     .network_command_sender
