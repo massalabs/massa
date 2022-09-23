@@ -226,7 +226,9 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "SenderAddress TargetAddress FunctionName Parameter MaxGas GasPrice Coins Fee",),
+        props(
+            args = "SenderAddress TargetAddress FunctionName Parameter MaxGas GasPrice Coins Fee",
+        ),
         message = "create and send an operation to call a function of a smart contract"
     )]
     call_smart_contract,

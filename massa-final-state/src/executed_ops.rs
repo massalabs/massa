@@ -140,6 +140,51 @@ impl ExecutedOps {
     }
 }
 
+#[test]
+fn test_executed_ops_xor_computing() {
+    let mut a = ExecutedOps::default();
+    let mut b = ExecutedOps::default();
+    let mut c = ExecutedOps::default();
+    // initialize the three different objects
+    for i in 0u8..20 {
+        if i < 10 {
+            a.insert(
+                OperationId::new(Hash::compute_from(&[i])),
+                Slot {
+                    period: i as u64,
+                    thread: 0,
+                },
+            );
+        } else {
+            b.insert(
+                OperationId::new(Hash::compute_from(&[i])),
+                Slot {
+                    period: (i as u64),
+                    thread: 0,
+                },
+            );
+        }
+        c.insert(
+            OperationId::new(Hash::compute_from(&[i])),
+            Slot {
+                period: (i as u64),
+                thread: 0,
+            },
+        );
+    }
+    // extend a with b which performs a.hash ^ b.hash
+    a.extend(b);
+    // check that a.hash ^ b.hash = c.hash
+    assert_eq!(a.hash, c.hash);
+    // prune every element
+    a.prune(Slot {
+        period: 20,
+        thread: 0,
+    });
+    // at this point the hash should have been XORed with itself
+    assert_eq!(a.hash, Some(Hash::from_bytes(&[0; 32])));
+}
+
 /// Executed operations bootstrap streaming steps
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum ExecutedOpsStreamingStep {

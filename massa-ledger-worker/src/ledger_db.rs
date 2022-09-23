@@ -249,6 +249,7 @@ impl LedgerDB {
         } else {
             // initial ledger_hash value to avoid matching an option in every XOR operation
             // because of a one time case being an empty ledger
+            // also note that the if you XOR a hash with itself result is LEDGER_HASH_INITIAL_BYTES
             Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES)
         }
     }
