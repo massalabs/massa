@@ -21,13 +21,13 @@ pub enum ExecutionError {
     /// `ModelsError`: {0}
     ModelsError(#[from] massa_models::error::ModelsError),
 
-    /// RollBuy error: {0}
+    /// `RollBuy` error: {0}
     RollBuyError(String),
 
-    /// RollSell error: {0}
+    /// `RollSell` error: {0}
     RollSellError(String),
 
-    /// Transaction error: {0}
+    /// `Transaction` error: {0}
     TransactionError(String),
 
     /// Block gas error: {0}
@@ -39,6 +39,6 @@ pub enum ExecutionError {
     /// Not enough gas in the block: {0}
     NotEnoughGas(String),
 
-    /// Inlcude operation error: {0}
-    InlcudeOperationError(String),
+    /// Include operation error: {0}
+    IncludeOperationError(String),
 }

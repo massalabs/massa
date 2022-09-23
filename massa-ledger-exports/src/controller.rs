@@ -11,17 +11,11 @@ pub trait LedgerController: Send + Sync + Debug {
     /// Loads ledger from file
     fn load_initial_ledger(&mut self) -> Result<(), LedgerError>;
 
-    /// Gets the sequential balance of a ledger entry
+    /// Gets the balance of a ledger entry
     ///
     /// # Returns
-    /// The sequential balance, or None if the ledger entry was not found
-    fn get_sequential_balance(&self, addr: &Address) -> Option<Amount>;
-
-    /// Gets the parallel balance of a ledger entry
-    ///
-    /// # Returns
-    /// The parallel balance, or None if the ledger entry was not found
-    fn get_parallel_balance(&self, addr: &Address) -> Option<Amount>;
+    /// The balance, or None if the ledger entry was not found
+    fn get_balance(&self, addr: &Address) -> Option<Amount>;
 
     /// Gets a copy of the bytecode of a ledger entry
     ///
@@ -58,7 +52,7 @@ pub trait LedgerController: Send + Sync + Debug {
     /// Get every key of the datastore for a given address.
     ///
     /// # Returns
-    /// A BTreeSet of the datastore keys
+    /// A `BTreeSet` of the datastore keys
     fn get_datastore_keys(&self, addr: &Address) -> BTreeSet<Vec<u8>>;
 
     /// Get a part of the ledger
@@ -79,7 +73,7 @@ pub trait LedgerController: Send + Sync + Debug {
     /// IMPORTANT: This should only be used for debug and test purposes.
     ///
     /// # Returns
-    /// A BTreeMap with the address as key and the balance as value
+    /// A `BTreeMap` with the address as key and the balance as value
     #[cfg(feature = "testing")]
     fn get_every_address(&self) -> std::collections::BTreeMap<Address, Amount>;
 
@@ -88,7 +82,7 @@ pub trait LedgerController: Send + Sync + Debug {
     /// IMPORTANT: This should only be used for debug purposes.
     ///
     /// # Returns
-    /// A BTreeMap with the entry hash as key and the data bytes as value
+    /// A `BTreeMap` with the entry hash as key and the data bytes as value
     #[cfg(feature = "testing")]
     fn get_entire_datastore(&self, addr: &Address) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>>;
 }

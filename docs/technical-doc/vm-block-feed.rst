@@ -13,9 +13,9 @@ Summary
 The general idea is that the Smart Contract Engine (SCE) takes an initial SCE ledger loaded from file and iteratively updates it by executing all Slots in order from (0,0) up to the current latest slot.
 At each one of those slots, there might be a block (either final or in the active Blockclique) containing a certain number of ExecuteSC operations, or a miss (lack of block in the slot). ExecuteSC operations within a block are tentatively executed in the order they appear in the block.
 
-Each one of those ExecuteSC operations has already spent `max_gas * gas_price + coins` from the CSS ledger so that the block creator is certain to get the gas fees (they cannot be spent in-between).
-When an ExecuteSC operation is executed on the SCE side, it immediately credits the block producer with `max_gas * gas_price` in the SCE ledger, then it credits the target address with `coins` in the SCE ledger, then it executes the byte-code inside the ExecuteSC operation.
-If byte-code execution fails (invalid byte-code or execution error), everything is reverted except the `max_gas * gas_price` credit to the block producer and `coins` are sent back to the sender on the SCE side.
+Each one of those ExecuteSC operations has already spent `max_gas * gas_price` from the CSS ledger so that the block creator is certain to get the gas fees (they cannot be spent in-between).
+When an ExecuteSC operation is executed on the SCE side, it immediately credits the block producer with `max_gas * gas_price` in the ledger then it executes the byte-code inside the ExecuteSC operation.
+If byte-code execution fails (invalid byte-code or execution error), everything is reverted except the `max_gas * gas_price` credit to the block producer.
 
 This scheme works in theory but requires heavy optimizations in practice because not everything can be recomputed from genesis at every slot or Blockclique change, especially since old blocks are forgotten. Such optimizations include keeping only a final ledger on the SCE side and a list of changes caused by active blocks that can be applied to the final ledger on-the-fly.
 

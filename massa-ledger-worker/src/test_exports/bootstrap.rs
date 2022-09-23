@@ -32,10 +32,7 @@ pub fn create_final_ledger(
 
 /// asserts that two ledger entries are the same
 pub fn assert_eq_ledger_entry(v1: &LedgerEntry, v2: &LedgerEntry) {
-    assert_eq!(
-        v1.parallel_balance, v2.parallel_balance,
-        "parallel balance mismatch"
-    );
+    assert_eq!(v1.balance, v2.balance, "balance mismatch");
     assert_eq!(v1.bytecode, v2.bytecode, "bytecode mismatch");
     assert_eq!(
         v1.datastore.len(),
@@ -58,8 +55,7 @@ pub fn assert_eq_ledger(v1: &dyn LedgerController, v2: &dyn LedgerController) {
             (
                 *addr,
                 LedgerEntry {
-                    sequential_balance: *balance,
-                    parallel_balance: v1.get_parallel_balance(addr).unwrap_or_default(),
+                    balance: *balance,
                     bytecode: v1.get_bytecode(addr).unwrap_or_default(),
                     datastore: v1.get_entire_datastore(addr),
                 },
@@ -73,8 +69,7 @@ pub fn assert_eq_ledger(v1: &dyn LedgerController, v2: &dyn LedgerController) {
             (
                 *addr,
                 LedgerEntry {
-                    sequential_balance: *balance,
-                    parallel_balance: v1.get_parallel_balance(addr).unwrap_or_default(),
+                    balance: *balance,
                     bytecode: v2.get_bytecode(addr).unwrap_or_default(),
                     datastore: v2.get_entire_datastore(addr),
                 },

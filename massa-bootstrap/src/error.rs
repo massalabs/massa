@@ -30,7 +30,7 @@ pub enum BootstrapError {
     UnexpectedConnectionDrop,
     /// `massa_hash` error: {0}
     MassaHashError(#[from] MassaHashError),
-    /// massa_signature error {0}
+    /// `massa_signature` error {0}
     MassaSignatureError(#[from] massa_signature::MassaSignatureError),
     /// time error: {0}
     TimeError(#[from] TimeError),
@@ -40,7 +40,7 @@ pub enum BootstrapError {
     NetworkError(#[from] NetworkError),
     /// final state error: {0}
     FinalStateError(#[from] FinalStateError),
-    /// pos error: {0}
+    /// Proof-of-Stake error: {0}
     PoSError(#[from] PosError),
     /// join error: {0}
     JoinError(#[from] tokio::task::JoinError),

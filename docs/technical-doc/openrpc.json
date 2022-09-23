@@ -1339,9 +1339,8 @@
                 "required": [
                     "gas_price",
                     "max_gas",
-                    "parallel_coins",
                     "param",
-                    "sequential_coins",
+                    "coins",
                     "target_addr",
                     "target_func"
                 ],
@@ -1362,11 +1361,7 @@
                     "max_gas": {
                         "type": "number"
                     },
-                    "sequential_coins": {
-                        "description": "Amount",
-                        "type": "number"
-                    },
-                    "parallel_coins": {
+                    "coins": {
                         "description": "Amount",
                         "type": "number"
                     },
@@ -1381,7 +1376,6 @@
                 "title": "ExecuteSC",
                 "description": "Execute Smart Contract",
                 "required": [
-                    "coins",
                     "data",
                     "gas_price",
                     "max_gas"
@@ -1398,10 +1392,6 @@
                     "max_gas": {
                         "description": "Maximum amount of gas that the execution of the contract is allowed to cost.",
                         "type": "number"
-                    },
-                    "coins": {
-                        "description": "Represent an Amount in coins that are spent by consensus and are available in the execution context of the contract",
-                        "type": "string"
                     },
                     "gas_price": {
                         "description": "Represent an Amount in coins, price per unit of gas that the caller is willing to pay for the execution.",
@@ -1993,12 +1983,10 @@
                 "required": [
                     "address",
                     "thread",
-                    "final_parallel_balance",
-                    "final_sequential_balance",
+                    "final_balance",
                     "final_roll_count",
                     "final_datastore_keys",
-                    "candidate_parallel_balance",
-                    "candidate_sequential_balance",
+                    "candidate_balance",
                     "candidate_roll_count",
                     "candidate_datastore_keys",
                     "deferred_credits",
@@ -2019,12 +2007,8 @@
                         "description": "The thread the address belongs to",
                         "type": "number"
                     },
-                    "final_sequential_balance": {
-                        "description": "The final sequential balance",
-                        "type": "number"
-                    },
-                    "final_parallel_balance": {
-                        "description": "The final parallel balance",
+                    "final_balance": {
+                        "description": "The final balance",
                         "type": "number"
                     },
                     "final_roll_count": {
@@ -2041,12 +2025,8 @@
                             }
                         }
                     },
-                    "candidate_sequential_balance": {
-                        "description": "The candidate sequential balance",
-                        "type": "number"
-                    },
-                    "candidate_parallel_balance": {
-                        "description": "The candidate parallel balance",
+                    "candidate_balance": {
+                        "description": "The candidate balance",
                         "type": "number"
                     },
                     "candidate_roll_count": {

@@ -15,7 +15,7 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use serial_test::serial;
 
-/// the data input to create the public keys was generated using the secp256k1 curve
+/// the data input to create the public keys was generated using the `secp256k1` curve
 /// a test using this function is a regression test not an implementation test
 fn get_export_active_test_block() -> (WrappedBlock, ExportActiveBlock) {
     let keypair = KeyPair::generate();

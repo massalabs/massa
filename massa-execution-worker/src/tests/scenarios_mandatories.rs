@@ -334,12 +334,12 @@ pub fn send_and_receive_transaction() {
     );
     controller.update_blockclique_status(finalized_blocks, Default::default());
     std::thread::sleep(Duration::from_millis(10));
-    // check recipient sequential balance
+    // check recipient balance
     assert_eq!(
         sample_state
             .read()
             .ledger
-            .get_sequential_balance(&recipient_address)
+            .get_balance(&recipient_address)
             .unwrap(),
         Amount::from_str("100").unwrap()
     );
@@ -393,11 +393,11 @@ pub fn roll_buy() {
     );
     controller.update_blockclique_status(finalized_blocks, Default::default());
     std::thread::sleep(Duration::from_millis(10));
-    // check roll count of the buyer address and its sequential balance
+    // check roll count of the buyer address and its balance
     let sample_read = sample_state.read();
     assert_eq!(sample_read.pos_state.get_rolls_for(&address), 110);
     assert_eq!(
-        sample_read.ledger.get_sequential_balance(&address).unwrap(),
+        sample_read.ledger.get_balance(&address).unwrap(),
         Amount::from_str("299_000").unwrap()
     );
     // stop the execution controller
@@ -464,7 +464,7 @@ pub fn roll_sell() {
         credits
     );
     assert_eq!(
-        controller.get_final_and_candidate_sequential_balances(&[address]),
+        controller.get_final_and_candidate_balance(&[address]),
         vec![(
             Some(Amount::from_str("300_000").unwrap()),
             Some(Amount::from_str("309_000").unwrap())
@@ -500,7 +500,7 @@ pub fn missed_blocks_roll_slash() {
     let address = Address::from_public_key(&keypair.get_public_key());
     // check its balances
     assert_eq!(
-        controller.get_final_and_candidate_sequential_balances(&[address]),
+        controller.get_final_and_candidate_balance(&[address]),
         vec![(
             Some(Amount::from_str("300_000").unwrap()),
             Some(Amount::from_str("310_000").unwrap())
@@ -622,6 +622,58 @@ fn sc_datastore() {
     manager.stop();
 }
 
+
+#[test]
+#[serial]
+fn set_bytecode_error() {
+    // setup the period duration and the maximum gas for asynchronous messages execution
+    let exec_cfg = ExecutionConfig {
+        t0: 100.into(),
+        max_async_gas: 100_000,
+        ..ExecutionConfig::default()
+    };
+    // get a sample final state
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+    // init the storage
+    let mut storage = Storage::create_root();
+    // start the execution worker
+    let (_manager, controller) = start_execution_worker(
+        exec_cfg,
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
+    // keypair associated to thread 0
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    // load bytecode
+    // you can check the source code of the following wasm file in massa-sc-examples
+    let bytecode = include_bytes!("./wasm/set_bytecode_fail.wasm");
+    // create the block contaning the erroneous smart contract execution operation
+    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    storage.store_operations(vec![operation.clone()]);
+    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+    // store the block in storage
+    storage.store_block(block.clone());
+    // set our block as a final block
+    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
+    finalized_blocks.insert(
+        block.content.header.content.slot,
+        (block.id, storage.clone()),
+    );
+    controller.update_blockclique_status(finalized_blocks, Default::default());
+    std::thread::sleep(Duration::from_millis(10));
+
+    // retrieve the event emitted by the execution error
+    let events = controller.get_filtered_sc_output_event(EventFilter::default());
+        // match the events
+        assert!(!events.is_empty(), "One event was expected");
+        assert!(events[0].data.contains("massa_execution_error"));
+        assert!(events[0]
+            .data
+            .contains("runtime error when executing operation"));
+        assert!(events[0].data.contains("can't set the bytecode of address"));
+}
+
 #[test]
 #[serial]
 fn generate_events() {
@@ -675,7 +727,6 @@ fn create_execute_sc_operation(
     let op = OperationType::ExecuteSC {
         data: data.to_vec(),
         max_gas: 100_000,
-        coins: Amount::from_str("10").unwrap(),
         gas_price: Amount::from_mantissa_scale(1, 0),
         datastore: BTreeMap::new(),
     };
@@ -701,7 +752,6 @@ fn create_execute_sc_operation_with_datastore(
     let op = OperationType::ExecuteSC {
         data: data.to_vec(),
         max_gas: 100_000,
-        coins: Amount::from_str("10").unwrap(),
         gas_price: Amount::from_mantissa_scale(1, 0),
         datastore: datastore,
     };
@@ -730,8 +780,7 @@ fn create_call_sc_operation(
     let op = OperationType::CallSC {
         max_gas,
         target_addr,
-        parallel_coins: Amount::from_str("0").unwrap(),
-        sequential_coins: Amount::from_str("0").unwrap(),
+        coins: Amount::from_str("0").unwrap(),
         gas_price,
         target_func,
         param,

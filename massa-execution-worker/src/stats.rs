@@ -18,7 +18,7 @@ pub struct ExecutionStatsCounter {
 }
 
 impl ExecutionStatsCounter {
-    /// create a new ExecutionStatsCounter
+    /// create a new `ExecutionStatsCounter`
     pub fn new(time_window_duration: MassaTime, compensation_millis: i64) -> Self {
         ExecutionStatsCounter {
             time_window_duration,

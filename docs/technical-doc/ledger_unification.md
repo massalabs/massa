@@ -10,7 +10,7 @@ The goal here is to move the management of both ledgers into the execution modul
 * protocol should still verify operation signatures (invalidates block)
 * consensus should still verify operation reuse (invalidates block)
 * consensus should not check that operations execute properly anymore
-* operation execution can fail but sequential balance fees will always be credited to the block producer 
+* operation execution can fail but balance fees will always be credited to the block producer 
 
 ## Proof-of-Stake
 
@@ -137,8 +137,8 @@ Speculative execution of a slot S of cycle C:
   * speculatively increment `new_pos_changes.production_stats.block_success_count += 1`
   * speculatively push the first bit of the block hash into `new_pos_changes.seed_bits`
   * at every RollBuy operation:
-    * lazily query the sequential balance of the address and check if it has enough coins to buy the rolls
-    * speculatively spend the right amount from the buyer's sequential balance in the ledger
+    * lazily query the balance of the address and check if it has enough coins to buy the rolls
+    * speculatively spend the right amount from the buyer's balance in the ledger
     * speculatively query the current amount of rolls the buyer has
     * speculatively add the bought rolls to new_pos_changes
   * at every RollSell operation:

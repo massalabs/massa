@@ -23,7 +23,7 @@ pub struct OperationInput {
     pub creator_public_key: PublicKey,
     /// The signature of the operation
     pub signature: Signature,
-    /// The serialized version of the content base58 encoded
+    /// The serialized version of the content `base58` encoded
     pub serialized_content: Vec<u8>,
 }
 
@@ -155,7 +155,7 @@ pub enum BlockGraphStatus {
     NotFound,
 }
 
-/// Current Parallel balance ledger info
+/// Current balance ledger info
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct LedgerInfo {
     /// final data
@@ -207,19 +207,15 @@ pub struct AddressInfo {
     /// the thread the address belongs to
     pub thread: u8,
 
-    /// final parallel balance
-    pub final_parallel_balance: Amount,
-    /// final sequential balance
-    pub final_sequential_balance: Amount,
+    /// final balance
+    pub final_balance: Amount,
     /// final roll count
     pub final_roll_count: u64,
     /// final datastore keys
     pub final_datastore_keys: Vec<Vec<u8>>,
 
-    /// candidate parallel balance
-    pub candidate_parallel_balance: Amount,
-    /// candidate sequential balance
-    pub candidate_sequential_balance: Amount,
+    /// candidate balance
+    pub candidate_balance: Amount,
     /// candidate roll count
     pub candidate_roll_count: u64,
     /// candidate datastore keys
@@ -240,7 +236,7 @@ pub struct AddressInfo {
     /// created endorsements
     pub created_endorsements: Vec<EndorsementId>,
 
-    /// cycle infos
+    /// cycle information
     pub cycle_infos: Vec<ExecutionAddressCycleInfo>,
 }
 
@@ -249,13 +245,8 @@ impl std::fmt::Display for AddressInfo {
         writeln!(f, "Address {} (thread {}):", self.address, self.thread)?;
         writeln!(
             f,
-            "\tSequential balance: final={}, candidate={}",
-            self.final_sequential_balance, self.candidate_sequential_balance
-        )?;
-        writeln!(
-            f,
-            "\tParallel balance: final={}, candidate={}",
-            self.final_parallel_balance, self.candidate_parallel_balance
+            "\tBalance: final={}, candidate={}",
+            self.final_balance, self.candidate_balance
         )?;
         writeln!(f, "\tLocked coins:")?;
         for slot_amount in &self.deferred_credits {
@@ -304,10 +295,8 @@ impl AddressInfo {
                 .unwrap_or_default(),
             final_rolls: self.final_roll_count,
             candidate_rolls: self.candidate_roll_count,
-            final_sequential_balance: self.final_sequential_balance,
-            candidate_sequential_balance: self.candidate_sequential_balance,
-            final_parallel_balance: self.final_parallel_balance,
-            candidate_parallel_balance: self.candidate_parallel_balance,
+            final_balance: self.final_balance,
+            candidate_balance: self.candidate_balance,
         }
     }
 }
@@ -340,14 +329,10 @@ pub struct CompactAddressInfo {
     pub final_rolls: u64,
     /// active rolls
     pub active_rolls: u64,
-    /// final sequential balance
-    pub final_sequential_balance: Amount,
-    /// candidate sequential balance
-    pub candidate_sequential_balance: Amount,
-    /// final parallel balance
-    pub final_parallel_balance: Amount,
-    /// candidate parallel balance
-    pub candidate_parallel_balance: Amount,
+    /// final balance
+    pub final_balance: Amount,
+    /// candidate balance
+    pub candidate_balance: Amount,
 }
 
 impl std::fmt::Display for CompactAddressInfo {
@@ -355,13 +340,8 @@ impl std::fmt::Display for CompactAddressInfo {
         writeln!(f, "Address: {} (thread {}):", self.address, self.thread)?;
         writeln!(
             f,
-            "\tSequential balance: final={}, candidate={}",
-            self.final_sequential_balance, self.candidate_sequential_balance
-        )?;
-        writeln!(
-            f,
-            "\tParallel balance: final={}, candidate={}",
-            self.final_parallel_balance, self.candidate_parallel_balance
+            "\tBalance: final={}, candidate={}",
+            self.final_balance, self.candidate_balance
         )?;
         writeln!(
             f,
@@ -384,7 +364,7 @@ pub struct EndorsementInfo {
     pub in_blocks: Vec<BlockId>,
     /// true if the endorsement is final (for example in a final block)
     pub is_final: bool,
-    /// the endorsmeent itself
+    /// the endorsement itself
     pub endorsement: WrappedEndorsement,
 }
 
@@ -516,7 +496,7 @@ pub struct TimeInterval {
     pub end: Option<MassaTime>,
 }
 
-/// Datastore entry query input struct
+/// Datastore entry query input structure
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct DatastoreEntryInput {
     /// associated address of the entry
@@ -525,7 +505,7 @@ pub struct DatastoreEntryInput {
     pub key: Vec<u8>,
 }
 
-/// Datastore entry query output struct
+/// Datastore entry query output structure
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct DatastoreEntryOutput {
     /// final datastore entry value

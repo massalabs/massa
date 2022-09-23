@@ -101,7 +101,7 @@ impl BootstrapPeersDeserializer {
     ///
     /// Arguments:
     ///
-    /// * max_peers: maximum peers that can be serialized
+    /// * `max_peers`: maximum peers that can be serialized
     pub fn new(max_peers: u32) -> Self {
         Self {
             length_deserializer: U32VarIntDeserializer::new(Included(0), Included(max_peers)),
@@ -210,6 +210,7 @@ impl PeerInfo {
     pub fn cleanup(&mut self) {
         // canonicalize IP
         self.ip = self.ip.to_canonical();
+        self.banned = false;
         // ensure that connections are set to zero
         self.active_out_connection_attempts = 0;
         self.active_out_connections = 0;

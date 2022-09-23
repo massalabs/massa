@@ -21,7 +21,7 @@ massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
 massa_hash = { path = "../massa-hash" }
 # massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", tag = "v0.6.10" }
-massa-sc-runtime = { path = "../../massa-sc-runtime" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "datastore_abi_1"}
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_ledger_exports = { path = "../massa-ledger-exports" }

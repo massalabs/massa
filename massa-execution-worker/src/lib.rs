@@ -75,6 +75,7 @@
 #![warn(unused_crate_dependencies)]
 #![feature(is_sorted)]
 #![feature(map_try_insert)]
+#![feature(let_chains)]
 
 mod active_history;
 mod context;

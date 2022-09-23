@@ -68,7 +68,7 @@ pub struct NetworkSettings {
     pub max_bytes_write: f64,
 }
 
-/// Bootstrap config.
+/// Bootstrap configuration.
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapSettings {
     pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
@@ -154,7 +154,7 @@ pub struct ConsensusSettings {
     pub max_item_return_count: usize,
 }
 
-/// Protocol Configuration, read from toml user config file
+/// Protocol Configuration, read from toml user configuration file
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct ProtocolSettings {
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node
@@ -186,6 +186,10 @@ pub struct ProtocolSettings {
     pub asked_operations_pruning_period: MassaTime,
     /// Maximum of operations sent in one message.
     pub max_operations_per_message: u64,
+    /// Time threshold after which operation are not propagated
+    pub max_operations_propagation_time: MassaTime,
+    /// Time threshold after which operation are not propagated
+    pub max_endorsements_propagation_time: MassaTime,
 }
 
 #[cfg(test)]

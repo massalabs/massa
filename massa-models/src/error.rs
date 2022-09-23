@@ -22,7 +22,7 @@ pub enum ModelsError {
     BufferError(String),
     /// `MassaHash` error: {0}
     MassaHashError(#[from] massa_hash::MassaHashError),
-    /// massa_signature error: {0}
+    /// `massa_signature` error: {0}
     MassaSignatureError(#[from] massa_signature::MassaSignatureError),
     /// thread overflow error
     ThreadOverflowError,
@@ -50,6 +50,8 @@ pub enum ModelsError {
     WrongPrefix(String, String),
     /// Wrong operation id size deduced on join
     OperationPrefixJoinError,
+    /// Outdated bootstrap cursor
+    OutdatedBootstrapCursor,
     /// Error raised {0}
     ErrorRaised(String),
 }

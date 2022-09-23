@@ -144,6 +144,8 @@ impl Endpoints for API<Public> {
                     address,
                     coins: Default::default(),
                     owned_addresses: vec![address],
+                    //TODO: Get this from the api parameters
+                    operation_datastore: None
                 }],
             };
 
@@ -212,11 +214,15 @@ impl Endpoints for API<Public> {
                         address: caller_address,
                         coins: Default::default(),
                         owned_addresses: vec![caller_address],
+                        //TODO: Get this from the api parameters
+                        operation_datastore: None
                     },
                     ExecutionStackElement {
                         address: target_address,
                         coins: Default::default(),
                         owned_addresses: vec![target_address],
+                        //TODO: Get this from the api parameters
+                        operation_datastore: None
                     },
                 ],
             };
@@ -764,8 +770,7 @@ impl Endpoints for API<Public> {
                 thread: address.get_thread(self.0.consensus_config.thread_count),
 
                 // final execution info
-                final_parallel_balance: execution_infos.final_parallel_balance,
-                final_sequential_balance: execution_infos.final_sequential_balance,
+                final_balance: execution_infos.final_balance,
                 final_roll_count: execution_infos.final_roll_count,
                 final_datastore_keys: execution_infos
                     .final_datastore_keys
@@ -773,8 +778,7 @@ impl Endpoints for API<Public> {
                     .collect::<Vec<_>>(),
 
                 // candidate execution info
-                candidate_parallel_balance: execution_infos.candidate_parallel_balance,
-                candidate_sequential_balance: execution_infos.candidate_sequential_balance,
+                candidate_balance: execution_infos.candidate_balance,
                 candidate_roll_count: execution_infos.candidate_roll_count,
                 candidate_datastore_keys: execution_infos
                     .candidate_datastore_keys

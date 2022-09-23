@@ -107,7 +107,9 @@ checksum = "8da52d66c7071e2e3fa2a1e5c6d088fec47b593032b254f5e980de8ea54454d6"
 
 [[package]]
 name = "as-ffi-bindings"
-version = "0.2.5"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2208edd363e0fa2147e52cf05a9ed66cb56636e91fc92a78ba0a9193b977b049"
 dependencies = [
  "anyhow",
  "wasmer",
@@ -1610,6 +1612,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.6.9"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=datastore_abi_1#ee2e97d7408811607b90ad1c2c1178e617a3cc5d"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -1947,6 +1950,7 @@ dependencies = [
 name = "massa_ledger_worker"
 version = "0.1.0"
 dependencies = [
+ "massa_hash",
  "massa_ledger_exports",
  "massa_models",
  "massa_serialization",

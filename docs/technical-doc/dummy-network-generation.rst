@@ -51,8 +51,7 @@ Setup your node to use the secret you just generated as its public key and staki
 
     {
         "ADDR": {
-            "sequential_balance": "80000000",
-            "parallel_balance": "80000000",
+            "balance": "80000000",
             "datastore": {},
             "bytecode": []
         }

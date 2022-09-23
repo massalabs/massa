@@ -7,7 +7,7 @@ use massa_models::config::*;
 use massa_time::MassaTime;
 
 impl Default for ExecutionConfig {
-    /// default config used for testing
+    /// default configuration used for testing
     fn default() -> Self {
         Self {
             readonly_queue_length: 100,

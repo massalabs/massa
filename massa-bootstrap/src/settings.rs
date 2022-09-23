@@ -5,7 +5,7 @@ use massa_time::MassaTime;
 use serde::Deserialize;
 use std::net::SocketAddr;
 
-/// Bootstrap config.
+/// Bootstrap configuration.
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapConfig {
     /// Ip address of our bootstrap nodes and their public key.
@@ -80,4 +80,6 @@ pub struct BootstrapConfig {
     pub max_parameters_size: u32,
     /// max ledger changes
     pub max_ledger_changes_count: u64,
+    /// maximum of slot in state changes
+    pub max_changes_slot_count: u32,
 }

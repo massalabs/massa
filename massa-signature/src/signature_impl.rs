@@ -25,7 +25,7 @@ pub const PUBLIC_KEY_SIZE_BYTES: usize = ed25519_dalek::PUBLIC_KEY_LENGTH;
 pub const SECRET_KEY_BYTES_SIZE: usize = ed25519_dalek::SECRET_KEY_LENGTH;
 /// Size of a signature
 pub const SIGNATURE_SIZE_BYTES: usize = ed25519_dalek::SIGNATURE_LENGTH;
-/// `KeyPair` is used for signature and decrypting
+/// `KeyPair` is used for signature and decryption
 pub struct KeyPair(ed25519_dalek::Keypair);
 
 impl Clone for KeyPair {
@@ -112,7 +112,7 @@ impl KeyPair {
     }
 
     /// Returns the Signature produced by signing
-    /// data bytes with a KeyPair.
+    /// data bytes with a `KeyPair`.
     ///
     /// # Example
     ///  ```
@@ -181,7 +181,7 @@ impl KeyPair {
         PublicKey(self.0.public)
     }
 
-    /// Encode a keypair into his base58 form
+    /// Encode a keypair into his `base58` form
     ///
     /// # Example
     /// ```
@@ -193,7 +193,7 @@ impl KeyPair {
         bs58::encode(self.to_bytes()).with_check().into_string()
     }
 
-    /// Decode a base58 encoded keypair
+    /// Decode a `base58` encoded keypair
     ///
     /// # Example
     /// ```

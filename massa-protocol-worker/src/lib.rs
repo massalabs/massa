@@ -7,6 +7,7 @@
 #![feature(ip)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+#![feature(let_chains)]
 
 /// protocol worker
 pub mod protocol_worker;

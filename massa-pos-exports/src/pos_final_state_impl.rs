@@ -20,7 +20,7 @@ use crate::{
 };
 
 impl PoSFinalState {
-    /// create a new PoSFinalState
+    /// create a new `PoSFinalState`
     pub fn new(
         initial_seed_string: &String,
         initial_rolls_path: &PathBuf,
@@ -133,25 +133,30 @@ impl PoSFinalState {
         Ok(())
     }
 
-    /// Technical specification of apply_changes:
+    /// Technical specification of `apply_changes`:
     ///
-    /// set self.last_final_slot = C
-    /// if cycle C is absent from self.cycle_history:
-    ///     push a new empty CycleInfo at the back of self.cycle_history and set its cycle = C
-    ///     pop_front from cycle_history until front() represents cycle C-4 or later (not C-3 because we might need older endorsement draws on the limit between 2 cycles)
-    /// for the cycle C entry of cycle_history:
-    ///     extend seed_bits with changes.seed_bits
-    ///     extend roll_counts with changes.roll_changes
-    ///         delete all entries from roll_counts for which the roll count is zero
-    ///     add each element of changes.production_stats to the cycle's production_stats
-    /// for each changes.deferred_credits targeting cycle Ct:
-    ///     overwrite self.deferred_credits entries of cycle Ct in cycle_history with the ones from change
+    /// set `self.last_final_slot` = C
+    /// if cycle C is absent from `self.cycle_history`:
+    ///     `push` a new empty `CycleInfo` at the back of `self.cycle_history` and set its cycle = C
+    ///     `pop_front` from `cycle_history` until front() represents cycle C-4 or later (not C-3 because we might need older endorsement draws on the limit between 2 cycles)
+    /// for the cycle C entry of `cycle_history`:
+    ///     extend `seed_bits` with `changes.seed_bits`
+    ///     extend `roll_counts` with `changes.roll_changes`
+    ///         delete all entries from `roll_counts` for which the roll count is zero
+    ///     add each element of `changes.production_stats` to the cycle's `production_stats`
+    /// for each `changes.deferred_credits` targeting cycle Ct:
+    ///     overwrite `self.deferred_credits` entries of cycle Ct in `cycle_history` with the ones from change
     ///         remove entries for which Amount = 0
     /// if slot S was the last of cycle C:
     ///     set complete=true for cycle C in the history
-    ///     compute the seed hash and notifies the PoSDrawer for cycle C+3
+    ///     compute the seed hash and notifies the `PoSDrawer` for cycle `C+3`
     ///
-    pub fn apply_changes(&mut self, changes: PoSChanges, slot: Slot) -> PosResult<()> {
+    pub fn apply_changes(
+        &mut self,
+        changes: PoSChanges,
+        slot: Slot,
+        feed_selector: bool,
+    ) -> PosResult<()> {
         let slots_per_cycle: usize = self
             .periods_per_cycle
             .saturating_mul(self.thread_count as u64)
@@ -233,14 +238,14 @@ impl PoSFinalState {
         // notify the PoSDrawer about the newly ready draw data
         // to draw cycle + 2, we use the rng data from cycle - 1 and the seed from cycle
         debug!(
-            "After slot {} PoS cycle list is {:#?}",
+            "After slot {} PoS cycle list is {:?}",
             slot,
             self.cycle_history
                 .iter()
                 .map(|c| (c.cycle, c.complete))
                 .collect::<Vec<(u64, bool)>>()
         );
-        if cycle_completed {
+        if cycle_completed && feed_selector {
             self.feed_selector(cycle.checked_add(2).ok_or_else(|| {
                 PosError::OverflowError("cycle overflow when feeding selector".into())
             })?)
@@ -260,7 +265,7 @@ impl PoSFinalState {
                     .ok_or(PosError::CycleUnavailable(c))?;
                 let cycle_info = &self.cycle_history[index];
                 if !cycle_info.complete {
-                    return Err(PosError::CycleUnfinalised(c));
+                    return Err(PosError::CycleUnfinished(c));
                 }
                 cycle_info.roll_counts.clone()
             }
@@ -277,7 +282,7 @@ impl PoSFinalState {
                     .ok_or(PosError::CycleUnavailable(c))?;
                 let cycle_info = &self.cycle_history[index];
                 if !cycle_info.complete {
-                    return Err(PosError::CycleUnfinalised(c));
+                    return Err(PosError::CycleUnfinished(c));
                 }
                 Hash::compute_from(&cycle_info.rng_seed.clone().into_vec())
             }
@@ -318,7 +323,7 @@ impl PoSFinalState {
         }
     }
 
-    /// Retrives every deferred credit of the given slot
+    /// Retrieves every deferred credit of the given slot
     pub fn get_deferred_credits_at(&self, slot: &Slot) -> PreHashMap<Address, Amount> {
         self.deferred_credits
             .0
@@ -327,7 +332,7 @@ impl PoSFinalState {
             .unwrap_or_default()
     }
 
-    /// Retrives the productions statistics for all addresses on a given cycle
+    /// Retrieves the productions statistics for all addresses on a given cycle
     pub fn get_all_production_stats(
         &self,
         cycle: u64,

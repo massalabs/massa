@@ -11,11 +11,11 @@ use nom::{IResult, Parser};
 use std::collections::BTreeMap;
 use std::ops::Bound::Included;
 
-/// Datastore entry for Ledger & ExecuteSC Operation
+/// Datastore entry for Ledger & `ExecuteSC` Operation
 /// A Datastore is a Key Value store where
 /// Key: Byte array (max length should be 255)
 /// Value: Byte array
-/// What is stored can be arbitrary bytes but can often be smart contract bytecode (aka wasm binary)
+/// What is stored can be arbitrary bytes but can often be smart contract bytecode (aka WASM binary)
 pub type Datastore = BTreeMap<Vec<u8>, Vec<u8>>;
 
 /// Serializer for `Datastore`
