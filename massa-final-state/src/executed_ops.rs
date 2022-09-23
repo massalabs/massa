@@ -51,8 +51,8 @@ impl ExecutedOps {
             } else {
                 self.hash = Some(other_hash);
             }
+            self.ops.extend(other.ops);
         }
-        self.ops.extend(other.ops);
     }
 
     /// check if an operation was executed
@@ -77,6 +77,9 @@ impl ExecutedOps {
             .ops
             .iter()
             .partition(|(_, &last_valid_slot)| last_valid_slot >= max_slot);
+        if removed.is_empty() {
+            return;
+        }
         let hash = self
             .hash
             .as_mut()
@@ -311,7 +314,9 @@ impl Deserializer<ExecutedOps> for ExecutedOpsDeserializer {
                         |input| self.slot_deserializer.deserialize(input),
                     )),
                 ),
-                |input| self.opt_hash_deserializer.deserialize(input),
+                context("Failed hash deserialization", |input| {
+                    self.opt_hash_deserializer.deserialize(input)
+                }),
             )),
         )
         .map(|(elements, hash)| ExecutedOps {
