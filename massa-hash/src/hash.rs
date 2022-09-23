@@ -2,7 +2,7 @@
 
 use crate::error::MassaHashError;
 use crate::settings::HASH_SIZE_BYTES;
-use massa_serialization::Deserializer;
+use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::{
     error::{context, ContextError, ParseError},
     IResult,
@@ -147,6 +147,24 @@ impl Hash {
     /// ```
     pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Hash {
         Hash(blake3::Hash::from(*data))
+    }
+}
+
+/// Serializer for `Hash`
+#[derive(Default)]
+pub struct HashSerializer;
+
+impl HashSerializer {
+    /// Creates a serializer for `Hash`
+    pub const fn new() -> Self {
+        Self
+    }
+}
+
+impl Serializer<Hash> for HashSerializer {
+    fn serialize(&self, value: &Hash, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        buffer.extend(value.to_bytes());
+        Ok(())
     }
 }
 

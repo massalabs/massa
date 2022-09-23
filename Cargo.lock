@@ -1882,6 +1882,7 @@ version = "0.1.0"
 dependencies = [
  "displaydoc",
  "massa_async_pool",
+ "massa_hash",
  "massa_ledger_exports",
  "massa_ledger_worker",
  "massa_models",
@@ -1890,6 +1891,7 @@ dependencies = [
  "massa_signature",
  "nom 7.1.1",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]

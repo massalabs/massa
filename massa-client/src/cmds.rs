@@ -219,14 +219,16 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "SenderAddress PathToBytecode MaxGas GasPrice Coins Fee",),
+        props(args = "SenderAddress PathToBytecode MaxGas GasPrice Fee",),
         message = "create and send an operation containing byte code"
     )]
     send_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "SenderAddress TargetAddress FunctionName Parameter MaxGas GasPrice Fee",),
+        props(
+            args = "SenderAddress TargetAddress FunctionName Parameter MaxGas GasPrice Coins Fee",
+        ),
         message = "create and send an operation to call a function of a smart contract"
     )]
     call_smart_contract,
@@ -829,7 +831,7 @@ impl Command {
                 let path = parameters[1].parse::<PathBuf>()?;
                 let max_gas = parameters[2].parse::<u64>()?;
                 let gas_price = parameters[3].parse::<Amount>()?;
-                let fee = parameters[5].parse::<Amount>()?;
+                let fee = parameters[4].parse::<Amount>()?;
 
                 if !json {
                     match gas_price

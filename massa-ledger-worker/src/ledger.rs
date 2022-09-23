@@ -3,6 +3,7 @@
 //! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
 use crate::ledger_db::{LedgerDB, LedgerSubEntry};
+use massa_hash::Hash;
 use massa_ledger_exports::{
     LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
 };
@@ -152,6 +153,11 @@ impl LedgerController for FinalLedger {
     /// A `BTreeSet` of the datastore keys
     fn get_datastore_keys(&self, addr: &Address) -> BTreeSet<Vec<u8>> {
         self.sorted_ledger.get_datastore_keys(addr)
+    }
+
+    /// Get the current disk ledger hash
+    fn get_ledger_hash(&self) -> Hash {
+        self.sorted_ledger.get_ledger_hash()
     }
 
     /// Get a part of the disk ledger.

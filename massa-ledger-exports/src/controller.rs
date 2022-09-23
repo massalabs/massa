@@ -1,3 +1,4 @@
+use massa_hash::Hash;
 use massa_models::{address::Address, amount::Amount, error::ModelsError, slot::Slot};
 use std::collections::BTreeSet;
 use std::fmt::Debug;
@@ -54,6 +55,9 @@ pub trait LedgerController: Send + Sync + Debug {
     /// # Returns
     /// A `BTreeSet` of the datastore keys
     fn get_datastore_keys(&self, addr: &Address) -> BTreeSet<Vec<u8>>;
+
+    /// Get the current disk ledger hash
+    fn get_ledger_hash(&self) -> Hash;
 
     /// Get a part of the ledger
     /// Used for bootstrap
