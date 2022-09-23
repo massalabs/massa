@@ -2,7 +2,7 @@
 
 use massa_time::MassaTime;
 use serde::Deserialize;
-/// Dinamic protocol configuration mixin static settings and constants configurations.
+/// Dynamic protocol configuration mix in static settings and constants configurations.
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct ProtocolConfig {
     /// running threads count
@@ -44,7 +44,7 @@ pub struct ProtocolConfig {
     pub event_channel_size: usize,
     /// t0
     pub t0: MassaTime,
-    /// genesis_timestamp
+    /// Genesis timestamp
     pub genesis_timestamp: MassaTime,
     /// max time we propagate operations
     pub max_operations_propagation_time: MassaTime,

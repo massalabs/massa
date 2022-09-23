@@ -295,7 +295,7 @@ impl ExecutionState {
 
         // check block/op thread compatibility
         if op_thread != block_slot.thread {
-            return Err(ExecutionError::InlcudeOperationError(
+            return Err(ExecutionError::IncludeOperationError(
                 "operation vs block thread mismatch".to_string(),
             ));
         }
@@ -314,7 +314,7 @@ impl ExecutionState {
 
             // ignore the operation if it was already executed
             if context.is_op_executed(&operation_id) {
-                return Err(ExecutionError::InlcudeOperationError(
+                return Err(ExecutionError::IncludeOperationError(
                     "operation was executed previously".to_string(),
                 ));
             }
@@ -322,7 +322,7 @@ impl ExecutionState {
             // debit the fee and coins from the operation sender
             // fail execution if there are not enough coins
             if let Err(err) = context.transfer_coins(Some(sender_addr), None, op_fees, false) {
-                return Err(ExecutionError::InlcudeOperationError(format!(
+                return Err(ExecutionError::IncludeOperationError(format!(
                     "could not spend fees: {}",
                     err
                 )));
@@ -549,13 +549,8 @@ impl ExecutionState {
         sender_addr: Address,
     ) -> Result<(), ExecutionError> {
         // process ExecuteSC operations only
-        let (bytecode, max_gas, coins) = match &operation {
-            OperationType::ExecuteSC {
-                data,
-                max_gas,
-                coins,
-                ..
-            } => (data, max_gas, coins),
+        let (bytecode, max_gas) = match &operation {
+            OperationType::ExecuteSC { data, max_gas, .. } => (data, max_gas),
             _ => panic!("unexpected operation type"),
         };
 
@@ -565,30 +560,13 @@ impl ExecutionState {
 
             // Set the call stack to a single element:
             // * the execution will happen in the context of the address of the operation's sender
-            // * the context will signal that `coins` were credited to the balance of the sender during that call
             // * the context will give the operation's sender write access to its own ledger entry
             // This needs to be defined before anything can fail, so that the emitted event contains the right stack
             context.stack = vec![ExecutionStackElement {
                 address: sender_addr,
-                coins: *coins,
+                coins: Amount::zero(),
                 owned_addresses: vec![sender_addr],
             }];
-
-            // Debit the sender's balance with the coins to transfer
-            if let Err(err) = context.transfer_coins(Some(sender_addr), None, *coins, false) {
-                return Err(ExecutionError::RuntimeError(format!(
-                    "failed to debit operation sender {} with {} operation coins: {}",
-                    sender_addr, *coins, err
-                )));
-            }
-
-            // Credit the operation sender with `coins` coins.
-            if let Err(err) = context.transfer_coins(None, Some(sender_addr), *coins, false) {
-                return Err(ExecutionError::RuntimeError(format!(
-                    "failed to credit operation sender {} with {} operation coins: {}",
-                    sender_addr, *coins, err
-                )));
-            }
         };
 
         // run the VM on the bytecode contained in the operation
@@ -793,7 +771,7 @@ impl ExecutionState {
     ///
     /// # Arguments
     /// * `slot`: slot to execute
-    /// * `opt_block`: Storage owning a ref to the block (+ its endorsements, ops, aparents) if there is a block a that slot, otherwise None
+    /// * `opt_block`: Storage owning a ref to the block (+ its endorsements, ops, parents) if there is a block a that slot, otherwise None
     /// * `selector`: Reference to the selector
     ///
     /// # Returns
@@ -1141,7 +1119,7 @@ impl ExecutionState {
     }
 
     /// Returns for a given cycle the stakers taken into account
-    /// by the selector. That correspond to the roll_counts in `cycle - 3`.
+    /// by the selector. That correspond to the `roll_counts` in `cycle - 3`.
     ///
     /// By default it returns an empty map.
     pub fn get_cycle_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64> {

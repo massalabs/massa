@@ -25,7 +25,7 @@ pub fn generate_ledger_file(ledger_vec: &HashMap<Address, LedgerData>) -> NamedT
     ledger_file_named
 }
 
-/// generate staking key temp file from keypairs
+/// generate staking key temp file from array of keypair
 pub fn generate_staking_keys_file(staking_keys: &[KeyPair]) -> NamedTempFile {
     use std::io::prelude::*;
     let file_named = NamedTempFile::new().expect("cannot create temp file");

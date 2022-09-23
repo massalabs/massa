@@ -19,7 +19,7 @@ pub struct OperationIndexes {
 impl OperationIndexes {
     /// Insert an operation and populate the indexes.
     /// Arguments:
-    /// - operation: the operation to insert
+    /// * `operation`: the operation to insert
     pub(crate) fn insert(&mut self, operation: WrappedOperation) {
         if let Ok(o) = self.operations.try_insert(operation.id, operation) {
             // update creator index
@@ -32,7 +32,7 @@ impl OperationIndexes {
 
     /// Remove a operation, remove from the indexes and made some clean-up in indexes if necessary.
     /// Arguments:
-    /// - operation_id: the operation id to remove
+    /// * `operation_id`: the operation id to remove
     pub(crate) fn remove(&mut self, operation_id: &OperationId) -> Option<WrappedOperation> {
         if let Some(o) = self.operations.remove(operation_id) {
             // update creator index
@@ -61,7 +61,7 @@ impl OperationIndexes {
 
     /// Get operations created by an address
     /// Arguments:
-    /// - address: the address to get the operations created by
+    /// * `address`: the address to get the operations created by
     ///
     /// Returns:
     /// - optional reference to a set of operations created by that address

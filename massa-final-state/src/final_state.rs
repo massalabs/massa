@@ -135,7 +135,7 @@ impl FinalState {
     /// Every ledgers changes that are after `last_slot` and before or equal of `last_address` must be returned.
     /// Every async pool changes that are after `last_slot` and before or equal of `last_id_async_pool` must be returned.
     ///
-    /// Error case: When the last_slot is too old for `self.changes_history`
+    /// Error case: When the `last_slot` is too old for `self.changes_history`
     pub fn get_state_changes_part(
         &self,
         last_slot: Slot,

@@ -117,11 +117,10 @@ The detailed algorithm is the following:
 * if there is a block B at slot S:
   * Note that the block would have been rejected before if the sum of the `max_gas` of its operations exceeded `config.max_block_gas`
   * for every `ExecuteSC` operation Op of the block B :
-    * Note that Consensus has already debited `Op.max_gas*Op.gas_price+Op.coins` from Op's sender's CSS balance or rejected the block B if there wasn't enough balance to do so
+    * Note that Consensus has already debited `Op.max_gas*Op.gas_price` from Op's sender's CSS balance or rejected the block B if there wasn't enough balance to do so
     * prepare the context for execution:
-      * make `context.ledger_step` credit Op's sender with `Op.coins` in the SCE ledger 
       * make `context.ledger_step` credit the producer of the block B with `Op.max_gas * Op.gas_price` in the SCE ledger
-    * save a snapshot (named `ledger_changes_backup`) of the `context.ledger_step.caused_changes` that will be used to rollback the step's effects on the SCE ledger backt to this point in case bytecode execution fails. This is done because on bytecode execution failure (whether it fails completely or midway) we want to credit the block producer with fees (it's not their fault !) and Op's sender with `Op.coins` (otherwise those coins will be lost !) but revert all the effects of a bytecode execution that failed midway
+    * save a snapshot (named `ledger_changes_backup`) of the `context.ledger_step.caused_changes` that will be used to rollback the step's effects on the SCE ledger backt to this point in case bytecode execution fails. This is done because on bytecode execution failure (whether it fails completely or midway) we want to credit the block producer with fees (it's not their fault !) but revert all the effects of a bytecode execution that failed midway
     * parse and run (call `main()`) the bytecode of operation Op
       * in case of failure (e.g. invalid bytecode), revert `context.ledger_step.caused_changes = ledger_changes_backup`
 * push back the SCE ledger changes caused by the slot `StepHistoryItem { step, block_id (optional), ledger_changes: context.ledger_step.caused_changes  }` into `step_history`

@@ -43,7 +43,7 @@ impl ExecutedOps {
         self.ops.is_empty()
     }
 
-    /// extends with another ExecutedOps
+    /// extends with another `ExecutedOps`
     pub fn extend(&mut self, other: ExecutedOps) {
         if let Some(other_hash) = other.hash {
             if let Some(current_hash) = self.hash.as_mut() {
@@ -70,7 +70,7 @@ impl ExecutedOps {
         self.ops.insert(op_id, last_valid_slot);
     }
 
-    /// Prune all operations that expire strictly before max_slot
+    /// Prune all operations that expire strictly before `max_slot`
     pub fn prune(&mut self, max_slot: Slot) {
         // TODO use slot-sorted structure for more efficient pruning (this has a linear complexity currently)
         let (kept, removed): (PreHashMap<OperationId, Slot>, PreHashMap<OperationId, Slot>) = self
@@ -276,7 +276,7 @@ impl Serializer<ExecutedOps> for ExecutedOpsSerializer {
     }
 }
 
-/// Deserializer for ExecutedOps
+/// Deserializer for `ExecutedOps`
 pub struct ExecutedOpsDeserializer {
     operation_id_deserializer: OperationIdDeserializer,
     slot_deserializer: SlotDeserializer,
@@ -285,7 +285,7 @@ pub struct ExecutedOpsDeserializer {
 }
 
 impl ExecutedOpsDeserializer {
-    /// Create a new deserializer for ExecutedOps
+    /// Create a new deserializer for `ExecutedOps`
     pub fn new(thread_count: u8) -> ExecutedOpsDeserializer {
         ExecutedOpsDeserializer {
             operation_id_deserializer: OperationIdDeserializer::new(),

@@ -174,7 +174,7 @@ impl fmt::Display for Amount {
     }
 }
 
-/// Use display impl in debug to get the decimal representation
+/// Use display implementation in debug to get the decimal representation
 impl fmt::Debug for Amount {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self)

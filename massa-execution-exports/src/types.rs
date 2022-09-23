@@ -31,7 +31,7 @@ pub struct ExecutionAddressInfo {
     /// future deferred credits
     pub future_deferred_credits: BTreeMap<Slot, Amount>,
 
-    /// cycle infos
+    /// cycle information
     pub cycle_infos: Vec<ExecutionAddressCycleInfo>,
 }
 

@@ -73,7 +73,7 @@ impl ExportActiveBlock {
         }
     }
 
-    /// consuming conversion from ExportActiveBlock to ActiveBlock
+    /// consuming conversion from `ExportActiveBlock` to `ActiveBlock`
     pub fn to_active_block(
         self,
         ref_storage: &Storage,

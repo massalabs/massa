@@ -20,7 +20,7 @@ macro_rules! balance_key {
 
 /// Bytecode key formatting macro
 ///
-/// NOTE: still handle separate bytecode for now to avoid too many refactoring at once
+/// NOTE: still handle separate bytecode for now to avoid too many refactor at once
 #[macro_export]
 macro_rules! bytecode_key {
     ($addr:expr) => {
@@ -30,7 +30,7 @@ macro_rules! bytecode_key {
 
 /// Datastore entry key formatting macro
 ///
-/// TODO: add a separator identifier if the need comes to have multiple datastores
+/// TODO: add a separator identifier if the need comes to have multiple datastore
 #[macro_export]
 macro_rules! data_key {
     ($addr:expr, $key:expr) => {

@@ -53,7 +53,7 @@ pub trait LedgerController: Send + Sync + Debug {
     /// Get every key of the datastore for a given address.
     ///
     /// # Returns
-    /// A BTreeSet of the datastore keys
+    /// A `BTreeSet` of the datastore keys
     fn get_datastore_keys(&self, addr: &Address) -> BTreeSet<Vec<u8>>;
 
     /// Get the current disk ledger hash
@@ -77,7 +77,7 @@ pub trait LedgerController: Send + Sync + Debug {
     /// IMPORTANT: This should only be used for debug and test purposes.
     ///
     /// # Returns
-    /// A BTreeMap with the address as key and the balance as value
+    /// A `BTreeMap` with the address as key and the balance as value
     #[cfg(feature = "testing")]
     fn get_every_address(&self) -> std::collections::BTreeMap<Address, Amount>;
 
@@ -86,7 +86,7 @@ pub trait LedgerController: Send + Sync + Debug {
     /// IMPORTANT: This should only be used for debug purposes.
     ///
     /// # Returns
-    /// A BTreeMap with the entry hash as key and the data bytes as value
+    /// A `BTreeMap` with the entry hash as key and the data bytes as value
     #[cfg(feature = "testing")]
     fn get_entire_datastore(&self, addr: &Address) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>>;
 }

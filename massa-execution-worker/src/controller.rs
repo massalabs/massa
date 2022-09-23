@@ -205,7 +205,7 @@ impl ExecutionController for ExecutionControllerImpl {
             .unexecuted_ops_among(ops, thread)
     }
 
-    /// Gets infos about a batch of addresses
+    /// Gets information about a batch of addresses
     fn get_addresses_infos(&self, addresses: &[Address]) -> Vec<ExecutionAddressInfo> {
         let mut res = Vec::with_capacity(addresses.len());
         let exec_state = self.execution_state.read();

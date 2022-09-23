@@ -385,13 +385,11 @@ pub fn _create_executesc(
     fee: u64,
     data: Vec<u8>,
     max_gas: u64,
-    coins: u64,
     gas_price: u64,
 ) -> WrappedOperation {
     let op = OperationType::ExecuteSC {
         data,
         max_gas,
-        coins: Amount::from_str(&coins.to_string()).unwrap(),
         gas_price: Amount::from_str(&gas_price.to_string()).unwrap(),
         datastore: BTreeMap::new(),
     };

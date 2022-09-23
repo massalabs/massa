@@ -5,7 +5,7 @@ use massa_time::MassaTime;
 use serde::Deserialize;
 use std::net::SocketAddr;
 
-/// Bootstrap config.
+/// Bootstrap configuration.
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapConfig {
     /// Ip address of our bootstrap nodes and their public key.
