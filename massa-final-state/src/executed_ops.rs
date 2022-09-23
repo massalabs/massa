@@ -3,7 +3,7 @@
 //! This file defines a structure to list and prune previously executed operations.
 //! Used to detect operation reuse.
 
-use massa_hash::{Hash, HashDeserializer, HashSerializer};
+use massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
 use massa_models::{
     error::ModelsError,
     operation::{OperationId, OperationIdDeserializer},
@@ -12,8 +12,7 @@ use massa_models::{
     wrapped::Id,
 };
 use massa_serialization::{
-    Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
-    U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::{
     error::{context, ContextError, ParseError},
@@ -23,16 +22,32 @@ use nom::{
 };
 use std::ops::Bound::{Excluded, Included};
 
+const EXECUTED_OPS_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+
 /// A structure to list and prune previously executed operations
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExecutedOps {
     /// Map of the executed operations
     ops: PreHashMap<OperationId, Slot>,
     /// Cumulated hash of the executed operations
-    pub hash: Option<Hash>,
+    pub hash: Hash,
+}
+
+impl Default for ExecutedOps {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ExecutedOps {
+    /// Creates a new ExecutedOps
+    pub fn new() -> Self {
+        Self {
+            ops: PreHashMap::default(),
+            hash: Hash::from_bytes(EXECUTED_OPS_INITIAL_BYTES),
+        }
+    }
+
     /// returns the number of executed operations
     pub fn len(&self) -> usize {
         self.ops.len()
@@ -45,14 +60,9 @@ impl ExecutedOps {
 
     /// extends with another `ExecutedOps`
     pub fn extend(&mut self, other: ExecutedOps) {
-        if let Some(other_hash) = other.hash {
-            if let Some(current_hash) = self.hash.as_mut() {
-                *current_hash ^= other_hash;
-            } else {
-                self.hash = Some(other_hash);
-            }
-            self.ops.extend(other.ops);
-        }
+        // IMPORTANT TODO: HANDLE OVERLAP HERE
+        self.hash ^= other.hash;
+        self.ops.extend(other.ops);
     }
 
     /// check if an operation was executed
@@ -62,11 +72,7 @@ impl ExecutedOps {
 
     /// marks an op as executed
     pub fn insert(&mut self, op_id: OperationId, last_valid_slot: Slot) {
-        if let Some(current_hash) = self.hash.as_mut() {
-            *current_hash ^= *op_id.get_hash();
-        } else {
-            self.hash = Some(*op_id.get_hash());
-        }
+        self.hash ^= *op_id.get_hash();
         self.ops.insert(op_id, last_valid_slot);
     }
 
@@ -77,15 +83,8 @@ impl ExecutedOps {
             .ops
             .iter()
             .partition(|(_, &last_valid_slot)| last_valid_slot >= max_slot);
-        if removed.is_empty() {
-            return;
-        }
-        let hash = self
-            .hash
-            .as_mut()
-            .expect("critical: an ExecutedOps object with ops must also contain a hash");
         for (op_id, _) in removed {
-            *hash ^= *op_id.get_hash();
+            self.hash ^= *op_id.get_hash();
         }
         self.ops = kept;
     }
@@ -182,7 +181,7 @@ fn test_executed_ops_xor_computing() {
         thread: 0,
     });
     // at this point the hash should have been XORed with itself
-    assert_eq!(a.hash, Some(Hash::from_bytes(&[0; 32])));
+    assert_eq!(a.hash, Hash::from_bytes(&[0; 32]));
 }
 
 /// Executed operations bootstrap streaming steps
@@ -281,7 +280,7 @@ impl Deserializer<ExecutedOpsStreamingStep> for ExecutedOpsStreamingStepDeserial
 pub struct ExecutedOpsSerializer {
     slot_serializer: SlotSerializer,
     u64_serializer: U64VarIntSerializer,
-    opt_hash_serializer: OptionSerializer<Hash, HashSerializer>,
+    hash_serializer: HashSerializer,
 }
 
 impl Default for ExecutedOpsSerializer {
@@ -296,7 +295,7 @@ impl ExecutedOpsSerializer {
         ExecutedOpsSerializer {
             slot_serializer: SlotSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
-            opt_hash_serializer: OptionSerializer::new(HashSerializer::new()),
+            hash_serializer: HashSerializer::new(),
         }
     }
 }
@@ -316,7 +315,7 @@ impl Serializer<ExecutedOps> for ExecutedOpsSerializer {
         }
 
         // encode the hash
-        self.opt_hash_serializer.serialize(&value.hash, buffer)?;
+        self.hash_serializer.serialize(&value.hash, buffer)?;
         Ok(())
     }
 }
@@ -326,7 +325,7 @@ pub struct ExecutedOpsDeserializer {
     operation_id_deserializer: OperationIdDeserializer,
     slot_deserializer: SlotDeserializer,
     u64_deserializer: U64VarIntDeserializer,
-    opt_hash_deserializer: OptionDeserializer<Hash, HashDeserializer>,
+    hash_deserializer: HashDeserializer,
 }
 
 impl ExecutedOpsDeserializer {
@@ -339,7 +338,7 @@ impl ExecutedOpsDeserializer {
                 (Included(0), Excluded(thread_count)),
             ),
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
-            opt_hash_deserializer: OptionDeserializer::new(HashDeserializer::new()),
+            hash_deserializer: HashDeserializer::new(),
         }
     }
 }
@@ -365,7 +364,7 @@ impl Deserializer<ExecutedOps> for ExecutedOpsDeserializer {
                     ),
                 ),
                 context("Failed hash deserialization", |input| {
-                    self.opt_hash_deserializer.deserialize(input)
+                    self.hash_deserializer.deserialize(input)
                 }),
             )),
         )
