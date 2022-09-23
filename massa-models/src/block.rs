@@ -11,7 +11,8 @@ use crate::{
 };
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer,
+    U32VarIntSerializer,
 };
 use massa_signature::{KeyPair, PublicKey, Signature};
 use nom::branch::alt;
@@ -854,7 +855,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializerLW {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], BlockHeader, E> {
-        context(
+        let res_ = context(
             "Failed BlockHeader deserialization",
             tuple((
                 context("Failed slot deserialization", |input| {
@@ -896,22 +897,39 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializerLW {
         .map(|(slot, parents, operation_merkle_root, mut endorsements)| {
             // With the lightweight ser/der, we dit not ser: slot & endorsed_block
             // So we need to update the endorsements here with these info
+            let r: Result<Vec<()>, &str> = endorsements
+                .iter_mut()
+                .map(|e| {
+                    e.content.slot = slot;
+                    let idx_ = e.content.index;
+                    let idx = usize::try_from(idx_).map_err(|_| "Index conversion fail")?;
+                    let parent: Option<&BlockId> = parents.get(idx);
+                    e.content.endorsed_block = *parent.ok_or("Unable to find parent")?;
+                    Ok::<(), &str>(())
+                })
+                .collect();
 
-            // FIXME: no unwrap & handle genesis block
-            endorsements.iter_mut().for_each(|e| {
-                e.content.slot = slot;
-                let idx = e.content.index;
-                e.content.endorsed_block = *parents.get(idx as usize).unwrap()
-            });
-
-            BlockHeader {
+            r?; // Fail if anything goes wrong in previous loop
+            Ok::<BlockHeader, &str>(BlockHeader {
                 slot,
                 parents,
                 operation_merkle_root,
                 endorsements,
-            }
+            })
         })
-        .parse(buffer)
+        .parse(buffer);
+
+        // Convert:
+        // Result<(I, Result<BlockHeader, &str>), E> => Result<(I, BlockHeader), E>
+        match res_ {
+            Ok((i, Ok(bh))) => Ok((i, bh)),
+            Ok((_i, Err(e))) => {
+                let ek1 = nom::error::ErrorKind::Fail;
+                let pe = ParseError::from_error_kind(buffer, ek1);
+                Err(nom::Err::Error(E::add_context(buffer, e, pe)))
+            }
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -1129,5 +1147,123 @@ mod test {
         );
 
         assert_eq!(orig_block.header.signature, res_block.signature);
+    }
+
+    #[test]
+    #[serial]
+    fn test_genesis_block_serialization() {
+        let keypair = KeyPair::generate();
+        let parents: Vec<BlockId> = vec![];
+
+        // create block header
+        let orig_header = BlockHeader::new_wrapped(
+            BlockHeader {
+                slot: Slot::new(1, 1),
+                parents,
+                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                endorsements: vec![],
+            },
+            BlockHeaderSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+
+        // create block
+        let orig_block = Block {
+            header: orig_header,
+            operations: Default::default(),
+        };
+
+        // serialize block
+        let wrapped_block: WrappedBlock =
+            Block::new_wrapped(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
+        let mut ser_block = Vec::new();
+        WrappedSerializer::new()
+            .serialize(&wrapped_block, &mut ser_block)
+            .unwrap();
+
+        // deserialize
+        let (rest, res_block): (&[u8], WrappedBlock) = WrappedDeserializer::new(
+            BlockDeserializerLW::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::<DeserializeError>(&ser_block)
+        .unwrap();
+
+        assert!(rest.is_empty());
+        // check equality
+        assert_eq!(orig_block.header.id, res_block.content.header.id);
+        assert_eq!(orig_block.header.id, res_block.id);
+        assert_eq!(
+            orig_block.header.content.slot,
+            res_block.content.header.content.slot
+        );
+        assert_eq!(
+            orig_block.header.serialized_data,
+            res_block.content.header.serialized_data
+        );
+        assert_eq!(
+            orig_block.header.signature,
+            res_block.content.header.signature
+        );
+
+        assert_eq!(
+            orig_block.header.content.endorsements,
+            res_block.content.header.content.endorsements
+        );
+
+        assert_eq!(orig_block.header.signature, res_block.signature);
+    }
+
+    #[test]
+    #[serial]
+    fn test_invalid_genesis_block_serialization() {
+        let keypair = KeyPair::generate();
+        let parents: Vec<BlockId> = vec![];
+
+        let endorsement = Endorsement {
+            slot: Slot::new(1, 1),
+            index: 1,
+            endorsed_block: BlockId(Hash::compute_from(&[1])),
+        };
+
+        // create block header
+        let orig_header = BlockHeader::new_wrapped(
+            BlockHeader {
+                slot: Slot::new(1, 1),
+                parents,
+                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                endorsements: vec![Endorsement::new_wrapped(
+                    endorsement,
+                    EndorsementSerializerLW::new(),
+                    &keypair,
+                )
+                .unwrap()],
+            },
+            BlockHeaderSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+
+        // create block
+        let orig_block = Block {
+            header: orig_header,
+            operations: Default::default(),
+        };
+
+        // serialize block
+        let wrapped_block: WrappedBlock =
+            Block::new_wrapped(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
+        let mut ser_block = Vec::new();
+        WrappedSerializer::new()
+            .serialize(&wrapped_block, &mut ser_block)
+            .unwrap();
+
+        // deserialize
+        let res: Result<(&[u8], WrappedBlock), _> = WrappedDeserializer::new(
+            BlockDeserializerLW::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::<DeserializeError>(&ser_block);
+
+        assert!(res.is_err())
     }
 }
