@@ -582,7 +582,6 @@ impl ExecutionState {
                 owned_addresses: vec![sender_addr],
                 operation_datastore: Some(datastore.clone())
             }];
-            // context.datastore = datastore.clone();
 
             // Debit the sender's sequential balance with the coins to transfer
             if let Err(err) =
