@@ -168,7 +168,7 @@ impl Serializer<ExportActiveBlock> for ExportActiveBlockSerializer {
 
         // parents with periods
         // note: there should be no parents for genesis blocks
-        buffer.push(if value.parents.is_empty() { 0u8 } else { 1u8 });
+        buffer.push(u8::from(!value.parents.is_empty()));
         for (hash, period) in value.parents.iter() {
             buffer.extend(hash.0.to_bytes());
             self.period_serializer.serialize(period, buffer)?;
