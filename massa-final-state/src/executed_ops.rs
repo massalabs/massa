@@ -309,10 +309,13 @@ impl Deserializer<ExecutedOps> for ExecutedOpsDeserializer {
                     context("Failed length deserialization", |input| {
                         self.u64_deserializer.deserialize(input)
                     }),
-                    tuple((
-                        |input| self.operation_id_deserializer.deserialize(input),
-                        |input| self.slot_deserializer.deserialize(input),
-                    )),
+                    context(
+                        "Failed peration info deserialization",
+                        tuple((
+                            |input| self.operation_id_deserializer.deserialize(input),
+                            |input| self.slot_deserializer.deserialize(input),
+                        )),
+                    ),
                 ),
                 context("Failed hash deserialization", |input| {
                     self.opt_hash_deserializer.deserialize(input)
