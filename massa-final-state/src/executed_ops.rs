@@ -9,7 +9,6 @@ use massa_models::{
     operation::{OperationId, OperationIdDeserializer},
     prehash::PreHashMap,
     slot::{Slot, SlotDeserializer, SlotSerializer},
-    wrapped::Id,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -60,9 +59,13 @@ impl ExecutedOps {
 
     /// extends with another `ExecutedOps`
     pub fn extend(&mut self, other: ExecutedOps) {
-        // IMPORTANT TODO: HANDLE OVERLAP HERE
-        self.hash ^= other.hash;
-        self.ops.extend(other.ops);
+        for (op_id, slot) in other.ops {
+            if self.ops.try_insert(op_id, slot).is_ok() {
+                let hash =
+                    Hash::compute_from(&[&op_id.to_bytes()[..], &slot.to_bytes_key()[..]].concat());
+                self.hash ^= hash;
+            }
+        }
     }
 
     /// check if an operation was executed
@@ -72,7 +75,10 @@ impl ExecutedOps {
 
     /// marks an op as executed
     pub fn insert(&mut self, op_id: OperationId, last_valid_slot: Slot) {
-        self.hash ^= *op_id.get_hash();
+        let hash = Hash::compute_from(
+            &[&op_id.to_bytes()[..], &last_valid_slot.to_bytes_key()[..]].concat(),
+        );
+        self.hash ^= hash;
         self.ops.insert(op_id, last_valid_slot);
     }
 
@@ -83,8 +89,10 @@ impl ExecutedOps {
             .ops
             .iter()
             .partition(|(_, &last_valid_slot)| last_valid_slot >= max_slot);
-        for (op_id, _) in removed {
-            self.hash ^= *op_id.get_hash();
+        for (op_id, slot) in removed {
+            let hash =
+                Hash::compute_from(&[&op_id.to_bytes()[..], &slot.to_bytes_key()[..]].concat());
+            self.hash ^= hash;
         }
         self.ops = kept;
     }
@@ -141,12 +149,13 @@ impl ExecutedOps {
 
 #[test]
 fn test_executed_ops_xor_computing() {
+    use massa_models::wrapped::Id;
     let mut a = ExecutedOps::default();
     let mut b = ExecutedOps::default();
     let mut c = ExecutedOps::default();
     // initialize the three different objects
     for i in 0u8..20 {
-        if i < 10 {
+        if i < 12 {
             a.insert(
                 OperationId::new(Hash::compute_from(&[i])),
                 Slot {
@@ -154,7 +163,8 @@ fn test_executed_ops_xor_computing() {
                     thread: 0,
                 },
             );
-        } else {
+        }
+        if i > 8 {
             b.insert(
                 OperationId::new(Hash::compute_from(&[i])),
                 Slot {
