@@ -23,7 +23,7 @@ pub struct OperationInput {
     pub creator_public_key: PublicKey,
     /// The signature of the operation
     pub signature: Signature,
-    /// The serialized version of the content base58 encoded
+    /// The serialized version of the content `base58` encoded
     pub serialized_content: Vec<u8>,
 }
 
@@ -236,7 +236,7 @@ pub struct AddressInfo {
     /// created endorsements
     pub created_endorsements: Vec<EndorsementId>,
 
-    /// cycle infos
+    /// cycle information
     pub cycle_infos: Vec<ExecutionAddressCycleInfo>,
 }
 
@@ -364,7 +364,7 @@ pub struct EndorsementInfo {
     pub in_blocks: Vec<BlockId>,
     /// true if the endorsement is final (for example in a final block)
     pub is_final: bool,
-    /// the endorsmeent itself
+    /// the endorsement itself
     pub endorsement: WrappedEndorsement,
 }
 
@@ -496,7 +496,7 @@ pub struct TimeInterval {
     pub end: Option<MassaTime>,
 }
 
-/// Datastore entry query input struct
+/// Datastore entry query input structure
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct DatastoreEntryInput {
     /// associated address of the entry
@@ -505,7 +505,7 @@ pub struct DatastoreEntryInput {
     pub key: Vec<u8>,
 }
 
-/// Datastore entry query output struct
+/// Datastore entry query output structure
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct DatastoreEntryOutput {
     /// final datastore entry value

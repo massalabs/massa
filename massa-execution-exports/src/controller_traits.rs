@@ -60,7 +60,7 @@ pub trait ExecutionController: Send + Sync {
     ) -> Vec<(Option<Vec<u8>>, Option<Vec<u8>>)>;
 
     /// Returns for a given cycle the stakers taken into account
-    /// by the selector. That correspond to the roll_counts in `cycle - 3`.
+    /// by the selector. That correspond to the `roll_counts` in `cycle - 3`.
     ///
     /// By default it returns an empty map.
     fn get_cycle_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64>;
@@ -85,7 +85,7 @@ pub trait ExecutionController: Send + Sync {
         thread: u8,
     ) -> PreHashSet<OperationId>;
 
-    /// Gets infos about a batch of addresses
+    /// Gets information about a batch of addresses
     fn get_addresses_infos(&self, addresses: &[Address]) -> Vec<ExecutionAddressInfo>;
 
     /// Get execution statistics

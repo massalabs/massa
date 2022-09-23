@@ -53,7 +53,7 @@ pub enum LedgerSubEntry {
 
 /// Disk ledger DB module
 ///
-/// Contains a RocksDB DB instance
+/// Contains a `RocksDB` DB instance
 pub(crate) struct LedgerDB {
     db: DB,
     thread_count: u8,
@@ -75,7 +75,7 @@ impl Debug for LedgerDB {
 /// For a given start prefix (inclusive), returns the correct end prefix (non-inclusive).
 /// This assumes the key bytes are ordered in lexicographical order.
 /// Since key length is not limited, for some case we return `None` because there is
-/// no bounded limit (every keys in the serie `[]`, `[255]`, `[255, 255]` ...).
+/// no bounded limit (every keys in the series `[]`, `[255]`, `[255, 255]` ...).
 fn end_prefix(prefix: &[u8]) -> Option<Vec<u8>> {
     let mut end_range = prefix.to_vec();
     while let Some(0xff) = end_range.last() {
@@ -116,7 +116,7 @@ impl LedgerBatch {
 }
 
 impl LedgerDB {
-    /// Create and initialize a new LedgerDB.
+    /// Create and initialize a new `LedgerDB`.
     ///
     /// # Arguments
     /// * path: path to the desired disk ledger db directory
@@ -274,9 +274,9 @@ impl LedgerDB {
     /// Add every sub-entry individually for a given entry.
     ///
     /// # Arguments
-    /// * addr: associated address
-    /// * ledger_entry: complete entry to be added
-    /// * batch: the given operation batch to update
+    /// * `addr`: associated address
+    /// * `ledger_entry`: complete entry to be added
+    /// * `batch`: the given operation batch to update
     fn put_entry(&mut self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut LedgerBatch) {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         // Amount serialization never fails
@@ -300,8 +300,8 @@ impl LedgerDB {
     /// Get the given sub-entry of a given address.
     ///
     /// # Arguments
-    /// * addr: associated address
-    /// * ty: type of the queried sub-entry
+    /// * `addr`: associated address
+    /// * `ty`: type of the queried sub-entry
     ///
     /// # Returns
     /// An Option of the sub-entry value as bytes
@@ -327,7 +327,7 @@ impl LedgerDB {
     /// Get every key of the datastore for a given address.
     ///
     /// # Returns
-    /// A BTreeSet of the datastore keys
+    /// A `BTreeSet` of the datastore keys
     pub fn get_datastore_keys(&self, addr: &Address) -> BTreeSet<Vec<u8>> {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
@@ -371,8 +371,8 @@ impl LedgerDB {
     /// Update the ledger entry of a given address.
     ///
     /// # Arguments
-    /// * entry_update: a descriptor of the entry updates to be applied
-    /// * batch: the given operation batch to update
+    /// * `entry_update`: a descriptor of the entry updates to be applied
+    /// * `batch`: the given operation batch to update
     fn update_entry(
         &mut self,
         addr: &Address,
@@ -454,7 +454,7 @@ impl LedgerDB {
     /// Mainly used in the bootstrap process.
     ///
     /// # Arguments
-    /// * last_key: key where the part retrieving must start
+    /// * `last_key`: key where the part retrieving must start
     ///
     /// # Returns
     /// A tuple containing:
@@ -542,7 +542,7 @@ impl LedgerDB {
     /// IMPORTANT: This should only be used for debug purposes.
     ///
     /// # Returns
-    /// A BTreeMap with the address as key and the balance as value
+    /// A `BTreeMap` with the address as key and the balance as value
     #[cfg(feature = "testing")]
     pub fn get_every_address(
         &self,
@@ -579,7 +579,7 @@ impl LedgerDB {
     /// IMPORTANT: This should only be used for debug purposes.
     ///
     /// # Returns
-    /// A BTreeMap with the entry hash as key and the data bytes as value
+    /// A `BTreeMap` with the entry hash as key and the data bytes as value
     #[cfg(any(test, feature = "testing"))]
     pub fn get_entire_datastore(
         &self,
@@ -654,7 +654,7 @@ mod tests {
         (db, data)
     }
 
-    /// Functional test of LedgerDB
+    /// Functional test of `LedgerDB`
     #[test]
     fn test_ledger_db() {
         let addr = Address::from_public_key(&KeyPair::generate().get_public_key());

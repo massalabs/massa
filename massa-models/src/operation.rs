@@ -39,7 +39,7 @@ pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct OperationId(Hash);
 
-/// Left part of the operation id hash stored in a vector of size [OPERATION_ID_PREFIX_SIZE_BYTES]
+/// Left part of the operation id hash stored in a vector of size [`OPERATION_ID_PREFIX_SIZE_BYTES`]
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct OperationPrefixId([u8; OPERATION_ID_PREFIX_SIZE_BYTES]);
 
@@ -90,7 +90,7 @@ impl Id for OperationId {
 impl PreHashed for OperationPrefixId {}
 
 impl From<&[u8; OPERATION_ID_PREFIX_SIZE_BYTES]> for OperationPrefixId {
-    /// get prefix of the operation id of size [OPERATION_ID_PREFIX_SIZE_BIT]
+    /// get prefix of the operation id of size `OPERATION_ID_PREFIX_SIZE_BIT`
     fn from(bytes: &[u8; OPERATION_ID_PREFIX_SIZE_BYTES]) -> Self {
         Self(*bytes)
     }
@@ -125,7 +125,7 @@ impl OperationId {
         ))
     }
 
-    /// convert the [OperationId] into a [OperationPrefixId]
+    /// convert the [`OperationId`] into a [`OperationPrefixId`]
     pub fn into_prefix(self) -> OperationPrefixId {
         OperationPrefixId(
             self.0.into_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES]
@@ -134,7 +134,7 @@ impl OperationId {
         )
     }
 
-    /// get a prefix from the [OperationId] by copying it
+    /// get a prefix from the [`OperationId`] by copying it
     pub fn prefix(&self) -> OperationPrefixId {
         OperationPrefixId(
             self.0.to_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES]
@@ -775,7 +775,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
 
 impl WrappedOperation {
     /// get the range of periods during which an operation is valid
-    /// Range: (op.expire_period - cfg.operation_validity_period) -> op.expire_period (included)
+    /// Range: `(op.expire_period - cfg.operation_validity_period) -> op.expire_period` (included)
     pub fn get_validity_range(&self, operation_validity_period: u64) -> RangeInclusive<u64> {
         let start = self
             .content
@@ -784,7 +784,7 @@ impl WrappedOperation {
         start..=self.content.expire_period
     }
 
-    /// Get the max amount of gas used by the operation (max_gas)
+    /// Get the max amount of gas used by the operation (`max_gas`)
     pub fn get_gas_usage(&self) -> u64 {
         match &self.content.op {
             OperationType::ExecuteSC { max_gas, .. } => *max_gas,
@@ -980,12 +980,12 @@ impl Deserializer<Vec<OperationId>> for OperationIdsDeserializer {
     }
 }
 
-/// Deserializer for [OperationPrefixId]
+/// Deserializer for [`OperationPrefixId`]
 #[derive(Default)]
 pub struct OperationPrefixIdDeserializer;
 
 impl OperationPrefixIdDeserializer {
-    /// Creates a deserializer for [OperationPrefixId]
+    /// Creates a deserializer for [`OperationPrefixId`]
     pub const fn new() -> Self {
         Self
     }

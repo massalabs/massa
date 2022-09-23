@@ -13,13 +13,13 @@ use tracing::debug;
 /// Then prune the `cache` pointer if max cache is exceeded.
 ///
 /// # Parameters
-/// * cycle: Cycle to draw
-/// * lookback_rolls: Roll counts at lookback (`cycle-3`)
-/// * lookback_seed: RNG seed at lookback (`cycle-2`)
+/// * `cycle`: Cycle to draw
+/// * `lookback_rolls`: Roll counts at look back (`cycle-3`)
+/// * `lookback_seed`: RNG seed at look back (`cycle-2`)
 ///
 /// # Result
-/// - The draws can throw the errors of the function [get_params] and from the
-///   creation of a [Xoshiro256PlusPlus].
+/// - The draws can throw the errors of the function `get_params` and from the
+///   creation of a `Xoshiro256PlusPlus`.
 /// - An inconsistency error is thrown if nobody has rolls
 ///
 /// Otherwise, the draws return an empty success.

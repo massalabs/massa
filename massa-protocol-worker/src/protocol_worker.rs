@@ -144,7 +144,7 @@ pub struct ProtocolWorker {
     /// Ids of active nodes mapped to node info.
     pub(crate) active_nodes: HashMap<NodeId, NodeInfo>,
     /// List of wanted blocks,
-    /// with the info representing their state with in the as_block workflow.
+    /// with the info representing their state with in the `as_block` workflow.
     pub(crate) block_wishlist: PreHashMap<BlockId, BlockInfo>,
     /// List of processed endorsements
     checked_endorsements: PreHashSet<EndorsementId>,

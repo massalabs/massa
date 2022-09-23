@@ -113,7 +113,7 @@ pub const ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 pub const PRODUCTION_STATS_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 /// Maximum length of a datastore key
 pub const MAX_DATASTORE_KEY_LENGTH: u8 = 255;
-/// Maximum length of an operartion datastore key
+/// Maximum length of an operation datastore key
 pub const MAX_OPERATION_DATASTORE_KEY_LENGTH: u8 = MAX_DATASTORE_KEY_LENGTH;
 /// Maximum length of a datastore value
 pub const MAX_DATASTORE_VALUE_LENGTH: u64 = 10_000_000;
@@ -128,19 +128,19 @@ pub const MAX_LEDGER_CHANGES_COUNT: u64 =
     100_u32.saturating_mul(MAX_LEDGER_CHANGES_PER_SLOT) as u64;
 /// Maximum number of key/values in the datastore of a ledger entry
 pub const MAX_DATASTORE_ENTRY_COUNT: u64 = u64::MAX;
-/// Maximum number of key/values in the datastore of a ExecuteSC op
+/// Maximum number of key/values in the datastore of a `ExecuteSC` operation
 pub const MAX_OPERATION_DATASTORE_ENTRY_COUNT: u64 = 128;
-/// Maximum length function name in call sc
+/// Maximum length function name in call SC
 pub const MAX_FUNCTION_NAME_LENGTH: u16 = u16::MAX;
-/// Maximum size of parameters in call sc
+/// Maximum size of parameters in call SC
 pub const MAX_PARAMETERS_SIZE: u32 = 10_000_000;
-/// Maximum length of rng_seed in thread cycle
+/// Maximum length of `rng_seed` in thread cycle
 pub const MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COUNT as u64) as u32;
-/// Maximum length of rolls_update in thread cycle
+/// Maximum length of `rolls_update` in thread cycle
 pub const MAX_ROLLS_UPDATE_LENGTH: u64 = u64::MAX;
-/// Maximum length of rolls_counts in thread cycle
+/// Maximum length of `rolls_counts` in thread cycle
 pub const MAX_ROLLS_COUNTS_LENGTH: u64 = u64::MAX;
-/// Maximum length of production_stats in thread cycle
+/// Maximum length of `production_stats` in thread cycle
 pub const MAX_PRODUCTION_STATS_LENGTH: u64 = u64::MAX;
 // ***********************
 // Bootstrap constants

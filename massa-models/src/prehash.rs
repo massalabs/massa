@@ -61,7 +61,7 @@ pub type PreHashMap<K, V> = HashMap<K, V, BuildHashMapper<K>>;
 /// This hashset is about 2x faster than the default `HashSet`
 pub type PreHashSet<T> = HashSet<T, BuildHashMapper<T>>;
 
-/// Trait allowing preallocations
+/// Trait allowing pre-allocations
 pub trait CapacityAllocator {
     /// pre-allocate with a given capacity
     fn with_capacity(capacity: usize) -> Self;

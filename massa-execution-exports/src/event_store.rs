@@ -52,7 +52,7 @@ impl EventStore {
     /// * emitter address
     /// * original caller address
     /// * operation id
-    /// * is_final
+    /// * is final
     pub fn get_filtered_sc_output_events(&self, filter: &EventFilter) -> VecDeque<SCOutputEvent> {
         self.0
             .iter()

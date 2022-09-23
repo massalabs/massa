@@ -14,7 +14,7 @@ use std::{
     str::FromStr,
 };
 
-/// Hash wrapper, the underlying hash type is Blake3
+/// Hash wrapper, the underlying hash type is `Blake3`
 #[derive(Eq, PartialEq, Copy, Clone, Hash)]
 pub struct Hash(blake3::Hash);
 

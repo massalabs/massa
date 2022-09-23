@@ -15,10 +15,10 @@ pub const VERSION: u32 = 0;
 /// Nonces need not be random: a counter can be used so long as the values are never repeated under the same key.
 pub const NONCE_SIZE: usize = 12;
 
-/// PBKDF2 salt size.
+/// `PBKDF2` salt size.
 pub const SALT_SIZE: usize = 12;
 
-/// PBKDF2 hash parameters.
+/// `PBKDF2` hash parameters.
 pub const HASH_PARAMS: Params = Params {
     rounds: 10_000,
     output_length: 32,

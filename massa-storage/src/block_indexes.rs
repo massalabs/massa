@@ -60,7 +60,7 @@ impl BlockIndexes {
 
     /// Remove a block, remove from the indexes and do some clean-up in indexes if necessary.
     /// Arguments:
-    /// - block_id: the block id to remove
+    /// * `block_id`: the block id to remove
     pub(crate) fn remove(&mut self, block_id: &BlockId) -> Option<WrappedBlock> {
         if let Some(b) = self.blocks.remove(block_id) {
             // update creator index

@@ -17,15 +17,15 @@ pub mod address;
 pub mod amount;
 /// structure use by the API
 pub mod api;
-/// block-related sturctures
+/// block-related structures
 pub mod block;
 /// clique
 pub mod clique;
 /// various structures
 pub mod composite;
-/// node config
+/// node configuration
 pub mod config;
-/// datastore ser/der
+/// datastore serialization / deserialization
 pub mod datastore;
 /// endorsements
 pub mod endorsement;
