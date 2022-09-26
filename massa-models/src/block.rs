@@ -772,7 +772,8 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     }
 }
 
-/// Deserializer for `BlockHeader`
+/// Lightweight Deserializer for `BlockHeader`
+/// Same as BlockHeaderDeserializer but use lightweight endorsement der.
 pub struct BlockHeaderDeserializerLW {
     slot_deserializer: SlotDeserializer,
     endorsement_deserializer: WrappedDeserializer<Endorsement, EndorsementDeserializerLW>,

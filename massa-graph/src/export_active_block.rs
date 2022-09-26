@@ -2,7 +2,7 @@ use crate::error::{GraphError, GraphResult as Result};
 use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,
-    block::{Block, BlockDeserializer, BlockId, WrappedBlock},
+    block::{Block, BlockDeserializerLW, BlockId, WrappedBlock},
     operation::{Operation, OperationDeserializer, WrappedOperation},
     prehash::{PreHashMap, PreHashSet},
     wrapped::{WrappedDeserializer, WrappedSerializer},
@@ -23,7 +23,6 @@ use nom::{
 use nom::{error::context, IResult, Parser};
 use serde::{Deserialize, Serialize};
 use std::ops::Bound::Included;
-use massa_models::block::BlockDeserializerLW;
 
 /// Exportable version of `ActiveBlock`
 /// Fields that can be easily recomputed were left out

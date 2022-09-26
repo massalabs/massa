@@ -220,7 +220,7 @@ impl Deserializer<Endorsement> for EndorsementDeserializer {
 }
 
 /// LightWeight Serializer for `Endorsement`
-/// When included in a BlockHeader, we want to ser. only the index (optim)
+/// When included in a BlockHeader, we want to serialize only the index (optim)
 pub struct EndorsementSerializerLW {
     // slot_serializer: SlotSerializer,
     u32_serializer: U32VarIntSerializer,
@@ -267,9 +267,7 @@ impl Serializer<Endorsement> for EndorsementSerializerLW {
 
 /// Lightweight Deserializer for `Endorsement`
 pub struct EndorsementDeserializerLW {
-    // slot_deserializer: SlotDeserializer,
     index_deserializer: U32VarIntDeserializer,
-    // hash_deserializer: HashDeserializer,
 }
 
 impl EndorsementDeserializerLW {
@@ -354,10 +352,7 @@ mod tests {
             WrappedDeserializer::new(EndorsementDeserializer::new(32, 1))
                 .deserialize::<DeserializeError>(&ser_endorsement)
                 .unwrap();
-        assert_eq!(
-            format!("{:?}", res_endorsement),
-            format!("{:?}", endorsement)
-        );
+        assert_eq!(res_endorsement, endorsement);
     }
 
     #[test]
@@ -383,6 +378,7 @@ mod tests {
             WrappedDeserializer::new(EndorsementDeserializerLW::new(1))
                 .deserialize::<DeserializeError>(&ser_endorsement)
                 .unwrap();
+        // Test only endorsement index as with the lw ser. we only process this field
         assert_eq!(res_endorsement.content.index, endorsement.content.index);
     }
 }

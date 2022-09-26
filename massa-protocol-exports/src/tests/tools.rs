@@ -12,7 +12,7 @@ use massa_models::{
     address::Address,
     amount::Amount,
     block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock},
-    endorsement::{Endorsement, EndorsementSerializer, EndorsementSerializerLW, WrappedEndorsement},
+    endorsement::{Endorsement, EndorsementSerializerLW, WrappedEndorsement},
     operation::{Operation, OperationType, WrappedOperation},
     slot::Slot,
 };

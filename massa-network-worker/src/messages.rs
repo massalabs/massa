@@ -2,7 +2,7 @@
 
 use massa_hash::HashDeserializer;
 use massa_models::{
-    block::{BlockHeader, BlockHeaderDeserializer, BlockId, WrappedHeader},
+    block::{BlockHeader, BlockHeaderDeserializerLW, BlockId, WrappedHeader},
     config::HANDSHAKE_RANDOMNESS_SIZE_BYTES,
     endorsement::{Endorsement, EndorsementDeserializer, WrappedEndorsement},
     operation::{
@@ -31,8 +31,6 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 use std::ops::Bound::{Excluded, Included};
-use massa_models::block::BlockHeaderDeserializerLW;
-use massa_models::endorsement::EndorsementDeserializerLW;
 
 /// All messages that can be sent or received.
 #[allow(clippy::large_enum_variant)]
