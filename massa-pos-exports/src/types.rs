@@ -28,7 +28,7 @@ use nom::{
 };
 use num::rational::Ratio;
 use std::ops::Bound::{Excluded, Included, Unbounded};
-use tracing::log::warn;
+use tracing::warn;
 
 use crate::SelectorController;
 
