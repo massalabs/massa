@@ -209,7 +209,7 @@ where
     T: Display + WrappedContent,
     DT: Deserializer<T>,
 {
-    /// Creates a new WrappedDeserializer
+    /// Creates a new `WrappedDeserializer`
     ///
     /// # Arguments
     /// * `content_deserializer` - Deserializer for the content

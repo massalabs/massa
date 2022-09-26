@@ -21,9 +21,9 @@ pub enum MockSelectorControllerMessage {
     FeedCycle {
         /// cycle
         cycle: u64,
-        /// lookback rolls
+        /// look back rolls
         lookback_rolls: BTreeMap<Address, u64>,
-        /// lookback seed
+        /// look back seed
         lookback_seed: Hash,
     },
     /// Get a list of slots where address has been chosen to produce a block and a list where he is chosen for the endorsements.
@@ -66,7 +66,7 @@ pub enum MockSelectorControllerMessage {
     },
 }
 
-/// Mock implementation of the SelectorController trait.
+/// Mock implementation of the `SelectorController` trait.
 /// This mock will be called by the others modules and you will receive events in the receiver.
 /// You can choose to manage them how you want.
 #[derive(Clone)]

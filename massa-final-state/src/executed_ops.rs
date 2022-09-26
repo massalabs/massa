@@ -3,6 +3,7 @@
 //! This file defines a structure to list and prune previously executed operations.
 //! Used to detect operation reuse.
 
+use massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
 use massa_models::{
     error::ModelsError,
     operation::{OperationId, OperationIdDeserializer},
@@ -20,41 +21,80 @@ use nom::{
 };
 use std::ops::Bound::{Excluded, Included};
 
+const EXECUTED_OPS_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+
 /// A structure to list and prune previously executed operations
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct ExecutedOps(PreHashMap<OperationId, Slot>);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExecutedOps {
+    /// Map of the executed operations
+    ops: PreHashMap<OperationId, Slot>,
+    /// Cumulated hash of the executed operations
+    pub hash: Hash,
+}
+
+impl Default for ExecutedOps {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl ExecutedOps {
+    /// Creates a new ExecutedOps
+    pub fn new() -> Self {
+        Self {
+            ops: PreHashMap::default(),
+            hash: Hash::from_bytes(EXECUTED_OPS_INITIAL_BYTES),
+        }
+    }
+
     /// returns the number of executed operations
     pub fn len(&self) -> usize {
-        self.0.len()
+        self.ops.len()
     }
 
     /// Check is there is no executed ops
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.ops.is_empty()
     }
 
-    /// extends with another ExecutedOps
+    /// extends with another `ExecutedOps`
     pub fn extend(&mut self, other: ExecutedOps) {
-        self.0.extend(other.0);
+        for (op_id, slot) in other.ops {
+            if self.ops.try_insert(op_id, slot).is_ok() {
+                let hash =
+                    Hash::compute_from(&[&op_id.to_bytes()[..], &slot.to_bytes_key()[..]].concat());
+                self.hash ^= hash;
+            }
+        }
     }
 
     /// check if an operation was executed
     pub fn contains(&self, op_id: &OperationId) -> bool {
-        self.0.contains_key(op_id)
+        self.ops.contains_key(op_id)
     }
 
     /// marks an op as executed
     pub fn insert(&mut self, op_id: OperationId, last_valid_slot: Slot) {
-        self.0.insert(op_id, last_valid_slot);
+        let hash = Hash::compute_from(
+            &[&op_id.to_bytes()[..], &last_valid_slot.to_bytes_key()[..]].concat(),
+        );
+        self.hash ^= hash;
+        self.ops.insert(op_id, last_valid_slot);
     }
 
-    /// Prune all operations that expire strictly before max_slot
+    /// Prune all operations that expire strictly before `max_slot`
     pub fn prune(&mut self, max_slot: Slot) {
         // TODO use slot-sorted structure for more efficient pruning (this has a linear complexity currently)
-        self.0
-            .retain(|_id, last_valid_slot| *last_valid_slot >= max_slot);
+        let (kept, removed): (PreHashMap<OperationId, Slot>, PreHashMap<OperationId, Slot>) = self
+            .ops
+            .iter()
+            .partition(|(_, &last_valid_slot)| last_valid_slot >= max_slot);
+        for (op_id, slot) in removed {
+            let hash =
+                Hash::compute_from(&[&op_id.to_bytes()[..], &slot.to_bytes_key()[..]].concat());
+            self.hash ^= hash;
+        }
+        self.ops = kept;
     }
 
     /// Get a part of the executed operations.
@@ -105,6 +145,53 @@ impl ExecutedOps {
         self.extend(ops);
         Ok(ExecutedOpsStreamingStep::Finished)
     }
+}
+
+#[test]
+fn test_executed_ops_xor_computing() {
+    use massa_models::wrapped::Id;
+    let mut a = ExecutedOps::default();
+    let mut b = ExecutedOps::default();
+    let mut c = ExecutedOps::default();
+    // initialize the three different objects
+    for i in 0u8..20 {
+        if i < 12 {
+            a.insert(
+                OperationId::new(Hash::compute_from(&[i])),
+                Slot {
+                    period: i as u64,
+                    thread: 0,
+                },
+            );
+        }
+        if i > 8 {
+            b.insert(
+                OperationId::new(Hash::compute_from(&[i])),
+                Slot {
+                    period: (i as u64),
+                    thread: 0,
+                },
+            );
+        }
+        c.insert(
+            OperationId::new(Hash::compute_from(&[i])),
+            Slot {
+                period: (i as u64),
+                thread: 0,
+            },
+        );
+    }
+    // extend a with b which performs a.hash ^ b.hash
+    a.extend(b);
+    // check that a.hash ^ b.hash = c.hash
+    assert_eq!(a.hash, c.hash);
+    // prune every element
+    a.prune(Slot {
+        period: 20,
+        thread: 0,
+    });
+    // at this point the hash should have been XORed with itself
+    assert_eq!(a.hash, Hash::from_bytes(&[0; 32]));
 }
 
 /// Executed operations bootstrap streaming steps
@@ -200,10 +287,16 @@ impl Deserializer<ExecutedOpsStreamingStep> for ExecutedOpsStreamingStepDeserial
 }
 
 /// `ExecutedOps` Serializer
-#[derive(Default)]
 pub struct ExecutedOpsSerializer {
     slot_serializer: SlotSerializer,
     u64_serializer: U64VarIntSerializer,
+    hash_serializer: HashSerializer,
+}
+
+impl Default for ExecutedOpsSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ExecutedOpsSerializer {
@@ -212,6 +305,7 @@ impl ExecutedOpsSerializer {
         ExecutedOpsSerializer {
             slot_serializer: SlotSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
+            hash_serializer: HashSerializer::new(),
         }
     }
 }
@@ -219,30 +313,33 @@ impl ExecutedOpsSerializer {
 impl Serializer<ExecutedOps> for ExecutedOpsSerializer {
     fn serialize(&self, value: &ExecutedOps, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         // encode the number of entries
-        let entry_count: u64 = value.0.len().try_into().map_err(|err| {
+        let entry_count: u64 = value.ops.len().try_into().map_err(|err| {
             SerializeError::GeneralError(format!("too many entries in ExecutedOps: {}", err))
         })?;
         self.u64_serializer.serialize(&entry_count, buffer)?;
 
         // encode entries
-        for (op_id, slot) in &value.0 {
+        for (op_id, slot) in &value.ops {
             buffer.extend(op_id.to_bytes());
             self.slot_serializer.serialize(slot, buffer)?;
         }
 
+        // encode the hash
+        self.hash_serializer.serialize(&value.hash, buffer)?;
         Ok(())
     }
 }
 
-/// Deserializer for ExecutedOps
+/// Deserializer for `ExecutedOps`
 pub struct ExecutedOpsDeserializer {
     operation_id_deserializer: OperationIdDeserializer,
     slot_deserializer: SlotDeserializer,
     u64_deserializer: U64VarIntDeserializer,
+    hash_deserializer: HashDeserializer,
 }
 
 impl ExecutedOpsDeserializer {
-    /// Create a new deserializer for ExecutedOps
+    /// Create a new deserializer for `ExecutedOps`
     pub fn new(thread_count: u8) -> ExecutedOpsDeserializer {
         ExecutedOpsDeserializer {
             operation_id_deserializer: OperationIdDeserializer::new(),
@@ -251,6 +348,7 @@ impl ExecutedOpsDeserializer {
                 (Included(0), Excluded(thread_count)),
             ),
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            hash_deserializer: HashDeserializer::new(),
         }
     }
 }
@@ -262,17 +360,28 @@ impl Deserializer<ExecutedOps> for ExecutedOpsDeserializer {
     ) -> IResult<&'a [u8], ExecutedOps, E> {
         context(
             "Failed ExecutedOps deserialization",
-            length_count(
-                context("Failed length deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
+            tuple((
+                length_count(
+                    context("Failed length deserialization", |input| {
+                        self.u64_deserializer.deserialize(input)
+                    }),
+                    context(
+                        "Failed peration info deserialization",
+                        tuple((
+                            |input| self.operation_id_deserializer.deserialize(input),
+                            |input| self.slot_deserializer.deserialize(input),
+                        )),
+                    ),
+                ),
+                context("Failed hash deserialization", |input| {
+                    self.hash_deserializer.deserialize(input)
                 }),
-                tuple((
-                    |input| self.operation_id_deserializer.deserialize(input),
-                    |input| self.slot_deserializer.deserialize(input),
-                )),
-            ),
+            )),
         )
-        .map(|elements| ExecutedOps(elements.into_iter().collect()))
+        .map(|(elements, hash)| ExecutedOps {
+            ops: elements.into_iter().collect(),
+            hash,
+        })
         .parse(buffer)
     }
 }

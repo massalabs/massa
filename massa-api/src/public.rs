@@ -1,5 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 #![allow(clippy::too_many_arguments)]
+
 use crate::config::APIConfig;
 use crate::error::ApiError;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
@@ -51,6 +52,7 @@ use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use std::net::{IpAddr, SocketAddr};
+use massa_models::datastore::DatastoreDeserializer;
 
 impl API<Public> {
     /// generate a new public API
@@ -111,6 +113,7 @@ impl Endpoints for API<Public> {
         &self,
         reqs: Vec<ReadOnlyBytecodeExecution>,
     ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
+
         if reqs.len() as u64 > self.0.api_settings.max_arguments {
             let closure =
                 async move || Err(ApiError::TooManyArguments("too many arguments".into()));
@@ -123,12 +126,33 @@ impl Endpoints for API<Public> {
             address,
             simulated_gas_price,
             bytecode,
+            operation_datastore,
         } in reqs
         {
             let address = address.unwrap_or_else(|| {
                 // if no addr provided, use a random one
                 Address::from_public_key(&KeyPair::generate().get_public_key())
             });
+
+            let op_datastore = match operation_datastore {
+                Some(v) => {
+                    let deserializer = DatastoreDeserializer::new(10000, 255, 10000);
+                    match deserializer.deserialize::<DeserializeError>(&v) {
+                        Ok((_, deserialized)) => Some(deserialized),
+                        Err(e) => {
+                            let err_str = format!("Operation datastore error: {}", e);
+                            let closure =
+                                async move || {
+                                    Err(ApiError::InconsistencyError(
+                                        err_str
+                                    ))
+                                };
+                            return Box::pin(closure());
+                        }
+                    }
+                },
+                None => None,
+            };
 
             // TODO:
             // * set a maximum gas value for read-only executions to prevent attacks
@@ -144,6 +168,7 @@ impl Endpoints for API<Public> {
                     address,
                     coins: Default::default(),
                     owned_addresses: vec![address],
+                    operation_datastore: op_datastore,
                 }],
             };
 
@@ -212,11 +237,13 @@ impl Endpoints for API<Public> {
                         address: caller_address,
                         coins: Default::default(),
                         owned_addresses: vec![caller_address],
+                        operation_datastore: None, // should always be None
                     },
                     ExecutionStackElement {
                         address: target_address,
                         coins: Default::default(),
                         owned_addresses: vec![target_address],
+                        operation_datastore: None, // should always be None
                     },
                 ],
             };
@@ -267,6 +294,7 @@ impl Endpoints for API<Public> {
     }
 
     fn get_status(&self) -> BoxFuture<Result<NodeStatus, ApiError>> {
+
         let execution_controller = self.0.execution_controller.clone();
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let network_command_sender = self.0.network_command_sender.clone();

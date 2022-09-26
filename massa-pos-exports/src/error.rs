@@ -1,10 +1,10 @@
 use displaydoc::Display;
 use thiserror::Error;
 
-/// pos result
+/// Proof-of-Stake result
 pub type PosResult<T, E = PosError> = core::result::Result<T, E>;
 
-/// pos error
+/// Proof-of-Stake error
 #[non_exhaustive]
 #[derive(Display, Error, Debug, Clone)]
 pub enum PosError {
@@ -14,10 +14,10 @@ pub enum PosError {
     InvalidRollDistribution(String),
     /// Overflow error: {0}
     OverflowError(String),
-    /// CycleUnavailable: PoS cycle {0} is needed but is absent from cache
+    /// `CycleUnavailable`: PoS cycle {0} is needed but is absent from cache
     CycleUnavailable(u64),
-    /// CycleUnfinalised: PoS cycle {0} is needed but is not complete yet
-    CycleUnfinalised(u64),
+    /// `CycleUnfinished`: PoS cycle {0} is needed but is not complete yet
+    CycleUnfinished(u64),
     /// Error while loading initial rolls file: {0}
     RollsFileLoadingError(String),
     /// Communication channel was down: {0}

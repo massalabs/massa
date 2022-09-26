@@ -227,7 +227,7 @@ pub struct BlockGraphExport {
     pub genesis_blocks: Vec<BlockId>,
     /// Map of active blocks, were blocks are in their exported version.
     pub active_blocks: PreHashMap<BlockId, ExportCompiledBlock>,
-    /// Finite cache of discarded blocks, in exported version (slot, creator_address, parents).
+    /// Finite cache of discarded blocks, in exported version `(slot, creator_address, parents)`.
     pub discarded_blocks: PreHashMap<BlockId, (DiscardReason, (Slot, Address, Vec<BlockId>))>,
     /// Best parents hashes in each thread.
     pub best_parents: Vec<(BlockId, u64)>,

@@ -79,7 +79,7 @@ pub enum ProtocolCommand {
         remove: PreHashSet<BlockId>,
     },
     /// Propagate operations (send batches)
-    /// note: Set<OperationId> are replaced with OperationPrefixIds
+    /// note: `Set<OperationId>` are replaced with `OperationPrefixIds`
     ///       by the controller
     PropagateOperations(Storage),
     /// Propagate endorsements
@@ -98,8 +98,8 @@ impl ProtocolCommandSender {
     /// Sends the order to propagate the header of a block
     ///
     /// # Arguments
-    /// * block_id : ID of the block
-    /// * storage: Storage instance containing references to the block and all its dependencies
+    /// * `block_id`: ID of the block
+    /// * `storage`: Storage instance containing references to the block and all its dependencies
     pub async fn integrated_block(
         &mut self,
         block_id: BlockId,

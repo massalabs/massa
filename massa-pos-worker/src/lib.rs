@@ -18,7 +18,7 @@ use std::{
 };
 
 /// Enumeration of internal commands sent to the selector thread as input
-/// datas. `CycleInfo`, Look at [InputDataPtr]
+/// data. `CycleInfo`, Look at `InputDataPtr`
 pub(crate) enum Command {
     /// Input requirements for the draw
     DrawInput {

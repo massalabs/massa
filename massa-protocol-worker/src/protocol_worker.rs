@@ -144,7 +144,7 @@ pub struct ProtocolWorker {
     /// Ids of active nodes mapped to node info.
     pub(crate) active_nodes: HashMap<NodeId, NodeInfo>,
     /// List of wanted blocks,
-    /// with the info representing their state with in the as_block workflow.
+    /// with the info representing their state with in the `as_block` workflow.
     pub(crate) block_wishlist: PreHashMap<BlockId, BlockInfo>,
     /// List of processed endorsements
     checked_endorsements: PreHashSet<EndorsementId>,
@@ -367,10 +367,7 @@ impl ProtocolWorker {
                 new_endorsements.keys().copied().collect(),
                 self.config.max_node_known_endorsements_size,
             );
-            let to_send = new_endorsements
-                .into_iter()
-                .map(|(_, op)| op)
-                .collect::<Vec<_>>();
+            let to_send: Vec<WrappedEndorsement> = new_endorsements.into_values().collect();
             if !to_send.is_empty() {
                 let res = self
                     .network_command_sender

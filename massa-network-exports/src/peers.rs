@@ -101,7 +101,7 @@ impl BootstrapPeersDeserializer {
     ///
     /// Arguments:
     ///
-    /// * max_peers: maximum peers that can be serialized
+    /// * `max_peers`: maximum peers that can be serialized
     pub fn new(max_peers: u32) -> Self {
         Self {
             length_deserializer: U32VarIntDeserializer::new(Included(0), Included(max_peers)),

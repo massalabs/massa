@@ -65,9 +65,9 @@ pub enum BootstrapServerMessage {
         ledger_data: Vec<u8>,
         /// Part of the async pool
         async_pool_part: Vec<u8>,
-        /// Part of the Proof of Stake cycle_history
+        /// Part of the Proof of Stake `cycle_history`
         pos_cycle_part: Vec<u8>,
-        /// Part of the Proof of Stake deferred_credits
+        /// Part of the Proof of Stake `deferred_credits`
         pos_credits_part: Vec<u8>,
         /// Part of the executed operations
         exec_ops_part: Vec<u8>,
@@ -100,7 +100,6 @@ enum MessageServerTypeId {
 }
 
 /// Serializer for `BootstrapServerMessage`
-#[derive(Default)]
 pub struct BootstrapServerMessageSerializer {
     u32_serializer: U32VarIntSerializer,
     time_serializer: MassaTimeSerializer,
@@ -110,6 +109,12 @@ pub struct BootstrapServerMessageSerializer {
     bootstrapable_graph_serializer: BootstrapableGraphSerializer,
     vec_u8_serializer: VecU8Serializer,
     slot_serializer: SlotSerializer,
+}
+
+impl Default for BootstrapServerMessageSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BootstrapServerMessageSerializer {

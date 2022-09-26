@@ -3,6 +3,7 @@
 //! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
 use crate::ledger_db::{LedgerDB, LedgerSubEntry};
+use massa_hash::Hash;
 use massa_ledger_exports::{
     LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
 };
@@ -149,9 +150,14 @@ impl LedgerController for FinalLedger {
     /// Get every key of the datastore for a given address.
     ///
     /// # Returns
-    /// A BTreeSet of the datastore keys
+    /// A `BTreeSet` of the datastore keys
     fn get_datastore_keys(&self, addr: &Address) -> BTreeSet<Vec<u8>> {
         self.sorted_ledger.get_datastore_keys(addr)
+    }
+
+    /// Get the current disk ledger hash
+    fn get_ledger_hash(&self) -> Hash {
+        self.sorted_ledger.get_ledger_hash()
     }
 
     /// Get a part of the disk ledger.
@@ -182,7 +188,7 @@ impl LedgerController for FinalLedger {
     /// IMPORTANT: This should only be used for debug and test purposes.
     ///
     /// # Returns
-    /// A BTreeMap with the address as key and the balance as value
+    /// A `BTreeMap` with the address as key and the balance as value
     #[cfg(feature = "testing")]
     fn get_every_address(&self) -> std::collections::BTreeMap<Address, Amount> {
         self.sorted_ledger.get_every_address()
@@ -193,7 +199,7 @@ impl LedgerController for FinalLedger {
     /// IMPORTANT: This should only be used for debug purposes.
     ///
     /// # Returns
-    /// A BTreeMap with the entry hash as key and the data bytes as value
+    /// A `BTreeMap` with the entry hash as key and the data bytes as value
     #[cfg(feature = "testing")]
     fn get_entire_datastore(&self, addr: &Address) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>> {
         self.sorted_ledger.get_entire_datastore(addr)

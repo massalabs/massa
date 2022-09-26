@@ -154,7 +154,7 @@ impl ProtocolWorker {
 
     /// Network ask the local node for blocks
     ///
-    /// React on another node asking for blocks informations. We can forward the operation ids if
+    /// React on another node asking for blocks information. We can forward the operation ids if
     /// the foreign node asked for `AskForBlocksInfo::Info` or the full operations if he asked for
     /// the missing operations in his storage with `AskForBlocksInfo::Operations`
     ///
@@ -233,7 +233,7 @@ impl ProtocolWorker {
 
     /// On block header received from a node.
     /// If the header is new, we propagate it to the consensus.
-    /// We pass the state of block_wishlist ot ask for information about the block.
+    /// We pass the state of `block_wishlist` to ask for information about the block.
     async fn on_block_header_received(
         &mut self,
         from_node_id: NodeId,
@@ -391,9 +391,9 @@ impl ProtocolWorker {
     ///
     /// # Ban
     /// Ban the node if it doesn't fill the requirement. Forward to the graph with a
-    /// [ProtocolEvent::ReceivedBlock] if the operations are under a max size.
+    /// `ProtocolEvent::ReceivedBlock` if the operations are under a max size.
     ///
-    /// - thread incorect for an operation
+    /// - thread incorrect for an operation
     /// - wanted operations doesn't match
     /// - duplicated operation
     /// - full operations serialized size overflow

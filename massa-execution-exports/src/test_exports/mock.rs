@@ -58,7 +58,7 @@ pub enum MockExecutionControllerMessage {
         /// response channel
         response_tx: mpsc::Sender<Result<ExecutionOutput, ExecutionError>>,
     },
-    /// Unexecuted operation among call
+    /// Not executed operation among call
     UnexecutedOpsAmong {
         /// operation ids
         ops: PreHashSet<OperationId>,
@@ -67,7 +67,7 @@ pub enum MockExecutionControllerMessage {
         /// response channel
         response_tx: mpsc::Sender<PreHashSet<OperationId>>,
     },
-    /// Get final and candidate sequencial balances by addresses
+    /// Get final and candidate balances by addresses
     GetFinalAndCandidateBalance {
         /// addresses to get
         addresses: Vec<Address>,

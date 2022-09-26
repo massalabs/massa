@@ -69,7 +69,7 @@ pub(crate) struct ExecutionContextSnapshot {
 /// passed to the VM to interact with during bytecode execution (through ABIs),
 /// and read after execution to gather results.
 pub(crate) struct ExecutionContext {
-    /// config
+    /// configuration
     config: ExecutionConfig,
 
     /// speculative ledger state,
@@ -797,7 +797,7 @@ impl ExecutionContext {
             .insert_executed_op(op_id, op_valid_until_slot)
     }
 
-    /// gets the cycle infos for an address
+    /// gets the cycle information for an address
     pub fn get_address_cycle_infos(
         &self,
         address: &Address,

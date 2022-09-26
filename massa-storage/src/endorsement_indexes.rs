@@ -32,7 +32,7 @@ impl EndorsementIndexes {
 
     /// Remove a endorsement, remove from the indexes and made some clean-up in indexes if necessary.
     /// Arguments:
-    /// - endorsement_id: the endorsement id to remove
+    /// * `endorsement_id`: the endorsement id to remove
     pub(crate) fn remove(&mut self, endorsement_id: &EndorsementId) -> Option<WrappedEndorsement> {
         if let Some(e) = self.endorsements.remove(endorsement_id) {
             // update creator index
