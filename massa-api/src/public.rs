@@ -136,7 +136,11 @@ impl Endpoints for API<Public> {
 
             let op_datastore = match operation_datastore {
                 Some(v) => {
-                    let deserializer = DatastoreDeserializer::new(10000, 255, 10000);
+                    let deserializer = DatastoreDeserializer::new(
+                        self.0.api_settings.max_op_datastore_entry_count,
+                        self.0.api_settings.max_op_datastore_key_length,
+                        self.0.api_settings.max_op_datastore_value_length,
+                        );
                     match deserializer.deserialize::<DeserializeError>(&v) {
                         Ok((_, deserialized)) => Some(deserialized),
                         Err(e) => {
