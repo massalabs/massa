@@ -44,11 +44,11 @@ impl Display for ExecutionInputData {
             self.stop,
             self.finalized_blocks
                 .iter()
-                .map(|(slot, (id, _))| (*slot, *id))
+                .map(|(slot, id)| (*slot, *id))
                 .collect::<BTreeMap<Slot, BlockId>>(),
             self.new_blockclique.as_ref().map(|bq| bq
                 .iter()
-                .map(|(slot, (id, _))| (*slot, *id))
+                .map(|(slot, id)| (*slot, *id))
                 .collect::<BTreeMap<Slot, BlockId>>()),
             self.readonly_requests
         )
@@ -103,8 +103,8 @@ impl ExecutionController for ExecutionControllerImpl {
     /// * `block_storage`: storage instances for new blocks. Each one owns refs to the block and its ops/endorsements/parents.
     fn update_blockclique_status(
         &self,
-        finalized_blocks: PreHashMap<Slot, BlockId>,
-        new_blockclique: Option<PreHashMap<Slot, BlockId>>,
+        finalized_blocks: HashMap<Slot, BlockId>,
+        new_blockclique: Option<HashMap<Slot, BlockId>>,
         block_storage: PreHashMap<BlockId, Storage>,
     ) {
         // lock input data

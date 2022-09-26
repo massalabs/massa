@@ -70,11 +70,6 @@ impl<T, R> RequestQueue<T, R> {
         }
     }
 
-    /// Check if the queue is empty
-    pub fn is_empty(&self) -> bool {
-        self.queue.is_empty()
-    }
-
     /// Returns the max number of items the queue can contain
     pub fn capacity(&self) -> usize {
         self.max_items

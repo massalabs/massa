@@ -35,8 +35,8 @@ use massa_sc_runtime::Interface;
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet};
-use std::{collections::HashMap, sync::Arc};
-use tracing::debug;
+use std::sync::Arc;
+use tracing::{debug, info, warn};
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -127,14 +127,6 @@ impl ExecutionState {
         self.stats_counter.get_stats(self.active_cursor)
     }
 
-    /// Gets out the first (oldest) execution history item, removing it from history.
-    ///
-    /// # Returns
-    /// The earliest `ExecutionOutput` from the execution history, or None if the history is empty
-    pub fn pop_first_execution_result(&mut self) -> Option<ExecutionOutput> {
-        self.active_history.write().0.pop_front()
-    }
-
     /// Applies the output of an execution to the final execution state.
     /// The newly applied final output should be from the slot just after the last executed final slot
     ///
@@ -190,70 +182,6 @@ impl ExecutionState {
 
         // add the execution output at the end of the output history
         self.active_history.write().0.push_back(exec_out);
-    }
-
-    /// Clear the whole execution history,
-    /// deleting caches on executed non-final slots.
-    pub fn clear_history(&mut self) {
-        // clear history
-        self.active_history.write().0.clear();
-
-        // reset active cursor to point to the latest final slot
-        self.active_cursor = self.final_cursor;
-    }
-
-    /// This function receives a new sequence of blocks to execute as argument.
-    /// It then scans the output history to see until which slot this sequence was already executed (and is outputs cached).
-    /// If a mismatch is found, it means that the sequence of blocks to execute has changed
-    /// and the existing output cache is truncated to keep output history only until the mismatch slot (excluded).
-    /// Slots after that point will need to be (re-executed) to account for the new sequence.
-    ///
-    /// # Arguments
-    /// * `active_slots`: A `HashMap` mapping each active slot to a block or None if the slot is a miss
-    /// * `ready_final_slots`:  A `HashMap` mapping each ready-to-execute final slot to a block or None if the slot is a miss
-    pub fn truncate_history(
-        &mut self,
-        active_slots: &HashMap<Slot, Option<(BlockId, Storage)>>,
-        ready_final_slots: &HashMap<Slot, Option<(BlockId, Storage)>>,
-    ) {
-        // find mismatch point (included)
-        let mut truncate_at = None;
-        // iterate over the output history, in chronological order
-        for (hist_index, exec_output) in self.active_history.read().0.iter().enumerate() {
-            // try to find the corresponding slot in active_slots or ready_final_slots.
-            let found_block_id = active_slots
-                .get(&exec_output.slot)
-                .or_else(|| ready_final_slots.get(&exec_output.slot))
-                .map(|inner| inner.as_ref().map(|(b_id, _)| *b_id));
-            if found_block_id == Some(exec_output.block_id) {
-                // the slot number and block ID still match. Continue scanning
-                continue;
-            }
-            // mismatch found: stop scanning and return the cutoff index
-            truncate_at = Some(hist_index);
-            break;
-        }
-
-        // If a mismatch was found
-        if let Some(truncate_at) = truncate_at {
-            // Truncate the execution output history at the cutoff index (excluded)
-            self.active_history.write().0.truncate(truncate_at);
-            // Now that part of the speculative executions were cancelled,
-            // update the active cursor to match the latest executed slot.
-            // The cursor is set to the latest executed final slot if the history is empty.
-            self.active_cursor = self
-                .active_history
-                .read()
-                .0
-                .back()
-                .map_or(self.final_cursor, |out| out.slot);
-            // safety check to ensure that the active cursor cannot go too far back in time
-            if self.active_cursor < self.final_cursor {
-                panic!(
-                    "active_cursor moved before final_cursor after execution history truncation"
-                );
-            }
-        }
     }
 
     /// Execute an operation in the context of a block.
@@ -779,15 +707,15 @@ impl ExecutionState {
     #[allow(clippy::borrowed_box)]
     pub fn execute_slot(
         &self,
-        slot: Slot,
-        opt_block: Option<(BlockId, Storage)>,
+        slot: &Slot,
+        exec_target: &Option<(BlockId, Storage)>,
         selector: &Box<dyn SelectorController>,
     ) -> ExecutionOutput {
         // Create a new execution context for the whole active slot
         let mut execution_context = ExecutionContext::active_slot(
             self.config.clone(),
-            slot,
-            opt_block.as_ref().map(|(b_id, _)| *b_id),
+            *slot,
+            exec_target.as_ref().map(|(b_id, _)| *b_id),
             self.final_state.clone(),
             self.active_history.clone(),
         );
@@ -807,11 +735,11 @@ impl ExecutionState {
         }
 
         // Check if there is a block at this slot
-        if let Some((block_id, block_store)) = opt_block {
+        if let Some((block_id, block_store)) = exec_target {
             // Retrieve the block from storage
             let stored_block = block_store
                 .read_blocks()
-                .get(&block_id)
+                .get(block_id)
                 .expect("Missing block in storage.")
                 .clone();
 
@@ -887,7 +815,7 @@ impl ExecutionState {
             let mut context = context_guard!(self);
 
             // Update speculative rolls state production stats
-            context.update_production_stats(&block_creator_addr, slot, Some(block_id));
+            context.update_production_stats(&block_creator_addr, *slot, Some(*block_id));
 
             // Credit endorsement producers and endorsed block producers
             let mut remaining_credit = block_credits;
@@ -947,13 +875,100 @@ impl ExecutionState {
         } else {
             // the slot is a miss, check who was supposed to be the creator and update production stats
             let producer_addr = selector
-                .get_producer(slot)
+                .get_producer(*slot)
                 .expect("couldn't get the expected block producer for a missed slot");
-            context_guard!(self).update_production_stats(&producer_addr, slot, None);
+            context_guard!(self).update_production_stats(&producer_addr, *slot, None);
         }
 
         // Finish slot and return the execution output
         context_guard!(self).settle_slot()
+    }
+
+    /// Execute a candidate slot
+    pub fn execute_candidate_slot(
+        &mut self,
+        slot: &Slot,
+        exec_target: &Option<(BlockId, Storage)>,
+        selector: &Box<dyn SelectorController>,
+    ) {
+        let target_id = exec_target.as_ref().map(|(b_id, _)| *b_id);
+        debug!(
+            "execute_candidate_slot: executing slot={} target={:?}",
+            slot, target_id
+        );
+
+        // if the slot was already executed, truncate active history to cancel the slot and all the ones after
+        if &self.active_cursor >= slot {
+            debug!(
+                "execute_candidate_slot: truncating down from slot {}",
+                self.active_cursor
+            );
+            self.active_history
+                .write()
+                .truncate_from(slot, self.config.thread_count);
+            self.active_cursor = slot
+                .get_prev_slot(self.config.thread_count)
+                .expect("overflow when iterating on slots");
+        }
+
+        let exec_out = self.execute_slot(slot, exec_target, selector);
+        debug!("execute_candidate_slot: execution finished");
+
+        // apply execution output to active state
+        self.apply_active_execution_output(exec_out);
+        debug!("execute_candidate_slot: execution state applied");
+    }
+
+    /// Execute an SCE-final slot
+    pub fn execute_final_slot(
+        &mut self,
+        slot: &Slot,
+        exec_target: &Option<(BlockId, Storage)>,
+        selector: &Box<dyn SelectorController>,
+    ) {
+        let target_id = exec_target.as_ref().map(|(b_id, _)| *b_id);
+        debug!(
+            "execute_final_slot: executing slot={} target={:?}",
+            slot, target_id
+        );
+
+        // check if the final slot execution result is already cached at the front of the speculative execution history
+        if let Some(exec_out) = self.active_history.write().0.pop_front() {
+            if &exec_out.slot == slot && exec_out.block_id == target_id {
+                // speculative execution front result matches what we want to compute
+
+                // apply the cached output and return
+                self.apply_final_execution_output(exec_out);
+
+                debug!("execute_final_slot: found in cache, applied cache");
+                return;
+            } else {
+                // speculative cache mismatch
+                warn!(
+                    "speculative execution cache mismatch (final slot={}/block={:?}, front speculative slot={}/block={:?}). Resetting the cache.",
+                    slot, target_id, exec_out.slot, exec_out.block_id
+                );
+            }
+        } else {
+            // cache entry absent
+            info!(
+                "speculative execution cache empty, executing final slot={}/block={:?}",
+                slot, target_id
+            );
+        }
+
+        // truncate the whole execution queue
+        self.active_history.write().0.clear();
+        self.active_cursor = self.final_cursor;
+
+        // execute slot
+        debug!("execute_final_slot: execution started");
+        let exec_out = self.execute_slot(slot, exec_target, selector);
+        debug!("execute_final_slot: execution finished");
+
+        // apply execution output to final state
+        self.apply_final_execution_output(exec_out);
+        debug!("execute_final_slot: execution result applied");
     }
 
     /// Runs a read-only execution request.

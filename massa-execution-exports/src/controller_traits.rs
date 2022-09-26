@@ -30,8 +30,8 @@ pub trait ExecutionController: Send + Sync {
     /// * `block_storage`: storage instances for new blocks. Each one owns refs to the block and its ops/endorsements/parents.
     fn update_blockclique_status(
         &self,
-        finalized_blocks: PreHashMap<Slot, BlockId>,
-        new_blockclique: Option<PreHashMap<Slot, BlockId>>,
+        finalized_blocks: HashMap<Slot, BlockId>,
+        new_blockclique: Option<HashMap<Slot, BlockId>>,
         block_storage: PreHashMap<BlockId, Storage>,
     );
 

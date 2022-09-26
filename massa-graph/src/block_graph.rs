@@ -2710,7 +2710,7 @@ impl BlockGraph {
             .map(|b_id| {
                 let (a_block, _storage) =
                     self.get_active_block(b_id).expect("active block missing");
-                (b_id, a_block.slot)
+                (*b_id, a_block.slot)
             })
             .collect()
     }

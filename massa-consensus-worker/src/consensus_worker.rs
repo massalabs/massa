@@ -6,7 +6,7 @@ use massa_consensus_exports::{
     ConsensusConfig,
 };
 use massa_graph::{BlockGraph, BlockGraphExport};
-use massa_models::{address::Address, block::BlockId, slot::Slot};
+use massa_models::{address::Address, block::BlockId, operation::OperationId, slot::Slot};
 use massa_models::{block::WrappedHeader, prehash::PreHashMap};
 use massa_models::{
     prehash::CapacityAllocator,

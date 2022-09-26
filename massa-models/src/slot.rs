@@ -264,8 +264,10 @@ impl Slot {
     /// ## Example
     /// ```rust
     /// # use massa_models::slot::Slot;
-    /// let slot = Slot::new(10,5);
-    /// assert_eq!(slot.get_next_slot(5).unwrap(), Slot::new(11, 0))
+    /// let slot = Slot::new(10,3);
+    /// assert_eq!(slot.get_next_slot(5).unwrap(), Slot::new(10, 4));
+    /// let slot = Slot::new(10,4);
+    /// assert_eq!(slot.get_next_slot(5).unwrap(), Slot::new(11, 0));
     /// ```
     pub fn get_next_slot(&self, thread_count: u8) -> Result<Slot, ModelsError> {
         if self.thread.saturating_add(1u8) >= thread_count {
@@ -282,6 +284,28 @@ impl Slot {
                     .checked_add(1u8)
                     .ok_or(ModelsError::ThreadOverflowError)?,
             ))
+        }
+    }
+
+    /// Returns the previous Slot
+    ///
+    /// ## Example
+    /// ```rust
+    /// # use massa_models::slot::Slot;
+    /// let slot = Slot::new(10,1);
+    /// assert_eq!(slot.get_prev_slot(5).unwrap(), Slot::new(10, 0));
+    /// let slot = Slot::new(10,0);
+    /// assert_eq!(slot.get_prev_slot(5).unwrap(), Slot::new(9, 4));
+    /// ```
+    pub fn get_prev_slot(&self, thread_count: u8) -> Result<Slot, ModelsError> {
+        match self.thread.checked_sub(1u8) {
+            Some(t) => Ok(Slot::new(self.period, t)),
+            None => Ok(Slot::new(
+                self.period
+                    .checked_sub(1)
+                    .ok_or(ModelsError::PeriodOverflowError)?,
+                thread_count.saturating_sub(1),
+            )),
         }
     }
 

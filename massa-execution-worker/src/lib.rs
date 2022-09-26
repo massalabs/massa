@@ -48,7 +48,7 @@
 //! Implements `SlotSequence`
 //! that allows sequencing slots for execution.
 //!
-//! 
+//!
 //! ## controller.rs
 //! Implements `ExecutionManager` and `ExecutionController`
 //! that serve as interfaces for users to interact with the worker in worker.rs.
@@ -88,13 +88,13 @@ mod controller;
 mod execution;
 mod interface_impl;
 mod request_queue;
+mod slot_sequencer;
 mod speculative_async_pool;
 mod speculative_executed_ops;
 mod speculative_ledger;
 mod speculative_roll_state;
 mod stats;
 mod worker;
-mod slot_sequence;
 
 pub use worker::start_execution_worker;
 
