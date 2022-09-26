@@ -6,7 +6,7 @@ use massa_graph::{
 use massa_hash::Hash;
 use massa_models::{
     block::{Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, WrappedBlock},
-    endorsement::{Endorsement, EndorsementSerializer},
+    endorsement::{Endorsement, EndorsementSerializer, EndorsementSerializerLW},
     slot::Slot,
     wrapped::WrappedContent,
 };
@@ -32,7 +32,7 @@ fn get_export_active_test_block() -> (WrappedBlock, ExportActiveBlock) {
                             index: 0,
                             slot: Slot::new(1, 0),
                         },
-                        EndorsementSerializer::new(),
+                        EndorsementSerializerLW::new(),
                         &keypair,
                     )
                     .unwrap()],

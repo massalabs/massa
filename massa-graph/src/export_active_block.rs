@@ -23,6 +23,7 @@ use nom::{
 use nom::{error::context, IResult, Parser};
 use serde::{Deserialize, Serialize};
 use std::ops::Bound::Included;
+use massa_models::block::BlockDeserializerLW;
 
 /// Exportable version of `ActiveBlock`
 /// Fields that can be easily recomputed were left out
@@ -183,7 +184,7 @@ impl Serializer<ExportActiveBlock> for ExportActiveBlockSerializer {
 
 /// Basic deserializer of `ExportActiveBlock`
 pub struct ExportActiveBlockDeserializer {
-    wrapped_block_deserializer: WrappedDeserializer<Block, BlockDeserializer>,
+    wrapped_block_deserializer: WrappedDeserializer<Block, BlockDeserializerLW>,
     wrapped_operation_deserializer: WrappedDeserializer<Operation, OperationDeserializer>,
     hash_deserializer: HashDeserializer,
     period_deserializer: U64VarIntDeserializer,
@@ -206,7 +207,7 @@ impl ExportActiveBlockDeserializer {
         max_op_datastore_value_length: u64,
     ) -> Self {
         ExportActiveBlockDeserializer {
-            wrapped_block_deserializer: WrappedDeserializer::new(BlockDeserializer::new(
+            wrapped_block_deserializer: WrappedDeserializer::new(BlockDeserializerLW::new(
                 thread_count,
                 max_operations_per_block,
                 endorsement_count,
@@ -234,7 +235,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// ## Example:
     /// ```rust
     /// use massa_graph::export_active_block::{ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer};
-    /// use massa_models::{ledger_models::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{BlockId, Block, BlockSerializer, BlockHeader, BlockHeaderSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializer}, slot::Slot, wrapped::WrappedContent};
+    /// use massa_models::{ledger_models::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{BlockId, Block, BlockSerializer, BlockHeader, BlockHeaderSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializerLW}, slot::Slot, wrapped::WrappedContent};
     /// use massa_hash::Hash;
     /// use std::collections::HashSet;
     /// use massa_signature::KeyPair;
@@ -258,7 +259,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///                     index: 1,
     ///                     endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
     ///                 },
-    ///                 EndorsementSerializer::new(),
+    ///                 EndorsementSerializerLW::new(),
     ///                 &keypair,
     ///             )
     ///             .unwrap(),
@@ -268,7 +269,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///                     index: 3,
     ///                     endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
     ///                 },
-    ///                 EndorsementSerializer::new(),
+    ///                 EndorsementSerializerLW::new(),
     ///                 &keypair,
     ///             )
     ///             .unwrap(),

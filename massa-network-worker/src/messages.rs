@@ -31,6 +31,8 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 use std::ops::Bound::{Excluded, Included};
+use massa_models::block::BlockHeaderDeserializerLW;
+use massa_models::endorsement::EndorsementDeserializerLW;
 
 /// All messages that can be sent or received.
 #[allow(clippy::large_enum_variant)]
@@ -256,7 +258,7 @@ pub struct MessageDeserializer {
     peer_list_length_deserializer: U32VarIntDeserializer,
     operations_deserializer: OperationsDeserializer,
     hash_deserializer: HashDeserializer,
-    block_header_deserializer: WrappedDeserializer<BlockHeader, BlockHeaderDeserializer>,
+    block_header_deserializer: WrappedDeserializer<BlockHeader, BlockHeaderDeserializerLW>,
     endorsements_length_deserializer: U32VarIntDeserializer,
     endorsement_deserializer: WrappedDeserializer<Endorsement, EndorsementDeserializer>,
     operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer,
@@ -305,7 +307,7 @@ impl MessageDeserializer {
                 max_op_datastore_value_length,
             ),
             hash_deserializer: HashDeserializer::new(),
-            block_header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new(
+            block_header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializerLW::new(
                 thread_count,
                 endorsement_count,
             )),

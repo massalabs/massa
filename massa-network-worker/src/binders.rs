@@ -14,7 +14,7 @@ use massa_serialization::Serializer;
 use massa_serialization::{DeserializeError, Deserializer};
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tracing::log::warn;
+use tracing::warn;
 
 /// Used to serialize and send data.
 pub struct WriteBinder {

@@ -1220,6 +1220,7 @@ mod test {
         let keypair = KeyPair::generate();
         let parents: Vec<BlockId> = vec![];
 
+        // Genesis block do not have any parents and thus cannot embed endorsements
         let endorsement = Endorsement {
             slot: Slot::new(1, 1),
             index: 1,
