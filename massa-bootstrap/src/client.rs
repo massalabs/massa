@@ -82,8 +82,7 @@ async fn stream_final_state(
                         .set_deferred_credits_part(pos_credits_part.as_bytes())?;
                     let last_exec_ops_step = write_final_state
                         .executed_ops
-                        .set_executed_ops_part(exec_ops_part.as_bytes(), cfg.thread_count)
-                        .unwrap();
+                        .set_executed_ops_part(exec_ops_part.as_bytes(), cfg.thread_count)?;
                     for (changes_slot, changes) in final_state_changes.iter() {
                         write_final_state
                             .ledger
@@ -91,14 +90,18 @@ async fn stream_final_state(
                         write_final_state
                             .async_pool
                             .apply_changes_unchecked(&changes.async_pool_changes);
-                        write_final_state.pos_state.apply_changes(
-                            changes.pos_changes.clone(),
-                            *changes_slot,
-                            false,
-                        )?;
-                        write_final_state
-                            .executed_ops
-                            .extend(changes.executed_ops.clone());
+                        if !changes.pos_changes.is_empty() {
+                            write_final_state.pos_state.apply_changes(
+                                changes.pos_changes.clone(),
+                                *changes_slot,
+                                false,
+                            )?;
+                        }
+                        if !changes.executed_ops.is_empty() {
+                            write_final_state
+                                .executed_ops
+                                .extend(changes.executed_ops.clone());
+                        }
                     }
                     write_final_state.slot = slot;
                     if let BootstrapClientMessage::AskFinalStatePart {
