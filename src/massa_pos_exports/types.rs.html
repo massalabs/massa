@@ -875,6 +875,10 @@
 <span id="875">875</span>
 <span id="876">876</span>
 <span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::collections::{BTreeMap, VecDeque};
@@ -905,6 +909,7 @@
 };
 <span class="kw">use </span>num::rational::Ratio;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included, Unbounded};
+<span class="kw">use </span>tracing::warn;
 
 <span class="kw">use </span><span class="kw">crate</span>::SelectorController;
 
@@ -1279,6 +1284,9 @@
         } <span class="kw">else </span>{
             <span class="kw">let </span>opt_next_cycle = <span class="self">self</span>.cycle_history.back().map(|info| info.cycle.saturating_add(<span class="number">1</span>));
             <span class="kw">if let </span><span class="prelude-val">Some</span>(next_cycle) = opt_next_cycle &amp;&amp; cycle.<span class="number">0 </span>!= next_cycle {
+                <span class="kw">if </span><span class="self">self</span>.cycle_history.iter().map(|item| item.cycle).any(|x| x == cycle.<span class="number">0</span>) {
+                    <span class="macro">warn!</span>(<span class="string">&quot;PoS received cycle ({}) is already owned by the connecting node&quot;</span>, cycle.<span class="number">0</span>);
+                }
                 <span class="macro">panic!</span>(<span class="string">&quot;PoS received cycle ({}) should be equal to the next expected cycle ({})&quot;</span>, cycle.<span class="number">0</span>, next_cycle);
             }
             <span class="self">self</span>.cycle_history.push_back(CycleInfo {
@@ -1753,4 +1761,4 @@
     </span><span class="kw">pub </span>producer: Address,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pos_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (e7119a030 2022-09-22)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pos_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (f5193a9fc 2022-09-25)" ></div></body></html>

@@ -482,6 +482,9 @@
 <span id="482">482</span>
 <span id="483">483</span>
 <span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{net::SocketAddr, sync::Arc, time::Duration};
 
 <span class="kw">use </span>massa_final_state::{ExecutedOpsStreamingStep, FinalState};
@@ -566,8 +569,7 @@
                         .set_deferred_credits_part(pos_credits_part.as_bytes())<span class="question-mark">?</span>;
                     <span class="kw">let </span>last_exec_ops_step = write_final_state
                         .executed_ops
-                        .set_executed_ops_part(exec_ops_part.as_bytes(), cfg.thread_count)
-                        .unwrap();
+                        .set_executed_ops_part(exec_ops_part.as_bytes(), cfg.thread_count)<span class="question-mark">?</span>;
                     <span class="kw">for </span>(changes_slot, changes) <span class="kw">in </span>final_state_changes.iter() {
                         write_final_state
                             .ledger
@@ -575,14 +577,18 @@
                         write_final_state
                             .async_pool
                             .apply_changes_unchecked(<span class="kw-2">&amp;</span>changes.async_pool_changes);
-                        write_final_state.pos_state.apply_changes(
-                            changes.pos_changes.clone(),
-                            <span class="kw-2">*</span>changes_slot,
-                            <span class="bool-val">false</span>,
-                        )<span class="question-mark">?</span>;
-                        write_final_state
-                            .executed_ops
-                            .extend(changes.executed_ops.clone());
+                        <span class="kw">if </span>!changes.pos_changes.is_empty() {
+                            write_final_state.pos_state.apply_changes(
+                                changes.pos_changes.clone(),
+                                <span class="kw-2">*</span>changes_slot,
+                                <span class="bool-val">false</span>,
+                            )<span class="question-mark">?</span>;
+                        }
+                        <span class="kw">if </span>!changes.executed_ops.is_empty() {
+                            write_final_state
+                                .executed_ops
+                                .extend(changes.executed_ops.clone());
+                        }
                     }
                     write_final_state.slot = slot;
                     <span class="kw">if let </span>BootstrapClientMessage::AskFinalStatePart {
@@ -967,4 +973,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (e7119a030 2022-09-22)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (f5193a9fc 2022-09-25)" ></div></body></html>
