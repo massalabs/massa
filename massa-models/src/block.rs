@@ -11,8 +11,7 @@ use crate::{
 };
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U32VarIntDeserializer,
-    U32VarIntSerializer,
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
 use massa_signature::{KeyPair, PublicKey, Signature};
 use nom::branch::alt;
