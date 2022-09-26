@@ -11,6 +11,7 @@ members = [
   "massa-execution-worker",
   "massa-factory-exports",
   "massa-factory-worker",
+  "massa-graph-2-exports",
   "massa-graph",
   "massa-hash",
   "massa-logging",

@@ -1612,7 +1612,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.6.9"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=datastore_abi_1#ee2e97d7408811607b90ad1c2c1178e617a3cc5d"
+source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.8.0#6209418a8038bd07332c8e539dcc64699343359f"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -1915,6 +1915,15 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tracing",
+]
+
+[[package]]
+name = "massa_graph_exports"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "serde 1.0.144",
+ "serde_json",
 ]
 
 [[package]]
