@@ -15,7 +15,7 @@ use massa_consensus_exports::{
     events::ConsensusEvent, settings::ConsensusChannels, ConsensusConfig, ConsensusEventReceiver,
 };
 use massa_consensus_worker::start_consensus_controller;
-use massa_execution_exports::{ExecutionConfig, ExecutionManager};
+use massa_execution_exports::{ExecutionConfig, ExecutionManager, StorageCostsConstants};
 use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
@@ -268,6 +268,12 @@ async fn launch(
         .compute_initial_draws()
         .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
 
+    // Storage costs constants
+    let storage_costs_constants = StorageCostsConstants {
+        ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
+        ledger_entry_base_size: LEDGER_ENTRY_BASE_SIZE,
+        ledger_entry_datastore_base_size: LEDGER_ENTRY_DATASTORE_BASE_SIZE,
+    };
     // launch execution module
     let execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,
@@ -287,11 +293,9 @@ async fn launch(
         stats_time_window_duration: SETTINGS.execution.stats_time_window_duration,
         max_miss_ratio: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
-        ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
         max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
-        ledger_entry_base_size: LEDGER_ENTRY_BASE_SIZE,
-        ledger_entry_datastore_base_size: LEDGER_ENTRY_DATASTORE_BASE_SIZE,
+        storage_costs_constants,
     };
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,

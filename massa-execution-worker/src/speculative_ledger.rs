@@ -5,7 +5,9 @@
 //! It never actually writes to the consensus state
 //! but keeps track of the changes that were applied to it since its creation.
 
+use crate::active_history::{ActiveHistory, HistorySearchResult};
 use massa_execution_exports::ExecutionError;
+use massa_execution_exports::StorageCostsConstants;
 use massa_final_state::FinalState;
 use massa_ledger_exports::{Applicable, LedgerChanges};
 use massa_models::{
@@ -13,10 +15,9 @@ use massa_models::{
     amount::Amount,
 };
 use parking_lot::RwLock;
+use std::cmp::Ordering;
 use std::sync::Arc;
 use tracing::log::debug;
-
-use crate::active_history::{ActiveHistory, HistorySearchResult};
 
 /// The `SpeculativeLedger` contains an thread-safe shared reference to the final ledger (read-only),
 /// a list of existing changes that happened o the ledger since its finality,
@@ -38,20 +39,14 @@ pub(crate) struct SpeculativeLedger {
     /// max datastore key length
     max_datastore_key_length: u8,
 
-    /// ledger cost per bytes
-    ledger_cost_per_byte: Amount,
-
-    /// max bytecode size
-    max_bytecode_size: u64,
-
-    /// max datastore value size
+    /// Max datastore value size
     max_datastore_value_size: u64,
 
-    /// ledger entry base size
-    ledger_entry_base_size: usize,
+    /// Max bytecode size
+    max_bytecode_size: u64,
 
-    /// ledger entry datastore base size
-    ledger_entry_datastore_base_size: usize,
+    /// storage cost constants
+    storage_costs_constants: StorageCostsConstants,
 }
 
 impl SpeculativeLedger {
@@ -65,22 +60,18 @@ impl SpeculativeLedger {
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         max_datastore_key_length: u8,
-        ledger_cost_per_byte: Amount,
         max_bytecode_size: u64,
         max_datastore_value_size: u64,
-        ledger_entry_base_size: usize,
-        ledger_entry_datastore_base_size: usize,
+        storage_costs_constants: StorageCostsConstants,
     ) -> Self {
         SpeculativeLedger {
             final_state,
             added_changes: Default::default(),
             active_history,
             max_datastore_key_length,
-            ledger_cost_per_byte,
-            max_bytecode_size,
             max_datastore_value_size,
-            ledger_entry_base_size,
-            ledger_entry_datastore_base_size,
+            max_bytecode_size,
+            storage_costs_constants,
         }
     }
 
@@ -183,19 +174,24 @@ impl SpeculativeLedger {
                     debug!("Creating address {} from sender balance", to_addr);
                     // Debit sender to create receiver address
                     let address_storage_cost = self
+                        .storage_costs_constants
                         .ledger_cost_per_byte
-                        .checked_mul_u64(self.ledger_entry_base_size.try_into().map_err(|_| {
-                            ExecutionError::RuntimeError(
+                        .checked_mul_u64(
+                            self.storage_costs_constants
+                                .ledger_entry_base_size
+                                .try_into()
+                                .map_err(|_| {
+                                    ExecutionError::RuntimeError(
                                 "overflow in calculating cost for base entry (address + balance)"
                                     .to_string(),
                             )
-                        })?)
+                                })?,
+                        )
                         .ok_or_else(|| {
                             ExecutionError::RuntimeError(
                                 "overflow in ledger cost for balance".to_string(),
                             )
                         })?;
-                    // TODO: If we allow delete address, need to keep track of creator
                     self.transfer_coins(Some(from_addr), None, address_storage_cost)?;
                     changes.set_balance(
                         to_addr,
@@ -211,13 +207,19 @@ impl SpeculativeLedger {
                     //TODO: Remove when stabilized
                     debug!("Creating address {} from coins passed", to_addr);
                     let address_storage_cost = self
+                        .storage_costs_constants
                         .ledger_cost_per_byte
-                        .checked_mul_u64(self.ledger_entry_base_size.try_into().map_err(|_| {
-                            ExecutionError::RuntimeError(
+                        .checked_mul_u64(
+                            self.storage_costs_constants
+                                .ledger_entry_base_size
+                                .try_into()
+                                .map_err(|_| {
+                                    ExecutionError::RuntimeError(
                                 "overflow in calculating cost for base entry (address + balance)"
                                     .to_string(),
                             )
-                        })?)
+                                })?,
+                        )
                         .ok_or_else(|| {
                             ExecutionError::RuntimeError(
                                 "overflow in ledger cost for balance".to_string(),
@@ -231,7 +233,6 @@ impl SpeculativeLedger {
                                     "overflow in subtract ledger cost for addr".to_string(),
                                 )
                             })?;
-                        // TODO: If we allow delete address, need to keep track of creator
                         changes.set_balance(to_addr, amount_sent);
                     } else {
                         return Ok(());
@@ -301,18 +302,26 @@ impl SpeculativeLedger {
 
         // calculate the cost of storing the address and bytecode
         let address_storage_cost = self
+            .storage_costs_constants
             .ledger_cost_per_byte
-            .checked_mul_u64(self.ledger_entry_base_size.try_into().map_err(|_| {
-                ExecutionError::RuntimeError(
-                    "overflow in calculating cost for base entry (address + balance)".to_string(),
-                )
-            })?)
+            .checked_mul_u64(
+                self.storage_costs_constants
+                    .ledger_entry_base_size
+                    .try_into()
+                    .map_err(|_| {
+                        ExecutionError::RuntimeError(
+                            "overflow in calculating cost for base entry (address + balance)"
+                                .to_string(),
+                        )
+                    })?,
+            )
             .ok_or_else(|| {
                 ExecutionError::RuntimeError("overflow in ledger cost for balance".to_string())
             })?
             // Bytecode key and data
             .checked_add(
-                self.ledger_cost_per_byte
+                self.storage_costs_constants
+                    .ledger_cost_per_byte
                     .checked_mul_u64(ADDRESS_SIZE_BYTES.try_into().map_err(|_| {
                         ExecutionError::RuntimeError(
                             "overflow when calculating size for addr for bytecode".to_string(),
@@ -328,7 +337,8 @@ impl SpeculativeLedger {
                 ExecutionError::RuntimeError("overflow when adding key for bytecode".to_string())
             })?
             .checked_add(
-                self.ledger_cost_per_byte
+                self.storage_costs_constants
+                    .ledger_cost_per_byte
                     .checked_mul_u64(bytecode.len().try_into().map_err(|_| {
                         ExecutionError::RuntimeError(
                             "overflow calculating size key for bytecode".to_string(),
@@ -344,7 +354,6 @@ impl SpeculativeLedger {
                 ExecutionError::RuntimeError("overflow in ledger cost for bytecode".to_string())
             })?;
 
-        //TODO: If we allow delete address, need to keep track of creator
         self.transfer_coins(Some(creator_address), None, address_storage_cost)?;
         self.added_changes.set_bytecode(addr, bytecode);
         Ok(())
@@ -379,19 +388,23 @@ impl SpeculativeLedger {
         if let Some(old_bytecode_size) = self.get_bytecode(addr).map(|b| b.len()) {
             let diff_size_storage: i64 = (bytecode.len() as i64) - (old_bytecode_size as i64);
             let storage_cost_bytecode = self
+                .storage_costs_constants
                 .ledger_cost_per_byte
                 .checked_mul_u64(diff_size_storage.unsigned_abs())
                 .ok_or_else(|| {
                     ExecutionError::RuntimeError("try to store too much data".to_string())
                 })?;
 
-            if diff_size_storage > 0 {
-                self.transfer_coins(Some(*addr), None, storage_cost_bytecode)?;
-            } else {
-                self.transfer_coins(None, Some(*addr), storage_cost_bytecode)?;
-            }
+            match diff_size_storage.cmp(&0) {
+                Ordering::Greater => {
+                    self.transfer_coins(Some(*addr), None, storage_cost_bytecode)?
+                }
+                Ordering::Less => self.transfer_coins(None, Some(*addr), storage_cost_bytecode)?,
+                Ordering::Equal => {}
+            };
         } else {
             let bytecode_key_storage_cost = self
+                .storage_costs_constants
                 .ledger_cost_per_byte
                 .checked_mul_u64(ADDRESS_SIZE_BYTES.try_into().map_err(|_| {
                     ExecutionError::RuntimeError(
@@ -402,6 +415,7 @@ impl SpeculativeLedger {
                     ExecutionError::RuntimeError("overflow in ledger cost for addr".to_string())
                 })?;
             let bytecode_value_storage_cost = self
+                .storage_costs_constants
                 .ledger_cost_per_byte
                 .checked_mul_u64(bytecode.len() as u64)
                 .ok_or_else(|| {
@@ -478,9 +492,11 @@ impl SpeculativeLedger {
     }
 
     fn get_storage_cost_datastore_key(&self) -> Result<Amount, ExecutionError> {
-        self.ledger_cost_per_byte
+        self.storage_costs_constants
+            .ledger_cost_per_byte
             .checked_mul_u64(
-                self.ledger_entry_datastore_base_size
+                self.storage_costs_constants
+                    .ledger_entry_datastore_base_size
                     .try_into()
                     .map_err(|_| {
                         ExecutionError::RuntimeError(
@@ -496,7 +512,8 @@ impl SpeculativeLedger {
     }
 
     fn get_storage_cost_datastore_value(&self, value: &Vec<u8>) -> Result<Amount, ExecutionError> {
-        self.ledger_cost_per_byte
+        self.storage_costs_constants
+            .ledger_cost_per_byte
             .checked_mul_u64(value.len().try_into().map_err(|_| {
                 ExecutionError::RuntimeError("value in datastore is too big".to_string())
             })?)
@@ -551,16 +568,17 @@ impl SpeculativeLedger {
         if let Some(old_value) = self.get_data_entry(addr, &key) {
             let diff_size_storage: i64 = (value.len() as i64) - (old_value.len() as i64);
             let storage_cost_value = self
+                .storage_costs_constants
                 .ledger_cost_per_byte
                 .checked_mul_u64(diff_size_storage.unsigned_abs())
                 .ok_or_else(|| {
                     ExecutionError::RuntimeError("try to store too much data".to_string())
                 })?;
-            if diff_size_storage > 0 {
-                self.transfer_coins(Some(*addr), None, storage_cost_value)?;
-            } else {
-                self.transfer_coins(None, Some(*addr), storage_cost_value)?;
-            }
+            match diff_size_storage.cmp(&0) {
+                Ordering::Greater => self.transfer_coins(Some(*addr), None, storage_cost_value)?,
+                Ordering::Less => self.transfer_coins(None, Some(*addr), storage_cost_value)?,
+                Ordering::Equal => {}
+            };
         } else {
             let value_storage_cost = self.get_storage_cost_datastore_value(&value)?;
             self.transfer_coins(

@@ -2,13 +2,19 @@
 
 //! This file defines testing tools related to the configuration
 
-use crate::ExecutionConfig;
+use crate::{ExecutionConfig, StorageCostsConstants};
 use massa_models::config::*;
 use massa_time::MassaTime;
 
 impl Default for ExecutionConfig {
     /// default configuration used for testing
     fn default() -> Self {
+        let storage_costs_constants = StorageCostsConstants {
+            ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
+            ledger_entry_base_size: LEDGER_ENTRY_BASE_SIZE,
+            ledger_entry_datastore_base_size: LEDGER_ENTRY_DATASTORE_BASE_SIZE,
+        };
+
         Self {
             readonly_queue_length: 100,
             max_final_events: 1000,
@@ -29,11 +35,9 @@ impl Default for ExecutionConfig {
             stats_time_window_duration: MassaTime::from_millis(30000),
             max_miss_ratio: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
-            ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
             max_bytecode_size: MAX_BYTECODE_LENGTH,
             max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
-            ledger_entry_base_size: LEDGER_ENTRY_BASE_SIZE,
-            ledger_entry_datastore_base_size: LEDGER_ENTRY_DATASTORE_BASE_SIZE,
+            storage_costs_constants,
         }
     }
 }

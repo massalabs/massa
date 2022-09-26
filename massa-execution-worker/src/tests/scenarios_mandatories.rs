@@ -130,18 +130,21 @@ fn test_nested_call_gas_usage() {
             // Storage cost base
             .saturating_sub(
                 exec_cfg
+                    .storage_costs_constants
                     .ledger_cost_per_byte
                     .saturating_mul_u64(LEDGER_ENTRY_BASE_SIZE as u64)
             )
             // Storage bytecode key
             .saturating_sub(
                 exec_cfg
+                    .storage_costs_constants
                     .ledger_cost_per_byte
                     .saturating_mul_u64(ADDRESS_SIZE_BYTES as u64)
             )
             // Storage cost bytecode
             .saturating_sub(
                 exec_cfg
+                    .storage_costs_constants
                     .ledger_cost_per_byte
                     .saturating_mul_u64(bytecode_sub_contract_len)
             )
@@ -328,6 +331,7 @@ pub fn send_and_receive_transaction() {
             // Storage cost base
             .saturating_sub(
                 exec_cfg
+                    .storage_costs_constants
                     .ledger_cost_per_byte
                     .saturating_mul_u64(LEDGER_ENTRY_BASE_SIZE as u64)
             )
@@ -700,6 +704,8 @@ fn datastore_manipulations() {
     controller.update_blockclique_status(finalized_blocks, Default::default());
     std::thread::sleep(Duration::from_millis(10));
 
+    // Length of the value left in the datastore. See sources for more context.
+    let value_len = 10;
     assert_eq!(
         sample_state
             .read()
@@ -713,11 +719,17 @@ fn datastore_manipulations() {
             // Storage cost key
             .saturating_sub(
                 exec_cfg
+                    .storage_costs_constants
                     .ledger_cost_per_byte
                     .saturating_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
             )
             // Storage cost value
-            .saturating_sub(exec_cfg.ledger_cost_per_byte.saturating_mul_u64(10))
+            .saturating_sub(
+                exec_cfg
+                    .storage_costs_constants
+                    .ledger_cost_per_byte
+                    .saturating_mul_u64(value_len)
+            )
     );
 
     // stop the execution controller

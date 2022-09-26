@@ -216,8 +216,8 @@ impl OperationPool {
             }
 
             // check balance
-            //TODO: It's a wired behaviour because if the address is created afterwards this operation will be executed
-            // and also it spam the pool maybe we should just try to put the operation if there is no balance and 0 gas price
+            //TODO: It's a weird behaviour because if the address is created afterwards this operation will be executed
+            // and also it spams the pool maybe we should just try to put the operation if there is no balance and 0 gas price
             // and the execution will throw an error
             let creator_balance =
                 if let Some(amount) = balance_cache.get_mut(&op_info.creator_address) {
