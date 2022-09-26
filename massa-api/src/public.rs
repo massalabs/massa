@@ -26,6 +26,7 @@ use massa_protocol_exports::ProtocolCommandSender;
 use massa_serialization::{DeserializeError, Deserializer};
 
 use itertools::{izip, Itertools};
+use massa_models::datastore::DatastoreDeserializer;
 use massa_models::{
     address::Address,
     api::{
@@ -52,7 +53,6 @@ use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use std::net::{IpAddr, SocketAddr};
-use massa_models::datastore::DatastoreDeserializer;
 
 impl API<Public> {
     /// generate a new public API
@@ -113,7 +113,6 @@ impl Endpoints for API<Public> {
         &self,
         reqs: Vec<ReadOnlyBytecodeExecution>,
     ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
-
         if reqs.len() as u64 > self.0.api_settings.max_arguments {
             let closure =
                 async move || Err(ApiError::TooManyArguments("too many arguments".into()));
@@ -141,16 +140,11 @@ impl Endpoints for API<Public> {
                         Ok((_, deserialized)) => Some(deserialized),
                         Err(e) => {
                             let err_str = format!("Operation datastore error: {}", e);
-                            let closure =
-                                async move || {
-                                    Err(ApiError::InconsistencyError(
-                                        err_str
-                                    ))
-                                };
+                            let closure = async move || Err(ApiError::InconsistencyError(err_str));
                             return Box::pin(closure());
                         }
                     }
-                },
+                }
                 None => None,
             };
 
@@ -294,7 +288,6 @@ impl Endpoints for API<Public> {
     }
 
     fn get_status(&self) -> BoxFuture<Result<NodeStatus, ApiError>> {
-
         let execution_controller = self.0.execution_controller.clone();
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let network_command_sender = self.0.network_command_sender.clone();

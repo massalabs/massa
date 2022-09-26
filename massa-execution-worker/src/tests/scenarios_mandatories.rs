@@ -134,9 +134,11 @@ fn test_nested_call_gas_usage() {
                     .saturating_mul_u64(LEDGER_ENTRY_BASE_SIZE as u64)
             )
             // Storage bytecode key
-            .saturating_sub(exec_cfg.ledger_cost_per_byte.saturating_mul_u64(
-                ADDRESS_SIZE_BYTES as u64
-            ))
+            .saturating_sub(
+                exec_cfg
+                    .ledger_cost_per_byte
+                    .saturating_mul_u64(ADDRESS_SIZE_BYTES as u64)
+            )
             // Storage cost bytecode
             .saturating_sub(
                 exec_cfg

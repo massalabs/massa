@@ -335,7 +335,7 @@ impl Interface for InterfaceImpl {
     /// Note that the datastore is only accessible to the initial caller level.
     ///
     /// # Arguments
-    /// * key: bytearry key of the datastore entry to retrieve
+    /// * key: byte array key of the datastore entry to retrieve
     ///
     /// # Returns
     /// true if the entry is matching the provided key in its operation datastore, otherwise false
@@ -353,7 +353,7 @@ impl Interface for InterfaceImpl {
     /// Note that the datastore is only accessible to the initial caller level.
     ///
     /// # Arguments
-    /// * key: bytearray key of the datastore entry to retrieve
+    /// * key: byte array key of the datastore entry to retrieve
     ///
     /// # Returns
     /// The operation datastore value matching the provided key, if found, otherwise an error.
