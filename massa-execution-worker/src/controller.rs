@@ -11,7 +11,7 @@ use massa_execution_exports::{
 };
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::PreHashSet;
+use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::stats::ExecutionStats;
 use massa_models::{address::Address, amount::Amount, operation::OperationId};
 use massa_models::{block::BlockId, slot::Slot};
@@ -26,10 +26,12 @@ use tracing::info;
 pub(crate) struct ExecutionInputData {
     /// set stop to true to stop the thread
     pub stop: bool,
-    /// list of newly finalized blocks, indexed by slot
-    pub finalized_blocks: HashMap<Slot, (BlockId, Storage)>,
-    /// new blockclique (if there is a new one), blocks indexed by slot
-    pub new_blockclique: Option<HashMap<Slot, (BlockId, Storage)>>,
+    /// list of newly finalized blocks
+    pub finalized_blocks: HashMap<Slot, BlockId>,
+    /// new blockclique (if there is a new one)
+    pub new_blockclique: Option<HashMap<Slot, BlockId>>,
+    /// storage instances for previously unprocessed blocks
+    pub block_storage: PreHashMap<BlockId, Storage>,
     /// queue for read-only execution requests and response MPSCs to send back their outputs
     pub readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
 }
@@ -60,6 +62,7 @@ impl ExecutionInputData {
             stop: Default::default(),
             finalized_blocks: Default::default(),
             new_blockclique: Default::default(),
+            block_storage: Default::default(),
             readonly_requests: RequestQueue::new(config.max_final_events),
         }
     }
@@ -67,11 +70,16 @@ impl ExecutionInputData {
     /// Takes the current input data into a clone that is returned,
     /// and resets self.
     pub fn take(&mut self) -> Self {
+        let max_final_events = self.readonly_requests.capacity();
         ExecutionInputData {
             stop: std::mem::take(&mut self.stop),
             finalized_blocks: std::mem::take(&mut self.finalized_blocks),
             new_blockclique: std::mem::take(&mut self.new_blockclique),
-            readonly_requests: self.readonly_requests.take(),
+            block_storage: std::mem::take(&mut self.block_storage),
+            readonly_requests: std::mem::replace(
+                &mut self.readonly_requests,
+                RequestQueue::new(max_final_events),
+            ),
         }
     }
 }
@@ -87,21 +95,34 @@ pub struct ExecutionControllerImpl {
 }
 
 impl ExecutionController for ExecutionControllerImpl {
-    /// called to signal changes on the current blockclique, also listing newly finalized blocks
+    /// Updates blockclique status by signaling newly finalized blocks and the latest blockclique.
     ///
-    /// # arguments
-    /// * `finalized_blocks`: list of newly finalized blocks to be appended to the input finalized blocks. Each Storage owns the block and its ops/endorsements/parents.
-    /// * `blockclique`: new blockclique, replaces the current one in the input. Each Storage owns the block and its ops/endorsements/parents.
+    /// # Arguments
+    /// * `finalized_blocks`: newly finalized blocks indexed by slot.
+    /// * `blockclique`: new blockclique (if changed). Indexed by slot.
+    /// * `block_storage`: storage instances for new blocks. Each one owns refs to the block and its ops/endorsements/parents.
     fn update_blockclique_status(
         &self,
-        finalized_blocks: HashMap<Slot, (BlockId, Storage)>,
-        new_blockclique: HashMap<Slot, (BlockId, Storage)>,
+        finalized_blocks: PreHashMap<Slot, BlockId>,
+        new_blockclique: Option<PreHashMap<Slot, BlockId>>,
+        block_storage: PreHashMap<BlockId, Storage>,
     ) {
-        // update input data
+        // lock input data
         let mut input_data = self.input_data.1.lock();
-        input_data.new_blockclique = Some(new_blockclique); // replace blockclique
-        input_data.finalized_blocks.extend(finalized_blocks); // append finalized blocks
-        self.input_data.0.notify_one(); // wake up VM loop
+
+        // extend block info
+        input_data.block_storage.extend(block_storage);
+
+        // extend finalized blocks
+        input_data.finalized_blocks.extend(finalized_blocks);
+
+        // update blockclique
+        if new_blockclique.is_some() {
+            input_data.new_blockclique = new_blockclique;
+        }
+
+        // wake up VM loop
+        self.input_data.0.notify_one();
     }
 
     /// Get the generated execution events, optionally filtered by:

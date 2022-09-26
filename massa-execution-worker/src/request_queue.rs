@@ -70,6 +70,16 @@ impl<T, R> RequestQueue<T, R> {
         }
     }
 
+    /// Check if the queue is empty
+    pub fn is_empty(&self) -> bool {
+        self.queue.is_empty()
+    }
+
+    /// Returns the max number of items the queue can contain
+    pub fn capacity(&self) -> usize {
+        self.max_items
+    }
+
     /// Extends Self with the contents of another `RequestQueue`.
     /// The contents of the incoming queue are appended last.
     /// Excess items with respect to `self.max_items` are canceled and dropped.

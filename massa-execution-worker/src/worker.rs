@@ -1,4 +1,4 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! This module allows launching the execution worker thread, returning objects to communicate with it.
 //! The worker thread processes incoming notifications of blockclique changes,
@@ -8,12 +8,14 @@
 use crate::controller::{ExecutionControllerImpl, ExecutionInputData, ExecutionManagerImpl};
 use crate::execution::ExecutionState;
 use crate::request_queue::RequestQueue;
+use crate::slot_sequence::SlotSequence;
 use massa_execution_exports::{
     ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
     ReadOnlyExecutionRequest,
 };
 use massa_final_state::FinalState;
 use massa_models::block::BlockId;
+use massa_models::prehash::{PreHashSet, PreHashMap};
 use massa_models::{
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
@@ -31,6 +33,10 @@ pub(crate) struct ExecutionThread {
     config: ExecutionConfig,
     // A copy of the input data allowing access to incoming requests
     input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
+    // Total continuous slot sequence
+    slot_sequence: SlotSequence,
+
+
     // Map of final slots not executed yet but ready for execution
     // See lib.rs for an explanation on final execution ordering.
     ready_final_slots: HashMap<Slot, Option<(BlockId, Storage)>>,
@@ -90,12 +96,32 @@ impl ExecutionThread {
     /// This method is called from the execution worker's main loop.
     ///
     /// # Arguments
-    /// * `new_final_blocks`: a map of newly finalized blocks
-    fn update_final_slots(&mut self, new_final_blocks: HashMap<Slot, (BlockId, Storage)>) {
+    /// * `new_final_blocks`: kust of newly finalized blocks
+    /// * `new_blocks_storage`: storage for previously unseen blocks
+    fn update_final_slots(&mut self, new_final_blocks: HashMap<Slot, BlockId>, new_blocks_storage: &mut PreHashMap<BlockId, Storage>) {
         // if there are no new final blocks, exit and do nothing
         if new_final_blocks.is_empty() {
             return;
         }
+
+        // update slot sequence
+        self.slot_sequence.add_css_final_blocks(new_final_blocks, &mut new_blocks_storage);
+
+
+
+
+
+        // gather finalized blocks
+        let new_final_blocks = new_final_blocks.into_iter().map(|(slot, b_id)| {
+            TODO look into active slots to get 
+
+            if let Some((slot, storage)) = new_blocks_info.remove(&b_id) {
+                // block info is present inside new_blocks_info
+                (slot, (b_id, storage))
+            } else {
+                panic!("block info not found in active list nor in new_blocks_info");
+            }
+        });
 
         // add new_final_blocks to the pending final blocks not ready for execution yet
         self.pending_final_blocks.extend(new_final_blocks);
@@ -564,39 +590,28 @@ impl ExecutionThread {
         // 1 - final executions
         // 2 - speculative executions
         // 3 - read-only executions
-        while let Some(input_data) = self.wait_loop_event() {
+        while let Some(input_data) = self.wait_loop_event() { 
+
+            TODO_UPDATE_LOOP_WAIT();
+
             debug!("Execution loop triggered, input_data = {}", input_data);
 
-            // update the sequence of final slots given the newly finalized blocks
-            self.update_final_slots(input_data.finalized_blocks);
-
-            // update the sequence of active slots
-            self.update_active_slots(input_data.new_blockclique);
-
-            // The list of active slots might have seen
-            // new insertions/deletions of blocks at different slot depths.
-            // It is therefore important to signal this to the execution state,
-            // so that it can remove out-of-date speculative execution results from its history.
-            self.truncate_execution_history();
+            // update slot sequencer
+            self.slot_sequence.update(input_data.finalized_blocks, input_data.new_blockclique, input_data.block_info);
 
             // update the sequence of read-only requests
             self.update_readonly_requests(input_data.readonly_requests);
 
-            // execute one slot as final, if there is one ready for final execution
-            if self.execute_one_final_slot() {
-                // A slot was executed as final: restart the loop
-                // This loop continue is useful for monitoring:
-                // it allows tracking the state of all execution queues
-                continue;
+            // ask the slot sequencer for a task to be executed in priority
+            match self.slot_sequence.take_task() {
+                ExecutionTask::ExecuteFinalSlot(slot_info) => {
+                    let exec = self.execution_state.write();
+                    let exec_out = exec.execute_slot(slot, slot_info.content, &self.selector);
+                    exec.apply_final_execution_output(exec_out);
+                },
+                
             }
 
-            // now all the slots that were ready for final execution have been executed as final
-
-            // Execute one active slot in a speculative way, if there is one ready for that
-            if self.execute_one_active_slot() {
-                // An active slot was executed: restart the loop
-                continue;
-            }
 
             // now all the slots that were ready for final and active execution have been executed
 

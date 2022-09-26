@@ -44,6 +44,11 @@
 //! It sequences the blocks according to their slot number into queues,
 //! and requests the execution of active and final slots to execution.rs.
 //!
+//! ## slot_sequence.rs
+//! Implements `SlotSequence`
+//! that allows sequencing slots for execution.
+//!
+//! 
 //! ## controller.rs
 //! Implements `ExecutionManager` and `ExecutionController`
 //! that serve as interfaces for users to interact with the worker in worker.rs.
@@ -89,6 +94,7 @@ mod speculative_ledger;
 mod speculative_roll_state;
 mod stats;
 mod worker;
+mod slot_sequence;
 
 pub use worker::start_execution_worker;
 
