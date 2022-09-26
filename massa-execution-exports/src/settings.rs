@@ -45,8 +45,12 @@ pub struct ExecutionConfig {
     pub max_datastore_key_length: u8,
     /// Cost per byte in ledger
     pub ledger_cost_per_byte: Amount,
-    /// Cost per datastore key in ledger
-    pub ledger_cost_per_datastore_key: Amount,
-    /// Cost per balance in ledger
-    pub ledger_cost_per_balance: Amount,
+    /// Max bytecode size
+    pub max_bytecode_size: u64,
+    /// Max datastore value size
+    pub max_datastore_value_size: u64,
+    /// Ledger entry base size
+    pub ledger_entry_base_size: usize,
+    /// Ledger entry datastore base size
+    pub ledger_entry_datastore_base_size: usize,
 }

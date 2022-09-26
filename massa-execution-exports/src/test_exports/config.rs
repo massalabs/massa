@@ -30,8 +30,10 @@ impl Default for ExecutionConfig {
             max_miss_ratio: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
-            ledger_cost_per_balance: LEDGER_COST_PER_BALANCE,
-            ledger_cost_per_datastore_key: LEDGER_COST_PER_DATASTORE_KEY,
+            max_bytecode_size: MAX_BYTECODE_LENGTH,
+            max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
+            ledger_entry_base_size: LEDGER_ENTRY_BASE_SIZE,
+            ledger_entry_datastore_base_size: LEDGER_ENTRY_DATASTORE_BASE_SIZE,
         }
     }
 }

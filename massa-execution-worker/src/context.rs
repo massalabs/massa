@@ -149,8 +149,10 @@ impl ExecutionContext {
                 active_history.clone(),
                 config.max_datastore_key_length,
                 config.ledger_cost_per_byte,
-                config.ledger_cost_per_datastore_key,
-                config.ledger_cost_per_balance,
+                config.max_bytecode_size,
+                config.max_datastore_value_size,
+                config.ledger_entry_base_size,
+                config.ledger_entry_datastore_base_size,
             ),
             speculative_async_pool: SpeculativeAsyncPool::new(
                 final_state.clone(),

@@ -6,6 +6,7 @@ use massa_execution_exports::{
     ExecutionConfig, ExecutionError, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_models::address::ADDRESS_SIZE_BYTES;
+use massa_models::config::{LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE};
 use massa_models::prehash::PreHashMap;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
@@ -125,14 +126,16 @@ fn test_nested_call_gas_usage() {
             .unwrap()
             // Gas fee
             .saturating_sub(Amount::from_str("100000").unwrap())
-            // Storage cost address
+            // Storage cost base
             .saturating_sub(
                 exec_cfg
                     .ledger_cost_per_byte
-                    .saturating_mul_u64(ADDRESS_SIZE_BYTES as u64)
+                    .saturating_mul_u64(LEDGER_ENTRY_BASE_SIZE as u64)
             )
-            // Storage cost balance
-            .saturating_sub(exec_cfg.ledger_cost_per_balance)
+            // Storage bytecode key
+            .saturating_sub(exec_cfg.ledger_cost_per_byte.saturating_mul_u64(
+                ADDRESS_SIZE_BYTES as u64
+            ))
             // Storage cost bytecode
             .saturating_sub(
                 exec_cfg
@@ -319,14 +322,12 @@ pub fn send_and_receive_transaction() {
         // Storage cost applied
         Amount::from_str("100")
             .unwrap()
-            // Storage cost address
+            // Storage cost base
             .saturating_sub(
                 exec_cfg
                     .ledger_cost_per_byte
-                    .saturating_mul_u64(ADDRESS_SIZE_BYTES as u64)
+                    .saturating_mul_u64(LEDGER_ENTRY_BASE_SIZE as u64)
             )
-            // Storage cost balance
-            .saturating_sub(exec_cfg.ledger_cost_per_balance)
     );
     // stop the execution controller
     manager.stop();
@@ -655,8 +656,7 @@ fn datastore_manipulations() {
             .saturating_sub(
                 exec_cfg
                     .ledger_cost_per_byte
-                    .saturating_mul_u64(ADDRESS_SIZE_BYTES as u64)
-                    .saturating_add(exec_cfg.ledger_cost_per_datastore_key)
+                    .saturating_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
             )
             // Storage cost value
             .saturating_sub(exec_cfg.ledger_cost_per_byte.saturating_mul_u64(10))

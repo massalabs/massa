@@ -14,6 +14,7 @@ use massa_models::{
 };
 use parking_lot::RwLock;
 use std::sync::Arc;
+use tracing::log::debug;
 
 use crate::active_history::{ActiveHistory, HistorySearchResult};
 
@@ -40,11 +41,17 @@ pub(crate) struct SpeculativeLedger {
     /// ledger cost per bytes
     ledger_cost_per_byte: Amount,
 
-    /// ledger cost per datastore key
-    ledger_cost_per_datastore_key: Amount,
+    /// max bytecode size
+    max_bytecode_size: u64,
 
-    /// ledger cost for a balance
-    ledger_cost_for_balance: Amount,
+    /// max datastore value size
+    max_datastore_value_size: u64,
+
+    /// ledger entry base size
+    ledger_entry_base_size: usize,
+
+    /// ledger entry datastore base size
+    ledger_entry_datastore_base_size: usize,
 }
 
 impl SpeculativeLedger {
@@ -58,8 +65,10 @@ impl SpeculativeLedger {
         active_history: Arc<RwLock<ActiveHistory>>,
         max_datastore_key_length: u8,
         ledger_cost_per_byte: Amount,
-        ledger_cost_per_datastore_key: Amount,
-        ledger_cost_for_balance: Amount,
+        max_bytecode_size: u64,
+        max_datastore_value_size: u64,
+        ledger_entry_base_size: usize,
+        ledger_entry_datastore_base_size: usize,
     ) -> Self {
         SpeculativeLedger {
             final_state,
@@ -67,8 +76,10 @@ impl SpeculativeLedger {
             active_history,
             max_datastore_key_length,
             ledger_cost_per_byte,
-            ledger_cost_per_datastore_key,
-            ledger_cost_for_balance,
+            max_bytecode_size,
+            max_datastore_value_size,
+            ledger_entry_base_size,
+            ledger_entry_datastore_base_size,
         }
     }
 
@@ -157,40 +168,75 @@ impl SpeculativeLedger {
         // note that to_addr can be the same as from_addr
         if let Some(to_addr) = to_addr {
             let old_balance = changes.get_balance_or_else(&to_addr, || self.get_balance(&to_addr));
-            if let Some(old_balance) = old_balance {
-                let new_balance = old_balance.checked_add(amount).ok_or_else(|| {
-                    ExecutionError::RuntimeError("overflow in to_addr balance".into())
-                })?;
-                changes.set_balance(to_addr, new_balance);
-            } else if from_addr.is_some() {
-                // Debit sender to create receiver address
-                let address_storage_cost = self
-                    .ledger_cost_per_byte
-                    .checked_mul_u64(ADDRESS_SIZE_BYTES.try_into().map_err(|_| {
-                        ExecutionError::RuntimeError(
-                            "overflow calculating size key for addr".to_string(),
-                        )
-                    })?)
-                    .ok_or_else(|| {
-                        ExecutionError::RuntimeError("overflow in ledger cost for addr".to_string())
-                    })?
-                    .checked_add(self.ledger_cost_for_balance)
-                    .ok_or_else(|| {
-                        ExecutionError::RuntimeError(
-                            "overflow in ledger cost for balance".to_string(),
-                        )
+            match (old_balance, from_addr) {
+                // if `to_addr` exists we increase the balance
+                (Some(old_balance), _) => {
+                    let new_balance = old_balance.checked_add(amount).ok_or_else(|| {
+                        ExecutionError::RuntimeError("overflow in to_addr balance".into())
                     })?;
-                // TODO: If we allow delete address, need to keep track of creator
-                self.transfer_coins(from_addr, None, address_storage_cost)?;
-                changes.set_balance(
-                    to_addr,
-                    amount.checked_sub(address_storage_cost).ok_or_else(|| {
-                        ExecutionError::RuntimeError(
-                            "overflow in subtract ledger cost for addr".to_string(),
-                        )
-                    })?,
-                );
-            }
+                    changes.set_balance(to_addr, new_balance);
+                }
+                // if `to_addr` doesn't exist but `from_addr` is defined. `from_addr` will create the address using the coins sent.
+                (None, Some(from_addr)) => {
+                    //TODO: Remove when stabilized
+                    debug!("Creating address {} from sender balance", to_addr);
+                    // Debit sender to create receiver address
+                    let address_storage_cost = self
+                        .ledger_cost_per_byte
+                        .checked_mul_u64(self.ledger_entry_base_size.try_into().map_err(|_| {
+                            ExecutionError::RuntimeError(
+                                "overflow in calculating cost for base entry (address + balance)"
+                                    .to_string(),
+                            )
+                        })?)
+                        .ok_or_else(|| {
+                            ExecutionError::RuntimeError(
+                                "overflow in ledger cost for balance".to_string(),
+                            )
+                        })?;
+                    // TODO: If we allow delete address, need to keep track of creator
+                    self.transfer_coins(Some(from_addr), None, address_storage_cost)?;
+                    changes.set_balance(
+                        to_addr,
+                        amount.checked_sub(address_storage_cost).ok_or_else(|| {
+                            ExecutionError::RuntimeError(
+                                "overflow in subtract ledger cost for addr".to_string(),
+                            )
+                        })?,
+                    );
+                }
+                // if `from_addr` is none and `to_addr` doesn't exist try to create it from coins passed
+                (None, None) => {
+                    //TODO: Remove when stabilized
+                    debug!("Creating address {} from coins passed", to_addr);
+                    let address_storage_cost = self
+                        .ledger_cost_per_byte
+                        .checked_mul_u64(self.ledger_entry_base_size.try_into().map_err(|_| {
+                            ExecutionError::RuntimeError(
+                                "overflow in calculating cost for base entry (address + balance)"
+                                    .to_string(),
+                            )
+                        })?)
+                        .ok_or_else(|| {
+                            ExecutionError::RuntimeError(
+                                "overflow in ledger cost for balance".to_string(),
+                            )
+                        })?;
+                    // We have enough to create the address and transfer the rest.
+                    if amount >= address_storage_cost {
+                        let amount_sent =
+                            amount.checked_sub(address_storage_cost).ok_or_else(|| {
+                                ExecutionError::RuntimeError(
+                                    "overflow in subtract ledger cost for addr".to_string(),
+                                )
+                            })?;
+                        // TODO: If we allow delete address, need to keep track of creator
+                        changes.set_balance(to_addr, amount_sent);
+                    } else {
+                        return Ok(());
+                    }
+                }
+            };
         }
 
         // apply the simulated changes to the speculative ledger
@@ -245,18 +291,40 @@ impl SpeculativeLedger {
             )));
         }
 
+        if bytecode.len() > self.max_bytecode_size as usize {
+            return Err(ExecutionError::RuntimeError(format!(
+                "could not set bytecode for address {}: bytecode size exceeds maximum allowed size",
+                addr
+            )));
+        }
+
         // calculate the cost of storing the address and bytecode
         let address_storage_cost = self
             .ledger_cost_per_byte
-            .checked_mul_u64(ADDRESS_SIZE_BYTES.try_into().map_err(|_| {
-                ExecutionError::RuntimeError("overflow calculating size key for addr".to_string())
+            .checked_mul_u64(self.ledger_entry_base_size.try_into().map_err(|_| {
+                ExecutionError::RuntimeError(
+                    "overflow in calculating cost for base entry (address + balance)".to_string(),
+                )
             })?)
             .ok_or_else(|| {
-                ExecutionError::RuntimeError("overflow in ledger cost for addr".to_string())
-            })?
-            .checked_add(self.ledger_cost_for_balance)
-            .ok_or_else(|| {
                 ExecutionError::RuntimeError("overflow in ledger cost for balance".to_string())
+            })?
+            // Bytecode key and data
+            .checked_add(
+                self.ledger_cost_per_byte
+                    .checked_mul_u64(ADDRESS_SIZE_BYTES.try_into().map_err(|_| {
+                        ExecutionError::RuntimeError(
+                            "overflow when calculating size for addr for bytecode".to_string(),
+                        )
+                    })?)
+                    .ok_or_else(|| {
+                        ExecutionError::RuntimeError(
+                            "overflow when adding key for bytecode".to_string(),
+                        )
+                    })?,
+            )
+            .ok_or_else(|| {
+                ExecutionError::RuntimeError("overflow when adding key for bytecode".to_string())
             })?
             .checked_add(
                 self.ledger_cost_per_byte
@@ -300,6 +368,13 @@ impl SpeculativeLedger {
             )));
         }
 
+        if bytecode.len() > self.max_bytecode_size as usize {
+            return Err(ExecutionError::RuntimeError(format!(
+                "could not set bytecode for address {}: bytecode size exceeds maximum allowed size",
+                addr
+            )));
+        }
+
         if let Some(old_bytecode_size) = self.get_bytecode(addr).map(|b| b.len()) {
             let diff_size_storage: i64 = (bytecode.len() as i64) - (old_bytecode_size as i64);
             let storage_cost_bytecode = self
@@ -324,10 +399,6 @@ impl SpeculativeLedger {
                 })?)
                 .ok_or_else(|| {
                     ExecutionError::RuntimeError("overflow in ledger cost for addr".to_string())
-                })?
-                .checked_add(self.ledger_cost_for_balance)
-                .ok_or_else(|| {
-                    ExecutionError::RuntimeError("overflow in ledger cost for balance".to_string())
                 })?;
             let bytecode_value_storage_cost = self
                 .ledger_cost_per_byte
@@ -407,17 +478,15 @@ impl SpeculativeLedger {
 
     fn get_storage_cost_datastore_key(&self) -> Result<Amount, ExecutionError> {
         self.ledger_cost_per_byte
-            .checked_mul_u64(ADDRESS_SIZE_BYTES.try_into().map_err(|_| {
-                ExecutionError::RuntimeError(
-                    "overflow when calculating size for addr for datastore key".to_string(),
-                )
-            })?)
-            .ok_or_else(|| {
-                ExecutionError::RuntimeError(
-                    "overflow when calculating storage cost for addr for datastore key".to_string(),
-                )
-            })?
-            .checked_add(self.ledger_cost_per_datastore_key)
+            .checked_mul_u64(
+                self.ledger_entry_datastore_base_size
+                    .try_into()
+                    .map_err(|_| {
+                        ExecutionError::RuntimeError(
+                            "overflow when calculating size for addr for datastore".to_string(),
+                        )
+                    })?,
+            )
             .ok_or_else(|| {
                 ExecutionError::RuntimeError(
                     "overflow when calculating storage cost for datastore key".to_string(),
@@ -465,6 +534,14 @@ impl SpeculativeLedger {
             return Err(ExecutionError::RuntimeError(format!(
                 "key length is {}, but it must be in [0..={}]",
                 key_length, self.max_datastore_key_length
+            )));
+        }
+
+        if value.len() > self.max_datastore_value_size as usize {
+            return Err(ExecutionError::RuntimeError(format!(
+                "value length is {}, but it must be in [0..={}]",
+                value.len(),
+                self.max_datastore_value_size
             )));
         }
 
