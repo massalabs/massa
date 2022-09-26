@@ -554,6 +554,8 @@ pub struct ReadOnlyBytecodeExecution {
     pub bytecode: Vec<u8>,
     /// caller's address, optional
     pub address: Option<Address>,
+    /// Operation datastore, optional
+    pub operation_datastore: Option<Vec<u8>>,
 }
 
 /// read SC call request

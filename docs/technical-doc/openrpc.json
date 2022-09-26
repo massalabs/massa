@@ -926,6 +926,10 @@
                     "address": {
                         "description": "caller's address",
                         "type": "string"
+                    },
+                    "operation_datastore": {
+                        "description": "An operation datastore",
+                        "type": "array"
                     }
                 },
                 "additionalProperties": false
