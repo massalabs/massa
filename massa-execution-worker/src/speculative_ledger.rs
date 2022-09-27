@@ -277,7 +277,8 @@ impl SpeculativeLedger {
                     .ledger_cost_per_byte
                     .checked_mul_u64(bytecode.len().try_into().map_err(|_| {
                         ExecutionError::RuntimeError(
-                            "overflow while calculating size bytecode ledger size costs".to_string(),
+                            "overflow while calculating size bytecode ledger size costs"
+                                .to_string(),
                         )
                     })?)
                     .ok_or_else(|| {
@@ -328,15 +329,15 @@ impl SpeculativeLedger {
                 .ledger_cost_per_byte
                 .checked_mul_u64(diff_size_storage.unsigned_abs())
                 .ok_or_else(|| {
-                    ExecutionError::RuntimeError("overflow on computing bytecode delta storage costs".to_string())
+                    ExecutionError::RuntimeError(
+                        "overflow on computing bytecode delta storage costs".to_string(),
+                    )
                 })?;
 
-            match diff_size_storage.cmp(&0) {
-                Ordering::Greater => {
-                    self.transfer_coins(Some(*addr), None, storage_cost_bytecode)?
-                }
-                Ordering::Less => self.transfer_coins(None, Some(*addr), storage_cost_bytecode)?,
-                Ordering::Equal => {}
+            match diff_size_storage.signum() {
+                1 => self.transfer_coins(Some(*addr), None, storage_cost_bytecode)?,
+                -1 => self.transfer_coins(None, Some(*addr), storage_cost_bytecode)?,
+                _ => {}
             };
         } else {
             let bytecode_storage_cost = self
