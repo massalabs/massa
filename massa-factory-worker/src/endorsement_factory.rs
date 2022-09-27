@@ -187,7 +187,7 @@ impl EndorsementFactoryWorker {
                     index: index as u32,
                     endorsed_block,
                 },
-                EndorsementSerializer::new(),
+                EndorsementSerializer::new(), // TODO: reuse self.endorsement_serializer
                 &keypair,
             )
             .expect("could not create endorsement");

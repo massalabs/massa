@@ -230,7 +230,6 @@ impl EndorsementSerializerLW {
     /// Creates a new `EndorsementSerializerLW`
     pub fn new() -> Self {
         EndorsementSerializerLW {
-            // slot_serializer: SlotSerializer::new(),
             u32_serializer: U32VarIntSerializer::new(),
         }
     }
@@ -304,7 +303,6 @@ impl Deserializer<Endorsement> for EndorsementDeserializerLW {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Endorsement, E> {
-        println!("[EndorsementDeserializerLW] start");
         let hash_default = Hash::from_bytes(&[0; 32]);
         context(
             "Failed endorsement deserialization",
