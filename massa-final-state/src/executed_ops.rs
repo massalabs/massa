@@ -28,7 +28,7 @@ const EXECUTED_OPS_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 pub struct ExecutedOps {
     /// Map of the executed operations
     ops: PreHashMap<OperationId, Slot>,
-    /// Cumulated hash of the executed operations
+    /// Accumulated hash of the executed operations
     pub hash: Hash,
 }
 
@@ -39,7 +39,7 @@ impl Default for ExecutedOps {
 }
 
 impl ExecutedOps {
-    /// Creates a new ExecutedOps
+    /// Creates a new `ExecutedOps`
     pub fn new() -> Self {
         Self {
             ops: PreHashMap::default(),
