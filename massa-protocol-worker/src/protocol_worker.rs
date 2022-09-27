@@ -323,10 +323,7 @@ impl ProtocolWorker {
                 .filter(|id| !node_info.knows_op(id))
                 .copied()
                 .collect();
-            node_info.insert_known_ops(
-                new_ops.iter().cloned().collect(),
-                self.config.max_node_known_ops_size,
-            );
+            node_info.insert_known_ops(&operations, self.config.max_node_known_ops_size);
             if !new_ops.is_empty() {
                 let res = self
                     .network_command_sender
@@ -946,10 +943,7 @@ impl ProtocolWorker {
 
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-            node_info.insert_known_ops(
-                received_ids.keys().copied().collect(),
-                self.config.max_node_known_ops_size,
-            );
+            node_info.insert_known_ops(&seen_ops, self.config.max_node_known_ops_size);
         }
 
         if !new_operations.is_empty() {
