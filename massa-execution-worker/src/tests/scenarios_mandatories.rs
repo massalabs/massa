@@ -3,7 +3,8 @@
 use crate::start_execution_worker;
 use massa_async_pool::AsyncPoolConfig;
 use massa_execution_exports::{
-    ExecutionConfig, ExecutionError, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    ExecutionConfig, ExecutionController, ExecutionError, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionTarget,
 };
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
@@ -122,6 +123,30 @@ fn test_sending_read_only_execution_command() {
     manager.stop();
 }
 
+/// Feeds the execution worker with genesis blocks to start it
+fn init_execution_worker(
+    config: &ExecutionConfig,
+    storage: &Storage,
+    execution_controller: &Box<dyn ExecutionController>,
+) {
+    let genesis_keypair = KeyPair::generate();
+    let mut finalized_blocks: HashMap<Slot, BlockId> = HashMap::new();
+    let mut block_storage: PreHashMap<BlockId, Storage> = PreHashMap::default();
+    for thread in 0..config.thread_count {
+        let slot = Slot::new(0, thread);
+        let final_block = create_block(genesis_keypair.clone(), vec![], slot).unwrap();
+        finalized_blocks.insert(slot, final_block.id);
+        let mut final_block_storage = storage.clone_without_refs();
+        final_block_storage.store_block(final_block.clone());
+        block_storage.insert(final_block.id, final_block_storage);
+    }
+    execution_controller.update_blockclique_status(
+        finalized_blocks,
+        Some(Default::default()),
+        block_storage,
+    );
+}
+
 /// Test the gas usage in nested calls using call SC operation
 ///
 /// Create a smart contract and send it in the blockclique.
@@ -148,6 +173,7 @@ fn test_nested_call_gas_usage() {
         sample_state.clone(),
         sample_state.read().pos_state.selector.clone(),
     );
+
     // get random keypair
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load bytecode
@@ -170,6 +196,7 @@ fn test_nested_call_gas_usage() {
         Default::default(),
         block_storage.clone(),
     );
+
     std::thread::sleep(Duration::from_millis(10));
     // retrieve events emitted by smart contracts
     let events = controller.get_filtered_sc_output_event(EventFilter {
@@ -643,54 +670,90 @@ fn set_bytecode_error() {
     manager.stop();
 }
 
+/// This test checks causes a history rewrite in slot sequencing and ensures that emitted events match
 #[test]
 #[serial]
-fn generate_events() {
+fn events_from_switching_blockcliques() {
     // Compile the `./wasm_tests` and generate a block with `event_test.wasm`
     // as data. Then we check if we get an event as expected.
     let exec_cfg = ExecutionConfig {
         t0: 100.into(),
         ..ExecutionConfig::default()
     };
-    let mut storage: Storage = Storage::create_root();
+    let storage: Storage = Storage::create_root();
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
     let (mut manager, controller) = start_execution_worker(
-        exec_cfg,
+        exec_cfg.clone(),
         sample_state.clone(),
         sample_state.read().pos_state.selector.clone(),
     );
-
-    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
-    let sender_address = Address::from_public_key(&keypair.get_public_key());
-    let event_test_data = include_bytes!("./wasm/event_test.wasm");
-    let operation = create_execute_sc_operation(&keypair, event_test_data).unwrap();
-    storage.store_operations(vec![operation.clone()]);
-    let block = create_block(keypair, vec![operation], Slot::new(1, 0)).unwrap();
-    let slot = block.content.header.content.slot;
-
-    storage.store_block(block.clone());
-
-    let finalized_blocks: HashMap<Slot, BlockId> = HashMap::new();
-    let mut blockclique: HashMap<Slot, BlockId> = HashMap::new();
-
-    blockclique.insert(slot, block.id);
+    // initialize the execution system with genesis blocks
+    init_execution_worker(&exec_cfg, &storage, &controller);
 
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-    block_storage.insert(block.id, storage.clone());
+    let mut blockclique_blocks: HashMap<Slot, BlockId> = HashMap::new();
 
+    // create blockclique block at slot (1,1)
+    {
+        let blockclique_block_slot = Slot::new(1, 1);
+        let keypair =
+            KeyPair::from_str("S1kEBGgxHFBdsNC4HtRHhsZsB5irAtYHEmuAKATkfiomYmj58tm").unwrap();
+        let event_test_data = include_bytes!("./wasm/event_test.wasm");
+        let operation = create_execute_sc_operation(&keypair, event_test_data).unwrap();
+        let blockclique_block = create_block(
+            keypair.clone(),
+            vec![operation.clone()],
+            blockclique_block_slot,
+        )
+        .unwrap();
+        blockclique_blocks.insert(blockclique_block_slot, blockclique_block.id);
+        let mut blockclique_block_storage = storage.clone_without_refs();
+        blockclique_block_storage.store_block(blockclique_block.clone());
+        blockclique_block_storage.store_operations(vec![operation.clone()]);
+        block_storage.insert(blockclique_block.id, blockclique_block_storage);
+    }
+    // notify execution about blockclique change
     controller.update_blockclique_status(
-        finalized_blocks,
-        Some(blockclique),
+        Default::default(),
+        Some(blockclique_blocks.clone()),
         block_storage.clone(),
     );
-
     std::thread::sleep(Duration::from_millis(1000));
-    let events = controller.get_filtered_sc_output_event(EventFilter {
-        start: Some(slot),
-        emitter_address: Some(sender_address),
-        ..Default::default()
-    });
-    assert!(!events.is_empty(), "At least one event was expected");
+    let events = controller.get_filtered_sc_output_event(EventFilter::default());
+    assert_eq!(events.len(), 1, "wrong event count");
+    assert_eq!(events[0].context.slot, Slot::new(1, 1), "Wrong event slot");
+
+    // create blockclique block at slot (1,0)
+    {
+        let blockclique_block_slot = Slot::new(1, 0);
+        let keypair =
+            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let event_test_data = include_bytes!("./wasm/event_test.wasm");
+        let operation = create_execute_sc_operation(&keypair, event_test_data).unwrap();
+        let blockclique_block = create_block(
+            keypair.clone(),
+            vec![operation.clone()],
+            blockclique_block_slot,
+        )
+        .unwrap();
+        blockclique_blocks.insert(blockclique_block_slot, blockclique_block.id);
+        let mut blockclique_block_storage = storage.clone_without_refs();
+        blockclique_block_storage.store_block(blockclique_block.clone());
+        blockclique_block_storage.store_operations(vec![operation.clone()]);
+        block_storage.insert(blockclique_block.id, blockclique_block_storage);
+    }
+    // notify execution about blockclique change
+    controller.update_blockclique_status(
+        Default::default(),
+        Some(blockclique_blocks.clone()),
+        block_storage.clone(),
+    );
+    std::thread::sleep(Duration::from_millis(1000));
+    let events = controller.get_filtered_sc_output_event(EventFilter::default());
+    assert_eq!(events.len(), 2, "wrong event count");
+    assert_eq!(events[0].context.slot, Slot::new(1, 0), "Wrong event slot");
+    assert_eq!(events[1].context.slot, Slot::new(1, 1), "Wrong event slot");
+
     manager.stop();
 }
 

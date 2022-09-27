@@ -116,6 +116,16 @@ impl SlotSequencer {
                 .get_next_slot(self.config.thread_count)
                 .expect("overflow in slot iteration");
         }
+        // explicitly consume tainted containers to prevent mistakes caused by using them later
+        if new_css_final_blocks.into_iter().next().is_some() {
+            panic!("remaining elements in new_css_final_blocks after slot sequencing");
+        }
+        if let Some(bq) = new_blockclique {
+            if !bq.is_empty() {
+                panic!("remaining elements in new_blockclique after slot sequencing");
+            }
+        }
+        std::mem::drop(new_blocks_storage);
 
         // cleanup sequence
         self.cleanup_sequence();
@@ -195,7 +205,7 @@ impl SlotSequencer {
             .saturating_add(1);
         let mut new_sequence: VecDeque<SlotInfo> = VecDeque::with_capacity(new_seq_len as usize);
         let mut in_sce_finality = true; // we are still in the SCE finality
-        while slot < max_slot {
+        while slot <= max_slot {
             // slot is CSS-final if it is before or at a CSS-final slot in its own thread
             let new_css_final = slot <= self.latest_css_final_slots[slot.thread as usize];
             let new_css_final_block: Option<BlockId> = new_css_final_blocks.remove(&slot);
@@ -245,6 +255,8 @@ impl SlotSequencer {
             }
         }
         std::mem::drop(new_blocks_storage);
+        // update sequence
+        self.sequence = new_sequence;
     }
 
     /// Builds one step of the new slot sequence.
@@ -461,15 +473,20 @@ impl SlotSequencer {
                 .last_executed_final_slot
                 .get_next_slot(self.config.thread_count)
                 .expect("overflow in slot iteration");
-            if let Some(SlotInfo { content, .. }) = self.get_slot(&slot) {
-                let res = Some(callback(true, &slot, content));
-                self.last_executed_final_slot = slot;
-                self.last_executed_candidate_slot = std::cmp::max(
-                    self.last_executed_candidate_slot,
-                    self.last_executed_final_slot,
-                );
-                self.cleanup_sequence();
-                return res;
+            if let Some(SlotInfo {
+                sce_final, content, ..
+            }) = self.get_slot(&slot)
+            {
+                if *sce_final {
+                    let res = Some(callback(true, &slot, content));
+                    self.last_executed_final_slot = slot;
+                    self.last_executed_candidate_slot = std::cmp::max(
+                        self.last_executed_candidate_slot,
+                        self.last_executed_final_slot,
+                    );
+                    self.cleanup_sequence();
+                    return res;
+                }
             }
         }
 

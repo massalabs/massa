@@ -791,20 +791,17 @@ impl ExecutionState {
 
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
-            for (op_index, operation) in operations.into_iter().enumerate() {
-                match self.execute_operation(
+            for operation in operations.into_iter() {
+                if let Err(err) = self.execute_operation(
                     &operation,
                     stored_block.content.header.content.slot,
                     &mut remaining_block_gas,
                     &mut block_credits,
                 ) {
-                    Err(ExecutionError::NotEnoughGas(_))
-                    | Err(ExecutionError::InvalidSlotRange) => debug!("Ignoring operation"),
-                    Err(err) => debug!(
-                        "failed executing operation index {} in block {}: {}",
-                        op_index, block_id, err
-                    ),
-                    _ => {}
+                    debug!(
+                        "failed executing operation {} in block {}: {}",
+                        operation.id, block_id, err
+                    );
                 }
             }
 
