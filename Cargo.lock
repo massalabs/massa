@@ -1918,12 +1918,26 @@ dependencies = [
 ]
 
 [[package]]
-name = "massa_graph_exports"
+name = "massa_graph_2_exports"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
+ "massa_graph",
+ "massa_models",
+ "massa_storage",
  "serde 1.0.144",
  "serde_json",
+]
+
+[[package]]
+name = "massa_graph_2_worker"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "massa_graph",
+ "massa_graph_2_exports",
+ "massa_models",
+ "massa_storage",
 ]
 
 [[package]]

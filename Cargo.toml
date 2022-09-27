@@ -12,6 +12,7 @@ members = [
   "massa-factory-exports",
   "massa-factory-worker",
   "massa-graph-2-exports",
+  "massa-graph-2-worker",
   "massa-graph",
   "massa-hash",
   "massa-logging",
