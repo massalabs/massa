@@ -8,8 +8,10 @@ edition = "2021"
 
 [dependencies]
 displaydoc = "0.2"
+tracing = "0.1"
 #custom modules
 massa_graph_2_exports = { path = "../massa-graph-2-exports" }
 massa_graph = { path = "../massa-graph" }
 massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
+massa_time = { path = "../massa-time" }
