@@ -118,7 +118,7 @@ fn test_nested_call_gas_usage() {
     std::thread::sleep(Duration::from_millis(10));
 
     // length of the sub contract test.wasm
-    let bytecode_sub_contract_len = 9367;
+    let bytecode_sub_contract_len = 5297;
     assert_eq!(
         sample_state
             .read()
