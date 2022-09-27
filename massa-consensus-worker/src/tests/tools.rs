@@ -18,6 +18,7 @@ use massa_models::{
         Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock,
         WrappedHeader,
     },
+    config::ENDORSEMENT_COUNT,
     endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement},
     operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
     prehash::PreHashSet,
@@ -27,7 +28,7 @@ use massa_models::{
 use massa_pool_exports::test_exports::MockPoolController;
 use massa_pool_exports::PoolController;
 use massa_pos_exports::test_exports::{MockSelectorController, MockSelectorControllerMessage};
-use massa_pos_exports::{SelectorConfig, SelectorController};
+use massa_pos_exports::{Selection, SelectorConfig, SelectorController};
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::test_exports::MockProtocolController;
 use massa_protocol_exports::ProtocolCommand;
@@ -36,10 +37,44 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::Mutex;
 use std::sync::mpsc::Receiver;
+use std::sync::mpsc::RecvTimeoutError;
 use std::{collections::HashSet, future::Future, path::Path};
 use std::{str::FromStr, sync::Arc, time::Duration};
 
 use tracing::info;
+
+/// Handle the expected selector messages, always approving the address.
+pub fn approve_producer_and_selector_for_staker(
+    staking_key: &KeyPair,
+    selector_controller: &Receiver<MockSelectorControllerMessage>,
+) {
+    let addr = Address::from_public_key(&staking_key.get_public_key());
+    // Drain all messages, assuming there can be a slight delay between sending some.
+    loop {
+        let timeout = Duration::from_millis(100);
+        match selector_controller.recv_timeout(timeout) {
+            Ok(MockSelectorControllerMessage::GetSelection {
+                slot: _,
+                response_tx,
+            }) => {
+                let selection = Selection {
+                    producer: addr.clone(),
+                    endorsements: vec![addr.clone(); ENDORSEMENT_COUNT as usize],
+                };
+                response_tx.send(Ok(selection)).unwrap();
+            }
+            Ok(MockSelectorControllerMessage::GetProducer {
+                slot: _,
+                response_tx,
+            }) => {
+                response_tx.send(Ok(addr.clone())).unwrap();
+            }
+            Ok(msg) => panic!("Unexpected selector message {:?}", msg),
+            Err(RecvTimeoutError::Timeout) => break,
+            _ => panic!("Unexpected error from selector receiver"),
+        }
+    }
+}
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {
     BlockId(Hash::compute_from(s.as_bytes()))
