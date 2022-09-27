@@ -104,6 +104,7 @@ pub type WrappedEndorsement = Wrapped<Endorsement, EndorsementId>;
 impl WrappedContent for Endorsement {}
 
 /// Serializer for `Endorsement`
+#[derive(Clone)]
 pub struct EndorsementSerializer {
     slot_serializer: SlotSerializer,
     u32_serializer: U32VarIntSerializer,

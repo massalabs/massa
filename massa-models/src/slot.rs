@@ -24,6 +24,7 @@ pub struct Slot {
 pub const SLOT_KEY_SIZE: usize = 9;
 
 /// Basic serializer for `Slot`
+#[derive(Clone)]
 pub struct SlotSerializer {
     u64_serializer: U64VarIntSerializer,
 }
