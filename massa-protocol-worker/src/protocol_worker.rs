@@ -311,18 +311,14 @@ impl ProtocolWorker {
         Ok(self.network_event_receiver)
     }
 
-    /// request the propagation of a set of operations
-    async fn propagate_ops(&mut self, storage: &Storage) {
-        let operation_ids = storage.get_op_refs();
+    /// Announce a set of operations to active nodes who do not know about it yet.
+    /// Side effect: notes nodes as knowing about those operations from now on.
+    async fn announce_ops(&mut self, operations: &[OperationId]) {
         massa_trace!("protocol.protocol_worker.propagate_operations.begin", {
-            "operation_ids": operation_ids
+            "operation": operations
         });
-        self.prune_checked_operations();
-        for id in operation_ids.iter() {
-            self.checked_operations.insert(id);
-        }
         for (node, node_info) in self.active_nodes.iter_mut() {
-            let new_ops: PreHashSet<OperationId> = operation_ids
+            let new_ops: PreHashSet<OperationId> = operations
                 .iter()
                 .filter(|id| !node_info.knows_op(id))
                 .copied()
@@ -334,10 +330,7 @@ impl ProtocolWorker {
             if !new_ops.is_empty() {
                 let res = self
                     .network_command_sender
-                    .send_operations_batch(
-                        *node,
-                        new_ops.iter().map(|id| id.into_prefix()).collect(),
-                    )
+                    .announce_operations(*node, new_ops.iter().map(|id| id.into_prefix()).collect())
                     .await;
                 if let Err(err) = res {
                     debug!("could not send operation batch to node {}: {}", node, err);
@@ -476,7 +469,22 @@ impl ProtocolWorker {
                 );
             }
             ProtocolCommand::PropagateOperations(storage) => {
-                self.propagate_ops(&storage).await;
+                // Note: should we claim refs locally?
+                let operation_ids = storage.get_op_refs();
+                massa_trace!(
+                    "protocol.protocol_worker.process_command.propagate_operations.begin",
+                    { "operation_ids": operation_ids }
+                );
+
+                // Note operations as checked.
+                self.prune_checked_operations();
+                for id in operation_ids {
+                    self.checked_operations.insert(id);
+                }
+
+                // Announce operations to active nodes not knowing about it.
+                let to_announce: Vec<OperationId> = operation_ids.iter().copied().collect();
+                self.announce_ops(&to_announce).await;
             }
             ProtocolCommand::PropagateEndorsements(endorsements) => {
                 self.propagate_endorsements(&endorsements).await;
@@ -960,7 +968,8 @@ impl ProtocolWorker {
                 ops_to_propagate
                     .get_op_refs()
                     .iter()
-                    .filter_map(|op_id| {
+                    .copied()
+                    .filter(|op_id| {
                         let expire_period =
                             read_operations.get(op_id).unwrap().content.expire_period;
                         let expire_period_timestamp = get_block_slot_timestamp(
@@ -975,18 +984,20 @@ impl ProtocolWorker {
                                     .saturating_add(self.config.max_endorsements_propagation_time)
                                     < now
                                 {
-                                    Some(*op_id)
+                                    true
                                 } else {
-                                    None
+                                    false
                                 }
                             }
-                            Err(_) => Some(*op_id),
+                            Err(_) => true,
                         }
                     })
                     .collect()
             };
             ops_to_propagate.drop_operation_refs(&operations_to_not_propagate);
-            self.propagate_ops(&ops_to_propagate).await;
+            let to_announce: Vec<OperationId> =
+                ops_to_propagate.get_op_refs().iter().copied().collect();
+            self.announce_ops(&to_announce).await;
 
             // Add to pool
             self.pool_controller.add_operations(ops);
