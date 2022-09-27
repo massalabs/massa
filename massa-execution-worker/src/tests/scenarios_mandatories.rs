@@ -103,14 +103,14 @@ fn test_sending_command() {
 
 #[test]
 #[serial]
-fn test_sending_read_only_execution_command() {
+fn test_readonly_execution() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
     let (mut manager, controller) = start_execution_worker(
         ExecutionConfig::default(),
         sample_state.clone(),
         sample_state.read().pos_state.selector.clone(),
     );
-    controller
+    let mut res = controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
             max_gas: 1_000_000,
             simulated_gas_price: Amount::from_mantissa_scale(1_000_000, 0),
@@ -119,7 +119,9 @@ fn test_sending_read_only_execution_command() {
                 include_bytes!("./wasm/event_test.wasm").to_vec(),
             ),
         })
-        .unwrap();
+        .expect("readonly execution failed");
+    assert_eq!(res.events.take().len(), 1, "wrong number of events");
+
     manager.stop();
 }
 
@@ -169,10 +171,12 @@ fn test_nested_call_gas_usage() {
     let mut storage = Storage::create_root();
     // start the execution worker
     let (mut manager, controller) = start_execution_worker(
-        exec_cfg,
+        exec_cfg.clone(),
         sample_state.clone(),
         sample_state.read().pos_state.selector.clone(),
     );
+    // initialize the execution system with genesis blocks
+    init_execution_worker(&exec_cfg, &storage, &controller);
 
     // get random keypair
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
@@ -281,10 +285,12 @@ fn send_and_receive_async_message() {
     let mut storage = Storage::create_root();
     // start the execution worker
     let (mut manager, controller) = start_execution_worker(
-        exec_cfg,
+        exec_cfg.clone(),
         sample_state.clone(),
         sample_state.read().pos_state.selector.clone(),
     );
+    // initialize the execution system with genesis blocks
+    init_execution_worker(&exec_cfg, &storage, &controller);
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load send_message bytecode
@@ -338,10 +344,12 @@ pub fn send_and_receive_transaction() {
     let mut storage = Storage::create_root();
     // start the execution worker
     let (mut manager, controller) = start_execution_worker(
-        exec_cfg,
+        exec_cfg.clone(),
         sample_state.clone(),
         sample_state.read().pos_state.selector.clone(),
     );
+    // initialize the execution system with genesis blocks
+    init_execution_worker(&exec_cfg, &storage, &controller);
     // generate the sender_keypair and recipient_address
     let sender_keypair =
         KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
@@ -404,10 +412,12 @@ pub fn roll_buy() {
     let mut storage = Storage::create_root();
     // start the execution worker
     let (mut manager, controller) = start_execution_worker(
-        exec_cfg,
+        exec_cfg.clone(),
         sample_state.clone(),
         sample_state.read().pos_state.selector.clone(),
     );
+    // initialize the execution system with genesis blocks
+    init_execution_worker(&exec_cfg, &storage, &controller);
     // generate the keypair and its corresponding address
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
@@ -466,10 +476,12 @@ pub fn roll_sell() {
     let mut storage = Storage::create_root();
     // start the execution worker
     let (mut manager, controller) = start_execution_worker(
-        exec_cfg,
+        exec_cfg.clone(),
         sample_state.clone(),
         sample_state.read().pos_state.selector.clone(),
     );
+    // initialize the execution system with genesis blocks
+    init_execution_worker(&exec_cfg, &storage, &controller);
     // generate the keypair and its corresponding address
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
@@ -537,10 +549,13 @@ pub fn missed_blocks_roll_slash() {
 
     // start the execution worker
     let (mut manager, controller) = start_execution_worker(
-        exec_cfg,
+        exec_cfg.clone(),
         sample_state.clone(),
         sample_state.read().pos_state.selector.clone(),
     );
+    // initialize the execution system with genesis blocks
+    let storage = Storage::create_root();
+    init_execution_worker(&exec_cfg, &storage, &controller);
     // sleep to get slashed on missed blocks and reach the reimbursment
     std::thread::sleep(Duration::from_millis(100));
     // get the initial selection address
@@ -574,10 +589,12 @@ fn sc_execution_error() {
     let mut storage = Storage::create_root();
     // start the execution worker
     let (mut manager, controller) = start_execution_worker(
-        exec_cfg,
+        exec_cfg.clone(),
         sample_state.clone(),
         sample_state.read().pos_state.selector.clone(),
     );
+    // initialize the execution system with genesis blocks
+    init_execution_worker(&exec_cfg, &storage, &controller);
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load bytecode
@@ -630,10 +647,12 @@ fn set_bytecode_error() {
     let mut storage = Storage::create_root();
     // start the execution worker
     let (mut manager, controller) = start_execution_worker(
-        exec_cfg,
+        exec_cfg.clone(),
         sample_state.clone(),
         sample_state.read().pos_state.selector.clone(),
     );
+    // initialize the execution system with genesis blocks
+    init_execution_worker(&exec_cfg, &storage, &controller);
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load bytecode
@@ -673,7 +692,7 @@ fn set_bytecode_error() {
 /// This test checks causes a history rewrite in slot sequencing and ensures that emitted events match
 #[test]
 #[serial]
-fn events_from_switching_blockcliques() {
+fn events_from_switching_blockclique() {
     // Compile the `./wasm_tests` and generate a block with `event_test.wasm`
     // as data. Then we check if we get an event as expected.
     let exec_cfg = ExecutionConfig {
