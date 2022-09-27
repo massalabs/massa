@@ -10,10 +10,7 @@ use massa_execution_exports::ExecutionError;
 use massa_execution_exports::StorageCostsConstants;
 use massa_final_state::FinalState;
 use massa_ledger_exports::{Applicable, LedgerChanges};
-use massa_models::{
-    address::{Address, ADDRESS_SIZE_BYTES},
-    amount::Amount,
-};
+use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
 use std::cmp::Ordering;
 use std::sync::Arc;
@@ -274,24 +271,7 @@ impl SpeculativeLedger {
         let address_storage_cost = self
             .storage_costs_constants
             .ledger_entry_base_cost
-            // Bytecode key and data
-            .checked_add(
-                self.storage_costs_constants
-                    .ledger_cost_per_byte
-                    .checked_mul_u64(ADDRESS_SIZE_BYTES.try_into().map_err(|_| {
-                        ExecutionError::RuntimeError(
-                            "overflow when calculating size for addr for bytecode".to_string(),
-                        )
-                    })?)
-                    .ok_or_else(|| {
-                        ExecutionError::RuntimeError(
-                            "overflow when adding key for bytecode".to_string(),
-                        )
-                    })?,
-            )
-            .ok_or_else(|| {
-                ExecutionError::RuntimeError("overflow when adding key for bytecode".to_string())
-            })?
+            // Bytecode data
             .checked_add(
                 self.storage_costs_constants
                     .ledger_cost_per_byte
@@ -359,18 +339,7 @@ impl SpeculativeLedger {
                 Ordering::Equal => {}
             };
         } else {
-            let bytecode_key_storage_cost = self
-                .storage_costs_constants
-                .ledger_cost_per_byte
-                .checked_mul_u64(ADDRESS_SIZE_BYTES.try_into().map_err(|_| {
-                    ExecutionError::RuntimeError(
-                        "overflow when calculating size for addr for bytecode".to_string(),
-                    )
-                })?)
-                .ok_or_else(|| {
-                    ExecutionError::RuntimeError("overflow in ledger cost for addr".to_string())
-                })?;
-            let bytecode_value_storage_cost = self
+            let bytecode_storage_cost = self
                 .storage_costs_constants
                 .ledger_cost_per_byte
                 .checked_mul_u64(bytecode.len() as u64)
@@ -379,17 +348,7 @@ impl SpeculativeLedger {
                         "overflow when calculating storage cost of bytecode".to_string(),
                     )
                 })?;
-            self.transfer_coins(
-                Some(*addr),
-                None,
-                bytecode_key_storage_cost
-                    .checked_add(bytecode_value_storage_cost)
-                    .ok_or_else(|| {
-                        ExecutionError::RuntimeError(
-                            "overflow when calculating storage cost of bytecode".to_string(),
-                        )
-                    })?,
-            )?;
+            self.transfer_coins(Some(*addr), None, bytecode_storage_cost)?;
         }
         // set the bytecode of that address
         self.added_changes.set_bytecode(*addr, bytecode);

@@ -79,8 +79,8 @@ pub const BLOCK_REWARD: Amount = Amount::from_mantissa_scale(3, 1);
 pub const LEDGER_COST_PER_BYTE: Amount = Amount::from_mantissa_scale(2, 4);
 /// Cost for a base entry (address + balance (5 bytes constant))
 pub const LEDGER_ENTRY_BASE_SIZE: usize = ADDRESS_SIZE_BYTES + 5;
-/// Cost for a base entry datastore (address + key (10 bytes constant))
-pub const LEDGER_ENTRY_DATASTORE_BASE_SIZE: usize = ADDRESS_SIZE_BYTES + 10;
+/// Cost for a base entry datastore 10 bytes constant to avoid paying more for longer keys
+pub const LEDGER_ENTRY_DATASTORE_BASE_SIZE: usize = 10;
 /// Time between the periods in the same thread.
 pub const T0: MassaTime = MassaTime::from_millis(16000);
 /// Proof of stake seed for the initial draw

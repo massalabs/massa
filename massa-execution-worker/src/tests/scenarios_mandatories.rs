@@ -5,7 +5,6 @@ use crate::tests::mock::{create_block, get_random_address_full, get_sample_state
 use massa_execution_exports::{
     ExecutionConfig, ExecutionError, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
-use massa_models::address::ADDRESS_SIZE_BYTES;
 use massa_models::config::{LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE};
 use massa_models::prehash::PreHashMap;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
@@ -130,19 +129,7 @@ fn test_nested_call_gas_usage() {
             // Gas fee
             .saturating_sub(Amount::from_str("100000").unwrap())
             // Storage cost base
-            .saturating_sub(
-                exec_cfg
-                    .storage_costs_constants
-                    .ledger_cost_per_byte
-                    .saturating_mul_u64(LEDGER_ENTRY_BASE_SIZE as u64)
-            )
-            // Storage bytecode key
-            .saturating_sub(
-                exec_cfg
-                    .storage_costs_constants
-                    .ledger_cost_per_byte
-                    .saturating_mul_u64(ADDRESS_SIZE_BYTES as u64)
-            )
+            .saturating_sub(exec_cfg.storage_costs_constants.ledger_entry_base_cost)
             // Storage cost bytecode
             .saturating_sub(
                 exec_cfg
