@@ -885,6 +885,7 @@ impl ExecutionState {
     }
 
     /// Execute a candidate slot
+    #[allow(clippy::borrowed_box)]
     pub fn execute_candidate_slot(
         &mut self,
         slot: &Slot,
@@ -896,6 +897,13 @@ impl ExecutionState {
             "execute_candidate_slot: executing slot={} target={:?}",
             slot, target_id
         );
+
+        if slot <= &self.final_cursor {
+            panic!(
+                "could not execute candidate slot {} because final_cursor is at {}",
+                slot, self.final_cursor
+            );
+        }
 
         // if the slot was already executed, truncate active history to cancel the slot and all the ones after
         if &self.active_cursor >= slot {
@@ -920,6 +928,7 @@ impl ExecutionState {
     }
 
     /// Execute an SCE-final slot
+    #[allow(clippy::borrowed_box)]
     pub fn execute_final_slot(
         &mut self,
         slot: &Slot,
@@ -932,8 +941,17 @@ impl ExecutionState {
             slot, target_id
         );
 
+        if slot <= &self.final_cursor {
+            debug!(
+                "execute_final_slot: final slot already executed (final_cursor = {})",
+                self.final_cursor
+            );
+            return;
+        }
+
         // check if the final slot execution result is already cached at the front of the speculative execution history
-        if let Some(exec_out) = self.active_history.write().0.pop_front() {
+        let first_exec_output = self.active_history.write().0.pop_front();
+        if let Some(exec_out) = first_exec_output {
             if &exec_out.slot == slot && exec_out.block_id == target_id {
                 // speculative execution front result matches what we want to compute
 

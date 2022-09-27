@@ -15,7 +15,7 @@ use massa_execution_exports::{
 };
 use massa_final_state::FinalState;
 use massa_models::block::BlockId;
-use massa_models::{slot::Slot, timeslots::get_latest_block_slot_at_timestamp};
+use massa_models::slot::Slot;
 use massa_pos_exports::SelectorController;
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -60,47 +60,11 @@ impl ExecutionThread {
         ExecutionThread {
             input_data,
             readonly_requests: RequestQueue::new(config.readonly_queue_length),
-            config,
             execution_state,
-            slot_sequencer: SlotSequencer::new(config.clone()), //TODO
+            slot_sequencer: SlotSequencer::new(config.clone(), final_cursor),
             selector,
+            config,
         }
-    }
-
-    /// Returns the latest slot that is at or just before the current timestamp.
-    /// If a non-zero `cursor_delay` configuration is defined, this extra lag is taken into account.
-    /// Such an extra lag can be useful for weaker nodes to perform less speculative executions
-    /// because more recent slots change more often and might require multiple re-executions.
-    ///
-    /// # Returns
-    /// The latest slot at or before `now() - self.config.cursor_delay` if there is any,
-    /// or None if it falls behind the genesis timestamp.
-    fn get_end_active_slot(&self) -> Option<Slot> {
-        let target_time = MassaTime::now(self.config.clock_compensation)
-            .expect("could not read current time")
-            .saturating_sub(self.config.cursor_delay);
-        get_latest_block_slot_at_timestamp(
-            self.config.thread_count,
-            self.config.t0,
-            self.config.genesis_timestamp,
-            target_time,
-        )
-        .expect("could not get current slot")
-    }
-
-    /// Tells the execution state about the new sequence of active slots.
-    /// If some slots already executed in a speculative way changed,
-    /// or if one of their have predecessor slots changed,
-    /// the execution state will truncate the execution output history
-    /// to remove all out-of-date execution outputs.
-    /// Speculative execution will then resume from the point of truncation.
-    pub fn truncate_execution_history(&mut self) {
-        // acquire write access to execution state
-        let mut exec_state = self.execution_state.write();
-
-        // tells the execution state to truncate its execution output history
-        // given the new list of active slots
-        exec_state.truncate_history(&self.active_slots, &self.ready_final_slots);
     }
 
     /// Append incoming read-only requests to the relevant queue,
@@ -163,6 +127,11 @@ impl ExecutionThread {
                 return Some(input_data);
             }
 
+            // there are read-only requests ready
+            if !self.readonly_requests.is_empty() {
+                return Some(input_data);
+            }
+
             // if we need to stop, return None
             if input_data.stop {
                 return None;
@@ -203,7 +172,7 @@ impl ExecutionThread {
             self.slot_sequencer.update(
                 input_data.finalized_blocks,
                 input_data.new_blockclique,
-                input_data.block_info,
+                input_data.block_storage,
             );
 
             // update the sequence of read-only requests

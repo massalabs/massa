@@ -49,6 +49,78 @@ pub struct SlotSequencer {
 }
 
 impl SlotSequencer {
+    /// Create a new slot sequencer
+    pub fn new(config: ExecutionConfig, final_cursor: Slot) -> Self {
+        SlotSequencer {
+            sequence: Default::default(),
+            latest_css_final_slots: (0..config.thread_count).map(|t| Slot::new(0, t)).collect(),
+            latest_sce_final_slot: final_cursor,
+            last_executed_final_slot: final_cursor,
+            last_executed_candidate_slot: final_cursor,
+            config,
+        }
+    }
+
+    /// Init the sequencer (first call)
+    fn init(
+        &mut self,
+        mut new_css_final_blocks: HashMap<Slot, BlockId>,
+        mut new_blockclique: Option<HashMap<Slot, BlockId>>,
+        mut new_blocks_storage: PreHashMap<BlockId, Storage>,
+    ) {
+        // compute new latest css final slots
+        for (s, _) in new_css_final_blocks.iter() {
+            if s.period > self.latest_css_final_slots[s.thread as usize].period {
+                self.latest_css_final_slots[s.thread as usize] = *s;
+            }
+        }
+
+        // build first sequence
+        let mut slot = *new_css_final_blocks
+            .keys()
+            .min()
+            .expect("init call should be done with non-empty new_css_final_blocks");
+        let max_slot = std::cmp::max(
+            *self
+                .latest_css_final_slots
+                .iter()
+                .max()
+                .expect("latest_css_final_slots is empty"),
+            new_blockclique
+                .as_ref()
+                .and_then(|bq| bq.keys().max().copied())
+                .unwrap_or_else(|| Slot::new(0, 0)),
+        );
+        while slot <= max_slot {
+            let css_final = slot <= self.latest_css_final_slots[slot.thread as usize];
+            let sce_final = slot <= self.latest_sce_final_slot;
+            let content = new_css_final_blocks
+                .remove(&slot)
+                .or_else(|| new_blockclique.as_mut().and_then(|bq| bq.remove(&slot)))
+                .map(|b_id| {
+                    (
+                        b_id,
+                        new_blocks_storage
+                            .remove(&b_id)
+                            .expect("block storage missing in execution init"),
+                    )
+                });
+            self.sequence.push_back(SlotInfo {
+                slot,
+                css_final,
+                sce_final,
+                content,
+            });
+            // increment slot
+            slot = slot
+                .get_next_slot(self.config.thread_count)
+                .expect("overflow in slot iteration");
+        }
+
+        // cleanup sequence
+        self.cleanup_sequence();
+    }
+
     /// Notify of incoming changes
     ///
     /// # Arguments
@@ -61,6 +133,14 @@ impl SlotSequencer {
         mut new_blockclique: Option<HashMap<Slot, BlockId>>,
         mut new_blocks_storage: PreHashMap<BlockId, Storage>,
     ) {
+        // if the system was not initialized, initialize it
+        if self.sequence.is_empty() {
+            if !new_css_final_blocks.is_empty() {
+                self.init(new_css_final_blocks, new_blockclique, new_blocks_storage);
+            }
+            return;
+        }
+
         // time cursor
         let shifted_now = MassaTime::now(self.config.clock_compensation)
             .expect("could not get current time")
@@ -115,14 +195,14 @@ impl SlotSequencer {
             .saturating_add(1);
         let mut new_sequence: VecDeque<SlotInfo> = VecDeque::with_capacity(new_seq_len as usize);
         let mut in_sce_finality = true; // we are still in the SCE finality
-        while &slot < &max_slot {
+        while slot < max_slot {
             // slot is CSS-final if it is before or at a CSS-final slot in its own thread
-            let mut new_css_final = &slot <= &self.latest_css_final_slots[slot.thread as usize];
+            let new_css_final = slot <= self.latest_css_final_slots[slot.thread as usize];
             let new_css_final_block: Option<BlockId> = new_css_final_blocks.remove(&slot);
 
             // check if the slot is in the blockclique
             let blockclique_updated = new_blockclique.is_some();
-            let new_blockclique_block = new_blockclique.and_then(|bq| bq.remove(&slot));
+            let new_blockclique_block = new_blockclique.as_mut().and_then(|bq| bq.remove(&slot));
 
             // build one step of the new sequence
             let (seq_item, seq_item_overwrites_history) = SlotSequencer::sequence_build_step(
@@ -144,15 +224,15 @@ impl SlotSequencer {
 
             // If the sequence item overwrites history before the execution cursor,
             // roll back the candidate execution cursor to the slot just before the earliest overwrite.
-            if seq_item_overwrites_history && &self.last_executed_candidate_slot >= &slot {
+            if seq_item_overwrites_history && self.last_executed_candidate_slot >= slot {
                 self.last_executed_candidate_slot = slot
-                    .get_prev_slot(self.thread_count)
+                    .get_prev_slot(self.config.thread_count)
                     .expect("could not rollback speculative execution cursor");
             }
 
             // increment slot
             slot = slot
-                .get_next_slot(self.thread_count)
+                .get_next_slot(self.config.thread_count)
                 .expect("overflow on slot iteration");
         }
         // explicitly consume tainted containers to prevent mistakes caused by using them later
@@ -171,6 +251,7 @@ impl SlotSequencer {
     ///
     /// # Returns
     /// A pair (SlotInfo, truncate_history: bool) where truncate_history indicates that this slot changes the content of an existing candidate slot
+    #[allow(clippy::too_many_arguments)]
     fn sequence_build_step(
         slot: Slot,
         prev_item: Option<SlotInfo>,
@@ -182,7 +263,7 @@ impl SlotSequencer {
         in_sce_finality: bool,
     ) -> (SlotInfo, bool) {
         // pop and match old sequence info on that slot
-        if let Some(slot_info) = prev_item {
+        if let Some(mut slot_info) = prev_item {
             // The slot was already present in the sequence.
 
             // The slot was already CSS-final
@@ -287,7 +368,7 @@ impl SlotSequencer {
             return None; // underflow
         }
         let index: usize = slot
-            .slots_since(first_slot, self.thread_count)
+            .slots_since(first_slot, self.config.thread_count)
             .expect("could not compute slots_since first slot in sequence")
             .try_into()
             .expect("usize overflow in sequence index");
@@ -300,22 +381,21 @@ impl SlotSequencer {
     /// Gets an immutable reference to a SlotInfo
     fn get_slot(&self, slot: &Slot) -> Option<&SlotInfo> {
         self.get_slot_index(slot)
-            .and_then(|idx| &self.sequence.get(idx))
-    }
-
-    /// Gets a mutable reference to a SlotInfo
-    fn get_slot_mut(&mut self, slot: &Slot) -> Option<&mut SlotInfo> {
-        self.get_slot_index(slot)
-            .and_then(|idx| &self.sequence.get_mut(idx))
+            .and_then(|idx| self.sequence.get(idx))
     }
 
     /// Returns true if a task is available
     pub fn is_task_available(&self) -> bool {
+        // system not initialized => no tasks
+        if self.sequence.is_empty() {
+            return false;
+        }
+
         // check if the next SCE-final slot is available for execution
         {
             let next_sce_final_slot = self
                 .last_executed_final_slot
-                .get_next_slot(self.thread_count)
+                .get_next_slot(self.config.thread_count)
                 .expect("overflow in slot iteration");
             let finalization_task_available = self
                 .get_slot(&next_sce_final_slot)
@@ -329,7 +409,7 @@ impl SlotSequencer {
         {
             let next_candidate_slot = self
                 .last_executed_candidate_slot
-                .get_next_slot(self.thread_count)
+                .get_next_slot(self.config.thread_count)
                 .expect("overflow in slot iteration");
             let candidate_task_available = self.get_slot(&next_candidate_slot).is_some();
             if candidate_task_available {
@@ -370,19 +450,24 @@ impl SlotSequencer {
     where
         F: Fn(bool, &Slot, &Option<(BlockId, Storage)>) -> T,
     {
+        // system not initialized => no tasks
+        if self.sequence.is_empty() {
+            return None;
+        }
+
         // check if the next SCE-final slot is available for execution
         {
             let slot = self
                 .last_executed_final_slot
-                .get_next_slot(self.thread_count)
+                .get_next_slot(self.config.thread_count)
                 .expect("overflow in slot iteration");
             if let Some(SlotInfo { content, .. }) = self.get_slot(&slot) {
+                let res = Some(callback(true, &slot, content));
                 self.last_executed_final_slot = slot;
                 self.last_executed_candidate_slot = std::cmp::max(
                     self.last_executed_candidate_slot,
                     self.last_executed_final_slot,
                 );
-                let res = Some(callback(true, &slot, content));
                 self.cleanup_sequence();
                 return res;
             }
@@ -392,11 +477,12 @@ impl SlotSequencer {
         {
             let slot = self
                 .last_executed_candidate_slot
-                .get_next_slot(self.thread_count)
+                .get_next_slot(self.config.thread_count)
                 .expect("overflow in slot iteration");
             if let Some(SlotInfo { content, .. }) = self.get_slot(&slot) {
+                let res = Some(callback(false, &slot, content));
                 self.last_executed_candidate_slot = slot;
-                return Some(callback(false, &slot, content));
+                return res;
             }
         }
 
@@ -406,6 +492,18 @@ impl SlotSequencer {
     /// Gets the instant of the slot just after the latest slot in the sequence.
     /// Note that `config.cursor_delay` is taken into account.
     pub fn get_next_slot_deadline(&self) -> MassaTime {
+        // system not initialized => just wake up soon (t0/T)
+        if self.sequence.is_empty() {
+            return MassaTime::now(self.config.clock_compensation)
+                .expect("could not get current time")
+                .saturating_add(
+                    self.config
+                        .t0
+                        .checked_div_u64(self.config.thread_count as u64)
+                        .unwrap(),
+                );
+        }
+
         let next_slot = self
             .sequence
             .back()

@@ -6,14 +6,12 @@ use massa_consensus_exports::{
     ConsensusConfig,
 };
 use massa_graph::{BlockGraph, BlockGraphExport};
-use massa_models::{address::Address, block::BlockId, operation::OperationId, slot::Slot};
+use massa_models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
+use massa_models::{address::Address, block::BlockId, slot::Slot};
 use massa_models::{block::WrappedHeader, prehash::PreHashMap};
-use massa_models::{
-    prehash::CapacityAllocator,
-    timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
-};
 use massa_models::{prehash::PreHashSet, stats::ConsensusStats};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use std::{
     cmp::max,
@@ -61,7 +59,7 @@ pub struct ConsensusWorker {
     /// time at which the node was launched (used for desynchronization detection)
     launch_time: MassaTime,
     /// previous blockclique notified to Execution
-    prev_blockclique: PreHashMap<OperationId, Slot>,
+    prev_blockclique: PreHashMap<BlockId, Slot>,
 }
 
 impl ConsensusWorker {
@@ -115,30 +113,43 @@ impl ConsensusWorker {
         }
         massa_trace!("consensus.consensus_worker.new", {});
 
-        // add genesis blocks to stats
-        let genesis_addr = Address::from_public_key(&cfg.genesis_key.get_public_key());
-        let mut final_block_stats = VecDeque::new();
-        for thread in 0..cfg.thread_count {
-            final_block_stats.push_back((
-                get_block_slot_timestamp(
-                    cfg.thread_count,
-                    cfg.t0,
-                    cfg.genesis_timestamp,
-                    Slot::new(0, thread),
-                )?,
-                genesis_addr,
-                false,
-            ))
-        }
-
         // desync detection timespan
         let stats_desync_detection_timespan = cfg.t0.checked_mul(cfg.periods_per_cycle * 2)?;
 
         // notify execution module of current blockclique and final blocks
         // we need to do this because the bootstrap snapshots of the executor vs the consensus may not have been taken in sync
         // because the two modules run concurrently and out of sync
-
-        self.notify_execution(block_db.get_all_final_blocks());
+        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+        let notify_finals: HashMap<Slot, BlockId> = block_db
+            .get_all_final_blocks()
+            .into_iter()
+            .map(|(b_id, slot)| {
+                let (_a_block, storage) = block_db
+                    .get_active_block(&b_id)
+                    .expect("active block missing from block_db");
+                block_storage.insert(b_id, storage.clone());
+                (slot, b_id)
+            })
+            .collect();
+        let notify_blockclique: HashMap<Slot, BlockId> = block_db
+            .get_blockclique()
+            .iter()
+            .map(|b_id| {
+                let (a_block, storage) = block_db
+                    .get_active_block(b_id)
+                    .expect("active block missing from block_db");
+                let slot = a_block.slot;
+                block_storage.insert(*b_id, storage.clone());
+                (slot, *b_id)
+            })
+            .collect();
+        let prev_blockclique: PreHashMap<BlockId, Slot> =
+            notify_blockclique.iter().map(|(k, v)| (*v, *k)).collect();
+        channels.execution_controller.update_blockclique_status(
+            notify_finals,
+            Some(notify_blockclique),
+            block_storage,
+        );
 
         Ok(ConsensusWorker {
             block_db,
@@ -148,7 +159,7 @@ impl ConsensusWorker {
             latest_final_periods,
             clock_compensation,
             channels,
-            final_block_stats,
+            final_block_stats: Default::default(),
             protocol_blocks: Default::default(),
             stale_block_stats: VecDeque::new(),
             stats_desync_detection_timespan,
@@ -549,39 +560,43 @@ impl ConsensusWorker {
     /// Notify execution about blockclique changes and finalized blocks
     fn notify_execution(&mut self, finalized_blocks: HashMap<Slot, BlockId>) {
         // new block storage instances (that had not been sent to execution before)
-        let mut new_block_storage: PreHashMap<BlockId, Storage> = finalized_blocks
+        let mut new_blocks_storage: PreHashMap<BlockId, Storage> = finalized_blocks
             .iter()
-            .filter_map(|(slot, b_id)| {
+            .filter_map(|(_slot, b_id)| {
                 if self.prev_blockclique.contains_key(b_id) {
                     // was previously sent as a blockclique element
                     return None;
                 }
                 let (_a_block, storage) = self
                     .block_db
-                    .get_active_block(&b_id)
+                    .get_active_block(b_id)
                     .expect("final block not found in active blocks");
-                Some((b_id, storage.clone()))
+                Some((*b_id, storage.clone()))
             })
             .collect();
 
         // get new blockclique with slots
         let mut blockclique_changed = false;
-        let new_blockclique: PreHashMap<BlockId, Slot> =
-            self.block_db.get_blockclique().into_iter().map(|b_id| {
-                if let Some(slot) = self.prev_blockclique.remove(&b_id) {
+        let new_blockclique: PreHashMap<BlockId, Slot> = self
+            .block_db
+            .get_blockclique()
+            .iter()
+            .map(|b_id| {
+                if let Some(slot) = self.prev_blockclique.remove(b_id) {
                     // element was already sent in the previous blockclique: remove from the prev blockclique and return slot
-                    (b_id, slot);
+                    (*b_id, slot)
                 } else {
                     // element was not present in the previous blockclique: the blockclique has changed => gather info about the new block
                     blockclique_changed = true;
                     let (a_block, storage) = self
                         .block_db
-                        .get_active_block(&b_id)
+                        .get_active_block(b_id)
                         .expect("blockclique block not found in active blocks");
-                    new_block_storage.insert(b_id, storage.clone());
-                    (b_id, a_block.slot)
+                    new_blocks_storage.insert(*b_id, storage.clone());
+                    (*b_id, a_block.slot)
                 }
-            });
+            })
+            .collect();
         if !self.prev_blockclique.is_empty() {
             // some elements have been dropped from the blockclique: mark blockclique as changed
             blockclique_changed = true;
@@ -605,7 +620,7 @@ impl ConsensusWorker {
                 } else {
                     None
                 },
-                new_block_info,
+                new_blocks_storage,
             );
     }
 
@@ -651,11 +666,11 @@ impl ConsensusWorker {
         // manage finalized blocks
         let timestamp = MassaTime::now(self.clock_compensation)?;
         let finalized_blocks = self.block_db.get_new_final_blocks();
-        let mut final_block_slots = PreHashMap::with_capacity(finalized_blocks.len());
+        let mut final_block_slots = HashMap::with_capacity(finalized_blocks.len());
         for b_id in finalized_blocks {
-            if let Some((a_block, block_store)) = self.block_db.get_active_block(&b_id) {
+            if let Some((a_block, _block_store)) = self.block_db.get_active_block(&b_id) {
                 // add to final blocks to notify execution
-                final_block_slots.insert(b_id, &_block.slot);
+                final_block_slots.insert(a_block.slot, b_id);
 
                 // add to stats
                 let block_is_from_protocol = self
@@ -671,7 +686,7 @@ impl ConsensusWorker {
         }
 
         // notify execution
-        self.notify_execution(finalized_blocks);
+        self.notify_execution(final_block_slots);
 
         // notify protocol of block wishlist
         let new_wishlist = self.block_db.get_block_wishlist()?;

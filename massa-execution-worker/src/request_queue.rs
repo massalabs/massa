@@ -105,11 +105,11 @@ impl<T, R> RequestQueue<T, R> {
     ///
     /// # Arguments
     /// * err: the error to send through the response channel of cancelled items
-    pub fn cancel(&mut self, err: ExecutionError) {
+    /*pub fn cancel(&mut self, err: ExecutionError) {
         for req in self.queue.drain(..) {
             req.cancel(err.clone());
         }
-    }
+    }*/
 
     /// Pop out the oldest element of the queue
     ///
@@ -139,12 +139,12 @@ impl<T, R> RequestQueue<T, R> {
     }
 
     /// Take all the elements into a new queue and reset the current queue
-    pub fn take(&mut self) -> Self {
+    /*pub fn take(&mut self) -> Self {
         RequestQueue {
             max_items: self.max_items,
             queue: std::mem::take(&mut self.queue),
         }
-    }
+    }*/
 
     /// Checks whether the queue is full
     ///
