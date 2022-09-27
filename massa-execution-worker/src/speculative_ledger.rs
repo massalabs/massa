@@ -255,7 +255,7 @@ impl SpeculativeLedger {
         // check that we don't collide with existing address
         if self.entry_exists(&addr) {
             return Err(ExecutionError::RuntimeError(format!(
-                "could not set bytecode for address {}: address generated to store bytecode already exist. Try again.",
+                "could not set bytecode for address {}: address generated to store bytecode already exists. Try again.",
                 addr
             )));
         }
