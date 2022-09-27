@@ -28,6 +28,7 @@ use nom::{
 };
 use num::rational::Ratio;
 use std::ops::Bound::{Excluded, Included, Unbounded};
+use tracing::warn;
 
 use crate::SelectorController;
 
@@ -402,6 +403,9 @@ impl PoSFinalState {
         } else {
             let opt_next_cycle = self.cycle_history.back().map(|info| info.cycle.saturating_add(1));
             if let Some(next_cycle) = opt_next_cycle && cycle.0 != next_cycle {
+                if self.cycle_history.iter().map(|item| item.cycle).any(|x| x == cycle.0) {
+                    warn!("PoS received cycle ({}) is already owned by the connecting node", cycle.0);
+                }
                 panic!("PoS received cycle ({}) should be equal to the next expected cycle ({})", cycle.0, next_cycle);
             }
             self.cycle_history.push_back(CycleInfo {
