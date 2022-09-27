@@ -49,7 +49,7 @@
     max_send_wait = 0
     # useless blocks are pruned every block_db_prune_interval ms
     block_db_prune_interval = 5000
-    
+
     # considered timespan for stats info
     stats_timespan = 60000
     # max number of item returned per query

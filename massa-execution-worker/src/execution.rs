@@ -355,6 +355,7 @@ impl ExecutionState {
             address: seller_addr,
             coins: Amount::default(),
             owned_addresses: vec![seller_addr],
+            operation_datastore: None,
         }];
 
         // try to sell the rolls
@@ -393,6 +394,7 @@ impl ExecutionState {
             address: buyer_addr,
             coins: Default::default(),
             owned_addresses: vec![buyer_addr],
+            operation_datastore: None,
         }];
 
         // compute the amount of coins to spend
@@ -450,6 +452,7 @@ impl ExecutionState {
             address: sender_addr,
             coins: *amount,
             owned_addresses: vec![sender_addr],
+            operation_datastore: None,
         }];
 
         // send `roll_price` * `roll_count` coins from the sender to the recipient
@@ -477,8 +480,13 @@ impl ExecutionState {
         sender_addr: Address,
     ) -> Result<(), ExecutionError> {
         // process ExecuteSC operations only
-        let (bytecode, max_gas) = match &operation {
-            OperationType::ExecuteSC { data, max_gas, .. } => (data, max_gas),
+        let (bytecode, max_gas, datastore) = match &operation {
+            OperationType::ExecuteSC {
+                data,
+                max_gas,
+                datastore,
+                ..
+            } => (data, max_gas, datastore),
             _ => panic!("unexpected operation type"),
         };
 
@@ -494,6 +502,7 @@ impl ExecutionState {
                 address: sender_addr,
                 coins: Amount::zero(),
                 owned_addresses: vec![sender_addr],
+                operation_datastore: Some(datastore.clone()),
             }];
         };
 
@@ -551,11 +560,13 @@ impl ExecutionState {
                     address: sender_addr,
                     coins: Default::default(),
                     owned_addresses: vec![sender_addr],
+                    operation_datastore: None,
                 },
                 ExecutionStackElement {
                     address: target_addr,
                     coins: Default::default(),
                     owned_addresses: vec![target_addr],
+                    operation_datastore: None,
                 },
             ];
 
@@ -629,11 +640,13 @@ impl ExecutionState {
                     address: message.sender,
                     coins: message.coins,
                     owned_addresses: vec![message.sender],
+                    operation_datastore: None,
                 },
                 ExecutionStackElement {
                     address: message.destination,
                     coins: message.coins,
                     owned_addresses: vec![message.destination],
+                    operation_datastore: None,
                 },
             ];
 

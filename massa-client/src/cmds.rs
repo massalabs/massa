@@ -977,6 +977,7 @@ impl Command {
                         simulated_gas_price,
                         bytecode,
                         address,
+                        operation_datastore: None, // TODO - #3072
                     })
                     .await
                 {
