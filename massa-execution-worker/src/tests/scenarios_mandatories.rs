@@ -611,7 +611,7 @@ fn sc_datastore() {
     let events = controller.get_filtered_sc_output_event(EventFilter::default());
 
     // match the events
-    assert!(!events.is_empty(), "One event was expected");
+    assert_eq!(events.len(), 3);
     assert_eq!(events[0].data, "keys: 9,65,66");
     assert_eq!(events[1].data, "has_key_1: true - has_key_2: false");
     assert_eq!(events[2].data, "data key 1: 255 - data key 3: 10,11");
