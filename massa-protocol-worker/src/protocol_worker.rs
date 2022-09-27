@@ -318,12 +318,12 @@ impl ProtocolWorker {
             "operation": operations
         });
         for (node, node_info) in self.active_nodes.iter_mut() {
-            let new_ops: PreHashSet<OperationId> = operations
+            let new_ops: Vec<OperationId> = operations
                 .iter()
                 .filter(|id| !node_info.knows_op(id))
                 .copied()
                 .collect();
-            node_info.insert_known_ops(&operations, self.config.max_node_known_ops_size);
+            node_info.insert_known_ops(&new_ops, self.config.max_node_known_ops_size);
             if !new_ops.is_empty() {
                 let res = self
                     .network_command_sender
