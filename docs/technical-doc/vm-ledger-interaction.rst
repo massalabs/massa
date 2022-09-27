@@ -109,7 +109,7 @@ SCE interaction with the VM
 
 **Active execution requests**
 
-Whenever the SCE tells the VM to execute an active block or active miss at slot S (see the [VM block feed specification](vm-block-feed)), the corresponding execution step is executed by the VM and the state changes caused by the execution are compiled into a `StepHistoryItem` and added to the `step_history`.
+Whenever the SCE tells the VM to execute an active block or active miss at slot S, the corresponding execution step is executed by the VM and the state changes caused by the execution are compiled into a `StepHistoryItem` and added to the `step_history`.
 
 The detailed algorithm is the following:
 * get the execution context ready by resetting `ledger_step.caused_changes` and computing `ledger_step.cumulative_history_changes` based on the `step_history`
@@ -128,7 +128,7 @@ The detailed algorithm is the following:
 
 **Final execution requests**
 
-Whenever the SCE tells the VM to execute a final block or final miss at slot S (see the [VM block feed specification](vm-block-feed)), the VM first checks if that step was already executed (it should match the first/oldest step in `step_history`).
+Whenever the SCE tells the VM to execute a final block or final miss at slot S, the VM first checks if that step was already executed (it should match the first/oldest step in `step_history`).
 If it matches (it should almost always), the step result is popped out of `step_history` and its `ledger_changes` are applied to the SCE final ledger. 
 
 In the case where the step is not found at the front of `step_history`, it might mean that there was a deep blockclique change, or that there was nothing in `step_history` due to a recent bootstrap for example. In that case, `step_history` is cleared, the `Active execution requests` process described above is executed again, and its resulting history item is then applied to the final SCE ledger.
