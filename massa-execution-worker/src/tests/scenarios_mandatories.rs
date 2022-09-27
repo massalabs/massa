@@ -533,7 +533,7 @@ pub fn roll_sell() {
 pub fn missed_blocks_roll_slash() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
-        t0: 2.into(),
+        t0: 10.into(),
         periods_per_cycle: 2,
         thread_count: 2,
         ..Default::default()
@@ -551,7 +551,7 @@ pub fn missed_blocks_roll_slash() {
     let storage = Storage::create_root();
     init_execution_worker(&exec_cfg, &storage, &controller);
     // sleep to get slashed on missed blocks and reach the reimbursment
-    std::thread::sleep(Duration::from_millis(100));
+    std::thread::sleep(Duration::from_millis(1000));
     // get the initial selection address
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
@@ -663,12 +663,11 @@ fn sc_datastore() {
     // store the block in storage
     storage.store_block(block.clone());
     // set our block as a final block
-    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
-    finalized_blocks.insert(
-        block.content.header.content.slot,
-        (block.id, storage.clone()),
-    );
-    controller.update_blockclique_status(finalized_blocks, Default::default());
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+    block_storage.insert(block.id, storage.clone());
+    controller.update_blockclique_status(finalized_blocks, Some(Default::default()), block_storage);
     std::thread::sleep(Duration::from_millis(10));
 
     // retrieve the event emitted by the execution error

@@ -37,9 +37,8 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::Mutex;
 use std::sync::mpsc::Receiver;
-use std::{collections::BTreeMap, collections::HashSet, future::Future, path::Path};
 use std::sync::mpsc::RecvTimeoutError;
-use std::{collections::HashSet, future::Future, path::Path};
+use std::{collections::BTreeMap, collections::HashSet, future::Future, path::Path};
 use std::{str::FromStr, sync::Arc, time::Duration};
 
 use tracing::info;
