@@ -25,6 +25,11 @@ enum WaitingStatus {
 }
 
 impl GraphWorker {
+    fn manage_command(&self, command: GraphCommand) -> GraphResult<()> {
+        //TODO: Manage
+        Ok(())
+    }
+
     /// Wait and interrupt or wait until an instant or a stop signal
     ///
     /// # Return value
@@ -35,7 +40,10 @@ impl GraphWorker {
         match self.command_receiver.recv_deadline(deadline) {
             // message received => manage it
             Ok(command) => {
-                // TODO: Manage it
+                match self.manage_command(command) {
+                    Err(err) => warn!("Error in graph: {}", err),
+                    Ok(()) => {}
+                };
                 WaitingStatus::Interrupted
             }
             // timeout => continue main loop
@@ -104,17 +112,19 @@ impl GraphWorker {
     fn run(&mut self) {
         // TODO: Should we start from slot of final state after bootstrap ?
         let prev_slot: Option<Slot> = None;
+        let (mut next_slot, mut next_instant) = self.get_next_slot(prev_slot);
         loop {
-            let (next_slot, next_instant) = self.get_next_slot(prev_slot);
-
             match self.wait_slot_or_command(next_instant) {
                 WaitingStatus::Ended => {
-                    // TODO: Desync, stats, block_db_changed
+                    //TODO: Desync, stats, block_db changed
+                    (next_slot, next_instant) = self.get_next_slot(prev_slot);
                 }
                 WaitingStatus::Disconnected => {
                     break;
                 }
-                WaitingStatus::Interrupted => {}
+                WaitingStatus::Interrupted => {
+                    continue;
+                }
             };
         }
     }
@@ -134,7 +144,10 @@ pub fn start_graph_worker(
         })
         .expect("Can't spawn thread graph.");
 
-    let manager = GraphManagerImpl { thread_graph };
+    let manager = GraphManagerImpl {
+        thread_graph: Some(thread_graph),
+        graph_command_sender: tx.clone(),
+    };
 
     let controller = GraphControllerImpl { command_sender: tx };
 
