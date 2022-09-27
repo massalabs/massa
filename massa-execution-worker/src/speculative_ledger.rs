@@ -299,10 +299,12 @@ impl SpeculativeLedger {
     /// Fails if the address doesn't exist.
     ///
     /// # Arguments
+    /// * `caller_addr`: address of the caller. Will pay the storage costs.
     /// * `addr`: target address
     /// * `bytecode`: bytecode to set for that address
     pub fn set_bytecode(
         &mut self,
+        caller_addr: &Address,
         addr: &Address,
         bytecode: Vec<u8>,
     ) -> Result<(), ExecutionError> {
@@ -334,8 +336,8 @@ impl SpeculativeLedger {
                 })?;
 
             match diff_size_storage.signum() {
-                1 => self.transfer_coins(Some(*addr), None, storage_cost_bytecode)?,
-                -1 => self.transfer_coins(None, Some(*addr), storage_cost_bytecode)?,
+                1 => self.transfer_coins(Some(*caller_addr), None, storage_cost_bytecode)?,
+                -1 => self.transfer_coins(None, Some(*caller_addr), storage_cost_bytecode)?,
                 _ => {}
             };
         } else {
@@ -348,7 +350,7 @@ impl SpeculativeLedger {
                         "overflow when calculating storage cost of bytecode".to_string(),
                     )
                 })?;
-            self.transfer_coins(Some(*addr), None, bytecode_storage_cost)?;
+            self.transfer_coins(Some(*caller_addr), None, bytecode_storage_cost)?;
         }
         // set the bytecode of that address
         self.added_changes.set_bytecode(*addr, bytecode);
@@ -424,11 +426,13 @@ impl SpeculativeLedger {
     /// If the datastore entry does not exist, it is created.
     ///
     /// # Arguments
+    /// * `caller_addr`: address of the caller. Will pay the storage costs.
     /// * `addr`: target address
     /// * `key`: datastore key
     /// * `data`: value to associate to the datastore key
     pub fn set_data_entry(
         &mut self,
+        caller_addr: &Address,
         addr: &Address,
         key: Vec<u8>,
         value: Vec<u8>,
@@ -472,14 +476,14 @@ impl SpeculativeLedger {
                     )
                 })?;
             match diff_size_storage.signum() {
-                1 => self.transfer_coins(Some(*addr), None, storage_cost_value)?,
-                -1 => self.transfer_coins(None, Some(*addr), storage_cost_value)?,
+                1 => self.transfer_coins(Some(*caller_addr), None, storage_cost_value)?,
+                -1 => self.transfer_coins(None, Some(*caller_addr), storage_cost_value)?,
                 _ => {}
             };
         } else {
             let value_storage_cost = self.get_storage_cost_datastore_value(&value)?;
             self.transfer_coins(
-                Some(*addr),
+                Some(*caller_addr),
                 None,
                 self.storage_costs_constants
                     .ledger_entry_datastore_base_cost
@@ -503,15 +507,21 @@ impl SpeculativeLedger {
     /// Fails if the entry or address does not exist.
     ///
     /// # Arguments
+    /// * `caller_addr`: address of the caller. Will pay the storage costs.
     /// * `addr`: address
     /// * `key`: key of the entry to delete in the address' datastore
-    pub fn delete_data_entry(&mut self, addr: &Address, key: &[u8]) -> Result<(), ExecutionError> {
+    pub fn delete_data_entry(
+        &mut self,
+        caller_addr: &Address,
+        addr: &Address,
+        key: &[u8],
+    ) -> Result<(), ExecutionError> {
         // check if the entry exists
         if let Some(value) = self.get_data_entry(addr, key) {
             let value_storage_cost = self.get_storage_cost_datastore_value(&value)?;
             self.transfer_coins(
                 None,
-                Some(*addr),
+                Some(*caller_addr),
                 self.storage_costs_constants
                     .ledger_entry_datastore_base_cost
                     .checked_add(value_storage_cost)

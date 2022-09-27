@@ -482,7 +482,8 @@ impl ExecutionContext {
         }
 
         // set data entry
-        self.speculative_ledger.set_data_entry(address, key, data)
+        self.speculative_ledger
+            .set_data_entry(&self.get_current_address()?, address, key, data)
     }
 
     /// Appends data to a datastore entry for an address in the speculative ledger.
@@ -523,7 +524,7 @@ impl ExecutionContext {
 
         // set data entry
         self.speculative_ledger
-            .set_data_entry(address, key, res_data)
+            .set_data_entry(&self.get_current_address()?, address, key, res_data)
     }
 
     /// Deletes a datastore entry for an address.
@@ -546,7 +547,8 @@ impl ExecutionContext {
         }
 
         // delete entry
-        self.speculative_ledger.delete_data_entry(address, key)
+        self.speculative_ledger
+            .delete_data_entry(&self.get_current_address()?, address, key)
     }
 
     /// Transfers coins from one address to another.
@@ -742,7 +744,8 @@ impl ExecutionContext {
         }
 
         // set data entry
-        self.speculative_ledger.set_bytecode(address, bytecode)
+        self.speculative_ledger
+            .set_bytecode(&self.get_current_address()?, address, bytecode)
     }
 
     /// Creates a new event but does not emit it.
