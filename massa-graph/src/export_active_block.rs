@@ -2,7 +2,7 @@ use crate::error::{GraphError, GraphResult as Result};
 use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,
-    block::{Block, BlockDeserializerLW, BlockId, WrappedBlock},
+    block::{Block, BlockDeserializer, BlockId, WrappedBlock},
     operation::{Operation, OperationDeserializer, WrappedOperation},
     prehash::{PreHashMap, PreHashSet},
     wrapped::{WrappedDeserializer, WrappedSerializer},
@@ -183,7 +183,7 @@ impl Serializer<ExportActiveBlock> for ExportActiveBlockSerializer {
 
 /// Basic deserializer of `ExportActiveBlock`
 pub struct ExportActiveBlockDeserializer {
-    wrapped_block_deserializer: WrappedDeserializer<Block, BlockDeserializerLW>,
+    wrapped_block_deserializer: WrappedDeserializer<Block, BlockDeserializer>,
     wrapped_operation_deserializer: WrappedDeserializer<Operation, OperationDeserializer>,
     hash_deserializer: HashDeserializer,
     period_deserializer: U64VarIntDeserializer,
@@ -206,7 +206,7 @@ impl ExportActiveBlockDeserializer {
         max_op_datastore_value_length: u64,
     ) -> Self {
         ExportActiveBlockDeserializer {
-            wrapped_block_deserializer: WrappedDeserializer::new(BlockDeserializerLW::new(
+            wrapped_block_deserializer: WrappedDeserializer::new(BlockDeserializer::new(
                 thread_count,
                 max_operations_per_block,
                 endorsement_count,
