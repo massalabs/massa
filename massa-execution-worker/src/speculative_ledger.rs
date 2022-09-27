@@ -168,71 +168,42 @@ impl SpeculativeLedger {
                     changes.set_balance(to_addr, new_balance);
                 }
                 // if `to_addr` doesn't exist but `from_addr` is defined. `from_addr` will create the address using the coins sent.
-                (None, Some(from_addr)) => {
+                (None, Some(_)) => {
                     //TODO: Remove when stabilized
-                    debug!("Creating address {} from sender balance", to_addr);
-                    // Debit sender to create receiver address
-                    let address_storage_cost = self
-                        .storage_costs_constants
-                        .ledger_cost_per_byte
-                        .checked_mul_u64(
-                            self.storage_costs_constants
-                                .ledger_entry_base_size
-                                .try_into()
-                                .map_err(|_| {
+                    debug!("Creating address {} from coins in transactions", to_addr);
+                    if amount >= self.storage_costs_constants.ledger_entry_base_cost {
+                        changes.set_balance(
+                            to_addr,
+                            amount
+                                .checked_sub(self.storage_costs_constants.ledger_entry_base_cost)
+                                .ok_or_else(|| {
                                     ExecutionError::RuntimeError(
-                                "overflow in calculating cost for base entry (address + balance)"
-                                    .to_string(),
-                            )
+                                        "overflow in subtract ledger cost for addr".to_string(),
+                                    )
                                 })?,
-                        )
-                        .ok_or_else(|| {
-                            ExecutionError::RuntimeError(
-                                "overflow in ledger cost for balance".to_string(),
-                            )
-                        })?;
-                    self.transfer_coins(Some(from_addr), None, address_storage_cost)?;
-                    changes.set_balance(
-                        to_addr,
-                        amount.checked_sub(address_storage_cost).ok_or_else(|| {
-                            ExecutionError::RuntimeError(
-                                "overflow in subtract ledger cost for addr".to_string(),
-                            )
-                        })?,
-                    );
+                        );
+                    } else {
+                        return Err(ExecutionError::RuntimeError(
+                            "insufficient amount to create receiver address".to_string(),
+                        ));
+                    }
                 }
-                // if `from_addr` is none and `to_addr` doesn't exist try to create it from coins passed
+                // if `from_addr` is none and `to_addr` doesn't exist try to create it from coins sent
                 (None, None) => {
                     //TODO: Remove when stabilized
-                    debug!("Creating address {} from coins passed", to_addr);
-                    let address_storage_cost = self
-                        .storage_costs_constants
-                        .ledger_cost_per_byte
-                        .checked_mul_u64(
-                            self.storage_costs_constants
-                                .ledger_entry_base_size
-                                .try_into()
-                                .map_err(|_| {
-                                    ExecutionError::RuntimeError(
-                                "overflow in calculating cost for base entry (address + balance)"
-                                    .to_string(),
-                            )
-                                })?,
-                        )
-                        .ok_or_else(|| {
-                            ExecutionError::RuntimeError(
-                                "overflow in ledger cost for balance".to_string(),
-                            )
-                        })?;
+                    debug!("Creating address {} from coins generated", to_addr);
                     // We have enough to create the address and transfer the rest.
-                    if amount >= address_storage_cost {
-                        let amount_sent =
-                            amount.checked_sub(address_storage_cost).ok_or_else(|| {
-                                ExecutionError::RuntimeError(
-                                    "overflow in subtract ledger cost for addr".to_string(),
-                                )
-                            })?;
-                        changes.set_balance(to_addr, amount_sent);
+                    if amount >= self.storage_costs_constants.ledger_entry_base_cost {
+                        changes.set_balance(
+                            to_addr,
+                            amount
+                                .checked_sub(self.storage_costs_constants.ledger_entry_base_cost)
+                                .ok_or_else(|| {
+                                    ExecutionError::RuntimeError(
+                                        "overflow in subtract ledger cost for addr".to_string(),
+                                    )
+                                })?,
+                        );
                     } else {
                         return Ok(());
                     }
@@ -302,21 +273,7 @@ impl SpeculativeLedger {
         // calculate the cost of storing the address and bytecode
         let address_storage_cost = self
             .storage_costs_constants
-            .ledger_cost_per_byte
-            .checked_mul_u64(
-                self.storage_costs_constants
-                    .ledger_entry_base_size
-                    .try_into()
-                    .map_err(|_| {
-                        ExecutionError::RuntimeError(
-                            "overflow in calculating cost for base entry (address + balance)"
-                                .to_string(),
-                        )
-                    })?,
-            )
-            .ok_or_else(|| {
-                ExecutionError::RuntimeError("overflow in ledger cost for balance".to_string())
-            })?
+            .ledger_entry_base_cost
             // Bytecode key and data
             .checked_add(
                 self.storage_costs_constants
@@ -490,26 +447,6 @@ impl SpeculativeLedger {
         })
     }
 
-    fn get_storage_cost_datastore_key(&self) -> Result<Amount, ExecutionError> {
-        self.storage_costs_constants
-            .ledger_cost_per_byte
-            .checked_mul_u64(
-                self.storage_costs_constants
-                    .ledger_entry_datastore_base_size
-                    .try_into()
-                    .map_err(|_| {
-                        ExecutionError::RuntimeError(
-                            "overflow when calculating size for addr for datastore".to_string(),
-                        )
-                    })?,
-            )
-            .ok_or_else(|| {
-                ExecutionError::RuntimeError(
-                    "overflow when calculating storage cost for datastore key".to_string(),
-                )
-            })
-    }
-
     fn get_storage_cost_datastore_value(&self, value: &Vec<u8>) -> Result<Amount, ExecutionError> {
         self.storage_costs_constants
             .ledger_cost_per_byte
@@ -583,7 +520,8 @@ impl SpeculativeLedger {
             self.transfer_coins(
                 Some(*addr),
                 None,
-                self.get_storage_cost_datastore_key()?
+                self.storage_costs_constants
+                    .ledger_entry_datastore_base_cost
                     .checked_add(value_storage_cost)
                     .ok_or_else(|| {
                         ExecutionError::RuntimeError(
@@ -613,7 +551,8 @@ impl SpeculativeLedger {
             self.transfer_coins(
                 None,
                 Some(*addr),
-                self.get_storage_cost_datastore_key()?
+                self.storage_costs_constants
+                    .ledger_entry_datastore_base_cost
                     .checked_add(value_storage_cost)
                     .ok_or_else(|| {
                         ExecutionError::RuntimeError(

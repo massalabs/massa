@@ -271,8 +271,12 @@ async fn launch(
     // Storage costs constants
     let storage_costs_constants = StorageCostsConstants {
         ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
-        ledger_entry_base_size: LEDGER_ENTRY_BASE_SIZE,
-        ledger_entry_datastore_base_size: LEDGER_ENTRY_DATASTORE_BASE_SIZE,
+        ledger_entry_base_cost: LEDGER_COST_PER_BYTE
+            .checked_mul_u64(LEDGER_ENTRY_BASE_SIZE as u64)
+            .expect("Overflow when creating constant ledger_entry_base_cost"),
+        ledger_entry_datastore_base_cost: LEDGER_COST_PER_BYTE
+            .checked_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
+            .expect("Overflow when creating constant ledger_entry_datastore_base_size"),
     };
     // launch execution module
     let execution_config = ExecutionConfig {

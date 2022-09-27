@@ -11,10 +11,10 @@ use num::rational::Ratio;
 pub struct StorageCostsConstants {
     /// Cost per byte in ledger
     pub ledger_cost_per_byte: Amount,
-    /// Ledger entry base size
-    pub ledger_entry_base_size: usize,
-    /// Ledger entry datastore base size
-    pub ledger_entry_datastore_base_size: usize,
+    /// Ledger entry base cost
+    pub ledger_entry_base_cost: Amount,
+    /// Ledger entry datastore base cost
+    pub ledger_entry_datastore_base_cost: Amount,
 }
 
 /// Execution module configuration
