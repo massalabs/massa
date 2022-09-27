@@ -8,8 +8,15 @@ use crate::{
 };
 use massa_ledger_exports::LedgerEntry;
 use massa_models::{
-    address::Address, amount::Amount, api::EventFilter, block::BlockId, operation::OperationId,
-    output_event::SCOutputEvent, prehash::PreHashSet, slot::Slot, stats::ExecutionStats,
+    address::Address,
+    amount::Amount,
+    api::EventFilter,
+    block::BlockId,
+    operation::OperationId,
+    output_event::SCOutputEvent,
+    prehash::{PreHashMap, PreHashSet},
+    slot::Slot,
+    stats::ExecutionStats,
 };
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -33,9 +40,11 @@ pub enum MockExecutionControllerMessage {
     /// update blockclique status
     UpdateBlockcliqueStatus {
         /// newly finalized blocks
-        finalized_blocks: HashMap<Slot, (BlockId, Storage)>,
-        /// current clique of higher fitness
-        blockclique: HashMap<Slot, (BlockId, Storage)>,
+        finalized_blocks: HashMap<Slot, BlockId>,
+        /// blockclique change
+        new_blockclique: Option<HashMap<Slot, BlockId>>,
+        /// block storage
+        block_storage: PreHashMap<BlockId, Storage>,
     },
     /// filter for smart contract output event request
     GetFilteredScOutputEvent {
@@ -117,14 +126,16 @@ impl ExecutionController for MockExecutionController {
 
     fn update_blockclique_status(
         &self,
-        finalized_blocks: HashMap<Slot, (BlockId, Storage)>,
-        blockclique: HashMap<Slot, (BlockId, Storage)>,
+        finalized_blocks: HashMap<Slot, BlockId>,
+        new_blockclique: Option<HashMap<Slot, BlockId>>,
+        block_storage: PreHashMap<BlockId, Storage>,
     ) {
         self.0
             .lock()
             .send(MockExecutionControllerMessage::UpdateBlockcliqueStatus {
                 finalized_blocks,
-                blockclique,
+                new_blockclique,
+                block_storage,
             })
             .unwrap();
     }

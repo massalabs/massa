@@ -92,7 +92,11 @@ fn test_sending_command() {
         sample_state.clone(),
         sample_state.read().pos_state.selector.clone(),
     );
-    controller.update_blockclique_status(Default::default(), Default::default());
+    controller.update_blockclique_status(
+        Default::default(),
+        Default::default(),
+        Default::default(),
+    );
     manager.stop();
 }
 
@@ -157,12 +161,15 @@ fn test_nested_call_gas_usage() {
     storage.store_block(block.clone());
 
     // set our block as a final block so the message is sent
-    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
-    finalized_blocks.insert(
-        block.content.header.content.slot,
-        (block.id, storage.clone()),
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+    block_storage.insert(block.id, storage.clone());
+    controller.update_blockclique_status(
+        finalized_blocks.clone(),
+        Default::default(),
+        block_storage.clone(),
     );
-    controller.update_blockclique_status(finalized_blocks.clone(), Default::default());
     std::thread::sleep(Duration::from_millis(10));
     // retrieve events emitted by smart contracts
     let events = controller.get_filtered_sc_output_event(EventFilter {
@@ -190,12 +197,15 @@ fn test_nested_call_gas_usage() {
     // store the block in storage
     storage.store_block(block.clone());
     // set our block as a final block so the message is sent
-    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
-    finalized_blocks.insert(
-        block.content.header.content.slot,
-        (block.id, storage.clone()),
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+    block_storage.insert(block.id, storage.clone());
+    controller.update_blockclique_status(
+        finalized_blocks,
+        Default::default(),
+        block_storage.clone(),
     );
-    controller.update_blockclique_status(finalized_blocks, Default::default());
     std::thread::sleep(Duration::from_millis(10));
     // Get the events that give us the gas usage (refer to source in ts) without fetching the first slot because it emit a event with an address.
     let events = controller.get_filtered_sc_output_event(EventFilter {
@@ -261,12 +271,15 @@ fn send_and_receive_async_message() {
     storage.store_block(block.clone());
 
     // set our block as a final block so the message is sent
-    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
-    finalized_blocks.insert(
-        block.content.header.content.slot,
-        (block.id, storage.clone()),
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+    block_storage.insert(block.id, storage.clone());
+    controller.update_blockclique_status(
+        finalized_blocks,
+        Default::default(),
+        block_storage.clone(),
     );
-    controller.update_blockclique_status(finalized_blocks, Default::default());
     // sleep for 100ms to reach the message execution period
     std::thread::sleep(Duration::from_millis(100));
 
@@ -326,12 +339,15 @@ pub fn send_and_receive_transaction() {
     // store the block in storage
     storage.store_block(block.clone());
     // set our block as a final block so the transaction is processed
-    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
-    finalized_blocks.insert(
-        block.content.header.content.slot,
-        (block.id, storage.clone()),
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+    block_storage.insert(block.id, storage.clone());
+    controller.update_blockclique_status(
+        finalized_blocks,
+        Default::default(),
+        block_storage.clone(),
     );
-    controller.update_blockclique_status(finalized_blocks, Default::default());
     std::thread::sleep(Duration::from_millis(10));
     // check recipient balance
     assert_eq!(
@@ -385,12 +401,15 @@ pub fn roll_buy() {
     // store the block in storage
     storage.store_block(block.clone());
     // set our block as a final block so the purchase is processed
-    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
-    finalized_blocks.insert(
-        block.content.header.content.slot,
-        (block.id, storage.clone()),
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+    block_storage.insert(block.id, storage.clone());
+    controller.update_blockclique_status(
+        finalized_blocks,
+        Default::default(),
+        block_storage.clone(),
     );
-    controller.update_blockclique_status(finalized_blocks, Default::default());
     std::thread::sleep(Duration::from_millis(10));
     // check roll count of the buyer address and its balance
     let sample_read = sample_state.read();
@@ -444,12 +463,15 @@ pub fn roll_sell() {
     // store the block in storage
     storage.store_block(block.clone());
     // set the block as final so the sell and credits are processed
-    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
-    finalized_blocks.insert(
-        block.content.header.content.slot,
-        (block.id, storage.clone()),
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+    block_storage.insert(block.id, storage.clone());
+    controller.update_blockclique_status(
+        finalized_blocks,
+        Default::default(),
+        block_storage.clone(),
     );
-    controller.update_blockclique_status(finalized_blocks, Default::default());
     std::thread::sleep(Duration::from_millis(10));
     // check roll count deferred credits and candidate balance of the seller address
     let sample_read = sample_state.read();
@@ -541,12 +563,15 @@ fn sc_execution_error() {
     // store the block in storage
     storage.store_block(block.clone());
     // set our block as a final block
-    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
-    finalized_blocks.insert(
-        block.content.header.content.slot,
-        (block.id, storage.clone()),
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+    block_storage.insert(block.id, storage.clone());
+    controller.update_blockclique_status(
+        finalized_blocks,
+        Default::default(),
+        block_storage.clone(),
     );
-    controller.update_blockclique_status(finalized_blocks, Default::default());
     std::thread::sleep(Duration::from_millis(10));
 
     // retrieve the event emitted by the execution error
@@ -594,12 +619,15 @@ fn set_bytecode_error() {
     // store the block in storage
     storage.store_block(block.clone());
     // set our block as a final block
-    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
-    finalized_blocks.insert(
-        block.content.header.content.slot,
-        (block.id, storage.clone()),
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+    block_storage.insert(block.id, storage.clone());
+    controller.update_blockclique_status(
+        finalized_blocks,
+        Default::default(),
+        block_storage.clone(),
     );
-    controller.update_blockclique_status(finalized_blocks, Default::default());
     std::thread::sleep(Duration::from_millis(10));
 
     // retrieve the event emitted by the execution error
@@ -642,12 +670,19 @@ fn generate_events() {
 
     storage.store_block(block.clone());
 
-    let finalized_blocks: HashMap<Slot, (BlockId, Storage)> = HashMap::new();
-    let mut blockclique: HashMap<Slot, (BlockId, Storage)> = HashMap::new();
+    let finalized_blocks: HashMap<Slot, BlockId> = HashMap::new();
+    let mut blockclique: HashMap<Slot, BlockId> = HashMap::new();
 
-    blockclique.insert(slot, (block.id, storage.clone()));
+    blockclique.insert(slot, block.id);
 
-    controller.update_blockclique_status(finalized_blocks, blockclique);
+    let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+    block_storage.insert(block.id, storage.clone());
+
+    controller.update_blockclique_status(
+        finalized_blocks,
+        Some(blockclique),
+        block_storage.clone(),
+    );
 
     std::thread::sleep(Duration::from_millis(1000));
     let events = controller.get_filtered_sc_output_event(EventFilter {
