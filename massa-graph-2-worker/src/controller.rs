@@ -1,5 +1,5 @@
 use massa_graph::{error::GraphResult, BlockGraphExport, BootstrapableGraph};
-use massa_graph_2_exports::GraphController;
+use massa_graph_2_exports::{GraphController, GraphState};
 use massa_models::{
     api::BlockGraphStatus,
     block::{BlockHeader, BlockId},
@@ -9,13 +9,27 @@ use massa_models::{
     wrapped::Wrapped,
 };
 use massa_storage::Storage;
-use std::sync::mpsc::SyncSender;
+use parking_lot::RwLock;
+use std::sync::{mpsc::SyncSender, Arc};
 
 use crate::commands::GraphCommand;
 
 #[derive(Clone)]
 pub struct GraphControllerImpl {
-    pub command_sender: SyncSender<GraphCommand>,
+    command_sender: SyncSender<GraphCommand>,
+    shared_state: Arc<RwLock<GraphState>>,
+}
+
+impl GraphControllerImpl {
+    pub fn new(
+        command_sender: SyncSender<GraphCommand>,
+        shared_state: Arc<RwLock<GraphState>>,
+    ) -> Self {
+        Self {
+            command_sender,
+            shared_state,
+        }
+    }
 }
 
 impl GraphController for GraphControllerImpl {
@@ -55,28 +69,15 @@ impl GraphController for GraphControllerImpl {
         todo!()
     }
 
-    fn register_block(
-        &self,
-        block_id: BlockId,
-        slot: Slot,
-        block_storage: Storage,
-    ) -> GraphResult<()> {
+    fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage) {
         todo!()
     }
 
-    fn register_block_header(
-        &self,
-        block_id: BlockId,
-        header: Wrapped<BlockHeader, BlockId>,
-    ) -> GraphResult<()> {
+    fn register_block_header(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>) {
         todo!()
     }
 
-    fn mark_invalid_block(
-        &self,
-        block_id: BlockId,
-        header: Wrapped<BlockHeader, BlockId>,
-    ) -> GraphResult<()> {
+    fn mark_invalid_block(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>) {
         todo!()
     }
 }

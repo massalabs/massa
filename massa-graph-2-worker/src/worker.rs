@@ -1,9 +1,12 @@
 use massa_graph::error::GraphResult;
-use massa_graph_2_exports::{GraphChannels, GraphConfig, GraphController, GraphManager};
+use massa_graph_2_exports::{
+    GraphChannels, GraphConfig, GraphController, GraphManager, GraphState,
+};
 use massa_models::slot::Slot;
 use massa_models::timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp};
 use massa_time::MassaTime;
-use std::sync::mpsc;
+use parking_lot::RwLock;
+use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Instant;
 use tracing::log::warn;
@@ -16,6 +19,7 @@ pub struct GraphWorker {
     command_receiver: mpsc::Receiver<GraphCommand>,
     config: GraphConfig,
     channels: GraphChannels,
+    shared_state: Arc<RwLock<GraphState>>,
 }
 
 enum WaitingStatus {
@@ -26,7 +30,14 @@ enum WaitingStatus {
 
 impl GraphWorker {
     fn manage_command(&self, command: GraphCommand) -> GraphResult<()> {
-        //TODO: Manage
+        match command {
+            GraphCommand::RegisterBlock(_, _, _) => {
+                // TODO
+            }
+            _ => {
+                // TODO
+            }
+        }
         Ok(())
     }
 
@@ -101,11 +112,13 @@ impl GraphWorker {
         command_receiver: mpsc::Receiver<GraphCommand>,
         config: GraphConfig,
         channels: GraphChannels,
+        shared_state: Arc<RwLock<GraphState>>,
     ) -> Self {
         Self {
             command_receiver,
             config,
             channels,
+            shared_state,
         }
     }
 
@@ -135,11 +148,13 @@ pub fn start_graph_worker(
     channels: GraphChannels,
 ) -> (Box<dyn GraphController>, Box<dyn GraphManager>) {
     let (tx, rx) = mpsc::sync_channel(10);
+    let shared_state = Arc::new(RwLock::new(GraphState {}));
 
+    let shared_state_cloned = shared_state.clone();
     let thread_graph = thread::Builder::new()
         .name("graph worker".into())
         .spawn(move || {
-            let mut graph_worker = GraphWorker::new(rx, config, channels);
+            let mut graph_worker = GraphWorker::new(rx, config, channels, shared_state_cloned);
             graph_worker.run()
         })
         .expect("Can't spawn thread graph.");
@@ -149,7 +164,7 @@ pub fn start_graph_worker(
         graph_command_sender: tx.clone(),
     };
 
-    let controller = GraphControllerImpl { command_sender: tx };
+    let controller = GraphControllerImpl::new(tx, shared_state);
 
     (Box::new(controller), Box::new(manager))
 }

@@ -1940,6 +1940,7 @@ dependencies = [
  "massa_models",
  "massa_storage",
  "massa_time",
+ "parking_lot",
  "tracing",
 ]
 

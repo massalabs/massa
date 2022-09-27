@@ -5,15 +5,8 @@ use massa_models::{
 };
 use massa_storage::Storage;
 
+#[allow(clippy::large_enum_variant)]
 pub enum GraphCommand {
-    GetBlockGraphStatus(Option<Slot>, Option<Slot>),
-    GetBlockStatuses(Vec<BlockId>),
-    GetCliques,
-    GetBootstrapGraph,
-    GetStats,
-    GetBestParents,
-    GetBlockCliqueBlockAtSlot(Slot),
-    GetLatestBlockCliqueBlockAtSlot(Slot),
     RegisterBlock(BlockId, Slot, Storage),
     RegisterBlockHeader(BlockId, Wrapped<BlockHeader, BlockId>),
     Stop,

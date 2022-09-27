@@ -9,6 +9,7 @@ edition = "2021"
 [dependencies]
 displaydoc = "0.2"
 tracing = "0.1"
+parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 #custom modules
 massa_graph_2_exports = { path = "../massa-graph-2-exports" }
 massa_graph = { path = "../massa-graph" }

@@ -31,24 +31,11 @@ pub trait GraphController: Send + Sync {
 
     fn get_latest_blockclique_block_at_slot(&self, slot: Slot) -> BlockId;
 
-    fn register_block(
-        &self,
-        block_id: BlockId,
-        slot: Slot,
-        block_storage: Storage,
-    ) -> GraphResult<()>;
+    fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage);
 
-    fn register_block_header(
-        &self,
-        block_id: BlockId,
-        header: Wrapped<BlockHeader, BlockId>,
-    ) -> GraphResult<()>;
+    fn register_block_header(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>);
 
-    fn mark_invalid_block(
-        &self,
-        block_id: BlockId,
-        header: Wrapped<BlockHeader, BlockId>,
-    ) -> GraphResult<()>;
+    fn mark_invalid_block(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>);
 }
 
 /// Graph manager used to stop the graph thread
