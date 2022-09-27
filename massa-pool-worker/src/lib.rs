@@ -11,10 +11,13 @@
 mod controller_impl;
 mod endorsement_pool;
 mod operation_pool;
+mod protection;
 mod run;
 mod types;
 
 pub use run::start_pool;
+#[cfg(test)]
+pub use run::start_pool_without_protection;
 
 #[cfg(test)]
 mod tests;

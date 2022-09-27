@@ -7,22 +7,28 @@ use massa_models::{
     operation::OperationId,
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     slot::Slot,
+    timeslots::get_closest_slot_to_timestamp,
 };
 use massa_pool_exports::PoolConfig;
 use massa_storage::Storage;
-use std::collections::BTreeSet;
+use massa_time::MassaTime;
+use parking_lot::RwLock;
+use std::{collections::BTreeSet, sync::Arc};
 
-use crate::types::{OperationInfo, PoolOperationCursor};
+use crate::{
+    protection::PoolAddrInfo,
+    types::{OperationInfo, PoolOperationCursor},
+};
 
 pub struct OperationPool {
     /// configuration
     config: PoolConfig,
 
     /// operations map
-    operations: PreHashMap<OperationId, OperationInfo>,
+    pub(crate) operations: PreHashMap<OperationId, OperationInfo>,
 
     /// operations sorted by decreasing quality, per thread
-    sorted_ops_per_thread: Vec<BTreeSet<PoolOperationCursor>>,
+    pub(crate) sorted_ops_per_thread: Vec<BTreeSet<PoolOperationCursor>>,
 
     /// operations sorted by increasing expiration slot
     ops_per_expiration: BTreeSet<(Slot, OperationId)>,
@@ -35,12 +41,15 @@ pub struct OperationPool {
 
     /// last consensus final periods, per thread
     last_cs_final_periods: Vec<u64>,
+
+    index_by_addresses: Arc<RwLock<PreHashMap<Address, PoolAddrInfo>>>,
 }
 
 impl OperationPool {
     pub fn init(
         config: PoolConfig,
         storage: &Storage,
+        index_by_addresses: Arc<RwLock<PreHashMap<Address, PoolAddrInfo>>>,
         execution_controller: Box<dyn ExecutionController>,
     ) -> Self {
         OperationPool {
@@ -51,6 +60,7 @@ impl OperationPool {
             config,
             storage: storage.clone_without_refs(),
             execution_controller,
+            index_by_addresses,
         }
     }
 
@@ -92,9 +102,38 @@ impl OperationPool {
 
     /// Checks if an operation is relevant according to its thread and period validity range
     pub(crate) fn is_operation_relevant(&self, op_info: &OperationInfo) -> bool {
+        // get current absolute time
+
+        // question: can we deal without the clock compensation here ?
+        if let Ok(time_since_genesis) = MassaTime::now(0)
+            .expect("could not get current time")
+            .checked_sub(self.config.genesis_timestamp)
+        {
+            let p = time_since_genesis
+                .checked_div_time(self.config.t0)
+                .expect("t0 supposed to be positive")
+                .checked_add(1)
+                .expect("reached an unexpected amount of periods");
+
+            if *op_info.validity_period_range.start() > p {
+                return false;
+            }
+        }
+
+        if let Some(addr_info) = self
+            .index_by_addresses
+            .write()
+            .get_mut(&op_info.creator_address)
+        {
+            addr_info.ops.insert(op_info.id);
+            match addr_info.max_spending.checked_add(op_info.max_spending) {
+                Some(v) => addr_info.max_spending = v,
+                _ => return false,
+            }
+        }
+
         // too old
         *op_info.validity_period_range.end() > self.last_cs_final_periods[op_info.thread as usize]
-        // todo check if validity not started yet
     }
 
     /// Add a list of operations to the pool

@@ -11,10 +11,11 @@ mod controller_traits;
 mod error;
 
 pub use config::PoolConfig;
-pub use controller_traits::PoolController;
+pub use controller_traits::{PoolController, ProtectionController};
 pub use error::PoolError;
 
 /// Test utils
 #[cfg(feature = "testing")]
+
 /// Exports related to tests as Mocks and configurations
 pub mod test_exports;

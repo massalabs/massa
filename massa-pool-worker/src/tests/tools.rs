@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::{operation_pool::OperationPool, start_pool};
+use crate::{operation_pool::OperationPool, start_pool_without_protection};
 use massa_execution_exports::test_exports::{
     MockExecutionController, MockExecutionControllerMessage,
 };
@@ -59,7 +59,7 @@ where
     let storage: Storage = Storage::create_root();
 
     let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
-    let pool_controller = start_pool(cfg, &storage, execution_controller);
+    let pool_controller = start_pool_without_protection(cfg, &storage, execution_controller);
 
     test(Box::new(pool_controller), execution_receiver, storage)
 }

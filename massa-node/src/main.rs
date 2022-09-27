@@ -45,7 +45,7 @@ use massa_models::config::{
 };
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
-use massa_pool_exports::{PoolConfig, PoolController};
+use massa_pool_exports::{PoolConfig, PoolController, ProtectionController};
 use massa_pool_worker::start_pool;
 use massa_pos_exports::{SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
@@ -80,6 +80,7 @@ async fn launch(
     mpsc::Receiver<()>,
     StopHandle,
     StopHandle,
+    Box<dyn ProtectionController>,
 ) {
     info!("Node version : {}", *VERSION);
     if let Some(end) = *END_TIMESTAMP {
@@ -305,8 +306,11 @@ async fn launch(
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
         max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
+        protection_time: todo!(),
+        protection_batch_size: todo!(),
     };
-    let pool_controller = start_pool(pool_config, &shared_storage, execution_controller.clone());
+    let (pool_controller, pool_protection_manager) =
+        start_pool(pool_config, &shared_storage, execution_controller.clone());
     let pool_manager: Box<dyn PoolController> = Box::new(pool_controller.clone());
 
     // launch protocol controller
@@ -500,6 +504,7 @@ async fn launch(
         api_private_stop_rx,
         api_private_handle,
         api_public_handle,
+        Box::new(pool_protection_manager),
     )
 }
 
@@ -512,6 +517,7 @@ struct Managers {
     protocol_manager: ProtocolManager,
     network_manager: NetworkManager,
     factory_manager: Box<dyn FactoryManager>,
+    pool_protection_manager: Box<dyn ProtectionController>,
 }
 
 async fn stop(
@@ -525,6 +531,7 @@ async fn stop(
         protocol_manager,
         network_manager,
         mut factory_manager,
+        mut pool_protection_manager,
     }: Managers,
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
@@ -560,6 +567,9 @@ async fn stop(
 
     // stop selector controller
     selector_manager.stop();
+
+    // stop pool protection
+    pool_protection_manager.stop();
 
     // stop pool controller
     // TODO
@@ -660,6 +670,7 @@ async fn main(args: Args) -> anyhow::Result<()> {
             mut api_private_stop_rx,
             api_private_handle,
             api_public_handle,
+            pool_protection_manager,
         ) = launch(node_wallet.clone()).await;
 
         // interrupt signal listener
@@ -706,6 +717,7 @@ async fn main(args: Args) -> anyhow::Result<()> {
                 protocol_manager,
                 network_manager,
                 factory_manager,
+                pool_protection_manager,
             },
             api_private_handle,
             api_public_handle,

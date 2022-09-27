@@ -4,6 +4,7 @@ use massa_models::config::{
     ENDORSEMENT_COUNT, MAX_BLOCK_SIZE, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, ROLL_PRICE,
     THREAD_COUNT,
 };
+use massa_time::MassaTime;
 
 use crate::PoolConfig;
 
@@ -18,6 +19,8 @@ impl Default for PoolConfig {
             max_operation_pool_size_per_thread: 1000,
             max_endorsements_pool_size_per_thread: 1000,
             max_block_endorsement_count: ENDORSEMENT_COUNT,
+            protection_time: MassaTime::from_millis(0),
+            protection_batch_size: 0,
         }
     }
 }

@@ -1,6 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::amount::Amount;
+use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 
 /// Pool configuration
@@ -22,4 +23,8 @@ pub struct PoolConfig {
     pub max_endorsements_pool_size_per_thread: usize,
     /// max number of endorsements per block
     pub max_block_endorsement_count: u32,
+    /// duration between two protections
+    pub protection_time: MassaTime,
+    /// protection address batch size
+    pub protection_batch_size: usize,
 }

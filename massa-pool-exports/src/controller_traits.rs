@@ -50,3 +50,9 @@ impl Clone for Box<dyn PoolController> {
         self.clone_box()
     }
 }
+
+/// Allow to stop the thread of pool protection
+pub trait ProtectionController {
+    /// Stop the thread now, in the worst case, wait the end of a process.
+    fn stop(&mut self);
+}
