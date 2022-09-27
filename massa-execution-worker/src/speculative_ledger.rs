@@ -12,7 +12,6 @@ use massa_final_state::FinalState;
 use massa_ledger_exports::{Applicable, LedgerChanges};
 use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
-use std::cmp::Ordering;
 use std::sync::Arc;
 use tracing::log::debug;
 
@@ -468,12 +467,14 @@ impl SpeculativeLedger {
                 .ledger_cost_per_byte
                 .checked_mul_u64(diff_size_storage.unsigned_abs())
                 .ok_or_else(|| {
-                    ExecutionError::RuntimeError("try to store too much data".to_string())
+                    ExecutionError::RuntimeError(
+                        "overflow on datastore delta storage costs computation".to_string(),
+                    )
                 })?;
-            match diff_size_storage.cmp(&0) {
-                Ordering::Greater => self.transfer_coins(Some(*addr), None, storage_cost_value)?,
-                Ordering::Less => self.transfer_coins(None, Some(*addr), storage_cost_value)?,
-                Ordering::Equal => {}
+            match diff_size_storage.signum() {
+                1 => self.transfer_coins(Some(*addr), None, storage_cost_value)?,
+                -1 => self.transfer_coins(None, Some(*addr), storage_cost_value)?,
+                _ => {}
             };
         } else {
             let value_storage_cost = self.get_storage_cost_datastore_value(&value)?;
