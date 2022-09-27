@@ -71,7 +71,12 @@ where
     let (execution_controller, _) = MockExecutionController::new_with_receiver();
     let storage = Storage::create_root();
     test(
-        OperationPool::init(cfg, &storage.clone_without_refs(), execution_controller),
+        OperationPool::init(
+            cfg,
+            &storage.clone_without_refs(),
+            Default::default(),
+            execution_controller,
+        ),
         storage,
     )
 }

@@ -41,13 +41,12 @@ impl ProtectionController for ProtectionControllerImpl {
     }
 }
 
+#[derive(Default)]
 pub(crate) struct PoolAddrInfoWS {
     /// Order of the verification priority from highest to lowest (head to rear)
     queue: VecDeque<Address>,
     /// Store information by address
     infos: PreHashMap<Address, PoolAddrInfo>,
-    /// Latest takes
-    taken: PreHashSet<Address>,
 }
 
 impl PoolAddrInfoWS {
@@ -55,19 +54,18 @@ impl PoolAddrInfoWS {
         Self {
             queue: Default::default(),
             infos: Default::default(),
-            taken: PreHashSet::with_capacity(batch_size),
         }
     }
 
     /// Insert or update information in the pool protection workspace
     pub fn insert_or_update(&mut self, address: Address, max_spending: Amount, op_id: OperationId) {
         match self.infos.entry(address) {
-            Entry::Occupied(e) => {
+            Entry::Occupied(mut e) => {
                 let i = e.get_mut();
                 i.ops.insert(op_id);
                 i.max_spending = max_spending;
             }
-            Entry::Vacant(mut e) => {
+            Entry::Vacant(e) => {
                 e.insert(PoolAddrInfo {
                     max_spending: Amount::zero(),
                     ops: PreHashSet::from_iter([op_id]),
@@ -80,20 +78,39 @@ impl PoolAddrInfoWS {
     }
 
     pub fn take(&mut self, batch_size: usize) -> PreHashSet<Address> {
-        //let mut ret = PreHashSet::with_capacity(batch_size);
-        todo!()
+        let mut taken = PreHashSet::with_capacity(batch_size);
+        while taken.len() < batch_size && !self.queue.is_empty() {
+            taken.insert(self.queue.pop_front().unwrap());
+        }
+        taken
+    }
+
+    pub fn entry(&mut self, addr: Address) -> Entry<Address, PoolAddrInfo> {
+        self.infos.entry(addr)
+    }
+
+    pub fn push(&mut self, addresses: PreHashSet<Address>) {
+        if self.queue.len() >= self.infos.len() {
+            // should be impossible, let dismiss
+            return;
+        }
+        self.queue.extend(addresses);
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.infos.is_empty()
     }
 }
 
 /// Address pool info container
-pub(crate) struct PoolAddrInfo {
+pub struct PoolAddrInfo {
     /// is the cumulated max balance spending (op.get_max_sequential_spending()) of all ops emitted by this address
     pub(crate) max_spending: Amount,
     /// Operations created by that address in the pool
     /// Note: may be a useless duplication of the "pool storage" -> "index by addresses". An investigation is wellcome.
     pub(crate) ops: PreHashSet<OperationId>,
     /// is None if there was no scan, and otherwise provides the pair (last_balance_retrieval_time, retrieved_balance)
-    last_robot_scan: Option<(MassaTime, Amount)>,
+    pub(crate) last_robot_scan: Option<(MassaTime, Amount)>,
 }
 
 pub(crate) struct ProtectionConfig {
@@ -112,7 +129,7 @@ fn get_addresses_to_check(
     if index_by_address.is_empty() {
         return PreHashSet::default();
     }
-    // Implementation with 1 structure in O(n log n)
+    // Implementation with 1 structure in O(n log n) with n the number of addresses
     let mut oldest_checked_addresses: Vec<(&Address, &PoolAddrInfo)> =
         index_by_address.iter().collect();
     oldest_checked_addresses.sort_by(|a, b| match (a.1.last_robot_scan, b.1.last_robot_scan) {
@@ -128,6 +145,19 @@ fn get_addresses_to_check(
             .take(batch_size)
             .map(|(addr, _)| *addr),
     )
+}
+
+/// take a batch of addresses in index_by_address among the ones for which
+/// last_robot_scan is the lowest (None is lower than Some(_))
+fn get_addresses_to_check_with_ws(
+    batch_size: usize,
+    index_by_address: &Arc<RwLock<PoolAddrInfoWS>>,
+) -> PreHashSet<Address> {
+    let index_by_address = &mut index_by_address.write();
+    if index_by_address.is_empty() {
+        return PreHashSet::default();
+    }
+    index_by_address.take(batch_size)
 }
 
 /// Reset/Init a batch of addresses to check with a maximal size of `cfg.batch_size`
@@ -182,6 +212,7 @@ impl<'a> SortedOperationIterator<'a> {
 impl<'a> Iterator for SortedOperationIterator<'a> {
     type Item = &'a PoolOperationCursor;
 
+    /// The next selects the next greatest RoI in all threads and return it.
     fn next(&mut self) -> Option<Self::Item> {
         let mut min = self.nexts[0];
         let mut min_index = 0;
@@ -191,6 +222,7 @@ impl<'a> Iterator for SortedOperationIterator<'a> {
                 min_index = i;
             }
         }
+
         if min.is_none() {
             return min;
         }
@@ -207,8 +239,7 @@ fn process_protection(
     cfg: &ProtectionConfig,
 ) {
     let pool_writer = &mut *operation_pool.write();
-    let mut to_remove = PreHashSet::default();
-    let mut overriding_addresses = PreHashSet::default();
+    let mut op_ids_to_remove = PreHashSet::default();
     let index_by_address_writer = &mut index_by_address.write();
 
     {
@@ -220,6 +251,7 @@ fn process_protection(
             .filter_map(|cursor| ops_reader.get(&cursor.get_id()))
             .filter(|op| addresses.contains(&op.creator_address));
 
+        let mut addresses_to_repush = addresses.clone();
         // enhancement proposal:
         //       In case of a duration longer than a given timeout value could
         //       abort the check of the rest of the list.
@@ -231,33 +263,26 @@ fn process_protection(
                 _ => return,
             };
 
-            if overriding_addresses.contains(&op.creator_address) {
-                // Quick remove. The entry `addr_info` can't be empty here
-                to_remove.insert(op.id);
-                addr_info.get_mut().ops.remove(&op.id);
-            }
-
-            addr_info.get_mut().max_spending =
-                addr_info.get().max_spending.saturating_sub(op_max_spending);
-
+            // while address_info.max_spending is strictly higher than the balance:
+            //     drop the least prioritary op among address_info.ops from the pool
+            //     remove it from address_info.ops and substract its max spending from address_info.max_spending
+            // if there are no more elements in address_info.ops, delete the complete address_info entry
             if addr_info.get().max_spending > addr_info.get().last_robot_scan.unwrap().1 {
-                // while address_info.max_spending is strictly higher than the balance:
-                //     drop the least prioritary op among address_info.ops from the pool
-                //     remove it from address_info.ops and substract its max spending from address_info.max_spending
-                // if there are no more elements in address_info.ops, delete the complete address_info entry
+                addr_info.get_mut().max_spending =
+                    addr_info.get().max_spending.saturating_sub(op_max_spending);
+
                 addr_info.get_mut().ops.remove(&op.id);
                 if addr_info.get_mut().ops.is_empty() {
                     addr_info.remove();
+                    addresses_to_repush.remove(&op.creator_address);
                 }
-                to_remove.insert(op.id);
-                // Add a shurtcut to avoid useless operations
-                overriding_addresses.insert(op.creator_address);
+                op_ids_to_remove.insert(op.id);
             }
         }
     }
 
     // Clean the pool and its storage
-    for id in to_remove.iter() {
+    for id in op_ids_to_remove.iter() {
         let op_info = match pool_writer.operations.remove(id) {
             Some(info) => info,
             _ => continue,
@@ -266,7 +291,7 @@ fn process_protection(
             panic!("expected op presence in sorted list")
         }
     }
-    pool_writer.storage.drop_operation_refs(&to_remove);
+    pool_writer.storage.drop_operation_refs(&op_ids_to_remove);
 }
 
 /// Start the Protection thread.

@@ -7,7 +7,6 @@ use massa_models::{
     operation::OperationId,
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     slot::Slot,
-    timeslots::get_closest_slot_to_timestamp,
 };
 use massa_pool_exports::PoolConfig;
 use massa_storage::Storage;
@@ -120,16 +119,24 @@ impl OperationPool {
             }
         }
 
-        if let Some(addr_info) = self
-            .index_by_addresses
-            .write()
-            .get_mut(&op_info.creator_address)
-        {
+        // check update the max_spending of the address if exist.
+        // Push a new address info otherwise.
+        let index_by_addresses = &mut self.index_by_addresses.write();
+        if let Some(addr_info) = index_by_addresses.get_mut(&op_info.creator_address) {
             addr_info.ops.insert(op_info.id);
             match addr_info.max_spending.checked_add(op_info.max_spending) {
                 Some(v) => addr_info.max_spending = v,
                 _ => return false,
             }
+        } else {
+            index_by_addresses.insert(
+                op_info.creator_address,
+                PoolAddrInfo {
+                    max_spending: op_info.max_spending,
+                    ops: PreHashSet::from_iter([op_info.id]),
+                    last_robot_scan: None,
+                },
+            );
         }
 
         // too old

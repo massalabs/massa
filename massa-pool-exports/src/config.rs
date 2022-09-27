@@ -27,4 +27,8 @@ pub struct PoolConfig {
     pub protection_time: MassaTime,
     /// protection address batch size
     pub protection_batch_size: usize,
+    /// t0
+    pub t0: MassaTime,
+    /// genesis timestamp
+    pub genesis_timestamp: MassaTime,
 }

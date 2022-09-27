@@ -308,6 +308,8 @@ async fn launch(
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         protection_time: todo!(),
         protection_batch_size: todo!(),
+        t0: todo!(),
+        genesis_timestamp: todo!(),
     };
     let (pool_controller, pool_protection_manager) =
         start_pool(pool_config, &shared_storage, execution_controller.clone());

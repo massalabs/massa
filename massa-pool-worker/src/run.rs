@@ -22,6 +22,7 @@ pub fn start_pool_without_protection(
     let operation_pool = Arc::new(RwLock::new(OperationPool::init(
         config,
         storage,
+        Default::default(),
         execution_controller,
     )));
 
