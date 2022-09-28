@@ -23,4 +23,5 @@ massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
 massa_signature = { path = "../massa-signature" }
 massa_serialization = { path = "../massa-serialization"}
+massa_time = { path = "../massa-time" }
 

@@ -1,4 +1,3 @@
-use massa_graph::error::GraphResult;
 use massa_graph_2_exports::GraphManager;
 use std::{sync::mpsc::SyncSender, thread::JoinHandle};
 use tracing::log::info;

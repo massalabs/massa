@@ -1,26 +1,16 @@
+use std::{sync::mpsc, time::Instant};
+
 use massa_graph::error::GraphResult;
-use massa_graph_2_exports::{
-    GraphChannels, GraphConfig, GraphController, GraphManager, GraphState,
+use massa_models::{
+    slot::Slot,
+    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
 };
-use massa_models::slot::Slot;
-use massa_models::timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp};
 use massa_time::MassaTime;
-use parking_lot::RwLock;
-use std::sync::{mpsc, Arc};
-use std::thread;
-use std::time::Instant;
 use tracing::log::warn;
 
 use crate::commands::GraphCommand;
-use crate::controller::GraphControllerImpl;
-use crate::manager::GraphManagerImpl;
 
-pub struct GraphWorker {
-    command_receiver: mpsc::Receiver<GraphCommand>,
-    config: GraphConfig,
-    channels: GraphChannels,
-    shared_state: Arc<RwLock<GraphState>>,
-}
+use super::GraphWorker;
 
 enum WaitingStatus {
     Ended,
@@ -80,11 +70,6 @@ impl GraphWorker {
             now,
         );
 
-        // ignore genesis
-        if next_slot.period == 0 {
-            next_slot.period = 1;
-        }
-
         // protection against double-production on unexpected system clock adjustment
         if let Some(prev_slot) = previous_slot {
             if next_slot <= prev_slot {
@@ -108,29 +93,12 @@ impl GraphWorker {
         (next_slot, next_instant)
     }
 
-    fn new(
-        command_receiver: mpsc::Receiver<GraphCommand>,
-        config: GraphConfig,
-        channels: GraphChannels,
-        shared_state: Arc<RwLock<GraphState>>,
-    ) -> Self {
-        Self {
-            command_receiver,
-            config,
-            channels,
-            shared_state,
-        }
-    }
-
-    fn run(&mut self) {
-        // TODO: Should we start from slot of final state after bootstrap ?
-        let prev_slot: Option<Slot> = None;
-        let (mut next_slot, mut next_instant) = self.get_next_slot(prev_slot);
+    pub fn run(&mut self) {
         loop {
-            match self.wait_slot_or_command(next_instant) {
+            match self.wait_slot_or_command(self.next_instant) {
                 WaitingStatus::Ended => {
                     //TODO: Desync, stats, block_db changed
-                    (next_slot, next_instant) = self.get_next_slot(prev_slot);
+                    (self.next_slot, self.next_instant) = self.get_next_slot(Some(self.next_slot));
                 }
                 WaitingStatus::Disconnected => {
                     break;
@@ -141,30 +109,4 @@ impl GraphWorker {
             };
         }
     }
-}
-
-pub fn start_graph_worker(
-    config: GraphConfig,
-    channels: GraphChannels,
-) -> (Box<dyn GraphController>, Box<dyn GraphManager>) {
-    let (tx, rx) = mpsc::sync_channel(10);
-    let shared_state = Arc::new(RwLock::new(GraphState {}));
-
-    let shared_state_cloned = shared_state.clone();
-    let thread_graph = thread::Builder::new()
-        .name("graph worker".into())
-        .spawn(move || {
-            let mut graph_worker = GraphWorker::new(rx, config, channels, shared_state_cloned);
-            graph_worker.run()
-        })
-        .expect("Can't spawn thread graph.");
-
-    let manager = GraphManagerImpl {
-        thread_graph: Some(thread_graph),
-        graph_command_sender: tx.clone(),
-    };
-
-    let controller = GraphControllerImpl::new(tx, shared_state);
-
-    (Box::new(controller), Box::new(manager))
 }
