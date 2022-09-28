@@ -7,7 +7,7 @@ use massa_graph::{
     error::{GraphError, GraphResult},
     BootstrapableGraph,
 };
-use massa_graph_2_exports::{GraphChannels, GraphConfig, GraphState};
+use massa_graph_2_exports::{block_status::BlockStatus, GraphChannels, GraphConfig};
 use massa_hash::Hash;
 use massa_models::{
     active_block::ActiveBlock,
@@ -24,7 +24,7 @@ use massa_time::MassaTime;
 use parking_lot::RwLock;
 use tracing::log::info;
 
-use crate::{block_status::BlockStatus, commands::GraphCommand};
+use crate::{commands::GraphCommand, state::GraphState};
 
 use super::GraphWorker;
 
@@ -177,21 +177,10 @@ impl GraphWorker {
             ),
             launch_time: MassaTime::now(config.clock_compensation_millis)?,
             sequence_counter: 0,
-            block_statuses,
             incoming_index: Default::default(),
             waiting_for_slot_index: Default::default(),
             waiting_for_dependencies_index: Default::default(),
-            active_index: genesis_block_ids.iter().copied().collect(),
             discarded_index: Default::default(),
-            latest_final_blocks_periods: genesis_block_ids.iter().map(|h| (*h, 0)).collect(),
-            best_parents: genesis_block_ids.iter().map(|v| (*v, 0)).collect(),
-            genesis_hashes: genesis_block_ids.clone(),
-            gi_head: PreHashMap::default(),
-            max_cliques: vec![Clique {
-                block_ids: PreHashSet::<BlockId>::default(),
-                fitness: 0,
-                is_blockclique: true,
-            }],
             to_propagate: Default::default(),
             attack_attempts: Default::default(),
             new_final_blocks: Default::default(),
@@ -217,30 +206,47 @@ impl GraphWorker {
                 }
             }
 
-            res_graph.active_index = final_blocks.iter().map(|(b, _)| b.block_id).collect();
-            res_graph.best_parents = latest_final_blocks_periods.clone();
-            res_graph.latest_final_blocks_periods = latest_final_blocks_periods;
-            res_graph.block_statuses = final_blocks
-                .into_iter()
-                .map(|(b, s)| {
-                    Ok((
-                        b.block_id,
-                        BlockStatus::Active {
-                            a_block: Box::new(b),
-                            storage: s,
-                        },
-                    ))
-                })
-                .collect::<GraphResult<_>>()?;
+            {
+                let mut write_shared_state = res_graph.shared_state.write();
+                write_shared_state.genesis_hashes = genesis_block_ids;
+                write_shared_state.active_index =
+                    final_blocks.iter().map(|(b, _)| b.block_id).collect();
+                write_shared_state.best_parents = latest_final_blocks_periods.clone();
+                write_shared_state.latest_final_blocks_periods = latest_final_blocks_periods;
+                write_shared_state.block_statuses = final_blocks
+                    .into_iter()
+                    .map(|(b, s)| {
+                        Ok((
+                            b.block_id,
+                            BlockStatus::Active {
+                                a_block: Box::new(b),
+                                storage: s,
+                            },
+                        ))
+                    })
+                    .collect::<GraphResult<_>>()?;
+            }
 
             res_graph.claim_parent_refs()?;
+        } else {
+            {
+                let mut write_shared_state = res_graph.shared_state.write();
+                write_shared_state.active_index = genesis_block_ids.iter().copied().collect();
+                write_shared_state.latest_final_blocks_periods =
+                    genesis_block_ids.iter().map(|h| (*h, 0)).collect();
+                write_shared_state.best_parents =
+                    genesis_block_ids.iter().map(|v| (*v, 0)).collect();
+                write_shared_state.genesis_hashes = genesis_block_ids;
+                write_shared_state.block_statuses = block_statuses;
+            }
         }
         Ok(res_graph)
         //TODO: Add notify execution
     }
 
     fn claim_parent_refs(&mut self) -> GraphResult<()> {
-        for (_b_id, block_status) in self.block_statuses.iter_mut() {
+        let mut write_shared_state = self.shared_state.write();
+        for (_b_id, block_status) in write_shared_state.block_statuses.iter_mut() {
             if let BlockStatus::Active {
                 a_block,
                 storage: block_storage,
@@ -263,7 +269,7 @@ impl GraphWorker {
         }
 
         // list active block parents
-        let active_blocks_map: PreHashMap<BlockId, (Slot, Vec<BlockId>)> = self
+        let active_blocks_map: PreHashMap<BlockId, (Slot, Vec<BlockId>)> = write_shared_state
             .block_statuses
             .iter()
             .filter_map(|(h, s)| {
@@ -274,20 +280,12 @@ impl GraphWorker {
             })
             .collect();
 
-        self.deduce_children_and_descendants(active_blocks_map);
-        Ok(())
-    }
-
-    fn deduce_children_and_descendants(
-        &mut self,
-        active_blocks_map: PreHashMap<BlockId, (Slot, Vec<BlockId>)>,
-    ) {
         for (b_id, (b_slot, b_parents)) in active_blocks_map.into_iter() {
             // deduce children
             for parent_id in &b_parents {
                 if let Some(BlockStatus::Active {
                     a_block: parent, ..
-                }) = self.block_statuses.get_mut(parent_id)
+                }) = write_shared_state.block_statuses.get_mut(parent_id)
                 {
                     parent.children[b_slot.thread as usize].insert(b_id, b_slot.period);
                 }
@@ -301,7 +299,7 @@ impl GraphWorker {
                     continue;
                 }
                 if let Some(BlockStatus::Active { a_block: ab, .. }) =
-                    self.block_statuses.get_mut(&ancestor_h)
+                    write_shared_state.block_statuses.get_mut(&ancestor_h)
                 {
                     ab.descendants.insert(b_id);
                     for (ancestor_parent_h, _) in ab.parents.iter() {
@@ -310,5 +308,6 @@ impl GraphWorker {
                 }
             }
         }
+        Ok(())
     }
 }

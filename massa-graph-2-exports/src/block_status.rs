@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
-pub(crate) enum HeaderOrBlock {
+pub enum HeaderOrBlock {
     Header(WrappedHeader),
     Block {
         id: BlockId,
@@ -42,7 +42,7 @@ pub enum DiscardReason {
 
 /// Enum used in `BlockGraph`'s state machine
 #[derive(Debug, Clone)]
-pub(crate) enum BlockStatus {
+pub enum BlockStatus {
     /// The block/header has reached consensus but no consensus-level check has been performed.
     /// It will be processed during the next iteration
     Incoming(HeaderOrBlock),

@@ -1,9 +1,16 @@
-use massa_graph::{error::GraphResult, BlockGraphExport, BootstrapableGraph};
-use massa_graph_2_exports::{GraphController, GraphState};
+use massa_graph::{
+    error::{GraphError, GraphResult},
+    export_active_block::ExportActiveBlock,
+    BootstrapableGraph,
+};
+use massa_graph_2_exports::{
+    block_graph_export::BlockGraphExport, block_status::BlockStatus, GraphConfig, GraphController,
+};
 use massa_models::{
     api::BlockGraphStatus,
     block::{BlockHeader, BlockId},
     clique::Clique,
+    prehash::{CapacityAllocator, PreHashSet},
     slot::Slot,
     stats::ConsensusStats,
     wrapped::Wrapped,
@@ -12,7 +19,7 @@ use massa_storage::Storage;
 use parking_lot::RwLock;
 use std::sync::{mpsc::SyncSender, Arc};
 
-use crate::commands::GraphCommand;
+use crate::{commands::GraphCommand, state::GraphState};
 
 #[derive(Clone)]
 pub struct GraphControllerImpl {
@@ -38,35 +45,73 @@ impl GraphController for GraphControllerImpl {
         start_slot: Option<Slot>,
         end_slot: Option<Slot>,
     ) -> GraphResult<BlockGraphExport> {
-        todo!()
+        self.shared_state
+            .read()
+            .extract_block_graph_part(start_slot, end_slot)
     }
 
-    fn get_block_statuses(&self, ids: Vec<BlockId>) -> BlockGraphStatus {
-        todo!()
+    fn get_block_statuses(&self, ids: Vec<BlockId>) -> Vec<BlockGraphStatus> {
+        let read_shared_state = self.shared_state.read();
+        ids.iter()
+            .map(|id| read_shared_state.get_block_status(id))
+            .collect()
     }
 
     fn get_cliques(&self) -> Vec<Clique> {
-        todo!()
+        self.shared_state.read().max_cliques.clone()
     }
 
     fn get_bootstrap_graph(&self) -> GraphResult<BootstrapableGraph> {
-        todo!()
+        let read_shared_state = self.shared_state.read();
+        let mut required_final_blocks: PreHashSet<_> =
+            read_shared_state.list_required_active_blocks()?;
+        required_final_blocks.retain(|b_id| {
+            if let Some(BlockStatus::Active { a_block, .. }) =
+                read_shared_state.block_statuses.get(b_id)
+            {
+                if a_block.is_final {
+                    // filter only final actives
+                    return true;
+                }
+            }
+            false
+        });
+        let mut final_blocks: Vec<ExportActiveBlock> =
+            Vec::with_capacity(required_final_blocks.len());
+        for b_id in &required_final_blocks {
+            if let Some(BlockStatus::Active { a_block, storage }) =
+                read_shared_state.block_statuses.get(b_id)
+            {
+                final_blocks.push(ExportActiveBlock::from_active_block(a_block, storage));
+            } else {
+                return Err(GraphError::ContainerInconsistency(format!(
+                    "block {} was expected to be active but wasn't on bootstrap graph export",
+                    b_id
+                )));
+            }
+        }
+
+        Ok(BootstrapableGraph { final_blocks })
     }
 
     fn get_stats(&self) -> GraphResult<ConsensusStats> {
         todo!()
     }
 
-    fn get_best_parents(&self) -> &Vec<(BlockId, u64)> {
-        todo!()
+    fn get_best_parents(&self) -> Vec<(BlockId, u64)> {
+        self.shared_state.read().best_parents.clone()
     }
 
     fn get_blockclique_block_at_slot(&self, slot: Slot) -> Option<BlockId> {
-        todo!()
+        self.shared_state
+            .read()
+            .get_blockclique_block_at_slot(&slot)
     }
 
     fn get_latest_blockclique_block_at_slot(&self, slot: Slot) -> BlockId {
-        todo!()
+        self.shared_state
+            .read()
+            .get_latest_blockclique_block_at_slot(&slot)
     }
 
     fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage) {

@@ -1,4 +1,5 @@
-use massa_graph::{error::GraphResult, BlockGraphExport, BootstrapableGraph};
+use crate::block_graph_export::BlockGraphExport;
+use massa_graph::{error::GraphResult, BootstrapableGraph};
 use massa_models::{
     api::BlockGraphStatus,
     block::{BlockHeader, BlockId},
@@ -17,7 +18,7 @@ pub trait GraphController: Send + Sync {
         end_slot: Option<Slot>,
     ) -> GraphResult<BlockGraphExport>;
 
-    fn get_block_statuses(&self, ids: Vec<BlockId>) -> BlockGraphStatus;
+    fn get_block_statuses(&self, ids: Vec<BlockId>) -> Vec<BlockGraphStatus>;
 
     fn get_cliques(&self) -> Vec<Clique>;
 
@@ -25,7 +26,7 @@ pub trait GraphController: Send + Sync {
 
     fn get_stats(&self) -> GraphResult<ConsensusStats>;
 
-    fn get_best_parents(&self) -> &Vec<(BlockId, u64)>;
+    fn get_best_parents(&self) -> Vec<(BlockId, u64)>;
 
     fn get_blockclique_block_at_slot(&self, slot: Slot) -> Option<BlockId>;
 
