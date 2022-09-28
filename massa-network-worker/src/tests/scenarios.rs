@@ -23,7 +23,7 @@ use massa_models::config::{
 };
 use massa_models::{
     block::BlockId,
-    endorsement::{Endorsement, EndorsementSerializer, EndorsementSerializerLW},
+    endorsement::{Endorsement, EndorsementSerializer},
     node::NodeId,
     slot::Slot,
     wrapped::WrappedContent,

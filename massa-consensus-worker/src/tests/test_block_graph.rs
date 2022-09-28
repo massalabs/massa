@@ -6,7 +6,7 @@ use massa_graph::{
 use massa_hash::Hash;
 use massa_models::{
     block::{Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, WrappedBlock},
-    endorsement::{Endorsement, EndorsementSerializer, EndorsementSerializerLW},
+    endorsement::{Endorsement, EndorsementSerializerLW},
     slot::Slot,
     wrapped::WrappedContent,
 };

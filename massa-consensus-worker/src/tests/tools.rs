@@ -19,7 +19,7 @@ use massa_models::{
         WrappedHeader,
     },
     endorsement::{
-        Endorsement, EndorsementSerializer, EndorsementSerializerLW, WrappedEndorsement,
+        Endorsement, EndorsementSerializerLW, WrappedEndorsement,
     },
     operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
     prehash::PreHashSet,

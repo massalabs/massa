@@ -29,7 +29,6 @@ use massa_models::{
     block::BlockSerializer,
     block::{Block, BlockHeader, BlockHeaderSerializer, BlockId},
     endorsement::Endorsement,
-    endorsement::EndorsementSerializer,
     endorsement::EndorsementSerializerLW,
     operation::OperationId,
     prehash::PreHashMap,
