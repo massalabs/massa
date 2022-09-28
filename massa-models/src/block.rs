@@ -28,6 +28,7 @@ use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::ops::Bound::{Excluded, Included};
 use std::str::FromStr;
+use tracing::debug;
 
 /// Size in bytes of a serialized block ID
 const BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
@@ -662,7 +663,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 .collect();
 
             if r.is_err() {
-                debug!("Endorsements update fails: {}", e);
+                debug!("Endorsements update fails: {:?}", r);
             }
             r?; // Fail if anything goes wrong in previous loop
             Ok::<BlockHeader, &str>(BlockHeader {
