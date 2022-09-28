@@ -2,7 +2,7 @@
 
 use massa_hash::HashDeserializer;
 use massa_models::{
-    block::{BlockHeader, BlockHeaderDeserializerLW, BlockId, WrappedHeader},
+    block::{BlockHeader, BlockHeaderDeserializer, BlockId, WrappedHeader},
     config::HANDSHAKE_RANDOMNESS_SIZE_BYTES,
     endorsement::{Endorsement, EndorsementDeserializer, WrappedEndorsement},
     operation::{
@@ -256,7 +256,7 @@ pub struct MessageDeserializer {
     peer_list_length_deserializer: U32VarIntDeserializer,
     operations_deserializer: OperationsDeserializer,
     hash_deserializer: HashDeserializer,
-    block_header_deserializer: WrappedDeserializer<BlockHeader, BlockHeaderDeserializerLW>,
+    block_header_deserializer: WrappedDeserializer<BlockHeader, BlockHeaderDeserializer>,
     endorsements_length_deserializer: U32VarIntDeserializer,
     endorsement_deserializer: WrappedDeserializer<Endorsement, EndorsementDeserializer>,
     operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer,
@@ -305,7 +305,7 @@ impl MessageDeserializer {
                 max_op_datastore_value_length,
             ),
             hash_deserializer: HashDeserializer::new(),
-            block_header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializerLW::new(
+            block_header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new(
                 thread_count,
                 endorsement_count,
             )),
