@@ -661,6 +661,9 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 })
                 .collect();
 
+            if r.is_err() {
+                debug!("Endorsements update fails: {}", e);
+            }
             r?; // Fail if anything goes wrong in previous loop
             Ok::<BlockHeader, &str>(BlockHeader {
                 slot,
