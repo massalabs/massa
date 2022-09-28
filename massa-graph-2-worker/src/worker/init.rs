@@ -158,7 +158,47 @@ impl GraphWorker {
         let stats_desync_detection_timespan =
             config.t0.checked_mul(config.periods_per_cycle * 2)?;
 
-        //TODO: Factorize this code to create graph worker only one time a lot of fields are redundant.
+        let mut res_graph = GraphWorker {
+            config: config.clone(),
+            command_receiver,
+            channels,
+            shared_state,
+            previous_slot,
+            next_slot,
+            next_instant,
+            wishlist: Default::default(),
+            final_block_stats,
+            protocol_blocks: Default::default(),
+            stale_block_stats: VecDeque::new(),
+            stats_desync_detection_timespan,
+            stats_history_timespan: std::cmp::max(
+                stats_desync_detection_timespan,
+                config.stats_timespan,
+            ),
+            launch_time: MassaTime::now(config.clock_compensation_millis)?,
+            sequence_counter: 0,
+            block_statuses,
+            incoming_index: Default::default(),
+            waiting_for_slot_index: Default::default(),
+            waiting_for_dependencies_index: Default::default(),
+            active_index: genesis_block_ids.iter().copied().collect(),
+            discarded_index: Default::default(),
+            latest_final_blocks_periods: genesis_block_ids.iter().map(|h| (*h, 0)).collect(),
+            best_parents: genesis_block_ids.iter().map(|v| (*v, 0)).collect(),
+            genesis_hashes: genesis_block_ids.clone(),
+            gi_head: PreHashMap::default(),
+            max_cliques: vec![Clique {
+                block_ids: PreHashSet::<BlockId>::default(),
+                fitness: 0,
+                is_blockclique: true,
+            }],
+            to_propagate: Default::default(),
+            attack_attempts: Default::default(),
+            new_final_blocks: Default::default(),
+            new_stale_blocks: Default::default(),
+            storage: storage.clone(),
+        };
+
         if let Some(BootstrapableGraph { final_blocks }) = init_graph {
             // load final blocks
             let final_blocks: Vec<(ActiveBlock, Storage)> = final_blocks
@@ -177,166 +217,98 @@ impl GraphWorker {
                 }
             }
 
-            // generate graph
-            let mut res_graph = GraphWorker {
-                config: config.clone(),
-                command_receiver,
-                channels,
-                shared_state,
-                previous_slot,
-                next_slot,
-                next_instant,
-                wishlist: Default::default(),
-                final_block_stats,
-                protocol_blocks: Default::default(),
-                stale_block_stats: VecDeque::new(),
-                stats_desync_detection_timespan,
-                stats_history_timespan: std::cmp::max(
-                    stats_desync_detection_timespan,
-                    config.stats_timespan,
-                ),
-                launch_time: MassaTime::now(config.clock_compensation_millis)?,
-                sequence_counter: 0,
-                genesis_hashes: genesis_block_ids,
-                active_index: final_blocks.iter().map(|(b, _)| b.block_id).collect(),
-                incoming_index: Default::default(),
-                waiting_for_slot_index: Default::default(),
-                waiting_for_dependencies_index: Default::default(),
-                discarded_index: Default::default(),
-                best_parents: latest_final_blocks_periods.clone(),
-                latest_final_blocks_periods,
-                gi_head: Default::default(),
-                max_cliques: vec![Clique {
-                    block_ids: PreHashSet::<BlockId>::default(),
-                    fitness: 0,
-                    is_blockclique: true,
-                }],
-                to_propagate: Default::default(),
-                attack_attempts: Default::default(),
-                new_final_blocks: Default::default(),
-                new_stale_blocks: Default::default(),
-                storage,
-                block_statuses: final_blocks
-                    .into_iter()
-                    .map(|(b, s)| {
-                        Ok((
-                            b.block_id,
-                            BlockStatus::Active {
-                                a_block: Box::new(b),
-                                storage: s,
-                            },
-                        ))
-                    })
-                    .collect::<GraphResult<_>>()?,
-            };
-
-            // claim parent refs
-            for (_b_id, block_status) in res_graph.block_statuses.iter_mut() {
-                if let BlockStatus::Active {
-                    a_block,
-                    storage: block_storage,
-                } = block_status
-                {
-                    // claim parent refs
-                    let n_claimed_parents = block_storage
-                        .claim_block_refs(&a_block.parents.iter().map(|(p_id, _)| *p_id).collect())
-                        .len();
-
-                    if !a_block.is_final {
-                        // note: parents of final blocks will be missing, that's ok, but it shouldn't be the case for non-finals
-                        if n_claimed_parents != config.thread_count as usize {
-                            return Err(GraphError::MissingBlock(
-                                "block storage could not claim refs to all parent blocks".into(),
-                            ));
-                        }
-                    }
-                }
-            }
-
-            // list active block parents
-            let active_blocks_map: PreHashMap<BlockId, (Slot, Vec<BlockId>)> = res_graph
-                .block_statuses
-                .iter()
-                .filter_map(|(h, s)| {
-                    if let BlockStatus::Active { a_block: a, .. } = s {
-                        return Some((*h, (a.slot, a.parents.iter().map(|(ph, _)| *ph).collect())));
-                    }
-                    None
+            res_graph.active_index = final_blocks.iter().map(|(b, _)| b.block_id).collect();
+            res_graph.best_parents = latest_final_blocks_periods.clone();
+            res_graph.latest_final_blocks_periods = latest_final_blocks_periods;
+            res_graph.block_statuses = final_blocks
+                .into_iter()
+                .map(|(b, s)| {
+                    Ok((
+                        b.block_id,
+                        BlockStatus::Active {
+                            a_block: Box::new(b),
+                            storage: s,
+                        },
+                    ))
                 })
-                .collect();
-            // deduce children and descendants
-            for (b_id, (b_slot, b_parents)) in active_blocks_map.into_iter() {
-                // deduce children
-                for parent_id in &b_parents {
-                    if let Some(BlockStatus::Active {
-                        a_block: parent, ..
-                    }) = res_graph.block_statuses.get_mut(parent_id)
-                    {
-                        parent.children[b_slot.thread as usize].insert(b_id, b_slot.period);
-                    }
-                }
+                .collect::<GraphResult<_>>()?;
 
-                // deduce descendants
-                let mut ancestors: VecDeque<BlockId> = b_parents.into_iter().collect();
-                let mut visited: PreHashSet<BlockId> = Default::default();
-                while let Some(ancestor_h) = ancestors.pop_back() {
-                    if !visited.insert(ancestor_h) {
-                        continue;
-                    }
-                    if let Some(BlockStatus::Active { a_block: ab, .. }) =
-                        res_graph.block_statuses.get_mut(&ancestor_h)
-                    {
-                        ab.descendants.insert(b_id);
-                        for (ancestor_parent_h, _) in ab.parents.iter() {
-                            ancestors.push_front(*ancestor_parent_h);
-                        }
+            res_graph.claim_parent_refs()?;
+        }
+        Ok(res_graph)
+        //TODO: Add notify execution
+    }
+
+    fn claim_parent_refs(&mut self) -> GraphResult<()> {
+        for (_b_id, block_status) in self.block_statuses.iter_mut() {
+            if let BlockStatus::Active {
+                a_block,
+                storage: block_storage,
+            } = block_status
+            {
+                // claim parent refs
+                let n_claimed_parents = block_storage
+                    .claim_block_refs(&a_block.parents.iter().map(|(p_id, _)| *p_id).collect())
+                    .len();
+
+                if !a_block.is_final {
+                    // note: parents of final blocks will be missing, that's ok, but it shouldn't be the case for non-finals
+                    if n_claimed_parents != self.config.thread_count as usize {
+                        return Err(GraphError::MissingBlock(
+                            "block storage could not claim refs to all parent blocks".into(),
+                        ));
                     }
                 }
             }
-            Ok(res_graph)
-        } else {
-            Ok(GraphWorker {
-                config: config.clone(),
-                command_receiver,
-                channels,
-                shared_state,
-                previous_slot,
-                next_slot,
-                next_instant,
-                wishlist: Default::default(),
-                final_block_stats,
-                protocol_blocks: Default::default(),
-                stale_block_stats: VecDeque::new(),
-                stats_desync_detection_timespan,
-                stats_history_timespan: std::cmp::max(
-                    stats_desync_detection_timespan,
-                    config.stats_timespan,
-                ),
-                launch_time: MassaTime::now(config.clock_compensation_millis)?,
-                sequence_counter: 0,
-                block_statuses,
-                incoming_index: Default::default(),
-                waiting_for_slot_index: Default::default(),
-                waiting_for_dependencies_index: Default::default(),
-                active_index: genesis_block_ids.iter().copied().collect(),
-                discarded_index: Default::default(),
-                latest_final_blocks_periods: genesis_block_ids.iter().map(|h| (*h, 0)).collect(),
-                best_parents: genesis_block_ids.iter().map(|v| (*v, 0)).collect(),
-                genesis_hashes: genesis_block_ids,
-                gi_head: PreHashMap::default(),
-                max_cliques: vec![Clique {
-                    block_ids: PreHashSet::<BlockId>::default(),
-                    fitness: 0,
-                    is_blockclique: true,
-                }],
-                to_propagate: Default::default(),
-                attack_attempts: Default::default(),
-                new_final_blocks: Default::default(),
-                new_stale_blocks: Default::default(),
-                storage,
-            })
+        }
 
-            //TODO: Add notify execution
+        // list active block parents
+        let active_blocks_map: PreHashMap<BlockId, (Slot, Vec<BlockId>)> = self
+            .block_statuses
+            .iter()
+            .filter_map(|(h, s)| {
+                if let BlockStatus::Active { a_block: a, .. } = s {
+                    return Some((*h, (a.slot, a.parents.iter().map(|(ph, _)| *ph).collect())));
+                }
+                None
+            })
+            .collect();
+
+        self.deduce_children_and_descendants(active_blocks_map);
+        Ok(())
+    }
+
+    fn deduce_children_and_descendants(
+        &mut self,
+        active_blocks_map: PreHashMap<BlockId, (Slot, Vec<BlockId>)>,
+    ) {
+        for (b_id, (b_slot, b_parents)) in active_blocks_map.into_iter() {
+            // deduce children
+            for parent_id in &b_parents {
+                if let Some(BlockStatus::Active {
+                    a_block: parent, ..
+                }) = self.block_statuses.get_mut(parent_id)
+                {
+                    parent.children[b_slot.thread as usize].insert(b_id, b_slot.period);
+                }
+            }
+
+            // deduce descendants
+            let mut ancestors: VecDeque<BlockId> = b_parents.into_iter().collect();
+            let mut visited: PreHashSet<BlockId> = Default::default();
+            while let Some(ancestor_h) = ancestors.pop_back() {
+                if !visited.insert(ancestor_h) {
+                    continue;
+                }
+                if let Some(BlockStatus::Active { a_block: ab, .. }) =
+                    self.block_statuses.get_mut(&ancestor_h)
+                {
+                    ab.descendants.insert(b_id);
+                    for (ancestor_parent_h, _) in ab.parents.iter() {
+                        ancestors.push_front(*ancestor_parent_h);
+                    }
+                }
+            }
         }
     }
 }
