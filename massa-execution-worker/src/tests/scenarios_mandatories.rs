@@ -759,8 +759,9 @@ fn datastore_manipulations() {
         block.content.header.content.slot,
         (block.id, storage.clone()),
     );
-    controller.update_blockclique_status(finalized_blocks, Default::default());
-    std::thread::sleep(Duration::from_millis(10));
+    let block_store = vec![(block.id, storage.clone())].into_iter().collect();
+    controller.update_blockclique_status(finalized_blocks, Default::default(), block_store);
+    std::thread::sleep(Duration::from_millis(150));
 
     // Length of the value left in the datastore. See sources for more context.
     let value_len = 10;
