@@ -115,14 +115,22 @@ impl GraphController for GraphControllerImpl {
     }
 
     fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage) {
-        todo!()
+        let _ = self.command_sender.try_send(GraphCommand::RegisterBlock(
+            block_id,
+            slot,
+            block_storage,
+        ));
     }
 
     fn register_block_header(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>) {
-        todo!()
+        let _ = self
+            .command_sender
+            .try_send(GraphCommand::RegisterBlockHeader(block_id, header));
     }
 
     fn mark_invalid_block(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>) {
-        todo!()
+        let _ = self
+            .command_sender
+            .try_send(GraphCommand::MarkInvalidBlock(block_id, header));
     }
 }

@@ -71,6 +71,7 @@ pub struct GraphWorker {
 
 mod init;
 mod main_loop;
+mod process_commands;
 
 pub fn start_graph_worker(
     config: GraphConfig,
