@@ -190,8 +190,6 @@ impl ProtocolWorker {
     /// Process the reception of a batch of asked operations, that means that
     /// we have already sent a batch of ids in the network, notifying that we already
     /// have those operations.
-    ///
-    /// See also `on_operation_results_from_pool`
     pub(crate) async fn on_asked_operations_received(
         &mut self,
         node_id: NodeId,
