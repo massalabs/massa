@@ -216,20 +216,23 @@ impl OperationPool {
             }
 
             // check balance
+            //TODO: It's a weird behaviour because if the address is created afterwards this operation will be executed
+            // and also it spams the pool maybe we should just try to put the operation if there is no balance and 0 gas price
+            // and the execution will throw an error
             let creator_balance =
                 if let Some(amount) = balance_cache.get_mut(&op_info.creator_address) {
                     amount
-                } else {
-                    let final_amount = self
-                        .execution_controller
-                        .get_final_and_candidate_balance(&[op_info.creator_address])
-                        .get(0)
-                        .map_or_else(Amount::default, |(_final, candidate)| {
-                            candidate.unwrap_or_default()
-                        });
-                    balance_cache
+                } else if let Some(balance) = self
+                    .execution_controller
+                    .get_final_and_candidate_balance(&[op_info.creator_address])
+                    .get(0)
+                    .map(|balances| balances.1.or(balances.0))
+                    && let Some(final_amount) = balance {
+                        balance_cache
                         .entry(op_info.creator_address)
                         .or_insert(final_amount)
+                } else {
+                    continue;
                 };
 
             if *creator_balance < op_info.fee {

@@ -1,77 +1,27 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::start_execution_worker;
-use massa_async_pool::AsyncPoolConfig;
+use crate::tests::mock::{create_block, get_random_address_full, get_sample_state};
 use massa_execution_exports::{
     ExecutionConfig, ExecutionController, ExecutionError, ReadOnlyExecutionRequest,
     ReadOnlyExecutionTarget,
 };
-use massa_final_state::{FinalState, FinalStateConfig};
-use massa_hash::Hash;
-use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerError};
-use massa_ledger_worker::FinalLedger;
-use massa_models::config::{
-    ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, MAX_ASYNC_POOL_LENGTH, MAX_DATA_ASYNC_MESSAGE,
-};
+use massa_models::config::{LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE};
 use massa_models::prehash::PreHashMap;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
     api::EventFilter,
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock},
-    config::THREAD_COUNT,
+    block::BlockId,
     datastore::Datastore,
     operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
     wrapped::WrappedContent,
 };
-use massa_pos_exports::SelectorConfig;
-use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
-use parking_lot::RwLock;
 use serial_test::serial;
 use std::{
-    cmp::Reverse, collections::BTreeMap, collections::HashMap, str::FromStr, sync::Arc,
-    time::Duration,
+    cmp::Reverse, collections::BTreeMap, collections::HashMap, str::FromStr, time::Duration,
 };
-use tempfile::{NamedTempFile, TempDir};
-
-use super::mock::get_initials;
-
-/// Same as `get_random_address()` and return `keypair` associated
-/// to the address.
-pub fn get_random_address_full() -> (Address, KeyPair) {
-    let keypair = KeyPair::generate();
-    (Address::from_public_key(&keypair.get_public_key()), keypair)
-}
-
-fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir), LedgerError> {
-    let (rolls_file, ledger) = get_initials();
-    let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&ledger);
-    let mut ledger = FinalLedger::new(ledger_config.clone()).expect("could not init final ledger");
-    ledger.load_initial_ledger().unwrap();
-    let async_pool_config = AsyncPoolConfig {
-        max_length: MAX_ASYNC_POOL_LENGTH,
-        part_size_message_bytes: ASYNC_POOL_PART_SIZE_MESSAGE_BYTES,
-        max_data_async_message: MAX_DATA_ASYNC_MESSAGE,
-        thread_count: THREAD_COUNT,
-    };
-    let cfg = FinalStateConfig {
-        ledger_config,
-        async_pool_config,
-        final_history_length: 128,
-        thread_count: THREAD_COUNT,
-        initial_rolls_path: rolls_file.path().to_path_buf(),
-        initial_seed_string: "".to_string(),
-        periods_per_cycle: 10,
-    };
-    let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
-        .expect("could not start selector controller");
-    let mut final_state =
-        FinalState::new(cfg, Box::new(ledger), selector_controller.clone()).unwrap();
-    final_state.compute_initial_draws().unwrap();
-    final_state.pos_state.create_initial_cycle();
-    Ok((Arc::new(RwLock::new(final_state)), tempfile, tempdir))
-}
 
 #[test]
 #[serial]
@@ -203,6 +153,29 @@ fn test_nested_call_gas_usage() {
     );
 
     std::thread::sleep(Duration::from_millis(10));
+
+    // length of the sub contract test.wasm
+    let bytecode_sub_contract_len = 5297;
+    assert_eq!(
+        sample_state
+            .read()
+            .ledger
+            .get_balance(&Address::from_public_key(&keypair.get_public_key()))
+            .unwrap(),
+        Amount::from_str("300000")
+            .unwrap()
+            // Gas fee
+            .saturating_sub(Amount::from_str("100000").unwrap())
+            // Storage cost base
+            .saturating_sub(exec_cfg.storage_costs_constants.ledger_entry_base_cost)
+            // Storage cost bytecode
+            .saturating_sub(
+                exec_cfg
+                    .storage_costs_constants
+                    .ledger_cost_per_byte
+                    .saturating_mul_u64(bytecode_sub_contract_len)
+            )
+    );
     // retrieve events emitted by smart contracts
     let events = controller.get_filtered_sc_output_event(EventFilter {
         start: Some(Slot::new(0, 1)),
@@ -369,7 +342,7 @@ pub fn send_and_receive_transaction() {
         &sender_keypair,
     )
     .unwrap();
-    // create the block contaning the transaction operation
+    // create the block containing the transaction operation
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
@@ -392,7 +365,16 @@ pub fn send_and_receive_transaction() {
             .ledger
             .get_balance(&recipient_address)
             .unwrap(),
-        Amount::from_str("100").unwrap()
+        // Storage cost applied
+        Amount::from_str("100")
+            .unwrap()
+            // Storage cost base
+            .saturating_sub(
+                exec_cfg
+                    .storage_costs_constants
+                    .ledger_cost_per_byte
+                    .saturating_mul_u64(LEDGER_ENTRY_BASE_SIZE as u64)
+            )
     );
     // stop the execution controller
     manager.stop();
@@ -674,7 +656,7 @@ fn sc_datastore() {
     let events = controller.get_filtered_sc_output_event(EventFilter::default());
 
     // match the events
-    assert!(!events.is_empty(), "One event was expected");
+    assert_eq!(events.len(), 3);
     assert_eq!(events[0].data, "keys: 9,65,66");
     assert_eq!(events[1].data, "has_key_1: true - has_key_2: false");
     assert_eq!(events[2].data, "data key 1: 255 - data key 3: 10,11");
@@ -735,6 +717,81 @@ fn set_bytecode_error() {
         .data
         .contains("runtime error when executing operation"));
     assert!(events[0].data.contains("can't set the bytecode of address"));
+}
+
+#[test]
+#[serial]
+fn datastore_manipulations() {
+    // setup the period duration and the maximum gas for asynchronous messages execution
+    let exec_cfg = ExecutionConfig {
+        t0: 100.into(),
+        max_async_gas: 100_000,
+        ..ExecutionConfig::default()
+    };
+    // get a sample final state
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+    // init the storage
+    let mut storage = Storage::create_root();
+    // start the execution worker
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg.clone(),
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
+    // initialize the execution system with genesis blocks
+    init_execution_worker(&exec_cfg, &storage, &controller);
+
+    // keypair associated to thread 0
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    // load bytecode
+    // you can check the source code of the following wasm file in massa-sc-examples
+    let bytecode = include_bytes!("./wasm/datastore_manipulations.wasm");
+    // create the block contaning the erroneous smart contract execution operation
+    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    storage.store_operations(vec![operation.clone()]);
+    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+    // store the block in storage
+    storage.store_block(block.clone());
+    // set our block as a final block
+    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
+    finalized_blocks.insert(
+        block.content.header.content.slot,
+        (block.id, storage.clone()),
+    );
+    controller.update_blockclique_status(finalized_blocks, Default::default());
+    std::thread::sleep(Duration::from_millis(10));
+
+    // Length of the value left in the datastore. See sources for more context.
+    let value_len = 10;
+    assert_eq!(
+        sample_state
+            .read()
+            .ledger
+            .get_balance(&Address::from_public_key(&keypair.get_public_key()))
+            .unwrap(),
+        Amount::from_str("300000")
+            .unwrap()
+            // Gas fee
+            .saturating_sub(Amount::from_str("100000").unwrap())
+            // Storage cost key
+            .saturating_sub(
+                exec_cfg
+                    .storage_costs_constants
+                    .ledger_cost_per_byte
+                    .saturating_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
+            )
+            // Storage cost value
+            .saturating_sub(
+                exec_cfg
+                    .storage_costs_constants
+                    .ledger_cost_per_byte
+                    .saturating_mul_u64(value_len)
+            )
+    );
+
+    // stop the execution controller
+    manager.stop();
 }
 
 /// This test checks causes a history rewrite in slot sequencing and ensures that emitted events match
@@ -901,40 +958,4 @@ fn create_call_sc_operation(
         sender_keypair,
     )?;
     Ok(op)
-}
-
-/// Create an almost empty block with a vector `operations` and a random
-/// creator.
-///
-/// Return a result that should be unwrapped in the root `#[test]` routine.
-fn create_block(
-    creator_keypair: KeyPair,
-    operations: Vec<WrappedOperation>,
-    slot: Slot,
-) -> Result<WrappedBlock, ExecutionError> {
-    let operation_merkle_root = Hash::compute_from(
-        &operations.iter().fold(Vec::new(), |acc, v| {
-            [acc, v.serialized_data.clone()].concat()
-        })[..],
-    );
-
-    let header = BlockHeader::new_wrapped(
-        BlockHeader {
-            slot,
-            parents: vec![],
-            operation_merkle_root,
-            endorsements: vec![],
-        },
-        BlockHeaderSerializer::new(),
-        &creator_keypair,
-    )?;
-
-    Ok(Block::new_wrapped(
-        Block {
-            header,
-            operations: operations.into_iter().map(|op| op.id).collect(),
-        },
-        BlockSerializer::new(),
-        &creator_keypair,
-    )?)
 }

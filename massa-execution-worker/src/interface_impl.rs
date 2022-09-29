@@ -328,6 +328,7 @@ impl Interface for InterfaceImpl {
             .as_ref()
             .ok_or_else(|| anyhow!("No datastore in stack"))?;
         let keys: Vec<Vec<u8>> = datastore.keys().cloned().collect();
+        debug!("[abi get_op_keys] keys {:?}", keys);
         Ok(keys)
     }
 
@@ -335,39 +336,45 @@ impl Interface for InterfaceImpl {
     /// Note that the datastore is only accessible to the initial caller level.
     ///
     /// # Arguments
-    /// * key: bytearry key of the datastore entry to retrieve
+    /// * key: byte array key of the datastore entry to retrieve
     ///
     /// # Returns
     /// true if the entry is matching the provided key in its operation datastore, otherwise false
     fn has_op_key(&self, key: &[u8]) -> Result<bool> {
+        debug!("[abi has_op_key] checking key {:?}", key);
         let context = context_guard!(self);
         let stack = context.stack.last().ok_or_else(|| anyhow!("No stack"))?;
         let datastore = stack
             .operation_datastore
             .as_ref()
             .ok_or_else(|| anyhow!("No datastore in stack"))?;
-        Ok(datastore.contains_key(key))
+        let has_key = datastore.contains_key(key);
+        debug!("[abi has_op_key] has key {}", has_key);
+        Ok(has_key)
     }
 
     /// Gets an operation datastore value by key.
     /// Note that the datastore is only accessible to the initial caller level.
     ///
     /// # Arguments
-    /// * key: bytearray key of the datastore entry to retrieve
+    /// * key: byte array key of the datastore entry to retrieve
     ///
     /// # Returns
     /// The operation datastore value matching the provided key, if found, otherwise an error.
     fn get_op_data(&self, key: &[u8]) -> Result<Vec<u8>> {
+        debug!("[abi get_op_data] data for {:?}", key);
         let context = context_guard!(self);
         let stack = context.stack.last().ok_or_else(|| anyhow!("No stack"))?;
         let datastore = stack
             .operation_datastore
             .as_ref()
             .ok_or_else(|| anyhow!("No datastore in stack"))?;
-        datastore
+        let data = datastore
             .get(key)
             .cloned()
-            .ok_or_else(|| anyhow!("Unknown key: {:?}", key))
+            .ok_or_else(|| anyhow!("Unknown key: {:?}", key));
+        debug!("[abi get_op_data] has key {:?}", data);
+        data
     }
 
     /// Hashes arbitrary data
