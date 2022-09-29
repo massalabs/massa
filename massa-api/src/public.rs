@@ -139,7 +139,7 @@ impl Endpoints for API<Public> {
                         self.0.api_settings.max_op_datastore_entry_count,
                         self.0.api_settings.max_op_datastore_key_length,
                         self.0.api_settings.max_op_datastore_value_length,
-                        );
+                    );
                     match deserializer.deserialize::<DeserializeError>(&v) {
                         Ok((_, deserialized)) => Some(deserialized),
                         Err(e) => {
