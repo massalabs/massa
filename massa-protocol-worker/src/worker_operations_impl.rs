@@ -15,7 +15,7 @@ use massa_logging::massa_trace;
 use massa_models::{
     node::NodeId,
     operation::{OperationPrefixIds, WrappedOperation},
-    prehash::{CapacityAllocator, PreHashSet},
+    prehash::CapacityAllocator,
 };
 use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
@@ -195,20 +195,18 @@ impl ProtocolWorker {
         node_id: NodeId,
         op_pre_ids: OperationPrefixIds,
     ) -> Result<(), ProtocolError> {
-        let mut req_operation_ids = PreHashSet::default();
-        for prefix in op_pre_ids {
-            if let Some(op_id) = self.checked_operations.get(&prefix) {
-                req_operation_ids.insert(*op_id);
+        let mut ops: Vec<WrappedOperation> = Vec::with_capacity(op_pre_ids.len());
+        {
+            // Scope the lock because of the async call to `send_operations` below.
+            let stored_ops = self.storage.read_operations();
+            for prefix in op_pre_ids {
+                if let Some(id) = self.checked_operations.get(&prefix) {
+                    if let Some(op) = stored_ops.get(id) {
+                        ops.push(op.clone());
+                    }
+                }
             }
         }
-        let ops: Vec<WrappedOperation> = {
-            let stored_ops = self.storage.read_operations();
-            req_operation_ids
-                .iter()
-                .filter_map(|id| stored_ops.get(id))
-                .cloned()
-                .collect()
-        };
         if !ops.is_empty() {
             self.network_command_sender
                 .send_operations(node_id, ops)
