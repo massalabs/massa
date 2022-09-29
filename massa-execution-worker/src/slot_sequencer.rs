@@ -172,7 +172,7 @@ impl SlotSequencer {
         if initial_css_final_blocks.into_iter().next().is_some() {
             panic!("remaining elements in css_final_blocks after slot sequencing");
         }
-        if initial_blockclique.into_iter().next().is_none() {
+        if initial_blockclique.into_iter().next().is_some() {
             panic!("remaining elements in blockclique after slot sequencing");
         }
         std::mem::drop(blocks_storage);
