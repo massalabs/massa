@@ -119,9 +119,9 @@ impl NodeInfo {
     }
 
     pub fn insert_known_ops(&mut self, ops: &[OperationId], max_ops_nb: usize) {
-        for operation_id in ops.into_iter() {
-            if self.known_operations.insert(operation_id.clone()) {
-                self.known_operations_queue.push_back(operation_id.clone());
+        for operation_id in ops.iter() {
+            if self.known_operations.insert(*operation_id) {
+                self.known_operations_queue.push_back(*operation_id);
                 while self.known_operations_queue.len() > max_ops_nb {
                     if let Some(op_id) = self.known_operations_queue.pop_front() {
                         self.known_operations.remove(&op_id);

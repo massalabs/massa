@@ -382,7 +382,7 @@ impl ProtocolWorker {
                 new_endorsements.keys().copied().collect(),
                 self.config.max_node_known_endorsements_size,
             );
-            let to_send: Vec<WrappedEndorsement> = new_endorsements.into_values().collect();
+            let to_send = new_endorsements.into_values().collect::<Vec<_>>();
             if !to_send.is_empty() {
                 let res = self
                     .network_command_sender
@@ -997,14 +997,9 @@ impl ProtocolWorker {
                         );
                         match expire_period_timestamp {
                             Ok(slot_timestamp) => {
-                                if slot_timestamp
+                                slot_timestamp
                                     .saturating_add(self.config.max_endorsements_propagation_time)
                                     < now
-                                {
-                                    true
-                                } else {
-                                    false
-                                }
                             }
                             Err(_) => true,
                         }
