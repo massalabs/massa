@@ -276,6 +276,8 @@ When new pending operations reach a node, they are not immediately processed but
 
 The origin of pending operations or endorsements inside the pool can be internal to the factory process or could come from remote nodes via the API Module. Similarly, locally produced pending endorsements are broadcasted via a gossip protocol to other pools via the API Module.
 
+Note that operations stored in the Pool are naturally discarded after a certain time, since operations come with an expiration date in the `expiration_period` field. Still, some potential attacks can occur by trying to flood the pool with high fees operations that have no chance of being executed because the corresponding account does not have the required funds. Discussing about countermeasure for this is beyond the scope of this introduction.
+
 Block/Endorsement Factory Module
 ********************************
 
@@ -283,13 +285,13 @@ The Block Factory Module is in charge of creating new blocks when the correspond
 
 The Block Factory Module also needs information about the best parents (made of the latest blocks in each thread in the blockclique) from the Graph/Consensus Module. These parents will be included in the newly created block. Balance information, in order to assess the validity of pending operations, is obtained from the Execution Module, which maintains the ledger state from the point of view of the slot where the new block is supposed to be created.
 
+The Block Factory Module picks pending operations from the Pool Module. Note that the Block Factory will regularly query the Execution Module about finalized and executed operations, and internally cleanup operations that have been handled.
+
 Finally, the Block Factory will query the the Pool Module and pick pending endorsements corresponding to the best parents that are selected for the block.
 
 With this information, it is able to forge a new block that will then be propagated to the Graph/Consensus Module via the API Module, as well as to other nodes via gossip, to maintain a global synchronized state.
 
 the Endorsement Factory Module works in a similar manner, requesting the Selector Module to find out when it has been designated to be an endorsement producer, then feeding new endorsements to the Pool Module and the API Module for global synchronization.
-
-Note that the Block Factory will regularly query the Execution Module about finalized and executed operations to inform the Pool and cleanup operations that have been handled.
 
 Operation lifecycle
 ===================
