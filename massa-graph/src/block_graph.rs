@@ -1302,7 +1302,6 @@ impl BlockGraph {
         }
 
         // check if it was the creator's turn to create this block
-        // (step 1 in consensus/pos.md)
         let slot_draw_address = match self.selector_controller.get_producer(header.content.slot) {
             Ok(draw) => draw,
             Err(_) => return Ok(HeaderCheckOutcome::WaitForSlot), // TODO properly handle PoS errors

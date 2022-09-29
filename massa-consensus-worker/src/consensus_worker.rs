@@ -116,9 +116,9 @@ impl ConsensusWorker {
         // desync detection timespan
         let stats_desync_detection_timespan = cfg.t0.checked_mul(cfg.periods_per_cycle * 2)?;
 
-        // notify execution module of current blockclique and final blocks
+        // Notify execution module of current blockclique and all final blocks.
         // we need to do this because the bootstrap snapshots of the executor vs the consensus may not have been taken in sync
-        // because the two modules run concurrently and out of sync
+        // because the two modules run concurrently and out of sync.
         let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
         let notify_finals: HashMap<Slot, BlockId> = block_db
             .get_all_final_blocks()
@@ -557,9 +557,10 @@ impl ConsensusWorker {
         Ok(())
     }
 
-    /// Notify execution about blockclique changes and finalized blocks
+    /// Notify execution about blockclique changes and finalized blocks.
     fn notify_execution(&mut self, finalized_blocks: HashMap<Slot, BlockId>) {
-        // new block storage instances (that had not been sent to execution before)
+        // List new block storage instances that Execution doesn't know about.
+        // That's blocks that have not been sent to execution before, ie. in the previous blockclique).
         let mut new_blocks_storage: PreHashMap<BlockId, Storage> = finalized_blocks
             .iter()
             .filter_map(|(_slot, b_id)| {
@@ -575,7 +576,7 @@ impl ConsensusWorker {
             })
             .collect();
 
-        // get new blockclique with slots
+        // Get new blockclique block list with slots.
         let mut blockclique_changed = false;
         let new_blockclique: PreHashMap<BlockId, Slot> = self
             .block_db
@@ -583,10 +584,13 @@ impl ConsensusWorker {
             .iter()
             .map(|b_id| {
                 if let Some(slot) = self.prev_blockclique.remove(b_id) {
-                    // element was already sent in the previous blockclique: remove from the prev blockclique and return slot
+                    // The block was already sent in the previous blockclique:
+                    // the slot can be gathered from there without locking Storage.
+                    // Note: the block is removed from self.prev_blockclique.
                     (*b_id, slot)
                 } else {
-                    // element was not present in the previous blockclique: the blockclique has changed => gather info about the new block
+                    // The block was not present in the previous blockclique:
+                    // the blockclique has changed => get the block's slot by querying Storage.
                     blockclique_changed = true;
                     let (a_block, storage) = self
                         .block_db
@@ -598,19 +602,21 @@ impl ConsensusWorker {
             })
             .collect();
         if !self.prev_blockclique.is_empty() {
-            // some elements have been dropped from the blockclique: mark blockclique as changed
+            // All elements present in the new blockclique have been removed from `prev_blockclique` above.
+            // If `prev_blockclique` is not empty here, it means that it contained elements that are not in the new blockclique anymore.
+            // In that case, we mark the blockclique as having changed.
             blockclique_changed = true;
         }
-        // Update previous blockclique.
-        // Should still be done even if unchanged because elements were taken from it.
+        // Overwrite previous blockclique.
+        // Should still be done even if unchanged because elements were removed from it above.
         self.prev_blockclique = new_blockclique.clone();
 
         if finalized_blocks.is_empty() && !blockclique_changed {
-            // no changes to send to execution
+            // There are no changes (neither block finalizations not blockclique changes) to send to execution.
             return;
         }
 
-        // notify execution
+        // Notify execution of block finalizations and blockclique changes
         self.channels
             .execution_controller
             .update_blockclique_status(
