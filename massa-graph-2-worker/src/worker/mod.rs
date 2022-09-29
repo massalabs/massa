@@ -69,9 +69,11 @@ pub struct GraphWorker {
     storage: Storage,
 }
 
+mod graph;
 mod init;
 mod main_loop;
 mod process_commands;
+mod verifications;
 
 pub fn start_graph_worker(
     config: GraphConfig,

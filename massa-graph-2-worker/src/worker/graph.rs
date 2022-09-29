@@ -1,0 +1,974 @@
+use std::collections::{BTreeSet, VecDeque};
+
+use crate::{worker::verifications::HeaderCheckOutcome, state::GraphState};
+
+use super::GraphWorker;
+use massa_graph::error::{GraphError, GraphResult};
+use massa_graph_2_exports::block_status::{BlockStatus, DiscardReason, HeaderOrBlock};
+use massa_logging::massa_trace;
+use massa_models::{
+    active_block::ActiveBlock,
+    address::Address,
+    block::BlockId,
+    clique::Clique,
+    prehash::{PreHashMap, PreHashSet},
+    slot::Slot,
+};
+use massa_signature::PublicKey;
+use massa_storage::Storage;
+use parking_lot::RwLockWriteGuard;
+use tracing::log::{debug, info};
+
+impl GraphWorker {
+    /// acknowledge a set of items recursively
+    pub fn rec_process(
+        &mut self,
+        mut to_ack: BTreeSet<(Slot, BlockId)>,
+        current_slot: Option<Slot>,
+        mut write_shared_state: &mut RwLockWriteGuard<GraphState>,
+    ) -> GraphResult<()> {
+        // order processing by (slot, hash)
+        while let Some((_slot, hash)) = to_ack.pop_first() {
+            to_ack.extend(self.process(hash, current_slot, write_shared_state)?)
+        }
+        Ok(())
+    }
+
+    /// Acknowledge a single item, return a set of items to re-ack
+    pub fn process(
+        &mut self,
+        block_id: BlockId,
+        current_slot: Option<Slot>,
+        mut write_shared_state: &mut RwLockWriteGuard<GraphState>,
+    ) -> GraphResult<BTreeSet<(Slot, BlockId)>> {
+        // list items to reprocess
+        let mut reprocess = BTreeSet::new();
+
+        massa_trace!("consensus.block_graph.process", { "block_id": block_id });
+        // control all the waiting states and try to get a valid block
+        let (
+            valid_block_creator,
+            valid_block_slot,
+            valid_block_parents_hash_period,
+            valid_block_incomp,
+            valid_block_inherited_incomp_count,
+            valid_block_storage,
+            valid_block_fitness,
+        ) = match write_shared_state.block_statuses.get(&block_id) {
+            None => return Ok(BTreeSet::new()), // disappeared before being processed: do nothing
+
+            // discarded: do nothing
+            Some(BlockStatus::Discarded { .. }) => {
+                massa_trace!("consensus.block_graph.process.discarded", {
+                    "block_id": block_id
+                });
+                return Ok(BTreeSet::new());
+            }
+
+            // already active: do nothing
+            Some(BlockStatus::Active { .. }) => {
+                massa_trace!("consensus.block_graph.process.active", {
+                    "block_id": block_id
+                });
+                return Ok(BTreeSet::new());
+            }
+
+            // incoming header
+            Some(BlockStatus::Incoming(HeaderOrBlock::Header(_))) => {
+                massa_trace!("consensus.block_graph.process.incoming_header", {
+                    "block_id": block_id
+                });
+                // remove header
+                let header = if let Some(BlockStatus::Incoming(HeaderOrBlock::Header(header))) =
+                    write_shared_state.block_statuses.remove(&block_id)
+                {
+                    self.incoming_index.remove(&block_id);
+                    header
+                } else {
+                    return Err(GraphError::ContainerInconsistency(format!(
+                        "inconsistency inside block statuses removing incoming header {}",
+                        block_id
+                    )));
+                };
+                match self.check_header(&block_id, &header, current_slot, &write_shared_state)? {
+                    HeaderCheckOutcome::Proceed { .. } => {
+                        // set as waiting dependencies
+                        let mut dependencies = PreHashSet::<BlockId>::default();
+                        dependencies.insert(block_id); // add self as unsatisfied
+                        write_shared_state.block_statuses.insert(
+                            block_id,
+                            BlockStatus::WaitingForDependencies {
+                                header_or_block: HeaderOrBlock::Header(header),
+                                unsatisfied_dependencies: dependencies,
+                                sequence_number: {
+                                    self.sequence_counter += 1;
+                                    self.sequence_counter
+                                },
+                            },
+                        );
+                        self.waiting_for_dependencies_index.insert(block_id);
+                        self.promote_dep_tree(block_id, write_shared_state)?;
+
+                        massa_trace!(
+                            "consensus.block_graph.process.incoming_header.waiting_for_self",
+                            { "block_id": block_id }
+                        );
+                        return Ok(BTreeSet::new());
+                    }
+                    HeaderCheckOutcome::WaitForDependencies(mut dependencies) => {
+                        // set as waiting dependencies
+                        dependencies.insert(block_id); // add self as unsatisfied
+                        massa_trace!("consensus.block_graph.process.incoming_header.waiting_for_dependencies", {"block_id": block_id, "dependencies": dependencies});
+
+                        write_shared_state.block_statuses.insert(
+                            block_id,
+                            BlockStatus::WaitingForDependencies {
+                                header_or_block: HeaderOrBlock::Header(header),
+                                unsatisfied_dependencies: dependencies,
+                                sequence_number: {
+                                    self.sequence_counter += 1;
+                                    self.sequence_counter
+                                },
+                            },
+                        );
+                        self.waiting_for_dependencies_index.insert(block_id);
+                        self.promote_dep_tree(block_id, write_shared_state)?;
+
+                        return Ok(BTreeSet::new());
+                    }
+                    HeaderCheckOutcome::WaitForSlot => {
+                        // make it wait for slot
+                        write_shared_state.block_statuses.insert(
+                            block_id,
+                            BlockStatus::WaitingForSlot(HeaderOrBlock::Header(header)),
+                        );
+                        self.waiting_for_slot_index.insert(block_id);
+
+                        massa_trace!(
+                            "consensus.block_graph.process.incoming_header.waiting_for_slot",
+                            { "block_id": block_id }
+                        );
+                        return Ok(BTreeSet::new());
+                    }
+                    HeaderCheckOutcome::Discard(reason) => {
+                        self.maybe_note_attack_attempt(&reason, &block_id);
+                        massa_trace!("consensus.block_graph.process.incoming_header.discarded", {"block_id": block_id, "reason": reason});
+                        // count stales
+                        if reason == DiscardReason::Stale {
+                            self.new_stale_blocks
+                                .insert(block_id, (header.creator_address, header.content.slot));
+                        }
+                        // discard
+                        write_shared_state.block_statuses.insert(
+                            block_id,
+                            BlockStatus::Discarded {
+                                slot: header.content.slot,
+                                creator: header.creator_address,
+                                parents: header.content.parents,
+                                reason,
+                                sequence_number: {
+                                    self.sequence_counter += 1;
+                                    self.sequence_counter
+                                },
+                            },
+                        );
+                        self.discarded_index.insert(block_id);
+
+                        return Ok(BTreeSet::new());
+                    }
+                }
+            }
+
+            // incoming block
+            Some(BlockStatus::Incoming(HeaderOrBlock::Block { id: block_id, .. })) => {
+                let block_id = *block_id;
+                massa_trace!("consensus.block_graph.process.incoming_block", {
+                    "block_id": block_id
+                });
+                let (slot, storage) =
+                    if let Some(BlockStatus::Incoming(HeaderOrBlock::Block {
+                        slot, storage, ..
+                    })) = write_shared_state.block_statuses.remove(&block_id)
+                    {
+                        self.incoming_index.remove(&block_id);
+                        (slot, storage)
+                    } else {
+                        return Err(GraphError::ContainerInconsistency(format!(
+                            "inconsistency inside block statuses removing incoming block {}",
+                            block_id
+                        )));
+                    };
+                let stored_block = storage
+                    .read_blocks()
+                    .get(&block_id)
+                    .cloned()
+                    .expect("incoming block not found in storage");
+
+                match self.check_header(&block_id, &stored_block.content.header, current_slot, &write_shared_state)? {
+                    HeaderCheckOutcome::Proceed {
+                        parents_hash_period,
+                        incompatibilities,
+                        inherited_incompatibilities_count,
+                        fitness,
+                    } => {
+                        // block is valid: remove it from Incoming and return it
+                        massa_trace!("consensus.block_graph.process.incoming_block.valid", {
+                            "block_id": block_id
+                        });
+                        (
+                            stored_block.content.header.creator_public_key,
+                            slot,
+                            parents_hash_period,
+                            incompatibilities,
+                            inherited_incompatibilities_count,
+                            storage,
+                            fitness,
+                        )
+                    }
+                    HeaderCheckOutcome::WaitForDependencies(dependencies) => {
+                        // set as waiting dependencies
+                        write_shared_state.block_statuses.insert(
+                            block_id,
+                            BlockStatus::WaitingForDependencies {
+                                header_or_block: HeaderOrBlock::Block {
+                                    id: block_id,
+                                    slot,
+                                    storage,
+                                },
+                                unsatisfied_dependencies: dependencies,
+                                sequence_number: {
+                                    self.sequence_counter += 1;
+                                    self.sequence_counter
+                                },
+                            },
+                        );
+                        self.waiting_for_dependencies_index.insert(block_id);
+                        self.promote_dep_tree(block_id, write_shared_state)?;
+                        massa_trace!(
+                            "consensus.block_graph.process.incoming_block.waiting_for_dependencies",
+                            { "block_id": block_id }
+                        );
+                        return Ok(BTreeSet::new());
+                    }
+                    HeaderCheckOutcome::WaitForSlot => {
+                        // set as waiting for slot
+                        write_shared_state.block_statuses.insert(
+                            block_id,
+                            BlockStatus::WaitingForSlot(HeaderOrBlock::Block {
+                                id: block_id,
+                                slot,
+                                storage,
+                            }),
+                        );
+                        self.waiting_for_slot_index.insert(block_id);
+
+                        massa_trace!(
+                            "consensus.block_graph.process.incoming_block.waiting_for_slot",
+                            { "block_id": block_id }
+                        );
+                        return Ok(BTreeSet::new());
+                    }
+                    HeaderCheckOutcome::Discard(reason) => {
+                        self.maybe_note_attack_attempt(&reason, &block_id);
+                        massa_trace!("consensus.block_graph.process.incoming_block.discarded", {"block_id": block_id, "reason": reason});
+                        // count stales
+                        if reason == DiscardReason::Stale {
+                            self.new_stale_blocks.insert(
+                                block_id,
+                                (
+                                    stored_block.content.header.creator_address,
+                                    stored_block.content.header.content.slot,
+                                ),
+                            );
+                        }
+                        // add to discard
+                        write_shared_state.block_statuses.insert(
+                            block_id,
+                            BlockStatus::Discarded {
+                                slot: stored_block.content.header.content.slot,
+                                creator: stored_block.creator_address,
+                                parents: stored_block.content.header.content.parents.clone(),
+                                reason,
+                                sequence_number: {
+                                    self.sequence_counter += 1;
+                                    self.sequence_counter
+                                },
+                            },
+                        );
+                        self.discarded_index.insert(block_id);
+
+                        return Ok(BTreeSet::new());
+                    }
+                }
+            }
+
+            Some(BlockStatus::WaitingForSlot(header_or_block)) => {
+                massa_trace!("consensus.block_graph.process.waiting_for_slot", {
+                    "block_id": block_id
+                });
+                let slot = header_or_block.get_slot();
+                if Some(slot) > current_slot {
+                    massa_trace!(
+                        "consensus.block_graph.process.waiting_for_slot.in_the_future",
+                        { "block_id": block_id }
+                    );
+                    // in the future: ignore
+                    return Ok(BTreeSet::new());
+                }
+                // send back as incoming and ask for reprocess
+                if let Some(BlockStatus::WaitingForSlot(header_or_block)) =
+                write_shared_state.block_statuses.remove(&block_id)
+                {
+                    self.waiting_for_slot_index.remove(&block_id);
+                    write_shared_state.block_statuses
+                        .insert(block_id, BlockStatus::Incoming(header_or_block));
+                    self.incoming_index.insert(block_id);
+                    reprocess.insert((slot, block_id));
+                    massa_trace!(
+                        "consensus.block_graph.process.waiting_for_slot.reprocess",
+                        { "block_id": block_id }
+                    );
+                    return Ok(reprocess);
+                } else {
+                    return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses removing waiting for slot block or header {}", block_id)));
+                };
+            }
+
+            Some(BlockStatus::WaitingForDependencies {
+                unsatisfied_dependencies,
+                ..
+            }) => {
+                massa_trace!("consensus.block_graph.process.waiting_for_dependencies", {
+                    "block_id": block_id
+                });
+                if !unsatisfied_dependencies.is_empty() {
+                    // still has unsatisfied dependencies: ignore
+                    return Ok(BTreeSet::new());
+                }
+                // send back as incoming and ask for reprocess
+                if let Some(BlockStatus::WaitingForDependencies {
+                    header_or_block, ..
+                }) = write_shared_state.block_statuses.remove(&block_id)
+                {
+                    self.waiting_for_dependencies_index.remove(&block_id);
+                    reprocess.insert((header_or_block.get_slot(), block_id));
+                    write_shared_state.block_statuses
+                        .insert(block_id, BlockStatus::Incoming(header_or_block));
+                    self.incoming_index.insert(block_id);
+                    massa_trace!(
+                        "consensus.block_graph.process.waiting_for_dependencies.reprocess",
+                        { "block_id": block_id }
+                    );
+                    return Ok(reprocess);
+                } else {
+                    return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses removing waiting for slot header or block {}", block_id)));
+                }
+            }
+        };
+
+        // add block to graph
+        self.add_block_to_graph(
+            block_id,
+            valid_block_parents_hash_period,
+            valid_block_creator,
+            valid_block_slot,
+            valid_block_incomp,
+            valid_block_inherited_incomp_count,
+            valid_block_fitness,
+            valid_block_storage,
+            write_shared_state,
+        )?;
+
+        // if the block was added, update linked dependencies and mark satisfied ones for recheck
+        if let Some(BlockStatus::Active { storage, .. }) = write_shared_state.block_statuses.get(&block_id) {
+            massa_trace!("consensus.block_graph.process.is_active", {
+                "block_id": block_id
+            });
+            self.to_propagate.insert(block_id, storage.clone());
+            for itm_block_id in self.waiting_for_dependencies_index.iter() {
+                if let Some(BlockStatus::WaitingForDependencies {
+                    header_or_block,
+                    unsatisfied_dependencies,
+                    ..
+                }) = write_shared_state.block_statuses.get_mut(itm_block_id)
+                {
+                    if unsatisfied_dependencies.remove(&block_id) {
+                        // a dependency was satisfied: retry
+                        reprocess.insert((header_or_block.get_slot(), *itm_block_id));
+                    }
+                }
+            }
+        }
+
+        Ok(reprocess)
+    }
+
+    pub fn promote_dep_tree(&mut self, hash: BlockId, mut write_shared_state: &mut RwLockWriteGuard<GraphState>) -> GraphResult<()> {
+        let mut to_explore = vec![hash];
+        let mut to_promote: PreHashMap<BlockId, (Slot, u64)> = PreHashMap::default();
+        while let Some(h) = to_explore.pop() {
+            if to_promote.contains_key(&h) {
+                continue;
+            }
+            if let Some(BlockStatus::WaitingForDependencies {
+                header_or_block,
+                unsatisfied_dependencies,
+                sequence_number,
+                ..
+            }) = write_shared_state.block_statuses.get(&h)
+            {
+                // promote current block
+                to_promote.insert(h, (header_or_block.get_slot(), *sequence_number));
+                // register dependencies for exploration
+                to_explore.extend(unsatisfied_dependencies);
+            }
+        }
+
+        let mut to_promote: Vec<(Slot, u64, BlockId)> = to_promote
+            .into_iter()
+            .map(|(h, (slot, seq))| (slot, seq, h))
+            .collect();
+        to_promote.sort_unstable(); // last ones should have the highest seq number
+        for (_slot, _seq, h) in to_promote.into_iter() {
+            if let Some(BlockStatus::WaitingForDependencies {
+                sequence_number, ..
+            }) = write_shared_state.block_statuses.get_mut(&h)
+            {
+                self.sequence_counter += 1;
+                *sequence_number = self.sequence_counter;
+            }
+        }
+        Ok(())
+    }
+
+    /// Computes max cliques of compatible blocks
+    pub fn compute_max_cliques(&self, read_shared_state: &GraphState) -> Vec<PreHashSet<BlockId>> {
+        let mut max_cliques: Vec<PreHashSet<BlockId>> = Vec::new();
+
+        // algorithm adapted from IK_GPX as summarized in:
+        //   Cazals et al., "A note on the problem of reporting maximal cliques"
+        //   Theoretical Computer Science, 2008
+        //   https://doi.org/10.1016/j.tcs.2008.05.010
+
+        // stack: r, p, x
+        let mut stack: Vec<(
+            PreHashSet<BlockId>,
+            PreHashSet<BlockId>,
+            PreHashSet<BlockId>,
+        )> = vec![(
+            PreHashSet::<BlockId>::default(),
+            read_shared_state.gi_head.keys().cloned().collect(),
+            PreHashSet::<BlockId>::default(),
+        )];
+        while let Some((r, mut p, mut x)) = stack.pop() {
+            if p.is_empty() && x.is_empty() {
+                max_cliques.push(r);
+                continue;
+            }
+            // choose the pivot vertex following the GPX scheme:
+            // u_p = node from (p \/ x) that maximizes the cardinality of (P \ Neighbors(u_p, GI))
+            let &u_p = p
+                .union(&x)
+                .max_by_key(|&u| {
+                    p.difference(&(&read_shared_state.gi_head[u] | &vec![*u].into_iter().collect()))
+                        .count()
+                })
+                .unwrap(); // p was checked to be non-empty before
+
+            // iterate over u_set = (p /\ Neighbors(u_p, GI))
+            let u_set: PreHashSet<BlockId> =
+                &p & &(&read_shared_state.gi_head[&u_p] | &vec![u_p].into_iter().collect());
+            for u_i in u_set.into_iter() {
+                p.remove(&u_i);
+                let u_i_set: PreHashSet<BlockId> = vec![u_i].into_iter().collect();
+                let comp_n_u_i: PreHashSet<BlockId> = &read_shared_state.gi_head[&u_i] | &u_i_set;
+                stack.push((&r | &u_i_set, &p - &comp_n_u_i, &x - &comp_n_u_i));
+                x.insert(u_i);
+            }
+        }
+        if max_cliques.is_empty() {
+            // make sure at least one clique remains
+            max_cliques = vec![PreHashSet::<BlockId>::default()];
+        }
+        max_cliques
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn add_block_to_graph(
+        &mut self,
+        add_block_id: BlockId,
+        parents_hash_period: Vec<(BlockId, u64)>,
+        add_block_creator: PublicKey,
+        add_block_slot: Slot,
+        incomp: PreHashSet<BlockId>,
+        inherited_incomp_count: usize,
+        fitness: u64,
+        mut storage: Storage,
+        mut write_shared_state: &mut RwLockWriteGuard<GraphState>,
+    ) -> GraphResult<()> {
+        massa_trace!("consensus.block_graph.add_block_to_graph", {
+            "block_id": add_block_id
+        });
+
+        // Ensure block parents are claimed by the block's storage.
+        // Note that operations and endorsements should already be there (claimed in Protocol).
+        storage.claim_block_refs(&parents_hash_period.iter().map(|(p_id, _)| *p_id).collect());
+
+        // add block to status structure
+        write_shared_state.block_statuses.insert(
+            add_block_id,
+            BlockStatus::Active {
+                a_block: Box::new(ActiveBlock {
+                    creator_address: Address::from_public_key(&add_block_creator),
+                    parents: parents_hash_period.clone(),
+                    descendants: PreHashSet::<BlockId>::default(),
+                    block_id: add_block_id,
+                    children: vec![Default::default(); self.config.thread_count as usize],
+                    is_final: false,
+                    slot: add_block_slot,
+                    fitness,
+                }),
+                storage,
+            },
+        );
+        write_shared_state.active_index.insert(add_block_id);
+
+        // add as child to parents
+        for (parent_h, _parent_period) in parents_hash_period.iter() {
+            if let Some(BlockStatus::Active {
+                a_block: a_parent, ..
+            }) = write_shared_state.block_statuses.get_mut(parent_h)
+            {
+                a_parent.children[add_block_slot.thread as usize]
+                    .insert(add_block_id, add_block_slot.period);
+            } else {
+                return Err(GraphError::ContainerInconsistency(format!(
+                    "inconsistency inside block statuses adding child {} of block {}",
+                    add_block_id, parent_h
+                )));
+            }
+        }
+
+        // add as descendant to ancestors. Note: descendants are never removed.
+        {
+            let mut ancestors: VecDeque<BlockId> =
+                parents_hash_period.iter().map(|(h, _)| *h).collect();
+            let mut visited = PreHashSet::<BlockId>::default();
+            while let Some(ancestor_h) = ancestors.pop_back() {
+                if !visited.insert(ancestor_h) {
+                    continue;
+                }
+                if let Some(BlockStatus::Active { a_block: ab, .. }) =
+                write_shared_state.block_statuses.get_mut(&ancestor_h)
+                {
+                    ab.descendants.insert(add_block_id);
+                    for (ancestor_parent_h, _) in ab.parents.iter() {
+                        ancestors.push_front(*ancestor_parent_h);
+                    }
+                }
+            }
+        }
+
+        // add incompatibilities to gi_head
+        massa_trace!(
+            "consensus.block_graph.add_block_to_graph.add_incompatibilities",
+            {}
+        );
+        for incomp_h in incomp.iter() {
+            write_shared_state.gi_head
+                .get_mut(incomp_h)
+                .ok_or_else(|| {
+                    GraphError::MissingBlock(format!(
+                        "missing block when adding incomp to gi_head: {}",
+                        incomp_h
+                    ))
+                })?
+                .insert(add_block_id);
+        }
+        write_shared_state.gi_head.insert(add_block_id, incomp.clone());
+
+        // max cliques update
+        massa_trace!(
+            "consensus.block_graph.add_block_to_graph.max_cliques_update",
+            {}
+        );
+        if incomp.len() == inherited_incomp_count {
+            // clique optimization routine:
+            //   the block only has incompatibilities inherited from its parents
+            //   therefore it is not forking and can simply be added to the cliques it is compatible with
+            write_shared_state.max_cliques
+                .iter_mut()
+                .filter(|c| incomp.is_disjoint(&c.block_ids))
+                .for_each(|c| {
+                    c.block_ids.insert(add_block_id);
+                });
+        } else {
+            // fully recompute max cliques
+            massa_trace!(
+                "consensus.block_graph.add_block_to_graph.clique_full_computing",
+                { "hash": add_block_id }
+            );
+            let before = write_shared_state.max_cliques.len();
+            write_shared_state.max_cliques = self
+                .compute_max_cliques(&write_shared_state)
+                .into_iter()
+                .map(|c| Clique {
+                    block_ids: c,
+                    fitness: 0,
+                    is_blockclique: false,
+                })
+                .collect();
+            let after = write_shared_state.max_cliques.len();
+            if before != after {
+                massa_trace!(
+                    "consensus.block_graph.add_block_to_graph.clique_full_computing more than one clique",
+                    { "cliques": write_shared_state.max_cliques, "gi_head": write_shared_state.gi_head }
+                );
+                // gi_head
+                debug!(
+                    "clique number went from {} to {} after adding {}",
+                    before, after, add_block_id
+                );
+            }
+        }
+
+        // compute clique fitnesses and find blockclique
+        massa_trace!("consensus.block_graph.add_block_to_graph.compute_clique_fitnesses_and_find_blockclique", {});
+        // note: clique_fitnesses is pair (fitness, -hash_sum) where the second parameter is negative for sorting
+        {
+            let mut blockclique_i = 0usize;
+            let mut max_clique_fitness = (0u64, num::BigInt::default());
+            for (clique_i, clique) in write_shared_state.max_cliques.iter_mut().enumerate() {
+                clique.fitness = 0;
+                clique.is_blockclique = false;
+                let mut sum_hash = num::BigInt::default();
+                for block_h in clique.block_ids.iter() {
+                    let fitness = match write_shared_state.block_statuses.get(block_h) {
+                        Some(BlockStatus::Active { a_block, storage }) => a_block.fitness,
+                        _ => return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses computing fitness while adding {} - missing {}", add_block_id, block_h))),
+                    };
+                    clique.fitness = clique
+                        .fitness
+                        .checked_add(fitness)
+                        .ok_or(GraphError::FitnessOverflow)?;
+                    sum_hash -=
+                        num::BigInt::from_bytes_be(num::bigint::Sign::Plus, block_h.to_bytes());
+                }
+                let cur_fit = (clique.fitness, sum_hash);
+                if cur_fit > max_clique_fitness {
+                    blockclique_i = clique_i;
+                    max_clique_fitness = cur_fit;
+                }
+            }
+            write_shared_state.max_cliques[blockclique_i].is_blockclique = true;
+        }
+
+        // update best parents
+        massa_trace!(
+            "consensus.block_graph.add_block_to_graph.update_best_parents",
+            {}
+        );
+        {
+            // find blockclique
+            let blockclique_i = write_shared_state
+                .max_cliques
+                .iter()
+                .position(|c| c.is_blockclique)
+                .unwrap_or_default();
+            let blockclique = &write_shared_state.max_cliques[blockclique_i];
+
+            // init best parents as latest_final_blocks_periods
+            write_shared_state.best_parents = write_shared_state.latest_final_blocks_periods.clone();
+            // for each blockclique block, set it as best_parent in its own thread
+            // if its period is higher than the current best_parent in that thread
+            for block_h in blockclique.block_ids.iter() {
+                let b_slot = match write_shared_state.block_statuses.get(block_h) {
+                    Some(BlockStatus::Active { a_block, storage: _ }) => a_block.slot,
+                    _ => return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses updating best parents while adding {} - missing {}", add_block_id, block_h))),
+                };
+                if b_slot.period > write_shared_state.best_parents[b_slot.thread as usize].1 {
+                    write_shared_state.best_parents[b_slot.thread as usize] = (*block_h, b_slot.period);
+                }
+            }
+        }
+
+        // list stale blocks
+        massa_trace!(
+            "consensus.block_graph.add_block_to_graph.list_stale_blocks",
+            {}
+        );
+        let stale_blocks = {
+            let blockclique_i = write_shared_state
+                .max_cliques
+                .iter()
+                .position(|c| c.is_blockclique)
+                .unwrap_or_default();
+            let fitness_threshold = write_shared_state.max_cliques[blockclique_i]
+                .fitness
+                .saturating_sub(self.config.delta_f0);
+            // iterate from largest to smallest to minimize reallocations
+            let mut indices: Vec<usize> = (0..write_shared_state.max_cliques.len()).collect();
+            indices
+                .sort_unstable_by_key(|&i| std::cmp::Reverse(write_shared_state.max_cliques[i].block_ids.len()));
+            let mut high_set = PreHashSet::<BlockId>::default();
+            let mut low_set = PreHashSet::<BlockId>::default();
+            for clique_i in indices.into_iter() {
+                if write_shared_state.max_cliques[clique_i].fitness >= fitness_threshold {
+                    high_set.extend(&write_shared_state.max_cliques[clique_i].block_ids);
+                } else {
+                    low_set.extend(&write_shared_state.max_cliques[clique_i].block_ids);
+                }
+            }
+            write_shared_state.max_cliques.retain(|c| c.fitness >= fitness_threshold);
+            &low_set - &high_set
+        };
+        // mark stale blocks
+        massa_trace!(
+            "consensus.block_graph.add_block_to_graph.mark_stale_blocks",
+            {}
+        );
+        for stale_block_hash in stale_blocks.into_iter() {
+            if let Some(BlockStatus::Active {
+                a_block: active_block,
+                storage: _storage,
+            }) = write_shared_state.block_statuses.remove(&stale_block_hash)
+            {
+                write_shared_state.active_index.remove(&stale_block_hash);
+                if active_block.is_final {
+                    return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {} - block {} was already final", add_block_id, stale_block_hash)));
+                }
+
+                // remove from gi_head
+                if let Some(other_incomps) = write_shared_state.gi_head.remove(&stale_block_hash) {
+                    for other_incomp in other_incomps.into_iter() {
+                        if let Some(other_incomp_lst) = write_shared_state.gi_head.get_mut(&other_incomp) {
+                            other_incomp_lst.remove(&stale_block_hash);
+                        }
+                    }
+                }
+
+                // remove from cliques
+                let stale_block_fitness = active_block.fitness;
+                write_shared_state.max_cliques.iter_mut().for_each(|c| {
+                    if c.block_ids.remove(&stale_block_hash) {
+                        c.fitness -= stale_block_fitness;
+                    }
+                });
+                write_shared_state.max_cliques.retain(|c| !c.block_ids.is_empty()); // remove empty cliques
+                if write_shared_state.max_cliques.is_empty() {
+                    // make sure at least one clique remains
+                    write_shared_state.max_cliques = vec![Clique {
+                        block_ids: PreHashSet::<BlockId>::default(),
+                        fitness: 0,
+                        is_blockclique: true,
+                    }];
+                }
+
+                // remove from parent's children
+                for (parent_h, _parent_period) in active_block.parents.iter() {
+                    if let Some(BlockStatus::Active {
+                        a_block: parent_active_block,
+                        ..
+                    }) = write_shared_state.block_statuses.get_mut(parent_h)
+                    {
+                        parent_active_block.children[active_block.slot.thread as usize]
+                            .remove(&stale_block_hash);
+                    }
+                }
+
+                massa_trace!("consensus.block_graph.add_block_to_graph.stale", {
+                    "hash": stale_block_hash
+                });
+
+                // mark as stale
+                self.new_stale_blocks.insert(
+                    stale_block_hash,
+                    (active_block.creator_address, active_block.slot),
+                );
+                write_shared_state.block_statuses.insert(
+                    stale_block_hash,
+                    BlockStatus::Discarded {
+                        slot: active_block.slot,
+                        creator: active_block.creator_address,
+                        parents: active_block.parents.iter().map(|(h, _)| *h).collect(),
+                        reason: DiscardReason::Stale,
+                        sequence_number: {
+                            self.sequence_counter += 1;
+                            self.sequence_counter
+                        },
+                    },
+                );
+                self.discarded_index.insert(stale_block_hash);
+            } else {
+                return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {} - block {} is missing", add_block_id, stale_block_hash)));
+            }
+        }
+
+        // list final blocks
+        massa_trace!(
+            "consensus.block_graph.add_block_to_graph.list_final_blocks",
+            {}
+        );
+        let final_blocks = {
+            // short-circuiting intersection of cliques from smallest to largest
+            let mut indices: Vec<usize> = (0..write_shared_state.max_cliques.len()).collect();
+            indices.sort_unstable_by_key(|&i| write_shared_state.max_cliques[i].block_ids.len());
+            let mut final_candidates = write_shared_state.max_cliques[indices[0]].block_ids.clone();
+            for i in 1..indices.len() {
+                final_candidates.retain(|v| write_shared_state.max_cliques[i].block_ids.contains(v));
+                if final_candidates.is_empty() {
+                    break;
+                }
+            }
+
+            // restrict search to cliques with high enough fitness, sort cliques by fitness (highest to lowest)
+            massa_trace!(
+                "consensus.block_graph.add_block_to_graph.list_final_blocks.restrict",
+                {}
+            );
+            indices.retain(|&i| write_shared_state.max_cliques[i].fitness > self.config.delta_f0);
+            indices.sort_unstable_by_key(|&i| std::cmp::Reverse(write_shared_state.max_cliques[i].fitness));
+
+            let mut final_blocks = PreHashSet::<BlockId>::default();
+            for clique_i in indices.into_iter() {
+                massa_trace!(
+                    "consensus.block_graph.add_block_to_graph.list_final_blocks.loop",
+                    { "clique_i": clique_i }
+                );
+                // check in cliques from highest to lowest fitness
+                if final_candidates.is_empty() {
+                    // no more final candidates
+                    break;
+                }
+                let clique = &write_shared_state.max_cliques[clique_i];
+
+                // compute the total fitness of all the descendants of the candidate within the clique
+                let loc_candidates = final_candidates.clone();
+                for candidate_h in loc_candidates.into_iter() {
+                    let descendants = match write_shared_state.block_statuses.get(&candidate_h) {
+                        Some(BlockStatus::Active { a_block, storage: _ }) => &a_block.descendants,
+                        _ => return Err(GraphError::MissingBlock(format!(
+                            "missing block when computing total fitness of descendants: {}",
+                            candidate_h
+                        ))),
+                    };
+                    let desc_fit: u64 = descendants
+                        .intersection(&clique.block_ids)
+                        .map(|h| {
+                            if let Some(BlockStatus::Active { a_block: ab, .. }) =
+                            write_shared_state.block_statuses.get(h)
+                            {
+                                return ab.fitness;
+                            }
+                            0
+                        })
+                        .sum();
+                    if desc_fit > self.config.delta_f0 {
+                        // candidate is final
+                        final_candidates.remove(&candidate_h);
+                        final_blocks.insert(candidate_h);
+                    }
+                }
+            }
+            final_blocks
+        };
+
+        // mark final blocks and update latest_final_blocks_periods
+        massa_trace!(
+            "consensus.block_graph.add_block_to_graph.mark_final_blocks",
+            {}
+        );
+        for final_block_hash in final_blocks.into_iter() {
+            // remove from gi_head
+            if let Some(other_incomps) = write_shared_state.gi_head.remove(&final_block_hash) {
+                for other_incomp in other_incomps.into_iter() {
+                    if let Some(other_incomp_lst) = write_shared_state.gi_head.get_mut(&other_incomp) {
+                        other_incomp_lst.remove(&final_block_hash);
+                    }
+                }
+            }
+
+            // mark as final and update latest_final_blocks_periods
+            if let Some(BlockStatus::Active {
+                a_block: final_block,
+                ..
+            }) = write_shared_state.block_statuses.get_mut(&final_block_hash)
+            {
+                massa_trace!("consensus.block_graph.add_block_to_graph.final", {
+                    "hash": final_block_hash
+                });
+                final_block.is_final = true;
+                // remove from cliques
+                let final_block_fitness = final_block.fitness;
+                write_shared_state.max_cliques.iter_mut().for_each(|c| {
+                    if c.block_ids.remove(&final_block_hash) {
+                        c.fitness -= final_block_fitness;
+                    }
+                });
+                write_shared_state.max_cliques.retain(|c| !c.block_ids.is_empty()); // remove empty cliques
+                if write_shared_state.max_cliques.is_empty() {
+                    // make sure at least one clique remains
+                    write_shared_state.max_cliques = vec![Clique {
+                        block_ids: PreHashSet::<BlockId>::default(),
+                        fitness: 0,
+                        is_blockclique: true,
+                    }];
+                }
+                // update latest final blocks
+                if final_block.slot.period
+                    > write_shared_state.latest_final_blocks_periods[final_block.slot.thread as usize].1
+                {
+                    write_shared_state.latest_final_blocks_periods[final_block.slot.thread as usize] =
+                        (final_block_hash, final_block.slot.period);
+                }
+                // update new final blocks list
+                self.new_final_blocks.insert(final_block_hash);
+            } else {
+                return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks adding {} - block {} is missing", add_block_id, final_block_hash)));
+            }
+        }
+
+        massa_trace!("consensus.block_graph.add_block_to_graph.end", {});
+        Ok(())
+    }
+
+    /// Note an attack attempt if the discard reason indicates one.
+    fn maybe_note_attack_attempt(&mut self, reason: &DiscardReason, hash: &BlockId) {
+        massa_trace!("consensus.block_graph.maybe_note_attack_attempt", {"hash": hash, "reason": reason});
+        // If invalid, note the attack attempt.
+        if let DiscardReason::Invalid(reason) = reason {
+            info!(
+                "consensus.block_graph.maybe_note_attack_attempt DiscardReason::Invalid:{}",
+                reason
+            );
+            self.attack_attempts.push(*hash);
+        }
+    }
+
+    /// Gets a block and all its descendants
+    ///
+    /// # Argument
+    /// * hash : hash of the given block
+    pub fn get_active_block_and_descendants(
+        &self,
+        block_id: &BlockId,
+        read_shared_state: &GraphState
+    ) -> GraphResult<PreHashSet<BlockId>> {
+        let mut to_visit = vec![*block_id];
+        let mut result = PreHashSet::<BlockId>::default();
+        while let Some(visit_h) = to_visit.pop() {
+            if !result.insert(visit_h) {
+                continue; // already visited
+            }
+            match read_shared_state.block_statuses.get(&visit_h) {
+                Some(BlockStatus::Active { a_block, .. }) => {
+                    a_block.as_ref()
+                    .children.iter()
+                    .for_each(|thread_children| to_visit.extend(thread_children.keys()))
+                },
+                _ => return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses iterating through descendants of {} - missing {}", block_id, visit_h))),
+            }
+        }
+        Ok(result)
+    }
+}

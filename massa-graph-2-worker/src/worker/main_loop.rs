@@ -21,6 +21,7 @@ enum WaitingStatus {
 impl GraphWorker {
     fn manage_command(&self, command: GraphCommand) -> GraphResult<()> {
         match command {
+            GraphCommand::RegisterBlockHeader(_, _) => {}
             GraphCommand::RegisterBlock(_, _, _) => {
                 // TODO
             }

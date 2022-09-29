@@ -4,13 +4,13 @@ use massa_graph::{
     BootstrapableGraph,
 };
 use massa_graph_2_exports::{
-    block_graph_export::BlockGraphExport, block_status::BlockStatus, GraphConfig, GraphController,
+    block_graph_export::BlockGraphExport, block_status::BlockStatus, GraphController,
 };
 use massa_models::{
     api::BlockGraphStatus,
     block::{BlockHeader, BlockId},
     clique::Clique,
-    prehash::{CapacityAllocator, PreHashSet},
+    prehash::PreHashSet,
     slot::Slot,
     stats::ConsensusStats,
     wrapped::Wrapped,
