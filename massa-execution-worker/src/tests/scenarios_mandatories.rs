@@ -754,11 +754,8 @@ fn datastore_manipulations() {
     // store the block in storage
     storage.store_block(block.clone());
     // set our block as a final block
-    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
-    finalized_blocks.insert(
-        block.content.header.content.slot,
-        (block.id, storage.clone()),
-    );
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
     let block_store = vec![(block.id, storage.clone())].into_iter().collect();
     controller.update_blockclique_status(finalized_blocks, Default::default(), block_store);
     std::thread::sleep(Duration::from_millis(150));
