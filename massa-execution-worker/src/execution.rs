@@ -721,7 +721,7 @@ impl ExecutionState {
     pub fn execute_slot(
         &self,
         slot: &Slot,
-        exec_target: &Option<(BlockId, Storage)>,
+        exec_target: Option<&(BlockId, Storage)>,
         selector: &Box<dyn SelectorController>,
     ) -> ExecutionOutput {
         // Create a new execution context for the whole active slot
@@ -899,7 +899,7 @@ impl ExecutionState {
     pub fn execute_candidate_slot(
         &mut self,
         slot: &Slot,
-        exec_target: &Option<(BlockId, Storage)>,
+        exec_target: Option<&(BlockId, Storage)>,
         selector: &Box<dyn SelectorController>,
     ) {
         let target_id = exec_target.as_ref().map(|(b_id, _)| *b_id);
@@ -942,7 +942,7 @@ impl ExecutionState {
     pub fn execute_final_slot(
         &mut self,
         slot: &Slot,
-        exec_target: &Option<(BlockId, Storage)>,
+        exec_target: Option<&(BlockId, Storage)>,
         selector: &Box<dyn SelectorController>,
     ) {
         let target_id = exec_target.as_ref().map(|(b_id, _)| *b_id);

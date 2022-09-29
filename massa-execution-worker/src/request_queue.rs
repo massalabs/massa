@@ -105,11 +105,11 @@ impl<T, R> RequestQueue<T, R> {
     ///
     /// # Arguments
     /// * err: the error to send through the response channel of cancelled items
-    /*pub fn cancel(&mut self, err: ExecutionError) {
+    pub fn cancel(&mut self, err: ExecutionError) {
         for req in self.queue.drain(..) {
             req.cancel(err.clone());
         }
-    }*/
+    }
 
     /// Pop out the oldest element of the queue
     ///

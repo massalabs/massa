@@ -10,7 +10,7 @@ use crate::execution::ExecutionState;
 use crate::request_queue::RequestQueue;
 use crate::slot_sequencer::SlotSequencer;
 use massa_execution_exports::{
-    ExecutionConfig, ExecutionController, ExecutionManager, ExecutionOutput,
+    ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
     ReadOnlyExecutionRequest,
 };
 use massa_final_state::FinalState;
@@ -103,9 +103,9 @@ impl ExecutionThread {
     /// Waits for an event to trigger a new iteration in the execution main loop.
     ///
     /// # Returns
-    /// `Some(ExecutionInputData)` representing the input requests,
-    /// or `None` if the main loop needs to stop.
-    fn wait_loop_event(&mut self) -> Option<ExecutionInputData> {
+    /// `ExecutionInputData` representing the input requests,
+    /// and a boolean saying whether we should stop the loop.
+    fn wait_loop_event(&mut self) -> (ExecutionInputData, bool) {
         loop {
             // lock input data
             let mut input_data_lock = self.input_data.1.lock();
@@ -113,28 +113,28 @@ impl ExecutionThread {
             // take current input data, resetting it
             let input_data: ExecutionInputData = input_data_lock.take();
 
+            // if we need to stop, return None
+            if input_data.stop {
+                return (input_data, true);
+            }
+
             // check if there is some input data
             if input_data.new_blockclique.is_some()
                 || !input_data.finalized_blocks.is_empty()
                 || !input_data.block_storage.is_empty()
                 || !input_data.readonly_requests.is_empty()
             {
-                return Some(input_data);
+                return (input_data, false);
             }
 
             // the slot sequencer has a task available for execution
             if self.slot_sequencer.is_task_available() {
-                return Some(input_data);
+                return (input_data, false);
             }
 
             // there are read-only requests ready
             if !self.readonly_requests.is_empty() {
-                return Some(input_data);
-            }
-
-            // if we need to stop, return None
-            if input_data.stop {
-                return None;
+                return (input_data, false);
             }
 
             // Compute when the next slot will be
@@ -144,7 +144,7 @@ impl ExecutionThread {
                 MassaTime::now(self.config.clock_compensation).expect("could not get current time");
             if wakeup_deadline <= now {
                 // next slot is right now: the loop needs to iterate
-                return Some(input_data);
+                return (input_data, false);
             }
 
             // Wait to be notified of new input, for at most time_until_next_slot
@@ -165,8 +165,17 @@ impl ExecutionThread {
         // 1 - final executions
         // 2 - speculative executions
         // 3 - read-only executions
-        while let Some(input_data) = self.wait_loop_event() {
+        loop {
+            let (input_data, stop) = self.wait_loop_event();
             debug!("Execution loop triggered, input_data = {}", input_data);
+
+            // update the sequence of read-only requests
+            self.update_readonly_requests(input_data.readonly_requests);
+
+            if stop {
+                // we need to stop
+                break;
+            }
 
             // update slot sequencer
             self.slot_sequencer.update(
@@ -175,12 +184,9 @@ impl ExecutionThread {
                 input_data.block_storage,
             );
 
-            // update the sequence of read-only requests
-            self.update_readonly_requests(input_data.readonly_requests);
-
             // ask the slot sequencer for a task to be executed in priority (final is higher priority than candidate)
             let run_result = self.slot_sequencer.run_task_with(
-                |is_final: bool, slot: &Slot, content: &Option<(BlockId, Storage)>| {
+                |is_final: bool, slot: &Slot, content: Option<&(BlockId, Storage)>| {
                     if is_final {
                         self.execution_state.write().execute_final_slot(
                             slot,
@@ -204,6 +210,19 @@ impl ExecutionThread {
             // low priority: execute a read-only request (note that the queue is of finite length), if there is one ready.
             self.execute_one_readonly_request();
         }
+
+        // We are quitting the loop.
+
+        // Cancel pending readonly requests
+        let cancel_err = ExecutionError::ChannelError(
+            "readonly execution cancelled because the execution worker is closing".into(),
+        );
+        self.input_data
+            .1
+            .lock()
+            .take()
+            .readonly_requests
+            .cancel(cancel_err);
     }
 }
 

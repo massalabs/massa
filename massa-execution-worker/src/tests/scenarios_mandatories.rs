@@ -18,6 +18,7 @@ use massa_models::{
 };
 use massa_signature::KeyPair;
 use massa_storage::Storage;
+use massa_time::MassaTime;
 use serial_test::serial;
 use std::{
     cmp::Reverse, collections::BTreeMap, collections::HashMap, str::FromStr, time::Duration,
@@ -114,6 +115,7 @@ fn test_nested_call_gas_usage() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
         t0: 100.into(),
+        cursor_delay: 0.into(),
         ..ExecutionConfig::default()
     };
     // get a sample final state
@@ -250,6 +252,7 @@ fn send_and_receive_async_message() {
     let exec_cfg = ExecutionConfig {
         t0: 100.into(),
         max_async_gas: 100_000,
+        cursor_delay: 0.into(),
         ..ExecutionConfig::default()
     };
     // get a sample final state
@@ -288,7 +291,7 @@ fn send_and_receive_async_message() {
         block_storage.clone(),
     );
     // sleep for 100ms to reach the message execution period
-    std::thread::sleep(Duration::from_millis(100));
+    std::thread::sleep(Duration::from_millis(150));
 
     // retrieve events emitted by smart contracts
     let events = controller.get_filtered_sc_output_event(EventFilter {
@@ -297,7 +300,7 @@ fn send_and_receive_async_message() {
         ..Default::default()
     });
     // match the events
-    assert!(!events.is_empty(), "One event was expected");
+    assert!(events.len() == 1, "One event was expected");
     assert_eq!(events[0].data, "message received: hello my good friend!");
     // stop the execution controller
     manager.stop();
@@ -309,6 +312,7 @@ pub fn send_and_receive_transaction() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
         t0: 100.into(),
+        cursor_delay: 0.into(),
         ..ExecutionConfig::default()
     };
     // get a sample final state
@@ -386,6 +390,7 @@ pub fn roll_buy() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
         t0: 100.into(),
+        cursor_delay: 0.into(),
         ..ExecutionConfig::default()
     };
     // get a sample final state
@@ -450,6 +455,7 @@ pub fn roll_sell() {
         t0: 100.into(),
         periods_per_cycle: 2,
         thread_count: 2,
+        cursor_delay: 0.into(),
         ..Default::default()
     };
     // get a sample final state
@@ -512,50 +518,12 @@ pub fn roll_sell() {
 
 #[test]
 #[serial]
-pub fn missed_blocks_roll_slash() {
-    // setup the period duration
-    let exec_cfg = ExecutionConfig {
-        t0: 10.into(),
-        periods_per_cycle: 2,
-        thread_count: 2,
-        ..Default::default()
-    };
-    // get a sample final state and make selections
-    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
-
-    // start the execution worker
-    let (mut manager, controller) = start_execution_worker(
-        exec_cfg.clone(),
-        sample_state.clone(),
-        sample_state.read().pos_state.selector.clone(),
-    );
-    // initialize the execution system with genesis blocks
-    let storage = Storage::create_root();
-    init_execution_worker(&exec_cfg, &storage, &controller);
-    // sleep to get slashed on missed blocks and reach the reimbursment
-    std::thread::sleep(Duration::from_millis(1000));
-    // get the initial selection address
-    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
-    let address = Address::from_public_key(&keypair.get_public_key());
-    // check its balances
-    assert_eq!(
-        controller.get_final_and_candidate_balance(&[address]),
-        vec![(
-            Some(Amount::from_str("300_000").unwrap()),
-            Some(Amount::from_str("310_000").unwrap())
-        )]
-    );
-    // stop the execution controller
-    manager.stop();
-}
-
-#[test]
-#[serial]
 fn sc_execution_error() {
     // setup the period duration and the maximum gas for asynchronous messages execution
     let exec_cfg = ExecutionConfig {
         t0: 100.into(),
         max_async_gas: 100_000,
+        cursor_delay: 0.into(),
         ..ExecutionConfig::default()
     };
     // get a sample final state
@@ -614,6 +582,7 @@ fn sc_datastore() {
     let exec_cfg = ExecutionConfig {
         t0: 100.into(),
         max_async_gas: 100_000,
+        cursor_delay: 0.into(),
         ..ExecutionConfig::default()
     };
     // get a sample final state
@@ -672,6 +641,7 @@ fn set_bytecode_error() {
     let exec_cfg = ExecutionConfig {
         t0: 100.into(),
         max_async_gas: 100_000,
+        cursor_delay: 0.into(),
         ..ExecutionConfig::default()
     };
     // get a sample final state
@@ -681,10 +651,12 @@ fn set_bytecode_error() {
     let mut storage = Storage::create_root();
     // start the execution worker
     let (_manager, controller) = start_execution_worker(
-        exec_cfg,
+        exec_cfg.clone(),
         sample_state.clone(),
         sample_state.read().pos_state.selector.clone(),
     );
+    // initialize the execution system with genesis blocks
+    init_execution_worker(&exec_cfg, &storage, &controller);
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load bytecode
@@ -726,6 +698,7 @@ fn datastore_manipulations() {
     let exec_cfg = ExecutionConfig {
         t0: 100.into(),
         max_async_gas: 100_000,
+        cursor_delay: 0.into(),
         ..ExecutionConfig::default()
     };
     // get a sample final state
@@ -758,7 +731,12 @@ fn datastore_manipulations() {
     finalized_blocks.insert(block.content.header.content.slot, block.id);
     let block_store = vec![(block.id, storage.clone())].into_iter().collect();
     controller.update_blockclique_status(finalized_blocks, Default::default(), block_store);
-    std::thread::sleep(Duration::from_millis(150));
+    std::thread::sleep(
+        exec_cfg
+            .t0
+            .saturating_add(MassaTime::from_millis(50))
+            .into(),
+    );
 
     // Length of the value left in the datastore. See sources for more context.
     let value_len = 10;
@@ -800,6 +778,7 @@ fn events_from_switching_blockclique() {
     // as data. Then we check if we get an event as expected.
     let exec_cfg = ExecutionConfig {
         t0: 100.into(),
+        cursor_delay: 0.into(),
         ..ExecutionConfig::default()
     };
     let storage: Storage = Storage::create_root();

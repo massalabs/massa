@@ -190,14 +190,15 @@ impl SlotSequencer {
         let shifted_now = MassaTime::now(self.config.clock_compensation)
             .expect("could not get current time")
             .saturating_sub(self.config.cursor_delay);
-        get_latest_block_slot_at_timestamp(
+        let res = get_latest_block_slot_at_timestamp(
             self.config.thread_count,
             self.config.t0,
             self.config.genesis_timestamp,
             shifted_now,
         )
         .expect("could not get latest block slot at shifted execution time")
-        .unwrap_or_else(|| Slot::new(0, 0))
+        .unwrap_or_else(|| Slot::new(0, 0));
+        res
     }
 
     /// Notify the sequencer of incoming changes: CSS-finalized blocks and changes in the blockclique.
@@ -570,10 +571,10 @@ impl SlotSequencer {
                 .get_next_slot(self.config.thread_count)
                 .expect("overflow in slot iteration");
             // The candidate slot is considered ready for execution
-            // if it is present in the slot sequence and is later (or at) the current time cursor.
-            let candidate_task_available = self.get_slot(&next_candidate_slot).is_some()
-                && self.get_time_cursor() >= next_candidate_slot;
-            if candidate_task_available {
+            // if it is later (or at) the current time cursor.
+            // In the case in which it is absent from the sequence,
+            // it will be considered a miss by run_task_with.
+            if self.get_time_cursor() >= next_candidate_slot {
                 // A non-executed candidate slot is ready for execution.
                 return true;
             }
@@ -632,7 +633,7 @@ impl SlotSequencer {
     /// or `Some(T)` where `T` is the value returned by the `callback` function otherwise.
     pub fn run_task_with<F, T>(&mut self, callback: F) -> Option<T>
     where
-        F: Fn(bool, &Slot, &Option<(BlockId, Storage)>) -> T,
+        F: Fn(bool, &Slot, Option<&(BlockId, Storage)>) -> T,
     {
         // The slot sequence is empty => nothing to do.
         if self.sequence.is_empty() {
@@ -655,7 +656,7 @@ impl SlotSequencer {
                     // There is an SCE-final slot ready for execution.
 
                     // Call the callback function to execute the slot.
-                    let res = Some(callback(true, &slot, content));
+                    let res = Some(callback(true, &slot, content.as_ref()));
 
                     // Update the SCE-final execution cursor.
                     self.latest_executed_final_slot = slot;
@@ -684,9 +685,13 @@ impl SlotSequencer {
                 .latest_executed_candidate_slot
                 .get_next_slot(self.config.thread_count)
                 .expect("overflow in slot iteration");
+
             // Check if that slot is before (or equal to) the time cursor, and available in the sequence.
-            if self.get_time_cursor() >= slot && let Some(SlotInfo { content, .. }) = self.get_slot(&slot) {
+            if self.get_time_cursor() >= slot {
                 // The slot is ready for speculative execution.
+
+                // Consider it a miss if it is absent from the sequence.
+                let content = self.get_slot(&slot).and_then(|nfo| nfo.content.as_ref());
 
                 // Call the `callback` function to execute the slot.
                 let res = Some(callback(false, &slot, content));
