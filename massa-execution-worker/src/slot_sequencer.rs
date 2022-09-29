@@ -693,7 +693,7 @@ impl SlotSequencer {
 
                 // Update the latest executed candidate slot cursor.
                 self.latest_executed_candidate_slot = slot;
-                
+
                 // Return `Some(result of the callback)`.
                 return res;
             }
@@ -733,7 +733,6 @@ impl SlotSequencer {
             self.config.genesis_timestamp,
             next_slot,
         )
-        .saturating
         .expect("could not compute slot timestamp")
         .saturating_add(self.config.cursor_delay)
     }
