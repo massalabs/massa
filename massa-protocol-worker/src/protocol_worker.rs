@@ -349,7 +349,7 @@ impl ProtocolWorker {
     /// Add an list of operations to a queue pending for announcement.
     async fn note_operations_to_announce(&mut self, operations: &[OperationId]) {
         // If we have too many operations to announce,
-        // announce them immediately, 
+        // announce them immediately,
         // clearing the data at the same time.
         if self.operations_to_announce.len() > self.config.max_known_ops_size {
             self.announce_ops().await;
