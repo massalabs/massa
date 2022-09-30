@@ -646,9 +646,6 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
             )
             .parse(buffer)?;
 
-        println!("slots: {:?}", slot);
-        println!("parents: {:?}", parents);
-        println!("op_merkle_root: {:?}", operation_merkle_root);
 
         // Now deser the endorsements (which were: lw serialized)
         let endorsement_deserializer = WrappedDeserializer::new(EndorsementDeserializerLW::new(
@@ -748,7 +745,7 @@ mod test {
                             index: 1,
                             endorsed_block: BlockId(Hash::compute_from(&[1])),
                         },
-                        EndorsementSerializerLW::new(),
+                        EndorsementSerializer::new(),
                         &keypair,
                     )
                     .unwrap(),
@@ -758,7 +755,7 @@ mod test {
                             index: 3,
                             endorsed_block: BlockId(Hash::compute_from(&[3])),
                         },
-                        EndorsementSerializerLW::new(),
+                        EndorsementSerializer::new(),
                         &keypair,
                     )
                     .unwrap(),
@@ -769,9 +766,10 @@ mod test {
         )
         .unwrap();
 
+        println!("orig_header: {:#?}", orig_header.serialized_data);
         // create block
         let orig_block = Block {
-            header: orig_header,
+            header: orig_header.clone(),
             operations: Default::default(),
         };
 
@@ -813,6 +811,14 @@ mod test {
         );
 
         assert_eq!(orig_block.header.signature, res_block.signature);
+        orig_header.verify_signature().unwrap();
+        for ed in orig_block.header.content.endorsements.iter() {
+            ed.verify_signature().unwrap();
+        }
+        res_block.content.header.verify_signature().unwrap();
+        for ed in res_block.content.header.content.endorsements.iter() {
+            ed.verify_signature().unwrap();
+        }
     }
 
     #[test]
