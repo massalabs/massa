@@ -645,13 +645,23 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 )),
             )
             .parse(buffer)?;
-
-
+        
+        if parents.is_empty() {
+            return Ok((
+                rest,
+                BlockHeader {
+                    slot,
+                    parents,
+                    operation_merkle_root,
+                    endorsements: Vec::new(),
+                },
+            ));
+        }
         // Now deser the endorsements (which were: lw serialized)
         let endorsement_deserializer = WrappedDeserializer::new(EndorsementDeserializerLW::new(
             self.endorsement_count,
             slot,
-            parents.clone(),
+            parents[slot.thread as usize],
         ));
 
         let (rest, endorsements) = context(
@@ -727,46 +737,44 @@ mod test {
     #[test]
     #[serial]
     fn test_block_serialization() {
-        let keypair = KeyPair::generate();
+        let keypair =
+            KeyPair::from_str("S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG").unwrap();
         let parents = (0..THREAD_COUNT)
-            .map(|i| BlockId(Hash::compute_from(&[i])))
+            .map(|i| {
+                BlockId(
+                    Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf")
+                        .unwrap(),
+                )
+            })
             .collect();
+
+        let endo = Endorsement::new_wrapped(
+            Endorsement {
+                slot: Slot::new(1, 0),
+                index: 1,
+                endorsed_block: BlockId(
+                    Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf")
+                        .unwrap(),
+                ),
+            },
+            EndorsementSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
 
         // create block header
         let orig_header = BlockHeader::new_wrapped(
             BlockHeader {
-                slot: Slot::new(1, 1),
+                slot: Slot::new(1, 0),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
-                endorsements: vec![
-                    Endorsement::new_wrapped(
-                        Endorsement {
-                            slot: Slot::new(1, 1),
-                            index: 1,
-                            endorsed_block: BlockId(Hash::compute_from(&[1])),
-                        },
-                        EndorsementSerializer::new(),
-                        &keypair,
-                    )
-                    .unwrap(),
-                    Endorsement::new_wrapped(
-                        Endorsement {
-                            slot: Slot::new(1, 1),
-                            index: 3,
-                            endorsed_block: BlockId(Hash::compute_from(&[3])),
-                        },
-                        EndorsementSerializer::new(),
-                        &keypair,
-                    )
-                    .unwrap(),
-                ],
+                endorsements: vec![endo.clone()],
             },
             BlockHeaderSerializer::new(),
             &keypair,
         )
         .unwrap();
 
-        println!("orig_header: {:#?}", orig_header.serialized_data);
         // create block
         let orig_block = Block {
             header: orig_header.clone(),

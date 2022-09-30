@@ -269,19 +269,19 @@ impl Serializer<Endorsement> for EndorsementSerializerLW {
 pub struct EndorsementDeserializerLW {
     index_deserializer: U32VarIntDeserializer,
     slot: Slot,
-    parents: Vec<BlockId>,
+    endorsed_block: BlockId,
 }
 
 impl EndorsementDeserializerLW {
     /// Creates a new `EndorsementDeserializerLW`
-    pub const fn new(endorsement_count: u32, slot: Slot, parents: Vec<BlockId>) -> Self {
+    pub const fn new(endorsement_count: u32, slot: Slot, endorsed_block: BlockId) -> Self {
         EndorsementDeserializerLW {
             index_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Excluded(endorsement_count),
             ),
             slot,
-            parents,
+            endorsed_block,
         }
     }
 }
@@ -312,13 +312,10 @@ impl Deserializer<Endorsement> for EndorsementDeserializerLW {
             self.index_deserializer.deserialize(input)
         })
         .map(|index| {
-            // TODO: no expect
-            let idx = usize::try_from(index).expect("Index conversion fail");
-            let parent = *self.parents.get(idx).expect("A parent");
             Endorsement {
                 slot: self.slot,
                 index,
-                endorsed_block: parent,
+                endorsed_block: self.endorsed_block,
             }
         })
         .parse(buffer)

@@ -18,9 +18,7 @@ use massa_models::{
         Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock,
         WrappedHeader,
     },
-    endorsement::{
-        Endorsement, EndorsementSerializerLW, WrappedEndorsement,
-    },
+    endorsement::{Endorsement, EndorsementSerializerLW, WrappedEndorsement},
     operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
     prehash::PreHashSet,
     slot::Slot,
