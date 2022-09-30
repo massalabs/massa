@@ -234,6 +234,9 @@ impl SlotSequencer {
             }
         }
 
+        // Cleanup the current sequence
+        self.cleanup_sequence();
+
         // Build the slot sequence:.
         // For this, we build a new slot sequence (`new_sequence`) that replaces the old `self.slot_sequence`.
         // For performance, we build the new sequence by recycling elements from the old `self.sequence`
@@ -251,7 +254,6 @@ impl SlotSequencer {
         //  * the latest CSS-final slot
         //  * the latest blockclique slot
         //  * the latest slot of the previous sequence
-        //  * the latest speculative slot to be executed at the current time according to `Self::get_time_cursor`
         let max_slot = std::cmp::max(
             std::cmp::max(
                 *self
@@ -264,13 +266,10 @@ impl SlotSequencer {
                     .and_then(|bq| bq.keys().max().copied())
                     .unwrap_or_else(|| Slot::new(0, 0)),
             ),
-            std::cmp::max(
-                self.sequence
-                    .back()
-                    .expect("slot sequence cannot be empty")
-                    .slot,
-                self.get_time_cursor(),
-            ),
+            self.sequence
+                .back()
+                .expect("slot sequence cannot be empty")
+                .slot,
         );
 
         // Preallocate the new sequence of slots
