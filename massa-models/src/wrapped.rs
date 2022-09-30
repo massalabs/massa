@@ -283,11 +283,11 @@ where
         ST: Serializer<T>,
     >(
         &self,
-        content_serializer: ST,
+        content_serializer: &ST,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Wrapped<T, U>, E> {
         T::deserialize(
-            Some(&content_serializer),
+            Some(content_serializer),
             &self.signature_deserializer,
             &self.public_key_deserializer,
             &self.content_deserializer,

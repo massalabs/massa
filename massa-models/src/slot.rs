@@ -31,7 +31,7 @@ pub struct SlotSerializer {
 
 impl SlotSerializer {
     /// Creates a `SlotSerializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             u64_serializer: U64VarIntSerializer::new(),
         }

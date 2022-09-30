@@ -112,7 +112,7 @@ pub struct EndorsementSerializer {
 
 impl EndorsementSerializer {
     /// Creates a new `EndorsementSerializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         EndorsementSerializer {
             slot_serializer: SlotSerializer::new(),
             u32_serializer: U32VarIntSerializer::new(),

@@ -1,6 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::endorsement::{EndorsementId, EndorsementSerializerLW};
+use crate::endorsement::{EndorsementId, EndorsementSerializer, EndorsementSerializerLW};
 use crate::prehash::PreHashed;
 use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
 use crate::{
@@ -535,7 +535,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
 /// Deserializer for `BlockHeader`
 pub struct BlockHeaderDeserializer {
     slot_deserializer: SlotDeserializer,
-    // endorsement_deserializer: WrappedDeserializer<Endorsement, EndorsementDeserializerLW>,
+    endorsement_serializer: EndorsementSerializer,
     length_endorsements_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
     thread_count: u8,
@@ -550,11 +550,7 @@ impl BlockHeaderDeserializer {
                 (Included(0), Included(u64::MAX)),
                 (Included(0), Excluded(thread_count)),
             ),
-            /*
-            endorsement_deserializer: WrappedDeserializer::new(EndorsementDeserializerLW::new(
-                endorsement_count,
-            )),
-            */
+            endorsement_serializer: EndorsementSerializer::new(),
             length_endorsements_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Included(endorsement_count),
@@ -668,7 +664,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                     self.length_endorsements_deserializer.deserialize(input)
                 }),
                 context("Failed endorsement deserialization", |input| {
-                    endorsement_deserializer.deserialize(input)
+                    endorsement_deserializer.deserialize_with(&self.endorsement_serializer, input)
                 }),
             ),
         )
