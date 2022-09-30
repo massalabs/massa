@@ -1,7 +1,5 @@
 use massa_graph::BootstrapableGraph;
-use massa_graph_2_exports::{
-    block_status::BlockStatus, GraphChannels, GraphConfig, GraphController, GraphManager,
-};
+use massa_graph_2_exports::{GraphChannels, GraphConfig, GraphController, GraphManager};
 use massa_models::address::Address;
 use massa_models::block::{BlockId, WrappedHeader};
 use massa_models::clique::Clique;
@@ -46,34 +44,13 @@ pub struct GraphWorker {
     stats_desync_detection_timespan: MassaTime,
     /// time at which the node was launched (used for desynchronization detection)
     launch_time: MassaTime,
-
-    /// Used to limit the number of waiting and discarded blocks
-    sequence_counter: u64,
-    /// Ids of incoming blocks/headers
-    incoming_index: PreHashSet<BlockId>,
-    /// ids of waiting for slot blocks/headers
-    waiting_for_slot_index: PreHashSet<BlockId>,
-    /// ids of waiting for dependencies blocks/headers
-    waiting_for_dependencies_index: PreHashSet<BlockId>,
-    /// ids of discarded blocks
-    discarded_index: PreHashSet<BlockId>,
-    /// Blocks that need to be propagated
-    to_propagate: PreHashMap<BlockId, Storage>,
-    /// List of block ids we think are attack attempts
-    attack_attempts: Vec<BlockId>,
-    /// Newly final blocks
-    new_final_blocks: PreHashSet<BlockId>,
-    /// Newly stale block mapped to creator and slot
-    new_stale_blocks: PreHashMap<BlockId, (Address, Slot)>,
     /// Shared storage,
     storage: Storage,
 }
 
-mod graph;
 mod init;
 mod main_loop;
 mod process_commands;
-mod verifications;
 
 pub fn start_graph_worker(
     config: GraphConfig,
@@ -85,11 +62,21 @@ pub fn start_graph_worker(
     let shared_state = Arc::new(RwLock::new(GraphState {
         storage: storage.clone(),
         config: config.clone(),
+        channels: channels.clone(),
         max_cliques: vec![Clique {
             block_ids: PreHashSet::<BlockId>::default(),
             fitness: 0,
             is_blockclique: true,
         }],
+        sequence_counter: 0,
+        waiting_for_slot_index: Default::default(),
+        waiting_for_dependencies_index: Default::default(),
+        discarded_index: Default::default(),
+        to_propagate: Default::default(),
+        attack_attempts: Default::default(),
+        new_final_blocks: Default::default(),
+        new_stale_blocks: Default::default(),
+        incoming_index: Default::default(),
         active_index: Default::default(),
         latest_final_blocks_periods: Default::default(),
         best_parents: Default::default(),

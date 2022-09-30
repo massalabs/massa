@@ -13,7 +13,6 @@ use massa_models::{
     active_block::ActiveBlock,
     address::Address,
     block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock},
-    clique::Clique,
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
@@ -176,15 +175,6 @@ impl GraphWorker {
                 config.stats_timespan,
             ),
             launch_time: MassaTime::now(config.clock_compensation_millis)?,
-            sequence_counter: 0,
-            incoming_index: Default::default(),
-            waiting_for_slot_index: Default::default(),
-            waiting_for_dependencies_index: Default::default(),
-            discarded_index: Default::default(),
-            to_propagate: Default::default(),
-            attack_attempts: Default::default(),
-            new_final_blocks: Default::default(),
-            new_stale_blocks: Default::default(),
             storage: storage.clone(),
         };
 

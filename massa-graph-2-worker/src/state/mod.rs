@@ -2,10 +2,11 @@ use massa_graph::error::{GraphError, GraphResult};
 use massa_graph_2_exports::{
     block_graph_export::BlockGraphExport,
     block_status::{BlockStatus, ExportCompiledBlock},
-    GraphConfig,
+    GraphChannels, GraphConfig,
 };
 use massa_models::{
     active_block::ActiveBlock,
+    address::Address,
     api::BlockGraphStatus,
     block::BlockId,
     clique::Clique,
@@ -14,10 +15,15 @@ use massa_models::{
 };
 use massa_storage::Storage;
 
-#[derive(Clone, Debug)]
+mod process;
+mod verifications;
+
+#[derive(Clone)]
 pub struct GraphState {
     /// Configuration
     pub config: GraphConfig,
+    /// Channels to communicate with other modules
+    pub channels: GraphChannels,
     /// Storage
     pub storage: Storage,
     /// Block ids of genesis blocks
@@ -35,9 +41,32 @@ pub struct GraphState {
     pub best_parents: Vec<(BlockId, u64)>,
     /// Every block we know about
     pub block_statuses: PreHashMap<BlockId, BlockStatus>,
+    /// Ids of incoming blocks/headers
+    pub incoming_index: PreHashSet<BlockId>,
+    /// Used to limit the number of waiting and discarded blocks
+    pub sequence_counter: u64,
+    /// ids of waiting for slot blocks/headers
+    pub waiting_for_slot_index: PreHashSet<BlockId>,
+    /// ids of waiting for dependencies blocks/headers
+    pub waiting_for_dependencies_index: PreHashSet<BlockId>,
+    /// ids of discarded blocks
+    pub discarded_index: PreHashSet<BlockId>,
+    /// Blocks that need to be propagated
+    pub to_propagate: PreHashMap<BlockId, Storage>,
+    /// List of block ids we think are attack attempts
+    pub attack_attempts: Vec<BlockId>,
+    /// Newly final blocks
+    pub new_final_blocks: PreHashSet<BlockId>,
+    /// Newly stale block mapped to creator and slot
+    pub new_stale_blocks: PreHashMap<BlockId, (Address, Slot)>,
 }
 
 impl GraphState {
+    pub fn new_sequence_number(&mut self) -> u64 {
+        self.sequence_counter += 1;
+        self.sequence_counter
+    }
+
     fn get_full_active_block(&self, block_id: &BlockId) -> Option<(&ActiveBlock, &Storage)> {
         match self.block_statuses.get(block_id) {
             Some(BlockStatus::Active { a_block, storage }) => Some((a_block.as_ref(), storage)),
@@ -46,7 +75,7 @@ impl GraphState {
     }
 
     /// get the blockclique (or final) block ID at a given slot, if any
-    pub(crate) fn get_blockclique_block_at_slot(&self, slot: &Slot) -> Option<BlockId> {
+    pub fn get_blockclique_block_at_slot(&self, slot: &Slot) -> Option<BlockId> {
         // List all blocks at this slot.
         // The list should be small: make a copy of it to avoid holding the storage lock.
         let blocks_at_slot = {
@@ -83,7 +112,7 @@ impl GraphState {
     }
 
     /// get the latest blockclique (or final) block ID at a given slot, if any
-    pub(crate) fn get_latest_blockclique_block_at_slot(&self, slot: &Slot) -> BlockId {
+    pub fn get_latest_blockclique_block_at_slot(&self, slot: &Slot) -> BlockId {
         let (mut best_block_id, mut best_block_period) = self
             .latest_final_blocks_periods
             .get(slot.thread as usize)
@@ -120,7 +149,7 @@ impl GraphState {
         best_block_id
     }
 
-    pub(crate) fn get_block_status(&self, block_id: &BlockId) -> BlockGraphStatus {
+    pub fn get_block_status(&self, block_id: &BlockId) -> BlockGraphStatus {
         match self.block_statuses.get(block_id) {
             None => BlockGraphStatus::NotFound,
             Some(BlockStatus::Active { a_block, .. }) => {
@@ -147,7 +176,8 @@ impl GraphState {
             Some(BlockStatus::WaitingForSlot(_)) => BlockGraphStatus::WaitingForSlot,
         }
     }
-    pub(crate) fn list_required_active_blocks(&self) -> GraphResult<PreHashSet<BlockId>> {
+
+    pub fn list_required_active_blocks(&self) -> GraphResult<PreHashSet<BlockId>> {
         // list all active blocks
         let mut retain_active: PreHashSet<BlockId> =
             PreHashSet::<BlockId>::with_capacity(self.active_index.len());

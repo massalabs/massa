@@ -1,8 +1,5 @@
 use std::collections::{BTreeSet, VecDeque};
 
-use crate::{worker::verifications::HeaderCheckOutcome, state::GraphState};
-
-use super::GraphWorker;
 use massa_graph::error::{GraphError, GraphResult};
 use massa_graph_2_exports::block_status::{BlockStatus, DiscardReason, HeaderOrBlock};
 use massa_logging::massa_trace;
@@ -16,20 +13,22 @@ use massa_models::{
 };
 use massa_signature::PublicKey;
 use massa_storage::Storage;
-use parking_lot::RwLockWriteGuard;
 use tracing::log::{debug, info};
 
-impl GraphWorker {
+use crate::state::verifications::HeaderCheckOutcome;
+
+use super::GraphState;
+
+impl GraphState {
     /// acknowledge a set of items recursively
     pub fn rec_process(
         &mut self,
         mut to_ack: BTreeSet<(Slot, BlockId)>,
         current_slot: Option<Slot>,
-        mut write_shared_state: &mut RwLockWriteGuard<GraphState>,
     ) -> GraphResult<()> {
         // order processing by (slot, hash)
         while let Some((_slot, hash)) = to_ack.pop_first() {
-            to_ack.extend(self.process(hash, current_slot, write_shared_state)?)
+            to_ack.extend(self.process(hash, current_slot)?)
         }
         Ok(())
     }
@@ -39,7 +38,6 @@ impl GraphWorker {
         &mut self,
         block_id: BlockId,
         current_slot: Option<Slot>,
-        mut write_shared_state: &mut RwLockWriteGuard<GraphState>,
     ) -> GraphResult<BTreeSet<(Slot, BlockId)>> {
         // list items to reprocess
         let mut reprocess = BTreeSet::new();
@@ -54,7 +52,7 @@ impl GraphWorker {
             valid_block_inherited_incomp_count,
             valid_block_storage,
             valid_block_fitness,
-        ) = match write_shared_state.block_statuses.get(&block_id) {
+        ) = match self.block_statuses.get(&block_id) {
             None => return Ok(BTreeSet::new()), // disappeared before being processed: do nothing
 
             // discarded: do nothing
@@ -80,7 +78,7 @@ impl GraphWorker {
                 });
                 // remove header
                 let header = if let Some(BlockStatus::Incoming(HeaderOrBlock::Header(header))) =
-                    write_shared_state.block_statuses.remove(&block_id)
+                    self.block_statuses.remove(&block_id)
                 {
                     self.incoming_index.remove(&block_id);
                     header
@@ -90,12 +88,12 @@ impl GraphWorker {
                         block_id
                     )));
                 };
-                match self.check_header(&block_id, &header, current_slot, &write_shared_state)? {
+                match self.check_header(&block_id, &header, current_slot, &self)? {
                     HeaderCheckOutcome::Proceed { .. } => {
                         // set as waiting dependencies
                         let mut dependencies = PreHashSet::<BlockId>::default();
                         dependencies.insert(block_id); // add self as unsatisfied
-                        write_shared_state.block_statuses.insert(
+                        self.block_statuses.insert(
                             block_id,
                             BlockStatus::WaitingForDependencies {
                                 header_or_block: HeaderOrBlock::Header(header),
@@ -107,7 +105,7 @@ impl GraphWorker {
                             },
                         );
                         self.waiting_for_dependencies_index.insert(block_id);
-                        self.promote_dep_tree(block_id, write_shared_state)?;
+                        self.promote_dep_tree(block_id)?;
 
                         massa_trace!(
                             "consensus.block_graph.process.incoming_header.waiting_for_self",
@@ -120,7 +118,7 @@ impl GraphWorker {
                         dependencies.insert(block_id); // add self as unsatisfied
                         massa_trace!("consensus.block_graph.process.incoming_header.waiting_for_dependencies", {"block_id": block_id, "dependencies": dependencies});
 
-                        write_shared_state.block_statuses.insert(
+                        self.block_statuses.insert(
                             block_id,
                             BlockStatus::WaitingForDependencies {
                                 header_or_block: HeaderOrBlock::Header(header),
@@ -132,13 +130,13 @@ impl GraphWorker {
                             },
                         );
                         self.waiting_for_dependencies_index.insert(block_id);
-                        self.promote_dep_tree(block_id, write_shared_state)?;
+                        self.promote_dep_tree(block_id)?;
 
                         return Ok(BTreeSet::new());
                     }
                     HeaderCheckOutcome::WaitForSlot => {
                         // make it wait for slot
-                        write_shared_state.block_statuses.insert(
+                        self.block_statuses.insert(
                             block_id,
                             BlockStatus::WaitingForSlot(HeaderOrBlock::Header(header)),
                         );
@@ -159,7 +157,7 @@ impl GraphWorker {
                                 .insert(block_id, (header.creator_address, header.content.slot));
                         }
                         // discard
-                        write_shared_state.block_statuses.insert(
+                        self.block_statuses.insert(
                             block_id,
                             BlockStatus::Discarded {
                                 slot: header.content.slot,
@@ -188,7 +186,7 @@ impl GraphWorker {
                 let (slot, storage) =
                     if let Some(BlockStatus::Incoming(HeaderOrBlock::Block {
                         slot, storage, ..
-                    })) = write_shared_state.block_statuses.remove(&block_id)
+                    })) = self.block_statuses.remove(&block_id)
                     {
                         self.incoming_index.remove(&block_id);
                         (slot, storage)
@@ -204,7 +202,12 @@ impl GraphWorker {
                     .cloned()
                     .expect("incoming block not found in storage");
 
-                match self.check_header(&block_id, &stored_block.content.header, current_slot, &write_shared_state)? {
+                match self.check_header(
+                    &block_id,
+                    &stored_block.content.header,
+                    current_slot,
+                    &self,
+                )? {
                     HeaderCheckOutcome::Proceed {
                         parents_hash_period,
                         incompatibilities,
@@ -227,7 +230,7 @@ impl GraphWorker {
                     }
                     HeaderCheckOutcome::WaitForDependencies(dependencies) => {
                         // set as waiting dependencies
-                        write_shared_state.block_statuses.insert(
+                        self.block_statuses.insert(
                             block_id,
                             BlockStatus::WaitingForDependencies {
                                 header_or_block: HeaderOrBlock::Block {
@@ -243,7 +246,7 @@ impl GraphWorker {
                             },
                         );
                         self.waiting_for_dependencies_index.insert(block_id);
-                        self.promote_dep_tree(block_id, write_shared_state)?;
+                        self.promote_dep_tree(block_id)?;
                         massa_trace!(
                             "consensus.block_graph.process.incoming_block.waiting_for_dependencies",
                             { "block_id": block_id }
@@ -252,7 +255,7 @@ impl GraphWorker {
                     }
                     HeaderCheckOutcome::WaitForSlot => {
                         // set as waiting for slot
-                        write_shared_state.block_statuses.insert(
+                        self.block_statuses.insert(
                             block_id,
                             BlockStatus::WaitingForSlot(HeaderOrBlock::Block {
                                 id: block_id,
@@ -282,7 +285,7 @@ impl GraphWorker {
                             );
                         }
                         // add to discard
-                        write_shared_state.block_statuses.insert(
+                        self.block_statuses.insert(
                             block_id,
                             BlockStatus::Discarded {
                                 slot: stored_block.content.header.content.slot,
@@ -317,10 +320,10 @@ impl GraphWorker {
                 }
                 // send back as incoming and ask for reprocess
                 if let Some(BlockStatus::WaitingForSlot(header_or_block)) =
-                write_shared_state.block_statuses.remove(&block_id)
+                    self.block_statuses.remove(&block_id)
                 {
                     self.waiting_for_slot_index.remove(&block_id);
-                    write_shared_state.block_statuses
+                    self.block_statuses
                         .insert(block_id, BlockStatus::Incoming(header_or_block));
                     self.incoming_index.insert(block_id);
                     reprocess.insert((slot, block_id));
@@ -348,11 +351,11 @@ impl GraphWorker {
                 // send back as incoming and ask for reprocess
                 if let Some(BlockStatus::WaitingForDependencies {
                     header_or_block, ..
-                }) = write_shared_state.block_statuses.remove(&block_id)
+                }) = self.block_statuses.remove(&block_id)
                 {
                     self.waiting_for_dependencies_index.remove(&block_id);
                     reprocess.insert((header_or_block.get_slot(), block_id));
-                    write_shared_state.block_statuses
+                    self.block_statuses
                         .insert(block_id, BlockStatus::Incoming(header_or_block));
                     self.incoming_index.insert(block_id);
                     massa_trace!(
@@ -376,11 +379,10 @@ impl GraphWorker {
             valid_block_inherited_incomp_count,
             valid_block_fitness,
             valid_block_storage,
-            write_shared_state,
         )?;
 
         // if the block was added, update linked dependencies and mark satisfied ones for recheck
-        if let Some(BlockStatus::Active { storage, .. }) = write_shared_state.block_statuses.get(&block_id) {
+        if let Some(BlockStatus::Active { storage, .. }) = self.block_statuses.get(&block_id) {
             massa_trace!("consensus.block_graph.process.is_active", {
                 "block_id": block_id
             });
@@ -390,7 +392,7 @@ impl GraphWorker {
                     header_or_block,
                     unsatisfied_dependencies,
                     ..
-                }) = write_shared_state.block_statuses.get_mut(itm_block_id)
+                }) = self.block_statuses.get_mut(itm_block_id)
                 {
                     if unsatisfied_dependencies.remove(&block_id) {
                         // a dependency was satisfied: retry
@@ -403,7 +405,7 @@ impl GraphWorker {
         Ok(reprocess)
     }
 
-    pub fn promote_dep_tree(&mut self, hash: BlockId, mut write_shared_state: &mut RwLockWriteGuard<GraphState>) -> GraphResult<()> {
+    pub fn promote_dep_tree(&mut self, hash: BlockId) -> GraphResult<()> {
         let mut to_explore = vec![hash];
         let mut to_promote: PreHashMap<BlockId, (Slot, u64)> = PreHashMap::default();
         while let Some(h) = to_explore.pop() {
@@ -415,7 +417,7 @@ impl GraphWorker {
                 unsatisfied_dependencies,
                 sequence_number,
                 ..
-            }) = write_shared_state.block_statuses.get(&h)
+            }) = self.block_statuses.get(&h)
             {
                 // promote current block
                 to_promote.insert(h, (header_or_block.get_slot(), *sequence_number));
@@ -432,7 +434,7 @@ impl GraphWorker {
         for (_slot, _seq, h) in to_promote.into_iter() {
             if let Some(BlockStatus::WaitingForDependencies {
                 sequence_number, ..
-            }) = write_shared_state.block_statuses.get_mut(&h)
+            }) = self.block_statuses.get_mut(&h)
             {
                 self.sequence_counter += 1;
                 *sequence_number = self.sequence_counter;
@@ -504,7 +506,6 @@ impl GraphWorker {
         inherited_incomp_count: usize,
         fitness: u64,
         mut storage: Storage,
-        mut write_shared_state: &mut RwLockWriteGuard<GraphState>,
     ) -> GraphResult<()> {
         massa_trace!("consensus.block_graph.add_block_to_graph", {
             "block_id": add_block_id
@@ -515,7 +516,7 @@ impl GraphWorker {
         storage.claim_block_refs(&parents_hash_period.iter().map(|(p_id, _)| *p_id).collect());
 
         // add block to status structure
-        write_shared_state.block_statuses.insert(
+        self.block_statuses.insert(
             add_block_id,
             BlockStatus::Active {
                 a_block: Box::new(ActiveBlock {
@@ -531,13 +532,13 @@ impl GraphWorker {
                 storage,
             },
         );
-        write_shared_state.active_index.insert(add_block_id);
+        self.active_index.insert(add_block_id);
 
         // add as child to parents
         for (parent_h, _parent_period) in parents_hash_period.iter() {
             if let Some(BlockStatus::Active {
                 a_block: a_parent, ..
-            }) = write_shared_state.block_statuses.get_mut(parent_h)
+            }) = self.block_statuses.get_mut(parent_h)
             {
                 a_parent.children[add_block_slot.thread as usize]
                     .insert(add_block_id, add_block_slot.period);
@@ -559,7 +560,7 @@ impl GraphWorker {
                     continue;
                 }
                 if let Some(BlockStatus::Active { a_block: ab, .. }) =
-                write_shared_state.block_statuses.get_mut(&ancestor_h)
+                    self.block_statuses.get_mut(&ancestor_h)
                 {
                     ab.descendants.insert(add_block_id);
                     for (ancestor_parent_h, _) in ab.parents.iter() {
@@ -575,7 +576,7 @@ impl GraphWorker {
             {}
         );
         for incomp_h in incomp.iter() {
-            write_shared_state.gi_head
+            self.gi_head
                 .get_mut(incomp_h)
                 .ok_or_else(|| {
                     GraphError::MissingBlock(format!(
@@ -585,7 +586,7 @@ impl GraphWorker {
                 })?
                 .insert(add_block_id);
         }
-        write_shared_state.gi_head.insert(add_block_id, incomp.clone());
+        self.gi_head.insert(add_block_id, incomp.clone());
 
         // max cliques update
         massa_trace!(
@@ -596,7 +597,7 @@ impl GraphWorker {
             // clique optimization routine:
             //   the block only has incompatibilities inherited from its parents
             //   therefore it is not forking and can simply be added to the cliques it is compatible with
-            write_shared_state.max_cliques
+            self.max_cliques
                 .iter_mut()
                 .filter(|c| incomp.is_disjoint(&c.block_ids))
                 .for_each(|c| {
@@ -608,9 +609,9 @@ impl GraphWorker {
                 "consensus.block_graph.add_block_to_graph.clique_full_computing",
                 { "hash": add_block_id }
             );
-            let before = write_shared_state.max_cliques.len();
-            write_shared_state.max_cliques = self
-                .compute_max_cliques(&write_shared_state)
+            let before = self.max_cliques.len();
+            self.max_cliques = self
+                .compute_max_cliques(&self)
                 .into_iter()
                 .map(|c| Clique {
                     block_ids: c,
@@ -618,11 +619,11 @@ impl GraphWorker {
                     is_blockclique: false,
                 })
                 .collect();
-            let after = write_shared_state.max_cliques.len();
+            let after = self.max_cliques.len();
             if before != after {
                 massa_trace!(
                     "consensus.block_graph.add_block_to_graph.clique_full_computing more than one clique",
-                    { "cliques": write_shared_state.max_cliques, "gi_head": write_shared_state.gi_head }
+                    { "cliques": self.max_cliques, "gi_head": self.gi_head }
                 );
                 // gi_head
                 debug!(
@@ -638,13 +639,13 @@ impl GraphWorker {
         {
             let mut blockclique_i = 0usize;
             let mut max_clique_fitness = (0u64, num::BigInt::default());
-            for (clique_i, clique) in write_shared_state.max_cliques.iter_mut().enumerate() {
+            for (clique_i, clique) in self.max_cliques.iter_mut().enumerate() {
                 clique.fitness = 0;
                 clique.is_blockclique = false;
                 let mut sum_hash = num::BigInt::default();
                 for block_h in clique.block_ids.iter() {
-                    let fitness = match write_shared_state.block_statuses.get(block_h) {
-                        Some(BlockStatus::Active { a_block, storage }) => a_block.fitness,
+                    let fitness = match self.block_statuses.get(block_h) {
+                        Some(BlockStatus::Active { a_block, storage: _ }) => a_block.fitness,
                         _ => return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses computing fitness while adding {} - missing {}", add_block_id, block_h))),
                     };
                     clique.fitness = clique
@@ -660,7 +661,7 @@ impl GraphWorker {
                     max_clique_fitness = cur_fit;
                 }
             }
-            write_shared_state.max_cliques[blockclique_i].is_blockclique = true;
+            self.max_cliques[blockclique_i].is_blockclique = true;
         }
 
         // update best parents
@@ -670,24 +671,24 @@ impl GraphWorker {
         );
         {
             // find blockclique
-            let blockclique_i = write_shared_state
+            let blockclique_i = self
                 .max_cliques
                 .iter()
                 .position(|c| c.is_blockclique)
                 .unwrap_or_default();
-            let blockclique = &write_shared_state.max_cliques[blockclique_i];
+            let blockclique = &self.max_cliques[blockclique_i];
 
             // init best parents as latest_final_blocks_periods
-            write_shared_state.best_parents = write_shared_state.latest_final_blocks_periods.clone();
+            self.best_parents = self.latest_final_blocks_periods.clone();
             // for each blockclique block, set it as best_parent in its own thread
             // if its period is higher than the current best_parent in that thread
             for block_h in blockclique.block_ids.iter() {
-                let b_slot = match write_shared_state.block_statuses.get(block_h) {
+                let b_slot = match self.block_statuses.get(block_h) {
                     Some(BlockStatus::Active { a_block, storage: _ }) => a_block.slot,
                     _ => return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses updating best parents while adding {} - missing {}", add_block_id, block_h))),
                 };
-                if b_slot.period > write_shared_state.best_parents[b_slot.thread as usize].1 {
-                    write_shared_state.best_parents[b_slot.thread as usize] = (*block_h, b_slot.period);
+                if b_slot.period > self.best_parents[b_slot.thread as usize].1 {
+                    self.best_parents[b_slot.thread as usize] = (*block_h, b_slot.period);
                 }
             }
         }
@@ -698,28 +699,28 @@ impl GraphWorker {
             {}
         );
         let stale_blocks = {
-            let blockclique_i = write_shared_state
+            let blockclique_i = self
                 .max_cliques
                 .iter()
                 .position(|c| c.is_blockclique)
                 .unwrap_or_default();
-            let fitness_threshold = write_shared_state.max_cliques[blockclique_i]
+            let fitness_threshold = self.max_cliques[blockclique_i]
                 .fitness
                 .saturating_sub(self.config.delta_f0);
             // iterate from largest to smallest to minimize reallocations
-            let mut indices: Vec<usize> = (0..write_shared_state.max_cliques.len()).collect();
+            let mut indices: Vec<usize> = (0..self.max_cliques.len()).collect();
             indices
-                .sort_unstable_by_key(|&i| std::cmp::Reverse(write_shared_state.max_cliques[i].block_ids.len()));
+                .sort_unstable_by_key(|&i| std::cmp::Reverse(self.max_cliques[i].block_ids.len()));
             let mut high_set = PreHashSet::<BlockId>::default();
             let mut low_set = PreHashSet::<BlockId>::default();
             for clique_i in indices.into_iter() {
-                if write_shared_state.max_cliques[clique_i].fitness >= fitness_threshold {
-                    high_set.extend(&write_shared_state.max_cliques[clique_i].block_ids);
+                if self.max_cliques[clique_i].fitness >= fitness_threshold {
+                    high_set.extend(&self.max_cliques[clique_i].block_ids);
                 } else {
-                    low_set.extend(&write_shared_state.max_cliques[clique_i].block_ids);
+                    low_set.extend(&self.max_cliques[clique_i].block_ids);
                 }
             }
-            write_shared_state.max_cliques.retain(|c| c.fitness >= fitness_threshold);
+            self.max_cliques.retain(|c| c.fitness >= fitness_threshold);
             &low_set - &high_set
         };
         // mark stale blocks
@@ -731,17 +732,17 @@ impl GraphWorker {
             if let Some(BlockStatus::Active {
                 a_block: active_block,
                 storage: _storage,
-            }) = write_shared_state.block_statuses.remove(&stale_block_hash)
+            }) = self.block_statuses.remove(&stale_block_hash)
             {
-                write_shared_state.active_index.remove(&stale_block_hash);
+                self.active_index.remove(&stale_block_hash);
                 if active_block.is_final {
                     return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {} - block {} was already final", add_block_id, stale_block_hash)));
                 }
 
                 // remove from gi_head
-                if let Some(other_incomps) = write_shared_state.gi_head.remove(&stale_block_hash) {
+                if let Some(other_incomps) = self.gi_head.remove(&stale_block_hash) {
                     for other_incomp in other_incomps.into_iter() {
-                        if let Some(other_incomp_lst) = write_shared_state.gi_head.get_mut(&other_incomp) {
+                        if let Some(other_incomp_lst) = self.gi_head.get_mut(&other_incomp) {
                             other_incomp_lst.remove(&stale_block_hash);
                         }
                     }
@@ -749,15 +750,15 @@ impl GraphWorker {
 
                 // remove from cliques
                 let stale_block_fitness = active_block.fitness;
-                write_shared_state.max_cliques.iter_mut().for_each(|c| {
+                self.max_cliques.iter_mut().for_each(|c| {
                     if c.block_ids.remove(&stale_block_hash) {
                         c.fitness -= stale_block_fitness;
                     }
                 });
-                write_shared_state.max_cliques.retain(|c| !c.block_ids.is_empty()); // remove empty cliques
-                if write_shared_state.max_cliques.is_empty() {
+                self.max_cliques.retain(|c| !c.block_ids.is_empty()); // remove empty cliques
+                if self.max_cliques.is_empty() {
                     // make sure at least one clique remains
-                    write_shared_state.max_cliques = vec![Clique {
+                    self.max_cliques = vec![Clique {
                         block_ids: PreHashSet::<BlockId>::default(),
                         fitness: 0,
                         is_blockclique: true,
@@ -769,7 +770,7 @@ impl GraphWorker {
                     if let Some(BlockStatus::Active {
                         a_block: parent_active_block,
                         ..
-                    }) = write_shared_state.block_statuses.get_mut(parent_h)
+                    }) = self.block_statuses.get_mut(parent_h)
                     {
                         parent_active_block.children[active_block.slot.thread as usize]
                             .remove(&stale_block_hash);
@@ -785,7 +786,7 @@ impl GraphWorker {
                     stale_block_hash,
                     (active_block.creator_address, active_block.slot),
                 );
-                write_shared_state.block_statuses.insert(
+                self.block_statuses.insert(
                     stale_block_hash,
                     BlockStatus::Discarded {
                         slot: active_block.slot,
@@ -811,11 +812,11 @@ impl GraphWorker {
         );
         let final_blocks = {
             // short-circuiting intersection of cliques from smallest to largest
-            let mut indices: Vec<usize> = (0..write_shared_state.max_cliques.len()).collect();
-            indices.sort_unstable_by_key(|&i| write_shared_state.max_cliques[i].block_ids.len());
-            let mut final_candidates = write_shared_state.max_cliques[indices[0]].block_ids.clone();
+            let mut indices: Vec<usize> = (0..self.max_cliques.len()).collect();
+            indices.sort_unstable_by_key(|&i| self.max_cliques[i].block_ids.len());
+            let mut final_candidates = self.max_cliques[indices[0]].block_ids.clone();
             for i in 1..indices.len() {
-                final_candidates.retain(|v| write_shared_state.max_cliques[i].block_ids.contains(v));
+                final_candidates.retain(|v| self.max_cliques[i].block_ids.contains(v));
                 if final_candidates.is_empty() {
                     break;
                 }
@@ -826,8 +827,8 @@ impl GraphWorker {
                 "consensus.block_graph.add_block_to_graph.list_final_blocks.restrict",
                 {}
             );
-            indices.retain(|&i| write_shared_state.max_cliques[i].fitness > self.config.delta_f0);
-            indices.sort_unstable_by_key(|&i| std::cmp::Reverse(write_shared_state.max_cliques[i].fitness));
+            indices.retain(|&i| self.max_cliques[i].fitness > self.config.delta_f0);
+            indices.sort_unstable_by_key(|&i| std::cmp::Reverse(self.max_cliques[i].fitness));
 
             let mut final_blocks = PreHashSet::<BlockId>::default();
             for clique_i in indices.into_iter() {
@@ -840,23 +841,28 @@ impl GraphWorker {
                     // no more final candidates
                     break;
                 }
-                let clique = &write_shared_state.max_cliques[clique_i];
+                let clique = &self.max_cliques[clique_i];
 
                 // compute the total fitness of all the descendants of the candidate within the clique
                 let loc_candidates = final_candidates.clone();
                 for candidate_h in loc_candidates.into_iter() {
-                    let descendants = match write_shared_state.block_statuses.get(&candidate_h) {
-                        Some(BlockStatus::Active { a_block, storage: _ }) => &a_block.descendants,
-                        _ => return Err(GraphError::MissingBlock(format!(
-                            "missing block when computing total fitness of descendants: {}",
-                            candidate_h
-                        ))),
+                    let descendants = match self.block_statuses.get(&candidate_h) {
+                        Some(BlockStatus::Active {
+                            a_block,
+                            storage: _,
+                        }) => &a_block.descendants,
+                        _ => {
+                            return Err(GraphError::MissingBlock(format!(
+                                "missing block when computing total fitness of descendants: {}",
+                                candidate_h
+                            )))
+                        }
                     };
                     let desc_fit: u64 = descendants
                         .intersection(&clique.block_ids)
                         .map(|h| {
                             if let Some(BlockStatus::Active { a_block: ab, .. }) =
-                            write_shared_state.block_statuses.get(h)
+                                self.block_statuses.get(h)
                             {
                                 return ab.fitness;
                             }
@@ -880,9 +886,9 @@ impl GraphWorker {
         );
         for final_block_hash in final_blocks.into_iter() {
             // remove from gi_head
-            if let Some(other_incomps) = write_shared_state.gi_head.remove(&final_block_hash) {
+            if let Some(other_incomps) = self.gi_head.remove(&final_block_hash) {
                 for other_incomp in other_incomps.into_iter() {
-                    if let Some(other_incomp_lst) = write_shared_state.gi_head.get_mut(&other_incomp) {
+                    if let Some(other_incomp_lst) = self.gi_head.get_mut(&other_incomp) {
                         other_incomp_lst.remove(&final_block_hash);
                     }
                 }
@@ -892,7 +898,7 @@ impl GraphWorker {
             if let Some(BlockStatus::Active {
                 a_block: final_block,
                 ..
-            }) = write_shared_state.block_statuses.get_mut(&final_block_hash)
+            }) = self.block_statuses.get_mut(&final_block_hash)
             {
                 massa_trace!("consensus.block_graph.add_block_to_graph.final", {
                     "hash": final_block_hash
@@ -900,15 +906,15 @@ impl GraphWorker {
                 final_block.is_final = true;
                 // remove from cliques
                 let final_block_fitness = final_block.fitness;
-                write_shared_state.max_cliques.iter_mut().for_each(|c| {
+                self.max_cliques.iter_mut().for_each(|c| {
                     if c.block_ids.remove(&final_block_hash) {
                         c.fitness -= final_block_fitness;
                     }
                 });
-                write_shared_state.max_cliques.retain(|c| !c.block_ids.is_empty()); // remove empty cliques
-                if write_shared_state.max_cliques.is_empty() {
+                self.max_cliques.retain(|c| !c.block_ids.is_empty()); // remove empty cliques
+                if self.max_cliques.is_empty() {
                     // make sure at least one clique remains
-                    write_shared_state.max_cliques = vec![Clique {
+                    self.max_cliques = vec![Clique {
                         block_ids: PreHashSet::<BlockId>::default(),
                         fitness: 0,
                         is_blockclique: true,
@@ -916,9 +922,9 @@ impl GraphWorker {
                 }
                 // update latest final blocks
                 if final_block.slot.period
-                    > write_shared_state.latest_final_blocks_periods[final_block.slot.thread as usize].1
+                    > self.latest_final_blocks_periods[final_block.slot.thread as usize].1
                 {
-                    write_shared_state.latest_final_blocks_periods[final_block.slot.thread as usize] =
+                    self.latest_final_blocks_periods[final_block.slot.thread as usize] =
                         (final_block_hash, final_block.slot.period);
                 }
                 // update new final blocks list
@@ -952,7 +958,7 @@ impl GraphWorker {
     pub fn get_active_block_and_descendants(
         &self,
         block_id: &BlockId,
-        read_shared_state: &GraphState
+        read_shared_state: &GraphState,
     ) -> GraphResult<PreHashSet<BlockId>> {
         let mut to_visit = vec![*block_id];
         let mut result = PreHashSet::<BlockId>::default();

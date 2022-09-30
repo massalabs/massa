@@ -1,6 +1,5 @@
-use crate::state::GraphState;
+use super::GraphState;
 
-use super::GraphWorker;
 use massa_graph::error::{GraphError, GraphResult};
 use massa_graph_2_exports::block_status::{BlockStatus, DiscardReason};
 use massa_logging::massa_trace;
@@ -43,7 +42,7 @@ pub enum EndorsementsCheckOutcome {
     WaitForSlot,
 }
 
-impl GraphWorker {
+impl GraphState {
     /// Process an incoming header.
     ///
     /// Checks performed:
@@ -99,7 +98,11 @@ impl GraphWorker {
 
         // check if it was the creator's turn to create this block
         // (step 1 in consensus/pos.md)
-        let slot_draw_address = match self.channels.selector_controller.get_producer(header.content.slot) {
+        let slot_draw_address = match self
+            .channels
+            .selector_controller
+            .get_producer(header.content.slot)
+        {
             Ok(draw) => draw,
             Err(_) => return Ok(HeaderCheckOutcome::WaitForSlot), // TODO properly handle PoS errors
         };
@@ -184,11 +187,16 @@ impl GraphWorker {
             for parent_i in 0..self.config.thread_count {
                 let (parent_h, parent_period) = parents[parent_i as usize];
                 let parent = match read_shared_state.block_statuses.get(&parent_h) {
-                    Some(BlockStatus::Active { a_block, storage: _ }) => a_block,
-                    _ => return Err(GraphError::ContainerInconsistency(format!(
-                        "inconsistency inside block statuses searching parent {} of block {}",
-                        parent_h, block_id
-                    ))),
+                    Some(BlockStatus::Active {
+                        a_block,
+                        storage: _,
+                    }) => a_block,
+                    _ => {
+                        return Err(GraphError::ContainerInconsistency(format!(
+                            "inconsistency inside block statuses searching parent {} of block {}",
+                            parent_h, block_id
+                        )))
+                    }
                 };
                 if parent_period < gp_max_slots[parent_i as usize] {
                     // a parent is earlier than a block known by another parent in that thread
@@ -237,7 +245,10 @@ impl GraphWorker {
             .block_statuses
             .get(&parents[header.content.slot.thread as usize].0)
         {
-            Some(BlockStatus::Active { a_block, storage: _ }) => Some(a_block),
+            Some(BlockStatus::Active {
+                a_block,
+                storage: _,
+            }) => Some(a_block),
             _ => None,
         }
         .ok_or_else(|| {
@@ -261,7 +272,8 @@ impl GraphWorker {
             .keys()
             .filter(|&sibling_h| sibling_h != block_id)
             .try_for_each(|&sibling_h| {
-                incomp.extend(self.get_active_block_and_descendants(&sibling_h, read_shared_state)?);
+                incomp
+                    .extend(self.get_active_block_and_descendants(&sibling_h, read_shared_state)?);
                 GraphResult::<()>::Ok(())
             })?;
 
@@ -315,7 +327,8 @@ impl GraphWorker {
                     ))?.slot.period;
                 if parent_period < parent_in_own_thread.slot.period {
                     // GPI detected
-                    incomp.extend(self.get_active_block_and_descendants(&cur_h, read_shared_state)?);
+                    incomp
+                        .extend(self.get_active_block_and_descendants(&cur_h, read_shared_state)?);
                 } // otherwise, cur_b and its descendants cannot be GPI with the block: don't traverse
             }
         }
@@ -333,7 +346,8 @@ impl GraphWorker {
                 .active_index
                 .iter()
                 .filter_map(|h| {
-                    if let Some(BlockStatus::Active { a_block: a, .. }) = read_shared_state.block_statuses.get(h)
+                    if let Some(BlockStatus::Active { a_block: a, .. }) =
+                        read_shared_state.block_statuses.get(h)
                     {
                         if a.is_final {
                             return Some(*h);
@@ -365,7 +379,11 @@ impl GraphWorker {
         header: &WrappedHeader,
     ) -> GraphResult<EndorsementsCheckOutcome> {
         // check endorsements
-        let endorsement_draws = match self.channels.selector_controller.get_selection(header.content.slot) {
+        let endorsement_draws = match self
+            .channels
+            .selector_controller
+            .get_selection(header.content.slot)
+        {
             Ok(sel) => sel.endorsements,
             Err(_) => return Ok(EndorsementsCheckOutcome::WaitForSlot),
         };

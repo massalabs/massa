@@ -34,26 +34,25 @@ impl GraphWorker {
             hash_map::Entry::Vacant(vac) => {
                 to_ack.insert((header.content.slot, block_id));
                 vac.insert(BlockStatus::Incoming(HeaderOrBlock::Header(header)));
-                self.incoming_index.insert(block_id);
+                write_shared_state.incoming_index.insert(block_id);
             }
             hash_map::Entry::Occupied(mut occ) => match occ.get_mut() {
                 BlockStatus::Discarded {
                     sequence_number, ..
                 } => {
                     // promote if discarded
-                    self.sequence_counter += 1;
-                    *sequence_number = self.sequence_counter;
+                    write_shared_state.new_sequence_number();
                 }
                 BlockStatus::WaitingForDependencies { .. } => {
                     // promote in dependencies
-                    self.promote_dep_tree(block_id, &mut write_shared_state)?;
+                    write_shared_state.promote_dep_tree(block_id)?;
                 }
                 _ => {}
             },
         }
 
         // process
-        self.rec_process(to_ack, current_slot, &mut write_shared_state)?;
+        write_shared_state.rec_process(to_ack, current_slot)?;
 
         Ok(())
     }
