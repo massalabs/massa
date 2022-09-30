@@ -321,14 +321,16 @@ impl ProtocolWorker {
     }
 
     /// Announce a set of operations to active nodes who do not know about it yet.
-    /// Side effect: notes nodes as knowing about those operations from now on.
+    /// Side effects:
+    /// - notes nodes as knowing about those operations from now on.
+    /// - empties the buffer of operations to announce.
     async fn announce_ops(&mut self) {
-        let operations = mem::take(&mut self.operations_to_announce);
+        let operation_ids = mem::take(&mut self.operations_to_announce);
         massa_trace!("protocol.protocol_worker.propagate_operations.begin", {
-            "operations": operations
+            "operation_ids": operation_ids
         });
         for (node, node_info) in self.active_nodes.iter_mut() {
-            let new_ops: Vec<OperationId> = operations
+            let new_ops: Vec<OperationId> = operation_ids
                 .iter()
                 .filter(|id| !node_info.knows_op(id))
                 .copied()
@@ -346,17 +348,18 @@ impl ProtocolWorker {
         }
     }
 
-    /// Add an list of operations to a queue pending for announcement.
+    /// Add an list of operations to a buffer for announcement at the next interval,
+    /// or immediately if the buffer is full.
     async fn note_operations_to_announce(&mut self, operations: &[OperationId]) {
-        // If we have too many operations to announce,
-        // announce them immediately,
+        // Add the operations to a list for announcement at the next interval.
+        self.operations_to_announce.extend_from_slice(operations);
+
+        // If the buffer is full,
+        // announce operations immediately,
         // clearing the data at the same time.
         if self.operations_to_announce.len() > self.config.max_known_ops_size {
             self.announce_ops().await;
         }
-
-        // Add the operations to a list for announcement at the next interval.
-        self.operations_to_announce.extend_from_slice(operations);
     }
 
     async fn propagate_endorsements(&mut self, storage: &Storage) {
@@ -985,7 +988,6 @@ impl ProtocolWorker {
                 ops_to_propagate
                     .get_op_refs()
                     .iter()
-                    .copied()
                     .filter(|op_id| {
                         let expire_period =
                             read_operations.get(op_id).unwrap().content.expire_period;
@@ -1004,6 +1006,7 @@ impl ProtocolWorker {
                             Err(_) => true,
                         }
                     })
+                    .copied()
                     .collect()
             };
             ops_to_propagate.drop_operation_refs(&operations_to_not_propagate);
