@@ -24,7 +24,7 @@ init_node() {
 }
 
 start_node() {     
-    cd MN_WORKDIR && ./massa-node -p $PASSWORD
+    cd $MN_WORKDIR && ./massa-node -p $PASSWORD
 }
 
 if [[ $LOGGING="true" ]]
@@ -44,7 +44,8 @@ then
         cp -f $SOURCE_DIR/version $BASEDIR        
     else
         echo "Node and client update"
-        ver=$(cat $BASEDIR/version | jq -r .version)        
+        ver_old=$(cat $BASEDIR/version 2>/dev/null | jq -r .version) 
+        ver=${ver_old:="unknown"}
         cp -f $SOURCE_DIR/massa-client/massa-client $MC_WORKDIR
         cp -f $SOURCE_DIR/massa-node/massa-node $MN_WORKDIR
         cp -fbr -S "-$ver" $SOURCE_DIR/massa-client/{config,base_config} $MC_WORKDIR
