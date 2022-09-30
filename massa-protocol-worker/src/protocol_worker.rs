@@ -1,7 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::checked_operations::CheckedOperations;
-use crate::sig_verifier::verify_sigs;
+use crate::sig_verifier::verify_sigs_batch;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 
 use massa_logging::massa_trace;
@@ -929,7 +929,7 @@ impl ProtocolWorker {
         }
 
         // optimized signature verification
-        verify_sigs(
+        verify_sigs_batch(
             &new_operations
                 .iter()
                 .map(|(op_id, op)| (*op_id.get_hash(), op.signature, op.creator_public_key))

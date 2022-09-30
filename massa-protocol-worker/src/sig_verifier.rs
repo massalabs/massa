@@ -9,7 +9,7 @@ use rayon::prelude::*;
 
 /// Efficiently verifies a batch of signatures in parallel.
 /// Returns an error if at least one of them fails to verify.
-pub fn verify_sigs(ops: &[(Hash, Signature, PublicKey)]) -> Result<(), ProtocolError> {
+pub fn verify_sigs_batch(ops: &[(Hash, Signature, PublicKey)]) -> Result<(), ProtocolError> {
     // compute chunk size for parallelization
     let chunk_size = std::cmp::max(1, ops.len() / rayon::current_num_threads());
     // process chunks in parallel
