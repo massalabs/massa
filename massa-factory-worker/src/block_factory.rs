@@ -189,6 +189,9 @@ impl BlockFactoryWorker {
                 })
                 .collect()
         };
+        for endo in endorsements.iter() {
+            info!("Endorsement id: {:?}, signature: {:#?}", endo.id, endo.signature.to_bs58_check());
+        }
         block_storage.extend(endo_storage);
 
         // gather operations and compute global operations hash
