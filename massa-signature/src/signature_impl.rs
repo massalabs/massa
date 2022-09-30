@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::MassaSignatureError;
-use ed25519_dalek::{Signer, Verifier};
+use ed25519_dalek::{verify_batch, Signer, Verifier};
 use massa_hash::Hash;
 use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -939,6 +939,32 @@ impl Deserializer<Signature> for SignatureDeserializer {
         // Safe because the signature deserialization success
         Ok((&buffer[SIGNATURE_SIZE_BYTES..], signature))
     }
+}
+
+/// Verify a batch of signatures to gain total CPU perf.
+/// Every provided triplet `(hash, signature, public_key)` is verified
+/// and an error is returned if at least one of them fails.
+///
+/// # Arguments
+/// * `batch`: a slice of triplets `(hash, signature, public_key)`
+///
+/// # Return value
+/// Returns `Ok(())` if all signatures were successfully verified,
+/// and `Err(MassaSignatureError::SignatureError(_))` if at least one of them failed.
+pub fn verify_signature_batch(
+    batch: &[(Hash, Signature, PublicKey)],
+) -> Result<(), MassaSignatureError> {
+    let mut hashes = Vec::with_capacity(batch.len());
+    let mut signatures = Vec::with_capacity(batch.len());
+    let mut public_keys = Vec::with_capacity(batch.len());
+    batch.into_iter().for_each(|(hash, signature, public_key)| {
+        hashes.push(hash.to_bytes().as_slice());
+        signatures.push(signature.0);
+        public_keys.push(public_key.0);
+    });
+    verify_batch(&hashes, signatures.as_slice(), public_keys.as_slice()).map_err(|err| {
+        MassaSignatureError::SignatureError(format!("Batch signature verification failed: {}", err))
+    })
 }
 
 #[cfg(test)]

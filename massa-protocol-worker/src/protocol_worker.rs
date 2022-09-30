@@ -1,6 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::checked_operations::CheckedOperations;
+use crate::sig_verifier::verify_sigs;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 
 use massa_logging::massa_trace;
@@ -22,6 +23,7 @@ use massa_protocol_exports::{
     ProtocolEventReceiver, ProtocolManagementCommand, ProtocolManager,
 };
 
+use massa_models::wrapped::Id;
 use massa_storage::Storage;
 use massa_time::{MassaTime, TimeError};
 use std::collections::{HashMap, HashSet};
@@ -922,10 +924,17 @@ impl ProtocolWorker {
             // Check operation signature only if not already checked.
             if self.checked_operations.insert(&operation_id) {
                 // check signature if the operation wasn't in `checked_operation`
-                operation.verify_signature()?;
                 new_operations.insert(operation_id, operation);
             };
         }
+
+        // optimized signature verification
+        verify_sigs(
+            &new_operations
+                .iter()
+                .map(|(op_id, op)| (*op_id.get_hash(), op.signature, op.creator_public_key))
+                .collect::<Vec<_>>(),
+        )?;
 
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
