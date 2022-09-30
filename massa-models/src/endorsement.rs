@@ -269,7 +269,7 @@ impl Serializer<Endorsement> for EndorsementSerializerLW {
 pub struct EndorsementDeserializerLW {
     index_deserializer: U32VarIntDeserializer,
     slot: Slot,
-    parents: Vec<BlockId>
+    parents: Vec<BlockId>,
 }
 
 impl EndorsementDeserializerLW {
@@ -281,7 +281,7 @@ impl EndorsementDeserializerLW {
                 Excluded(endorsement_count),
             ),
             slot,
-            parents
+            parents,
         }
     }
 }
@@ -322,7 +322,7 @@ impl Deserializer<Endorsement> for EndorsementDeserializerLW {
             Endorsement {
                 slot: self.slot,
                 index,
-                endorsed_block: parent
+                endorsed_block: parent,
             }
         })
         .parse(buffer)
