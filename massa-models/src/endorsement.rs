@@ -308,7 +308,6 @@ impl Deserializer<Endorsement> for EndorsementDeserializerLW {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Endorsement, E> {
-        let hash_default = Hash::from_bytes(&[0; 32]);
         context(
             "Failed endorsement deserialization",
             tuple((context("Failed index deserialization", |input| {
