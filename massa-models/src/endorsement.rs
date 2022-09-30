@@ -308,13 +308,10 @@ impl Deserializer<Endorsement> for EndorsementDeserializerLW {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Endorsement, E> {
-        context(
-            "Failed endorsement deserialization",
-            tuple((context("Failed index deserialization", |input| {
-                self.index_deserializer.deserialize(input)
-            }),)),
-        )
-        .map(|(index,)| {
+        context("Failed index deserialization", |input| {
+            self.index_deserializer.deserialize(input)
+        })
+        .map(|index| {
             // TODO: no expect
             let idx = usize::try_from(index).expect("Index conversion fail");
             let parent = *self.parents.get(idx).expect("A parent");

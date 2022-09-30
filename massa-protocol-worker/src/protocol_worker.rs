@@ -987,7 +987,10 @@ impl ProtocolWorker {
             if self.checked_endorsements.insert(endorsement_id) {
                 massa_trace!("protocol.protocol_worker.note_endorsements_from_node_before_signature_check", { "endorsement_id": endorsement_id, "serialized_data": endorsement.serialized_data});
                 endorsement.verify_signature()?;
-                massa_trace!("protocol.protocol_worker.note_endorsements_from_node_after_signature_check", { "endorsement_id": endorsement_id});
+                massa_trace!(
+                    "protocol.protocol_worker.note_endorsements_from_node_after_signature_check",
+                    { "endorsement_id": endorsement_id }
+                );
                 new_endorsements.insert(endorsement_id, endorsement);
             }
         }
