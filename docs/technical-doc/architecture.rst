@@ -5,7 +5,7 @@ We will describe in this document the global architecture of a Massa Node, from 
 
 The goal of the Massa network is to build a consensus between **nodes** to gather and order **blocks** that contains ordered lists of **operations**. An operation ultimate purpose once executed is to act as transitions for the global network state, called the **ledger**.
 
-Some operations are produced by external clients and sent to the Massa network via a node. Some operations are produced internally by nodes executing **smart contracts**. Nodes will gather all the pending operations and group them to produce blocks. Each block contains a finite set of operations, limited by the fact that each block has a limited amount of space available to store operations. Traditional blockchains will then typically link blocks one after the other (including a hash of the previous block in the block header), to materialize their temporal ordering. However, unlike traditional blockchains, Massa blocks are not simply chained one after the other, but organized into a more complex spatio-temporal structure, which allows for parallelization and increased performances. 
+Operations are produced by external clients and sent to the Massa network via a node. Some operations are containing code to be run as **smart contracts**, enabling complex programmatic modifications of the ledger. Nodes will gather all the pending operations and group them to produce blocks. Each block contains a finite set of operations, limited by the fact that each block has a limited amount of space available to store operations. Traditional blockchains will then typically link blocks one after the other (including a hash of the previous block in the block header), to materialize their temporal ordering. However, unlike traditional blockchains, Massa blocks are not simply chained one after the other, but organized into a more complex spatio-temporal structure, which allows for parallelization and increased performances. 
 
 Instead of one chain, there are several threads (T=32) of chains running in parallel, with blocks equally spread on each thread over time, and stored inside **slots** that are spaced at fixed time intervals:
 
@@ -63,7 +63,7 @@ Fundamentally, the point of the Massa network is to gather, order and execute op
 **Operation header**       
 ------------------------------------------------------------------------------------------ 
 ``creator_public_key``           The public key of the operation creator (64 bytes)               
-``expiration_period``            Period P after which the operation is expired        
+``expiration_period``            Period after which the operation is expired
 ``max_gas``                      The maximum gas spendable for this operation         
 ``fee``                          The amount of fees the creator is willing to pay     
 ``payload``                      The content of the operation (see below)            
@@ -125,7 +125,7 @@ Here, the code is indirectly called via the call to an existing smart contract f
 Block
 *****
 
-A block is a data structure built by nodes and its function it to aggregate several operations. As explained above, for each new slot that becomes active, a particular node in the network is elected in a deterministic way with the task of creating the block that will be stored in that slot (more about this in the description of the Selector Module below). A block from a given thread can only contain operations originating from a creator_public_key whose hash's five first bits designate the corresponding thread, thus implicitly avoiding collisions in operations integrated into parallel threads.
+A block is a data structure built by nodes and its function it to aggregate several operations. As explained above, for each new slot that becomes active, a particular node in the network is elected in a deterministic way with the task of creating the block that will be stored in that slot (more about this in the description of the Selector Module below). A block from a given thread can only contain operations originating from a `creator_public_key` whose hash's five first bits designate the corresponding thread, thus implicitly avoiding collisions in operations integrated into parallel threads.
 
 The content of a block is as follows:
 
@@ -300,12 +300,9 @@ Operation lifecycle
 
 We have now all the elements and vocabulary in place to explore the lifecycle of an operation within the network, from creation to permanent execution in a finalized block.
 
-Operations can originate from two kinds of sources:
+Operations originate externally from a client that is forging the operation, for example: a transaction or a smart contract code execution. The client will have to know the IP address of a Massa Node (this can be either because it is a node itself and will simply use localhost, or via some maintained list of known nodes and/or some browser plugin), and will then send the operation to the API Module.
 
-1. Externally from a client that is forging an operation, for example: a transaction or a smart contract code execution. The client will have to know the IP address of a Massa Node (this can be either because it is a node itself and will simply use localhost, or via some maintained list of known nodes and/or some browser plugin), and will then send the operation to the API Module.
-2. Internally from a node that is executing code that triggers some operation, or via a mechanism of smart contract waking up event that allows for autonomous emission of operations (this feature is unique to Massa)
-
-When an external operation is made available in a given node, it will be broadcasted to all other nodes via the Protocol/Network Module and to factories via the API Module, so that it will eventually end up in all the Pool Modules of the network. Internal operations are handled in an implicit way and do not need to be propagated, since their existence is deterministically guaranteed in all nodes thanks to the consensus mechanism.
+When an operation is made available in a given node, it will be broadcasted to all other nodes via the Protocol/Network Module and to factories via the API Module, so that it will eventually end up in all the Pool Modules of the network. 
 
 Let's assume we just got a code execution operation from an external client. Let's suppose the client knows a particular node, which is running its block factory on the same machine, and sends the operation to this node. These are the different steps of the operation processing that will occur, as illustrated in the schema below:
 
