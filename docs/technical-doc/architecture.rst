@@ -3,7 +3,9 @@ Introduction
 
 We will describe in this document the global architecture of a Massa Node, from the ground up, and introduce relevant definitions and concepts.
 
-The goal of the Massa network is to build a consensus between nodes to gather, order and execute **operations**, whose ultimate purpose is to act as transitions for the global network state, called the **ledger**. Some operations are produced by external clients and sent to the Massa network via a **node**. Some operations are produced internally by nodes executing **smart contracts**. Nodes will gather all the pending operations and group them inside **blocks**, containing a finite set of operations and which are continuously constructed as new operations become available. This is generally how blockchain protocols are organized, but unlike traditional blockchains, Massa blocks are not simply chained one after the other, but organized into a more complex spatio-temporal structure. 
+The goal of the Massa network is to build a consensus between **nodes** to gather and order **blocks** that contains ordered lists of **operations**. An operation ultimate purpose once executed is to act as transitions for the global network state, called the **ledger**.
+
+Some operations are produced by external clients and sent to the Massa network via a node. Some operations are produced internally by nodes executing **smart contracts**. Nodes will gather all the pending operations and group them to produce blocks. Each block contains a finite set of operations, limited by the fact that each block has a limited amount of space available to store operations. Traditional blockchains will then typically link blocks one after the other (including a hash of the previous block in the block header), to materialize their temporal ordering. However, unlike traditional blockchains, Massa blocks are not simply chained one after the other, but organized into a more complex spatio-temporal structure, which allows for parallelization and increased performances. 
 
 Instead of one chain, there are several threads (T=32) of chains running in parallel, with blocks equally spread on each thread over time, and stored inside **slots** that are spaced at fixed time intervals:
 
@@ -30,7 +32,7 @@ The address of an account is simply the hash of its public key.
 Ledger
 ******
 
-The ledger is a map that stores a global mapping between addresses and information related to these addresses. It is replicated in each node and the consensus building mechanism ensures that it converges towards a consistent value over the whole network. The ledger is the state of the Massa network, and fundamentally operations (see below) are requests to modify the ledger.
+The ledger is a map that stores a global mapping between addresses and information related to these addresses. It is replicated in each node and the consensus building mechanism ensures that agreement on what operations have been finalized (and in what order) will be reached over the whole network. The ledger is the state of the Massa network, and fundamentally operations (see below) are requests to modify the ledger.
 
 The information stored in the ledger with each address is the following:
 
@@ -48,9 +50,9 @@ The information stored in the ledger with each address is the following:
 Smart Contract
 **************
 
-Smart contracts are a piece of code that can be run inside the Massa virtual machine and which can modify the ledger, accept incoming requests through a public API, and also react to or emit events. One particularity of Massa smart contracts compared to other blockchain smart contracts is their ability to wake up by themselves independently of an exterior request on their API. This allows more autonomy and less dependency on external centralized services.
+Smart contracts are a piece of code that can be run inside the Massa virtual machine and which can modify the ledger, accept incoming requests through a public interface (via smart contract operations). One particularity of Massa smart contracts compared to other blockchain smart contracts is their ability to wake up by themselves independently of an exterior request on their interface. This allows more autonomy and less dependency on external centralized services.
 
-Smart contracts are currently written in assemblyscript, a stricter derivation from typescript, which is itself a type-safe version of javascript. AssemblyScript compiles to web assembly bytecode (wasm). Massa nodes Execution Module runs such bytecode. Smart contracts have access to their own datastore, so can modify the ledger and the network state. 
+Smart contracts are currently written in assemblyscript, a stricter derivation from typescript, which is itself a type-safe version of javascript. AssemblyScript compiles to web assembly bytecode (wasm). Massa nodes Execution Module runs such bytecode. Smart contracts have access to their own datastore, so they can modify the ledger. 
 
 Operation
 *********
@@ -287,11 +289,11 @@ The Block Factory Module also needs information about the best parents (made of 
 
 The Block Factory Module picks pending operations from the Pool Module. Note that the Block Factory will regularly query the Execution Module about finalized and executed operations, and internally cleanup operations that have been handled.
 
-Finally, the Block Factory will query the the Pool Module and pick pending endorsements corresponding to the best parents that are selected for the block.
+Finally, the Block Factory will query the Pool Module and pick pending endorsements corresponding to the best parents that are selected for the block.
 
 With this information, it is able to forge a new block that will then be propagated to the Graph/Consensus Module via the API Module, as well as to other nodes via gossip, to maintain a global synchronized state.
 
-the Endorsement Factory Module works in a similar manner, requesting the Selector Module to find out when it has been designated to be an endorsement producer, then feeding new endorsements to the Pool Module and the API Module for global synchronization.
+The Endorsement Factory Module works in a similar manner, requesting the Selector Module to find out when it has been designated to be an endorsement producer, then feeding new endorsements to the Pool Module and the API Module for global synchronization.
 
 Operation lifecycle
 ===================
@@ -303,7 +305,7 @@ Operations can originate from two kinds of sources:
 1. Externally from a client that is forging an operation, for example: a transaction or a smart contract code execution. The client will have to know the IP address of a Massa Node (this can be either because it is a node itself and will simply use localhost, or via some maintained list of known nodes and/or some browser plugin), and will then send the operation to the API Module.
 2. Internally from a node that is executing code that triggers some operation, or via a mechanism of smart contract waking up event that allows for autonomous emission of operations (this feature is unique to Massa)
 
-In any case, when the operation is made available in a given node, it will be broadcasted to all other nodes via the Protocol/Network Module and to factories via the API Module, so that it will eventually end up in all the Pool Modules of the network.
+When an external operation is made available in a given node, it will be broadcasted to all other nodes via the Protocol/Network Module and to factories via the API Module, so that it will eventually end up in all the Pool Modules of the network. Internal operations are handled in an implicit way and do not need to be propagated, since their existence is deterministically guaranteed in all nodes thanks to the consensus mechanism.
 
 Let's assume we just got a code execution operation from an external client. Let's suppose the client knows a particular node, which is running its block factory on the same machine, and sends the operation to this node. These are the different steps of the operation processing that will occur, as illustrated in the schema below:
 
@@ -316,8 +318,8 @@ Let's assume we just got a code execution operation from an external client. Let
 7. The newly produced block is sent via the API to remote or local nodes, to reach the Graph/Consensus Module
 8. The new block is processed by the Graph/Consensus Module to be included into the pending blocks DAG and potentially integrated into a new blockclique
 9. The Graph/Consensus Module sends the new block to other nodes via the Protocol/Network Module, to ensure synchronization of the information in the network. The new block reaching other nodes is similarly going to be integrated into their Graph/Consensus Module
-10. If the blockclique changes the new block could be part of it and so will reach the Execution Module from the Graph/Consensus Module via the notification of a new blockclique. Eventually, it will also be notified as a final block if it gets finalized
-11. The Execution Module will run the block if it is part of the new blockclique. Within the block is the original operation that was originally sent and that will then be applied to the ledger for potential modifications. At this stage, the modifications are not permanent and simply stored in a diff compared to the finalized ledger
+10. In general, the blockclique will be extended with the new block and so will reach the Execution Module from the Graph/Consensus Module via the notification of a new blockclique. Eventually, it will also be notified as a final block if it gets finalized
+11. The Execution Module will run the blocks that are part of the updated blockclique, so the original block will eventually be executed. Within the block is the original operation that was originally sent and that will then be applied to the ledger for potential modifications. At this stage, the modifications are not permanent and simply stored in a diff compared to the finalized ledger
 12. Eventually, the block will be marked as final and the ledger modification, including the operation changes, will become final in the finalized ledger.
 
 .. image:: operation_lifecycle.drawio.svg
