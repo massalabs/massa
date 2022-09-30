@@ -28,7 +28,8 @@ use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::ops::Bound::{Excluded, Included};
 use std::str::FromStr;
-use tracing::debug;
+use tracing::{debug, warn};
+use crate::endorsement::{EndorsementId, EndorsementSerializerLW};
 
 /// Size in bytes of a serialized block ID
 const BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
@@ -519,7 +520,15 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
             buffer,
         )?;
         for endorsement in value.endorsements.iter() {
-            self.endorsement_serializer.serialize(endorsement, buffer)?;
+
+            WrappedContent::serialize_with::<WrappedEndorsement, EndorsementSerializerLW>(
+                &endorsement.signature,
+                &endorsement.creator_public_key,
+                EndorsementSerializerLW::new(),
+                &endorsement.content,
+                buffer
+            )?;
+
         }
         Ok(())
     }
@@ -528,10 +537,11 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
 /// Deserializer for `BlockHeader`
 pub struct BlockHeaderDeserializer {
     slot_deserializer: SlotDeserializer,
-    endorsement_deserializer: WrappedDeserializer<Endorsement, EndorsementDeserializerLW>,
+    // endorsement_deserializer: WrappedDeserializer<Endorsement, EndorsementDeserializerLW>,
     length_endorsements_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
     thread_count: u8,
+    endorsement_count: u32,
 }
 
 impl BlockHeaderDeserializer {
@@ -542,15 +552,18 @@ impl BlockHeaderDeserializer {
                 (Included(0), Included(u64::MAX)),
                 (Included(0), Excluded(thread_count)),
             ),
+            /*
             endorsement_deserializer: WrappedDeserializer::new(EndorsementDeserializerLW::new(
                 endorsement_count,
             )),
+            */
             length_endorsements_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Included(endorsement_count),
             ),
             hash_deserializer: HashDeserializer::new(),
             thread_count,
+            endorsement_count,
         }
     }
 }
@@ -608,7 +621,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], BlockHeader, E> {
-        let res_ = context(
+        let res = context(
             "Failed BlockHeader deserialization",
             tuple((
                 context("Failed slot deserialization", |input| {
@@ -634,6 +647,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 context("Failed operation_merkle_root", |input| {
                     self.hash_deserializer.deserialize(input)
                 }),
+                /*
                 context(
                     "Failed endorsements deserialization",
                     length_count(
@@ -645,8 +659,10 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                         }),
                     ),
                 ),
+                */
             )),
         )
+        /*
         .map(|(slot, parents, operation_merkle_root, mut endorsements)| {
             // With the lightweight ser/der, we dit not ser: slot & endorsed_block
             // So we need to update the endorsements here with these info
@@ -673,16 +689,73 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 endorsements,
             })
         })
+        */
         .parse(buffer);
 
         // Convert:
         // Result<(I, Result<BlockHeader, &str>), E> => Result<(I, BlockHeader), E>
+        /*
         match res_ {
             Ok((i, Ok(bh))) => Ok((i, bh)),
             Ok((_i, Err(e))) => {
                 let ek1 = nom::error::ErrorKind::Fail;
                 let pe = ParseError::from_error_kind(buffer, ek1);
                 Err(nom::Err::Error(E::add_context(buffer, e, pe)))
+            }
+            Err(e) => Err(e),
+        }
+        */
+
+        match res {
+            Ok((buffer_remaining, (slot, parents, operation_merkle_root))) => {
+
+                println!("slots: {:?}", slot);
+                println!("parents: {:?}", parents);
+                println!("op_merkle_root: {:?}", operation_merkle_root);
+
+                // Now deser the endorsements (which were: lw serialized)
+
+                let res2 = context("Failed rem deserialization",
+                                   tuple((
+                                       context(
+                                           "Failed endorsements deserialization",
+                                           length_count::<&[u8], Wrapped<Endorsement, EndorsementId>, u32, E, _, _>(
+                                               context("Failed length deserialization", |input| {
+                                                   self.length_endorsements_deserializer.deserialize(input)
+                                               }),
+                                               context("Failed endorsement deserialization", |input| {
+                                                   // self.endorsement_deserializer.deserialize(input)
+
+                                                   // TODO: no clone
+                                                   let endorsement_deserializer = WrappedDeserializer::new(
+                                                       EndorsementDeserializerLW::new(self.endorsement_count,
+                                                                                      slot.clone(),
+                                                                                      parents.clone()
+                                                       )
+                                                   );
+
+                                                   endorsement_deserializer.deserialize(input)
+
+                                               }),
+                                           ),
+                                       ),
+                                   )),
+                ).parse(buffer_remaining);
+
+                match res2 {
+                    Ok((buffer_remainging_2, (wrapped_endorsments,))) => {
+                        // assert_eq!(buffer_remainging_2.len(), 0);
+                        Ok((buffer_remainging_2, BlockHeader {
+                            slot,
+                            parents,
+                            operation_merkle_root,
+                            endorsements: wrapped_endorsments,
+                        }))
+                    },
+                    Err(e) => {
+                        Err(e)
+                    }
+                }
             }
             Err(e) => Err(e),
         }

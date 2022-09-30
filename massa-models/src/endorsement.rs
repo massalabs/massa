@@ -268,16 +268,20 @@ impl Serializer<Endorsement> for EndorsementSerializerLW {
 /// Lightweight Deserializer for `Endorsement`
 pub struct EndorsementDeserializerLW {
     index_deserializer: U32VarIntDeserializer,
+    slot: Slot,
+    parents: Vec<BlockId>
 }
 
 impl EndorsementDeserializerLW {
     /// Creates a new `EndorsementDeserializerLW`
-    pub const fn new(endorsement_count: u32) -> Self {
+    pub const fn new(endorsement_count: u32, slot: Slot, parents: Vec<BlockId>) -> Self {
         EndorsementDeserializerLW {
             index_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Excluded(endorsement_count),
             ),
+            slot,
+            parents
         }
     }
 }
@@ -311,10 +315,15 @@ impl Deserializer<Endorsement> for EndorsementDeserializerLW {
                 self.index_deserializer.deserialize(input)
             }),)),
         )
-        .map(|(index,)| Endorsement {
-            slot: Slot::new(0, 0),
-            index,
-            endorsed_block: BlockId::new(hash_default),
+        .map(|(index,)| {
+            // TODO: no expect
+            let idx = usize::try_from(index).expect("Index conversion fail");
+            let parent = *self.parents.get(idx).expect("A parent");
+            Endorsement {
+                slot: self.slot,
+                index,
+                endorsed_block: parent
+            }
         })
         .parse(buffer)
     }
@@ -373,8 +382,10 @@ mod tests {
             .serialize(&endorsement, &mut ser_endorsement)
             .unwrap();
 
+        let parents = vec![BlockId(Hash::compute_from("blk".as_bytes()))];
+
         let (_, res_endorsement): (&[u8], WrappedEndorsement) =
-            WrappedDeserializer::new(EndorsementDeserializerLW::new(1))
+            WrappedDeserializer::new(EndorsementDeserializerLW::new(1, Slot::new(10, 1), parents))
                 .deserialize::<DeserializeError>(&ser_endorsement)
                 .unwrap();
         // Test only endorsement index as with the lw ser. we only process this field

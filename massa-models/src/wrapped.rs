@@ -86,6 +86,24 @@ where
         Ok(())
     }
 
+    /// Serialize the wrapped structure with new serializer
+    fn serialize_with<T, SC>(
+        signature: &Signature,
+        creator_public_key: &PublicKey,
+        content_serializer: SC,
+        content: &Self,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError>
+        where SC: Serializer<Self> // , T: Display + WrappedContent
+    {
+        buffer.extend(signature.into_bytes());
+        buffer.extend(creator_public_key.into_bytes());
+        let mut buffer_ = Vec::new();
+        content_serializer.serialize(content, &mut buffer_)?;
+        buffer.extend(buffer_);
+        Ok(())
+    }
+
     /// Deserialize the wrapped structure
     fn deserialize<
         'a,
