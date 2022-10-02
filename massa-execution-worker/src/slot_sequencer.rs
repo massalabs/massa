@@ -234,9 +234,6 @@ impl SlotSequencer {
             }
         }
 
-        // Cleanup the current sequence
-        self.cleanup_sequence();
-
         // Build the slot sequence:.
         // For this, we build a new slot sequence (`new_sequence`) that replaces the old `self.slot_sequence`.
         // For performance, we build the new sequence by recycling elements from the old `self.sequence`
@@ -356,6 +353,9 @@ impl SlotSequencer {
 
         // Set the slot sequence to be the new sequence.
         self.sequence = new_sequence;
+
+        // Cleanup the sequence
+        self.cleanup_sequence();
     }
 
     /// Internal method called by `Self::update` to construct one slot of the new slot sequence
