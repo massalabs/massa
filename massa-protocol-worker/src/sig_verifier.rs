@@ -16,14 +16,14 @@ pub fn verify_sigs_batch(ops: &[(Hash, Signature, PublicKey)]) -> Result<(), Pro
     }
 
     // normal verif is fastest for 1 verif
-    if ops.len() <= 1 {
+    if ops.len() == 1 {
         let (hash, signature, public_key) = ops[0];
         return public_key
             .verify_signature(&hash, &signature)
             .map_err(|_err| ProtocolError::WrongSignature);
     }
 
-    // single-core batch verif is fastest for 2 verifs
+    // single-core batch verif is fastest until 2 verifs
     if ops.len() <= 2 {
         return massa_signature::verify_signature_batch(ops)
             .map_err(|_err| ProtocolError::WrongSignature);
