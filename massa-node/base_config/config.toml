@@ -116,15 +116,15 @@
     # max number of stored banned peers
     max_banned_peers = 100
     # max number of advertized peers
-    max_advertise_length = 10000
+    max_advertise_length = 5000
     # peers are dumped to file every peers_file_dump_interval milliseconds
-    peers_file_dump_interval = 10000
+    peers_file_dump_interval = 30000
     # max size of sent messages
     max_message_size = 1048576000
     # timeout when waiting for a message from a foreign node
     message_timeout = 5000
     # interval in milliseconds for asking peer lists from peers we are connected to
-    ask_peer_list_interval = 30000
+    ask_peer_list_interval = 600000
     # path to the node key (not the staking key)
     keypair_file = "config/node_privkey.key"
     # max number of asked blocks per message
