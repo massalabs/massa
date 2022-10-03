@@ -270,7 +270,7 @@ impl BlockDeserializer {
 impl Deserializer<Block> for BlockDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{block::{Block, BlockSerializer, BlockDeserializer, BlockId,BlockHeader, BlockHeaderSerializer}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializerLW}, wrapped::WrappedContent, prehash::PreHashSet};
+    /// use massa_models::{block::{Block, BlockSerializer, BlockDeserializer, BlockId,BlockHeader, BlockHeaderSerializer}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, wrapped::WrappedContent, prehash::PreHashSet};
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
@@ -292,7 +292,7 @@ impl Deserializer<Block> for BlockDeserializer {
     ///                     index: 1,
     ///                     endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
     ///                 },
-    ///                 EndorsementSerializerLW::new(),
+    ///                 EndorsementSerializer::new(),
     ///                 &keypair,
     ///             )
     ///             .unwrap(),
@@ -302,7 +302,7 @@ impl Deserializer<Block> for BlockDeserializer {
     ///                     index: 3,
     ///                     endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
     ///                 },
-    ///                 EndorsementSerializerLW::new(),
+    ///                 EndorsementSerializer::new(),
     ///                 &keypair,
     ///             )
     ///             .unwrap(),
@@ -916,7 +916,7 @@ mod test {
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![Endorsement::new_wrapped(
                     endorsement,
-                    EndorsementSerializerLW::new(),
+                    EndorsementSerializer::new(),
                     &keypair,
                 )
                 .unwrap()],
