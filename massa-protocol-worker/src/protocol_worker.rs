@@ -343,7 +343,7 @@ impl ProtocolWorker {
             return;
         }
         let operation_ids = mem::take(&mut self.operations_to_announce);
-        massa_trace!("protocol.protocol_worker.propagate_operations.begin", {
+        massa_trace!("protocol.protocol_worker.announce_ops.begin", {
             "operation_ids": operation_ids
         });
         for (node, node_info) in self.active_nodes.iter_mut() {
@@ -368,6 +368,10 @@ impl ProtocolWorker {
     /// Add an list of operations to a buffer for announcement at the next interval,
     /// or immediately if the buffer is full.
     async fn note_operations_to_announce(&mut self, operations: &[OperationId]) {
+        massa_trace!(
+            "protocol.protocol_worker.note_operations_to_announce.begin",
+            { "operations": operations }
+        );
         // Add the operations to a list for announcement at the next interval.
         self.operations_to_announce.extend_from_slice(operations);
 
