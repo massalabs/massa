@@ -523,6 +523,13 @@ impl LedgerChanges {
         self.0.get(addr)
     }
 
+    /// Create a new, empty address.
+    /// Overwrites the address if it is already there.
+    pub fn create_address(&mut self, address: &Address) {
+        self.0
+            .insert(*address, SetUpdateOrDelete::Set(LedgerEntry::default()));
+    }
+
     /// Tries to return the balance of an entry
     /// or gets it from a function if the entry's status is unknown.
     ///

@@ -168,6 +168,7 @@ impl SpeculativeLedger {
                     //TODO: Remove when stabilized
                     debug!("Creating address {} from coins in transactions", to_addr);
                     if amount >= self.storage_costs_constants.ledger_entry_base_cost {
+                        changes.create_address(&to_addr);
                         changes.set_balance(
                             to_addr,
                             amount
@@ -190,6 +191,7 @@ impl SpeculativeLedger {
                     debug!("Creating address {} from coins generated", to_addr);
                     // We have enough to create the address and transfer the rest.
                     if amount >= self.storage_costs_constants.ledger_entry_base_cost {
+                        changes.create_address(&to_addr);
                         changes.set_balance(
                             to_addr,
                             amount
@@ -246,22 +248,22 @@ impl SpeculativeLedger {
         // check for address existence
         if !self.entry_exists(&creator_address) {
             return Err(ExecutionError::RuntimeError(format!(
-                "could not set bytecode for address {}: address does not exist",
-                addr
+                "could not create SC address {}: creator address {} does not exist",
+                addr, creator_address
             )));
         }
 
         // check that we don't collide with existing address
         if self.entry_exists(&addr) {
             return Err(ExecutionError::RuntimeError(format!(
-                "could not set bytecode for address {}: address generated to store bytecode already exists. Try again.",
+                "could not create SC address {}: target address already exists",
                 addr
             )));
         }
 
         if bytecode.len() > self.max_bytecode_size as usize {
             return Err(ExecutionError::RuntimeError(format!(
-                "could not set bytecode for address {}: bytecode size exceeds maximum allowed size",
+                "could not create SC address {}: bytecode size exceeds maximum allowed size",
                 addr
             )));
         }
@@ -276,8 +278,7 @@ impl SpeculativeLedger {
                     .ledger_cost_per_byte
                     .checked_mul_u64(bytecode.len().try_into().map_err(|_| {
                         ExecutionError::RuntimeError(
-                            "overflow while calculating size bytecode ledger size costs"
-                                .to_string(),
+                            "overflow while calculating bytecode ledger size costs".to_string(),
                         )
                     })?)
                     .ok_or_else(|| {
@@ -291,6 +292,7 @@ impl SpeculativeLedger {
             })?;
 
         self.transfer_coins(Some(creator_address), None, address_storage_cost)?;
+        self.added_changes.create_address(&addr);
         self.added_changes.set_bytecode(addr, bytecode);
         Ok(())
     }
