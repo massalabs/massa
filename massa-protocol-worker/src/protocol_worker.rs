@@ -218,7 +218,9 @@ impl ProtocolWorker {
                 config.operation_batch_buffer_capacity,
             ),
             storage,
-            operations_to_announce: Vec::with_capacity(config.operation_batch_buffer_capacity),
+            operations_to_announce: Vec::with_capacity(
+                config.operation_announcement_buffer_capacity,
+            ),
         }
     }
 
@@ -378,7 +380,7 @@ impl ProtocolWorker {
         // If the buffer is full,
         // announce operations immediately,
         // clearing the data at the same time.
-        if self.operations_to_announce.len() > self.config.operation_batch_buffer_capacity {
+        if self.operations_to_announce.len() > self.config.operation_announcement_buffer_capacity {
             self.announce_ops().await;
         }
     }

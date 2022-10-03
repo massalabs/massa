@@ -337,6 +337,9 @@ async fn launch(
             .max_simultaneous_ask_blocks_per_node,
         max_send_wait: SETTINGS.protocol.max_send_wait,
         operation_batch_buffer_capacity: SETTINGS.protocol.operation_batch_buffer_capacity,
+        operation_announcement_buffer_capacity: SETTINGS
+            .protocol
+            .operation_announcement_buffer_capacity,
         operation_batch_proc_period: SETTINGS.protocol.operation_batch_proc_period,
         asked_operations_pruning_period: SETTINGS.protocol.asked_operations_pruning_period,
         operation_announcement_interval: SETTINGS.protocol.operation_announcement_interval,

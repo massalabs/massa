@@ -272,6 +272,7 @@ pub fn create_protocol_config() -> ProtocolConfig {
         max_known_endorsements_size: 1000,
         max_node_known_endorsements_size: 1000,
         operation_batch_buffer_capacity: 1000,
+        operation_announcement_buffer_capacity: 1000,
         operation_batch_proc_period: 200.into(),
         asked_operations_pruning_period: 500.into(),
         operation_announcement_interval: 150.into(),
