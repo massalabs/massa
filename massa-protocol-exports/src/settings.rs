@@ -30,10 +30,15 @@ pub struct ProtocolConfig {
     /// Maximum number of batches in the memory buffer.
     /// Dismiss the new batches if overflow
     pub operation_batch_buffer_capacity: usize,
+    /// Maximum number of operations in the announcement buffer.
+    /// Immedidately announce if overflow.
+    pub operation_announcement_buffer_capacity: usize,
     /// Start processing batches in the buffer each `operation_batch_proc_period` in millisecond
     pub operation_batch_proc_period: MassaTime,
     /// All operations asked are prune each `operation_asked_pruning_period` millisecond
     pub asked_operations_pruning_period: MassaTime,
+    /// Interval at which operations are announced in batches.
+    pub operation_announcement_interval: MassaTime,
     /// Maximum of operations sent in one message.
     pub max_operations_per_message: u64,
     /// Maximum size in bytes of all serialized operations size in a block
