@@ -218,7 +218,7 @@ impl ProtocolWorker {
                 config.operation_batch_buffer_capacity,
             ),
             storage,
-            operations_to_announce: Default::default(),
+            operations_to_announce: Vec::with_capacity(config.operation_batch_buffer_capacity),
         }
     }
 
@@ -260,6 +260,9 @@ impl ProtocolWorker {
         let operation_batch_proc_period_timer =
             sleep(self.config.operation_batch_proc_period.into());
         tokio::pin!(operation_batch_proc_period_timer);
+        let operation_announcement_interval =
+            sleep(self.config.operation_announcement_interval.into());
+        tokio::pin!(operation_announcement_interval);
         loop {
             massa_trace!("protocol.protocol_worker.run_loop.begin", {});
             /*
@@ -298,12 +301,22 @@ impl ProtocolWorker {
                     self.update_ask_block(&mut block_ask_timer).await?;
                 }
 
+                // Operation announcement interval.
+                _ = &mut operation_announcement_interval => {
+                    // Announce operations.
+                    self.announce_ops().await;
+
+                    // Reset timer.
+                    let now = Instant::now();
+                    let next_tick = now
+                        .checked_add(self.config.operation_announcement_interval.into())
+                        .ok_or(TimeError::TimeOverflowError)?;
+                    operation_announcement_interval.set(sleep_until(next_tick));
+                }
+
                 // operation ask, and announce, timer
                 _ = &mut operation_batch_proc_period_timer => {
                     massa_trace!("protocol.protocol_worker.run_loop.operation_ask_and_announce_timer", { });
-
-                    // Announce operations.
-                    self.announce_ops().await;
 
                     // Update operations to ask.
                     self.update_ask_operation(&mut operation_batch_proc_period_timer).await?;
@@ -361,7 +374,7 @@ impl ProtocolWorker {
         // If the buffer is full,
         // announce operations immediately,
         // clearing the data at the same time.
-        if self.operations_to_announce.len() > self.config.max_known_ops_size {
+        if self.operations_to_announce.len() > self.config.operation_batch_buffer_capacity {
             self.announce_ops().await;
         }
     }

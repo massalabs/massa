@@ -34,6 +34,8 @@ pub struct ProtocolConfig {
     pub operation_batch_proc_period: MassaTime,
     /// All operations asked are prune each `operation_asked_pruning_period` millisecond
     pub asked_operations_pruning_period: MassaTime,
+    /// Interval at which operations are announced in batches.
+    pub operation_announcement_interval: MassaTime,
     /// Maximum of operations sent in one message.
     pub max_operations_per_message: u64,
     /// Maximum size in bytes of all serialized operations size in a block
