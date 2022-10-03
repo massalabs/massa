@@ -44,8 +44,8 @@
 //! It sequences the blocks according to their slot number into queues,
 //! and requests the execution of active and final slots to execution.rs.
 //!
-//! ## slot_sequence.rs
-//! Implements `SlotSequence`
+//! ## slot_sequencer.rs
+//! Implements `SlotSequencer`
 //! that allows sequencing slots for execution.
 //!
 //!
