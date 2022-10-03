@@ -291,14 +291,16 @@ impl Deserializer<Endorsement> for EndorsementDeserializerLW {
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_hash::Hash;
     ///
+    /// let slot = Slot::new(1, 2);
+    /// let endorsed_block = BlockId(Hash::compute_from("test".as_bytes()));
     /// let endorsement = Endorsement {
-    ///   slot: Slot::new(1, 2),
+    ///   slot: slot,
     ///   index: 0,
-    ///   endorsed_block: BlockId(Hash::compute_from("test".as_bytes()))
+    ///   endorsed_block: endorsed_block
     /// };
     /// let mut buffer = Vec::new();
     /// EndorsementSerializerLW::new().serialize(&endorsement, &mut buffer).unwrap();
-    /// let (rest, deserialized) = EndorsementDeserializerLW::new(10).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, deserialized) = EndorsementDeserializerLW::new(10, slot, endorsed_block).deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// assert_eq!(deserialized.index, endorsement.index);
     /// ```

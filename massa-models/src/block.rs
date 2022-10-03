@@ -648,7 +648,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
 
         if parents.is_empty() {
             return Ok((
-                rest,
+                &rest[1..], // Because there is 0 endorsements, we have a remaining 0 in rest and we don't need it
                 BlockHeader {
                     slot,
                     parents,
@@ -728,7 +728,7 @@ mod test {
     use crate::{
         config::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT},
         endorsement::Endorsement,
-        endorsement::EndorsementSerializerLW,
+        endorsement::EndorsementSerializer,
     };
     use massa_serialization::DeserializeError;
     use massa_signature::KeyPair;
@@ -740,7 +740,7 @@ mod test {
         let keypair =
             KeyPair::from_str("S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG").unwrap();
         let parents = (0..THREAD_COUNT)
-            .map(|i| {
+            .map(|_i| {
                 BlockId(
                     Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf")
                         .unwrap(),
