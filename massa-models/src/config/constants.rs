@@ -88,9 +88,9 @@ pub const INITIAL_DRAW_SEED: &str = "massa_genesis_seed";
 /// Number of threads
 pub const THREAD_COUNT: u8 = 32;
 /// Number of endorsement
-pub const ENDORSEMENT_COUNT: u32 = 9;
+pub const ENDORSEMENT_COUNT: u32 = 16;
 /// Threshold for fitness.
-pub const DELTA_F0: u64 = 640;
+pub const DELTA_F0: u64 = 64 * (ENDORSEMENT_COUNT as u64 + 1);
 /// Maximum number of operations per block
 pub const MAX_OPERATIONS_PER_BLOCK: u32 = 5000;
 /// Maximum block size in bytes
