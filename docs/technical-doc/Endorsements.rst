@@ -115,7 +115,7 @@ Choosing the value of `E`
 
 See Massa's technical paper for an explanation on how `E` is chosen given performance and security considerations.
 
-Current testnet value: `E = 9`
+Current testnet value: `E = 16`
 
 
 TODOS
