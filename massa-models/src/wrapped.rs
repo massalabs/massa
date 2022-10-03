@@ -190,6 +190,7 @@ impl WrappedSerializer {
         Self
     }
 
+    /// Serialize by using the given serializer
     pub fn serialize_with<SC, T, U>(
         &self,
         serializer_content: &SC,
@@ -257,6 +258,10 @@ where
         }
     }
 
+    /// Deserialize content with a given serializer
+    ///
+    /// The given serializer is used to update the serialized_data field (and the hash) and
+    /// is used for lightweight serialized data (e.g. endorsement)
     pub fn deserialize_with<
         'a,
         E: ParseError<&'a [u8]> + ContextError<&'a [u8]>,
