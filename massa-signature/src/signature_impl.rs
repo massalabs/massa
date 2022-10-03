@@ -941,7 +941,7 @@ impl Deserializer<Signature> for SignatureDeserializer {
     }
 }
 
-/// Verify a batch of signatures on a single core to gain total CPU perf.
+/// Verify a batch of signatures on a single core to gain total CPU performance.
 /// Every provided triplet `(hash, signature, public_key)` is verified
 /// and an error is returned if at least one of them fails.
 ///

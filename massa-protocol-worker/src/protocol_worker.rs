@@ -28,12 +28,12 @@ use massa_storage::Storage;
 use massa_time::{MassaTime, TimeError};
 use std::collections::{HashMap, HashSet};
 use std::mem;
+use std::pin::Pin;
 use tokio::{
     sync::mpsc,
     sync::mpsc::error::SendTimeoutError,
     time::{sleep, sleep_until, Instant, Sleep},
 };
-use std::pin::Pin;
 use tracing::{debug, error, info, warn};
 
 // TODO connect protocol to pool so that it sends ops and endorsements
@@ -373,7 +373,11 @@ impl ProtocolWorker {
 
     /// Add an list of operations to a buffer for announcement at the next interval,
     /// or immediately if the buffer is full.
-    async fn note_operations_to_announce(&mut self, operations: &[OperationId], timer: &mut Pin<&mut Sleep>) {
+    async fn note_operations_to_announce(
+        &mut self,
+        operations: &[OperationId],
+        timer: &mut Pin<&mut Sleep>,
+    ) {
         massa_trace!(
             "protocol.protocol_worker.note_operations_to_announce.begin",
             { "operations": operations }
@@ -432,7 +436,7 @@ impl ProtocolWorker {
         &mut self,
         cmd: ProtocolCommand,
         block_timer: &mut Pin<&mut Sleep>,
-        op_timer: &mut Pin<&mut Sleep>
+        op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         match cmd {
             ProtocolCommand::IntegratedBlock { block_id, storage } => {
@@ -535,7 +539,8 @@ impl ProtocolWorker {
 
                 // Announce operations to active nodes not knowing about it.
                 let to_announce: Vec<OperationId> = operation_ids.iter().copied().collect();
-                self.note_operations_to_announce(&to_announce, op_timer).await;
+                self.note_operations_to_announce(&to_announce, op_timer)
+                    .await;
             }
             ProtocolCommand::PropagateEndorsements(endorsements) => {
                 self.propagate_endorsements(&endorsements).await;
@@ -970,7 +975,7 @@ impl ProtocolWorker {
         &mut self,
         operations: Vec<WrappedOperation>,
         source_node_id: &NodeId,
-        op_timer: &mut Pin<&mut Sleep>
+        op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(Vec<OperationId>, PreHashMap<OperationId, usize>), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
         let length = operations.len();
@@ -1041,7 +1046,8 @@ impl ProtocolWorker {
             ops_to_propagate.drop_operation_refs(&operations_to_not_propagate);
             let to_announce: Vec<OperationId> =
                 ops_to_propagate.get_op_refs().iter().copied().collect();
-            self.note_operations_to_announce(&to_announce, op_timer).await;
+            self.note_operations_to_announce(&to_announce, op_timer)
+                .await;
 
             // Add to pool
             self.pool_controller.add_operations(ops);

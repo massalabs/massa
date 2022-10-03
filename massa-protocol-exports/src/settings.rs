@@ -31,7 +31,7 @@ pub struct ProtocolConfig {
     /// Dismiss the new batches if overflow
     pub operation_batch_buffer_capacity: usize,
     /// Maximum number of operations in the announcement buffer.
-    /// Immedidately announce if overflow.
+    /// Immediately announce if overflow.
     pub operation_announcement_buffer_capacity: usize,
     /// Start processing batches in the buffer each `operation_batch_proc_period` in millisecond
     pub operation_batch_proc_period: MassaTime,

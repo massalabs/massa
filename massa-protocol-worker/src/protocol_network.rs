@@ -20,8 +20,8 @@ use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkEvent};
 use massa_protocol_exports::{ProtocolError, ProtocolEvent};
 use massa_serialization::Serializer;
 use massa_storage::Storage;
-use tokio::time::{Instant, Sleep};
 use std::pin::Pin;
+use tokio::time::{Instant, Sleep};
 use tracing::{info, warn};
 
 // static tracing messages
@@ -47,7 +47,7 @@ impl ProtocolWorker {
         &mut self,
         evt: NetworkEvent,
         block_ask_timer: &mut Pin<&mut Sleep>,
-        op_timer: &mut Pin<&mut Sleep>
+        op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         match evt {
             NetworkEvent::NewConnection(node_id) => {
@@ -117,7 +117,8 @@ impl ProtocolWorker {
             }
             NetworkEvent::ReceivedOperations { node, operations } => {
                 massa_trace!(OPS, { "node": node, "operations": operations});
-                self.on_operations_received(node, operations, op_timer).await;
+                self.on_operations_received(node, operations, op_timer)
+                    .await;
             }
             NetworkEvent::ReceivedEndorsements { node, endorsements } => {
                 massa_trace!(ENDORSEMENTS, { "node": node, "endorsements": endorsements});
@@ -298,7 +299,7 @@ impl ProtocolWorker {
         from_node_id: NodeId,
         block_id: BlockId,
         operation_ids: Vec<OperationId>,
-        op_timer: &mut Pin<&mut Sleep>
+        op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         // All operation ids sent into a set
         let operation_ids_set: PreHashSet<OperationId> = operation_ids.iter().cloned().collect();
@@ -376,7 +377,12 @@ impl ProtocolWorker {
             // If the block is empty, go straight to processing the full block info.
             if operation_ids.is_empty() {
                 return self
-                    .on_block_full_operations_received(from_node_id, block_id, Default::default(), op_timer)
+                    .on_block_full_operations_received(
+                        from_node_id,
+                        block_id,
+                        Default::default(),
+                        op_timer,
+                    )
                     .await;
             }
         } else {
@@ -404,7 +410,7 @@ impl ProtocolWorker {
         from_node_id: NodeId,
         block_id: BlockId,
         mut operations: Vec<WrappedOperation>,
-        op_timer: &mut Pin<&mut Sleep>
+        op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         if let Err(err) = self
             .note_operations_from_node(operations.clone(), &from_node_id, op_timer)
@@ -535,7 +541,7 @@ impl ProtocolWorker {
         from_node_id: NodeId,
         block_id: BlockId,
         info: BlockInfoReply,
-        op_timer: &mut Pin<&mut Sleep>
+        op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         match info {
             BlockInfoReply::Header(header) => {
@@ -548,8 +554,13 @@ impl ProtocolWorker {
                 // that block.
                 // Ban the node if the operation ids hash doesn't match with the hash contained in
                 // the block_header.
-                self.on_block_operation_list_received(from_node_id, block_id, operation_list, op_timer)
-                    .await
+                self.on_block_operation_list_received(
+                    from_node_id,
+                    block_id,
+                    operation_list,
+                    op_timer,
+                )
+                .await
             }
             BlockInfoReply::Operations(operations) => {
                 // Send operations to pool,
