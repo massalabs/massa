@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-api/src/public.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>public.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_api/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_api/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_api/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-api/src/public.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>public.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_api/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_api/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_api/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -888,8 +888,35 @@
 <span id="888">888</span>
 <span id="889">889</span>
 <span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
+<span id="900">900</span>
+<span id="901">901</span>
+<span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
+<span id="905">905</span>
+<span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
+<span id="911">911</span>
+<span id="912">912</span>
+<span id="913">913</span>
+<span id="914">914</span>
+<span id="915">915</span>
+<span id="916">916</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attribute">#![allow(clippy::too_many_arguments)]
+
 </span><span class="kw">use </span><span class="kw">crate</span>::config::APIConfig;
 <span class="kw">use </span><span class="kw">crate</span>::error::ApiError;
 <span class="kw">use crate</span>::{Endpoints, Public, RpcServer, StopHandle, API};
@@ -915,6 +942,7 @@
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 
 <span class="kw">use </span>itertools::{izip, Itertools};
+<span class="kw">use </span>massa_models::datastore::DatastoreDeserializer;
 <span class="kw">use </span>massa_models::{
     address::Address,
     api::{
@@ -1013,12 +1041,32 @@
             address,
             simulated_gas_price,
             bytecode,
+            operation_datastore,
         } <span class="kw">in </span>reqs
         {
             <span class="kw">let </span>address = address.unwrap_or_else(|| {
                 <span class="comment">// if no addr provided, use a random one
                 </span>Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate().get_public_key())
             });
+
+            <span class="kw">let </span>op_datastore = <span class="kw">match </span>operation_datastore {
+                <span class="prelude-val">Some</span>(v) =&gt; {
+                    <span class="kw">let </span>deserializer = DatastoreDeserializer::new(
+                        <span class="self">self</span>.<span class="number">0</span>.api_settings.max_op_datastore_entry_count,
+                        <span class="self">self</span>.<span class="number">0</span>.api_settings.max_op_datastore_key_length,
+                        <span class="self">self</span>.<span class="number">0</span>.api_settings.max_op_datastore_value_length,
+                    );
+                    <span class="kw">match </span>deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>v) {
+                        <span class="prelude-val">Ok</span>((<span class="kw">_</span>, deserialized)) =&gt; <span class="prelude-val">Some</span>(deserialized),
+                        <span class="prelude-val">Err</span>(e) =&gt; {
+                            <span class="kw">let </span>err_str = <span class="macro">format!</span>(<span class="string">&quot;Operation datastore error: {}&quot;</span>, e);
+                            <span class="kw">let </span>closure = <span class="kw">async move </span>|| <span class="prelude-val">Err</span>(ApiError::InconsistencyError(err_str));
+                            <span class="kw">return </span>Box::pin(closure());
+                        }
+                    }
+                }
+                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
+            };
 
             <span class="comment">// TODO:
             // * set a maximum gas value for read-only executions to prevent attacks
@@ -1034,6 +1082,7 @@
                     address,
                     coins: Default::default(),
                     owned_addresses: <span class="macro">vec!</span>[address],
+                    operation_datastore: op_datastore,
                 }],
             };
 
@@ -1102,12 +1151,14 @@
                         address: caller_address,
                         coins: Default::default(),
                         owned_addresses: <span class="macro">vec!</span>[caller_address],
-                    },
+                        operation_datastore: <span class="prelude-val">None</span>, <span class="comment">// should always be None
+                    </span>},
                     ExecutionStackElement {
                         address: target_address,
                         coins: Default::default(),
                         owned_addresses: <span class="macro">vec!</span>[target_address],
-                    },
+                        operation_datastore: <span class="prelude-val">None</span>, <span class="comment">// should always be None
+                    </span>},
                 ],
             };
 
@@ -1654,8 +1705,7 @@
                 thread: address.get_thread(<span class="self">self</span>.<span class="number">0</span>.consensus_config.thread_count),
 
                 <span class="comment">// final execution info
-                </span>final_parallel_balance: execution_infos.final_parallel_balance,
-                final_sequential_balance: execution_infos.final_sequential_balance,
+                </span>final_balance: execution_infos.final_balance,
                 final_roll_count: execution_infos.final_roll_count,
                 final_datastore_keys: execution_infos
                     .final_datastore_keys
@@ -1663,8 +1713,7 @@
                     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
 
                 <span class="comment">// candidate execution info
-                </span>candidate_parallel_balance: execution_infos.candidate_parallel_balance,
-                candidate_sequential_balance: execution_infos.candidate_sequential_balance,
+                </span>candidate_balance: execution_infos.candidate_balance,
                 candidate_roll_count: execution_infos.candidate_roll_count,
                 candidate_datastore_keys: execution_infos
                     .candidate_datastore_keys
@@ -1712,6 +1761,9 @@
                 api_cfg.max_datastore_value_length,
                 api_cfg.max_function_name_length,
                 api_cfg.max_parameter_size,
+                api_cfg.max_op_datastore_entry_count,
+                api_cfg.max_op_datastore_key_length,
+                api_cfg.max_op_datastore_value_length,
             ));
             <span class="kw">let </span>verified_ops = ops
                 .into_iter()
@@ -1779,4 +1831,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b705839c 2022-09-26)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (57f097ea2 2022-10-01)" ></div></body></html>

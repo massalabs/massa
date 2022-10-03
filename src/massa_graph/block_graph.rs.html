@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-graph/src/block_graph.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>block_graph.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_graph/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_graph/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_graph/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-graph/src/block_graph.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>block_graph.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_graph/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_graph/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_graph/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -2716,6 +2716,28 @@
 <span id="2716">2716</span>
 <span id="2717">2717</span>
 <span id="2718">2718</span>
+<span id="2719">2719</span>
+<span id="2720">2720</span>
+<span id="2721">2721</span>
+<span id="2722">2722</span>
+<span id="2723">2723</span>
+<span id="2724">2724</span>
+<span id="2725">2725</span>
+<span id="2726">2726</span>
+<span id="2727">2727</span>
+<span id="2728">2728</span>
+<span id="2729">2729</span>
+<span id="2730">2730</span>
+<span id="2731">2731</span>
+<span id="2732">2732</span>
+<span id="2733">2733</span>
+<span id="2734">2734</span>
+<span id="2735">2735</span>
+<span id="2736">2736</span>
+<span id="2737">2737</span>
+<span id="2738">2738</span>
+<span id="2739">2739</span>
+<span id="2740">2740</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! All information concerning blocks, the block graph and cliques is managed here.
@@ -2945,7 +2967,7 @@
     </span><span class="kw">pub </span>genesis_blocks: Vec&lt;BlockId&gt;,
     <span class="doccomment">/// Map of active blocks, were blocks are in their exported version.
     </span><span class="kw">pub </span>active_blocks: PreHashMap&lt;BlockId, ExportCompiledBlock&gt;,
-    <span class="doccomment">/// Finite cache of discarded blocks, in exported version (slot, creator_address, parents).
+    <span class="doccomment">/// Finite cache of discarded blocks, in exported version `(slot, creator_address, parents)`.
     </span><span class="kw">pub </span>discarded_blocks: PreHashMap&lt;BlockId, (DiscardReason, (Slot, Address, Vec&lt;BlockId&gt;))&gt;,
     <span class="doccomment">/// Best parents hashes in each thread.
     </span><span class="kw">pub </span>best_parents: Vec&lt;(BlockId, u64)&gt;,
@@ -4020,7 +4042,6 @@
         }
 
         <span class="comment">// check if it was the creator&#39;s turn to create this block
-        // (step 1 in consensus/pos.md)
         </span><span class="kw">let </span>slot_draw_address = <span class="kw">match </span><span class="self">self</span>.selector_controller.get_producer(header.content.slot) {
             <span class="prelude-val">Ok</span>(draw) =&gt; draw,
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(HeaderCheckOutcome::WaitForSlot), <span class="comment">// TODO properly handle PoS errors
@@ -4170,7 +4191,7 @@
         </span>.<span class="number">0</span>;
 
         <span class="comment">// check endorsements
-        </span><span class="kw">match </span><span class="self">self</span>.check_endorsements(header, parent_in_own_thread)<span class="question-mark">? </span>{
+        </span><span class="kw">match </span><span class="self">self</span>.check_endorsements(header)<span class="question-mark">? </span>{
             EndorsementsCheckOutcome::Proceed =&gt; {}
             EndorsementsCheckOutcome::Discard(reason) =&gt; {
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(HeaderCheckOutcome::Discard(reason))
@@ -4285,16 +4306,9 @@
     <span class="doccomment">/// check endorsements:
     /// * endorser was selected for that (slot, index)
     /// * endorsed slot is `parent_in_own_thread` slot
-    </span><span class="kw">fn </span>check_endorsements(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        header: <span class="kw-2">&amp;</span>WrappedHeader,
-        parent_in_own_thread: <span class="kw-2">&amp;</span>ActiveBlock,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;EndorsementsCheckOutcome&gt; {
+    </span><span class="kw">fn </span>check_endorsements(<span class="kw-2">&amp;</span><span class="self">self</span>, header: <span class="kw-2">&amp;</span>WrappedHeader) -&gt; <span class="prelude-ty">Result</span>&lt;EndorsementsCheckOutcome&gt; {
         <span class="comment">// check endorsements
-        </span><span class="kw">let </span>endorsement_draws = <span class="kw">match </span><span class="self">self
-            </span>.selector_controller
-            .get_selection(parent_in_own_thread.slot)
-        {
+        </span><span class="kw">let </span>endorsement_draws = <span class="kw">match </span><span class="self">self</span>.selector_controller.get_selection(header.content.slot) {
             <span class="prelude-val">Ok</span>(sel) =&gt; sel.endorsements,
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(EndorsementsCheckOutcome::WaitForSlot),
         };
@@ -4309,22 +4323,12 @@
                     ),
                 )));
             }
-            <span class="comment">// check that the endorsement slot matches the endorsed block
-            </span><span class="kw">if </span>endorsement.content.slot != parent_in_own_thread.slot {
-                <span class="kw">return </span><span class="prelude-val">Ok</span>(EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(
-                    <span class="macro">format!</span>(<span class="string">&quot;endorsement targets a block with wrong slot. Block&#39;s parent: {}, endorsement: {}&quot;</span>,
-                            parent_in_own_thread.slot, endorsement.content.slot),
-                )));
-            }
 
             <span class="comment">// note that the following aspects are checked in protocol
-            // * PoS draws
             // * signature
-            // * intra block endorsement reuse
-            // * intra block index reuse
-            // * slot in the same thread as block&#39;s slot
-            // * slot is before the block&#39;s slot
-            // * the endorsed block is the parent in the same thread
+            // * index reuse
+            // * slot matching the block&#39;s
+            // * the endorsed block is the containing block&#39;s parent
         </span>}
 
         <span class="prelude-val">Ok</span>(EndorsementsCheckOutcome::Proceed)
@@ -5351,12 +5355,13 @@
     }
 
     <span class="doccomment">/// get the clique of higher fitness
-    </span><span class="kw">pub fn </span>get_blockclique(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; PreHashSet&lt;BlockId&gt; {
-        <span class="self">self</span>.max_cliques
+    </span><span class="kw">pub fn </span>get_blockclique(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PreHashSet&lt;BlockId&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self
+            </span>.max_cliques
             .iter()
-            .enumerate()
-            .find(|(<span class="kw">_</span>, c)| c.is_blockclique)
-            .map_or_else(PreHashSet::&lt;BlockId&gt;::default, |(<span class="kw">_</span>, v)| v.block_ids.clone())
+            .find(|c| c.is_blockclique)
+            .expect(<span class="string">&quot;blockclique missing&quot;</span>)
+            .block_ids
     }
 
     <span class="doccomment">/// get the blockclique (or final) block ID at a given slot, if any
@@ -5396,16 +5401,55 @@
             })
     }
 
-    <span class="doccomment">/// Clones all stored final blocks, not only the still-useful ones
+    <span class="doccomment">/// get the latest blockclique (or final) block ID that is the most recent, but still strictly older than `slot`, in the same thread as `slot`
+    </span><span class="kw">pub fn </span>get_latest_blockclique_block_at_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot) -&gt; BlockId {
+        <span class="kw">let </span>(<span class="kw-2">mut </span>best_block_id, <span class="kw-2">mut </span>best_block_period) = <span class="self">self
+            </span>.latest_final_blocks_periods
+            .get(slot.thread <span class="kw">as </span>usize)
+            .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;unexpected not found latest final block period&quot;</span>));
+
+        <span class="self">self</span>.max_cliques
+            .iter()
+            .find(|c| c.is_blockclique)
+            .expect(<span class="string">&quot;expected one clique to be the blockclique&quot;</span>)
+            .block_ids
+            .iter()
+            .for_each(|id| <span class="kw">match </span><span class="self">self</span>.block_statuses.get(id) {
+                <span class="prelude-val">Some</span>(BlockStatus::Active {
+                    a_block,
+                    storage: <span class="kw">_</span>,
+                }) =&gt; {
+                    <span class="kw">if </span>a_block.is_final {
+                        <span class="macro">panic!</span>(
+                            <span class="string">&quot;unexpected final block on getting latest blockclique block at slot&quot;
+                        </span>);
+                    }
+                    <span class="kw">if </span>a_block.slot.thread == slot.thread
+                        &amp;&amp; a_block.slot.period &lt; slot.period
+                        &amp;&amp; a_block.slot.period &gt; best_block_period
+                    {
+                        best_block_period = a_block.slot.period;
+                        best_block_id = <span class="kw-2">*</span>id;
+                    }
+                }
+                <span class="kw">_ </span>=&gt; {
+                    <span class="macro">panic!</span>(<span class="string">&quot;expected to find only active block but found another status&quot;</span>)
+                }
+            });
+        best_block_id
+    }
+
+    <span class="doccomment">/// Gets all stored final blocks, not only the still-useful ones
     /// This is used when initializing Execution from Consensus.
     /// Since the Execution bootstrap snapshot is older than the Consensus snapshot,
     /// we might need to signal older final blocks for Execution to catch up.
-    </span><span class="kw">pub fn </span>get_all_final_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashMap&lt;Slot, (BlockId, Storage)&gt; {
+    </span><span class="kw">pub fn </span>get_all_final_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashMap&lt;BlockId, Slot&gt; {
         <span class="self">self</span>.active_index
             .iter()
-            .filter_map(|b_id| <span class="kw">match </span><span class="self">self</span>.get_active_block(b_id) {
-                <span class="prelude-val">Some</span>((a_b, storage)) <span class="kw">if </span>a_b.is_final =&gt; <span class="prelude-val">Some</span>((a_b.slot, (<span class="kw-2">*</span>b_id, storage.clone()))),
-                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+            .map(|b_id| {
+                <span class="kw">let </span>(a_block, _storage) =
+                    <span class="self">self</span>.get_active_block(b_id).expect(<span class="string">&quot;active block missing&quot;</span>);
+                (<span class="kw-2">*</span>b_id, a_block.slot)
             })
             .collect()
     }
@@ -5435,4 +5479,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b705839c 2022-09-26)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (57f097ea2 2022-10-01)" ></div></body></html>

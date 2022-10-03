@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-pool-worker/src/endorsement_pool.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>endorsement_pool.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_pool_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_pool_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_pool_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-pool-worker/src/endorsement_pool.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>endorsement_pool.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_pool_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_pool_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_pool_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -188,14 +188,14 @@
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 
 <span class="kw">pub struct </span>EndorsementPool {
-    <span class="doccomment">/// config
+    <span class="doccomment">/// configuration
     </span>config: PoolConfig,
 
     <span class="doccomment">/// endorsements indexed by slot, index and block ID
     </span>endorsements_indexed: HashMap&lt;(Slot, u32, BlockId), EndorsementId&gt;,
 
-    <span class="doccomment">/// endorsements sorted by increasing target slot for pruning
-    /// indexed by thread, then BTreeMap&lt;(target_slot, index, target_block), endorsement_id&gt;
+    <span class="doccomment">/// endorsements sorted by increasing inclusion slot for pruning
+    /// indexed by thread, then `BTreeMap&lt;(inclusion_slot, index, target_block), endorsement_id&gt;`
     </span>endorsements_sorted: Vec&lt;BTreeMap&lt;(Slot, u32, BlockId), EndorsementId&gt;&gt;,
 
     <span class="doccomment">/// storage
@@ -231,16 +231,16 @@
         <span class="comment">// update internal final CS period counter
         </span><span class="self">self</span>.last_cs_final_periods = final_cs_periods.to_vec();
 
-        <span class="comment">// remove old endorsements
+        <span class="comment">// remove all endorsements whose periods &lt;= last_cs_final_periods[endorsement.thread]
         </span><span class="kw">let </span><span class="kw-2">mut </span>removed: PreHashSet&lt;EndorsementId&gt; = Default::default();
         <span class="kw">for </span>thread <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.config.thread_count {
-            <span class="kw">while let </span><span class="prelude-val">Some</span>((<span class="kw-2">&amp;</span>(target_slot, index, block_id), <span class="kw-2">&amp;</span>endo_id)) =
+            <span class="kw">while let </span><span class="prelude-val">Some</span>((<span class="kw-2">&amp;</span>(inclusion_slot, index, block_id), <span class="kw-2">&amp;</span>endo_id)) =
                 <span class="self">self</span>.endorsements_sorted[thread <span class="kw">as </span>usize].first_key_value()
             {
-                <span class="kw">if </span>target_slot.period &lt; <span class="self">self</span>.last_cs_final_periods[thread <span class="kw">as </span>usize] {
+                <span class="kw">if </span>inclusion_slot.period &lt;= <span class="self">self</span>.last_cs_final_periods[thread <span class="kw">as </span>usize] {
                     <span class="self">self</span>.endorsements_sorted[thread <span class="kw">as </span>usize].pop_first();
                     <span class="self">self</span>.endorsements_indexed
-                        .remove(<span class="kw-2">&amp;</span>(target_slot, index, block_id))
+                        .remove(<span class="kw-2">&amp;</span>(inclusion_slot, index, block_id))
                         .expect(<span class="string">&quot;endorsement should be in endorsements_indexed at this point&quot;</span>);
                     removed.insert(endo_id);
                 } <span class="kw">else </span>{
@@ -325,17 +325,17 @@
     <span class="doccomment">/// get endorsements for block creation
     </span><span class="kw">pub fn </span>get_block_endorsements(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        target_slot: <span class="kw-2">&amp;</span>Slot,
-        target_block: <span class="kw-2">&amp;</span>BlockId,
+        slot: <span class="kw-2">&amp;</span>Slot, <span class="comment">// slot of the block that will contain the endorsement
+        </span>target_block: <span class="kw-2">&amp;</span>BlockId,
     ) -&gt; (Vec&lt;<span class="prelude-ty">Option</span>&lt;EndorsementId&gt;&gt;, Storage) {
-        <span class="comment">// init list of selected operation IDs
+        <span class="comment">// init list of selected endorsement IDs
         </span><span class="kw">let </span><span class="kw-2">mut </span>endo_ids = Vec::with_capacity(<span class="self">self</span>.config.max_block_endorsement_count <span class="kw">as </span>usize);
 
         <span class="comment">// gather endorsements
         </span><span class="kw">for </span>index <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.config.max_block_endorsement_count {
             endo_ids.push(
                 <span class="self">self</span>.endorsements_indexed
-                    .get(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>target_slot, index, <span class="kw-2">*</span>target_block))
+                    .get(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>slot, index, <span class="kw-2">*</span>target_block))
                     .copied(),
             );
         }
@@ -353,4 +353,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b705839c 2022-09-26)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (57f097ea2 2022-10-01)" ></div></body></html>

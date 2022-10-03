@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-consensus-worker/src/consensus_worker.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>consensus_worker.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_consensus_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_consensus_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_consensus_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-consensus-worker/src/consensus_worker.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>consensus_worker.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_consensus_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_consensus_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_consensus_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -721,6 +721,71 @@
 <span id="721">721</span>
 <span id="722">722</span>
 <span id="723">723</span>
+<span id="724">724</span>
+<span id="725">725</span>
+<span id="726">726</span>
+<span id="727">727</span>
+<span id="728">728</span>
+<span id="729">729</span>
+<span id="730">730</span>
+<span id="731">731</span>
+<span id="732">732</span>
+<span id="733">733</span>
+<span id="734">734</span>
+<span id="735">735</span>
+<span id="736">736</span>
+<span id="737">737</span>
+<span id="738">738</span>
+<span id="739">739</span>
+<span id="740">740</span>
+<span id="741">741</span>
+<span id="742">742</span>
+<span id="743">743</span>
+<span id="744">744</span>
+<span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
+<span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
+<span id="781">781</span>
+<span id="782">782</span>
+<span id="783">783</span>
+<span id="784">784</span>
+<span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="kw">use </span>massa_consensus_exports::{
     commands::ConsensusCommand,
@@ -734,8 +799,12 @@
 <span class="kw">use </span>massa_models::{block::WrappedHeader, prehash::PreHashMap};
 <span class="kw">use </span>massa_models::{prehash::PreHashSet, stats::ConsensusStats};
 <span class="kw">use </span>massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
+<span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>std::{cmp::max, collections::VecDeque};
+<span class="kw">use </span>std::{
+    cmp::max,
+    collections::{HashMap, VecDeque},
+};
 <span class="kw">use </span>tokio::time::{sleep, sleep_until, Sleep};
 <span class="kw">use </span>tracing::{info, warn};
 
@@ -768,7 +837,7 @@
     </span>final_block_stats: VecDeque&lt;(MassaTime, Address, bool)&gt;,
     <span class="doccomment">/// Blocks that come from protocol used for stats and ids are removed when inserted in `final_block_stats`
     </span>protocol_blocks: VecDeque&lt;(MassaTime, BlockId)&gt;,
-    <span class="doccomment">/// Stale block timestamps
+    <span class="doccomment">/// Stale block timestamp
     </span>stale_block_stats: VecDeque&lt;MassaTime&gt;,
     <span class="doccomment">/// the time span considered for stats
     </span>stats_history_timespan: MassaTime,
@@ -777,6 +846,8 @@
     </span>stats_desync_detection_timespan: MassaTime,
     <span class="doccomment">/// time at which the node was launched (used for desynchronization detection)
     </span>launch_time: MassaTime,
+    <span class="doccomment">/// previous blockclique notified to Execution
+    </span>prev_blockclique: PreHashMap&lt;BlockId, Slot&gt;,
 }
 
 <span class="kw">impl </span>ConsensusWorker {
@@ -830,44 +901,43 @@
         }
         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.new&quot;</span>, {});
 
-        <span class="comment">// add genesis blocks to stats
-        </span><span class="kw">let </span>genesis_addr = Address::from_public_key(<span class="kw-2">&amp;</span>cfg.genesis_key.get_public_key());
-        <span class="kw">let </span><span class="kw-2">mut </span>final_block_stats = VecDeque::new();
-        <span class="kw">for </span>thread <span class="kw">in </span><span class="number">0</span>..cfg.thread_count {
-            final_block_stats.push_back((
-                get_block_slot_timestamp(
-                    cfg.thread_count,
-                    cfg.t0,
-                    cfg.genesis_timestamp,
-                    Slot::new(<span class="number">0</span>, thread),
-                )<span class="question-mark">?</span>,
-                genesis_addr,
-                <span class="bool-val">false</span>,
-            ))
-        }
-
         <span class="comment">// desync detection timespan
         </span><span class="kw">let </span>stats_desync_detection_timespan = cfg.t0.checked_mul(cfg.periods_per_cycle * <span class="number">2</span>)<span class="question-mark">?</span>;
 
-        <span class="comment">// notify execution module of current blockclique and final blocks
+        <span class="comment">// Notify execution module of current blockclique and all final blocks.
         // we need to do this because the bootstrap snapshots of the executor vs the consensus may not have been taken in sync
-        // because the two modules run concurrently and out of sync
-
-        </span><span class="kw">let </span>final_blocks = block_db.get_all_final_blocks();
-
-        <span class="kw">let </span>blockclique = block_db
-            .get_blockclique()
+        // because the two modules run concurrently and out of sync.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>block_storage: PreHashMap&lt;BlockId, Storage&gt; = Default::default();
+        <span class="kw">let </span>notify_finals: HashMap&lt;Slot, BlockId&gt; = block_db
+            .get_all_final_blocks()
             .into_iter()
-            .map(|block_id| {
-                <span class="kw">let </span>(a_block, storage) = block_db
-                    .get_active_block(<span class="kw-2">&amp;</span>block_id)
-                    .expect(<span class="string">&quot;could not get active block for execution notification&quot;</span>);
-                (a_block.slot, (block_id, storage.clone()))
+            .map(|(b_id, slot)| {
+                <span class="kw">let </span>(_a_block, storage) = block_db
+                    .get_active_block(<span class="kw-2">&amp;</span>b_id)
+                    .expect(<span class="string">&quot;active block missing from block_db&quot;</span>);
+                block_storage.insert(b_id, storage.clone());
+                (slot, b_id)
             })
             .collect();
-        channels
-            .execution_controller
-            .update_blockclique_status(final_blocks, blockclique);
+        <span class="kw">let </span>notify_blockclique: HashMap&lt;Slot, BlockId&gt; = block_db
+            .get_blockclique()
+            .iter()
+            .map(|b_id| {
+                <span class="kw">let </span>(a_block, storage) = block_db
+                    .get_active_block(b_id)
+                    .expect(<span class="string">&quot;active block missing from block_db&quot;</span>);
+                <span class="kw">let </span>slot = a_block.slot;
+                block_storage.insert(<span class="kw-2">*</span>b_id, storage.clone());
+                (slot, <span class="kw-2">*</span>b_id)
+            })
+            .collect();
+        <span class="kw">let </span>prev_blockclique: PreHashMap&lt;BlockId, Slot&gt; =
+            notify_blockclique.iter().map(|(k, v)| (<span class="kw-2">*</span>v, <span class="kw-2">*</span>k)).collect();
+        channels.execution_controller.update_blockclique_status(
+            notify_finals,
+            <span class="prelude-val">Some</span>(notify_blockclique),
+            block_storage,
+        );
 
         <span class="prelude-val">Ok</span>(ConsensusWorker {
             block_db,
@@ -877,13 +947,14 @@
             latest_final_periods,
             clock_compensation,
             channels,
-            final_block_stats,
+            final_block_stats: Default::default(),
             protocol_blocks: Default::default(),
             stale_block_stats: VecDeque::new(),
             stats_desync_detection_timespan,
             stats_history_timespan: max(stats_desync_detection_timespan, cfg.stats_timespan),
             cfg,
             launch_time: MassaTime::now(clock_compensation)<span class="question-mark">?</span>,
+            prev_blockclique,
         })
     }
 
@@ -976,8 +1047,6 @@
 
     <span class="doccomment">/// this function is called around every slot tick
     /// it checks for cycle increment
-    /// creates block and endorsement if a staking address has been drawn
-    /// it signals the new slot to other components
     /// detects desynchronization
     /// produce quite more logs than actual stuff
     </span><span class="kw">async fn </span>slot_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>, next_slot_timer: <span class="kw-2">&amp;mut </span>std::pin::Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -1155,6 +1224,15 @@
                 }
                 <span class="prelude-val">Ok</span>(())
             }
+            ConsensusCommand::GetLatestBlockcliqueBlockAtSlot { slot, response_tx } =&gt; {
+                <span class="kw">let </span>res = <span class="self">self</span>.block_db.get_latest_blockclique_block_at_slot(<span class="kw-2">&amp;</span>slot);
+                <span class="kw">if </span>response_tx.send(res).is_err() {
+                    <span class="macro">warn!</span>(
+                        <span class="string">&quot;consensus: could not send get latest block clique block at slot response&quot;
+                    </span>);
+                }
+                <span class="prelude-val">Ok</span>(())
+            }
             ConsensusCommand::SendBlock {
                 block_id,
                 slot,
@@ -1267,9 +1345,81 @@
         <span class="prelude-val">Ok</span>(())
     }
 
+    <span class="doccomment">/// Notify execution about blockclique changes and finalized blocks.
+    </span><span class="kw">fn </span>notify_execution(<span class="kw-2">&amp;mut </span><span class="self">self</span>, finalized_blocks: HashMap&lt;Slot, BlockId&gt;) {
+        <span class="comment">// List new block storage instances that Execution doesn&#39;t know about.
+        // That&#39;s blocks that have not been sent to execution before, ie. in the previous blockclique).
+        </span><span class="kw">let </span><span class="kw-2">mut </span>new_blocks_storage: PreHashMap&lt;BlockId, Storage&gt; = finalized_blocks
+            .iter()
+            .filter_map(|(_slot, b_id)| {
+                <span class="kw">if </span><span class="self">self</span>.prev_blockclique.contains_key(b_id) {
+                    <span class="comment">// was previously sent as a blockclique element
+                    </span><span class="kw">return </span><span class="prelude-val">None</span>;
+                }
+                <span class="kw">let </span>(_a_block, storage) = <span class="self">self
+                    </span>.block_db
+                    .get_active_block(b_id)
+                    .expect(<span class="string">&quot;final block not found in active blocks&quot;</span>);
+                <span class="prelude-val">Some</span>((<span class="kw-2">*</span>b_id, storage.clone()))
+            })
+            .collect();
+
+        <span class="comment">// Get new blockclique block list with slots.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>blockclique_changed = <span class="bool-val">false</span>;
+        <span class="kw">let </span>new_blockclique: PreHashMap&lt;BlockId, Slot&gt; = <span class="self">self
+            </span>.block_db
+            .get_blockclique()
+            .iter()
+            .map(|b_id| {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = <span class="self">self</span>.prev_blockclique.remove(b_id) {
+                    <span class="comment">// The block was already sent in the previous blockclique:
+                    // the slot can be gathered from there without locking Storage.
+                    // Note: the block is removed from self.prev_blockclique.
+                    </span>(<span class="kw-2">*</span>b_id, slot)
+                } <span class="kw">else </span>{
+                    <span class="comment">// The block was not present in the previous blockclique:
+                    // the blockclique has changed =&gt; get the block&#39;s slot by querying Storage.
+                    </span>blockclique_changed = <span class="bool-val">true</span>;
+                    <span class="kw">let </span>(a_block, storage) = <span class="self">self
+                        </span>.block_db
+                        .get_active_block(b_id)
+                        .expect(<span class="string">&quot;blockclique block not found in active blocks&quot;</span>);
+                    new_blocks_storage.insert(<span class="kw-2">*</span>b_id, storage.clone());
+                    (<span class="kw-2">*</span>b_id, a_block.slot)
+                }
+            })
+            .collect();
+        <span class="kw">if </span>!<span class="self">self</span>.prev_blockclique.is_empty() {
+            <span class="comment">// All elements present in the new blockclique have been removed from `prev_blockclique` above.
+            // If `prev_blockclique` is not empty here, it means that it contained elements that are not in the new blockclique anymore.
+            // In that case, we mark the blockclique as having changed.
+            </span>blockclique_changed = <span class="bool-val">true</span>;
+        }
+        <span class="comment">// Overwrite previous blockclique.
+        // Should still be done even if unchanged because elements were removed from it above.
+        </span><span class="self">self</span>.prev_blockclique = new_blockclique.clone();
+
+        <span class="kw">if </span>finalized_blocks.is_empty() &amp;&amp; !blockclique_changed {
+            <span class="comment">// There are no changes (neither block finalizations not blockclique changes) to send to execution.
+            </span><span class="kw">return</span>;
+        }
+
+        <span class="comment">// Notify execution of block finalizations and blockclique changes
+        </span><span class="self">self</span>.channels
+            .execution_controller
+            .update_blockclique_status(
+                finalized_blocks,
+                <span class="kw">if </span>blockclique_changed {
+                    <span class="prelude-val">Some</span>(new_blockclique.into_iter().map(|(k, v)| (v, k)).collect())
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>},
+                new_blocks_storage,
+            );
+    }
+
     <span class="doccomment">/// call me if the block database changed
-    /// Processing of final blocks, pruning and producing endorsement.
-    /// Please refactor me
+    /// Processing of final blocks, pruning.
     ///
     /// 1. propagate blocks
     /// 2. Notify of attack attempts
@@ -1281,8 +1431,7 @@
     /// 8. Notify PoS of final blocks
     /// 9. notify protocol of block wish list
     /// 10. note new latest final periods (prune graph if changed)
-    /// 11. Produce endorsements
-    /// 12. add stale blocks to stats
+    /// 11. add stale blocks to stats
     </span><span class="kw">async fn </span>block_db_changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.block_db_changed&quot;</span>, {});
 
@@ -1308,37 +1457,15 @@
             });
         }
 
-        <span class="comment">// get new final blocks
-        </span><span class="kw">let </span>new_final_block_ids = <span class="self">self</span>.block_db.get_new_final_blocks();
-
-        <span class="comment">// get blockclique
-        </span><span class="kw">let </span>blockclique_set = <span class="self">self</span>.block_db.get_blockclique();
-
-        <span class="comment">// notify execution
-        </span><span class="kw">let </span>final_blocks = new_final_block_ids
-            .iter()
-            .filter_map(|b_id| <span class="kw">match </span><span class="self">self</span>.block_db.get_active_block(b_id) {
-                <span class="prelude-val">Some</span>((a_b, storage)) <span class="kw">if </span>a_b.is_final =&gt; {
-                    <span class="prelude-val">Some</span>((a_b.slot, (a_b.block_id, storage.clone())))
-                }
-                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-            })
-            .collect();
-        <span class="kw">let </span>blockclique = blockclique_set
-            .into_iter()
-            .filter_map(|b_id| <span class="kw">match </span><span class="self">self</span>.block_db.get_active_block(<span class="kw-2">&amp;</span>b_id) {
-                <span class="prelude-val">Some</span>((a_b, storage)) =&gt; <span class="prelude-val">Some</span>((a_b.slot, (a_b.block_id, storage.clone()))),
-                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-            })
-            .collect();
-        <span class="self">self</span>.channels
-            .execution_controller
-            .update_blockclique_status(final_blocks, blockclique);
-
-        <span class="comment">// Process new final blocks
+        <span class="comment">// manage finalized blocks
         </span><span class="kw">let </span>timestamp = MassaTime::now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>;
-        <span class="kw">for </span>b_id <span class="kw">in </span>new_final_block_ids.into_iter() {
+        <span class="kw">let </span>finalized_blocks = <span class="self">self</span>.block_db.get_new_final_blocks();
+        <span class="kw">let </span><span class="kw-2">mut </span>final_block_slots = HashMap::with_capacity(finalized_blocks.len());
+        <span class="kw">for </span>b_id <span class="kw">in </span>finalized_blocks {
             <span class="kw">if let </span><span class="prelude-val">Some</span>((a_block, _block_store)) = <span class="self">self</span>.block_db.get_active_block(<span class="kw-2">&amp;</span>b_id) {
+                <span class="comment">// add to final blocks to notify execution
+                </span>final_block_slots.insert(a_block.slot, b_id);
+
                 <span class="comment">// add to stats
                 </span><span class="kw">let </span>block_is_from_protocol = <span class="self">self
                     </span>.protocol_blocks
@@ -1351,6 +1478,9 @@
                 ));
             }
         }
+
+        <span class="comment">// notify execution
+        </span><span class="self">self</span>.notify_execution(final_block_slots);
 
         <span class="comment">// notify protocol of block wishlist
         </span><span class="kw">let </span>new_wishlist = <span class="self">self</span>.block_db.get_block_wishlist()<span class="question-mark">?</span>;
@@ -1445,4 +1575,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b705839c 2022-09-26)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (57f097ea2 2022-10-01)" ></div></body></html>

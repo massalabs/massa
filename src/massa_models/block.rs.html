@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/block.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>block.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/block.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>block.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -784,12 +784,178 @@
 <span id="784">784</span>
 <span id="785">785</span>
 <span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
+<span id="789">789</span>
+<span id="790">790</span>
+<span id="791">791</span>
+<span id="792">792</span>
+<span id="793">793</span>
+<span id="794">794</span>
+<span id="795">795</span>
+<span id="796">796</span>
+<span id="797">797</span>
+<span id="798">798</span>
+<span id="799">799</span>
+<span id="800">800</span>
+<span id="801">801</span>
+<span id="802">802</span>
+<span id="803">803</span>
+<span id="804">804</span>
+<span id="805">805</span>
+<span id="806">806</span>
+<span id="807">807</span>
+<span id="808">808</span>
+<span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
+<span id="817">817</span>
+<span id="818">818</span>
+<span id="819">819</span>
+<span id="820">820</span>
+<span id="821">821</span>
+<span id="822">822</span>
+<span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
+<span id="826">826</span>
+<span id="827">827</span>
+<span id="828">828</span>
+<span id="829">829</span>
+<span id="830">830</span>
+<span id="831">831</span>
+<span id="832">832</span>
+<span id="833">833</span>
+<span id="834">834</span>
+<span id="835">835</span>
+<span id="836">836</span>
+<span id="837">837</span>
+<span id="838">838</span>
+<span id="839">839</span>
+<span id="840">840</span>
+<span id="841">841</span>
+<span id="842">842</span>
+<span id="843">843</span>
+<span id="844">844</span>
+<span id="845">845</span>
+<span id="846">846</span>
+<span id="847">847</span>
+<span id="848">848</span>
+<span id="849">849</span>
+<span id="850">850</span>
+<span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
+<span id="900">900</span>
+<span id="901">901</span>
+<span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
+<span id="905">905</span>
+<span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
+<span id="911">911</span>
+<span id="912">912</span>
+<span id="913">913</span>
+<span id="914">914</span>
+<span id="915">915</span>
+<span id="916">916</span>
+<span id="917">917</span>
+<span id="918">918</span>
+<span id="919">919</span>
+<span id="920">920</span>
+<span id="921">921</span>
+<span id="922">922</span>
+<span id="923">923</span>
+<span id="924">924</span>
+<span id="925">925</span>
+<span id="926">926</span>
+<span id="927">927</span>
+<span id="928">928</span>
+<span id="929">929</span>
+<span id="930">930</span>
+<span id="931">931</span>
+<span id="932">932</span>
+<span id="933">933</span>
+<span id="934">934</span>
+<span id="935">935</span>
+<span id="936">936</span>
+<span id="937">937</span>
+<span id="938">938</span>
+<span id="939">939</span>
+<span id="940">940</span>
+<span id="941">941</span>
+<span id="942">942</span>
+<span id="943">943</span>
+<span id="944">944</span>
+<span id="945">945</span>
+<span id="946">946</span>
+<span id="947">947</span>
+<span id="948">948</span>
+<span id="949">949</span>
+<span id="950">950</span>
+<span id="951">951</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span><span class="kw">crate</span>::prehash::PreHashed;
+</span><span class="kw">use </span><span class="kw">crate</span>::endorsement::{EndorsementId, EndorsementSerializer, EndorsementSerializerLW};
+<span class="kw">use </span><span class="kw">crate</span>::prehash::PreHashed;
 <span class="kw">use </span><span class="kw">crate</span>::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
 <span class="kw">use crate</span>::{
-    endorsement::{Endorsement, EndorsementDeserializer, WrappedEndorsement},
+    endorsement::{Endorsement, EndorsementDeserializerLW, WrappedEndorsement},
     error::ModelsError,
     operation::{OperationId, OperationIdsDeserializer, OperationIdsSerializer, WrappedOperation},
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -928,6 +1094,7 @@
         DC: Deserializer&lt;<span class="self">Self</span>&gt;,
         U: Id,
     &gt;(
+        _content_serializer: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="kw">dyn </span>Serializer&lt;<span class="self">Self</span>&gt;&gt;,
         _signature_deserializer: <span class="kw-2">&amp;</span>massa_signature::SignatureDeserializer,
         _creator_public_key_deserializer: <span class="kw-2">&amp;</span>massa_signature::PublicKeyDeserializer,
         content_deserializer: <span class="kw-2">&amp;</span>DC,
@@ -1188,6 +1355,7 @@
     <span class="doccomment">/// endorsements
     </span><span class="kw">pub </span>endorsements: Vec&lt;WrappedEndorsement&gt;,
 }
+
 <span class="comment">// NOTE: TODO
 // impl Signable&lt;BlockId&gt; for BlockHeader {
 //     fn get_signature_message(&amp;self) -&gt; Result&lt;Hash, ModelsError&gt; {
@@ -1216,6 +1384,7 @@
 </span><span class="kw">pub struct </span>BlockHeaderSerializer {
     slot_serializer: SlotSerializer,
     endorsement_serializer: WrappedSerializer,
+    endorsement_content_serializer: EndorsementSerializerLW,
     u32_serializer: U32VarIntSerializer,
 }
 
@@ -1226,6 +1395,7 @@
             slot_serializer: SlotSerializer::new(),
             endorsement_serializer: WrappedSerializer::new(),
             u32_serializer: U32VarIntSerializer::new(),
+            endorsement_content_serializer: EndorsementSerializerLW::new(),
         }
     }
 }
@@ -1303,7 +1473,11 @@
             buffer,
         )<span class="question-mark">?</span>;
         <span class="kw">for </span>endorsement <span class="kw">in </span>value.endorsements.iter() {
-            <span class="self">self</span>.endorsement_serializer.serialize(endorsement, buffer)<span class="question-mark">?</span>;
+            <span class="self">self</span>.endorsement_serializer.serialize_with(
+                <span class="kw-2">&amp;</span><span class="self">self</span>.endorsement_content_serializer,
+                endorsement,
+                buffer,
+            )<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -1312,30 +1486,29 @@
 <span class="doccomment">/// Deserializer for `BlockHeader`
 </span><span class="kw">pub struct </span>BlockHeaderDeserializer {
     slot_deserializer: SlotDeserializer,
-    endorsement_deserializer: WrappedDeserializer&lt;Endorsement, EndorsementDeserializer&gt;,
+    endorsement_serializer: EndorsementSerializer,
     length_endorsements_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
     thread_count: u8,
+    endorsement_count: u32,
 }
 
 <span class="kw">impl </span>BlockHeaderDeserializer {
-    <span class="doccomment">/// Creates a new `BlockHeaderDeserializer`
+    <span class="doccomment">/// Creates a new `BlockHeaderDeserializerLW`
     </span><span class="kw">pub const fn </span>new(thread_count: u8, endorsement_count: u32) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             slot_deserializer: SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
                 (Included(<span class="number">0</span>), Excluded(thread_count)),
             ),
-            endorsement_deserializer: WrappedDeserializer::new(EndorsementDeserializer::new(
-                thread_count,
-                endorsement_count,
-            )),
+            endorsement_serializer: EndorsementSerializer::new(),
             length_endorsements_deserializer: U32VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
                 Included(endorsement_count),
             ),
             hash_deserializer: HashDeserializer::new(),
             thread_count,
+            endorsement_count,
         }
     }
 }
@@ -1345,7 +1518,7 @@
     /// ```rust
     /// use massa_models::block::{BlockId, BlockHeader, BlockHeaderDeserializer, BlockHeaderSerializer};
     /// use massa_models::{config::THREAD_COUNT, slot::Slot, wrapped::WrappedContent};
-    /// use massa_models::endorsement::{Endorsement, EndorsementSerializer};
+    /// use massa_models::endorsement::{Endorsement, EndorsementSerializerLW};
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
@@ -1365,7 +1538,7 @@
     ///          index: 1,
     ///          endorsed_block: BlockId(Hash::compute_from(&quot;blk1&quot;.as_bytes())),
     ///        },
-    ///     EndorsementSerializer::new(),
+    ///     EndorsementSerializerLW::new(),
     ///     &amp;keypair,
     ///     )
     ///     .unwrap(),
@@ -1375,7 +1548,7 @@
     ///         index: 3,
     ///         endorsed_block: BlockId(Hash::compute_from(&quot;blk2&quot;.as_bytes())),
     ///       },
-    ///     EndorsementSerializer::new(),
+    ///     EndorsementSerializerLW::new(),
     ///     &amp;keypair,
     ///     )
     ///     .unwrap(),
@@ -1393,54 +1566,77 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BlockHeader, E&gt; {
-        context(
-            <span class="string">&quot;Failed BlockHeader deserialization&quot;</span>,
-            tuple((
-                context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.slot_deserializer.deserialize(input)
-                }),
-                context(
-                    <span class="string">&quot;Failed parents deserialization&quot;</span>,
-                    alt((
-                        preceded(tag(<span class="kw-2">&amp;</span>[<span class="number">0</span>]), |input| <span class="prelude-val">Ok</span>((input, Vec::new()))),
-                        preceded(
-                            tag(<span class="kw-2">&amp;</span>[<span class="number">1</span>]),
-                            count(
-                                context(<span class="string">&quot;Failed block_id deserialization&quot;</span>, |input| {
-                                    <span class="self">self</span>.hash_deserializer
-                                        .deserialize(input)
-                                        .map(|(rest, hash)| (rest, BlockId(hash)))
-                                }),
-                                <span class="self">self</span>.thread_count <span class="kw">as </span>usize,
+        <span class="kw">let </span>(rest, (slot, parents, operation_merkle_root)): (<span class="kw-2">&amp;</span>[u8], (Slot, Vec&lt;BlockId&gt;, Hash)) =
+            context(
+                <span class="string">&quot;Failed BlockHeader deserialization&quot;</span>,
+                tuple((
+                    context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
+                        <span class="self">self</span>.slot_deserializer.deserialize(input)
+                    }),
+                    context(
+                        <span class="string">&quot;Failed parents deserialization&quot;</span>,
+                        alt((
+                            preceded(tag(<span class="kw-2">&amp;</span>[<span class="number">0</span>]), |input| <span class="prelude-val">Ok</span>((input, Vec::new()))),
+                            preceded(
+                                tag(<span class="kw-2">&amp;</span>[<span class="number">1</span>]),
+                                count(
+                                    context(<span class="string">&quot;Failed block_id deserialization&quot;</span>, |input| {
+                                        <span class="self">self</span>.hash_deserializer
+                                            .deserialize(input)
+                                            .map(|(rest, hash)| (rest, BlockId(hash)))
+                                    }),
+                                    <span class="self">self</span>.thread_count <span class="kw">as </span>usize,
+                                ),
                             ),
-                        ),
-                    )),
-                ),
-                context(<span class="string">&quot;Failed operation_merkle_root&quot;</span>, |input| {
-                    <span class="self">self</span>.hash_deserializer.deserialize(input)
-                }),
-                context(
-                    <span class="string">&quot;Failed endorsements deserialization&quot;</span>,
-                    length_count(
-                        context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
-                            <span class="self">self</span>.length_endorsements_deserializer.deserialize(input)
-                        }),
-                        context(<span class="string">&quot;Failed endorsement deserialization&quot;</span>, |input| {
-                            <span class="self">self</span>.endorsement_deserializer.deserialize(input)
-                        }),
+                        )),
                     ),
-                ),
-            )),
+                    context(<span class="string">&quot;Failed operation_merkle_root&quot;</span>, |input| {
+                        <span class="self">self</span>.hash_deserializer.deserialize(input)
+                    }),
+                )),
+            )
+            .parse(buffer)<span class="question-mark">?</span>;
+
+        <span class="kw">if </span>parents.is_empty() {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>((
+                <span class="kw-2">&amp;</span>rest[<span class="number">1</span>..], <span class="comment">// Because there is 0 endorsements, we have a remaining 0 in rest and we don&#39;t need it
+                </span>BlockHeader {
+                    slot,
+                    parents,
+                    operation_merkle_root,
+                    endorsements: Vec::new(),
+                },
+            ));
+        }
+        <span class="comment">// Now deser the endorsements (which were: lw serialized)
+        </span><span class="kw">let </span>endorsement_deserializer = WrappedDeserializer::new(EndorsementDeserializerLW::new(
+            <span class="self">self</span>.endorsement_count,
+            slot,
+            parents[slot.thread <span class="kw">as </span>usize],
+        ));
+
+        <span class="kw">let </span>(rest, endorsements) = context(
+            <span class="string">&quot;Failed endorsements deserialization&quot;</span>,
+            length_count::&lt;<span class="kw-2">&amp;</span>[u8], Wrapped&lt;Endorsement, EndorsementId&gt;, u32, E, <span class="kw">_</span>, <span class="kw">_</span>&gt;(
+                context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.length_endorsements_deserializer.deserialize(input)
+                }),
+                context(<span class="string">&quot;Failed endorsement deserialization&quot;</span>, |input| {
+                    endorsement_deserializer.deserialize_with(<span class="kw-2">&amp;</span><span class="self">self</span>.endorsement_serializer, input)
+                }),
+            ),
         )
-        .map(
-            |(slot, parents, operation_merkle_root, endorsements)| BlockHeader {
+        .parse(rest)<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>((
+            rest,
+            BlockHeader {
                 slot,
                 parents,
                 operation_merkle_root,
                 endorsements,
             },
-        )
-        .parse(buffer)
+        ))
     }
 }
 
@@ -1492,10 +1688,103 @@
     <span class="attribute">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_block_serialization() {
-        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>keypair =
+            KeyPair::from_str(<span class="string">&quot;S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG&quot;</span>).unwrap();
         <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
-            .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
+            .map(|_i| {
+                BlockId(
+                    Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
+                        .unwrap(),
+                )
+            })
             .collect();
+
+        <span class="kw">let </span>endo = Endorsement::new_wrapped(
+            Endorsement {
+                slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
+                index: <span class="number">1</span>,
+                endorsed_block: BlockId(
+                    Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
+                        .unwrap(),
+                ),
+            },
+            EndorsementSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+        )
+        .unwrap();
+
+        <span class="comment">// create block header
+        </span><span class="kw">let </span>orig_header = BlockHeader::new_wrapped(
+            BlockHeader {
+                slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
+                parents,
+                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                endorsements: <span class="macro">vec!</span>[endo.clone()],
+            },
+            BlockHeaderSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+        )
+        .unwrap();
+
+        <span class="comment">// create block
+        </span><span class="kw">let </span>orig_block = Block {
+            header: orig_header.clone(),
+            operations: Default::default(),
+        };
+
+        <span class="comment">// serialize block
+        </span><span class="kw">let </span>wrapped_block: WrappedBlock =
+            Block::new_wrapped(orig_block.clone(), BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
+        WrappedSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>wrapped_block, <span class="kw-2">&amp;mut </span>ser_block)
+            .unwrap();
+
+        <span class="comment">// deserialize
+        </span><span class="kw">let </span>(rest, res_block): (<span class="kw-2">&amp;</span>[u8], WrappedBlock) = WrappedDeserializer::new(
+            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_block)
+        .unwrap();
+
+        <span class="macro">assert!</span>(rest.is_empty());
+        <span class="comment">// check equality
+        </span><span class="macro">assert_eq!</span>(orig_block.header.id, res_block.content.header.id);
+        <span class="macro">assert_eq!</span>(orig_block.header.id, res_block.id);
+        <span class="macro">assert_eq!</span>(
+            orig_block.header.content.slot,
+            res_block.content.header.content.slot
+        );
+        <span class="macro">assert_eq!</span>(
+            orig_block.header.serialized_data,
+            res_block.content.header.serialized_data
+        );
+        <span class="macro">assert_eq!</span>(
+            orig_block.header.signature,
+            res_block.content.header.signature
+        );
+
+        <span class="macro">assert_eq!</span>(
+            orig_block.header.content.endorsements,
+            res_block.content.header.content.endorsements
+        );
+
+        <span class="macro">assert_eq!</span>(orig_block.header.signature, res_block.signature);
+        orig_header.verify_signature().unwrap();
+        <span class="kw">for </span>ed <span class="kw">in </span>orig_block.header.content.endorsements.iter() {
+            ed.verify_signature().unwrap();
+        }
+        res_block.content.header.verify_signature().unwrap();
+        <span class="kw">for </span>ed <span class="kw">in </span>res_block.content.header.content.endorsements.iter() {
+            ed.verify_signature().unwrap();
+        }
+    }
+
+    <span class="attribute">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_genesis_block_serialization() {
+        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>parents: Vec&lt;BlockId&gt; = <span class="macro">vec!</span>[];
 
         <span class="comment">// create block header
         </span><span class="kw">let </span>orig_header = BlockHeader::new_wrapped(
@@ -1503,28 +1792,7 @@
                 slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
-                endorsements: <span class="macro">vec!</span>[
-                    Endorsement::new_wrapped(
-                        Endorsement {
-                            slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
-                            index: <span class="number">1</span>,
-                            endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk1&quot;</span>.as_bytes())),
-                        },
-                        EndorsementSerializer::new(),
-                        <span class="kw-2">&amp;</span>keypair,
-                    )
-                    .unwrap(),
-                    Endorsement::new_wrapped(
-                        Endorsement {
-                            slot: Slot::new(<span class="number">4</span>, <span class="number">0</span>),
-                            index: <span class="number">3</span>,
-                            endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk2&quot;</span>.as_bytes())),
-                        },
-                        EndorsementSerializer::new(),
-                        <span class="kw-2">&amp;</span>keypair,
-                    )
-                    .unwrap(),
-                ],
+                endorsements: <span class="macro">vec!</span>[],
             },
             BlockHeaderSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
@@ -1551,11 +1819,13 @@
         )
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_block)
         .unwrap();
-        <span class="macro">assert!</span>(rest.is_empty());
+
         <span class="comment">// check equality
-        </span><span class="macro">assert_eq!</span>(orig_block.header.id, res_block.content.header.id);
-        <span class="macro">assert_eq!</span>(orig_block.header.id, res_block.id);
-        <span class="macro">assert_eq!</span>(
+
+        </span><span class="macro">assert!</span>(rest.is_empty());
+        <span class="macro">assert_eq!</span>(orig_block.header.id, res_block.content.header.id);
+        <span class="comment">// assert_eq!(orig_block.header.id, res_block.id);
+        </span><span class="macro">assert_eq!</span>(
             orig_block.header.content.slot,
             res_block.content.header.content.slot
         );
@@ -1567,8 +1837,68 @@
             orig_block.header.signature,
             res_block.content.header.signature
         );
+
+        <span class="macro">assert_eq!</span>(
+            orig_block.header.content.endorsements,
+            res_block.content.header.content.endorsements
+        );
+
         <span class="macro">assert_eq!</span>(orig_block.header.signature, res_block.signature);
+    }
+
+    <span class="attribute">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_invalid_genesis_block_serialization() {
+        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>parents: Vec&lt;BlockId&gt; = <span class="macro">vec!</span>[];
+
+        <span class="comment">// Genesis block do not have any parents and thus cannot embed endorsements
+        </span><span class="kw">let </span>endorsement = Endorsement {
+            slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
+            index: <span class="number">1</span>,
+            endorsed_block: BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="number">1</span>])),
+        };
+
+        <span class="comment">// create block header
+        </span><span class="kw">let </span>orig_header = BlockHeader::new_wrapped(
+            BlockHeader {
+                slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
+                parents,
+                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                endorsements: <span class="macro">vec!</span>[Endorsement::new_wrapped(
+                    endorsement,
+                    EndorsementSerializer::new(),
+                    <span class="kw-2">&amp;</span>keypair,
+                )
+                .unwrap()],
+            },
+            BlockHeaderSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+        )
+        .unwrap();
+
+        <span class="comment">// create block
+        </span><span class="kw">let </span>orig_block = Block {
+            header: orig_header,
+            operations: Default::default(),
+        };
+
+        <span class="comment">// serialize block
+        </span><span class="kw">let </span>wrapped_block: WrappedBlock =
+            Block::new_wrapped(orig_block.clone(), BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
+        WrappedSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>wrapped_block, <span class="kw-2">&amp;mut </span>ser_block)
+            .unwrap();
+
+        <span class="comment">// deserialize
+        </span><span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], WrappedBlock), <span class="kw">_</span>&gt; = WrappedDeserializer::new(
+            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_block);
+
+        <span class="macro">assert!</span>(res.is_err())
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b705839c 2022-09-26)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (57f097ea2 2022-10-01)" ></div></body></html>

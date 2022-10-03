@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/worker.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>worker.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/worker.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>worker.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -274,394 +274,9 @@
 <span id="274">274</span>
 <span id="275">275</span>
 <span id="276">276</span>
-<span id="277">277</span>
-<span id="278">278</span>
-<span id="279">279</span>
-<span id="280">280</span>
-<span id="281">281</span>
-<span id="282">282</span>
-<span id="283">283</span>
-<span id="284">284</span>
-<span id="285">285</span>
-<span id="286">286</span>
-<span id="287">287</span>
-<span id="288">288</span>
-<span id="289">289</span>
-<span id="290">290</span>
-<span id="291">291</span>
-<span id="292">292</span>
-<span id="293">293</span>
-<span id="294">294</span>
-<span id="295">295</span>
-<span id="296">296</span>
-<span id="297">297</span>
-<span id="298">298</span>
-<span id="299">299</span>
-<span id="300">300</span>
-<span id="301">301</span>
-<span id="302">302</span>
-<span id="303">303</span>
-<span id="304">304</span>
-<span id="305">305</span>
-<span id="306">306</span>
-<span id="307">307</span>
-<span id="308">308</span>
-<span id="309">309</span>
-<span id="310">310</span>
-<span id="311">311</span>
-<span id="312">312</span>
-<span id="313">313</span>
-<span id="314">314</span>
-<span id="315">315</span>
-<span id="316">316</span>
-<span id="317">317</span>
-<span id="318">318</span>
-<span id="319">319</span>
-<span id="320">320</span>
-<span id="321">321</span>
-<span id="322">322</span>
-<span id="323">323</span>
-<span id="324">324</span>
-<span id="325">325</span>
-<span id="326">326</span>
-<span id="327">327</span>
-<span id="328">328</span>
-<span id="329">329</span>
-<span id="330">330</span>
-<span id="331">331</span>
-<span id="332">332</span>
-<span id="333">333</span>
-<span id="334">334</span>
-<span id="335">335</span>
-<span id="336">336</span>
-<span id="337">337</span>
-<span id="338">338</span>
-<span id="339">339</span>
-<span id="340">340</span>
-<span id="341">341</span>
-<span id="342">342</span>
-<span id="343">343</span>
-<span id="344">344</span>
-<span id="345">345</span>
-<span id="346">346</span>
-<span id="347">347</span>
-<span id="348">348</span>
-<span id="349">349</span>
-<span id="350">350</span>
-<span id="351">351</span>
-<span id="352">352</span>
-<span id="353">353</span>
-<span id="354">354</span>
-<span id="355">355</span>
-<span id="356">356</span>
-<span id="357">357</span>
-<span id="358">358</span>
-<span id="359">359</span>
-<span id="360">360</span>
-<span id="361">361</span>
-<span id="362">362</span>
-<span id="363">363</span>
-<span id="364">364</span>
-<span id="365">365</span>
-<span id="366">366</span>
-<span id="367">367</span>
-<span id="368">368</span>
-<span id="369">369</span>
-<span id="370">370</span>
-<span id="371">371</span>
-<span id="372">372</span>
-<span id="373">373</span>
-<span id="374">374</span>
-<span id="375">375</span>
-<span id="376">376</span>
-<span id="377">377</span>
-<span id="378">378</span>
-<span id="379">379</span>
-<span id="380">380</span>
-<span id="381">381</span>
-<span id="382">382</span>
-<span id="383">383</span>
-<span id="384">384</span>
-<span id="385">385</span>
-<span id="386">386</span>
-<span id="387">387</span>
-<span id="388">388</span>
-<span id="389">389</span>
-<span id="390">390</span>
-<span id="391">391</span>
-<span id="392">392</span>
-<span id="393">393</span>
-<span id="394">394</span>
-<span id="395">395</span>
-<span id="396">396</span>
-<span id="397">397</span>
-<span id="398">398</span>
-<span id="399">399</span>
-<span id="400">400</span>
-<span id="401">401</span>
-<span id="402">402</span>
-<span id="403">403</span>
-<span id="404">404</span>
-<span id="405">405</span>
-<span id="406">406</span>
-<span id="407">407</span>
-<span id="408">408</span>
-<span id="409">409</span>
-<span id="410">410</span>
-<span id="411">411</span>
-<span id="412">412</span>
-<span id="413">413</span>
-<span id="414">414</span>
-<span id="415">415</span>
-<span id="416">416</span>
-<span id="417">417</span>
-<span id="418">418</span>
-<span id="419">419</span>
-<span id="420">420</span>
-<span id="421">421</span>
-<span id="422">422</span>
-<span id="423">423</span>
-<span id="424">424</span>
-<span id="425">425</span>
-<span id="426">426</span>
-<span id="427">427</span>
-<span id="428">428</span>
-<span id="429">429</span>
-<span id="430">430</span>
-<span id="431">431</span>
-<span id="432">432</span>
-<span id="433">433</span>
-<span id="434">434</span>
-<span id="435">435</span>
-<span id="436">436</span>
-<span id="437">437</span>
-<span id="438">438</span>
-<span id="439">439</span>
-<span id="440">440</span>
-<span id="441">441</span>
-<span id="442">442</span>
-<span id="443">443</span>
-<span id="444">444</span>
-<span id="445">445</span>
-<span id="446">446</span>
-<span id="447">447</span>
-<span id="448">448</span>
-<span id="449">449</span>
-<span id="450">450</span>
-<span id="451">451</span>
-<span id="452">452</span>
-<span id="453">453</span>
-<span id="454">454</span>
-<span id="455">455</span>
-<span id="456">456</span>
-<span id="457">457</span>
-<span id="458">458</span>
-<span id="459">459</span>
-<span id="460">460</span>
-<span id="461">461</span>
-<span id="462">462</span>
-<span id="463">463</span>
-<span id="464">464</span>
-<span id="465">465</span>
-<span id="466">466</span>
-<span id="467">467</span>
-<span id="468">468</span>
-<span id="469">469</span>
-<span id="470">470</span>
-<span id="471">471</span>
-<span id="472">472</span>
-<span id="473">473</span>
-<span id="474">474</span>
-<span id="475">475</span>
-<span id="476">476</span>
-<span id="477">477</span>
-<span id="478">478</span>
-<span id="479">479</span>
-<span id="480">480</span>
-<span id="481">481</span>
-<span id="482">482</span>
-<span id="483">483</span>
-<span id="484">484</span>
-<span id="485">485</span>
-<span id="486">486</span>
-<span id="487">487</span>
-<span id="488">488</span>
-<span id="489">489</span>
-<span id="490">490</span>
-<span id="491">491</span>
-<span id="492">492</span>
-<span id="493">493</span>
-<span id="494">494</span>
-<span id="495">495</span>
-<span id="496">496</span>
-<span id="497">497</span>
-<span id="498">498</span>
-<span id="499">499</span>
-<span id="500">500</span>
-<span id="501">501</span>
-<span id="502">502</span>
-<span id="503">503</span>
-<span id="504">504</span>
-<span id="505">505</span>
-<span id="506">506</span>
-<span id="507">507</span>
-<span id="508">508</span>
-<span id="509">509</span>
-<span id="510">510</span>
-<span id="511">511</span>
-<span id="512">512</span>
-<span id="513">513</span>
-<span id="514">514</span>
-<span id="515">515</span>
-<span id="516">516</span>
-<span id="517">517</span>
-<span id="518">518</span>
-<span id="519">519</span>
-<span id="520">520</span>
-<span id="521">521</span>
-<span id="522">522</span>
-<span id="523">523</span>
-<span id="524">524</span>
-<span id="525">525</span>
-<span id="526">526</span>
-<span id="527">527</span>
-<span id="528">528</span>
-<span id="529">529</span>
-<span id="530">530</span>
-<span id="531">531</span>
-<span id="532">532</span>
-<span id="533">533</span>
-<span id="534">534</span>
-<span id="535">535</span>
-<span id="536">536</span>
-<span id="537">537</span>
-<span id="538">538</span>
-<span id="539">539</span>
-<span id="540">540</span>
-<span id="541">541</span>
-<span id="542">542</span>
-<span id="543">543</span>
-<span id="544">544</span>
-<span id="545">545</span>
-<span id="546">546</span>
-<span id="547">547</span>
-<span id="548">548</span>
-<span id="549">549</span>
-<span id="550">550</span>
-<span id="551">551</span>
-<span id="552">552</span>
-<span id="553">553</span>
-<span id="554">554</span>
-<span id="555">555</span>
-<span id="556">556</span>
-<span id="557">557</span>
-<span id="558">558</span>
-<span id="559">559</span>
-<span id="560">560</span>
-<span id="561">561</span>
-<span id="562">562</span>
-<span id="563">563</span>
-<span id="564">564</span>
-<span id="565">565</span>
-<span id="566">566</span>
-<span id="567">567</span>
-<span id="568">568</span>
-<span id="569">569</span>
-<span id="570">570</span>
-<span id="571">571</span>
-<span id="572">572</span>
-<span id="573">573</span>
-<span id="574">574</span>
-<span id="575">575</span>
-<span id="576">576</span>
-<span id="577">577</span>
-<span id="578">578</span>
-<span id="579">579</span>
-<span id="580">580</span>
-<span id="581">581</span>
-<span id="582">582</span>
-<span id="583">583</span>
-<span id="584">584</span>
-<span id="585">585</span>
-<span id="586">586</span>
-<span id="587">587</span>
-<span id="588">588</span>
-<span id="589">589</span>
-<span id="590">590</span>
-<span id="591">591</span>
-<span id="592">592</span>
-<span id="593">593</span>
-<span id="594">594</span>
-<span id="595">595</span>
-<span id="596">596</span>
-<span id="597">597</span>
-<span id="598">598</span>
-<span id="599">599</span>
-<span id="600">600</span>
-<span id="601">601</span>
-<span id="602">602</span>
-<span id="603">603</span>
-<span id="604">604</span>
-<span id="605">605</span>
-<span id="606">606</span>
-<span id="607">607</span>
-<span id="608">608</span>
-<span id="609">609</span>
-<span id="610">610</span>
-<span id="611">611</span>
-<span id="612">612</span>
-<span id="613">613</span>
-<span id="614">614</span>
-<span id="615">615</span>
-<span id="616">616</span>
-<span id="617">617</span>
-<span id="618">618</span>
-<span id="619">619</span>
-<span id="620">620</span>
-<span id="621">621</span>
-<span id="622">622</span>
-<span id="623">623</span>
-<span id="624">624</span>
-<span id="625">625</span>
-<span id="626">626</span>
-<span id="627">627</span>
-<span id="628">628</span>
-<span id="629">629</span>
-<span id="630">630</span>
-<span id="631">631</span>
-<span id="632">632</span>
-<span id="633">633</span>
-<span id="634">634</span>
-<span id="635">635</span>
-<span id="636">636</span>
-<span id="637">637</span>
-<span id="638">638</span>
-<span id="639">639</span>
-<span id="640">640</span>
-<span id="641">641</span>
-<span id="642">642</span>
-<span id="643">643</span>
-<span id="644">644</span>
-<span id="645">645</span>
-<span id="646">646</span>
-<span id="647">647</span>
-<span id="648">648</span>
-<span id="649">649</span>
-<span id="650">650</span>
-<span id="651">651</span>
-<span id="652">652</span>
-<span id="653">653</span>
-<span id="654">654</span>
-<span id="655">655</span>
-<span id="656">656</span>
-<span id="657">657</span>
-<span id="658">658</span>
-<span id="659">659</span>
-<span id="660">660</span>
-<span id="661">661</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="doccomment">//! This module allows launching the execution worker thread, returning objects to communicate with it.
+//! This module allows launching the execution worker thread, returning objects to communicate with it.
 //! The worker thread processes incoming notifications of blockclique changes,
 //! orders active and final blocks in queues sorted by increasing slot number,
 //! and requests the execution of active and final slots from execution.rs.
@@ -669,22 +284,20 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::controller::{ExecutionControllerImpl, ExecutionInputData, ExecutionManagerImpl};
 <span class="kw">use </span><span class="kw">crate</span>::execution::ExecutionState;
 <span class="kw">use </span><span class="kw">crate</span>::request_queue::RequestQueue;
+<span class="kw">use </span><span class="kw">crate</span>::slot_sequencer::SlotSequencer;
 <span class="kw">use </span>massa_execution_exports::{
     ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
     ReadOnlyExecutionRequest,
 };
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_models::block::BlockId;
-<span class="kw">use </span>massa_models::{
-    slot::Slot,
-    timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
-};
+<span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>parking_lot::{Condvar, Mutex, RwLock};
-<span class="kw">use </span>std::{collections::HashMap, sync::Arc};
-<span class="kw">use </span>tracing::{debug, info, warn};
+<span class="kw">use </span>std::sync::Arc;
+<span class="kw">use </span>tracing::debug;
 
 <span class="doccomment">/// Structure gathering all elements needed by the execution thread
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ExecutionThread {
@@ -692,20 +305,8 @@
     </span>config: ExecutionConfig,
     <span class="comment">// A copy of the input data allowing access to incoming requests
     </span>input_data: Arc&lt;(Condvar, Mutex&lt;ExecutionInputData&gt;)&gt;,
-    <span class="comment">// Map of final slots not executed yet but ready for execution
-    // See lib.rs for an explanation on final execution ordering.
-    </span>ready_final_slots: HashMap&lt;Slot, <span class="prelude-ty">Option</span>&lt;(BlockId, Storage)&gt;&gt;,
-    <span class="comment">// Highest final slot that is ready to be executed
-    </span>last_ready_final_slot: Slot,
-    <span class="comment">// Map of final blocks that are not yet ready to be executed
-    // See lib.rs for an explanation on final execution ordering.
-    </span>pending_final_blocks: HashMap&lt;Slot, (BlockId, Storage)&gt;,
-    <span class="comment">// Current blockclique, indexed by slot number
-    </span>blockclique: HashMap&lt;Slot, (BlockId, Storage)&gt;,
-    <span class="comment">// Map of all active slots
-    </span>active_slots: HashMap&lt;Slot, <span class="prelude-ty">Option</span>&lt;(BlockId, Storage)&gt;&gt;,
-    <span class="comment">// Highest active slot
-    </span>last_active_slot: Slot,
+    <span class="comment">// Total continuous slot sequence
+    </span>slot_sequencer: SlotSequencer,
     <span class="comment">// Execution state (see execution.rs) to which execution requests are sent
     </span>execution_state: Arc&lt;RwLock&lt;ExecutionState&gt;&gt;,
     <span class="doccomment">/// queue for read-only requests and response MPSCs to send back their outputs
@@ -733,344 +334,13 @@
 
         <span class="comment">// create and return the ExecutionThread
         </span>ExecutionThread {
-            last_active_slot: final_cursor,
             input_data,
-            last_ready_final_slot: final_cursor,
-            ready_final_slots: Default::default(),
-            pending_final_blocks: Default::default(),
-            blockclique: Default::default(),
-            active_slots: Default::default(),
             readonly_requests: RequestQueue::new(config.readonly_queue_length),
-            config,
             execution_state,
+            slot_sequencer: SlotSequencer::new(config.clone(), final_cursor),
             selector,
+            config,
         }
-    }
-
-    <span class="doccomment">/// Update the sequence of final slots given newly finalized blocks.
-    /// This method is called from the execution worker&#39;s main loop.
-    ///
-    /// # Arguments
-    /// * `new_final_blocks`: a map of newly finalized blocks
-    </span><span class="kw">fn </span>update_final_slots(<span class="kw-2">&amp;mut </span><span class="self">self</span>, new_final_blocks: HashMap&lt;Slot, (BlockId, Storage)&gt;) {
-        <span class="comment">// if there are no new final blocks, exit and do nothing
-        </span><span class="kw">if </span>new_final_blocks.is_empty() {
-            <span class="kw">return</span>;
-        }
-
-        <span class="comment">// add new_final_blocks to the pending final blocks not ready for execution yet
-        </span><span class="self">self</span>.pending_final_blocks.extend(new_final_blocks);
-
-        <span class="comment">// get maximal final slot
-        </span><span class="kw">let </span>max_final_slot = <span class="self">self
-            </span>.pending_final_blocks
-            .iter()
-            .max_by_key(|(s, <span class="kw">_</span>)| <span class="kw-2">*</span>s)
-            .map(|(s, <span class="kw">_</span>)| <span class="kw-2">*</span>s)
-            .expect(<span class="string">&quot;expected pending_final_blocks to be non-empty&quot;</span>);
-
-        <span class="comment">// Given pending_final_blocks, detect he final slots that are ready to be executed.
-        // Those are the ones or which all the previous slots are also executed or ready to be so.
-        // Iterate over consecutive slots starting from the one just after the previous last final one.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>slot = <span class="self">self</span>.last_ready_final_slot;
-        <span class="kw">while </span>slot &lt; max_final_slot {
-            slot = slot
-                .get_next_slot(<span class="self">self</span>.config.thread_count)
-                .expect(<span class="string">&quot;final slot overflow in VM&quot;</span>);
-
-            <span class="comment">// try to remove that slot out of pending_final_blocks
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>((block_id, block_store)) = <span class="self">self</span>.pending_final_blocks.remove(<span class="kw-2">&amp;</span>slot) {
-                <span class="comment">// pending final block found at slot:
-                // add block to the ready_final_slots list of final slots ready for execution
-                </span><span class="self">self</span>.ready_final_slots
-                    .insert(slot, <span class="prelude-val">Some</span>((block_id, block_store)));
-                <span class="self">self</span>.last_ready_final_slot = slot;
-                <span class="comment">// continue the loop
-                </span><span class="kw">continue</span>;
-            }
-
-            <span class="comment">// no final block found at this slot: it&#39;s a miss or active block
-
-            // check if the miss is final by searching for final blocks later in the same thread
-            </span><span class="kw">let </span><span class="kw-2">mut </span>miss_final = <span class="bool-val">false</span>;
-            <span class="kw">let </span><span class="kw-2">mut </span>search_slot = slot;
-            <span class="kw">while </span>search_slot &lt; max_final_slot {
-                search_slot.period = search_slot
-                    .period
-                    .checked_add(<span class="number">1</span>)
-                    .expect(<span class="string">&quot;final slot overflow in VM&quot;</span>);
-                <span class="kw">if </span><span class="self">self</span>.pending_final_blocks.contains_key(<span class="kw-2">&amp;</span>search_slot) {
-                    <span class="comment">// A final block was found later in the same thread.
-                    // The missed slot is therefore final.
-                    </span>miss_final = <span class="bool-val">true</span>;
-                    <span class="kw">break</span>;
-                }
-            }
-
-            <span class="kw">if </span>miss_final {
-                <span class="comment">// If this slot is a final miss
-                // Add it to the list of final slots ready for execution
-                </span><span class="self">self</span>.ready_final_slots.insert(slot, <span class="prelude-val">None</span>);
-                <span class="self">self</span>.last_ready_final_slot = slot;
-
-                <span class="macro">warn!</span>(
-                    <span class="string">&quot;address {} missed a production opportunity at slot {} (cycle {})&quot;</span>,
-                    <span class="self">self</span>.selector.get_producer(slot).unwrap(),
-                    slot,
-                    slot.get_cycle(<span class="self">self</span>.config.periods_per_cycle)
-                );
-            } <span class="kw">else </span>{
-                <span class="comment">// This slot is not final:
-                // we have reached the end of the list of consecutive final slots
-                // that are ready to be executed
-                </span><span class="kw">break</span>;
-            }
-        }
-    }
-
-    <span class="doccomment">/// Returns the latest slot that is at or just before the current timestamp.
-    /// If a non-zero `cursor_delay` configuration is defined, this extra lag is taken into account.
-    /// Such an extra lag can be useful for weaker nodes to perform less speculative executions
-    /// because more recent slots change more often and might require multiple re-executions.
-    ///
-    /// # Returns
-    /// The latest slot at or before `now() - self.config.cursor_delay` if there is any,
-    /// or None if it falls behind the genesis timestamp.
-    </span><span class="kw">fn </span>get_end_active_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Slot&gt; {
-        <span class="kw">let </span>target_time = MassaTime::now(<span class="self">self</span>.config.clock_compensation)
-            .expect(<span class="string">&quot;could not read current time&quot;</span>)
-            .saturating_sub(<span class="self">self</span>.config.cursor_delay);
-        get_latest_block_slot_at_timestamp(
-            <span class="self">self</span>.config.thread_count,
-            <span class="self">self</span>.config.t0,
-            <span class="self">self</span>.config.genesis_timestamp,
-            target_time,
-        )
-        .expect(<span class="string">&quot;could not get current slot&quot;</span>)
-    }
-
-    <span class="doccomment">/// Updates the sequence of active slots.
-    /// If a new blockclique is provided, it is taken into account.
-    /// If no blockclique is provided, this function is still useful to fill
-    /// ready-to-be-executed active slots with misses until the current time.
-    ///
-    /// Arguments:
-    /// * `new_blockclique`: optionally provide a new blockclique
-    </span><span class="kw">fn </span>update_active_slots(<span class="kw-2">&amp;mut </span><span class="self">self</span>, new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, (BlockId, Storage)&gt;&gt;) {
-        <span class="comment">// Update the current blockclique if it has changed
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(blockclique) = new_blockclique {
-            <span class="self">self</span>.blockclique = blockclique;
-        }
-
-        <span class="comment">// Get the latest slot at the current timestamp, if any
-        </span><span class="kw">let </span>end_active_slot = <span class="self">self</span>.get_end_active_slot();
-
-        <span class="comment">// Empty the list of active slots
-        </span><span class="self">self</span>.active_slots = HashMap::new();
-        <span class="self">self</span>.last_active_slot = <span class="self">self</span>.last_ready_final_slot;
-
-        <span class="comment">// If the current timestamp is before genesis time, keep the active_slots empty and return
-        </span><span class="kw">let </span>end_active_slot = <span class="kw">match </span>end_active_slot {
-            <span class="prelude-val">Some</span>(s) =&gt; s,
-            <span class="prelude-val">None </span>=&gt; <span class="kw">return</span>,
-        };
-
-        <span class="comment">// Recompute the sequence of active slots
-        // by iterating over consecutive slots from the one just after last_ready_final_slot until the current timestamp,
-        // and looking for blocks into pending_final_blocks and the current blockclique
-        </span><span class="kw">let </span><span class="kw-2">mut </span>slot = <span class="self">self</span>.last_ready_final_slot;
-        <span class="kw">while </span>slot &lt; end_active_slot {
-            slot = slot
-                .get_next_slot(<span class="self">self</span>.config.thread_count)
-                .expect(<span class="string">&quot;active slot overflow in VM&quot;</span>);
-            <span class="comment">// look for a block at that slot among the ones that are final but not ready for final execution yet
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>((block_id, block_store)) = <span class="self">self</span>.pending_final_blocks.get(<span class="kw-2">&amp;</span>slot) {
-                <span class="comment">// A block at that slot was found in pending_final_blocks.
-                // Add it to the sequence of active slots.
-                </span><span class="self">self</span>.active_slots
-                    .insert(slot, <span class="prelude-val">Some</span>((<span class="kw-2">*</span>block_id, block_store.clone())));
-                <span class="self">self</span>.last_active_slot = slot;
-            } <span class="kw">else if let </span><span class="prelude-val">Some</span>((block_id, block_store)) = <span class="self">self</span>.blockclique.get(<span class="kw-2">&amp;</span>slot) {
-                <span class="comment">// A block at that slot was found in the current blockclique.
-                // Add it to the sequence of active slots.
-                </span><span class="self">self</span>.active_slots
-                    .insert(slot, <span class="prelude-val">Some</span>((<span class="kw-2">*</span>block_id, block_store.clone())));
-                <span class="self">self</span>.last_active_slot = slot;
-            } <span class="kw">else </span>{
-                <span class="comment">// No block was found at that slot: it&#39;s a miss
-                // Add the miss to the sequence of active slots
-                </span><span class="self">self</span>.active_slots.insert(slot, <span class="prelude-val">None</span>);
-                <span class="self">self</span>.last_active_slot = slot;
-            }
-        }
-    }
-
-    <span class="doccomment">/// executes one final slot, if any
-    /// returns true if something was executed
-    </span><span class="kw">fn </span>execute_one_final_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
-        <span class="comment">// check if there are final slots to execute
-        </span><span class="kw">if </span><span class="self">self</span>.ready_final_slots.is_empty() {
-            <span class="kw">return </span><span class="bool-val">false</span>;
-        }
-
-        <span class="macro">debug!</span>(<span class="string">&quot;entered execute_one_final_slot&quot;</span>);
-
-        <span class="comment">// w-lock execution state
-        </span><span class="kw">let </span><span class="kw-2">mut </span>exec_state = <span class="self">self</span>.execution_state.write();
-
-        <span class="macro">debug!</span>(<span class="string">&quot;locked execution state in execute_one_final_slot&quot;</span>);
-
-        <span class="comment">// get the slot just after the last executed final slot
-        </span><span class="kw">let </span>slot = exec_state
-            .final_cursor
-            .get_next_slot(<span class="self">self</span>.config.thread_count)
-            .expect(<span class="string">&quot;final slot overflow in VM&quot;</span>);
-
-        <span class="comment">// take the corresponding element from sce finals
-        </span><span class="kw">let </span>exec_target = <span class="self">self
-            </span>.ready_final_slots
-            .remove(<span class="kw-2">&amp;</span>slot)
-            .expect(<span class="string">&quot;the SCE final slot list skipped a slot&quot;</span>);
-        <span class="kw">let </span>target_id = exec_target.as_ref().map(|(b_id, <span class="kw">_</span>)| <span class="kw-2">*</span>b_id);
-
-        <span class="comment">// check if the final slot is cached at the front of the speculative execution history
-        </span><span class="macro">debug!</span>(
-            <span class="string">&quot;execute_one_final_slot: checking cache for slot {} target {:?}&quot;</span>,
-            slot,
-            exec_target.as_ref().map(|(s, <span class="kw">_</span>)| <span class="kw-2">*</span>s)
-        );
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(exec_out) = exec_state.pop_first_execution_result() {
-            <span class="kw">if </span>exec_out.slot == slot &amp;&amp; exec_out.block_id == target_id {
-                <span class="comment">// speculative execution front result matches what we want to compute
-
-                // apply the cached output and return
-                </span>exec_state.apply_final_execution_output(exec_out);
-
-                <span class="macro">debug!</span>(<span class="string">&quot;execute_one_final_slot: found in cache, applied cache&quot;</span>);
-                <span class="kw">return </span><span class="bool-val">true</span>;
-            } <span class="kw">else </span>{
-                <span class="comment">// speculative cache mismatch
-                </span><span class="macro">warn!</span>(
-                    <span class="string">&quot;speculative execution cache mismatch (final slot={}/block={:?}, front speculative slot={}/block={:?}). Resetting the cache.&quot;</span>,
-                    slot, target_id, exec_out.slot, exec_out.block_id
-                );
-            }
-        } <span class="kw">else </span>{
-            <span class="comment">// cache entry absent
-            </span><span class="macro">info!</span>(
-                <span class="string">&quot;speculative execution cache empty, executing final slot={}/block={:?}&quot;</span>,
-                slot, target_id
-            );
-        }
-
-        <span class="comment">// clear the speculative execution output cache completely
-        </span>exec_state.clear_history();
-
-        <span class="comment">// execute slot
-        </span><span class="macro">debug!</span>(<span class="string">&quot;execute_one_final_slot: execution started&quot;</span>);
-        <span class="kw">let </span>exec_out = exec_state.execute_slot(slot, exec_target, <span class="kw-2">&amp;</span><span class="self">self</span>.selector);
-        <span class="macro">debug!</span>(<span class="string">&quot;execute_one_final_slot: execution finished&quot;</span>);
-
-        <span class="comment">// apply execution output to final state
-        </span>exec_state.apply_final_execution_output(exec_out);
-        <span class="macro">debug!</span>(<span class="string">&quot;execute_one_final_slot: execution result applied&quot;</span>);
-
-        <span class="bool-val">true
-    </span>}
-
-    <span class="doccomment">/// Check if there are any active slots ready for execution
-    /// This is used to check if the main loop should run an iteration
-    </span><span class="kw">fn </span>are_there_active_slots_ready_for_execution(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">let </span>execution_state = <span class="self">self</span>.execution_state.read();
-
-        <span class="comment">// get the next active slot
-        </span><span class="kw">let </span>slot = execution_state
-            .active_cursor
-            .get_next_slot(<span class="self">self</span>.config.thread_count)
-            .expect(<span class="string">&quot;active slot overflow in VM&quot;</span>);
-
-        <span class="comment">// check if it is in the active slot queue
-        </span><span class="self">self</span>.active_slots.contains_key(<span class="kw-2">&amp;</span>slot)
-    }
-
-    <span class="doccomment">/// executes one active slot, if any
-    /// returns true if something was executed
-    </span><span class="kw">fn </span>execute_one_active_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
-        <span class="comment">// write-lock the execution state
-        </span><span class="macro">debug!</span>(<span class="string">&quot;execute_one_active_slot: execution started&quot;</span>);
-        <span class="kw">let </span><span class="kw-2">mut </span>exec_state = <span class="self">self</span>.execution_state.write();
-        <span class="macro">debug!</span>(<span class="string">&quot;execute_one_active_slot: execution state locked&quot;</span>);
-
-        <span class="comment">// get the next active slot
-        </span><span class="kw">let </span>slot = exec_state
-            .active_cursor
-            .get_next_slot(<span class="self">self</span>.config.thread_count)
-            .expect(<span class="string">&quot;active slot overflow in VM&quot;</span>);
-
-        <span class="comment">// choose the execution target
-        </span><span class="kw">let </span>exec_target = <span class="kw">match </span><span class="self">self</span>.active_slots.get(<span class="kw-2">&amp;</span>slot) {
-            <span class="prelude-val">Some</span>(b_store) =&gt; b_store.as_ref().map(|(b_id, bs)| (<span class="kw-2">*</span>b_id, bs.clone())),
-            <span class="kw">_ </span>=&gt; {
-                <span class="macro">debug!</span>(<span class="string">&quot;execute_one_active_slot: no target for slot {}&quot;</span>, slot);
-                <span class="kw">return </span><span class="bool-val">false</span>;
-            }
-        };
-
-        <span class="comment">// execute the slot
-        </span><span class="macro">debug!</span>(
-            <span class="string">&quot;execute_one_active_slot: executing slot {} target = {:?}&quot;</span>,
-            slot,
-            exec_target.as_ref().map(|(s, <span class="kw">_</span>)| <span class="kw-2">*</span>s)
-        );
-        <span class="kw">let </span>exec_out = exec_state.execute_slot(slot, exec_target, <span class="kw-2">&amp;</span><span class="self">self</span>.selector);
-        <span class="macro">debug!</span>(<span class="string">&quot;execute_one_active_slot: execution sfinished&quot;</span>);
-
-        <span class="comment">// apply execution output to active state
-        </span>exec_state.apply_active_execution_output(exec_out);
-        <span class="macro">debug!</span>(<span class="string">&quot;execute_one_active_slot: execution state applied&quot;</span>);
-
-        <span class="bool-val">true
-    </span>}
-
-    <span class="doccomment">/// Gets the time from `now()` to the slot just after next `last_active_slot`.
-    /// Saturates down to 0 on negative durations.
-    /// Note that `config.cursor_delay` is taken into account.
-    </span><span class="kw">fn </span>get_time_until_next_active_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; MassaTime {
-        <span class="comment">// get the timestamp of the slot after the current last active one
-        </span><span class="kw">let </span>next_slot = <span class="self">self
-            </span>.last_active_slot
-            .get_next_slot(<span class="self">self</span>.config.thread_count)
-            .expect(<span class="string">&quot;active slot overflow in VM&quot;</span>);
-        <span class="kw">let </span>next_timestamp = get_block_slot_timestamp(
-            <span class="self">self</span>.config.thread_count,
-            <span class="self">self</span>.config.t0,
-            <span class="self">self</span>.config.genesis_timestamp,
-            next_slot,
-        )
-        .expect(<span class="string">&quot;could not compute block timestamp in VM&quot;</span>);
-
-        <span class="comment">// get the current timestamp minus the cursor delay
-        </span><span class="kw">let </span>end_time = MassaTime::now(<span class="self">self</span>.config.clock_compensation)
-            .expect(<span class="string">&quot;could not get current time in VM&quot;</span>)
-            .saturating_sub(<span class="self">self</span>.config.cursor_delay);
-
-        <span class="comment">// compute the time difference, saturating down to zero
-        </span>next_timestamp.saturating_sub(end_time)
-    }
-
-    <span class="doccomment">/// Tells the execution state about the new sequence of active slots.
-    /// If some slots already executed in a speculative way changed,
-    /// or if one of their have predecessor slots changed,
-    /// the execution state will truncate the execution output history
-    /// to remove all out-of-date execution outputs.
-    /// Speculative execution will then resume from the point of truncation.
-    </span><span class="kw">pub fn </span>truncate_execution_history(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="comment">// acquire write access to execution state
-        </span><span class="kw">let </span><span class="kw-2">mut </span>exec_state = <span class="self">self</span>.execution_state.write();
-
-        <span class="comment">// tells the execution state to truncate its execution output history
-        // given the new list of active slots
-        </span>exec_state.truncate_history(<span class="kw-2">&amp;</span><span class="self">self</span>.active_slots, <span class="kw-2">&amp;</span><span class="self">self</span>.ready_final_slots);
     }
 
     <span class="doccomment">/// Append incoming read-only requests to the relevant queue,
@@ -1106,117 +376,63 @@
         <span class="bool-val">false
     </span>}
 
-    <span class="doccomment">/// Internal function tool used in `self.wait_loop_event()`, check in the
-    /// first place the content of `input_data` set by the controller.
-    ///
-    /// # Returns
-    /// Return if the `wait_loop` has to break, early return, or pass.
-    /// - `None`: pass
-    /// - `Some(true)`: break (will stop the worker)
-    /// - `Some(false)`: early return (will continue to execute the input data)
-    ///
-    /// # Test case
-    /// With the test configuration, the behavior is slightly different and we prefer
-    /// to execute all `readonly_requests`, `new_blockclique`, and
-    /// `finalized_blocks` before he thread join
-    </span><span class="kw">fn </span>check_input_data(<span class="kw-2">&amp;</span><span class="self">self</span>, input_data: <span class="kw-2">&amp;</span>ExecutionInputData) -&gt; <span class="prelude-ty">Option</span>&lt;bool&gt; {
-        <span class="attribute">#[cfg(test)]
-        </span>{
-            <span class="kw">if </span>(!input_data.readonly_requests.is_empty()
-                || input_data.new_blockclique.is_some()
-                || !input_data.finalized_blocks.is_empty())
-                &amp;&amp; !input_data.stop
-            {
-                <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="bool-val">false</span>);
-            }
-            <span class="kw">if </span>input_data.stop {
-                <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="bool-val">true</span>);
-            }
-        }
-        <span class="attribute">#[cfg(not(test))]
-        </span>{
-            <span class="kw">if </span>input_data.stop {
-                <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="bool-val">true</span>);
-            }
-            <span class="comment">// Check for readonly requests, new blockclique or final slot changes
-            // The most frequent triggers are checked first.
-            </span><span class="kw">if </span>!input_data.readonly_requests.is_empty()
-                || input_data.new_blockclique.is_some()
-                || !input_data.finalized_blocks.is_empty()
-            {
-                <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="bool-val">false</span>);
-            }
-        }
-        <span class="prelude-val">None
-    </span>}
-
     <span class="doccomment">/// Waits for an event to trigger a new iteration in the execution main loop.
     ///
     /// # Returns
-    /// `Some(ExecutionInputData)` representing the input requests,
-    /// or `None` if the main loop needs to stop.
-    </span><span class="kw">fn </span>wait_loop_event(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;ExecutionInputData&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>cancel_input = <span class="kw">loop </span>{
-            <span class="kw">let </span><span class="kw-2">mut </span>input_data_lock = <span class="self">self</span>.input_data.<span class="number">1</span>.lock();
+    /// `ExecutionInputData` representing the input requests,
+    /// and a boolean saying whether we should stop the loop.
+    </span><span class="kw">fn </span>wait_loop_event(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; (ExecutionInputData, bool) {
+        <span class="kw">loop </span>{
+            <span class="comment">// lock input data
+            </span><span class="kw">let </span><span class="kw-2">mut </span>input_data_lock = <span class="self">self</span>.input_data.<span class="number">1</span>.lock();
 
             <span class="comment">// take current input data, resetting it
             </span><span class="kw">let </span>input_data: ExecutionInputData = input_data_lock.take();
 
-            <span class="comment">// check for stop signal (in testing mode we wait for all
-            // Check for readonly requests, new blockclique or final slot changes
-            // The most frequent triggers are checked first.
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(should_break) = <span class="self">self</span>.check_input_data(<span class="kw-2">&amp;</span>input_data) {
-                <span class="kw">if </span>should_break {
-                    <span class="kw">break </span>input_data;
-                } <span class="kw">else </span>{
-                    <span class="kw">return </span><span class="prelude-val">Some</span>(input_data);
-                }
+            <span class="comment">// if we need to stop, return None
+            </span><span class="kw">if </span>input_data.stop {
+                <span class="kw">return </span>(input_data, <span class="bool-val">true</span>);
             }
 
-            <span class="comment">// Check for slots to execute.
-            // The most frequent triggers are checked first,
-            // except for the active slot check which is last because it is more expensive.
-            </span><span class="kw">if </span>!<span class="self">self</span>.readonly_requests.is_empty()
-                || !<span class="self">self</span>.ready_final_slots.is_empty()
-                || <span class="self">self</span>.are_there_active_slots_ready_for_execution()
+            <span class="comment">// check if there is some input data
+            </span><span class="kw">if </span>input_data.new_blockclique.is_some()
+                || !input_data.finalized_blocks.is_empty()
+                || !input_data.block_storage.is_empty()
+                || !input_data.readonly_requests.is_empty()
             {
-                <span class="kw">return </span><span class="prelude-val">Some</span>(input_data);
+                <span class="kw">return </span>(input_data, <span class="bool-val">false</span>);
             }
 
-            <span class="comment">// No input data, and no slots to execute.
+            <span class="comment">// the slot sequencer has a task available for execution
+            </span><span class="kw">if </span><span class="self">self</span>.slot_sequencer.is_task_available() {
+                <span class="kw">return </span>(input_data, <span class="bool-val">false</span>);
+            }
 
-            // Compute when the next slot will be
+            <span class="comment">// there are read-only requests ready
+            </span><span class="kw">if </span>!<span class="self">self</span>.readonly_requests.is_empty() {
+                <span class="kw">return </span>(input_data, <span class="bool-val">false</span>);
+            }
+
+            <span class="comment">// Compute when the next slot will be
             // This is useful to wait for the next speculative miss to append to active slots.
-            </span><span class="kw">let </span>time_until_next_slot = <span class="self">self</span>.get_time_until_next_active_slot();
-            <span class="kw">if </span>time_until_next_slot == <span class="number">0</span>.into() {
+            </span><span class="kw">let </span>wakeup_deadline = <span class="self">self</span>.slot_sequencer.get_next_slot_deadline();
+            <span class="kw">let </span>now =
+                MassaTime::now(<span class="self">self</span>.config.clock_compensation).expect(<span class="string">&quot;could not get current time&quot;</span>);
+            <span class="kw">if </span>wakeup_deadline &lt;= now {
                 <span class="comment">// next slot is right now: the loop needs to iterate
-                </span><span class="kw">return </span><span class="prelude-val">Some</span>(input_data);
+                </span><span class="kw">return </span>(input_data, <span class="bool-val">false</span>);
             }
 
             <span class="comment">// Wait to be notified of new input, for at most time_until_next_slot
             // The return value is ignored because we don&#39;t care what woke up the condition variable.
-            </span><span class="kw">let </span>_res = <span class="self">self
-                </span>.input_data
-                .<span class="number">0
-                </span>.wait_for(<span class="kw-2">&amp;mut </span>input_data_lock, time_until_next_slot.to_duration());
-        };
-
-        <span class="comment">// The loop needs to quit
-
-        // Cancel pending readonly requests
-        </span><span class="kw">let </span>cancel_err = ExecutionError::ChannelError(
-            <span class="string">&quot;readonly execution cancelled because the execution worker is closing&quot;</span>.into(),
-        );
-        cancel_input.readonly_requests.cancel(cancel_err.clone());
-        <span class="self">self</span>.input_data
-            .<span class="number">1
-            </span>.lock()
-            .take()
-            .readonly_requests
-            .cancel(cancel_err);
-
-        <span class="prelude-val">None
-    </span>}
+            </span><span class="kw">let _ </span>= <span class="self">self</span>.input_data.<span class="number">0</span>.wait_until(
+                <span class="kw-2">&amp;mut </span>input_data_lock,
+                wakeup_deadline
+                    .estimate_instant(<span class="self">self</span>.config.clock_compensation)
+                    .expect(<span class="string">&quot;could not estimate instant&quot;</span>),
+            );
+        }
+    }
 
     <span class="doccomment">/// Main loop of the execution worker
     </span><span class="kw">pub fn </span>main_loop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
@@ -1225,50 +441,64 @@
         // 1 - final executions
         // 2 - speculative executions
         // 3 - read-only executions
-        </span><span class="kw">while let </span><span class="prelude-val">Some</span>(input_data) = <span class="self">self</span>.wait_loop_event() {
+        </span><span class="kw">loop </span>{
+            <span class="kw">let </span>(input_data, stop) = <span class="self">self</span>.wait_loop_event();
             <span class="macro">debug!</span>(<span class="string">&quot;Execution loop triggered, input_data = {}&quot;</span>, input_data);
-
-            <span class="comment">// update the sequence of final slots given the newly finalized blocks
-            </span><span class="self">self</span>.update_final_slots(input_data.finalized_blocks);
-
-            <span class="comment">// update the sequence of active slots
-            </span><span class="self">self</span>.update_active_slots(input_data.new_blockclique);
-
-            <span class="comment">// The list of active slots might have seen
-            // new insertions/deletions of blocks at different slot depths.
-            // It is therefore important to signal this to the execution state,
-            // so that it can remove out-of-date speculative execution results from its history.
-            </span><span class="self">self</span>.truncate_execution_history();
 
             <span class="comment">// update the sequence of read-only requests
             </span><span class="self">self</span>.update_readonly_requests(input_data.readonly_requests);
 
-            <span class="comment">// execute one slot as final, if there is one ready for final execution
-            </span><span class="kw">if </span><span class="self">self</span>.execute_one_final_slot() {
-                <span class="comment">// A slot was executed as final: restart the loop
-                // This loop continue is useful for monitoring:
-                // it allows tracking the state of all execution queues
+            <span class="kw">if </span>stop {
+                <span class="comment">// we need to stop
+                </span><span class="kw">break</span>;
+            }
+
+            <span class="comment">// update slot sequencer
+            </span><span class="self">self</span>.slot_sequencer.update(
+                input_data.finalized_blocks,
+                input_data.new_blockclique,
+                input_data.block_storage,
+            );
+
+            <span class="comment">// ask the slot sequencer for a task to be executed in priority (final is higher priority than candidate)
+            </span><span class="kw">let </span>run_result = <span class="self">self</span>.slot_sequencer.run_task_with(
+                |is_final: bool, slot: <span class="kw-2">&amp;</span>Slot, content: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, Storage)&gt;| {
+                    <span class="kw">if </span>is_final {
+                        <span class="self">self</span>.execution_state.write().execute_final_slot(
+                            slot,
+                            content,
+                            <span class="kw-2">&amp;</span><span class="self">self</span>.selector,
+                        )
+                    } <span class="kw">else </span>{
+                        <span class="self">self</span>.execution_state.write().execute_candidate_slot(
+                            slot,
+                            content,
+                            <span class="kw-2">&amp;</span><span class="self">self</span>.selector,
+                        )
+                    }
+                },
+            );
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(_res) = run_result {
+                <span class="comment">// A slot was executed: continue.
                 </span><span class="kw">continue</span>;
             }
 
-            <span class="comment">// now all the slots that were ready for final execution have been executed as final
-
-            // Execute one active slot in a speculative way, if there is one ready for that
-            </span><span class="kw">if </span><span class="self">self</span>.execute_one_active_slot() {
-                <span class="comment">// An active slot was executed: restart the loop
-                </span><span class="kw">continue</span>;
-            }
-
-            <span class="comment">// now all the slots that were ready for final and active execution have been executed
-
-            // Execute a read-only request (note that the queue is of finite length), if there is one ready.
-            // This must be done in this loop because even though read-only executions do not alter consensus state,
-            // they still act temporarily on the static shared execution context.
-            </span><span class="kw">if </span><span class="self">self</span>.execute_one_readonly_request() {
-                <span class="comment">// a read-only request was executed: restart the loop
-                </span><span class="kw">continue</span>;
-            }
+            <span class="comment">// low priority: execute a read-only request (note that the queue is of finite length), if there is one ready.
+            </span><span class="self">self</span>.execute_one_readonly_request();
         }
+
+        <span class="comment">// We are quitting the loop.
+
+        // Cancel pending readonly requests
+        </span><span class="kw">let </span>cancel_err = ExecutionError::ChannelError(
+            <span class="string">&quot;readonly execution cancelled because the execution worker is closing&quot;</span>.into(),
+        );
+        <span class="self">self</span>.input_data
+            .<span class="number">1
+            </span>.lock()
+            .take()
+            .readonly_requests
+            .cancel(cancel_err);
     }
 }
 
@@ -1321,4 +551,4 @@
     </span>(Box::new(manager), Box::new(controller))
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b705839c 2022-09-26)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (57f097ea2 2022-10-01)" ></div></body></html>

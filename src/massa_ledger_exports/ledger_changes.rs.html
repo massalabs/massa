@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-ledger-exports/src/ledger_changes.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ledger_changes.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_ledger_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_ledger_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_ledger_exports/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-ledger-exports/src/ledger_changes.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ledger_changes.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_ledger_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_ledger_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_ledger_exports/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -952,111 +952,6 @@
 <span id="952">952</span>
 <span id="953">953</span>
 <span id="954">954</span>
-<span id="955">955</span>
-<span id="956">956</span>
-<span id="957">957</span>
-<span id="958">958</span>
-<span id="959">959</span>
-<span id="960">960</span>
-<span id="961">961</span>
-<span id="962">962</span>
-<span id="963">963</span>
-<span id="964">964</span>
-<span id="965">965</span>
-<span id="966">966</span>
-<span id="967">967</span>
-<span id="968">968</span>
-<span id="969">969</span>
-<span id="970">970</span>
-<span id="971">971</span>
-<span id="972">972</span>
-<span id="973">973</span>
-<span id="974">974</span>
-<span id="975">975</span>
-<span id="976">976</span>
-<span id="977">977</span>
-<span id="978">978</span>
-<span id="979">979</span>
-<span id="980">980</span>
-<span id="981">981</span>
-<span id="982">982</span>
-<span id="983">983</span>
-<span id="984">984</span>
-<span id="985">985</span>
-<span id="986">986</span>
-<span id="987">987</span>
-<span id="988">988</span>
-<span id="989">989</span>
-<span id="990">990</span>
-<span id="991">991</span>
-<span id="992">992</span>
-<span id="993">993</span>
-<span id="994">994</span>
-<span id="995">995</span>
-<span id="996">996</span>
-<span id="997">997</span>
-<span id="998">998</span>
-<span id="999">999</span>
-<span id="1000">1000</span>
-<span id="1001">1001</span>
-<span id="1002">1002</span>
-<span id="1003">1003</span>
-<span id="1004">1004</span>
-<span id="1005">1005</span>
-<span id="1006">1006</span>
-<span id="1007">1007</span>
-<span id="1008">1008</span>
-<span id="1009">1009</span>
-<span id="1010">1010</span>
-<span id="1011">1011</span>
-<span id="1012">1012</span>
-<span id="1013">1013</span>
-<span id="1014">1014</span>
-<span id="1015">1015</span>
-<span id="1016">1016</span>
-<span id="1017">1017</span>
-<span id="1018">1018</span>
-<span id="1019">1019</span>
-<span id="1020">1020</span>
-<span id="1021">1021</span>
-<span id="1022">1022</span>
-<span id="1023">1023</span>
-<span id="1024">1024</span>
-<span id="1025">1025</span>
-<span id="1026">1026</span>
-<span id="1027">1027</span>
-<span id="1028">1028</span>
-<span id="1029">1029</span>
-<span id="1030">1030</span>
-<span id="1031">1031</span>
-<span id="1032">1032</span>
-<span id="1033">1033</span>
-<span id="1034">1034</span>
-<span id="1035">1035</span>
-<span id="1036">1036</span>
-<span id="1037">1037</span>
-<span id="1038">1038</span>
-<span id="1039">1039</span>
-<span id="1040">1040</span>
-<span id="1041">1041</span>
-<span id="1042">1042</span>
-<span id="1043">1043</span>
-<span id="1044">1044</span>
-<span id="1045">1045</span>
-<span id="1046">1046</span>
-<span id="1047">1047</span>
-<span id="1048">1048</span>
-<span id="1049">1049</span>
-<span id="1050">1050</span>
-<span id="1051">1051</span>
-<span id="1052">1052</span>
-<span id="1053">1053</span>
-<span id="1054">1054</span>
-<span id="1055">1055</span>
-<span id="1056">1056</span>
-<span id="1057">1057</span>
-<span id="1058">1058</span>
-<span id="1059">1059</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file provides structures representing changes to ledger entries
@@ -1084,10 +979,8 @@
 <span class="doccomment">/// represents an update to one or more fields of a `LedgerEntry`
 </span><span class="attribute">#[derive(Default, Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>LedgerEntryUpdate {
-    <span class="doccomment">/// change the sequential balance
-    </span><span class="kw">pub </span>sequential_balance: SetOrKeep&lt;Amount&gt;,
-    <span class="doccomment">/// change the parallel balance
-    </span><span class="kw">pub </span>parallel_balance: SetOrKeep&lt;Amount&gt;,
+    <span class="doccomment">/// change the balance
+    </span><span class="kw">pub </span>balance: SetOrKeep&lt;Amount&gt;,
     <span class="doccomment">/// change the executable bytecode
     </span><span class="kw">pub </span>bytecode: SetOrKeep&lt;Vec&lt;u8&gt;&gt;,
     <span class="doccomment">/// change datastore entries
@@ -1262,15 +1155,14 @@
     /// use massa_ledger_exports::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer};
     ///
     /// let key = &quot;hello world&quot;.as_bytes().to_vec();
-    /// let mut store = BTreeMap::default();
-    /// store.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
+    /// let mut datastore = BTreeMap::default();
+    /// datastore.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
     /// let amount = Amount::from_str(&quot;1&quot;).unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntryUpdate {
-    ///    parallel_balance: SetOrKeep::Keep,
-    ///    sequential_balance: SetOrKeep::Keep,
+    ///    balance: SetOrKeep::Keep,
     ///    bytecode: SetOrKeep::Set(bytecode.clone()),
-    ///    datastore: store,
+    ///    datastore,
     /// };
     /// let mut serialized = Vec::new();
     /// let serializer = LedgerEntryUpdateSerializer::new();
@@ -1281,10 +1173,7 @@
         value: <span class="kw-2">&amp;</span>LedgerEntryUpdate,
         buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
-        <span class="self">self</span>.balance_serializer
-            .serialize(<span class="kw-2">&amp;</span>value.sequential_balance, buffer)<span class="question-mark">?</span>;
-        <span class="self">self</span>.balance_serializer
-            .serialize(<span class="kw-2">&amp;</span>value.parallel_balance, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.balance_serializer.serialize(<span class="kw-2">&amp;</span>value.balance, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.bytecode_serializer
             .serialize(<span class="kw-2">&amp;</span>value.bytecode, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.datastore_serializer
@@ -1335,15 +1224,14 @@
     /// use massa_ledger_exports::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer, LedgerEntryUpdateDeserializer};
     ///
     /// let key = &quot;hello world&quot;.as_bytes().to_vec();
-    /// let mut store = BTreeMap::default();
-    /// store.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
+    /// let mut datastore = BTreeMap::default();
+    /// datastore.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
     /// let amount = Amount::from_str(&quot;1&quot;).unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntryUpdate {
-    ///    parallel_balance: SetOrKeep::Keep,
-    ///    sequential_balance: SetOrKeep::Keep,
+    ///    balance: SetOrKeep::Keep,
     ///    bytecode: SetOrKeep::Set(bytecode.clone()),
-    ///    datastore: store,
+    ///    datastore,
     /// };
     /// let mut serialized = Vec::new();
     /// let serializer = LedgerEntryUpdateSerializer::new();
@@ -1360,10 +1248,7 @@
         context(
             <span class="string">&quot;Failed LedgerEntryUpdate deserialization&quot;</span>,
             tuple((
-                context(<span class="string">&quot;Failed sequential_balance deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.amount_deserializer.deserialize(input)
-                }),
-                context(<span class="string">&quot;Failed parallel_balance deserialization&quot;</span>, |input| {
+                context(<span class="string">&quot;Failed balance deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.amount_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed bytecode deserialization&quot;</span>, |input| {
@@ -1374,14 +1259,11 @@
                 }),
             )),
         )
-        .map(
-            |(sequential_balance, parallel_balance, bytecode, datastore)| LedgerEntryUpdate {
-                sequential_balance,
-                parallel_balance,
-                bytecode,
-                datastore,
-            },
-        )
+        .map(|(balance, bytecode, datastore)| LedgerEntryUpdate {
+            balance,
+            bytecode,
+            datastore,
+        })
         .parse(buffer)
     }
 }
@@ -1389,8 +1271,7 @@
 <span class="kw">impl </span>Applicable&lt;LedgerEntryUpdate&gt; <span class="kw">for </span>LedgerEntryUpdate {
     <span class="doccomment">/// extends the `LedgerEntryUpdate` with another one
     </span><span class="kw">fn </span>apply(<span class="kw-2">&amp;mut </span><span class="self">self</span>, update: LedgerEntryUpdate) {
-        <span class="self">self</span>.sequential_balance.apply(update.sequential_balance);
-        <span class="self">self</span>.parallel_balance.apply(update.parallel_balance);
+        <span class="self">self</span>.balance.apply(update.balance);
         <span class="self">self</span>.bytecode.apply(update.bytecode);
         <span class="self">self</span>.datastore.extend(update.datastore);
     }
@@ -1442,15 +1323,14 @@
     /// use massa_models::{amount::Amount, address::Address};
     ///
     /// let key = &quot;hello world&quot;.as_bytes().to_vec();
-    /// let mut store = BTreeMap::new();
-    /// store.insert(key, vec![1, 2, 3]);
-    /// let amount = Amount::from_str(&quot;1&quot;).unwrap();
+    /// let mut datastore = BTreeMap::new();
+    /// datastore.insert(key, vec![1, 2, 3]);
+    /// let balance = Amount::from_str(&quot;1&quot;).unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {
-    ///    parallel_balance: amount,
-    ///    sequential_balance: amount,
+    ///    balance,
     ///    bytecode,
-    ///    datastore: store,
+    ///    datastore,
     /// };
     /// let mut serialized = Vec::new();
     /// let mut changes = LedgerChanges::default();
@@ -1525,15 +1405,14 @@
     /// use massa_models::{amount::Amount, address::Address};
     ///
     /// let key = &quot;hello world&quot;.as_bytes().to_vec();
-    /// let mut store = BTreeMap::new();
-    /// store.insert(key, vec![1, 2, 3]);
-    /// let amount = Amount::from_str(&quot;1&quot;).unwrap();
+    /// let mut datastore = BTreeMap::new();
+    /// datastore.insert(key, vec![1, 2, 3]);
+    /// let balance = Amount::from_str(&quot;1&quot;).unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {
-    ///    parallel_balance: amount,
-    ///    sequential_balance: amount,
+    ///    balance,
     ///    bytecode,
-    ///    datastore: store,
+    ///    datastore,
     /// };
     /// let mut serialized = Vec::new();
     /// let mut changes = LedgerChanges::default();
@@ -1598,54 +1477,14 @@
         <span class="self">self</span>.<span class="number">0</span>.get(addr)
     }
 
-    <span class="doccomment">/// Tries to return the sequential balance of an entry
-    /// or gets it from a function if the entry&#39;s status is unknown.
-    ///
-    /// This function is used as an optimization:
-    /// if the value can be deduced unambiguously from the `LedgerChanges`,
-    /// no need to dig further (for example in the `FinalLedger`).
-    ///
-    /// # Arguments
-    /// * `addr`: address for which to get the value
-    /// * `f`: fallback function with no arguments and returning `Option&lt;Amount&gt;`
-    ///
-    /// # Returns
-    /// * Some(v) if a value is present, where v is a copy of the value
-    /// * None if the value is absent
-    /// * f() if the value is unknown
-    </span><span class="kw">pub fn </span>get_sequential_balance_or_else&lt;F: FnOnce() -&gt; <span class="prelude-ty">Option</span>&lt;Amount&gt;&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        addr: <span class="kw-2">&amp;</span>Address,
-        f: F,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;Amount&gt; {
-        <span class="comment">// Get the changes for the provided address
-        </span><span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.get(addr) {
-            <span class="comment">// This entry is being replaced by a new one: get the balance from the new entry
-            </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Set(v)) =&gt; <span class="prelude-val">Some</span>(v.sequential_balance),
-
-            <span class="comment">// This entry is being updated
-            </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                sequential_balance, ..
-            })) =&gt; <span class="kw">match </span>sequential_balance {
-                <span class="comment">// The update sets a new balance: return it
-                </span>SetOrKeep::Set(v) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">*</span>v),
-                <span class="comment">// The update keeps the old balance.
-                // We therefore have no info on the absolute value of the balance.
-                // We call the fallback function and return its output.
-                </span>SetOrKeep::Keep =&gt; f(),
-            },
-
-            <span class="comment">// This entry is being deleted: return None.
-            </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Delete) =&gt; <span class="prelude-val">None</span>,
-
-            <span class="comment">// This entry is not being changed.
-            // We therefore have no info on the absolute value of the balance.
-            // We call the fallback function and return its output.
-            </span><span class="prelude-val">None </span>=&gt; f(),
-        }
+    <span class="doccomment">/// Create a new, empty address.
+    /// Overwrites the address if it is already there.
+    </span><span class="kw">pub fn </span>create_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address) {
+        <span class="self">self</span>.<span class="number">0
+            </span>.insert(<span class="kw-2">*</span>address, SetUpdateOrDelete::Set(LedgerEntry::default()));
     }
 
-    <span class="doccomment">/// Tries to return the parallel balance of an entry
+    <span class="doccomment">/// Tries to return the balance of an entry
     /// or gets it from a function if the entry&#39;s status is unknown.
     ///
     /// This function is used as an optimization:
@@ -1660,7 +1499,7 @@
     /// * Some(v) if a value is present, where v is a copy of the value
     /// * None if the value is absent
     /// * f() if the value is unknown
-    </span><span class="kw">pub fn </span>get_parallel_balance_or_else&lt;F: FnOnce() -&gt; <span class="prelude-ty">Option</span>&lt;Amount&gt;&gt;(
+    </span><span class="kw">pub fn </span>get_balance_or_else&lt;F: FnOnce() -&gt; <span class="prelude-ty">Option</span>&lt;Amount&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         addr: <span class="kw-2">&amp;</span>Address,
         f: F,
@@ -1668,12 +1507,10 @@
         <span class="comment">// Get the changes for the provided address
         </span><span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.get(addr) {
             <span class="comment">// This entry is being replaced by a new one: get the balance from the new entry
-            </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Set(v)) =&gt; <span class="prelude-val">Some</span>(v.parallel_balance),
+            </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Set(v)) =&gt; <span class="prelude-val">Some</span>(v.balance),
 
             <span class="comment">// This entry is being updated
-            </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                parallel_balance, ..
-            })) =&gt; <span class="kw">match </span>parallel_balance {
+            </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Update(LedgerEntryUpdate { balance, .. })) =&gt; <span class="kw">match </span>balance {
                 <span class="comment">// The update sets a new balance: return it
                 </span>SetOrKeep::Set(v) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">*</span>v),
                 <span class="comment">// The update keeps the old balance.
@@ -1773,13 +1610,13 @@
         }
     }
 
-    <span class="doccomment">/// Set the sequential balance of an address.
+    <span class="doccomment">/// Set the balance of an address.
     /// If the address doesn&#39;t exist, its ledger entry is created.
     ///
     /// # Arguments
     /// * `addr`: target address
-    /// * `balance`: sequential balance to set for the provided address
-    </span><span class="kw">pub fn </span>set_sequential_balance(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: Address, balance: Amount) {
+    /// * `balance`: balance to set for the provided address
+    </span><span class="kw">pub fn </span>set_balance(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: Address, balance: Amount) {
         <span class="comment">// Get the changes for the entry associated to the provided address
         </span><span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.entry(addr) {
             <span class="comment">// That entry is being changed
@@ -1787,22 +1624,22 @@
                 <span class="kw">match </span>occ.get_mut() {
                     <span class="comment">// The entry is being replaced by a new one
                     </span>SetUpdateOrDelete::Set(v) =&gt; {
-                        <span class="comment">// update the sequential_balance of the replacement entry
-                        </span>v.sequential_balance = balance;
+                        <span class="comment">// update the balance of the replacement entry
+                        </span>v.balance = balance;
                     }
 
                     <span class="comment">// The entry is being updated
                     </span>SetUpdateOrDelete::Update(u) =&gt; {
-                        <span class="comment">// Make sure the update sets the sequential balance of the entry to its new value
-                        </span>u.sequential_balance = SetOrKeep::Set(balance);
+                        <span class="comment">// Make sure the update sets the balance of the entry to its new value
+                        </span>u.balance = SetOrKeep::Set(balance);
                     }
 
                     <span class="comment">// The entry is being deleted
                     </span>d @ SetUpdateOrDelete::Delete =&gt; {
                         <span class="comment">// Replace that deletion with a replacement by a new default entry
-                        // for which the sequential balance was properly set
+                        // for which the balance was properly set
                         </span><span class="kw-2">*</span>d = SetUpdateOrDelete::Set(LedgerEntry {
-                            sequential_balance: balance,
+                            balance,
                             ..Default::default()
                         });
                     }
@@ -1813,54 +1650,7 @@
             </span>hash_map::Entry::Vacant(vac) =&gt; {
                 <span class="comment">// Induce an Update to the entry that sets the balance to its new value
                 </span>vac.insert(SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                    sequential_balance: SetOrKeep::Set(balance),
-                    ..Default::default()
-                }));
-            }
-        }
-    }
-
-    <span class="doccomment">/// Set the parallel balance of an address.
-    /// If the address doesn&#39;t exist, its ledger entry is created.
-    ///
-    /// # Arguments
-    /// * `addr`: target address
-    /// * `balance`: parallel balance to set for the provided address
-    </span><span class="kw">pub fn </span>set_parallel_balance(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: Address, balance: Amount) {
-        <span class="comment">// Get the changes for the entry associated to the provided address
-        </span><span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.entry(addr) {
-            <span class="comment">// That entry is being changed
-            </span>hash_map::Entry::Occupied(<span class="kw-2">mut </span>occ) =&gt; {
-                <span class="kw">match </span>occ.get_mut() {
-                    <span class="comment">// The entry is being replaced by a new one
-                    </span>SetUpdateOrDelete::Set(v) =&gt; {
-                        <span class="comment">// update the parallel_balance of the replacement entry
-                        </span>v.parallel_balance = balance;
-                    }
-
-                    <span class="comment">// The entry is being updated
-                    </span>SetUpdateOrDelete::Update(u) =&gt; {
-                        <span class="comment">// Make sure the update sets the parallel balance of the entry to its new value
-                        </span>u.parallel_balance = SetOrKeep::Set(balance);
-                    }
-
-                    <span class="comment">// The entry is being deleted
-                    </span>d @ SetUpdateOrDelete::Delete =&gt; {
-                        <span class="comment">// Replace that deletion with a replacement by a new default entry
-                        // for which the parallel balance was properly set
-                        </span><span class="kw-2">*</span>d = SetUpdateOrDelete::Set(LedgerEntry {
-                            parallel_balance: balance,
-                            ..Default::default()
-                        });
-                    }
-                }
-            }
-
-            <span class="comment">// This entry is not being changed
-            </span>hash_map::Entry::Vacant(vac) =&gt; {
-                <span class="comment">// Induce an Update to the entry that sets the balance to its new value
-                </span>vac.insert(SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                    parallel_balance: SetOrKeep::Set(balance),
+                    balance: SetOrKeep::Set(balance),
                     ..Default::default()
                 }));
             }
@@ -2117,4 +1907,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b705839c 2022-09-26)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (57f097ea2 2022-10-01)" ></div></body></html>

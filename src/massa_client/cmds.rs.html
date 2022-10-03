@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-client/src/cmds.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>cmds.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_client/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_client/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_client/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-client/src/cmds.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>cmds.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_client/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_client/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_client/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -1143,7 +1143,7 @@
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>serde::Serialize;
-<span class="kw">use </span>std::collections::HashMap;
+<span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::fmt::Write <span class="kw">as _</span>;
 <span class="kw">use </span>std::fmt::{Debug, Display};
 <span class="kw">use </span>std::net::IpAddr;
@@ -1339,7 +1339,7 @@
 
     <span class="attribute">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;SenderAddress PathToBytecode MaxGas GasPrice Coins Fee&quot;</span>,),
+        props(args = <span class="string">&quot;SenderAddress PathToBytecode MaxGas GasPrice Fee&quot;</span>,),
         message = <span class="string">&quot;create and send an operation containing byte code&quot;
     </span>)]
     </span>send_smart_contract,
@@ -1814,7 +1814,7 @@
                             </span>{
                                 <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
                                     <span class="prelude-val">Some</span>(info) =&gt; {
-                                        <span class="kw">if </span>info.candidate_sequential_balance &lt; total {
+                                        <span class="kw">if </span>info.candidate_balance &lt; total {
                                             <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
                                         }
                                     }
@@ -1857,7 +1857,7 @@
                     <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) = client.public.get_addresses(<span class="macro">vec!</span>[addr]).<span class="kw">await </span>{
                         <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
                             <span class="prelude-val">Some</span>(info) =&gt; {
-                                <span class="kw">if </span>info.candidate_sequential_balance &lt; fee
+                                <span class="kw">if </span>info.candidate_balance &lt; fee
                                     || roll_count &gt; info.candidate_roll_count
                                 {
                                     <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance or roll count&quot;</span>);
@@ -1892,7 +1892,7 @@
                     <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) = client.public.get_addresses(<span class="macro">vec!</span>[addr]).<span class="kw">await </span>{
                         <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
                             <span class="prelude-val">Some</span>(info) =&gt; {
-                                <span class="kw">if </span>info.candidate_sequential_balance &lt; fee {
+                                <span class="kw">if </span>info.candidate_balance &lt; fee {
                                     <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
                                 }
                             }
@@ -1944,15 +1944,14 @@
                 <span class="prelude-val">Ok</span>(Box::new(()))
             }
             Command::send_smart_contract =&gt; {
-                <span class="kw">if </span>parameters.len() != <span class="number">6 </span>{
+                <span class="kw">if </span>parameters.len() != <span class="number">5 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
                 <span class="kw">let </span>addr = parameters[<span class="number">0</span>].parse::&lt;Address&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>path = parameters[<span class="number">1</span>].parse::&lt;PathBuf&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>max_gas = parameters[<span class="number">2</span>].parse::&lt;u64&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>gas_price = parameters[<span class="number">3</span>].parse::&lt;Amount&gt;()<span class="question-mark">?</span>;
-                <span class="kw">let </span>coins = parameters[<span class="number">4</span>].parse::&lt;Amount&gt;()<span class="question-mark">?</span>;
-                <span class="kw">let </span>fee = parameters[<span class="number">5</span>].parse::&lt;Amount&gt;()<span class="question-mark">?</span>;
+                <span class="kw">let </span>fee = parameters[<span class="number">4</span>].parse::&lt;Amount&gt;()<span class="question-mark">?</span>;
 
                 <span class="kw">if </span>!json {
                     <span class="kw">match </span>gas_price
@@ -1965,7 +1964,7 @@
                             </span>{
                                 <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
                                     <span class="prelude-val">Some</span>(info) =&gt; {
-                                        <span class="kw">if </span>info.candidate_sequential_balance &lt; total {
+                                        <span class="kw">if </span>info.candidate_balance &lt; total {
                                             <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
                                         }
                                     }
@@ -1990,6 +1989,7 @@
                         <span class="macro">client_warning!</span>(<span class="string">&quot;bytecode size exceeded half of the maximum size of a block, operation will certainly be rejected&quot;</span>);
                     }
                 }
+                <span class="kw">let </span>datastore = BTreeMap::new();
 
                 send_operation(
                     client,
@@ -1997,8 +1997,8 @@
                     OperationType::ExecuteSC {
                         data,
                         max_gas,
-                        coins,
                         gas_price,
+                        datastore,
                     },
                     fee,
                     addr,
@@ -2029,7 +2029,7 @@
                             </span>{
                                 <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
                                     <span class="prelude-val">Some</span>(info) =&gt; {
-                                        <span class="kw">if </span>info.candidate_sequential_balance &lt; total {
+                                        <span class="kw">if </span>info.candidate_balance &lt; total {
                                             <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
                                         }
                                     }
@@ -2055,8 +2055,7 @@
                         target_func,
                         param,
                         max_gas,
-                        sequential_coins: Amount::zero(),
-                        parallel_coins: coins,
+                        coins,
                         gas_price,
                     },
                     fee,
@@ -2098,7 +2097,8 @@
                         simulated_gas_price,
                         bytecode,
                         address,
-                    })
+                        operation_datastore: <span class="prelude-val">None</span>, <span class="comment">// TODO - #3072
+                    </span>})
                     .<span class="kw">await
                 </span>{
                     <span class="prelude-val">Ok</span>(res) =&gt; <span class="prelude-val">Ok</span>(Box::new(res)),
@@ -2239,4 +2239,4 @@
     })
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b705839c 2022-09-26)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (57f097ea2 2022-10-01)" ></div></body></html>

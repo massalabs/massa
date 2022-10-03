@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-protocol-worker/src/protocol_network.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>protocol_network.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_protocol_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_protocol_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_protocol_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-protocol-worker/src/protocol_network.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>protocol_network.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_protocol_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_protocol_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_protocol_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -570,6 +570,19 @@
 <span id="570">570</span>
 <span id="571">571</span>
 <span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Worker implementation for the network events
 //!
 //! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
@@ -592,6 +605,7 @@
 <span class="kw">use </span>massa_protocol_exports::{ProtocolError, ProtocolEvent};
 <span class="kw">use </span>massa_serialization::Serializer;
 <span class="kw">use </span>massa_storage::Storage;
+<span class="kw">use </span>std::pin::Pin;
 <span class="kw">use </span>tokio::time::{Instant, Sleep};
 <span class="kw">use </span>tracing::{info, warn};
 
@@ -617,7 +631,8 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>on_network_event(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         evt: NetworkEvent,
-        block_ask_timer: <span class="kw-2">&amp;mut </span>std::pin::Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;,
+        block_ask_timer: <span class="kw-2">&amp;mut </span>Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;,
+        op_timer: <span class="kw-2">&amp;mut </span>Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="kw">match </span>evt {
             NetworkEvent::NewConnection(node_id) =&gt; {
@@ -645,7 +660,7 @@
             } =&gt; {
                 <span class="macro">massa_trace!</span>(BLOCKS_INFO, { <span class="string">&quot;node&quot;</span>: from_node_id, <span class="string">&quot;info&quot;</span>: info });
                 <span class="kw">for </span>(block_id, block_info) <span class="kw">in </span>info.into_iter() {
-                    <span class="self">self</span>.on_block_info_received(from_node_id, block_id, block_info)
+                    <span class="self">self</span>.on_block_info_received(from_node_id, block_id, block_info, op_timer)
                         .<span class="kw">await</span><span class="question-mark">?</span>;
                 }
                 <span class="comment">// Re-run the ask block algorithm.
@@ -687,7 +702,8 @@
             }
             NetworkEvent::ReceivedOperations { node, operations } =&gt; {
                 <span class="macro">massa_trace!</span>(OPS, { <span class="string">&quot;node&quot;</span>: node, <span class="string">&quot;operations&quot;</span>: operations});
-                <span class="self">self</span>.on_operations_received(node, operations).<span class="kw">await</span>;
+                <span class="self">self</span>.on_operations_received(node, operations, op_timer)
+                    .<span class="kw">await</span>;
             }
             NetworkEvent::ReceivedEndorsements { node, endorsements } =&gt; {
                 <span class="macro">massa_trace!</span>(ENDORSEMENTS, { <span class="string">&quot;node&quot;</span>: node, <span class="string">&quot;endorsements&quot;</span>: endorsements});
@@ -726,7 +742,7 @@
 
     <span class="doccomment">/// Network ask the local node for blocks
     ///
-    /// React on another node asking for blocks informations. We can forward the operation ids if
+    /// React on another node asking for blocks information. We can forward the operation ids if
     /// the foreign node asked for `AskForBlocksInfo::Info` or the full operations if he asked for
     /// the missing operations in his storage with `AskForBlocksInfo::Operations`
     ///
@@ -805,7 +821,7 @@
 
     <span class="doccomment">/// On block header received from a node.
     /// If the header is new, we propagate it to the consensus.
-    /// We pass the state of block_wishlist ot ask for information about the block.
+    /// We pass the state of `block_wishlist` to ask for information about the block.
     </span><span class="kw">async fn </span>on_block_header_received(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         from_node_id: NodeId,
@@ -868,16 +884,14 @@
         from_node_id: NodeId,
         block_id: BlockId,
         operation_ids: Vec&lt;OperationId&gt;,
+        op_timer: <span class="kw-2">&amp;mut </span>Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="comment">// All operation ids sent into a set
         </span><span class="kw">let </span>operation_ids_set: PreHashSet&lt;OperationId&gt; = operation_ids.iter().cloned().collect();
 
         <span class="comment">// add to known ops
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(node_info) = <span class="self">self</span>.active_nodes.get_mut(<span class="kw-2">&amp;</span>from_node_id) {
-            node_info.insert_known_ops(
-                operation_ids_set.clone(),
-                <span class="self">self</span>.config.max_node_known_ops_size,
-            );
+            node_info.insert_known_ops(<span class="kw-2">&amp;</span>operation_ids, <span class="self">self</span>.config.max_node_known_ops_size);
         }
 
         <span class="kw">let </span>info = <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = <span class="self">self</span>.block_wishlist.get_mut(<span class="kw-2">&amp;</span>block_id) {
@@ -948,7 +962,12 @@
             <span class="comment">// If the block is empty, go straight to processing the full block info.
             </span><span class="kw">if </span>operation_ids.is_empty() {
                 <span class="kw">return </span><span class="self">self
-                    </span>.on_block_full_operations_received(from_node_id, block_id, Default::default())
+                    </span>.on_block_full_operations_received(
+                        from_node_id,
+                        block_id,
+                        Default::default(),
+                        op_timer,
+                    )
                     .<span class="kw">await</span>;
             }
         } <span class="kw">else </span>{
@@ -963,9 +982,9 @@
     ///
     /// # Ban
     /// Ban the node if it doesn&#39;t fill the requirement. Forward to the graph with a
-    /// [ProtocolEvent::ReceivedBlock] if the operations are under a max size.
+    /// `ProtocolEvent::ReceivedBlock` if the operations are under a max size.
     ///
-    /// - thread incorect for an operation
+    /// - thread incorrect for an operation
     /// - wanted operations doesn&#39;t match
     /// - duplicated operation
     /// - full operations serialized size overflow
@@ -976,9 +995,10 @@
         from_node_id: NodeId,
         block_id: BlockId,
         <span class="kw-2">mut </span>operations: Vec&lt;WrappedOperation&gt;,
+        op_timer: <span class="kw-2">&amp;mut </span>Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
-            </span>.note_operations_from_node(operations.clone(), <span class="kw-2">&amp;</span>from_node_id)
+            </span>.note_operations_from_node(operations.clone(), <span class="kw-2">&amp;</span>from_node_id, op_timer)
             .<span class="kw">await
         </span>{
             <span class="macro">warn!</span>(
@@ -1106,6 +1126,7 @@
         from_node_id: NodeId,
         block_id: BlockId,
         info: BlockInfoReply,
+        op_timer: <span class="kw-2">&amp;mut </span>Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="kw">match </span>info {
             BlockInfoReply::Header(header) =&gt; {
@@ -1118,14 +1139,19 @@
                 // that block.
                 // Ban the node if the operation ids hash doesn&#39;t match with the hash contained in
                 // the block_header.
-                </span><span class="self">self</span>.on_block_operation_list_received(from_node_id, block_id, operation_list)
-                    .<span class="kw">await
+                </span><span class="self">self</span>.on_block_operation_list_received(
+                    from_node_id,
+                    block_id,
+                    operation_list,
+                    op_timer,
+                )
+                .<span class="kw">await
             </span>}
             BlockInfoReply::Operations(operations) =&gt; {
                 <span class="comment">// Send operations to pool,
                 // before performing the below checks,
                 // and wait for them to have been procesed(i.e. added to storage).
-                </span><span class="self">self</span>.on_block_full_operations_received(from_node_id, block_id, operations)
+                </span><span class="self">self</span>.on_block_full_operations_received(from_node_id, block_id, operations, op_timer)
                     .<span class="kw">await
             </span>}
             BlockInfoReply::NotFound =&gt; {
@@ -1143,4 +1169,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b705839c 2022-09-26)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (57f097ea2 2022-10-01)" ></div></body></html>

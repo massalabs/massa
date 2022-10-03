@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/api.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>api.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/api.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>api.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -574,24 +574,6 @@
 <span id="574">574</span>
 <span id="575">575</span>
 <span id="576">576</span>
-<span id="577">577</span>
-<span id="578">578</span>
-<span id="579">579</span>
-<span id="580">580</span>
-<span id="581">581</span>
-<span id="582">582</span>
-<span id="583">583</span>
-<span id="584">584</span>
-<span id="585">585</span>
-<span id="586">586</span>
-<span id="587">587</span>
-<span id="588">588</span>
-<span id="589">589</span>
-<span id="590">590</span>
-<span id="591">591</span>
-<span id="592">592</span>
-<span id="593">593</span>
-<span id="594">594</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::address::ExecutionAddressCycleInfo;
@@ -617,7 +599,7 @@
     </span><span class="kw">pub </span>creator_public_key: PublicKey,
     <span class="doccomment">/// The signature of the operation
     </span><span class="kw">pub </span>signature: Signature,
-    <span class="doccomment">/// The serialized version of the content base58 encoded
+    <span class="doccomment">/// The serialized version of the content `base58` encoded
     </span><span class="kw">pub </span>serialized_content: Vec&lt;u8&gt;,
 }
 
@@ -749,7 +731,7 @@
     </span>NotFound,
 }
 
-<span class="doccomment">/// Current Parallel balance ledger info
+<span class="doccomment">/// Current balance ledger info
 </span><span class="attribute">#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 </span><span class="kw">pub struct </span>LedgerInfo {
     <span class="doccomment">/// final data
@@ -801,19 +783,15 @@
     <span class="doccomment">/// the thread the address belongs to
     </span><span class="kw">pub </span>thread: u8,
 
-    <span class="doccomment">/// final parallel balance
-    </span><span class="kw">pub </span>final_parallel_balance: Amount,
-    <span class="doccomment">/// final sequential balance
-    </span><span class="kw">pub </span>final_sequential_balance: Amount,
+    <span class="doccomment">/// final balance
+    </span><span class="kw">pub </span>final_balance: Amount,
     <span class="doccomment">/// final roll count
     </span><span class="kw">pub </span>final_roll_count: u64,
     <span class="doccomment">/// final datastore keys
     </span><span class="kw">pub </span>final_datastore_keys: Vec&lt;Vec&lt;u8&gt;&gt;,
 
-    <span class="doccomment">/// candidate parallel balance
-    </span><span class="kw">pub </span>candidate_parallel_balance: Amount,
-    <span class="doccomment">/// candidate sequential balance
-    </span><span class="kw">pub </span>candidate_sequential_balance: Amount,
+    <span class="doccomment">/// candidate balance
+    </span><span class="kw">pub </span>candidate_balance: Amount,
     <span class="doccomment">/// candidate roll count
     </span><span class="kw">pub </span>candidate_roll_count: u64,
     <span class="doccomment">/// candidate datastore keys
@@ -834,7 +812,7 @@
     <span class="doccomment">/// created endorsements
     </span><span class="kw">pub </span>created_endorsements: Vec&lt;EndorsementId&gt;,
 
-    <span class="doccomment">/// cycle infos
+    <span class="doccomment">/// cycle information
     </span><span class="kw">pub </span>cycle_infos: Vec&lt;ExecutionAddressCycleInfo&gt;,
 }
 
@@ -843,13 +821,8 @@
         <span class="macro">writeln!</span>(f, <span class="string">&quot;Address {} (thread {}):&quot;</span>, <span class="self">self</span>.address, <span class="self">self</span>.thread)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
             f,
-            <span class="string">&quot;\tSequential balance: final={}, candidate={}&quot;</span>,
-            <span class="self">self</span>.final_sequential_balance, <span class="self">self</span>.candidate_sequential_balance
-        )<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(
-            f,
-            <span class="string">&quot;\tParallel balance: final={}, candidate={}&quot;</span>,
-            <span class="self">self</span>.final_parallel_balance, <span class="self">self</span>.candidate_parallel_balance
+            <span class="string">&quot;\tBalance: final={}, candidate={}&quot;</span>,
+            <span class="self">self</span>.final_balance, <span class="self">self</span>.candidate_balance
         )<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(f, <span class="string">&quot;\tLocked coins:&quot;</span>)<span class="question-mark">?</span>;
         <span class="kw">for </span>slot_amount <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.deferred_credits {
@@ -898,10 +871,8 @@
                 .unwrap_or_default(),
             final_rolls: <span class="self">self</span>.final_roll_count,
             candidate_rolls: <span class="self">self</span>.candidate_roll_count,
-            final_sequential_balance: <span class="self">self</span>.final_sequential_balance,
-            candidate_sequential_balance: <span class="self">self</span>.candidate_sequential_balance,
-            final_parallel_balance: <span class="self">self</span>.final_parallel_balance,
-            candidate_parallel_balance: <span class="self">self</span>.candidate_parallel_balance,
+            final_balance: <span class="self">self</span>.final_balance,
+            candidate_balance: <span class="self">self</span>.candidate_balance,
         }
     }
 }
@@ -934,14 +905,10 @@
     </span><span class="kw">pub </span>final_rolls: u64,
     <span class="doccomment">/// active rolls
     </span><span class="kw">pub </span>active_rolls: u64,
-    <span class="doccomment">/// final sequential balance
-    </span><span class="kw">pub </span>final_sequential_balance: Amount,
-    <span class="doccomment">/// candidate sequential balance
-    </span><span class="kw">pub </span>candidate_sequential_balance: Amount,
-    <span class="doccomment">/// final parallel balance
-    </span><span class="kw">pub </span>final_parallel_balance: Amount,
-    <span class="doccomment">/// candidate parallel balance
-    </span><span class="kw">pub </span>candidate_parallel_balance: Amount,
+    <span class="doccomment">/// final balance
+    </span><span class="kw">pub </span>final_balance: Amount,
+    <span class="doccomment">/// candidate balance
+    </span><span class="kw">pub </span>candidate_balance: Amount,
 }
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>CompactAddressInfo {
@@ -949,13 +916,8 @@
         <span class="macro">writeln!</span>(f, <span class="string">&quot;Address: {} (thread {}):&quot;</span>, <span class="self">self</span>.address, <span class="self">self</span>.thread)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
             f,
-            <span class="string">&quot;\tSequential balance: final={}, candidate={}&quot;</span>,
-            <span class="self">self</span>.final_sequential_balance, <span class="self">self</span>.candidate_sequential_balance
-        )<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(
-            f,
-            <span class="string">&quot;\tParallel balance: final={}, candidate={}&quot;</span>,
-            <span class="self">self</span>.final_parallel_balance, <span class="self">self</span>.candidate_parallel_balance
+            <span class="string">&quot;\tBalance: final={}, candidate={}&quot;</span>,
+            <span class="self">self</span>.final_balance, <span class="self">self</span>.candidate_balance
         )<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
             f,
@@ -978,7 +940,7 @@
     </span><span class="kw">pub </span>in_blocks: Vec&lt;BlockId&gt;,
     <span class="doccomment">/// true if the endorsement is final (for example in a final block)
     </span><span class="kw">pub </span>is_final: bool,
-    <span class="doccomment">/// the endorsmeent itself
+    <span class="doccomment">/// the endorsement itself
     </span><span class="kw">pub </span>endorsement: WrappedEndorsement,
 }
 
@@ -1110,7 +1072,7 @@
     </span><span class="kw">pub </span>end: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
 }
 
-<span class="doccomment">/// Datastore entry query input struct
+<span class="doccomment">/// Datastore entry query input structure
 </span><span class="attribute">#[derive(Debug, Deserialize, Clone, Serialize)]
 </span><span class="kw">pub struct </span>DatastoreEntryInput {
     <span class="doccomment">/// associated address of the entry
@@ -1119,7 +1081,7 @@
     </span><span class="kw">pub </span>key: Vec&lt;u8&gt;,
 }
 
-<span class="doccomment">/// Datastore entry query output struct
+<span class="doccomment">/// Datastore entry query output structure
 </span><span class="attribute">#[derive(Debug, Deserialize, Clone, Serialize)]
 </span><span class="kw">pub struct </span>DatastoreEntryOutput {
     <span class="doccomment">/// final datastore entry value
@@ -1168,6 +1130,8 @@
     </span><span class="kw">pub </span>bytecode: Vec&lt;u8&gt;,
     <span class="doccomment">/// caller&#39;s address, optional
     </span><span class="kw">pub </span>address: <span class="prelude-ty">Option</span>&lt;Address&gt;,
+    <span class="doccomment">/// Operation datastore, optional
+    </span><span class="kw">pub </span>operation_datastore: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
 }
 
 <span class="doccomment">/// read SC call request
@@ -1187,4 +1151,4 @@
     </span><span class="kw">pub </span>caller_address: <span class="prelude-ty">Option</span>&lt;Address&gt;,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b705839c 2022-09-26)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (57f097ea2 2022-10-01)" ></div></body></html>
