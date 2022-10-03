@@ -316,7 +316,7 @@ impl ProtocolWorker {
                     operation_announcement_interval.set(sleep_until(next_tick));
                 }
 
-                // operation ask, and announce, timer
+                // operation ask timer
                 _ = &mut operation_batch_proc_period_timer => {
                     massa_trace!("protocol.protocol_worker.run_loop.operation_ask_and_announce_timer", { });
 
