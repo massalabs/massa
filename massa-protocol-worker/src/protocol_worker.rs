@@ -325,6 +325,10 @@ impl ProtocolWorker {
     /// - notes nodes as knowing about those operations from now on.
     /// - empties the buffer of operations to announce.
     async fn announce_ops(&mut self) {
+        // Quit if empty.
+        if self.operations_to_announce.is_empty() {
+            return;
+        }
         let operation_ids = mem::take(&mut self.operations_to_announce);
         massa_trace!("protocol.protocol_worker.propagate_operations.begin", {
             "operation_ids": operation_ids
