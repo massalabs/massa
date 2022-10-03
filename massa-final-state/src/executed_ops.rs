@@ -74,12 +74,13 @@ impl ExecutedOps {
     }
 
     /// marks an op as executed
-    pub fn insert(&mut self, op_id: OperationId, last_valid_slot: Slot) {
-        let hash = Hash::compute_from(
-            &[&op_id.to_bytes()[..], &last_valid_slot.to_bytes_key()[..]].concat(),
-        );
-        self.hash ^= hash;
-        self.ops.insert(op_id, last_valid_slot);
+    pub fn insert(&mut self, op_id: OperationId, expiration_slot: Slot) {
+        if self.ops.try_insert(op_id, expiration_slot).is_ok() {
+            let hash = Hash::compute_from(
+                &[&op_id.to_bytes()[..], &expiration_slot.to_bytes_key()[..]].concat(),
+            );
+            self.hash ^= hash;
+        }
     }
 
     /// Prune all operations that expire strictly before `max_slot`
