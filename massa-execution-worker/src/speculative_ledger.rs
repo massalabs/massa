@@ -246,7 +246,7 @@ impl SpeculativeLedger {
         // check for address existence
         if !self.entry_exists(&creator_address) {
             return Err(ExecutionError::RuntimeError(format!(
-                "could not set bytecode for address {}: entry does not exist",
+                "could not set bytecode for address {}: address does not exist",
                 addr
             )));
         }
@@ -311,7 +311,7 @@ impl SpeculativeLedger {
         // check for address existence
         if !self.entry_exists(addr) {
             return Err(ExecutionError::RuntimeError(format!(
-                "could not set bytecode for address {}: entry does not exist",
+                "could not set bytecode for address {}: address does not exist",
                 addr
             )));
         }
@@ -440,7 +440,7 @@ impl SpeculativeLedger {
         // check for address existence
         if !self.entry_exists(addr) {
             return Err(ExecutionError::RuntimeError(format!(
-                "could not set data for address {}: entry does not exist",
+                "could not set data for address {}: address does not exist",
                 addr
             )));
         }
@@ -534,7 +534,7 @@ impl SpeculativeLedger {
             )?;
         } else {
             return Err(ExecutionError::RuntimeError(format!(
-                "could not delete data entry {:?} for address {}: entry does not exist",
+                "could not delete data entry {:?} for address {}: entry or address does not exist",
                 key, addr
             )));
         }
