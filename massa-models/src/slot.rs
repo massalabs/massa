@@ -24,13 +24,14 @@ pub struct Slot {
 pub const SLOT_KEY_SIZE: usize = 9;
 
 /// Basic serializer for `Slot`
+#[derive(Clone)]
 pub struct SlotSerializer {
     u64_serializer: U64VarIntSerializer,
 }
 
 impl SlotSerializer {
     /// Creates a `SlotSerializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             u64_serializer: U64VarIntSerializer::new(),
         }

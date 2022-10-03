@@ -15,7 +15,7 @@ use nom::{
 use serde::{Deserialize, Serialize};
 
 /// Wrapped structure T where U is the associated id
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Wrapped<T, U>
 where
     T: Display + WrappedContent,
@@ -93,6 +93,7 @@ where
         DC: Deserializer<Self>,
         U: Id,
     >(
+        content_serializer: Option<&dyn Serializer<Self>>,
         signature_deserializer: &SignatureDeserializer,
         creator_public_key_deserializer: &PublicKeyDeserializer,
         content_deserializer: &DC,
@@ -110,11 +111,24 @@ where
             )),
         )(buffer)?;
         let (rest, content) = content_deserializer.deserialize(serialized_data)?;
-        // Avoid getting the rest of the data in the serialized data
-        let content_serialized = &serialized_data[..serialized_data.len() - rest.len()];
+        let content_serialized = if let Some(content_serializer) = content_serializer {
+            let mut content_buffer = Vec::new();
+            content_serializer
+                .serialize(&content, &mut content_buffer)
+                .map_err(|_| {
+                    nom::Err::Error(ParseError::from_error_kind(
+                        rest,
+                        nom::error::ErrorKind::Fail,
+                    ))
+                })?;
+            content_buffer
+        } else {
+            // Avoid getting the rest of the data in the serialized data
+            serialized_data[..serialized_data.len() - rest.len()].to_vec()
+        };
         let creator_address = Address::from_public_key(&creator_public_key);
         let mut serialized_full_data = creator_public_key.to_bytes().to_vec();
-        serialized_full_data.extend(content_serialized);
+        serialized_full_data.extend(&content_serialized);
         Ok((
             rest,
             Wrapped {
@@ -175,6 +189,35 @@ impl WrappedSerializer {
     pub const fn new() -> Self {
         Self
     }
+
+    /// This method is used to serialize a `Wrapped` structure and use a custom serializer instead of
+    /// using the serialized form of the content stored in `serialized_data.
+    /// This is useful when the content need to be serialized in a lighter form in specific cases.
+    ///
+    /// # Arguments:
+    /// * `serializer_content`: Custom serializer to be used instead of the data in `serialized_data`
+    /// * `value`: Wrapped structure to be serialized
+    /// * `buffer`: buffer of serialized data to be extend
+    pub fn serialize_with<SC, T, U>(
+        &self,
+        serializer_content: &SC,
+        value: &Wrapped<T, U>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError>
+    where
+        SC: Serializer<T>,
+        T: Display + WrappedContent,
+        U: Id,
+    {
+        let mut content_buffer = Vec::new();
+        serializer_content.serialize(&value.content, &mut content_buffer)?;
+        T::serialize(
+            &value.signature,
+            &value.creator_public_key,
+            &content_buffer,
+            buffer,
+        )
+    }
 }
 
 impl<T, U> Serializer<Wrapped<T, U>> for WrappedSerializer
@@ -221,6 +264,37 @@ where
             marker_t: std::marker::PhantomData,
         }
     }
+
+    /// This method is used deserialize data that has been serialized in a lightweight form.
+    /// The buffer doesn't have the whole content serialized and so
+    /// this serialized data isn't coherent with the full structure and can't be used to calculate id and signature.
+    /// We pass a serializer to serialize the full structure and retrieve a coherent `serialized_data`
+    /// that can be use for the id and signature computing.
+    ///
+    /// # Arguments:
+    /// * `content_serializer`: Serializer use to compute the `serialized_data` from the content
+    /// * `buffer`: buffer of serialized data to be deserialized
+    ///
+    /// # Returns:
+    /// A rest and the wrapped structure with coherent fields.
+    pub fn deserialize_with<
+        'a,
+        E: ParseError<&'a [u8]> + ContextError<&'a [u8]>,
+        U: Id,
+        ST: Serializer<T>,
+    >(
+        &self,
+        content_serializer: &ST,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Wrapped<T, U>, E> {
+        T::deserialize(
+            Some(content_serializer),
+            &self.signature_deserializer,
+            &self.public_key_deserializer,
+            &self.content_deserializer,
+            buffer,
+        )
+    }
 }
 
 impl<T, U, DT> Deserializer<Wrapped<T, U>> for WrappedDeserializer<T, DT>
@@ -259,6 +333,7 @@ where
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Wrapped<T, U>, E> {
         T::deserialize(
+            None,
             &self.signature_deserializer,
             &self.public_key_deserializer,
             &self.content_deserializer,

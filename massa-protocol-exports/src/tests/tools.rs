@@ -12,7 +12,7 @@ use massa_models::{
     address::Address,
     amount::Amount,
     block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock},
-    endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement},
+    endorsement::{Endorsement, EndorsementSerializerLW, WrappedEndorsement},
     operation::{Operation, OperationType, WrappedOperation},
     slot::Slot,
 };
@@ -231,7 +231,7 @@ pub fn create_endorsement() -> WrappedEndorsement {
         index: 0,
         endorsed_block: BlockId(Hash::compute_from(&[])),
     };
-    Endorsement::new_wrapped(content, EndorsementSerializer::new(), &keypair).unwrap()
+    Endorsement::new_wrapped(content, EndorsementSerializerLW::new(), &keypair).unwrap()
 }
 
 /// Create an operation, from a specific sender, and with a specific expire period.

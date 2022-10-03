@@ -1199,9 +1199,8 @@ async fn test_endorsements_messages() {
                 &sender_keypair,
             )
             .unwrap();
-            let ref_id = endorsement.id;
             conn1_w
-                .send(&Message::Endorsements(vec![endorsement]))
+                .send(&Message::Endorsements(vec![endorsement.clone()]))
                 .await
                 .unwrap();
 
@@ -1217,8 +1216,7 @@ async fn test_endorsements_messages() {
                 .await
             {
                 assert_eq!(endorsements.len(), 1);
-                let res_id = endorsements[0].id;
-                assert_eq!(ref_id, res_id);
+                assert_eq!(endorsement, endorsements[0]);
                 assert_eq!(node, conn1_id);
             } else {
                 panic!("Timeout while waiting for endorsement event.");
@@ -1237,11 +1235,11 @@ async fn test_endorsements_messages() {
                 &sender_keypair,
             )
             .unwrap();
-            let ref_id = endorsement.id;
+            // let ref_id = endorsement.id;
 
             // reply with another endorsement
             network_command_sender
-                .send_endorsements(conn1_id, vec![endorsement])
+                .send_endorsements(conn1_id, vec![endorsement.clone()])
                 .await
                 .unwrap();
 
@@ -1253,8 +1251,7 @@ async fn test_endorsements_messages() {
                         let evt = evt.unwrap().unwrap().1;
                         if let Message::Endorsements(endorsements) = evt {
                             assert_eq!(endorsements.len(), 1);
-                            let res_id = endorsements[0].id;
-                            assert_eq!(ref_id, res_id);
+                            assert_eq!(endorsement, endorsements[0]);
                             break;
                         }
                     },

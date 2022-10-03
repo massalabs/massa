@@ -2661,7 +2661,7 @@ impl BlockGraph {
             })
     }
 
-    /// get the latest blockclique (or final) block ID at a given slot, if any
+    /// get the latest blockclique (or final) block ID that is the most recent, but still strictly older than `slot`, in the same thread as `slot`
     pub fn get_latest_blockclique_block_at_slot(&self, slot: &Slot) -> BlockId {
         let (mut best_block_id, mut best_block_period) = self
             .latest_final_blocks_periods
