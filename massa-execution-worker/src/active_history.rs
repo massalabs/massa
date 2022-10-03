@@ -33,6 +33,15 @@ pub enum SlotIndexPosition {
 }
 
 impl ActiveHistory {
+    /// Remove `slot` and the slots after it from history
+    pub fn truncate_from(&mut self, slot: &Slot, thread_count: u8) {
+        match self.get_slot_index(slot, thread_count) {
+            SlotIndexPosition::Past => self.0.clear(),
+            SlotIndexPosition::Found(index) => self.0.truncate(index),
+            _ => {}
+        }
+    }
+
     /// Lazily query (from end to beginning) the active list of executed ops to check if an op was executed.
     ///
     /// Returns a `HistorySearchResult`.

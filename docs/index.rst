@@ -96,7 +96,6 @@ Contents
    technical-doc/glossary.rst
    technical-doc/concurrency.rst
    technical-doc/Endorsements.rst
-   technical-doc/vm-block-feed.rst
    technical-doc/vm-ledger-interaction.rst
    technical-doc/dummy-network-generation.rst
 

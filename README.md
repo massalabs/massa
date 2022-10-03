@@ -68,6 +68,5 @@ Don't hesitate to ask questions in the
 
 -   [API](https://massa.readthedocs.io/en/latest/technical-doc/api.html)
 -   [Concurrency](https://massa.readthedocs.io/en/latest/technical-doc/concurrency.html)
--   [Smart contract VM block feed process](https://massa.readthedocs.io/en/latest/technical-doc/vm-block-feed.html)
 -   [VM ledger interaction](https://massa.readthedocs.io/en/latest/technical-doc/vm-ledger-interaction.html)
 -   [Dummy network generation](https://massa.readthedocs.io/en/latest/technical-doc/dummy-network-generation.html)

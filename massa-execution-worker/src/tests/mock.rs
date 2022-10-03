@@ -48,9 +48,10 @@ fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
             ..Default::default()
         },
     );
+
     // thread 1 / 31
     let keypair_1 =
-        KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        KeyPair::from_str("S1kEBGgxHFBdsNC4HtRHhsZsB5irAtYHEmuAKATkfiomYmj58tm").unwrap();
     let addr_1 = Address::from_public_key(&keypair_1.get_public_key());
     rolls.insert(addr_1, 100);
     ledger.insert(

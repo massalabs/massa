@@ -95,3 +95,11 @@ Nonces
 NCC
 AEAD
 wasm/MS
+Config
+SlotSequencer
+inits
+storages
+SlotInfo
+truncate_history
+bool
+slot_sequencer

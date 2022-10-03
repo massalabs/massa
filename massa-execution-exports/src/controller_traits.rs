@@ -12,6 +12,7 @@ use massa_models::api::EventFilter;
 use massa_models::block::BlockId;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::PreHashMap;
 use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
 use massa_models::stats::ExecutionStats;
@@ -24,12 +25,14 @@ pub trait ExecutionController: Send + Sync {
     /// Updates blockclique status by signaling newly finalized blocks and the latest blockclique.
     ///
     /// # Arguments
-    /// * `finalized_blocks`: newly finalized blocks. Each Storage owns refs to the block and its ops/endorsements/parents.
-    /// * `blockclique`: new blockclique. Each Storage owns refs to the block and its ops/endorsements/parents
+    /// * `finalized_blocks`: newly finalized blocks indexed by slot.
+    /// * `blockclique`: new blockclique (if changed). Indexed by slot.
+    /// * `block_storage`: storage instances for new blocks. Each one owns refs to the block and its ops/endorsements/parents.
     fn update_blockclique_status(
         &self,
-        finalized_blocks: HashMap<Slot, (BlockId, Storage)>,
-        blockclique: HashMap<Slot, (BlockId, Storage)>,
+        finalized_blocks: HashMap<Slot, BlockId>,
+        new_blockclique: Option<HashMap<Slot, BlockId>>,
+        block_storage: PreHashMap<BlockId, Storage>,
     );
 
     /// Get execution events optionally filtered by:

@@ -1302,7 +1302,6 @@ impl BlockGraph {
         }
 
         // check if it was the creator's turn to create this block
-        // (step 1 in consensus/pos.md)
         let slot_draw_address = match self.selector_controller.get_producer(header.content.slot) {
             Ok(draw) => draw,
             Err(_) => return Ok(HeaderCheckOutcome::WaitForSlot), // TODO properly handle PoS errors
@@ -2616,12 +2615,13 @@ impl BlockGraph {
     }
 
     /// get the clique of higher fitness
-    pub fn get_blockclique(&self) -> PreHashSet<BlockId> {
-        self.max_cliques
+    pub fn get_blockclique(&self) -> &PreHashSet<BlockId> {
+        &self
+            .max_cliques
             .iter()
-            .enumerate()
-            .find(|(_, c)| c.is_blockclique)
-            .map_or_else(PreHashSet::<BlockId>::default, |(_, v)| v.block_ids.clone())
+            .find(|c| c.is_blockclique)
+            .expect("blockclique missing")
+            .block_ids
     }
 
     /// get the blockclique (or final) block ID at a given slot, if any
@@ -2699,16 +2699,17 @@ impl BlockGraph {
         best_block_id
     }
 
-    /// Clones all stored final blocks, not only the still-useful ones
+    /// Gets all stored final blocks, not only the still-useful ones
     /// This is used when initializing Execution from Consensus.
     /// Since the Execution bootstrap snapshot is older than the Consensus snapshot,
     /// we might need to signal older final blocks for Execution to catch up.
-    pub fn get_all_final_blocks(&self) -> HashMap<Slot, (BlockId, Storage)> {
+    pub fn get_all_final_blocks(&self) -> HashMap<BlockId, Slot> {
         self.active_index
             .iter()
-            .filter_map(|b_id| match self.get_active_block(b_id) {
-                Some((a_b, storage)) if a_b.is_final => Some((a_b.slot, (*b_id, storage.clone()))),
-                _ => None,
+            .map(|b_id| {
+                let (a_block, _storage) =
+                    self.get_active_block(b_id).expect("active block missing");
+                (*b_id, a_block.slot)
             })
             .collect()
     }
