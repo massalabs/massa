@@ -191,7 +191,7 @@ impl WrappedSerializer {
     }
 
     /// This method is used to serialize a `Wrapped` structure and use a custom serializer instead of
-    /// using the serialized form of the content stored in `serialized_data.
+    /// using the serialized form of the content stored in `serialized_data`.
     /// This is useful when the content need to be serialized in a lighter form in specific cases.
     ///
     /// # Arguments:

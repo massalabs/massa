@@ -221,8 +221,8 @@ impl Deserializer<Endorsement> for EndorsementDeserializer {
     }
 }
 
-/// LightWeight Serializer for `Endorsement`
-/// When included in a BlockHeader, we want to serialize only the index (optim)
+/// Lightweight Serializer for `Endorsement`
+/// When included in a `BlockHeader`, we want to serialize only the index (optimization)
 pub struct EndorsementSerializerLW {
     // slot_serializer: SlotSerializer,
     u32_serializer: U32VarIntSerializer,
