@@ -112,7 +112,7 @@ pub struct EndorsementSerializer {
 
 impl EndorsementSerializer {
     /// Creates a new `EndorsementSerializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         EndorsementSerializer {
             slot_serializer: SlotSerializer::new(),
             u32_serializer: U32VarIntSerializer::new(),
@@ -268,16 +268,20 @@ impl Serializer<Endorsement> for EndorsementSerializerLW {
 /// Lightweight Deserializer for `Endorsement`
 pub struct EndorsementDeserializerLW {
     index_deserializer: U32VarIntDeserializer,
+    slot: Slot,
+    endorsed_block: BlockId,
 }
 
 impl EndorsementDeserializerLW {
     /// Creates a new `EndorsementDeserializerLW`
-    pub const fn new(endorsement_count: u32) -> Self {
+    pub const fn new(endorsement_count: u32, slot: Slot, endorsed_block: BlockId) -> Self {
         EndorsementDeserializerLW {
             index_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Excluded(endorsement_count),
             ),
+            slot,
+            endorsed_block,
         }
     }
 }
@@ -304,17 +308,13 @@ impl Deserializer<Endorsement> for EndorsementDeserializerLW {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Endorsement, E> {
-        let hash_default = Hash::from_bytes(&[0; 32]);
-        context(
-            "Failed endorsement deserialization",
-            tuple((context("Failed index deserialization", |input| {
-                self.index_deserializer.deserialize(input)
-            }),)),
-        )
-        .map(|(index,)| Endorsement {
-            slot: Slot::new(0, 0),
+        context("Failed index deserialization", |input| {
+            self.index_deserializer.deserialize(input)
+        })
+        .map(|index| Endorsement {
+            slot: self.slot,
             index,
-            endorsed_block: BlockId::new(hash_default),
+            endorsed_block: self.endorsed_block,
         })
         .parse(buffer)
     }
@@ -373,8 +373,10 @@ mod tests {
             .serialize(&endorsement, &mut ser_endorsement)
             .unwrap();
 
+        let parent = BlockId(Hash::compute_from("blk".as_bytes()));
+
         let (_, res_endorsement): (&[u8], WrappedEndorsement) =
-            WrappedDeserializer::new(EndorsementDeserializerLW::new(1))
+            WrappedDeserializer::new(EndorsementDeserializerLW::new(1, Slot::new(10, 1), parent))
                 .deserialize::<DeserializeError>(&ser_endorsement)
                 .unwrap();
         // Test only endorsement index as with the lw ser. we only process this field
