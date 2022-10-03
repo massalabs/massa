@@ -274,7 +274,7 @@ pub fn create_protocol_config() -> ProtocolConfig {
         operation_batch_buffer_capacity: 1000,
         operation_batch_proc_period: 200.into(),
         asked_operations_pruning_period: 500.into(),
-        operation_announcement_interval: 500.into(),
+        operation_announcement_interval: 150.into(),
         max_operations_per_message: 1024,
         thread_count: 32,
         max_serialized_operations_size_per_block: 1024,
