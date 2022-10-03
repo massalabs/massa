@@ -190,15 +190,14 @@ impl SlotSequencer {
         let shifted_now = MassaTime::now(self.config.clock_compensation)
             .expect("could not get current time")
             .saturating_sub(self.config.cursor_delay);
-        let res = get_latest_block_slot_at_timestamp(
+        get_latest_block_slot_at_timestamp(
             self.config.thread_count,
             self.config.t0,
             self.config.genesis_timestamp,
             shifted_now,
         )
         .expect("could not get latest block slot at shifted execution time")
-        .unwrap_or_else(|| Slot::new(0, 0));
-        res
+        .unwrap_or_else(|| Slot::new(0, 0))
     }
 
     /// Notify the sequencer of incoming changes: CSS-finalized blocks and changes in the blockclique.
