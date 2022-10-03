@@ -541,7 +541,7 @@ impl ExecutionContext {
         // check access right
         if !self.has_write_rights_on(address) {
             return Err(ExecutionError::RuntimeError(format!(
-                "appending to the datastore of address {} is not allowed in this context",
+                "deleting from the datastore of address {} is not allowed in this context",
                 address
             )));
         }
