@@ -957,7 +957,7 @@ pub fn verify_signature_batch(
     let mut hashes = Vec::with_capacity(batch.len());
     let mut signatures = Vec::with_capacity(batch.len());
     let mut public_keys = Vec::with_capacity(batch.len());
-    batch.into_iter().for_each(|(hash, signature, public_key)| {
+    batch.iter().for_each(|(hash, signature, public_key)| {
         hashes.push(hash.to_bytes().as_slice());
         signatures.push(signature.0);
         public_keys.push(public_key.0);
