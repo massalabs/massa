@@ -33,6 +33,7 @@ use tokio::{
     sync::mpsc::error::SendTimeoutError,
     time::{sleep, sleep_until, Instant, Sleep},
 };
+use std::pin::Pin;
 use tracing::{debug, error, info, warn};
 
 // TODO connect protocol to pool so that it sends ops and endorsements
@@ -288,13 +289,15 @@ impl ProtocolWorker {
 
                 // listen to incoming commands
                 Some(cmd) = self.controller_command_rx.recv() => {
-                    self.process_command(cmd, &mut block_ask_timer).await?;
+                    self.process_command(cmd, &mut
+                        block_ask_timer,
+                        &mut operation_announcement_interval).await?;
                 }
 
                 // listen to network controller events
                 evt = self.network_event_receiver.wait_event() => {
                     massa_trace!("protocol.protocol_worker.run_loop.network_event_rx", {});
-                    self.on_network_event(evt?, &mut block_ask_timer).await?;
+                    self.on_network_event(evt?, &mut block_ask_timer, &mut operation_announcement_interval).await?;
                 }
 
                 // block ask timer
@@ -306,14 +309,7 @@ impl ProtocolWorker {
                 // Operation announcement interval.
                 _ = &mut operation_announcement_interval => {
                     // Announce operations.
-                    self.announce_ops().await;
-
-                    // Reset timer.
-                    let now = Instant::now();
-                    let next_tick = now
-                        .checked_add(self.config.operation_announcement_interval.into())
-                        .ok_or(TimeError::TimeOverflowError)?;
-                    operation_announcement_interval.set(sleep_until(next_tick));
+                    self.announce_ops(&mut operation_announcement_interval).await;
                 }
 
                 // operation ask timer
@@ -339,8 +335,8 @@ impl ProtocolWorker {
     /// Side effects:
     /// - notes nodes as knowing about those operations from now on.
     /// - empties the buffer of operations to announce.
-    async fn announce_ops(&mut self) {
-        // Quit if empty.
+    async fn announce_ops(&mut self, timer: &mut Pin<&mut Sleep>) {
+        // Quit if empty  to avoid iterating on nodes
         if self.operations_to_announce.is_empty() {
             return;
         }
@@ -365,11 +361,19 @@ impl ProtocolWorker {
                 }
             }
         }
+
+        // Reset timer.
+        let now = Instant::now();
+        let next_tick = now
+            .checked_add(self.config.operation_announcement_interval.into())
+            // .ok_or(TimeError::TimeOverflowError)?;
+            .unwrap();
+        timer.set(sleep_until(next_tick));
     }
 
     /// Add an list of operations to a buffer for announcement at the next interval,
     /// or immediately if the buffer is full.
-    async fn note_operations_to_announce(&mut self, operations: &[OperationId]) {
+    async fn note_operations_to_announce(&mut self, operations: &[OperationId], timer: &mut Pin<&mut Sleep>) {
         massa_trace!(
             "protocol.protocol_worker.note_operations_to_announce.begin",
             { "operations": operations }
@@ -381,7 +385,7 @@ impl ProtocolWorker {
         // announce operations immediately,
         // clearing the data at the same time.
         if self.operations_to_announce.len() > self.config.operation_announcement_buffer_capacity {
-            self.announce_ops().await;
+            self.announce_ops(timer).await;
         }
     }
 
@@ -427,7 +431,8 @@ impl ProtocolWorker {
     async fn process_command(
         &mut self,
         cmd: ProtocolCommand,
-        timer: &mut std::pin::Pin<&mut Sleep>,
+        block_timer: &mut Pin<&mut Sleep>,
+        op_timer: &mut Pin<&mut Sleep>
     ) -> Result<(), ProtocolError> {
         match cmd {
             ProtocolCommand::IntegratedBlock { block_id, storage } => {
@@ -508,7 +513,7 @@ impl ProtocolWorker {
                 for block_id in remove.iter() {
                     self.block_wishlist.remove(block_id);
                 }
-                self.update_ask_block(timer).await?;
+                self.update_ask_block(block_timer).await?;
                 massa_trace!(
                     "protocol.protocol_worker.process_command.wishlist_delta.end",
                     {}
@@ -530,7 +535,7 @@ impl ProtocolWorker {
 
                 // Announce operations to active nodes not knowing about it.
                 let to_announce: Vec<OperationId> = operation_ids.iter().copied().collect();
-                self.note_operations_to_announce(&to_announce).await;
+                self.note_operations_to_announce(&to_announce, op_timer).await;
             }
             ProtocolCommand::PropagateEndorsements(endorsements) => {
                 self.propagate_endorsements(&endorsements).await;
@@ -558,7 +563,7 @@ impl ProtocolWorker {
 
     pub(crate) async fn update_ask_block(
         &mut self,
-        ask_block_timer: &mut std::pin::Pin<&mut Sleep>,
+        ask_block_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.update_ask_block.begin", {});
         let now = Instant::now();
@@ -965,6 +970,7 @@ impl ProtocolWorker {
         &mut self,
         operations: Vec<WrappedOperation>,
         source_node_id: &NodeId,
+        op_timer: &mut Pin<&mut Sleep>
     ) -> Result<(Vec<OperationId>, PreHashMap<OperationId, usize>), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
         let length = operations.len();
@@ -1035,7 +1041,7 @@ impl ProtocolWorker {
             ops_to_propagate.drop_operation_refs(&operations_to_not_propagate);
             let to_announce: Vec<OperationId> =
                 ops_to_propagate.get_op_refs().iter().copied().collect();
-            self.note_operations_to_announce(&to_announce).await;
+            self.note_operations_to_announce(&to_announce, op_timer).await;
 
             // Add to pool
             self.pool_controller.add_operations(ops);

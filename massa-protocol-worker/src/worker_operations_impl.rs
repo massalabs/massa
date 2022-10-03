@@ -20,6 +20,7 @@ use massa_models::{
 use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
 use tokio::time::{sleep_until, Instant, Sleep};
+use std::pin::Pin;
 use tracing::warn;
 
 /// Structure containing a Batch of `operation_ids` we would like to ask
@@ -136,8 +137,9 @@ impl ProtocolWorker {
         &mut self,
         node_id: NodeId,
         operations: Vec<WrappedOperation>,
+        op_timer: &mut Pin<&mut Sleep>
     ) {
-        if let Err(err) = self.note_operations_from_node(operations, &node_id).await {
+        if let Err(err) = self.note_operations_from_node(operations, &node_id, op_timer).await {
             warn!("node {} sent us critically incorrect operation, which may be an attack attempt by the remote node or a loss of sync between us and the remote node. Err = {}", node_id, err);
             let _ = self.ban_node(&node_id).await;
         }
