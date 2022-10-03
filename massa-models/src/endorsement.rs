@@ -311,12 +311,10 @@ impl Deserializer<Endorsement> for EndorsementDeserializerLW {
         context("Failed index deserialization", |input| {
             self.index_deserializer.deserialize(input)
         })
-        .map(|index| {
-            Endorsement {
-                slot: self.slot,
-                index,
-                endorsed_block: self.endorsed_block,
-            }
+        .map(|index| Endorsement {
+            slot: self.slot,
+            index,
+            endorsed_block: self.endorsed_block,
         })
         .parse(buffer)
     }
@@ -375,10 +373,10 @@ mod tests {
             .serialize(&endorsement, &mut ser_endorsement)
             .unwrap();
 
-        let parents = vec![BlockId(Hash::compute_from("blk".as_bytes()))];
+        let parent = BlockId(Hash::compute_from("blk".as_bytes()));
 
         let (_, res_endorsement): (&[u8], WrappedEndorsement) =
-            WrappedDeserializer::new(EndorsementDeserializerLW::new(1, Slot::new(10, 1), parents))
+            WrappedDeserializer::new(EndorsementDeserializerLW::new(1, Slot::new(10, 1), parent))
                 .deserialize::<DeserializeError>(&ser_endorsement)
                 .unwrap();
         // Test only endorsement index as with the lw ser. we only process this field

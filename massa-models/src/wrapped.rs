@@ -326,30 +326,3 @@ where
         )
     }
 }
-
-// pub struct WrappedDeserializerLW<T, DT, ST>
-// where
-//     T: Display + WrappedContent,
-//     DT: Deserializer<T>,
-//     ST: Serializer<T>,
-// {
-//     wrapped_deserializer: WrappedDeserializer<T, DT>,
-//     content_serializer: ST,
-// }
-
-// impl<T, DT, ST> WrappedDeserializerLW<T, DT, ST>
-// where
-//     T: Display + WrappedContent,
-//     DT: Deserializer<T>,
-//     ST: Serializer<T>,
-// {
-//     /// Creates a new WrappedDeserializer
-//     ///
-//     /// # Arguments
-//     /// * `content_deserializer` - Deserializer for the content
-//     pub const fn new(content_deserializer: WrappedDeserializer<>, content_serializer: ST) -> Self {
-//         Self {
-
-//         }
-//     }
-// }
