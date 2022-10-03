@@ -5,7 +5,7 @@ use massa_time::MassaTime;
 use serde::Deserialize;
 use std::net::SocketAddr;
 
-/// Bootstrap config.
+/// Bootstrap configuration.
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapConfig {
     /// Ip address of our bootstrap nodes and their public key.
@@ -66,6 +66,12 @@ pub struct BootstrapConfig {
     pub max_datastore_entry_count: u64,
     /// max datastore value length
     pub max_datastore_value_length: u64,
+    /// max op datastore entry count
+    pub max_op_datastore_entry_count: u64,
+    /// max op datastore key length
+    pub max_op_datastore_key_length: u8,
+    /// max op datastore value length
+    pub max_op_datastore_value_length: u64,
     /// max data async message
     pub max_data_async_message: u64,
     /// max function name length

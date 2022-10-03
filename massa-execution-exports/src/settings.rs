@@ -6,6 +6,17 @@ use massa_models::amount::Amount;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 
+/// Storage cost constants
+#[derive(Debug, Clone, Copy)]
+pub struct StorageCostsConstants {
+    /// Cost per byte in ledger
+    pub ledger_cost_per_byte: Amount,
+    /// Ledger entry base cost
+    pub ledger_entry_base_cost: Amount,
+    /// Ledger entry datastore base cost
+    pub ledger_entry_datastore_base_cost: Amount,
+}
+
 /// Execution module configuration
 #[derive(Debug, Clone)]
 pub struct ExecutionConfig {
@@ -43,4 +54,10 @@ pub struct ExecutionConfig {
     pub max_miss_ratio: Ratio<u64>,
     /// Max size of a datastore key
     pub max_datastore_key_length: u8,
+    /// Max bytecode size
+    pub max_bytecode_size: u64,
+    /// Max datastore value size
+    pub max_datastore_value_size: u64,
+    /// Storage cost constants
+    pub storage_costs_constants: StorageCostsConstants,
 }

@@ -69,7 +69,7 @@ pub(crate) struct ExecutionContextSnapshot {
 /// passed to the VM to interact with during bytecode execution (through ABIs),
 /// and read after execution to gather results.
 pub(crate) struct ExecutionContext {
-    /// config
+    /// configuration
     config: ExecutionConfig,
 
     /// speculative ledger state,
@@ -120,6 +120,9 @@ pub(crate) struct ExecutionContext {
     /// Unsafe random state (can be predicted and manipulated)
     pub unsafe_rng: Xoshiro256PlusPlus,
 
+    /// Creator address. The bytecode of this address can't be modified
+    pub creator_address: Option<Address>,
+
     /// operation id that originally caused this execution (if any)
     pub origin_operation_id: Option<OperationId>,
 }
@@ -145,6 +148,9 @@ impl ExecutionContext {
                 final_state.clone(),
                 active_history.clone(),
                 config.max_datastore_key_length,
+                config.max_bytecode_size,
+                config.max_datastore_value_size,
+                config.storage_costs_constants,
             ),
             speculative_async_pool: SpeculativeAsyncPool::new(
                 final_state.clone(),
@@ -166,6 +172,7 @@ impl ExecutionContext {
             read_only: Default::default(),
             events: Default::default(),
             unsafe_rng: Xoshiro256PlusPlus::from_seed([0u8; 32]),
+            creator_address: Default::default(),
             origin_operation_id: Default::default(),
             config,
         }
@@ -405,8 +412,11 @@ impl ExecutionContext {
         let address = Address(massa_hash::Hash::compute_from(&data));
 
         // add this address with its bytecode to the speculative ledger
-        self.speculative_ledger
-            .create_new_sc_address(address, bytecode)?;
+        self.speculative_ledger.create_new_sc_address(
+            self.get_current_address()?,
+            address,
+            bytecode,
+        )?;
 
         // add the address to owned addresses
         // so that the current call has write access to it
@@ -444,9 +454,9 @@ impl ExecutionContext {
         self.speculative_ledger.has_data_entry(address, key)
     }
 
-    /// gets the effective parallel balance of an address
-    pub fn get_parallel_balance(&self, address: &Address) -> Option<Amount> {
-        self.speculative_ledger.get_parallel_balance(address)
+    /// gets the effective balance of an address
+    pub fn get_balance(&self, address: &Address) -> Option<Amount> {
+        self.speculative_ledger.get_balance(address)
     }
 
     /// Sets a datastore entry for an address in the speculative ledger.
@@ -472,7 +482,8 @@ impl ExecutionContext {
         }
 
         // set data entry
-        self.speculative_ledger.set_data_entry(address, key, data)
+        self.speculative_ledger
+            .set_data_entry(&self.get_current_address()?, address, key, data)
     }
 
     /// Appends data to a datastore entry for an address in the speculative ledger.
@@ -513,7 +524,7 @@ impl ExecutionContext {
 
         // set data entry
         self.speculative_ledger
-            .set_data_entry(address, key, res_data)
+            .set_data_entry(&self.get_current_address()?, address, key, res_data)
     }
 
     /// Deletes a datastore entry for an address.
@@ -530,16 +541,17 @@ impl ExecutionContext {
         // check access right
         if !self.has_write_rights_on(address) {
             return Err(ExecutionError::RuntimeError(format!(
-                "appending to the datastore of address {} is not allowed in this context",
+                "deleting from the datastore of address {} is not allowed in this context",
                 address
             )));
         }
 
         // delete entry
-        self.speculative_ledger.delete_data_entry(address, key)
+        self.speculative_ledger
+            .delete_data_entry(&self.get_current_address()?, address, key)
     }
 
-    /// Transfers sequential coins from one address to another.
+    /// Transfers coins from one address to another.
     /// No changes are retained in case of failure.
     /// Spending is only allowed from existing addresses we have write access on
     ///
@@ -548,7 +560,7 @@ impl ExecutionContext {
     /// * `to_addr`: optional crediting address (use None for pure coin destruction)
     /// * `amount`: amount of coins to transfer
     /// * `check_rights`: check that the sender has the right to spend the coins according to the call stack
-    pub fn transfer_sequential_coins(
+    pub fn transfer_coins(
         &mut self,
         from_addr: Option<Address>,
         to_addr: Option<Address>,
@@ -568,39 +580,7 @@ impl ExecutionContext {
         }
         // do the transfer
         self.speculative_ledger
-            .transfer_sequential_coins(from_addr, to_addr, amount)
-    }
-
-    /// Transfers parallel coins from one address to another.
-    /// No changes are retained in case of failure.
-    /// Spending is only allowed from existing addresses we have write access on
-    ///
-    /// # Arguments
-    /// * `from_addr`: optional spending address (use None for pure coin creation)
-    /// * `to_addr`: optional crediting address (use None for pure coin destruction)
-    /// * `amount`: amount of coins to transfer
-    /// * `check_rights`: check that the sender has the right to spend the coins according to the call stack
-    pub fn transfer_parallel_coins(
-        &mut self,
-        from_addr: Option<Address>,
-        to_addr: Option<Address>,
-        amount: Amount,
-        check_rights: bool,
-    ) -> Result<(), ExecutionError> {
-        // check access rights
-        if check_rights {
-            if let Some(from_addr) = &from_addr {
-                if !self.has_write_rights_on(from_addr) {
-                    return Err(ExecutionError::RuntimeError(format!(
-                        "spending from address {} is not allowed in this context",
-                        from_addr
-                    )));
-                }
-            }
-        }
-        // do the transfer
-        self.speculative_ledger
-            .transfer_parallel_coins(from_addr, to_addr, amount)
+            .transfer_coins(from_addr, to_addr, amount)
     }
 
     /// Add a new asynchronous message to speculative pool
@@ -616,7 +596,7 @@ impl ExecutionContext {
     /// # Arguments
     /// * `msg`: the asynchronous message to cancel
     pub fn cancel_async_message(&mut self, msg: &AsyncMessage) {
-        if let Err(e) = self.transfer_parallel_coins(None, Some(msg.sender), msg.coins, false) {
+        if let Err(e) = self.transfer_coins(None, Some(msg.sender), msg.coins, false) {
             debug!(
                 "async message cancel: reimbursement of {} failed: {}",
                 msg.sender, e
@@ -674,12 +654,12 @@ impl ExecutionContext {
     /// Execute the deferred credits of `slot`.
     ///
     /// # Arguments
-    /// * `slot`: assiciated slot of the deferred credits to be executed
+    /// * `slot`: associated slot of the deferred credits to be executed
     /// * `credits`: deferred to be executed
     pub fn execute_deferred_credits(&mut self, slot: &Slot) {
         let credits = self.speculative_roll_state.get_deferred_credits(slot);
         for (addr, amount) in credits {
-            if let Err(e) = self.transfer_sequential_coins(None, Some(addr), amount, false) {
+            if let Err(e) = self.transfer_coins(None, Some(addr), amount, false) {
                 debug!(
                     "could not credit {} deferred coins to {} at slot {}: {}",
                     amount, addr, slot, e
@@ -755,8 +735,17 @@ impl ExecutionContext {
             )));
         }
 
+        // We define that set the bytecode of a non-SC address is impossible to avoid problems for block creator.
+        // See: https://github.com/massalabs/massa/discussions/2952
+        if let Some(creator_address) = self.creator_address && &creator_address == address {
+            return Err(ExecutionError::RuntimeError(format!("
+                can't set the bytecode of address {} because this is not a smart contract address",
+                address)))
+        }
+
         // set data entry
-        self.speculative_ledger.set_bytecode(address, bytecode)
+        self.speculative_ledger
+            .set_bytecode(&self.get_current_address()?, address, bytecode)
     }
 
     /// Creates a new event but does not emit it.
@@ -809,7 +798,7 @@ impl ExecutionContext {
             .insert_executed_op(op_id, op_valid_until_slot)
     }
 
-    /// gets the cycle infos for an address
+    /// gets the cycle information for an address
     pub fn get_address_cycle_infos(
         &self,
         address: &Address,

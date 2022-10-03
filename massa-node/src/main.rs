@@ -15,7 +15,7 @@ use massa_consensus_exports::{
     events::ConsensusEvent, settings::ConsensusChannels, ConsensusConfig, ConsensusEventReceiver,
 };
 use massa_consensus_worker::start_consensus_controller;
-use massa_execution_exports::{ExecutionConfig, ExecutionManager};
+use massa_execution_exports::{ExecutionConfig, ExecutionManager, StorageCostsConstants};
 use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
@@ -25,21 +25,22 @@ use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
 use massa_models::address::Address;
 use massa_models::config::constants::{
-    BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY,
-    GENESIS_TIMESTAMP, INITIAL_DRAW_SEED, LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH,
+    ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
+    CHANNEL_SIZE, DELTA_F0, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY, GENESIS_TIMESTAMP,
+    INITIAL_DRAW_SEED, LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_SIZE,
+    LEDGER_ENTRY_DATASTORE_BASE_SIZE, LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH,
     MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
-    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT,
-    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DATA_ASYNC_MESSAGE,
-    MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK,
-    MAX_LEDGER_CHANGES_COUNT, MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK, MAX_PARAMETERS_SIZE,
-    NETWORK_CONTROLLER_CHANNEL_SIZE, NETWORK_EVENT_CHANNEL_SIZE, OPERATION_VALIDITY_PERIODS,
-    PERIODS_PER_CYCLE, ROLL_PRICE, T0, THREAD_COUNT, VERSION,
-};
-use massa_models::config::{
-    ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, CHANNEL_SIZE, DELTA_F0, NETWORK_NODE_COMMAND_CHANNEL_SIZE,
-    NETWORK_NODE_EVENT_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
-    PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE,
+    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BYTECODE_LENGTH,
+    MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
+    MAX_DATA_ASYNC_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
+    MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT, MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK,
+    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
+    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, NETWORK_CONTROLLER_CHANNEL_SIZE,
+    NETWORK_EVENT_CHANNEL_SIZE, NETWORK_NODE_COMMAND_CHANNEL_SIZE, NETWORK_NODE_EVENT_CHANNEL_SIZE,
+    OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+    PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE, T0, THREAD_COUNT,
+    VERSION,
 };
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
@@ -182,6 +183,9 @@ async fn launch(
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_ledger_changes_count: MAX_LEDGER_CHANGES_COUNT,
         max_parameters_size: MAX_PARAMETERS_SIZE,
+        max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
+        max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         max_changes_slot_count: SETTINGS.ledger.final_history_length as u32,
     };
 
@@ -235,6 +239,9 @@ async fn launch(
         max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
         max_message_size: MAX_MESSAGE_SIZE,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
+        max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameters_size: MAX_PARAMETERS_SIZE,
         controller_channel_size: NETWORK_CONTROLLER_CHANNEL_SIZE,
@@ -261,6 +268,16 @@ async fn launch(
         .compute_initial_draws()
         .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
 
+    // Storage costs constants
+    let storage_costs_constants = StorageCostsConstants {
+        ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
+        ledger_entry_base_cost: LEDGER_COST_PER_BYTE
+            .checked_mul_u64(LEDGER_ENTRY_BASE_SIZE as u64)
+            .expect("Overflow when creating constant ledger_entry_base_cost"),
+        ledger_entry_datastore_base_cost: LEDGER_COST_PER_BYTE
+            .checked_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
+            .expect("Overflow when creating constant ledger_entry_datastore_base_size"),
+    };
     // launch execution module
     let execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,
@@ -280,6 +297,9 @@ async fn launch(
         stats_time_window_duration: SETTINGS.execution.stats_time_window_duration,
         max_miss_ratio: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+        max_bytecode_size: MAX_BYTECODE_LENGTH,
+        max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
+        storage_costs_constants,
     };
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,
@@ -317,8 +337,12 @@ async fn launch(
             .max_simultaneous_ask_blocks_per_node,
         max_send_wait: SETTINGS.protocol.max_send_wait,
         operation_batch_buffer_capacity: SETTINGS.protocol.operation_batch_buffer_capacity,
+        operation_announcement_buffer_capacity: SETTINGS
+            .protocol
+            .operation_announcement_buffer_capacity,
         operation_batch_proc_period: SETTINGS.protocol.operation_batch_proc_period,
         asked_operations_pruning_period: SETTINGS.protocol.asked_operations_pruning_period,
+        operation_announcement_interval: SETTINGS.protocol.operation_announcement_interval,
         max_operations_per_message: SETTINGS.protocol.max_operations_per_message,
         max_serialized_operations_size_per_block: MAX_BLOCK_SIZE as usize,
         controller_channel_size: PROTOCOL_CONTROLLER_CHANNEL_SIZE,
@@ -419,6 +443,9 @@ async fn launch(
         draw_lookahead_period_count: SETTINGS.api.draw_lookahead_period_count,
         max_arguments: SETTINGS.api.max_arguments,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
+        max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_size: MAX_PARAMETERS_SIZE,
     };

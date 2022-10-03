@@ -17,6 +17,7 @@ use massa_models::{
 use massa_pool_exports::{PoolConfig, PoolController};
 use massa_signature::{KeyPair, PublicKey};
 use massa_storage::Storage;
+use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::sync::mpsc::Receiver;
 
@@ -129,13 +130,12 @@ pub fn _create_executesc(
     let keypair = KeyPair::generate();
 
     let data = vec![42; 7];
-    let coins = 0_u64;
 
     let op = OperationType::ExecuteSC {
         data,
         max_gas,
-        coins: Amount::from_str(&coins.to_string()).unwrap(),
         gas_price: Amount::from_str(&gas_price.to_string()).unwrap(),
+        datastore: BTreeMap::new(),
     };
 
     let content = Operation {

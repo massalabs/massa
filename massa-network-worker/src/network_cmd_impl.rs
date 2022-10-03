@@ -67,7 +67,7 @@ async fn ban_connection_ids(worker: &mut NetworkWorker, ids: HashSet<ConnectionI
 }
 
 /// Ban the connections corresponding to `ips` from the `worker`
-/// See also [ban_connection_ids]
+/// See also `ban_connection_ids`
 async fn node_ban_by_ips(worker: &mut NetworkWorker, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
     for ip in ips.iter() {
         worker.peer_info_db.peer_banned(ip)?;
@@ -89,7 +89,7 @@ async fn node_ban_by_ips(worker: &mut NetworkWorker, ips: Vec<IpAddr>) -> Result
 }
 
 /// Ban the connections corresponding to node `ids` from the `worker`
-/// See also [ban_connection_ids]
+/// See also `ban_connection_ids`
 async fn node_ban_by_ids(worker: &mut NetworkWorker, ids: Vec<NodeId>) -> Result<(), NetworkError> {
     // get all connection IDs to ban
     let connection_ids_to_ban = ids

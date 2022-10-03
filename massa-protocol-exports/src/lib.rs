@@ -21,5 +21,5 @@ pub mod tests;
 
 /// Tests utils
 #[cfg(feature = "testing")]
-/// Exports testing tools as mock, functions helpers and configs
+/// Exports testing tools as mock, functions helpers and configurations
 pub mod test_exports;

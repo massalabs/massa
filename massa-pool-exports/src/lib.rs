@@ -16,5 +16,5 @@ pub use error::PoolError;
 
 /// Test utils
 #[cfg(feature = "testing")]
-/// Exports relqted to tests as Mocks and configs
+/// Exports related to tests as Mocks and configurations
 pub mod test_exports;

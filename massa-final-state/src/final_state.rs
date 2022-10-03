@@ -14,6 +14,7 @@ use massa_ledger_exports::{LedgerChanges, LedgerController};
 use massa_models::{address::Address, slot::Slot};
 use massa_pos_exports::{PoSCycleStreamingStep, PoSFinalState, SelectorController};
 use std::collections::VecDeque;
+use tracing::debug;
 
 /// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
 pub struct FinalState {
@@ -117,6 +118,16 @@ impl FinalState {
             }
             self.changes_history.push_back((slot, changes));
         }
+
+        debug!(
+            "ledger hash at slot {}: {}",
+            slot,
+            self.ledger.get_ledger_hash()
+        );
+        debug!(
+            "executed_ops hash at slot {}: {:?}",
+            slot, self.executed_ops.hash
+        );
     }
 
     /// Used for bootstrap
@@ -124,7 +135,7 @@ impl FinalState {
     /// Every ledgers changes that are after `last_slot` and before or equal of `last_address` must be returned.
     /// Every async pool changes that are after `last_slot` and before or equal of `last_id_async_pool` must be returned.
     ///
-    /// Error case: When the last_slot is too old for `self.changes_history`
+    /// Error case: When the `last_slot` is too old for `self.changes_history`
     pub fn get_state_changes_part(
         &self,
         last_slot: Slot,

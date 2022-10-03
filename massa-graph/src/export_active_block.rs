@@ -73,7 +73,7 @@ impl ExportActiveBlock {
         }
     }
 
-    /// consuming conversion from ExportActiveBlock to ActiveBlock
+    /// consuming conversion from `ExportActiveBlock` to `ActiveBlock`
     pub fn to_active_block(
         self,
         ref_storage: &Storage,
@@ -168,7 +168,7 @@ impl Serializer<ExportActiveBlock> for ExportActiveBlockSerializer {
 
         // parents with periods
         // note: there should be no parents for genesis blocks
-        buffer.push(if value.parents.is_empty() { 0u8 } else { 1u8 });
+        buffer.push(u8::from(!value.parents.is_empty()));
         for (hash, period) in value.parents.iter() {
             buffer.extend(hash.0.to_bytes());
             self.period_serializer.serialize(period, buffer)?;
@@ -201,6 +201,9 @@ impl ExportActiveBlockDeserializer {
         max_datastore_value_length: u64,
         max_function_name_length: u16,
         max_parameters_size: u32,
+        max_op_datastore_entry_count: u64,
+        max_op_datastore_key_length: u8,
+        max_op_datastore_value_length: u64,
     ) -> Self {
         ExportActiveBlockDeserializer {
             wrapped_block_deserializer: WrappedDeserializer::new(BlockDeserializer::new(
@@ -212,6 +215,9 @@ impl ExportActiveBlockDeserializer {
                 max_datastore_value_length,
                 max_function_name_length,
                 max_parameters_size,
+                max_op_datastore_entry_count,
+                max_op_datastore_key_length,
+                max_op_datastore_value_length,
             )),
             operation_count_serializer: U32VarIntDeserializer::new(
                 Included(0),
@@ -228,7 +234,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// ## Example:
     /// ```rust
     /// use massa_graph::export_active_block::{ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer};
-    /// use massa_models::{ledger_models::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{BlockId, Block, BlockSerializer, BlockHeader, BlockHeaderSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializer}, slot::Slot, wrapped::WrappedContent};
+    /// use massa_models::{ledger_models::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{BlockId, Block, BlockSerializer, BlockHeader, BlockHeaderSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializerLW}, slot::Slot, wrapped::WrappedContent};
     /// use massa_hash::Hash;
     /// use std::collections::HashSet;
     /// use massa_signature::KeyPair;
@@ -252,7 +258,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///                     index: 1,
     ///                     endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
     ///                 },
-    ///                 EndorsementSerializer::new(),
+    ///                 EndorsementSerializerLW::new(),
     ///                 &keypair,
     ///             )
     ///             .unwrap(),
@@ -262,7 +268,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///                     index: 3,
     ///                     endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
     ///                 },
-    ///                 EndorsementSerializer::new(),
+    ///                 EndorsementSerializerLW::new(),
     ///                 &keypair,
     ///             )
     ///             .unwrap(),
@@ -289,7 +295,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///
     /// let mut serialized = Vec::new();
     /// ExportActiveBlockSerializer::new().serialize(&export_active_block, &mut serialized).unwrap();
-    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(32, 9, 1000, 1000, 1000, 1000, ).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(32, 9, 1000, 1000, 1000, 1000, 10, 255, 10_000).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert_eq!(export_deserialized.block.id, export_active_block.block.id);
     /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);
     /// assert_eq!(rest.len(), 0);

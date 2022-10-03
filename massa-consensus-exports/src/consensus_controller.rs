@@ -157,6 +157,26 @@ impl ConsensusCommandSender {
         })
     }
 
+    /// get latest block id of a slot in a blockclique
+    pub fn get_latest_blockclique_block_at_slot(
+        &self,
+        slot: Slot,
+    ) -> Result<BlockId, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .blocking_send(ConsensusCommand::GetLatestBlockcliqueBlockAtSlot { slot, response_tx })
+            .map_err(|_| {
+                ConsensusError::SendChannelError(
+                    "send error consensus command get_blockclique_block_at_slot".into(),
+                )
+            })?;
+        response_rx.blocking_recv().map_err(|_| {
+            ConsensusError::ReceiveChannelError(
+                "consensus command get_blockclique_block_at_slot response read error".to_string(),
+            )
+        })
+    }
+
     /// get current consensus stats
     pub async fn get_stats(&self) -> Result<ConsensusStats, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();

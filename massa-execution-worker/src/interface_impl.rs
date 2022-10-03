@@ -6,7 +6,7 @@
 //! See the definition of Interface in the massa-sc-runtime crate for functional details.
 
 use crate::context::ExecutionContext;
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
@@ -72,7 +72,7 @@ impl Interface for InterfaceImpl {
     ///
     /// # Arguments
     /// * `address`: string representation of the target address on which the bytecode will be called
-    /// * `raw_coins`: raw representation (without decimal factor) of the amount of parallel coins to transfer from the caller address to the target address at the beginning of the call
+    /// * `raw_coins`: raw representation (without decimal factor) of the amount of coins to transfer from the caller address to the target address at the beginning of the call
     ///
     /// # Returns
     /// The target bytecode or an error
@@ -97,11 +97,10 @@ impl Interface for InterfaceImpl {
 
         // transfer coins from caller to target address
         let coins = massa_models::amount::Amount::from_raw(raw_coins);
-        if let Err(err) =
-            context.transfer_parallel_coins(Some(from_address), Some(to_address), coins, true)
+        if let Err(err) = context.transfer_coins(Some(from_address), Some(to_address), coins, true)
         {
             bail!(
-                "error transferring {} parallel coins from {} to {}: {}",
+                "error transferring {} coins from {} to {}: {}",
                 coins,
                 from_address,
                 to_address,
@@ -114,6 +113,7 @@ impl Interface for InterfaceImpl {
             address: to_address,
             coins,
             owned_addresses: vec![to_address],
+            operation_datastore: None,
         });
 
         // return the target bytecode
@@ -132,32 +132,29 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
-    /// Gets the parallel balance of the current address address (top of the stack).
+    /// Gets the balance of the current address address (top of the stack).
     ///
     /// # Returns
-    /// The raw representation (no decimal factor) of the parallel balance of the address,
+    /// The raw representation (no decimal factor) of the balance of the address,
     /// or zero if the address is not found in the ledger.
     fn get_balance(&self) -> Result<u64> {
         let context = context_guard!(self);
         let address = context.get_current_address()?;
-        Ok(context
-            .get_parallel_balance(&address)
-            .unwrap_or_default()
-            .to_raw())
+        Ok(context.get_balance(&address).unwrap_or_default().to_raw())
     }
 
-    /// Gets the parallel balance of arbitrary address passed as argument.
+    /// Gets the balance of arbitrary address passed as argument.
     ///
     /// # Arguments
     /// * address: string representation of the address for which to get the balance
     ///
     /// # Returns
-    /// The raw representation (no decimal factor) of the parallel balance of the address,
+    /// The raw representation (no decimal factor) of the balance of the address,
     /// or zero if the address is not found in the ledger.
     fn get_balance_for(&self, address: &str) -> Result<u64> {
         let address = massa_models::address::Address::from_str(address)?;
         Ok(context_guard!(self)
-            .get_parallel_balance(&address)
+            .get_balance(&address)
             .unwrap_or_default()
             .to_raw())
     }
@@ -318,6 +315,68 @@ impl Interface for InterfaceImpl {
         Ok(context.has_data_entry(&addr, key.as_bytes()))
     }
 
+    /// Get the operation datastore keys (aka entries).
+    /// Note that the datastore is only accessible to the initial caller level.
+    ///
+    /// # Returns
+    /// A list of keys (keys are byte arrays)
+    fn get_op_keys(&self) -> Result<Vec<Vec<u8>>> {
+        let context = context_guard!(self);
+        let stack = context.stack.last().ok_or_else(|| anyhow!("No stack"))?;
+        let datastore = stack
+            .operation_datastore
+            .as_ref()
+            .ok_or_else(|| anyhow!("No datastore in stack"))?;
+        let keys: Vec<Vec<u8>> = datastore.keys().cloned().collect();
+        debug!("[abi get_op_keys] keys {:?}", keys);
+        Ok(keys)
+    }
+
+    /// Checks if an operation datastore entry exists in the operation datastore.
+    /// Note that the datastore is only accessible to the initial caller level.
+    ///
+    /// # Arguments
+    /// * key: byte array key of the datastore entry to retrieve
+    ///
+    /// # Returns
+    /// true if the entry is matching the provided key in its operation datastore, otherwise false
+    fn has_op_key(&self, key: &[u8]) -> Result<bool> {
+        debug!("[abi has_op_key] checking key {:?}", key);
+        let context = context_guard!(self);
+        let stack = context.stack.last().ok_or_else(|| anyhow!("No stack"))?;
+        let datastore = stack
+            .operation_datastore
+            .as_ref()
+            .ok_or_else(|| anyhow!("No datastore in stack"))?;
+        let has_key = datastore.contains_key(key);
+        debug!("[abi has_op_key] has key {}", has_key);
+        Ok(has_key)
+    }
+
+    /// Gets an operation datastore value by key.
+    /// Note that the datastore is only accessible to the initial caller level.
+    ///
+    /// # Arguments
+    /// * key: byte array key of the datastore entry to retrieve
+    ///
+    /// # Returns
+    /// The operation datastore value matching the provided key, if found, otherwise an error.
+    fn get_op_data(&self, key: &[u8]) -> Result<Vec<u8>> {
+        debug!("[abi get_op_data] data for {:?}", key);
+        let context = context_guard!(self);
+        let stack = context.stack.last().ok_or_else(|| anyhow!("No stack"))?;
+        let datastore = stack
+            .operation_datastore
+            .as_ref()
+            .ok_or_else(|| anyhow!("No datastore in stack"))?;
+        let data = datastore
+            .get(key)
+            .cloned()
+            .ok_or_else(|| anyhow!("Unknown key: {:?}", key));
+        debug!("[abi get_op_data] has key {:?}", data);
+        data
+    }
+
     /// Hashes arbitrary data
     ///
     /// # Arguments
@@ -364,7 +423,7 @@ impl Interface for InterfaceImpl {
         Ok(public_key.verify_signature(&h, &signature).is_ok())
     }
 
-    /// Transfer parallel coins from the current address (top of the call stack) towards a target address.
+    /// Transfer coins from the current address (top of the call stack) towards a target address.
     ///
     /// # Arguments
     /// * `to_address`: string representation of the address to which the coins are sent
@@ -374,11 +433,11 @@ impl Interface for InterfaceImpl {
         let amount = massa_models::amount::Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
         let from_address = context.get_current_address()?;
-        context.transfer_parallel_coins(Some(from_address), Some(to_address), amount, true)?;
+        context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
         Ok(())
     }
 
-    /// Transfer parallel coins from a given address towards a target address.
+    /// Transfer coins from a given address towards a target address.
     ///
     /// # Arguments
     /// * `from_address`: string representation of the address that is sending the coins
@@ -394,7 +453,7 @@ impl Interface for InterfaceImpl {
         let to_address = massa_models::address::Address::from_str(to_address)?;
         let amount = massa_models::amount::Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
-        context.transfer_parallel_coins(Some(from_address), Some(to_address), amount, true)?;
+        context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
         Ok(())
     }
 
@@ -501,6 +560,8 @@ impl Interface for InterfaceImpl {
         let emission_slot = execution_context.slot;
         let emission_index = execution_context.created_message_index;
         let sender = execution_context.get_current_address()?;
+        let coins = Amount::from_raw(raw_coins);
+        execution_context.transfer_coins(Some(sender), None, coins, true)?;
         execution_context.push_new_message(AsyncMessage {
             emission_slot,
             emission_index,
@@ -511,7 +572,7 @@ impl Interface for InterfaceImpl {
             validity_end: Slot::new(validity_end.0, validity_end.1),
             max_gas,
             gas_price: Amount::from_raw(gas_price),
-            coins: Amount::from_raw(raw_coins),
+            coins,
             data: data.to_vec(),
         });
         execution_context.created_message_index += 1;

@@ -192,7 +192,7 @@ impl NetworkCommandSender {
     /// # Returns
     /// Can return a `[NetworkError::ChannelError]` that must be managed by the direct caller of the
     /// function.
-    pub async fn send_operations_batch(
+    pub async fn announce_operations(
         &self,
         to_node: NodeId,
         batch: OperationPrefixIds,

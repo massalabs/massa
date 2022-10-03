@@ -7,6 +7,7 @@
 #![feature(map_first_last)]
 #![feature(async_closure)]
 #![feature(map_try_insert)]
+#![feature(let_chains)]
 
 mod controller_impl;
 mod endorsement_pool;

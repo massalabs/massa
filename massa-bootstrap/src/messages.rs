@@ -65,9 +65,9 @@ pub enum BootstrapServerMessage {
         ledger_data: Vec<u8>,
         /// Part of the async pool
         async_pool_part: Vec<u8>,
-        /// Part of the Proof of Stake cycle_history
+        /// Part of the Proof of Stake `cycle_history`
         pos_cycle_part: Vec<u8>,
-        /// Part of the Proof of Stake deferred_credits
+        /// Part of the Proof of Stake `deferred_credits`
         pos_credits_part: Vec<u8>,
         /// Part of the executed operations
         exec_ops_part: Vec<u8>,
@@ -100,7 +100,6 @@ enum MessageServerTypeId {
 }
 
 /// Serializer for `BootstrapServerMessage`
-#[derive(Default)]
 pub struct BootstrapServerMessageSerializer {
     u32_serializer: U32VarIntSerializer,
     time_serializer: MassaTimeSerializer,
@@ -110,6 +109,12 @@ pub struct BootstrapServerMessageSerializer {
     bootstrapable_graph_serializer: BootstrapableGraphSerializer,
     vec_u8_serializer: VecU8Serializer,
     slot_serializer: SlotSerializer,
+}
+
+impl Default for BootstrapServerMessageSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BootstrapServerMessageSerializer {
@@ -253,6 +258,9 @@ impl BootstrapServerMessageDeserializer {
         max_function_name_length: u16,
         max_parameters_size: u32,
         max_bootstrap_error_length: u32,
+        max_op_datastore_entry_count: u64,
+        max_op_datastore_key_length: u8,
+        max_op_datastore_value_length: u64,
         max_changes_slot_count: u32,
     ) -> Self {
         Self {
@@ -284,6 +292,9 @@ impl BootstrapServerMessageDeserializer {
                 max_function_name_length,
                 max_parameters_size,
                 max_operations_per_block,
+                max_op_datastore_entry_count,
+                max_op_datastore_key_length,
+                max_op_datastore_value_length,
             ),
             final_state_parts_deserializer: VecU8Deserializer::new(
                 Included(0),
@@ -311,7 +322,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
-    /// let message_deserializer = BootstrapServerMessageDeserializer::new(16, 10, 100, 100, 1000, 1000, 1000, 1000, 1000, 255, 100000, 10000, 10000, 10000, 100000, 1000);
+    /// let message_deserializer = BootstrapServerMessageDeserializer::new(16, 10, 100, 100, 1000, 1000, 1000, 1000, 1000, 255, 100000, 10000, 10000, 10000, 100000, 10, 255, 10_000, 1000);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),
     ///    version: Version::from_str("TEST.1.10").unwrap(),

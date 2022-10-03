@@ -72,9 +72,15 @@ pub struct NetworkConfig {
     pub max_message_size: u32,
     /// Maximum length of a datastore value
     pub max_datastore_value_length: u64,
-    /// Maximum length function name in call sc
+    /// Maximum entry in an operation datastore
+    pub max_op_datastore_entry_count: u64,
+    /// Maximum length of an operation datastore key
+    pub max_op_datastore_key_length: u8,
+    /// Maximum length of an operation datastore value
+    pub max_op_datastore_value_length: u64,
+    /// Maximum length function name in call SC
     pub max_function_name_length: u16,
-    /// Maximum size of parameters in call sc
+    /// Maximum size of parameters in call SC
     pub max_parameters_size: u32,
     /// Controller channel size
     pub controller_channel_size: usize,
@@ -107,8 +113,9 @@ pub mod tests {
     use massa_models::config::{
         ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
         MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
-        MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_MESSAGE, MAX_PARAMETERS_SIZE,
-        NETWORK_CONTROLLER_CHANNEL_SIZE, NETWORK_EVENT_CHANNEL_SIZE,
+        MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+        MAX_PARAMETERS_SIZE, NETWORK_CONTROLLER_CHANNEL_SIZE, NETWORK_EVENT_CHANNEL_SIZE,
         NETWORK_NODE_COMMAND_CHANNEL_SIZE, NETWORK_NODE_EVENT_CHANNEL_SIZE, THREAD_COUNT,
     };
     use massa_time::MassaTime;
@@ -166,6 +173,9 @@ pub mod tests {
                 thread_count: THREAD_COUNT,
                 max_message_size: MAX_MESSAGE_SIZE,
                 max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+                max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+                max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
+                max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
                 max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
                 max_parameters_size: MAX_PARAMETERS_SIZE,
                 controller_channel_size: NETWORK_CONTROLLER_CHANNEL_SIZE,
@@ -229,6 +239,9 @@ pub mod tests {
                 thread_count: THREAD_COUNT,
                 max_message_size: MAX_MESSAGE_SIZE,
                 max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+                max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+                max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
+                max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
                 max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
                 max_parameters_size: MAX_PARAMETERS_SIZE,
                 controller_channel_size: NETWORK_CONTROLLER_CHANNEL_SIZE,

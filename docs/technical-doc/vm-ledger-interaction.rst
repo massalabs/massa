@@ -109,7 +109,7 @@ SCE interaction with the VM
 
 **Active execution requests**
 
-Whenever the SCE tells the VM to execute an active block or active miss at slot S (see the [VM block feed specification](vm-block-feed)), the corresponding execution step is executed by the VM and the state changes caused by the execution are compiled into a `StepHistoryItem` and added to the `step_history`.
+Whenever the SCE tells the VM to execute an active block or active miss at slot S, the corresponding execution step is executed by the VM and the state changes caused by the execution are compiled into a `StepHistoryItem` and added to the `step_history`.
 
 The detailed algorithm is the following:
 * get the execution context ready by resetting `ledger_step.caused_changes` and computing `ledger_step.cumulative_history_changes` based on the `step_history`
@@ -117,11 +117,10 @@ The detailed algorithm is the following:
 * if there is a block B at slot S:
   * Note that the block would have been rejected before if the sum of the `max_gas` of its operations exceeded `config.max_block_gas`
   * for every `ExecuteSC` operation Op of the block B :
-    * Note that Consensus has already debited `Op.max_gas*Op.gas_price+Op.coins` from Op's sender's CSS balance or rejected the block B if there wasn't enough balance to do so
+    * Note that Consensus has already debited `Op.max_gas*Op.gas_price` from Op's sender's CSS balance or rejected the block B if there wasn't enough balance to do so
     * prepare the context for execution:
-      * make `context.ledger_step` credit Op's sender with `Op.coins` in the SCE ledger 
       * make `context.ledger_step` credit the producer of the block B with `Op.max_gas * Op.gas_price` in the SCE ledger
-    * save a snapshot (named `ledger_changes_backup`) of the `context.ledger_step.caused_changes` that will be used to rollback the step's effects on the SCE ledger backt to this point in case bytecode execution fails. This is done because on bytecode execution failure (whether it fails completely or midway) we want to credit the block producer with fees (it's not their fault !) and Op's sender with `Op.coins` (otherwise those coins will be lost !) but revert all the effects of a bytecode execution that failed midway
+    * save a snapshot (named `ledger_changes_backup`) of the `context.ledger_step.caused_changes` that will be used to rollback the step's effects on the SCE ledger backt to this point in case bytecode execution fails. This is done because on bytecode execution failure (whether it fails completely or midway) we want to credit the block producer with fees (it's not their fault !) but revert all the effects of a bytecode execution that failed midway
     * parse and run (call `main()`) the bytecode of operation Op
       * in case of failure (e.g. invalid bytecode), revert `context.ledger_step.caused_changes = ledger_changes_backup`
 * push back the SCE ledger changes caused by the slot `StepHistoryItem { step, block_id (optional), ledger_changes: context.ledger_step.caused_changes  }` into `step_history`
@@ -129,7 +128,7 @@ The detailed algorithm is the following:
 
 **Final execution requests**
 
-Whenever the SCE tells the VM to execute a final block or final miss at slot S (see the [VM block feed specification](vm-block-feed)), the VM first checks if that step was already executed (it should match the first/oldest step in `step_history`).
+Whenever the SCE tells the VM to execute a final block or final miss at slot S, the VM first checks if that step was already executed (it should match the first/oldest step in `step_history`).
 If it matches (it should almost always), the step result is popped out of `step_history` and its `ledger_changes` are applied to the SCE final ledger. 
 
 In the case where the step is not found at the front of `step_history`, it might mean that there was a deep blockclique change, or that there was nothing in `step_history` due to a recent bootstrap for example. In that case, `step_history` is cleared, the `Active execution requests` process described above is executed again, and its resulting history item is then applied to the final SCE ledger.

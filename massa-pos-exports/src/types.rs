@@ -51,9 +51,9 @@ pub struct PoSFinalState {
     pub deferred_credits: DeferredCredits,
     /// selector controller
     pub selector: Box<dyn SelectorController>,
-    /// initial rolls, used for negative cycle lookback
+    /// initial rolls, used for negative cycle look back
     pub initial_rolls: BTreeMap<Address, u64>,
-    /// initial seeds, used for negative cycle lookback (cycles -2, -1 in that order)
+    /// initial seeds, used for negative cycle look back (cycles -2, -1 in that order)
     pub initial_seeds: Vec<Hash>,
     /// amount deserializer
     pub amount_deserializer: AmountDeserializer,
@@ -74,7 +74,7 @@ pub struct PoSFinalState {
 pub struct DeferredCredits(pub BTreeMap<Slot, PreHashMap<Address, Amount>>);
 
 impl DeferredCredits {
-    /// Extends the current DeferredCredits with another but accumulates the addresses and amounts
+    /// Extends the current `DeferredCredits` with another but accumulates the addresses and amounts
     pub fn nested_extend(&mut self, other: Self) {
         for (slot, new_credits) in other.0 {
             self.0
@@ -206,7 +206,7 @@ impl PoSFinalState {
         usize::from(self.cycle_history.len() >= 6)
     }
 
-    /// Gets a part of the Proof of Stake cycle_history. Used only in the bootstrap process.
+    /// Gets a part of the Proof of Stake `cycle_history`. Used only in the bootstrap process.
     ///
     /// # Arguments:
     /// `cursor`: indicates the bootstrap state after the previous payload
@@ -271,7 +271,7 @@ impl PoSFinalState {
         Ok((part, PoSCycleStreamingStep::Ongoing(*cycle)))
     }
 
-    /// Gets a part of the Proof of Stake deferred_credits. Used only in the bootstrap process.
+    /// Gets a part of the Proof of Stake `deferred_credits`. Used only in the bootstrap process.
     ///
     /// # Arguments:
     /// `cursor`: indicates the bootstrap state after the previous payload
@@ -311,7 +311,7 @@ impl PoSFinalState {
         Ok((part, last_credits_slot))
     }
 
-    /// Sets a part of the Proof of Stake cycle_history. Used only in the bootstrap process.
+    /// Sets a part of the Proof of Stake `cycle_history`. Used only in the bootstrap process.
     ///
     /// # Arguments
     /// `part`: the raw data received from `get_pos_state_part` and used to update PoS State
@@ -425,7 +425,7 @@ impl PoSFinalState {
         ))
     }
 
-    /// Sets a part of the Proof of Stake deferred_credits. Used only in the bootstrap process.
+    /// Sets a part of the Proof of Stake `deferred_credits`. Used only in the bootstrap process.
     ///
     /// # Arguments
     /// `part`: the raw data received from `get_pos_state_part` and used to update PoS State
@@ -519,7 +519,7 @@ impl ProductionStats {
         &Ratio::new(self.block_failure_count, opportunities_count) <= max_miss_ratio
     }
 
-    /// Increment a production stat struct with another
+    /// Increment a production stat structure with another
     pub fn extend(&mut self, stats: &ProductionStats) {
         self.block_success_count = self
             .block_success_count
@@ -874,8 +874,8 @@ impl Deserializer<PreHashMap<Address, Amount>> for CreditDeserializer {
 /// Selections of endorsements and producer
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Selection {
-    /// Choosen endorsements
+    /// Chosen endorsements
     pub endorsements: Vec<Address>,
-    /// Choosen block producer
+    /// Chosen block producer
     pub producer: Address,
 }

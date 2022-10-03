@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 mod block_factory;
-mod inter_cycle_batch_finalization;
+// mod inter_cycle_batch_finalization;   /* TODO repair this test https://github.com/massalabs/massa/issues/3099
 mod scenario_block_creation;
 mod scenario_roll;
 mod scenarios106;

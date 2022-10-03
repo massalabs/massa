@@ -4,7 +4,7 @@ use massa_models::{
 };
 
 /// The structure store the previously checked operations.
-/// Manage the relation between [OperationPrefixId] and [OperationId]
+/// Manage the relation between `OperationPrefixId` and `OperationId`
 /// note: we could think about replace `Vec<OperationId>` with `Vec<OperationSuffixId>`
 ///       if the execution time CPU is equivalent
 #[derive(Default)]
@@ -27,7 +27,7 @@ impl CheckedOperations {
         });
     }
 
-    /// Get a operation id matching with the givec `prefix` or None if there is none.
+    /// Get a operation id matching with the given `prefix` or None if there is none.
     pub fn get(&self, prefix: &OperationPrefixId) -> Option<&OperationId> {
         self.0.get(prefix)
     }

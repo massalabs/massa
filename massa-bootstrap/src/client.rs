@@ -24,7 +24,7 @@ use crate::{
 };
 
 /// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
-/// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum's variant.
+/// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
 async fn stream_final_state(
     cfg: &BootstrapConfig,
@@ -398,6 +398,9 @@ async fn connect_to_server(
         bootstrap_config.max_function_name_length,
         bootstrap_config.max_parameters_size,
         bootstrap_config.max_ledger_changes_count,
+        bootstrap_config.max_op_datastore_entry_count,
+        bootstrap_config.max_op_datastore_key_length,
+        bootstrap_config.max_op_datastore_value_length,
         bootstrap_config.max_changes_slot_count,
     ))
 }

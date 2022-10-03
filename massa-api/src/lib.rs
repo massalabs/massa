@@ -206,12 +206,12 @@ pub trait Endpoints {
     #[rpc(name = "node_remove_from_whitelist")]
     fn node_remove_from_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
 
-    /// Unbans given IP address(es).
+    /// Unban given IP address(es).
     /// No confirmation to expect.
     #[rpc(name = "node_unban_by_ip")]
     fn node_unban_by_ip(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
 
-    /// Unbans given node id.
+    /// Unban given node id.
     /// No confirmation to expect.
     #[rpc(name = "node_unban_by_id")]
     fn node_unban_by_id(&self, _: Vec<NodeId>) -> BoxFuture<Result<(), ApiError>>;

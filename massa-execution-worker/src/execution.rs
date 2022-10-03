@@ -35,8 +35,8 @@ use massa_sc_runtime::Interface;
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet};
-use std::{collections::HashMap, sync::Arc};
-use tracing::debug;
+use std::sync::Arc;
+use tracing::{debug, info, warn};
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -127,14 +127,6 @@ impl ExecutionState {
         self.stats_counter.get_stats(self.active_cursor)
     }
 
-    /// Gets out the first (oldest) execution history item, removing it from history.
-    ///
-    /// # Returns
-    /// The earliest `ExecutionOutput` from the execution history, or None if the history is empty
-    pub fn pop_first_execution_result(&mut self) -> Option<ExecutionOutput> {
-        self.active_history.write().0.pop_front()
-    }
-
     /// Applies the output of an execution to the final execution state.
     /// The newly applied final output should be from the slot just after the last executed final slot
     ///
@@ -192,70 +184,6 @@ impl ExecutionState {
         self.active_history.write().0.push_back(exec_out);
     }
 
-    /// Clear the whole execution history,
-    /// deleting caches on executed non-final slots.
-    pub fn clear_history(&mut self) {
-        // clear history
-        self.active_history.write().0.clear();
-
-        // reset active cursor to point to the latest final slot
-        self.active_cursor = self.final_cursor;
-    }
-
-    /// This function receives a new sequence of blocks to execute as argument.
-    /// It then scans the output history to see until which slot this sequence was already executed (and is outputs cached).
-    /// If a mismatch is found, it means that the sequence of blocks to execute has changed
-    /// and the existing output cache is truncated to keep output history only until the mismatch slot (excluded).
-    /// Slots after that point will need to be (re-executed) to account for the new sequence.
-    ///
-    /// # Arguments
-    /// * `active_slots`: A `HashMap` mapping each active slot to a block or None if the slot is a miss
-    /// * `ready_final_slots`:  A `HashMap` mapping each ready-to-execute final slot to a block or None if the slot is a miss
-    pub fn truncate_history(
-        &mut self,
-        active_slots: &HashMap<Slot, Option<(BlockId, Storage)>>,
-        ready_final_slots: &HashMap<Slot, Option<(BlockId, Storage)>>,
-    ) {
-        // find mismatch point (included)
-        let mut truncate_at = None;
-        // iterate over the output history, in chronological order
-        for (hist_index, exec_output) in self.active_history.read().0.iter().enumerate() {
-            // try to find the corresponding slot in active_slots or ready_final_slots.
-            let found_block_id = active_slots
-                .get(&exec_output.slot)
-                .or_else(|| ready_final_slots.get(&exec_output.slot))
-                .map(|inner| inner.as_ref().map(|(b_id, _)| *b_id));
-            if found_block_id == Some(exec_output.block_id) {
-                // the slot number and block ID still match. Continue scanning
-                continue;
-            }
-            // mismatch found: stop scanning and return the cutoff index
-            truncate_at = Some(hist_index);
-            break;
-        }
-
-        // If a mismatch was found
-        if let Some(truncate_at) = truncate_at {
-            // Truncate the execution output history at the cutoff index (excluded)
-            self.active_history.write().0.truncate(truncate_at);
-            // Now that part of the speculative executions were cancelled,
-            // update the active cursor to match the latest executed slot.
-            // The cursor is set to the latest executed final slot if the history is empty.
-            self.active_cursor = self
-                .active_history
-                .read()
-                .0
-                .back()
-                .map_or(self.final_cursor, |out| out.slot);
-            // safety check to ensure that the active cursor cannot go too far back in time
-            if self.active_cursor < self.final_cursor {
-                panic!(
-                    "active_cursor moved before final_cursor after execution history truncation"
-                );
-            }
-        }
-    }
-
     /// Execute an operation in the context of a block.
     /// Assumes the execution context was initialized at the beginning of the slot.
     ///
@@ -295,7 +223,7 @@ impl ExecutionState {
 
         // check block/op thread compatibility
         if op_thread != block_slot.thread {
-            return Err(ExecutionError::InlcudeOperationError(
+            return Err(ExecutionError::IncludeOperationError(
                 "operation vs block thread mismatch".to_string(),
             ));
         }
@@ -314,17 +242,15 @@ impl ExecutionState {
 
             // ignore the operation if it was already executed
             if context.is_op_executed(&operation_id) {
-                return Err(ExecutionError::InlcudeOperationError(
+                return Err(ExecutionError::IncludeOperationError(
                     "operation was executed previously".to_string(),
                 ));
             }
 
             // debit the fee and coins from the operation sender
             // fail execution if there are not enough coins
-            if let Err(err) =
-                context.transfer_sequential_coins(Some(sender_addr), None, op_fees, false)
-            {
-                return Err(ExecutionError::InlcudeOperationError(format!(
+            if let Err(err) = context.transfer_coins(Some(sender_addr), None, op_fees, false) {
+                return Err(ExecutionError::IncludeOperationError(format!(
                     "could not spend fees: {}",
                     err
                 )));
@@ -346,6 +272,9 @@ impl ExecutionState {
 
             // set the context max gas to match the one defined in the operation
             context.max_gas = operation.get_gas_usage();
+
+            // set the creator address
+            context.creator_address = Some(operation.creator_address);
 
             // set the context origin operation ID
             context.origin_operation_id = Some(operation_id);
@@ -426,6 +355,7 @@ impl ExecutionState {
             address: seller_addr,
             coins: Amount::default(),
             owned_addresses: vec![seller_addr],
+            operation_datastore: None,
         }];
 
         // try to sell the rolls
@@ -464,9 +394,10 @@ impl ExecutionState {
             address: buyer_addr,
             coins: Default::default(),
             owned_addresses: vec![buyer_addr],
+            operation_datastore: None,
         }];
 
-        // compute the amount of sequential coins to spend
+        // compute the amount of coins to spend
         let spend_coins = match self.config.roll_price.checked_mul_u64(*roll_count) {
             Some(v) => v,
             None => {
@@ -477,10 +408,8 @@ impl ExecutionState {
             }
         };
 
-        // spend `roll_price` * `roll_count` sequential coins from the buyer
-        if let Err(err) =
-            context.transfer_sequential_coins(Some(buyer_addr), None, spend_coins, false)
-        {
+        // spend `roll_price` * `roll_count` coins from the buyer
+        if let Err(err) = context.transfer_coins(Some(buyer_addr), None, spend_coins, false) {
             return Err(ExecutionError::RollBuyError(format!(
                 "{} failed to buy {} rolls: {}",
                 buyer_addr, roll_count, err
@@ -523,15 +452,13 @@ impl ExecutionState {
             address: sender_addr,
             coins: *amount,
             owned_addresses: vec![sender_addr],
+            operation_datastore: None,
         }];
 
-        // send `roll_price` * `roll_count` sequential coins from the sender to the recipient
-        if let Err(err) = context.transfer_sequential_coins(
-            Some(sender_addr),
-            Some(*recipient_address),
-            *amount,
-            false,
-        ) {
+        // send `roll_price` * `roll_count` coins from the sender to the recipient
+        if let Err(err) =
+            context.transfer_coins(Some(sender_addr), Some(*recipient_address), *amount, false)
+        {
             return Err(ExecutionError::TransactionError(format!(
                 "transfer of {} coins from {} to {} failed: {}",
                 amount, sender_addr, recipient_address, err
@@ -553,13 +480,13 @@ impl ExecutionState {
         sender_addr: Address,
     ) -> Result<(), ExecutionError> {
         // process ExecuteSC operations only
-        let (bytecode, max_gas, coins) = match &operation {
+        let (bytecode, max_gas, datastore) = match &operation {
             OperationType::ExecuteSC {
                 data,
                 max_gas,
-                coins,
+                datastore,
                 ..
-            } => (data, max_gas, coins),
+            } => (data, max_gas, datastore),
             _ => panic!("unexpected operation type"),
         };
 
@@ -569,34 +496,14 @@ impl ExecutionState {
 
             // Set the call stack to a single element:
             // * the execution will happen in the context of the address of the operation's sender
-            // * the context will signal that `coins` were credited to the parallel balance of the sender during that call
             // * the context will give the operation's sender write access to its own ledger entry
             // This needs to be defined before anything can fail, so that the emitted event contains the right stack
             context.stack = vec![ExecutionStackElement {
                 address: sender_addr,
-                coins: *coins,
+                coins: Amount::zero(),
                 owned_addresses: vec![sender_addr],
+                operation_datastore: Some(datastore.clone()),
             }];
-
-            // Debit the sender's sequential balance with the coins to transfer
-            if let Err(err) =
-                context.transfer_sequential_coins(Some(sender_addr), None, *coins, false)
-            {
-                return Err(ExecutionError::RuntimeError(format!(
-                    "failed to debit operation sender {} with {} operation sequential coins: {}",
-                    sender_addr, *coins, err
-                )));
-            }
-
-            // Credit the operation sender with `coins` parallel coins.
-            if let Err(err) =
-                context.transfer_parallel_coins(None, Some(sender_addr), *coins, false)
-            {
-                return Err(ExecutionError::RuntimeError(format!(
-                    "failed to credit operation sender {} with {} operation parallel coins: {}",
-                    sender_addr, *coins, err
-                )));
-            }
         };
 
         // run the VM on the bytecode contained in the operation
@@ -628,26 +535,17 @@ impl ExecutionState {
         sender_addr: Address,
     ) -> Result<(), ExecutionError> {
         // process CallSC operations only
-        let (max_gas, target_addr, target_func, param, parallel_coins, sequential_coins) =
-            match &operation {
-                OperationType::CallSC {
-                    max_gas,
-                    target_addr,
-                    target_func,
-                    param,
-                    parallel_coins,
-                    sequential_coins,
-                    ..
-                } => (
-                    *max_gas,
-                    *target_addr,
-                    target_func,
-                    param,
-                    *parallel_coins,
-                    *sequential_coins,
-                ),
-                _ => panic!("unexpected operation type"),
-            };
+        let (max_gas, target_addr, target_func, param, coins) = match &operation {
+            OperationType::CallSC {
+                max_gas,
+                target_addr,
+                target_func,
+                param,
+                coins,
+                ..
+            } => (*max_gas, *target_addr, target_func, param, *coins),
+            _ => panic!("unexpected operation type"),
+        };
 
         // prepare the current slot context for executing the operation
         let bytecode;
@@ -662,55 +560,29 @@ impl ExecutionState {
                     address: sender_addr,
                     coins: Default::default(),
                     owned_addresses: vec![sender_addr],
+                    operation_datastore: None,
                 },
                 ExecutionStackElement {
                     address: target_addr,
                     coins: Default::default(),
                     owned_addresses: vec![target_addr],
+                    operation_datastore: None,
                 },
             ];
 
-            // Compute the amount of parallel coins to credit
-            let credit_parallel_coins = match sequential_coins.checked_add(parallel_coins) {
-                Some(v) => v,
-                None => {
-                    return Err(ExecutionError::RuntimeError(format!(
-                        "overflow when transfering operation coins from {}",
-                        sender_addr
-                    )));
-                }
-            };
-
-            // Debit the sender's sequential balance with the sequential coins to transfer
-            if let Err(err) =
-                context.transfer_sequential_coins(Some(sender_addr), None, sequential_coins, false)
-            {
+            // Debit the sender's balance with the coins to transfer
+            if let Err(err) = context.transfer_coins(Some(sender_addr), None, coins, false) {
                 return Err(ExecutionError::RuntimeError(format!(
-                    "failed to debit operation sender {} with {} operation sequential coins: {}",
-                    sender_addr, sequential_coins, err
+                    "failed to debit operation sender {} with {} operation coins: {}",
+                    sender_addr, coins, err
                 )));
             }
 
-            // Debit the sender's sequential balance with the parallel coins to transfer
-            if let Err(err) =
-                context.transfer_parallel_coins(Some(sender_addr), None, parallel_coins, false)
-            {
+            // Credit the operation target with coins.
+            if let Err(err) = context.transfer_coins(None, Some(target_addr), coins, false) {
                 return Err(ExecutionError::RuntimeError(format!(
-                    "failed to debit operation sender {} with {} operation parallel coins: {}",
-                    sender_addr, parallel_coins, err
-                )));
-            }
-
-            // Credit the operation target with parallel coins.
-            if let Err(err) = context.transfer_parallel_coins(
-                None,
-                Some(target_addr),
-                credit_parallel_coins,
-                false,
-            ) {
-                return Err(ExecutionError::RuntimeError(format!(
-                    "failed to credit operation target {} with {} operation parallel coins: {}",
-                    target_addr, credit_parallel_coins, err
+                    "failed to credit operation target {} with {} operation coins: {}",
+                    target_addr, coins, err
                 )));
             }
 
@@ -762,16 +634,19 @@ impl ExecutionState {
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
             context.gas_price = message.gas_price;
+            context.creator_address = None;
             context.stack = vec![
                 ExecutionStackElement {
                     address: message.sender,
                     coins: message.coins,
                     owned_addresses: vec![message.sender],
+                    operation_datastore: None,
                 },
                 ExecutionStackElement {
                     address: message.destination,
                     coins: message.coins,
                     owned_addresses: vec![message.destination],
+                    operation_datastore: None,
                 },
             ];
 
@@ -794,12 +669,9 @@ impl ExecutionState {
             };
 
             // credit coins to the target address
-            if let Err(err) = context.transfer_parallel_coins(
-                None,
-                Some(message.destination),
-                message.coins,
-                false,
-            ) {
+            if let Err(err) =
+                context.transfer_coins(None, Some(message.destination), message.coins, false)
+            {
                 // coin crediting failed: reset context to snapshot and reimburse sender
                 let err = ExecutionError::RuntimeError(format!(
                     "could not credit coins to target of async execution: {}",
@@ -840,7 +712,7 @@ impl ExecutionState {
     ///
     /// # Arguments
     /// * `slot`: slot to execute
-    /// * `opt_block`: Storage owning a ref to the block (+ its endorsements, ops, aparents) if there is a block a that slot, otherwise None
+    /// * `opt_block`: Storage owning a ref to the block (+ its endorsements, ops, parents) if there is a block a that slot, otherwise None
     /// * `selector`: Reference to the selector
     ///
     /// # Returns
@@ -848,15 +720,15 @@ impl ExecutionState {
     #[allow(clippy::borrowed_box)]
     pub fn execute_slot(
         &self,
-        slot: Slot,
-        opt_block: Option<(BlockId, Storage)>,
+        slot: &Slot,
+        exec_target: Option<&(BlockId, Storage)>,
         selector: &Box<dyn SelectorController>,
     ) -> ExecutionOutput {
         // Create a new execution context for the whole active slot
         let mut execution_context = ExecutionContext::active_slot(
             self.config.clone(),
-            slot,
-            opt_block.as_ref().map(|(b_id, _)| *b_id),
+            *slot,
+            exec_target.as_ref().map(|(b_id, _)| *b_id),
             self.final_state.clone(),
             self.active_history.clone(),
         );
@@ -876,11 +748,11 @@ impl ExecutionState {
         }
 
         // Check if there is a block at this slot
-        if let Some((block_id, block_store)) = opt_block {
+        if let Some((block_id, block_store)) = exec_target {
             // Retrieve the block from storage
             let stored_block = block_store
                 .read_blocks()
-                .get(&block_id)
+                .get(block_id)
                 .expect("Missing block in storage.")
                 .clone();
 
@@ -932,20 +804,17 @@ impl ExecutionState {
 
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
-            for (op_index, operation) in operations.into_iter().enumerate() {
-                match self.execute_operation(
+            for operation in operations.into_iter() {
+                if let Err(err) = self.execute_operation(
                     &operation,
                     stored_block.content.header.content.slot,
                     &mut remaining_block_gas,
                     &mut block_credits,
                 ) {
-                    Err(ExecutionError::NotEnoughGas(_))
-                    | Err(ExecutionError::InvalidSlotRange) => debug!("Ignoring operation"),
-                    Err(err) => debug!(
-                        "failed executing operation index {} in block {}: {}",
-                        op_index, block_id, err
-                    ),
-                    _ => {}
+                    debug!(
+                        "failed executing operation {} in block {}: {}",
+                        operation.id, block_id, err
+                    );
                 }
             }
 
@@ -956,7 +825,7 @@ impl ExecutionState {
             let mut context = context_guard!(self);
 
             // Update speculative rolls state production stats
-            context.update_production_stats(&block_creator_addr, slot, Some(block_id));
+            context.update_production_stats(&block_creator_addr, *slot, Some(*block_id));
 
             // Credit endorsement producers and endorsed block producers
             let mut remaining_credit = block_credits;
@@ -967,8 +836,8 @@ impl ExecutionState {
                 .iter()
                 .zip(endorsement_target_creators.into_iter())
             {
-                // credit creator of the endorsement with sequential coins
-                match context.transfer_sequential_coins(
+                // credit creator of the endorsement with coins
+                match context.transfer_coins(
                     None,
                     Some(*endorsement_creator),
                     block_credit_part,
@@ -979,14 +848,14 @@ impl ExecutionState {
                     }
                     Err(err) => {
                         debug!(
-                            "failed to credit {} sequential coins to endorsement creator {} for an endorsed block execution: {}",
+                            "failed to credit {} coins to endorsement creator {} for an endorsed block execution: {}",
                             block_credit_part, endorsement_creator, err
                         )
                     }
                 }
 
-                // credit creator of the endorsed block with sequential coins
-                match context.transfer_sequential_coins(
+                // credit creator of the endorsed block with coins
+                match context.transfer_coins(
                     None,
                     Some(endorsement_target_creator),
                     block_credit_part,
@@ -997,7 +866,7 @@ impl ExecutionState {
                     }
                     Err(err) => {
                         debug!(
-                            "failed to credit {} sequential coins to endorsement target creator {} on block execution: {}",
+                            "failed to credit {} coins to endorsement target creator {} on block execution: {}",
                             block_credit_part, endorsement_target_creator, err
                         )
                     }
@@ -1005,27 +874,129 @@ impl ExecutionState {
             }
 
             // Credit block creator with remaining_credit
-            if let Err(err) = context.transfer_sequential_coins(
-                None,
-                Some(block_creator_addr),
-                remaining_credit,
-                false,
-            ) {
+            if let Err(err) =
+                context.transfer_coins(None, Some(block_creator_addr), remaining_credit, false)
+            {
                 debug!(
-                    "failed to credit {} sequential coins to block creator {} on block execution: {}",
+                    "failed to credit {} coins to block creator {} on block execution: {}",
                     remaining_credit, block_creator_addr, err
                 )
             }
         } else {
             // the slot is a miss, check who was supposed to be the creator and update production stats
             let producer_addr = selector
-                .get_producer(slot)
+                .get_producer(*slot)
                 .expect("couldn't get the expected block producer for a missed slot");
-            context_guard!(self).update_production_stats(&producer_addr, slot, None);
+            context_guard!(self).update_production_stats(&producer_addr, *slot, None);
         }
 
         // Finish slot and return the execution output
         context_guard!(self).settle_slot()
+    }
+
+    /// Execute a candidate slot
+    #[allow(clippy::borrowed_box)]
+    pub fn execute_candidate_slot(
+        &mut self,
+        slot: &Slot,
+        exec_target: Option<&(BlockId, Storage)>,
+        selector: &Box<dyn SelectorController>,
+    ) {
+        let target_id = exec_target.as_ref().map(|(b_id, _)| *b_id);
+        debug!(
+            "execute_candidate_slot: executing slot={} target={:?}",
+            slot, target_id
+        );
+
+        if slot <= &self.final_cursor {
+            panic!(
+                "could not execute candidate slot {} because final_cursor is at {}",
+                slot, self.final_cursor
+            );
+        }
+
+        // if the slot was already executed, truncate active history to cancel the slot and all the ones after
+        if &self.active_cursor >= slot {
+            debug!(
+                "execute_candidate_slot: truncating down from slot {}",
+                self.active_cursor
+            );
+            self.active_history
+                .write()
+                .truncate_from(slot, self.config.thread_count);
+            self.active_cursor = slot
+                .get_prev_slot(self.config.thread_count)
+                .expect("overflow when iterating on slots");
+        }
+
+        let exec_out = self.execute_slot(slot, exec_target, selector);
+        debug!("execute_candidate_slot: execution finished");
+
+        // apply execution output to active state
+        self.apply_active_execution_output(exec_out);
+        debug!("execute_candidate_slot: execution state applied");
+    }
+
+    /// Execute an SCE-final slot
+    #[allow(clippy::borrowed_box)]
+    pub fn execute_final_slot(
+        &mut self,
+        slot: &Slot,
+        exec_target: Option<&(BlockId, Storage)>,
+        selector: &Box<dyn SelectorController>,
+    ) {
+        let target_id = exec_target.as_ref().map(|(b_id, _)| *b_id);
+        debug!(
+            "execute_final_slot: executing slot={} target={:?}",
+            slot, target_id
+        );
+
+        if slot <= &self.final_cursor {
+            debug!(
+                "execute_final_slot: final slot already executed (final_cursor = {})",
+                self.final_cursor
+            );
+            return;
+        }
+
+        // check if the final slot execution result is already cached at the front of the speculative execution history
+        let first_exec_output = self.active_history.write().0.pop_front();
+        if let Some(exec_out) = first_exec_output {
+            if &exec_out.slot == slot && exec_out.block_id == target_id {
+                // speculative execution front result matches what we want to compute
+
+                // apply the cached output and return
+                self.apply_final_execution_output(exec_out);
+
+                debug!("execute_final_slot: found in cache, applied cache");
+                return;
+            } else {
+                // speculative cache mismatch
+                warn!(
+                    "speculative execution cache mismatch (final slot={}/block={:?}, front speculative slot={}/block={:?}). Resetting the cache.",
+                    slot, target_id, exec_out.slot, exec_out.block_id
+                );
+            }
+        } else {
+            // cache entry absent
+            info!(
+                "speculative execution cache empty, executing final slot={}/block={:?}",
+                slot, target_id
+            );
+        }
+
+        // truncate the whole execution queue
+        self.active_history.write().0.clear();
+        self.active_cursor = self.final_cursor;
+
+        // execute slot
+        debug!("execute_final_slot: execution started");
+        let exec_out = self.execute_slot(slot, exec_target, selector);
+        debug!("execute_final_slot: execution finished");
+
+        // apply execution output to final state
+        self.apply_final_execution_output(exec_out);
+        debug!("execute_final_slot: execution result applied");
     }
 
     /// Runs a read-only execution request.
@@ -1101,34 +1072,13 @@ impl ExecutionState {
         Ok(context_guard!(self).settle_slot())
     }
 
-    /// Gets a parallel balance both at the latest final and candidate executed slots
-    pub fn get_final_and_candidate_parallel_balance(
+    /// Gets a balance both at the latest final and candidate executed slots
+    pub fn get_final_and_candidate_balance(
         &self,
         address: &Address,
     ) -> (Option<Amount>, Option<Amount>) {
-        let final_balance = self.final_state.read().ledger.get_parallel_balance(address);
-        let search_result = self.active_history.read().fetch_parallel_balance(address);
-        (
-            final_balance,
-            match search_result {
-                HistorySearchResult::Present(active_balance) => Some(active_balance),
-                HistorySearchResult::NoInfo => final_balance,
-                HistorySearchResult::Absent => None,
-            },
-        )
-    }
-
-    /// Gets a sequential balance both at the latest final and candidate executed slots
-    pub fn get_final_and_candidate_sequential_balance(
-        &self,
-        address: &Address,
-    ) -> (Option<Amount>, Option<Amount>) {
-        let final_balance = self
-            .final_state
-            .read()
-            .ledger
-            .get_sequential_balance(address);
-        let search_result = self.active_history.read().fetch_sequential_balance(address);
+        let final_balance = self.final_state.read().ledger.get_balance(address);
+        let search_result = self.active_history.read().fetch_balance(address);
         (
             final_balance,
             match search_result {
@@ -1212,7 +1162,7 @@ impl ExecutionState {
     }
 
     /// Returns for a given cycle the stakers taken into account
-    /// by the selector. That correspond to the roll_counts in `cycle - 3`.
+    /// by the selector. That correspond to the `roll_counts` in `cycle - 3`.
     ///
     /// By default it returns an empty map.
     pub fn get_cycle_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64> {

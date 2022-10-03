@@ -30,12 +30,17 @@ pub struct StateChanges {
 }
 
 /// Basic `StateChanges` serializer.
-#[derive(Default)]
 pub struct StateChangesSerializer {
     ledger_changes_serializer: LedgerChangesSerializer,
     async_pool_changes_serializer: AsyncPoolChangesSerializer,
     pos_changes_serializer: PoSChangesSerializer,
     executed_ops_serializer: ExecutedOpsSerializer,
+}
+
+impl Default for StateChangesSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl StateChangesSerializer {
@@ -81,8 +86,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
     /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntryUpdate {
-    ///    parallel_balance: SetOrKeep::Set(amount),
-    ///    sequential_balance: SetOrKeep::Set(amount),
+    ///    balance: SetOrKeep::Set(amount),
     ///    bytecode: SetOrKeep::Set(bytecode),
     ///    datastore: BTreeMap::default(),
     /// };
@@ -176,8 +180,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntryUpdate {
-    ///    parallel_balance: SetOrKeep::Set(amount),
-    ///    sequential_balance: SetOrKeep::Set(amount),
+    ///    balance: SetOrKeep::Set(amount),
     ///    bytecode: SetOrKeep::Set(bytecode),
     ///    datastore: BTreeMap::default(),
     /// };

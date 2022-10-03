@@ -33,8 +33,8 @@ pub struct OperationInfo {
     pub creator_address: Address,
     pub thread: u8,
     pub fee: Amount,
-    /// max amount that the op might spend from the sender's sequential balance
-    pub max_sequential_spending: Amount,
+    /// max amount that the op might spend from the sender's balance
+    pub max_spending: Amount,
     pub validity_period_range: RangeInclusive<u64>,
 }
 
@@ -54,7 +54,7 @@ impl OperationInfo {
             fee: op.get_total_fee(),
             thread: op.creator_address.get_thread(thread_count),
             validity_period_range: op.get_validity_range(operation_validity_periods),
-            max_sequential_spending: op.get_max_sequential_spending(roll_price),
+            max_spending: op.get_max_spending(roll_price),
         }
     }
 }

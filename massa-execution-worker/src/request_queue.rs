@@ -70,6 +70,11 @@ impl<T, R> RequestQueue<T, R> {
         }
     }
 
+    /// Returns the max number of items the queue can contain
+    pub fn capacity(&self) -> usize {
+        self.max_items
+    }
+
     /// Extends Self with the contents of another `RequestQueue`.
     /// The contents of the incoming queue are appended last.
     /// Excess items with respect to `self.max_items` are canceled and dropped.
@@ -134,12 +139,12 @@ impl<T, R> RequestQueue<T, R> {
     }
 
     /// Take all the elements into a new queue and reset the current queue
-    pub fn take(&mut self) -> Self {
+    /*pub fn take(&mut self) -> Self {
         RequestQueue {
             max_items: self.max_items,
             queue: std::mem::take(&mut self.queue),
         }
-    }
+    }*/
 
     /// Checks whether the queue is full
     ///
