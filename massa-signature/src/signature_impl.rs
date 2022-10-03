@@ -941,7 +941,7 @@ impl Deserializer<Signature> for SignatureDeserializer {
     }
 }
 
-/// Verify a batch of signatures to gain total CPU perf.
+/// Verify a batch of signatures on a single core to gain total CPU perf.
 /// Every provided triplet `(hash, signature, public_key)` is verified
 /// and an error is returned if at least one of them fails.
 ///
@@ -954,6 +954,19 @@ impl Deserializer<Signature> for SignatureDeserializer {
 pub fn verify_signature_batch(
     batch: &[(Hash, Signature, PublicKey)],
 ) -> Result<(), MassaSignatureError> {
+    // nothing to verify
+    if batch.is_empty() {
+        return Ok(());
+    }
+
+    // normal verif is fastest for size 1 batches
+    if batch.len() == 1 {
+        let (hash, signature, public_key) = batch[0];
+        return public_key.verify_signature(&hash, &signature);
+    }
+
+    // otherwise, use batch verif
+
     let mut hashes = Vec::with_capacity(batch.len());
     let mut signatures = Vec::with_capacity(batch.len());
     let mut public_keys = Vec::with_capacity(batch.len());
