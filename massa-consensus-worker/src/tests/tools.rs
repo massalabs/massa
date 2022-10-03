@@ -18,7 +18,7 @@ use massa_models::{
         Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock,
         WrappedHeader,
     },
-    endorsement::{Endorsement, EndorsementSerializerLW, WrappedEndorsement},
+    endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement},
     operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
     prehash::PreHashSet,
     slot::Slot,
@@ -491,7 +491,7 @@ pub fn create_endorsement(
         index,
         endorsed_block,
     };
-    Endorsement::new_wrapped(content, EndorsementSerializerLW::new(), sender_keypair).unwrap()
+    Endorsement::new_wrapped(content, EndorsementSerializer::new(), sender_keypair).unwrap()
 }
 
 pub fn _get_export_active_test_block(

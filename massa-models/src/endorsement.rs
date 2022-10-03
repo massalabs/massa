@@ -258,9 +258,7 @@ impl Serializer<Endorsement> for EndorsementSerializerLW {
     /// EndorsementSerializerLW::new().serialize(&endorsement, &mut buffer).unwrap();
     /// ```
     fn serialize(&self, value: &Endorsement, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        // self.slot_serializer.serialize(&value.slot, buffer)?;
         self.u32_serializer.serialize(&value.index, buffer)?;
-        // buffer.extend(value.endorsed_block.0.to_bytes());
         Ok(())
     }
 }

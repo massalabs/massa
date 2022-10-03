@@ -29,7 +29,7 @@ use massa_models::{
     block::BlockSerializer,
     block::{Block, BlockHeader, BlockHeaderSerializer, BlockId},
     endorsement::Endorsement,
-    endorsement::EndorsementSerializerLW,
+    endorsement::EndorsementSerializer,
     operation::OperationId,
     prehash::PreHashMap,
     slot::Slot,
@@ -373,7 +373,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
                                 index: 1,
                                 endorsed_block: get_dummy_block_id("p1"),
                             },
-                            EndorsementSerializerLW::new(),
+                            EndorsementSerializer::new(),
                             &keypair,
                         )
                         .unwrap(),
@@ -383,7 +383,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
                                 index: 3,
                                 endorsed_block: get_dummy_block_id("p1"),
                             },
-                            EndorsementSerializerLW::new(),
+                            EndorsementSerializer::new(),
                             &keypair,
                         )
                         .unwrap(),
