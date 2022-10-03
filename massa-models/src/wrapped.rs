@@ -190,7 +190,14 @@ impl WrappedSerializer {
         Self
     }
 
-    /// Serialize by using the given serializer
+    /// This method is used to serialize a `Wrapped` structure and use a custom serializer instead of
+    /// using the serialized form of the content stored in `serialized_data.
+    /// This is useful when the content need to be serialized in a lighter form in specific cases.
+    ///
+    /// # Arguments:
+    /// * `serializer_content`: Custom serializer to be used instead of the data in `serialized_data`
+    /// * `value`: Wrapped structure to be serialized
+    /// * `buffer`: buffer of serialized data to be extend
     pub fn serialize_with<SC, T, U>(
         &self,
         serializer_content: &SC,
@@ -258,10 +265,18 @@ where
         }
     }
 
-    /// Deserialize content with a given serializer
+    /// This method is used deserialize data that has been serialized in a lightweight form.
+    /// The buffer doesn't have the whole content serialized and so
+    /// this serialized data isn't coherent with the full structure and can't be used to calculate id and signature.
+    /// We pass a serializer to serialize the full structure and retrieve a coherent `serialized_data`
+    /// that can be use for the id and signature computing.
     ///
-    /// The given serializer is used to update the serialized_data field (and the hash) and
-    /// is used for lightweight serialized data (e.g. endorsement)
+    /// # Arguments:
+    /// * `content_serializer`: Serializer use to compute the `serialized_data` from the content
+    /// * `buffer`: buffer of serialized data to be deserialized
+    ///
+    /// # Returns:
+    /// A rest and the wrapped structure with coherent fields.
     pub fn deserialize_with<
         'a,
         E: ParseError<&'a [u8]> + ContextError<&'a [u8]>,
