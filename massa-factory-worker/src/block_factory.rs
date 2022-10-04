@@ -38,7 +38,7 @@ impl BlockFactoryWorker {
         factory_receiver: mpsc::Receiver<()>,
     ) -> thread::JoinHandle<()> {
         thread::Builder::new()
-            .name("block factory worker".into())
+            .name("massa-block-factory-worker".into())
             .spawn(|| {
                 let mut this = Self {
                     cfg,
@@ -48,7 +48,7 @@ impl BlockFactoryWorker {
                 };
                 this.run();
             })
-            .expect("could not spawn block factory worker thread")
+            .expect("failed to spawn thread : massa-block-factory-worker")
     }
 
     /// Gets the next slot and the instant when it will happen.

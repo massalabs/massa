@@ -5,7 +5,7 @@
 use massa_hash::Hash;
 use massa_protocol_exports::ProtocolError;
 use massa_signature::{verify_signature_batch, PublicKey, Signature};
-use rayon::prelude::*;
+use rayon::{prelude::*, ThreadPoolBuilder};
 
 /// Limit for small batch optimization
 const SMALL_BATCH_LIMIT: usize = 2;
@@ -13,6 +13,11 @@ const SMALL_BATCH_LIMIT: usize = 2;
 /// Efficiently verifies a batch of signatures in parallel.
 /// Returns an error if at least one of them fails to verify.
 pub fn verify_sigs_batch(ops: &[(Hash, Signature, PublicKey)]) -> Result<(), ProtocolError> {
+    let thread_pool = ThreadPoolBuilder::new()
+    .thread_name(|idx| format!("massa-rayon-sig-verfier-{}", idx))
+    .build()
+    .unwrap();
+
     // if it's a small batch, use single-core verification
     if ops.len() <= SMALL_BATCH_LIMIT {
         return verify_signature_batch(ops).map_err(|_err| ProtocolError::WrongSignature);
@@ -21,9 +26,12 @@ pub fn verify_sigs_batch(ops: &[(Hash, Signature, PublicKey)]) -> Result<(), Pro
     // otherwise, use parallel batch verif
 
     // compute chunk size for parallelization
-    let chunk_size = std::cmp::max(1, ops.len() / rayon::current_num_threads());
-    // process chunks in parallel
-    ops.par_chunks(chunk_size)
+    let chunk_size = std::cmp::max(1, ops.len() / thread_pool.current_num_threads());
+
+    thread_pool.install(|| {
+        // process chunks in parallel
+        ops.par_chunks(chunk_size)
         .try_for_each(verify_signature_batch)
         .map_err(|_err| ProtocolError::WrongSignature)
+        })
 }

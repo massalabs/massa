@@ -21,6 +21,7 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::sync::Arc;
+use std::thread;
 use tracing::debug;
 
 /// Structure gathering all elements needed by the execution thread
@@ -261,10 +262,10 @@ pub fn start_execution_worker(
 
     // launch the execution thread
     let input_data_clone = input_data.clone();
-    let thread_handle = std::thread::spawn(move || {
+    let thread_builder = thread::Builder::new().name("massa-execution-worker".into());
+    let thread_handle = thread_builder.spawn(move || {
         ExecutionThread::new(config, input_data_clone, execution_state, selector).main_loop();
-    });
-
+    }).expect("failed to spawn thread : massa-execution-worker");
     // create a manager
     let manager = ExecutionManagerImpl {
         input_data,

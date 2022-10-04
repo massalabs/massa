@@ -55,7 +55,8 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
-use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{mem, path::PathBuf};
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
 use tokio::signal;
@@ -629,8 +630,21 @@ fn load_wallet(password: Option<String>, path: &Path) -> anyhow::Result<Arc<RwLo
 }
 
 #[paw::main]
-#[tokio::main]
-async fn main(args: Args) -> anyhow::Result<()> {
+fn main(args: Args) -> anyhow::Result<()> {
+    let tokio_rt = tokio::runtime::Builder::new_multi_thread()
+    .thread_name_fn(|| {
+       static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
+       let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
+       format!("massa-node-{}", id)
+    })
+    .enable_all()
+    .build()
+    .unwrap();
+
+    tokio_rt.block_on(run(args))
+}
+
+async fn run(args: Args) -> anyhow::Result<()> {
     use tracing_subscriber::prelude::*;
     // spawn the console server in the background, returning a `Layer`:
     let tracing_layer = tracing_subscriber::fmt::layer()
