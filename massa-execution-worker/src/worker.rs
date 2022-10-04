@@ -262,12 +262,12 @@ pub fn start_execution_worker(
 
     // launch the execution thread
     let input_data_clone = input_data.clone();
-    let thread_builder = thread::Builder::new().name("massa-execution-worker".into());
+    let thread_builder = thread::Builder::new().name("execution-worker".into());
     let thread_handle = thread_builder
         .spawn(move || {
             ExecutionThread::new(config, input_data_clone, execution_state, selector).main_loop();
         })
-        .expect("failed to spawn thread : massa-execution-worker");
+        .expect("failed to spawn thread : execution-worker");
     // create a manager
     let manager = ExecutionManagerImpl {
         input_data,

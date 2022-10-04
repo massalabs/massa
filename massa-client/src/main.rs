@@ -86,7 +86,7 @@ fn main(args: Args) -> anyhow::Result<()> {
         .thread_name_fn(|| {
             static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
             let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
-            format!("massa-client-{}", id)
+            format!("tokio-client-{}", id)
         })
         .enable_all()
         .build()
