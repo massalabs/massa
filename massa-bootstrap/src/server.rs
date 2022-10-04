@@ -10,11 +10,10 @@ use futures::StreamExt;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::ConsensusCommandSender;
 use massa_final_state::{ExecutedOpsStreamingStep, FinalState};
-use massa_graph::BootstrapableGraph;
 use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::{slot::Slot, version::Version};
-use massa_network_exports::{BootstrapPeers, NetworkCommandSender};
+use massa_network_exports::NetworkCommandSender;
 use massa_pos_exports::PoSCycleStreamingStep;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -215,24 +214,8 @@ impl BootstrapServer {
                     let config = self.bootstrap_config.clone();
 
                     bootstrap_sessions.push(async move {
-                        let data_peers = network_command_sender.get_bootstrap_peers().await;
-                        let data_graph = consensus_command_sender.get_bootstrap_state().await;
-                        let data_graph = match data_graph {
-                            Ok(v) => v,
-                            Err(err) => {
-                                warn!("could not retrieve consensus bootstrap state: {}", err);
-                                return;
-                            }
-                        };
-                        let data_peers = match data_peers {
-                            Ok(v) => v,
-                            Err(err) => {
-                                warn!("could not retrieve bootstrap peers: {}", err);
-                                return;
-                            }
-                        };
                         let mut server = BootstrapServerBinder::new(dplx, keypair, config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes);
-                        match manage_bootstrap(&config, &mut server, data_graph, data_peers, data_execution, compensation_millis, version).await {
+                        match manage_bootstrap(&config, &mut server, data_execution, compensation_millis, version, consensus_command_sender, network_command_sender).await {
                             Ok(_) => {
                                 info!("bootstrapped peer {}", remote_addr)
                             },
@@ -430,11 +413,11 @@ pub async fn send_final_state_stream(
 async fn manage_bootstrap(
     bootstrap_config: &BootstrapConfig,
     server: &mut BootstrapServerBinder,
-    mut data_graph: BootstrapableGraph,
-    data_peers: BootstrapPeers,
     final_state: Arc<RwLock<FinalState>>,
     compensation_millis: i64,
     version: Version,
+    consensus_command_sender: ConsensusCommandSender,
+    network_command_sender: NetworkCommandSender,
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: std::time::Duration = bootstrap_config.read_error_timeout.into();
@@ -497,7 +480,7 @@ async fn manage_bootstrap(
                     match tokio::time::timeout(
                         write_timeout,
                         server.send(BootstrapServerMessage::BootstrapPeers {
-                            peers: data_peers.clone(),
+                            peers: network_command_sender.get_bootstrap_peers().await?,
                         }),
                     )
                     .await
@@ -536,7 +519,7 @@ async fn manage_bootstrap(
                     match tokio::time::timeout(
                         write_timeout,
                         server.send(BootstrapServerMessage::ConsensusState {
-                            graph: data_graph.clone(),
+                            graph: consensus_command_sender.get_bootstrap_state().await?,
                         }),
                     )
                     .await
@@ -547,10 +530,7 @@ async fn manage_bootstrap(
                         )
                         .into()),
                         Ok(Err(e)) => Err(e),
-                        Ok(Ok(_)) => {
-                            data_graph.final_blocks = Vec::new();
-                            Ok(())
-                        }
+                        Ok(Ok(_)) => Ok(()),
                     }?;
                 }
                 BootstrapClientMessage::BootstrapSuccess => break Ok(()),
