@@ -15,7 +15,7 @@
 //! (`default_testing.rs`) But as for the current file you shouldn't modify it.
 use std::str::FromStr;
 
-use crate::{amount::Amount, version::Version};
+use crate::{address::ADDRESS_SIZE_BYTES, amount::Amount, version::Version};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
@@ -75,6 +75,12 @@ lazy_static::lazy_static! {
 pub const ROLL_PRICE: Amount = Amount::from_mantissa_scale(100, 0);
 /// Block reward is given for each block creation
 pub const BLOCK_REWARD: Amount = Amount::from_mantissa_scale(3, 1);
+/// Cost to store one byte in the ledger
+pub const LEDGER_COST_PER_BYTE: Amount = Amount::from_mantissa_scale(2, 4);
+/// Cost for a base entry (address + balance (5 bytes constant))
+pub const LEDGER_ENTRY_BASE_SIZE: usize = ADDRESS_SIZE_BYTES + 5;
+/// Cost for a base entry datastore 10 bytes constant to avoid paying more for longer keys
+pub const LEDGER_ENTRY_DATASTORE_BASE_SIZE: usize = 10;
 /// Time between the periods in the same thread.
 pub const T0: MassaTime = MassaTime::from_millis(16000);
 /// Proof of stake seed for the initial draw
@@ -82,9 +88,9 @@ pub const INITIAL_DRAW_SEED: &str = "massa_genesis_seed";
 /// Number of threads
 pub const THREAD_COUNT: u8 = 32;
 /// Number of endorsement
-pub const ENDORSEMENT_COUNT: u32 = 9;
+pub const ENDORSEMENT_COUNT: u32 = 16;
 /// Threshold for fitness.
-pub const DELTA_F0: u64 = 640;
+pub const DELTA_F0: u64 = 64 * (ENDORSEMENT_COUNT as u64 + 1);
 /// Maximum number of operations per block
 pub const MAX_OPERATIONS_PER_BLOCK: u32 = 5000;
 /// Maximum block size in bytes
@@ -117,6 +123,8 @@ pub const MAX_DATASTORE_KEY_LENGTH: u8 = 255;
 pub const MAX_OPERATION_DATASTORE_KEY_LENGTH: u8 = MAX_DATASTORE_KEY_LENGTH;
 /// Maximum length of a datastore value
 pub const MAX_DATASTORE_VALUE_LENGTH: u64 = 10_000_000;
+/// Maximum length of a datastore value
+pub const MAX_BYTECODE_LENGTH: u64 = 10_000_000;
 /// Maximum length of an operation datastore value
 pub const MAX_OPERATION_DATASTORE_VALUE_LENGTH: u64 = 1_000;
 /// Maximum ledger changes in a block

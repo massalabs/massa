@@ -185,6 +185,7 @@ macro_rules! gen_varint {
             #[doc = " Serializer for "]
             #[doc = $d]
             #[doc = " in a varint form."]
+            #[derive(Clone)]
             pub struct $s;
 
             impl $s {

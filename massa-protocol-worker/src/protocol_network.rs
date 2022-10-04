@@ -20,6 +20,7 @@ use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkEvent};
 use massa_protocol_exports::{ProtocolError, ProtocolEvent};
 use massa_serialization::Serializer;
 use massa_storage::Storage;
+use std::pin::Pin;
 use tokio::time::{Instant, Sleep};
 use tracing::{info, warn};
 
@@ -45,7 +46,8 @@ impl ProtocolWorker {
     pub(crate) async fn on_network_event(
         &mut self,
         evt: NetworkEvent,
-        block_ask_timer: &mut std::pin::Pin<&mut Sleep>,
+        block_ask_timer: &mut Pin<&mut Sleep>,
+        op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         match evt {
             NetworkEvent::NewConnection(node_id) => {
@@ -73,7 +75,7 @@ impl ProtocolWorker {
             } => {
                 massa_trace!(BLOCKS_INFO, { "node": from_node_id, "info": info });
                 for (block_id, block_info) in info.into_iter() {
-                    self.on_block_info_received(from_node_id, block_id, block_info)
+                    self.on_block_info_received(from_node_id, block_id, block_info, op_timer)
                         .await?;
                 }
                 // Re-run the ask block algorithm.
@@ -115,7 +117,8 @@ impl ProtocolWorker {
             }
             NetworkEvent::ReceivedOperations { node, operations } => {
                 massa_trace!(OPS, { "node": node, "operations": operations});
-                self.on_operations_received(node, operations).await;
+                self.on_operations_received(node, operations, op_timer)
+                    .await;
             }
             NetworkEvent::ReceivedEndorsements { node, endorsements } => {
                 massa_trace!(ENDORSEMENTS, { "node": node, "endorsements": endorsements});
@@ -296,16 +299,14 @@ impl ProtocolWorker {
         from_node_id: NodeId,
         block_id: BlockId,
         operation_ids: Vec<OperationId>,
+        op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         // All operation ids sent into a set
         let operation_ids_set: PreHashSet<OperationId> = operation_ids.iter().cloned().collect();
 
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
-            node_info.insert_known_ops(
-                operation_ids_set.clone(),
-                self.config.max_node_known_ops_size,
-            );
+            node_info.insert_known_ops(&operation_ids, self.config.max_node_known_ops_size);
         }
 
         let info = if let Some(info) = self.block_wishlist.get_mut(&block_id) {
@@ -376,7 +377,12 @@ impl ProtocolWorker {
             // If the block is empty, go straight to processing the full block info.
             if operation_ids.is_empty() {
                 return self
-                    .on_block_full_operations_received(from_node_id, block_id, Default::default())
+                    .on_block_full_operations_received(
+                        from_node_id,
+                        block_id,
+                        Default::default(),
+                        op_timer,
+                    )
                     .await;
             }
         } else {
@@ -404,9 +410,10 @@ impl ProtocolWorker {
         from_node_id: NodeId,
         block_id: BlockId,
         mut operations: Vec<WrappedOperation>,
+        op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         if let Err(err) = self
-            .note_operations_from_node(operations.clone(), &from_node_id)
+            .note_operations_from_node(operations.clone(), &from_node_id, op_timer)
             .await
         {
             warn!(
@@ -534,6 +541,7 @@ impl ProtocolWorker {
         from_node_id: NodeId,
         block_id: BlockId,
         info: BlockInfoReply,
+        op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         match info {
             BlockInfoReply::Header(header) => {
@@ -546,14 +554,19 @@ impl ProtocolWorker {
                 // that block.
                 // Ban the node if the operation ids hash doesn't match with the hash contained in
                 // the block_header.
-                self.on_block_operation_list_received(from_node_id, block_id, operation_list)
-                    .await
+                self.on_block_operation_list_received(
+                    from_node_id,
+                    block_id,
+                    operation_list,
+                    op_timer,
+                )
+                .await
             }
             BlockInfoReply::Operations(operations) => {
                 // Send operations to pool,
                 // before performing the below checks,
                 // and wait for them to have been procesed(i.e. added to storage).
-                self.on_block_full_operations_received(from_node_id, block_id, operations)
+                self.on_block_full_operations_received(from_node_id, block_id, operations, op_timer)
                     .await
             }
             BlockInfoReply::NotFound => {

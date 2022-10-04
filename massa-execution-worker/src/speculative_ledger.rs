@@ -5,14 +5,15 @@
 //! It never actually writes to the consensus state
 //! but keeps track of the changes that were applied to it since its creation.
 
+use crate::active_history::{ActiveHistory, HistorySearchResult};
 use massa_execution_exports::ExecutionError;
+use massa_execution_exports::StorageCostsConstants;
 use massa_final_state::FinalState;
 use massa_ledger_exports::{Applicable, LedgerChanges};
 use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
 use std::sync::Arc;
-
-use crate::active_history::{ActiveHistory, HistorySearchResult};
+use tracing::log::debug;
 
 /// The `SpeculativeLedger` contains an thread-safe shared reference to the final ledger (read-only),
 /// a list of existing changes that happened o the ledger since its finality,
@@ -33,6 +34,15 @@ pub(crate) struct SpeculativeLedger {
 
     /// max datastore key length
     max_datastore_key_length: u8,
+
+    /// Max datastore value size
+    max_datastore_value_size: u64,
+
+    /// Max bytecode size
+    max_bytecode_size: u64,
+
+    /// storage cost constants
+    storage_costs_constants: StorageCostsConstants,
 }
 
 impl SpeculativeLedger {
@@ -45,12 +55,18 @@ impl SpeculativeLedger {
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         max_datastore_key_length: u8,
+        max_bytecode_size: u64,
+        max_datastore_value_size: u64,
+        storage_costs_constants: StorageCostsConstants,
     ) -> Self {
         SpeculativeLedger {
             final_state,
             added_changes: Default::default(),
             active_history,
             max_datastore_key_length,
+            max_datastore_value_size,
+            max_bytecode_size,
+            storage_costs_constants,
         }
     }
 
@@ -127,7 +143,7 @@ impl SpeculativeLedger {
         if let Some(from_addr) = from_addr {
             let new_balance = self
                 .get_balance(&from_addr)
-                .unwrap_or_default()
+                .ok_or_else(|| ExecutionError::RuntimeError("source addr not found".to_string()))?
                 .checked_sub(amount)
                 .ok_or_else(|| {
                     ExecutionError::RuntimeError("insufficient from_addr balance".into())
@@ -138,14 +154,59 @@ impl SpeculativeLedger {
         // simulate crediting coins to destination address (if any)
         // note that to_addr can be the same as from_addr
         if let Some(to_addr) = to_addr {
-            let new_balance = changes
-                .get_balance_or_else(&to_addr, || self.get_balance(&to_addr))
-                .unwrap_or_default()
-                .checked_add(amount)
-                .ok_or_else(|| {
-                    ExecutionError::RuntimeError("overflow in to_addr balance".into())
-                })?;
-            changes.set_balance(to_addr, new_balance);
+            let old_balance = changes.get_balance_or_else(&to_addr, || self.get_balance(&to_addr));
+            match (old_balance, from_addr) {
+                // if `to_addr` exists we increase the balance
+                (Some(old_balance), _) => {
+                    let new_balance = old_balance.checked_add(amount).ok_or_else(|| {
+                        ExecutionError::RuntimeError("overflow in to_addr balance".into())
+                    })?;
+                    changes.set_balance(to_addr, new_balance);
+                }
+                // if `to_addr` doesn't exist but `from_addr` is defined. `from_addr` will create the address using the coins sent.
+                (None, Some(_)) => {
+                    //TODO: Remove when stabilized
+                    debug!("Creating address {} from coins in transactions", to_addr);
+                    if amount >= self.storage_costs_constants.ledger_entry_base_cost {
+                        changes.create_address(&to_addr);
+                        changes.set_balance(
+                            to_addr,
+                            amount
+                                .checked_sub(self.storage_costs_constants.ledger_entry_base_cost)
+                                .ok_or_else(|| {
+                                    ExecutionError::RuntimeError(
+                                        "overflow in subtract ledger cost for addr".to_string(),
+                                    )
+                                })?,
+                        );
+                    } else {
+                        return Err(ExecutionError::RuntimeError(
+                            "insufficient amount to create receiver address".to_string(),
+                        ));
+                    }
+                }
+                // if `from_addr` is none and `to_addr` doesn't exist try to create it from coins sent
+                (None, None) => {
+                    //TODO: Remove when stabilized
+                    debug!("Creating address {} from coins generated", to_addr);
+                    // We have enough to create the address and transfer the rest.
+                    if amount >= self.storage_costs_constants.ledger_entry_base_cost {
+                        changes.create_address(&to_addr);
+                        changes.set_balance(
+                            to_addr,
+                            amount
+                                .checked_sub(self.storage_costs_constants.ledger_entry_base_cost)
+                                .ok_or_else(|| {
+                                    ExecutionError::RuntimeError(
+                                        "overflow in subtract ledger cost for addr".to_string(),
+                                    )
+                                })?,
+                        );
+                    } else {
+                        return Ok(());
+                    }
+                }
+            };
         }
 
         // apply the simulated changes to the speculative ledger
@@ -175,14 +236,63 @@ impl SpeculativeLedger {
     /// Creates a new smart contract address with initial bytecode.
     ///
     /// # Arguments
+    /// * `creator_address`: address that asked for this creation. Will pay the storage costs.
     /// * `addr`: address to create
     /// * `bytecode`: bytecode to set in the new ledger entry
     pub fn create_new_sc_address(
         &mut self,
+        creator_address: Address,
         addr: Address,
         bytecode: Vec<u8>,
     ) -> Result<(), ExecutionError> {
-        // set bytecode (create if do not exist)
+        // check for address existence
+        if !self.entry_exists(&creator_address) {
+            return Err(ExecutionError::RuntimeError(format!(
+                "could not create SC address {}: creator address {} does not exist",
+                addr, creator_address
+            )));
+        }
+
+        // check that we don't collide with existing address
+        if self.entry_exists(&addr) {
+            return Err(ExecutionError::RuntimeError(format!(
+                "could not create SC address {}: target address already exists",
+                addr
+            )));
+        }
+
+        if bytecode.len() > self.max_bytecode_size as usize {
+            return Err(ExecutionError::RuntimeError(format!(
+                "could not create SC address {}: bytecode size exceeds maximum allowed size",
+                addr
+            )));
+        }
+
+        // calculate the cost of storing the address and bytecode
+        let address_storage_cost = self
+            .storage_costs_constants
+            .ledger_entry_base_cost
+            // Bytecode data
+            .checked_add(
+                self.storage_costs_constants
+                    .ledger_cost_per_byte
+                    .checked_mul_u64(bytecode.len().try_into().map_err(|_| {
+                        ExecutionError::RuntimeError(
+                            "overflow while calculating bytecode ledger size costs".to_string(),
+                        )
+                    })?)
+                    .ok_or_else(|| {
+                        ExecutionError::RuntimeError(
+                            "overflow in ledger cost for bytecode".to_string(),
+                        )
+                    })?,
+            )
+            .ok_or_else(|| {
+                ExecutionError::RuntimeError("overflow in ledger cost for bytecode".to_string())
+            })?;
+
+        self.transfer_coins(Some(creator_address), None, address_storage_cost)?;
+        self.added_changes.create_address(&addr);
         self.added_changes.set_bytecode(addr, bytecode);
         Ok(())
     }
@@ -191,21 +301,59 @@ impl SpeculativeLedger {
     /// Fails if the address doesn't exist.
     ///
     /// # Arguments
+    /// * `caller_addr`: address of the caller. Will pay the storage costs.
     /// * `addr`: target address
     /// * `bytecode`: bytecode to set for that address
     pub fn set_bytecode(
         &mut self,
+        caller_addr: &Address,
         addr: &Address,
         bytecode: Vec<u8>,
     ) -> Result<(), ExecutionError> {
         // check for address existence
         if !self.entry_exists(addr) {
             return Err(ExecutionError::RuntimeError(format!(
-                "could not set bytecode for address {}: entry does not exist",
+                "could not set bytecode for address {}: address does not exist",
                 addr
             )));
         }
 
+        if bytecode.len() > self.max_bytecode_size as usize {
+            return Err(ExecutionError::RuntimeError(format!(
+                "could not set bytecode for address {}: bytecode size exceeds maximum allowed size",
+                addr
+            )));
+        }
+
+        if let Some(old_bytecode_size) = self.get_bytecode(addr).map(|b| b.len()) {
+            let diff_size_storage: i64 = (bytecode.len() as i64) - (old_bytecode_size as i64);
+            let storage_cost_bytecode = self
+                .storage_costs_constants
+                .ledger_cost_per_byte
+                .checked_mul_u64(diff_size_storage.unsigned_abs())
+                .ok_or_else(|| {
+                    ExecutionError::RuntimeError(
+                        "overflow on computing bytecode delta storage costs".to_string(),
+                    )
+                })?;
+
+            match diff_size_storage.signum() {
+                1 => self.transfer_coins(Some(*caller_addr), None, storage_cost_bytecode)?,
+                -1 => self.transfer_coins(None, Some(*caller_addr), storage_cost_bytecode)?,
+                _ => {}
+            };
+        } else {
+            let bytecode_storage_cost = self
+                .storage_costs_constants
+                .ledger_cost_per_byte
+                .checked_mul_u64(bytecode.len() as u64)
+                .ok_or_else(|| {
+                    ExecutionError::RuntimeError(
+                        "overflow when calculating storage cost of bytecode".to_string(),
+                    )
+                })?;
+            self.transfer_coins(Some(*caller_addr), None, bytecode_storage_cost)?;
+        }
         // set the bytecode of that address
         self.added_changes.set_bytecode(*addr, bytecode);
 
@@ -262,24 +410,39 @@ impl SpeculativeLedger {
         })
     }
 
+    fn get_storage_cost_datastore_value(&self, value: &Vec<u8>) -> Result<Amount, ExecutionError> {
+        self.storage_costs_constants
+            .ledger_cost_per_byte
+            .checked_mul_u64(value.len().try_into().map_err(|_| {
+                ExecutionError::RuntimeError("value in datastore is too big".to_string())
+            })?)
+            .ok_or_else(|| {
+                ExecutionError::RuntimeError(
+                    "overflow when calculating storage cost for datastore value".to_string(),
+                )
+            })
+    }
+
     /// Sets a data set entry for a given address in the ledger.
     /// Fails if the address doesn't exist.
     /// If the datastore entry does not exist, it is created.
     ///
     /// # Arguments
+    /// * `caller_addr`: address of the caller. Will pay the storage costs.
     /// * `addr`: target address
     /// * `key`: datastore key
     /// * `data`: value to associate to the datastore key
     pub fn set_data_entry(
         &mut self,
+        caller_addr: &Address,
         addr: &Address,
         key: Vec<u8>,
-        data: Vec<u8>,
+        value: Vec<u8>,
     ) -> Result<(), ExecutionError> {
         // check for address existence
         if !self.entry_exists(addr) {
             return Err(ExecutionError::RuntimeError(format!(
-                "could not set data for address {}: entry does not exist",
+                "could not set data for address {}: address does not exist",
                 addr
             )));
         }
@@ -293,8 +456,51 @@ impl SpeculativeLedger {
             )));
         }
 
+        if value.len() > self.max_datastore_value_size as usize {
+            return Err(ExecutionError::RuntimeError(format!(
+                "value length is {}, but it must be in [0..={}]",
+                value.len(),
+                self.max_datastore_value_size
+            )));
+        }
+
+        // Debit the cost of the key if it is a new one
+        // and the cost of value if new or if it change
+        if let Some(old_value) = self.get_data_entry(addr, &key) {
+            let diff_size_storage: i64 = (value.len() as i64) - (old_value.len() as i64);
+            let storage_cost_value = self
+                .storage_costs_constants
+                .ledger_cost_per_byte
+                .checked_mul_u64(diff_size_storage.unsigned_abs())
+                .ok_or_else(|| {
+                    ExecutionError::RuntimeError(
+                        "overflow on datastore delta storage costs computation".to_string(),
+                    )
+                })?;
+            match diff_size_storage.signum() {
+                1 => self.transfer_coins(Some(*caller_addr), None, storage_cost_value)?,
+                -1 => self.transfer_coins(None, Some(*caller_addr), storage_cost_value)?,
+                _ => {}
+            };
+        } else {
+            let value_storage_cost = self.get_storage_cost_datastore_value(&value)?;
+            self.transfer_coins(
+                Some(*caller_addr),
+                None,
+                self.storage_costs_constants
+                    .ledger_entry_datastore_base_cost
+                    .checked_add(value_storage_cost)
+                    .ok_or_else(|| {
+                        ExecutionError::RuntimeError(
+                            "overflow when calculating storage cost for datastore key/value"
+                                .to_string(),
+                        )
+                    })?,
+            )?;
+        }
+
         // set data
-        self.added_changes.set_data_entry(*addr, key, data);
+        self.added_changes.set_data_entry(*addr, key, value);
 
         Ok(())
     }
@@ -303,13 +509,34 @@ impl SpeculativeLedger {
     /// Fails if the entry or address does not exist.
     ///
     /// # Arguments
+    /// * `caller_addr`: address of the caller. Will pay the storage costs.
     /// * `addr`: address
     /// * `key`: key of the entry to delete in the address' datastore
-    pub fn delete_data_entry(&mut self, addr: &Address, key: &[u8]) -> Result<(), ExecutionError> {
+    pub fn delete_data_entry(
+        &mut self,
+        caller_addr: &Address,
+        addr: &Address,
+        key: &[u8],
+    ) -> Result<(), ExecutionError> {
         // check if the entry exists
-        if !self.has_data_entry(addr, key) {
+        if let Some(value) = self.get_data_entry(addr, key) {
+            let value_storage_cost = self.get_storage_cost_datastore_value(&value)?;
+            self.transfer_coins(
+                None,
+                Some(*caller_addr),
+                self.storage_costs_constants
+                    .ledger_entry_datastore_base_cost
+                    .checked_add(value_storage_cost)
+                    .ok_or_else(|| {
+                        ExecutionError::RuntimeError(
+                            "overflow when calculating storage cost for datastore key/value"
+                                .to_string(),
+                        )
+                    })?,
+            )?;
+        } else {
             return Err(ExecutionError::RuntimeError(format!(
-                "could not delete data entry {:?} for address {}: entry does not exist",
+                "could not delete data entry {:?} for address {}: entry or address does not exist",
                 key, addr
             )));
         }

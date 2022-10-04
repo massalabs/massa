@@ -12,7 +12,7 @@ use massa_models::{
     address::Address,
     amount::Amount,
     block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock},
-    endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement},
+    endorsement::{Endorsement, EndorsementSerializerLW, WrappedEndorsement},
     operation::{Operation, OperationType, WrappedOperation},
     slot::Slot,
 };
@@ -231,7 +231,7 @@ pub fn create_endorsement() -> WrappedEndorsement {
         index: 0,
         endorsed_block: BlockId(Hash::compute_from(&[])),
     };
-    Endorsement::new_wrapped(content, EndorsementSerializer::new(), &keypair).unwrap()
+    Endorsement::new_wrapped(content, EndorsementSerializerLW::new(), &keypair).unwrap()
 }
 
 /// Create an operation, from a specific sender, and with a specific expire period.
@@ -272,8 +272,10 @@ pub fn create_protocol_config() -> ProtocolConfig {
         max_known_endorsements_size: 1000,
         max_node_known_endorsements_size: 1000,
         operation_batch_buffer_capacity: 1000,
+        operation_announcement_buffer_capacity: 1000,
         operation_batch_proc_period: 200.into(),
         asked_operations_pruning_period: 500.into(),
+        operation_announcement_interval: 150.into(),
         max_operations_per_message: 1024,
         thread_count: 32,
         max_serialized_operations_size_per_block: 1024,

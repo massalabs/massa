@@ -117,6 +117,6 @@ pub struct ExecutionStackElement {
     /// Note that we use a vector instead of a pre-hashed set to ensure order determinism,
     /// the performance hit of linear search remains minimal because `owned_addresses` will always contain very few elements.
     pub owned_addresses: Vec<Address>,
-    /// Datastore (key value store) for ExecuteSC Operation
+    /// Datastore (key value store) for `ExecuteSC` Operation
     pub operation_datastore: Option<Datastore>,
 }

@@ -286,7 +286,7 @@ impl LedgerDB {
             .serialize(&ledger_entry.balance, &mut bytes_balance)
             .unwrap();
 
-        // sequential balance
+        // balance
         self.put_entry_value(handle, batch, &balance_key!(addr), &bytes_balance);
 
         // bytecode

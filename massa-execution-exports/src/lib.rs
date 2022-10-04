@@ -53,7 +53,7 @@ mod types;
 pub use controller_traits::{ExecutionController, ExecutionManager};
 pub use error::ExecutionError;
 pub use event_store::EventStore;
-pub use settings::ExecutionConfig;
+pub use settings::{ExecutionConfig, StorageCostsConstants};
 pub use types::{
     ExecutionAddressInfo, ExecutionOutput, ExecutionStackElement, ReadOnlyCallRequest,
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,

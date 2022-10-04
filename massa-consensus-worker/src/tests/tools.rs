@@ -18,7 +18,6 @@ use massa_models::{
         Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock,
         WrappedHeader,
     },
-    endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement},
     operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
     prehash::PreHashSet,
     slot::Slot,
@@ -26,7 +25,6 @@ use massa_models::{
 };
 use massa_pool_exports::test_exports::MockPoolController;
 use massa_pool_exports::PoolController;
-use massa_pos_exports::test_exports::{MockSelectorController, MockSelectorControllerMessage};
 use massa_pos_exports::{SelectorConfig, SelectorController};
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::test_exports::MockProtocolController;
@@ -35,11 +33,45 @@ use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::Mutex;
-use std::sync::mpsc::Receiver;
 use std::{collections::BTreeMap, collections::HashSet, future::Future, path::Path};
 use std::{str::FromStr, sync::Arc, time::Duration};
 
 use tracing::info;
+
+/* TODO https://github.com/massalabs/massa/issues/3099
+/// Handle the expected selector messages, always approving the address.
+pub fn approve_producer_and_selector_for_staker(
+    staking_key: &KeyPair,
+    selector_controller: &Receiver<MockSelectorControllerMessage>,
+) {
+    let addr = Address::from_public_key(&staking_key.get_public_key());
+    // Drain all messages, assuming there can be a slight delay between sending some.
+    loop {
+        let timeout = Duration::from_millis(100);
+        match selector_controller.recv_timeout(timeout) {
+            Ok(MockSelectorControllerMessage::GetSelection {
+                slot: _,
+                response_tx,
+            }) => {
+                let selection = Selection {
+                    producer: addr.clone(),
+                    endorsements: vec![addr.clone(); ENDORSEMENT_COUNT as usize],
+                };
+                response_tx.send(Ok(selection)).unwrap();
+            }
+            Ok(MockSelectorControllerMessage::GetProducer {
+                slot: _,
+                response_tx,
+            }) => {
+                response_tx.send(Ok(addr.clone())).unwrap();
+            }
+            Ok(msg) => panic!("Unexpected selector message {:?}", msg),
+            Err(RecvTimeoutError::Timeout) => break,
+            _ => panic!("Unexpected error from selector receiver"),
+        }
+    }
+}
+*/
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {
     BlockId(Hash::compute_from(s.as_bytes()))
@@ -417,6 +449,7 @@ pub fn _create_roll_buy(
     Operation::new_wrapped(content, OperationSerializer::new(), keypair).unwrap()
 }
 
+/* TODO https://github.com/massalabs/massa/issues/3099
 pub fn create_roll_sell(
     keypair: &KeyPair,
     roll_count: u64,
@@ -431,6 +464,7 @@ pub fn create_roll_sell(
     };
     Operation::new_wrapped(content, OperationSerializer::new(), keypair).unwrap()
 }
+*/
 
 // returns hash and resulting discarded blocks
 pub fn create_block(
@@ -479,6 +513,7 @@ pub fn create_block_with_merkle_root(
     .unwrap()
 }
 
+/* TODO https://github.com/massalabs/massa/issues/3099
 /// Creates an endorsement for use in consensus tests.
 pub fn create_endorsement(
     sender_keypair: &KeyPair,
@@ -493,6 +528,7 @@ pub fn create_endorsement(
     };
     Endorsement::new_wrapped(content, EndorsementSerializer::new(), sender_keypair).unwrap()
 }
+*/
 
 pub fn _get_export_active_test_block(
     parents: Vec<(BlockId, u64)>,
@@ -570,6 +606,7 @@ pub fn create_block_with_operations(
     .unwrap()
 }
 
+/* TODO https://github.com/massalabs/massa/issues/3099
 pub fn create_block_with_operations_and_endorsements(
     _cfg: &ConsensusConfig,
     slot: Slot,
@@ -606,6 +643,7 @@ pub fn create_block_with_operations_and_endorsements(
     )
     .unwrap()
 }
+*/
 
 pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<KeyPair>) -> KeyPair {
     for key in nodes.iter() {
@@ -730,6 +768,7 @@ pub async fn _consensus_pool_test<F, V>(
     execution_sink.join().unwrap();
 }
 
+/* TODO https://github.com/massalabs/massa/issues/3099
 /// Runs a consensus test, passing a mock pool controller to it.
 pub async fn consensus_pool_test_with_storage<F, V>(
     cfg: ConsensusConfig,
@@ -821,6 +860,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
     *stop_sinks.lock() = true;
     execution_sink.join().unwrap();
 }
+*/
 
 /// Runs a consensus test, without passing a mock pool controller to it.
 pub async fn consensus_without_pool_test<F, V>(cfg: ConsensusConfig, test: F)
