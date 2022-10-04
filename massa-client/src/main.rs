@@ -14,6 +14,7 @@ use massa_wallet::Wallet;
 use serde::Serialize;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use structopt::StructOpt;
 
 mod cmds;
@@ -80,8 +81,21 @@ fn ask_password(wallet_path: &Path) -> String {
 }
 
 #[paw::main]
-#[tokio::main]
-async fn main(args: Args) -> Result<()> {
+fn main(args: Args) -> anyhow::Result<()> {
+    let tokio_rt = tokio::runtime::Builder::new_multi_thread()
+    .thread_name_fn(|| {    
+        static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
+        let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
+        format!("massa-client-{}", id)
+     })
+    .enable_all()
+    .build()
+    .unwrap();
+
+    tokio_rt.block_on(run(args))
+}
+
+async fn run(args: Args) -> Result<()> {
     // TODO: move settings loading in another crate ... see #1277
     let settings = SETTINGS.clone();
     let address = match args.ip {
