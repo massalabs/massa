@@ -374,10 +374,7 @@ impl Storage {
             op_store.insert(op);
         }
         Storage::internal_claim_refs(&ids, &mut owners, &mut self.local_used_ops);
-        warn!(
-            ">>>> GLOBAL OP COUNT = {}",
-            self.operations.read().operations.len()
-        );
+        warn!(">>>> GLOBAL OP COUNT = {}", op_store.operations.len());
     }
 
     /// Gets a read reference to the operations index

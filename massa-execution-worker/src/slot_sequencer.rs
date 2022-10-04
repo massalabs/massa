@@ -595,6 +595,17 @@ impl SlotSequencer {
         // * the latest SCE-final slot
         // * the latest executed SCE-final slot
         // * the latest executed candidate slot
+
+        let a = *self
+            .latest_css_final_slots
+            .iter()
+            .min()
+            .expect("latest_css_final_slots should not be empty");
+        let b = self.latest_sce_final_slot;
+        let c = self.latest_executed_final_slot;
+        let d = self.latest_executed_candidate_slot;
+        warn!(">>>> EXECUTION cleanup: {} {} {} {}", a, b, c, d);
+
         let min_useful_slot = std::cmp::min(
             std::cmp::min(
                 *self
