@@ -298,7 +298,7 @@
 <span class="doccomment">/// Block reward is given for each block creation
 </span><span class="kw">pub const </span>BLOCK_REWARD: Amount = Amount::from_mantissa_scale(<span class="number">3</span>, <span class="number">1</span>);
 <span class="doccomment">/// Cost to store one byte in the ledger
-</span><span class="kw">pub const </span>LEDGER_COST_PER_BYTE: Amount = Amount::from_mantissa_scale(<span class="number">2</span>, <span class="number">4</span>);
+</span><span class="kw">pub const </span>LEDGER_COST_PER_BYTE: Amount = Amount::from_mantissa_scale(<span class="number">5</span>, <span class="number">4</span>);
 <span class="doccomment">/// Cost for a base entry (address + balance (5 bytes constant))
 </span><span class="kw">pub const </span>LEDGER_ENTRY_BASE_SIZE: usize = ADDRESS_SIZE_BYTES + <span class="number">5</span>;
 <span class="doccomment">/// Cost for a base entry datastore 10 bytes constant to avoid paying more for longer keys
@@ -443,4 +443,4 @@
     <span class="macro">assert!</span>((T0).to_millis() % (THREAD_COUNT <span class="kw">as </span>u64) == <span class="number">0</span>);
 };
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (57f097ea2 2022-10-01)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (f83e0266c 2022-10-03)" ></div></body></html>
