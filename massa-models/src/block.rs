@@ -946,6 +946,6 @@ mod test {
         )
         .deserialize::<DeserializeError>(&ser_block);
 
-        assert!(res.is_err())
+        assert_eq!(res.is_err(), true);
     }
 }
