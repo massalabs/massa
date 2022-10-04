@@ -34,7 +34,6 @@ use tokio::{
     sync::mpsc::error::SendTimeoutError,
     time::{sleep, sleep_until, Instant, Sleep},
 };
-use tracing::log::warn;
 use tracing::{debug, error, info, warn};
 
 // TODO connect protocol to pool so that it sends ops and endorsements
