@@ -83,14 +83,14 @@ fn ask_password(wallet_path: &Path) -> String {
 #[paw::main]
 fn main(args: Args) -> anyhow::Result<()> {
     let tokio_rt = tokio::runtime::Builder::new_multi_thread()
-    .thread_name_fn(|| {    
-        static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
-        let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
-        format!("massa-client-{}", id)
-     })
-    .enable_all()
-    .build()
-    .unwrap();
+        .thread_name_fn(|| {
+            static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
+            let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
+            format!("massa-client-{}", id)
+        })
+        .enable_all()
+        .build()
+        .unwrap();
 
     tokio_rt.block_on(run(args))
 }

@@ -119,7 +119,9 @@ fn serve(api: impl Endpoints, url: &SocketAddr) -> StopHandle {
 
     let close_handle = server.close_handle();
     let thread_builder = thread::Builder::new().name("massa-rpc-server".into());
-    let join_handle = thread_builder.spawn(|| server.wait()).expect("failed to spawn thread : massa-rpc-server");
+    let join_handle = thread_builder
+        .spawn(|| server.wait())
+        .expect("failed to spawn thread : massa-rpc-server");
 
     StopHandle {
         close_handle,

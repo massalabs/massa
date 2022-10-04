@@ -14,9 +14,9 @@ const SMALL_BATCH_LIMIT: usize = 2;
 /// Returns an error if at least one of them fails to verify.
 pub fn verify_sigs_batch(ops: &[(Hash, Signature, PublicKey)]) -> Result<(), ProtocolError> {
     let thread_pool = ThreadPoolBuilder::new()
-    .thread_name(|idx| format!("massa-rayon-sig-verfier-{}", idx))
-    .build()
-    .unwrap();
+        .thread_name(|idx| format!("massa-rayon-sig-verfier-{}", idx))
+        .build()
+        .unwrap();
 
     // if it's a small batch, use single-core verification
     if ops.len() <= SMALL_BATCH_LIMIT {
@@ -31,7 +31,7 @@ pub fn verify_sigs_batch(ops: &[(Hash, Signature, PublicKey)]) -> Result<(), Pro
     thread_pool.install(|| {
         // process chunks in parallel
         ops.par_chunks(chunk_size)
-        .try_for_each(verify_signature_batch)
-        .map_err(|_err| ProtocolError::WrongSignature)
-        })
+            .try_for_each(verify_signature_batch)
+            .map_err(|_err| ProtocolError::WrongSignature)
+    })
 }

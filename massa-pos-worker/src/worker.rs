@@ -40,14 +40,16 @@ impl SelectorThread {
         cfg: SelectorConfig,
     ) -> JoinHandle<PosResult<()>> {
         let thread_builder = thread::Builder::new().name("massa-pos-worker".into());
-        thread_builder.spawn(|| {
-            let this = Self {
-                input_mpsc,
-                cache,
-                cfg,
-            };
-            this.run()
-        }).expect("failed to spawn thread : massa-pos-worker")
+        thread_builder
+            .spawn(|| {
+                let this = Self {
+                    input_mpsc,
+                    cache,
+                    cfg,
+                };
+                this.run()
+            })
+            .expect("failed to spawn thread : massa-pos-worker")
     }
 
     /// process the result of a draw
