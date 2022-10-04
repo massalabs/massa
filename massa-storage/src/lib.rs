@@ -31,6 +31,7 @@ use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::{collections::hash_map, sync::Arc};
+use tracing::warn;
 
 /// A storage system for objects (blocks, operations...), shared by various components.
 pub struct Storage {
@@ -373,6 +374,10 @@ impl Storage {
             op_store.insert(op);
         }
         Storage::internal_claim_refs(&ids, &mut owners, &mut self.local_used_ops);
+        warn!(
+            ">>>> GLOBAL OP COUNT = {}",
+            self.operations.read().operations.len()
+        );
     }
 
     /// Gets a read reference to the operations index

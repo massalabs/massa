@@ -13,6 +13,7 @@ use massa_models::{
 };
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use tracing::warn;
 
 /// Information about a slot in the execution sequence
 #[derive(Debug, Clone)]
@@ -355,6 +356,8 @@ impl SlotSequencer {
 
         // Cleanup the sequence
         self.cleanup_sequence();
+
+        warn!(">>>> EXECUTION SEQUENCE LENGTH = {}", self.sequence.len());
     }
 
     /// Internal method called by `Self::update` to construct one slot of the new slot sequence

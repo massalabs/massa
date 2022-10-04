@@ -34,6 +34,7 @@ use tokio::{
     sync::mpsc::error::SendTimeoutError,
     time::{sleep, sleep_until, Instant, Sleep},
 };
+use tracing::log::warn;
 use tracing::{debug, error, info, warn};
 
 // TODO connect protocol to pool so that it sends ops and endorsements
@@ -522,6 +523,8 @@ impl ProtocolWorker {
                     "protocol.protocol_worker.process_command.wishlist_delta.end",
                     {}
                 );
+
+                warn!(">>>> WISHLIST SIZE = {}", self.block_wishlist.len());
             }
             ProtocolCommand::PropagateOperations(storage) => {
                 // Note: should we claim refs locally?

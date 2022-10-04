@@ -1,5 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::types::{OperationInfo, PoolOperationCursor};
 use massa_execution_exports::ExecutionController;
 use massa_models::{
     address::Address,
@@ -11,8 +12,7 @@ use massa_models::{
 use massa_pool_exports::PoolConfig;
 use massa_storage::Storage;
 use std::collections::BTreeSet;
-
-use crate::types::{OperationInfo, PoolOperationCursor};
+use tracing::warn;
 
 pub struct OperationPool {
     /// configuration
@@ -169,6 +169,11 @@ impl OperationPool {
 
         // Clean the removed operations from storage.
         self.storage.drop_operation_refs(&removed);
+
+        warn!(
+            ">>>> POOL OP REF COUNT = {}",
+            self.storage.get_op_refs().len()
+        );
     }
 
     /// get operations for block creation

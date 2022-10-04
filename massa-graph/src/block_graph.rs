@@ -27,7 +27,7 @@ use massa_storage::Storage;
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, BTreeSet, HashMap, VecDeque};
 use std::mem;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
@@ -820,6 +820,14 @@ impl BlockGraph {
         block_id: BlockId,
         current_slot: Option<Slot>,
     ) -> Result<BTreeSet<(Slot, BlockId)>> {
+        warn!(
+            ">>>> CONSENSUS BLOCK_STATUSES COUNT = {} (active={} dep={} future={})",
+            self.block_statuses.len(),
+            self.active_index.len(),
+            self.waiting_for_dependencies_index.len(),
+            self.waiting_for_slot_index.len()
+        );
+
         // list items to reprocess
         let mut reprocess = BTreeSet::new();
 

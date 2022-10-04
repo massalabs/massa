@@ -12,6 +12,7 @@ massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
 massa_pool_exports = { path = "../massa-pool-exports" }
 massa_execution_exports = { path = "../massa-execution-exports" }
+tracing = "0.1"
 
 [dev-dependencies]
 massa_signature = { path = "../massa-signature" }

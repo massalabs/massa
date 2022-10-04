@@ -11,7 +11,7 @@ use massa_models::{
 #[derive(Default)]
 pub struct OperationIndexes {
     /// Operations structure container
-    operations: PreHashMap<OperationId, WrappedOperation>,
+    pub operations: PreHashMap<OperationId, WrappedOperation>,
     /// Structure mapping creators with the created operations
     index_by_creator: PreHashMap<Address, PreHashSet<OperationId>>,
 }
