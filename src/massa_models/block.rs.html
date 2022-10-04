@@ -1897,7 +1897,7 @@
         )
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_block);
 
-        <span class="macro">assert!</span>(res.is_err())
+        <span class="macro">assert_eq!</span>(res.is_err(), <span class="bool-val">true</span>);
     }
 }
 </code></pre></div>
