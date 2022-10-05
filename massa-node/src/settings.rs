@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! Build here the default node settings from the configuration file toml
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 
 use enum_map::EnumMap;
 use massa_models::config::build_massa_settings;
@@ -68,7 +68,7 @@ pub struct NetworkSettings {
     pub max_bytes_write: f64,
 }
 
-/// Bootstrap configuration.
+/// Bootstrap config.
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapSettings {
     pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
@@ -154,7 +154,7 @@ pub struct ConsensusSettings {
     pub max_item_return_count: usize,
 }
 
-/// Protocol Configuration, read from toml user configuration file
+/// Protocol Configuration, read from toml user config file
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct ProtocolSettings {
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node
@@ -180,15 +180,10 @@ pub struct ProtocolSettings {
     /// Maximum number of batches in the memory buffer.
     /// Dismiss the new batches if overflow
     pub operation_batch_buffer_capacity: usize,
-    /// Maximum number of operations in the announcement buffer.
-    /// Immediately announce if overflow.
-    pub operation_announcement_buffer_capacity: usize,
     /// Start processing batches in the buffer each `operation_batch_proc_period` in millisecond
     pub operation_batch_proc_period: MassaTime,
     /// All operations asked are prune each `operation_asked_pruning_period` millisecond
     pub asked_operations_pruning_period: MassaTime,
-    /// Interval at which operations are announced in batches.
-    pub operation_announcement_interval: MassaTime,
     /// Maximum of operations sent in one message.
     pub max_operations_per_message: u64,
     /// Time threshold after which operation are not propagated
@@ -196,6 +191,60 @@ pub struct ProtocolSettings {
     /// Time threshold after which operation are not propagated
     pub max_endorsements_propagation_time: MassaTime,
 }
+
+pub fn load_file() -> Vec<(SocketAddr, PublicKey)> {
+    use std::fs::File;
+    use std::io::prelude::*;
+    use yaml_rust::YamlLoader;
+    // use std::net::SocketAddr;
+    let file = "./src/whiteliste.yaml";
+    let mut file = File::open(file).expect("Unable to open file");
+    let mut contents = String::new();
+
+    file.read_to_string(&mut contents)
+        .expect("Unable to read file");
+
+    let docs = YamlLoader::load_from_str(&contents).unwrap();
+    let mut bootstrap_list: Vec<(SocketAddr, PublicKey)> = vec![];
+    for s in docs[0]["whitelist"].as_vec().unwrap() {
+        let address: SocketAddr = s[0].as_str().unwrap().parse().expect("Unable to parse socket address");
+        // let x: PublicKey;
+        let y = s[1].as_str().unwrap().to_owned();
+        let x = PublicKey::from_str(&y);
+        // let x = x;
+        bootstrap_list.push((address, x.unwrap()))
+
+    }
+    // println!("{:?}", );
+    bootstrap_list
+}
+
+pub fn load_file2() -> Vec<SocketAddr> {
+    use std::fs::File;
+    use std::io::prelude::*;
+    use yaml_rust::YamlLoader;
+    // use std::net::SocketAddr;
+    let file = "./src/whiteliste.yaml";
+    let mut file = File::open(file).expect("Unable to open file");
+    let mut contents = String::new();
+
+    file.read_to_string(&mut contents)
+        .expect("Unable to read file");
+
+    let docs = YamlLoader::load_from_str(&contents).unwrap();
+    let mut bootstrap_list: Vec<SocketAddr> = vec![];
+    for s in docs[0]["whitelist"].as_vec().unwrap() {
+        let address: SocketAddr = s[0].as_str().unwrap().parse().expect("Unable to parse socket address");
+        // let x: PublicKey;
+        // let x = x;
+        bootstrap_list.push(address)
+
+    }
+    // println!("{:?}", );
+    bootstrap_list
+}
+
+
 
 #[cfg(test)]
 #[test]

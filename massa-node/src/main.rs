@@ -5,7 +5,8 @@
 #![warn(unused_crate_dependencies)]
 extern crate massa_logging;
 use crate::settings::SETTINGS;
-
+use crate::settings::{load_file, load_file2};
+use massa_signature::{KeyPair, PublicKey};
 use dialoguer::Password;
 use massa_api::{APIConfig, Private, Public, RpcServer, StopHandle, API};
 use massa_async_pool::AsyncPoolConfig;
@@ -15,7 +16,7 @@ use massa_consensus_exports::{
     events::ConsensusEvent, settings::ConsensusChannels, ConsensusConfig, ConsensusEventReceiver,
 };
 use massa_consensus_worker::start_consensus_controller;
-use massa_execution_exports::{ExecutionConfig, ExecutionManager, StorageCostsConstants};
+use massa_execution_exports::{ExecutionConfig, ExecutionManager};
 use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
@@ -25,22 +26,21 @@ use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
 use massa_models::address::Address;
 use massa_models::config::constants::{
-    ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
-    CHANNEL_SIZE, DELTA_F0, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY, GENESIS_TIMESTAMP,
-    INITIAL_DRAW_SEED, LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_SIZE,
-    LEDGER_ENTRY_DATASTORE_BASE_SIZE, LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH,
+    BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY,
+    GENESIS_TIMESTAMP, INITIAL_DRAW_SEED, LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH,
     MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
-    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BYTECODE_LENGTH,
-    MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
-    MAX_DATA_ASYNC_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
-    MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT, MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK,
-    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
-    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, NETWORK_CONTROLLER_CHANNEL_SIZE,
-    NETWORK_EVENT_CHANNEL_SIZE, NETWORK_NODE_COMMAND_CHANNEL_SIZE, NETWORK_NODE_EVENT_CHANNEL_SIZE,
-    OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
-    PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE, T0, THREAD_COUNT,
-    VERSION,
+    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT,
+    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DATA_ASYNC_MESSAGE,
+    MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK,
+    MAX_LEDGER_CHANGES_COUNT, MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK, MAX_PARAMETERS_SIZE,
+    NETWORK_CONTROLLER_CHANNEL_SIZE, NETWORK_EVENT_CHANNEL_SIZE, OPERATION_VALIDITY_PERIODS,
+    PERIODS_PER_CYCLE, ROLL_PRICE, T0, THREAD_COUNT, VERSION,
+};
+use massa_models::config::{
+    ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, CHANNEL_SIZE, DELTA_F0, NETWORK_NODE_COMMAND_CHANNEL_SIZE,
+    NETWORK_NODE_EVENT_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+    PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE,
 };
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
@@ -61,11 +61,20 @@ use tokio::signal;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
+// use massa_signature::KeyPair;
 
 mod settings;
 
+// lazy_static::lazy_static! {
+//     pub static ref BOOTSTRAP_KEYPAIR: KeyPair = {
+//         let keypair = KeyPair::generate();
+//         keypair
+//     };
+// }
+
 async fn launch(
     node_wallet: Arc<RwLock<Wallet>>,
+    boot: bool,
 ) -> (
     ConsensusEventReceiver,
     Option<BootstrapManager>,
@@ -80,6 +89,7 @@ async fn launch(
     StopHandle,
     StopHandle,
 ) {
+    // info!("{}", boot);
     info!("Node version : {}", *VERSION);
     if let Some(end) = *END_TIMESTAMP {
         if MassaTime::now(0).expect("could not get now time") > end {
@@ -149,8 +159,25 @@ async fn launch(
     let stop_signal = signal::ctrl_c();
     tokio::pin!(stop_signal);
 
+    // info!("{:?}", SETTINGS.bootstrap.bootstrap_list);
+
+    let bootstrap_list = match boot {
+        true =>  {
+            let x = load_file2();
+            let mut y: Vec<(std::net::SocketAddr, PublicKey)> = vec![];
+            for i in 0..x.len() {
+                let keypair = KeyPair::generate();
+                y.push((x[i], keypair.get_public_key()));
+                // println!("{}", x[i])
+            }
+            // println!("{:?}", y);
+            y.clone()
+        }
+        false => SETTINGS.bootstrap.bootstrap_list.clone(),
+    };
+    info!("1");
     let bootstrap_config: BootstrapConfig = BootstrapConfig {
-        bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
+        bootstrap_list: bootstrap_list,
         bind: SETTINGS.bootstrap.bind,
         connect_timeout: SETTINGS.bootstrap.connect_timeout,
         read_timeout: SETTINGS.bootstrap.read_timeout,
@@ -183,12 +210,9 @@ async fn launch(
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_ledger_changes_count: MAX_LEDGER_CHANGES_COUNT,
         max_parameters_size: MAX_PARAMETERS_SIZE,
-        max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-        max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
-        max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         max_changes_slot_count: SETTINGS.ledger.final_history_length as u32,
     };
-
+    info!("2");
     // bootstrap
     let bootstrap_state = tokio::select! {
         _ = &mut stop_signal => {
@@ -207,7 +231,7 @@ async fn launch(
             Err(err) => panic!("critical error detected in the bootstrap process: {}", err)
         }
     };
-
+    info!("3");
     let network_config: NetworkConfig = NetworkConfig {
         bind: SETTINGS.network.bind,
         routable_ip: SETTINGS.network.routable_ip,
@@ -239,9 +263,6 @@ async fn launch(
         max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
         max_message_size: MAX_MESSAGE_SIZE,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
-        max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-        max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
-        max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameters_size: MAX_PARAMETERS_SIZE,
         controller_channel_size: NETWORK_CONTROLLER_CHANNEL_SIZE,
@@ -249,7 +270,7 @@ async fn launch(
         node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
         node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
     };
-
+    info!("4");
     // launch network controller
     let (network_command_sender, network_event_receiver, network_manager, private_key, node_id) =
         start_network_controller(
@@ -261,23 +282,13 @@ async fn launch(
         )
         .await
         .expect("could not start network controller");
-
+        info!("5");
     // give the controller to final state in order for it to feed the cycles
     final_state
         .write()
         .compute_initial_draws()
         .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
-
-    // Storage costs constants
-    let storage_costs_constants = StorageCostsConstants {
-        ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
-        ledger_entry_base_cost: LEDGER_COST_PER_BYTE
-            .checked_mul_u64(LEDGER_ENTRY_BASE_SIZE as u64)
-            .expect("Overflow when creating constant ledger_entry_base_cost"),
-        ledger_entry_datastore_base_cost: LEDGER_COST_PER_BYTE
-            .checked_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
-            .expect("Overflow when creating constant ledger_entry_datastore_base_size"),
-    };
+        info!("6");
     // launch execution module
     let execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,
@@ -297,16 +308,14 @@ async fn launch(
         stats_time_window_duration: SETTINGS.execution.stats_time_window_duration,
         max_miss_ratio: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
-        max_bytecode_size: MAX_BYTECODE_LENGTH,
-        max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
-        storage_costs_constants,
     };
+    info!("7");
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,
         final_state.clone(),
         selector_controller.clone(),
     );
-
+    info!("8");
     // launch pool controller
     let pool_config = PoolConfig {
         thread_count: THREAD_COUNT,
@@ -318,9 +327,10 @@ async fn launch(
         max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
     };
+    info!("9");
     let pool_controller = start_pool(pool_config, &shared_storage, execution_controller.clone());
     let pool_manager: Box<dyn PoolController> = Box::new(pool_controller.clone());
-
+    info!("10");
     // launch protocol controller
     let protocol_config = ProtocolConfig {
         thread_count: THREAD_COUNT,
@@ -337,12 +347,8 @@ async fn launch(
             .max_simultaneous_ask_blocks_per_node,
         max_send_wait: SETTINGS.protocol.max_send_wait,
         operation_batch_buffer_capacity: SETTINGS.protocol.operation_batch_buffer_capacity,
-        operation_announcement_buffer_capacity: SETTINGS
-            .protocol
-            .operation_announcement_buffer_capacity,
         operation_batch_proc_period: SETTINGS.protocol.operation_batch_proc_period,
         asked_operations_pruning_period: SETTINGS.protocol.asked_operations_pruning_period,
-        operation_announcement_interval: SETTINGS.protocol.operation_announcement_interval,
         max_operations_per_message: SETTINGS.protocol.max_operations_per_message,
         max_serialized_operations_size_per_block: MAX_BLOCK_SIZE as usize,
         controller_channel_size: PROTOCOL_CONTROLLER_CHANNEL_SIZE,
@@ -352,6 +358,7 @@ async fn launch(
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
     };
+    info!("11");
     let (protocol_command_sender, protocol_event_receiver, protocol_manager) =
         start_protocol_controller(
             protocol_config,
@@ -362,7 +369,7 @@ async fn launch(
         )
         .await
         .expect("could not start protocol controller");
-
+        info!("12");
     // init consensus configuration
     let consensus_config = ConsensusConfig {
         genesis_timestamp: *GENESIS_TIMESTAMP,
@@ -386,6 +393,7 @@ async fn launch(
         max_gas_per_block: MAX_GAS_PER_BLOCK,
         channel_size: CHANNEL_SIZE,
     };
+    info!("13");
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
@@ -403,7 +411,7 @@ async fn launch(
         )
         .await
         .expect("could not start consensus controller");
-
+        info!("14");
     // launch factory
     let factory_config = FactoryConfig {
         thread_count: THREAD_COUNT,
@@ -414,6 +422,7 @@ async fn launch(
         max_block_size: MAX_BLOCK_SIZE as u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
     };
+    info!("15");
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
         consensus: consensus_command_sender.clone(),
@@ -422,7 +431,7 @@ async fn launch(
         storage: shared_storage.clone(),
     };
     let factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
-
+    info!("16");
     // launch bootstrap server
     let bootstrap_manager = start_bootstrap_server(
         consensus_command_sender.clone(),
@@ -436,16 +445,13 @@ async fn launch(
     )
     .await
     .unwrap();
-
+    info!("17");
     let api_config: APIConfig = APIConfig {
         bind_private: SETTINGS.api.bind_private,
         bind_public: SETTINGS.api.bind_public,
         draw_lookahead_period_count: SETTINGS.api.draw_lookahead_period_count,
         max_arguments: SETTINGS.api.max_arguments,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
-        max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-        max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
-        max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_size: MAX_PARAMETERS_SIZE,
     };
@@ -459,7 +465,7 @@ async fn launch(
         node_wallet,
     );
     let api_private_handle = api_private.serve(&SETTINGS.api.bind_private);
-
+    info!("18");
     // spawn public API
     let api_public = API::<Public>::new(
         consensus_command_sender.clone(),
@@ -601,6 +607,8 @@ struct Args {
     /// Wallet password
     #[structopt(short = "p", long = "pwd")]
     password: Option<String>,
+    #[structopt(short = "b", long = "boot")]
+    boot: Option<String>,
 }
 
 /// Load wallet, asking for passwords if necessary
@@ -649,6 +657,17 @@ async fn main(args: Args) -> anyhow::Result<()> {
         .with(tracing_layer)
         .init();
 
+    let x = match args.boot {
+        None => {
+            info!("normal boot");
+            false
+
+        }
+        _ => {
+            info!("boot on whitlist");
+            true
+        }
+    };
     // Setup panic handlers,
     // and when a panic occurs,
     // run default handler,
@@ -676,7 +695,7 @@ async fn main(args: Args) -> anyhow::Result<()> {
             mut api_private_stop_rx,
             api_private_handle,
             api_public_handle,
-        ) = launch(node_wallet.clone()).await;
+        ) = launch(node_wallet.clone(), x).await;
 
         // interrupt signal listener
         let stop_signal = signal::ctrl_c();
