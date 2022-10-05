@@ -59,6 +59,8 @@ pub mod timeslots;
 pub mod version;
 /// trait for signed structure
 pub mod wrapped;
+/// Denouncement
+mod denouncement;
 
 /// Test utils
 #[cfg(feature = "testing")]

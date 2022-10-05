@@ -197,6 +197,7 @@ enum OperationTypeId {
     RollSell = 2,
     ExecuteSC = 3,
     CallSC = 4,
+    Denouncement = 5
 }
 
 /// the operation as sent in the network
@@ -773,6 +774,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                     },
                 )
                 .parse(input),
+                OperationTypeId::Denouncement => todo!(),
             }
         })
         .parse(buffer)

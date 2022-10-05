@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use crate::{address::Address, error::ModelsError};
-use massa_hash::Hash;
+use massa_hash::{Hash, Hasher};
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use massa_signature::{
     KeyPair, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer,
@@ -73,6 +73,32 @@ where
         })
     }
 
+    ///
+    fn new_wrapped_with_hasher<SC, U, H>(content: Self, content_serializer: SC, keypair: &KeyPair, content_hasher: H)
+        -> Result<Wrapped<Self, U>, ModelsError>
+        where SC: Serializer<Self>,
+              U: Id,
+              H: Hasher<Self>
+    {
+        let mut content_serialized = Vec::new();
+        content_serializer.serialize(&content, &mut content_serialized)?;
+        // let mut hash_data = Vec::new();
+        let public_key = keypair.get_public_key();
+        let hash = content_hasher.hash(&content,
+                                       public_key.to_bytes(),
+                                       &content_serialized.clone())?;
+
+        let creator_address = Address::from_public_key(&public_key);
+        Ok(Wrapped {
+            signature: keypair.sign(&hash)?,
+            creator_public_key: public_key,
+            creator_address,
+            content,
+            serialized_data: content_serialized,
+            id: U::new(hash),
+        })
+    }
+
     /// Serialize the wrapped structure
     fn serialize(
         signature: &Signature,
@@ -97,6 +123,7 @@ where
         signature_deserializer: &SignatureDeserializer,
         creator_public_key_deserializer: &PublicKeyDeserializer,
         content_deserializer: &DC,
+        content_hasher: Option<&dyn Hasher<Self>>,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Wrapped<Self, U>, E> {
         let (serialized_data, (signature, creator_public_key)) = context(
@@ -129,6 +156,20 @@ where
         let creator_address = Address::from_public_key(&creator_public_key);
         let mut serialized_full_data = creator_public_key.to_bytes().to_vec();
         serialized_full_data.extend(&content_serialized);
+
+        let hash = if let Some(hasher) = content_hasher {
+            hasher.hash(&content, creator_public_key.to_bytes(),
+                        &content_serialized)
+                .map_err(|_| {
+                    nom::Err::Error(ParseError::from_error_kind(
+                        rest,
+                        nom::error::ErrorKind::Fail,
+                    ))
+                })?
+        } else {
+            Hash::compute_from(&serialized_full_data)
+        };
+
         Ok((
             rest,
             Wrapped {
@@ -137,7 +178,7 @@ where
                 creator_public_key,
                 creator_address,
                 serialized_data: content_serialized.to_vec(),
-                id: U::new(Hash::compute_from(&serialized_full_data)),
+                id: U::new(hash),
             },
         ))
     }
@@ -292,6 +333,28 @@ where
             &self.signature_deserializer,
             &self.public_key_deserializer,
             &self.content_deserializer,
+            None,
+            buffer,
+        )
+    }
+
+    ///
+    pub fn deserialize_with2<
+        'a,
+        E: ParseError<&'a [u8]> + ContextError<&'a [u8]>,
+        U: Id,
+        H: Hasher<T>,
+    >(
+        &self,
+        content_hasher: &H,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Wrapped<T, U>, E> {
+        T::deserialize(
+            None,
+            &self.signature_deserializer,
+            &self.public_key_deserializer,
+            &self.content_deserializer,
+            Some(content_hasher),
             buffer,
         )
     }
@@ -337,6 +400,7 @@ where
             &self.signature_deserializer,
             &self.public_key_deserializer,
             &self.content_deserializer,
+            None,
             buffer,
         )
     }

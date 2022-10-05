@@ -9,7 +9,7 @@ use crate::{
     operation::{OperationId, OperationIdsDeserializer, OperationIdsSerializer, WrappedOperation},
     slot::{Slot, SlotDeserializer, SlotSerializer},
 };
-use massa_hash::{Hash, HashDeserializer};
+use massa_hash::{Hash, HashDeserializer, Hasher};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
@@ -147,6 +147,7 @@ impl WrappedContent for Block {
         _signature_deserializer: &massa_signature::SignatureDeserializer,
         _creator_public_key_deserializer: &massa_signature::PublicKeyDeserializer,
         content_deserializer: &DC,
+        _content_hasher: Option<&dyn Hasher<Self>>,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Wrapped<Self, U>, E> {
         let (rest, content) = content_deserializer.deserialize(buffer)?;
