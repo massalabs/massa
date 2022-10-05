@@ -317,11 +317,16 @@ impl SlotSequencer {
                 in_sce_finality,
             );
 
-            // The computed slot is not SCE-final => all subsequent slots are not SCE-final
+            // If the computed slot is not SCE-final => all subsequent slots are not SCE-final
             in_sce_finality = in_sce_finality && seq_item.sce_final;
 
             // Append the slot to the new sequence.
             new_sequence.push_back(seq_item);
+
+            // If this slot is SCE-final => update the latest SCE-final slot
+            if in_sce_finality {
+                self.latest_sce_final_slot = slot;
+            }
 
             // If the obtained slot overwrites history before the candidate execution cursor,
             // roll back the candidate execution cursor to the slot just before the overwrite.
