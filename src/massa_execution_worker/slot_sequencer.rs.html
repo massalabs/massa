@@ -745,6 +745,14 @@
 <span id="745">745</span>
 <span id="746">746</span>
 <span id="747">747</span>
+<span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This module allows Execution to manage slot sequencing.
@@ -1193,7 +1201,7 @@
                 <span class="kw">return </span>(prev_slot_info, <span class="bool-val">false</span>);
             }
 
-            <span class="comment">// There is a new blockclique: check whether new slot content matches the old one
+            <span class="comment">// There is a new blockclique: check whether the new slot content matches the old one
             </span><span class="kw">if </span>new_blockclique_block.as_ref() == prev_slot_info.get_block_id() {
                 <span class="comment">// Contents match =&gt; simply return the old slot state
                 </span><span class="kw">return </span>(prev_slot_info, <span class="bool-val">false</span>);
@@ -1220,6 +1228,10 @@
 
         // Check if the new slot is CSS-final.
         </span><span class="kw">if </span>new_css_final {
+            <span class="comment">// The slot was absent (or considered a miss) before.
+            // So, if there is a new block there, consider that it caused a mismatch at this slot.
+            </span><span class="kw">let </span>mismatch = new_css_final_block.is_some();
+
             <span class="comment">// Generate the new CSS-final slot state.
             </span><span class="kw">let </span>slot_info = SlotInfo {
                 slot,
@@ -1238,12 +1250,16 @@
             };
 
             <span class="comment">// Return the newly created CSS-final slot.
-            </span><span class="kw">return </span>(slot_info, <span class="bool-val">false</span>);
+            </span><span class="kw">return </span>(slot_info, mismatch);
         }
 
         <span class="comment">// Here we know that the slot was absent from the old sequence and that it is not CSS-final.
 
-        // Generate a new speculative slot state for that slot.
+        // The slot was absent (or considered a miss) before.
+        // So, if there is a new block there, consider that it caused a mismatch at this slot.
+        </span><span class="kw">let </span>mismatch = new_blockclique_block.is_some();
+
+        <span class="comment">// Generate a new speculative slot state for that slot.
         </span><span class="kw">let </span>slot_info = SlotInfo {
             slot,
             css_final: <span class="bool-val">false</span>,
@@ -1259,7 +1275,7 @@
         };
 
         <span class="comment">// Return the newly created speculative slot state.
-        </span>(slot_info, <span class="bool-val">false</span>)
+        </span>(slot_info, mismatch)
     }
 
     <span class="doccomment">/// Get the index of a slot in the sequence, if present, otherwise None
