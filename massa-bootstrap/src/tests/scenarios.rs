@@ -150,16 +150,16 @@ async fn test_bootstrap_server() {
     // intercept peers being asked
     let wait_peers = async move || {
         // wait for bootstrap to ask network for peers, send them
-        let response = match wait_network_command(&mut network_cmd_rx, 1000.into(), |cmd| match cmd
-        {
-            NetworkCommand::GetBootstrapPeers(resp) => Some(resp),
-            _ => None,
-        })
-        .await
-        {
-            Some(resp) => resp,
-            None => panic!("timeout waiting for get peers command"),
-        };
+        let response =
+            match wait_network_command(&mut network_cmd_rx, 10000.into(), |cmd| match cmd {
+                NetworkCommand::GetBootstrapPeers(resp) => Some(resp),
+                _ => None,
+            })
+            .await
+            {
+                Some(resp) => resp,
+                None => panic!("timeout waiting for get peers command"),
+            };
         let sent_peers = get_peers();
         response.send(sent_peers.clone()).unwrap();
         sent_peers
@@ -181,9 +181,6 @@ async fn test_bootstrap_server() {
         response.send(Box::new(sent_graph.clone())).await.unwrap();
         sent_graph
     };
-
-    // wait for peers and graph
-    let (sent_peers, sent_graph) = tokio::join!(wait_peers(), wait_graph());
 
     // launch the modifier thread
     let list_changes: Arc<RwLock<Vec<(Slot, StateChanges)>>> = Arc::new(RwLock::new(Vec::new()));
@@ -208,6 +205,10 @@ async fn test_bootstrap_server() {
         }
     });
 
+    let sent_peers = wait_peers().await;
+    // wait for peers and graph
+    let sent_graph = wait_graph().await;
+
     // wait for get_state
     let bootstrap_res = get_state_h
         .await
@@ -215,13 +216,6 @@ async fn test_bootstrap_server() {
 
     // wait for bridge
     bridge.await.expect("bridge join failed");
-
-    // check peers
-    assert_eq!(
-        sent_peers.0,
-        bootstrap_res.peers.unwrap().0,
-        "mismatch between sent and received peers"
-    );
 
     // apply the changes to the server state before matching with the client
     {
@@ -256,6 +250,13 @@ async fn test_bootstrap_server() {
     let server_selection = server_selector_controller.get_entire_selection();
     let client_selection = client_selector_controller.get_entire_selection();
     assert_eq_pos_selection(&server_selection, &client_selection);
+
+    // check peers
+    assert_eq!(
+        sent_peers.0,
+        bootstrap_res.peers.unwrap().0,
+        "mismatch between sent and received peers"
+    );
 
     // check states
     assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());
