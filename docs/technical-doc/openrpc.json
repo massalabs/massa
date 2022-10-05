@@ -403,12 +403,12 @@
             ],
             "params": [
                 {
-                    "name": "name",
+                    "name": "OperationId",
                     "description": "String must be an operation Id",
                     "schema": {
                         "type": "array",
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/OperationId"
                         }
                     },
                     "required": true
@@ -1332,7 +1332,7 @@
                         "type": "boolean"
                     },
                     "operation": {
-                        "$ref": "#/components/schemas/OperationType",
+                        "$ref": "#/components/schemas/WrappedOperation",
                         "description": "The operation itself"
                     }
                 },
@@ -2245,6 +2245,34 @@
             "PubKey": {
                 "description": "Public key used to check if a message was encoded by the corresponding `PublicKey`.\nGenerated from the `KeyPair` using `SignatureEngine`",
                 "type": "string"
+            },
+            "WrappedOperation" : {
+                "description": "signed operation",
+                "required": [
+                    "content",
+                    "signature",
+                    "creator_public_key",
+                    "creator_address"
+                ],
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "$ref": "#/components/schemas/OperationType",
+                        "description": "operation type"
+                    },
+                    "signature": {
+                        "$ref": "#/components/schemas/Signature",
+                        "description": "signature"
+                    },
+                    "creator_public_key": {
+                        "$ref": "#/components/schemas/PubKey",
+                        "description": "the content creator public key"
+                    },
+                    "creator_address": {
+                        "$ref": "#/components/schemas/Address",
+                        "description": "the content creator address"
+                    }
+                }
             }
         },
         "contentDescriptors": {
