@@ -1226,6 +1226,13 @@
 <span id="1226">1226</span>
 <span id="1227">1227</span>
 <span id="1228">1228</span>
+<span id="1229">1229</span>
+<span id="1230">1230</span>
+<span id="1231">1231</span>
+<span id="1232">1232</span>
+<span id="1233">1233</span>
+<span id="1234">1234</span>
+<span id="1235">1235</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::checked_operations::CheckedOperations;
@@ -1566,6 +1573,13 @@
     </span><span class="kw">async fn </span>announce_ops(<span class="kw-2">&amp;mut </span><span class="self">self</span>, timer: <span class="kw-2">&amp;mut </span>Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;) {
         <span class="comment">// Quit if empty  to avoid iterating on nodes
         </span><span class="kw">if </span><span class="self">self</span>.operations_to_announce.is_empty() {
+            <span class="comment">// Reset timer.
+            </span><span class="kw">let </span>now = Instant::now();
+            <span class="kw">let </span>next_tick = now
+                .checked_add(<span class="self">self</span>.config.operation_announcement_interval.into())
+                <span class="comment">// .ok_or(TimeError::TimeOverflowError)?;
+                </span>.unwrap();
+            timer.set(sleep_until(next_tick));
             <span class="kw">return</span>;
         }
         <span class="kw">let </span>operation_ids = mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.operations_to_announce);
@@ -2455,4 +2469,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (01af5040f 2022-10-04)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>

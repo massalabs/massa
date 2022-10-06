@@ -190,14 +190,12 @@
 <span id="190">190</span>
 <span id="191">191</span>
 <span id="192">192</span>
-<span id="193">193</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! `Flexbuffer` layer between raw data and our objects.
 </span><span class="kw">use </span><span class="kw">crate</span>::messages::{MessageDeserializer, MessageSerializer};
 
 <span class="kw">use </span><span class="kw">super</span>::messages::Message;
-<span class="kw">use </span>async_speed_limit::{clock::StandardClock, Limiter, Resource};
 <span class="kw">use </span>massa_models::{
     error::ModelsError,
     serialization::{DeserializeMinBEInt, SerializeMinBEInt},
@@ -211,7 +209,7 @@
 
 <span class="doccomment">/// Used to serialize and send data.
 </span><span class="kw">pub struct </span>WriteBinder {
-    write_half: Resource&lt;WriteHalf, StandardClock&gt;,
+    write_half: WriteHalf,
     message_index: u64,
     max_message_size: u32,
 }
@@ -222,9 +220,9 @@
     /// # Argument
     /// * `write_half`: writer half.
     /// * `limit`: limit max bytes per second write
-    </span><span class="kw">pub fn </span>new(write_half: WriteHalf, limit: f64, max_message_size: u32) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(write_half: WriteHalf, _limit: f64, max_message_size: u32) -&gt; <span class="self">Self </span>{
         WriteBinder {
-            write_half: &lt;Limiter&gt;::new(limit).limit(write_half),
+            write_half,
             message_index: <span class="number">0</span>,
             max_message_size,
         }
@@ -258,7 +256,7 @@
 
 <span class="doccomment">/// Used to receive and deserialize data.
 </span><span class="kw">pub struct </span>ReadBinder {
-    read_half: Resource&lt;ReadHalf, StandardClock&gt;,
+    read_half: ReadHalf,
     message_index: u64,
     buf: Vec&lt;u8&gt;,
     cursor: usize,
@@ -275,12 +273,12 @@
     /// * `limit`: limit max bytes per second read.
     </span><span class="kw">pub fn </span>new(
         read_half: ReadHalf,
-        limit: f64,
+        _limit: f64,
         max_message_size: u32,
         message_deserializer: MessageDeserializer,
     ) -&gt; <span class="self">Self </span>{
         ReadBinder {
-            read_half: &lt;Limiter&gt;::new(limit).limit(read_half),
+            read_half,
             message_index: <span class="number">0</span>,
             buf: Vec::new(),
             cursor: <span class="number">0</span>,
@@ -385,4 +383,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (01af5040f 2022-10-04)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>
