@@ -74,19 +74,23 @@ where
     }
 
     ///
-    fn new_wrapped_with_hasher<SC, U, H>(content: Self, content_serializer: SC, keypair: &KeyPair, content_hasher: H)
-        -> Result<Wrapped<Self, U>, ModelsError>
-        where SC: Serializer<Self>,
-              U: Id,
-              H: Hasher<Self>
+    fn new_wrapped_with_hasher<SC, U, H>(
+        content: Self,
+        content_serializer: SC,
+        keypair: &KeyPair,
+        content_hasher: H,
+    ) -> Result<Wrapped<Self, U>, ModelsError>
+    where
+        SC: Serializer<Self>,
+        U: Id,
+        H: Hasher<Self>,
     {
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&content, &mut content_serialized)?;
         // let mut hash_data = Vec::new();
         let public_key = keypair.get_public_key();
-        let hash = content_hasher.hash(&content,
-                                       public_key.to_bytes(),
-                                       &content_serialized.clone())?;
+        let hash =
+            content_hasher.hash(&content, public_key.to_bytes(), &content_serialized.clone())?;
 
         let creator_address = Address::from_public_key(&public_key);
         Ok(Wrapped {
@@ -158,8 +162,8 @@ where
         serialized_full_data.extend(&content_serialized);
 
         let hash = if let Some(hasher) = content_hasher {
-            hasher.hash(&content, creator_public_key.to_bytes(),
-                        &content_serialized)
+            hasher
+                .hash(&content, creator_public_key.to_bytes(), &content_serialized)
                 .map_err(|_| {
                     nom::Err::Error(ParseError::from_error_kind(
                         rest,

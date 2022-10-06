@@ -27,6 +27,8 @@ pub mod composite;
 pub mod config;
 /// datastore serialization / deserialization
 pub mod datastore;
+/// Denouncement
+mod denouncement;
 /// endorsements
 pub mod endorsement;
 /// models error
@@ -59,8 +61,6 @@ pub mod timeslots;
 pub mod version;
 /// trait for signed structure
 pub mod wrapped;
-/// Denouncement
-mod denouncement;
 
 /// Test utils
 #[cfg(feature = "testing")]

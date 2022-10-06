@@ -322,8 +322,7 @@ impl Deserializer<Endorsement> for EndorsementDeserializerLW {
 }
 
 /// Hasher for `Endorsement`
-pub struct EndorsementHasher {
-}
+pub struct EndorsementHasher {}
 
 impl EndorsementHasher {
     /// Creates a new
@@ -333,7 +332,12 @@ impl EndorsementHasher {
 }
 
 impl Hasher<Endorsement> for EndorsementHasher {
-    fn hash(&self, value: &Endorsement, public_key: &[u8], content: &[u8]) -> Result<Hash, SerializeError> {
+    fn hash(
+        &self,
+        value: &Endorsement,
+        public_key: &[u8],
+        content: &[u8],
+    ) -> Result<Hash, SerializeError> {
         let mut hash_data = Vec::new();
         hash_data.extend(public_key);
         hash_data.extend(content);
@@ -411,17 +415,19 @@ mod tests {
 
     #[test]
     fn test_wrapped_endorsement_with_hasher() {
-
         let sender_keypair = KeyPair::generate();
         let content = Endorsement {
             slot: Slot::new(11, 3),
             index: 0,
             endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
         };
-        let endorsement: WrappedEndorsement =
-            Endorsement::new_wrapped_with_hasher(content, EndorsementSerializer::new(),
-                                                 &sender_keypair, EndorsementHasher::new())
-                .unwrap();
+        let endorsement: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
+            content,
+            EndorsementSerializer::new(),
+            &sender_keypair,
+            EndorsementHasher::new(),
+        )
+        .unwrap();
 
         let mut ser_endorsement: Vec<u8> = Vec::new();
         let serializer = WrappedSerializer::new();
@@ -429,11 +435,13 @@ mod tests {
             .serialize(&endorsement, &mut ser_endorsement)
             .unwrap();
 
-        let wrapped_deser = WrappedDeserializer::new(
-            EndorsementDeserializer::new(32, 1));
+        let wrapped_deser = WrappedDeserializer::new(EndorsementDeserializer::new(32, 1));
         let h = EndorsementHasher::new();
         let (_rem, res_endorsement) = wrapped_deser
-            .deserialize_with2::<'_, nom::error::Error<&'_ [u8]>, EndorsementId, _>(&h, &ser_endorsement)
+            .deserialize_with2::<'_, nom::error::Error<&'_ [u8]>, EndorsementId, _>(
+                &h,
+                &ser_endorsement,
+            )
             .unwrap();
 
         assert_eq!(res_endorsement, endorsement);

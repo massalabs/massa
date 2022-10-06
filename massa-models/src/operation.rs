@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
+use crate::denouncement::{Denouncement, DenouncementDeserializer, DenouncementSerializer};
 use crate::prehash::{PreHashSet, PreHashed};
 use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
 use crate::{
@@ -197,7 +198,7 @@ enum OperationTypeId {
     RollSell = 2,
     ExecuteSC = 3,
     CallSC = 4,
-    Denouncement = 5
+    Denouncement = 5,
 }
 
 /// the operation as sent in the network
@@ -425,6 +426,11 @@ pub enum OperationType {
         /// The price per unit of gas that the caller is willing to pay for the execution.
         gas_price: Amount,
     },
+    /// Report on double block (at the same slot) or multiple endorsement (same slot, same index)
+    Denouncement {
+        /// The denouncement
+        data: Denouncement,
+    },
 }
 
 impl std::fmt::Display for OperationType {
@@ -472,6 +478,12 @@ impl std::fmt::Display for OperationType {
                 writeln!(f, "\t- gas_price:{}", gas_price)?;
                 writeln!(f, "\t- coins:{}", coins)?;
             }
+            OperationType::Denouncement {
+                data
+            } => {
+                writeln!(f, "Denouncement:")?;
+                writeln!(f, "\t- {}", data)?;
+            }
         }
         Ok(())
     }
@@ -486,6 +498,7 @@ pub struct OperationTypeSerializer {
     function_name_serializer: StringSerializer<U16VarIntSerializer, u16>,
     parameter_serializer: StringSerializer<U32VarIntSerializer, u32>,
     datastore_serializer: DatastoreSerializer,
+    denouncement_serializer: DenouncementSerializer,
 }
 
 impl OperationTypeSerializer {
@@ -499,6 +512,7 @@ impl OperationTypeSerializer {
             function_name_serializer: StringSerializer::new(U16VarIntSerializer::new()),
             parameter_serializer: StringSerializer::new(U32VarIntSerializer::new()),
             datastore_serializer: DatastoreSerializer::new(),
+            denouncement_serializer: DenouncementSerializer::new(),
         }
     }
 }
@@ -580,6 +594,11 @@ impl Serializer<OperationType> for OperationTypeSerializer {
                     .serialize(target_func, buffer)?;
                 self.parameter_serializer.serialize(param, buffer)?;
             }
+            OperationType::Denouncement { data } => {
+                self.u32_serializer
+                    .serialize(&u32::from(OperationTypeId::Denouncement), buffer)?;
+                self.denouncement_serializer.serialize(&data, buffer)?;
+            }
         }
         Ok(())
     }
@@ -596,6 +615,7 @@ pub struct OperationTypeDeserializer {
     function_name_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
     parameter_deserializer: StringDeserializer<U32VarIntDeserializer, u32>,
     datastore_deserializer: DatastoreDeserializer,
+    denoucement_deserializer: DenouncementDeserializer,
 }
 
 impl OperationTypeDeserializer {
@@ -633,6 +653,10 @@ impl OperationTypeDeserializer {
                 max_op_datastore_entry_count,
                 max_op_datastore_key_length,
                 max_op_datastore_value_length,
+            ),
+            denoucement_deserializer: DenouncementDeserializer::new(
+                // FIXME
+                32, 16,
             ),
         }
     }
@@ -774,7 +798,14 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                     },
                 )
                 .parse(input),
-                OperationTypeId::Denouncement => todo!(),
+                OperationTypeId::Denouncement => context(
+                    "Failed Denouncement op deser",
+                    context("Failed max_gas deserialization", |input| {
+                        self.denoucement_deserializer.deserialize(input)
+                    }),
+                )
+                .map(|de| OperationType::Denouncement { data: de })
+                .parse(input),
             }
         })
         .parse(buffer)
@@ -800,6 +831,7 @@ impl WrappedOperation {
             OperationType::RollBuy { .. } => 0,
             OperationType::RollSell { .. } => 0,
             OperationType::Transaction { .. } => 0,
+            OperationType::Denouncement { .. } => 0,
         }
     }
 
@@ -811,6 +843,7 @@ impl WrappedOperation {
             OperationType::RollBuy { .. } => Amount::default(),
             OperationType::RollSell { .. } => Amount::default(),
             OperationType::Transaction { .. } => Amount::default(),
+            OperationType::Denouncement { .. } => Amount::default(),
         }
     }
 
@@ -842,6 +875,7 @@ impl WrappedOperation {
             OperationType::CallSC { target_addr, .. } => {
                 res.insert(*target_addr);
             }
+            OperationType::Denouncement { .. } => {}
         }
         res
     }
@@ -864,6 +898,7 @@ impl WrappedOperation {
             } => gas_price
                 .saturating_mul_u64(*max_gas)
                 .saturating_add(*coins),
+            OperationType::Denouncement { .. } => Amount::zero(),
         };
 
         // add all fees and return
@@ -883,6 +918,7 @@ impl WrappedOperation {
             }
             OperationType::ExecuteSC { .. } => {}
             OperationType::CallSC { .. } => {}
+            OperationType::Denouncement { .. } => {}
         }
         Ok(res)
     }
@@ -1297,6 +1333,8 @@ mod tests {
     };
 
     use super::*;
+    use crate::denouncement::{DenouncementProof, EndorsementDenouncement};
+    use crate::slot::Slot;
     use massa_serialization::DeserializeError;
     use massa_signature::KeyPair;
     use serial_test::serial;
@@ -1523,6 +1561,96 @@ mod tests {
             .deserialize::<DeserializeError>(&ser_op)
             .unwrap();
         assert_eq!(res_op, op);
+
+        assert_eq!(op.get_validity_range(10), 40..=50);
+    }
+
+    #[test]
+    #[serial]
+    fn test_denouncement() {
+        let sender_keypair = KeyPair::generate();
+
+        let target_keypair = KeyPair::generate();
+        let target_addr = Address::from_public_key(&target_keypair.get_public_key());
+
+        // Dummy hash & signature (no point in using a real endorsement/block here)
+        let de_keypair = KeyPair::generate();
+        let data = Hash::compute_from("12345".as_bytes());
+        let sig = de_keypair.sign(&data).unwrap();
+        let slot = Slot::new(1, 5);
+
+        let denouncement = Denouncement {
+            slot,
+            proof: DenouncementProof::Endorsement(EndorsementDenouncement {
+                signature_1: sig,
+                hash_1: data,
+                index_1: 3,
+                signature_2: sig,
+                hash_2: data,
+                index_2: 3,
+            }),
+        };
+
+        let op = OperationType::Denouncement { data: denouncement };
+
+        let mut ser_type = Vec::new();
+        OperationTypeSerializer::new()
+            .serialize(&op, &mut ser_type)
+            .unwrap();
+
+        let (_, res_type) = OperationTypeDeserializer::new(
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+            MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+            MAX_OPERATION_DATASTORE_KEY_LENGTH,
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+        )
+        .deserialize::<DeserializeError>(&ser_type)
+        .unwrap();
+        assert_eq!(format!("{}", res_type), format!("{}", op));
+
+        let content = Operation {
+            fee: Amount::from_str("20").unwrap(),
+            op,
+            expire_period: 50,
+        };
+
+        let mut ser_content = Vec::new();
+        OperationSerializer::new()
+            .serialize(&content, &mut ser_content)
+            .unwrap();
+        let (_, res_content) = OperationDeserializer::new(
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+            MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+            MAX_OPERATION_DATASTORE_KEY_LENGTH,
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+        )
+        .deserialize::<DeserializeError>(&ser_content)
+        .unwrap();
+        assert_eq!(format!("{}", res_content), format!("{}", content));
+        let op_serializer = OperationSerializer::new();
+
+        let op = Operation::new_wrapped(content, op_serializer, &sender_keypair).unwrap();
+
+        let mut ser_op = Vec::new();
+        WrappedSerializer::new()
+            .serialize(&op, &mut ser_op)
+            .unwrap();
+        let (_, res_op): (&[u8], WrappedOperation) =
+            WrappedDeserializer::new(OperationDeserializer::new(
+                MAX_DATASTORE_VALUE_LENGTH,
+                MAX_FUNCTION_NAME_LENGTH,
+                MAX_PARAMETERS_SIZE,
+                MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+                MAX_OPERATION_DATASTORE_KEY_LENGTH,
+                MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            ))
+            .deserialize::<DeserializeError>(&ser_op)
+            .unwrap();
+        assert_eq!(format!("{}", res_op), format!("{}", op));
 
         assert_eq!(op.get_validity_range(10), 40..=50);
     }

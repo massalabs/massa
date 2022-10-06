@@ -306,6 +306,9 @@ impl ExecutionState {
             OperationType::Transaction { .. } => {
                 self.execute_transaction_op(&operation.content.op, sender_addr)
             }
+            OperationType::Denouncement { .. } => {
+                self.execute_denouncement_op(&operation.content.op, sender_addr)
+            }
         };
 
         {
@@ -615,6 +618,14 @@ impl ExecutionState {
         }
 
         Ok(())
+    }
+
+    pub fn execute_denouncement_op(
+        &self,
+        operation: &OperationType,
+        sender_addr: Address,
+    ) -> Result<(), ExecutionError> {
+        todo!()
     }
 
     /// Tries to execute an asynchronous message
