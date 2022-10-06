@@ -342,8 +342,7 @@ impl ProtocolWorker {
             let now = Instant::now();
             let next_tick = now
                 .checked_add(self.config.operation_announcement_interval.into())
-                // .ok_or(TimeError::TimeOverflowError)?;
-                .unwrap();
+                .expect("time overflow");
             timer.set(sleep_until(next_tick));
             return;
         }
@@ -373,8 +372,7 @@ impl ProtocolWorker {
         let now = Instant::now();
         let next_tick = now
             .checked_add(self.config.operation_announcement_interval.into())
-            // .ok_or(TimeError::TimeOverflowError)?;
-            .unwrap();
+            .expect("time overflow");
         timer.set(sleep_until(next_tick));
     }
 
@@ -540,9 +538,7 @@ impl ProtocolWorker {
 
                 // Note operations as checked.
                 self.prune_checked_operations();
-                for id in operation_ids {
-                    self.checked_operations.insert(id);
-                }
+                self.checked_operations.extend(&operation_ids);
 
                 // Announce operations to active nodes not knowing about it.
                 let to_announce: Vec<OperationId> = operation_ids.iter().copied().collect();
@@ -863,28 +859,16 @@ impl ProtocolWorker {
             return Ok(Some((block_id, false)));
         }
 
-        let (_endorsement_ids, endorsements_reused) = match self
+        if let Err(err) = self
             .note_endorsements_from_node(header.content.endorsements.clone(), source_node_id, false)
             .await
         {
-            Err(_) => {
-                warn!(
-                    "node {} sent us a header containing critically incorrect endorsements",
-                    source_node_id
-                );
-                return Ok(None);
-            }
-            Ok(id) => id,
-        };
-
-        // check if some endorsements are duplicated in the header
-        if endorsements_reused {
-            massa_trace!(
-                "protocol.protocol_worker.check_header.err_endorsement_reused",
-                { "header": header }
+            warn!(
+                "node {} sent us a header containing critically incorrect endorsements: {}",
+                source_node_id, err
             );
             return Ok(None);
-        }
+        };
 
         // check header signature
         if let Err(err) = header.verify_signature() {
@@ -971,11 +955,6 @@ impl ProtocolWorker {
     ///
     /// Does not ban if the operation is invalid.
     ///
-    /// Returns :
-    /// - a list of seen operation ids, for use in checking the root hash of the block.
-    /// - a map of seen operations with indices and validity periods to avoid recomputing them later
-    /// - the sum of all operation's `max_gas`.
-    ///
     /// Checks performed:
     /// - Valid signature
     pub(crate) async fn note_operations_from_node(
@@ -983,18 +962,17 @@ impl ProtocolWorker {
         operations: Vec<WrappedOperation>,
         source_node_id: &NodeId,
         op_timer: &mut Pin<&mut Sleep>,
-    ) -> Result<(Vec<OperationId>, PreHashMap<OperationId, usize>), ProtocolError> {
+    ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
         let length = operations.len();
-        let mut seen_ops = vec![];
         let mut new_operations = PreHashMap::with_capacity(length);
-        let mut received_ids = PreHashMap::with_capacity(length);
-        for (idx, operation) in operations.into_iter().enumerate() {
+        let mut received_ids = PreHashSet::with_capacity(length);
+        for operation in operations {
             let operation_id = operation.id;
-            seen_ops.push(operation_id);
-            received_ids.insert(operation_id, idx);
+            received_ids.insert(operation_id);
+
             // Check operation signature only if not already checked.
-            if self.checked_operations.insert(&operation_id) {
+            if !self.checked_operations.contains(&operation_id.prefix()) {
                 // check signature if the operation wasn't in `checked_operation`
                 new_operations.insert(operation_id, operation);
             };
@@ -1008,15 +986,19 @@ impl ProtocolWorker {
                 .collect::<Vec<_>>(),
         )?;
 
+        // add to checked operations
+        self.checked_operations
+            .extend(&new_operations.keys().copied().collect());
+
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-            node_info.insert_known_ops(&seen_ops, self.config.max_node_known_ops_size);
+            node_info.insert_known_ops(
+                &received_ids.into_iter().collect::<Vec<_>>(),
+                self.config.max_node_known_ops_size,
+            );
         }
 
         if !new_operations.is_empty() {
-            // prune checked operations cache
-            self.prune_checked_operations();
-
             // Store operation, claim locally
             let mut ops = self.storage.clone_without_refs();
             ops.store_operations(new_operations.into_values().collect());
@@ -1060,7 +1042,7 @@ impl ProtocolWorker {
             self.pool_controller.add_operations(ops);
         }
 
-        Ok((seen_ops, received_ids))
+        Ok(())
     }
 
     /// Note endorsements coming from a given node,
@@ -1077,40 +1059,49 @@ impl ProtocolWorker {
         endorsements: Vec<WrappedEndorsement>,
         source_node_id: &NodeId,
         propagate: bool,
-    ) -> Result<(PreHashMap<EndorsementId, u32>, bool), ProtocolError> {
+    ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": source_node_id, "endorsements": endorsements});
         let length = endorsements.len();
-        let mut contains_duplicates = false;
-
         let mut new_endorsements = PreHashMap::with_capacity(length);
-        let mut endorsement_ids = PreHashMap::default();
+        let mut endorsement_ids = PreHashSet::with_capacity(length);
         for endorsement in endorsements.into_iter() {
             let endorsement_id = endorsement.id;
-            if endorsement_ids
-                .insert(endorsement_id, endorsement.content.index)
-                .is_some()
-            {
-                contains_duplicates = true;
-            }
+            endorsement_ids.insert(endorsement_id);
 
             // check endorsement signature if not already checked
-            if self.checked_endorsements.insert(endorsement_id) {
-                endorsement.verify_signature()?;
+            if !self.checked_endorsements.contains(&endorsement_id) {
                 new_endorsements.insert(endorsement_id, endorsement);
             }
         }
 
+        // Batch signature verification
+        // optimized signature verification
+        verify_sigs_batch(
+            &new_endorsements
+                .iter()
+                .map(|(endorsement_id, endorsement)| {
+                    (
+                        *endorsement_id.get_hash(),
+                        endorsement.signature,
+                        endorsement.creator_public_key,
+                    )
+                })
+                .collect::<Vec<_>>(),
+        )?;
+
+        // add to verified signature cache
+        self.checked_endorsements.extend(&endorsement_ids);
+        self.prune_checked_endorsements();
+
         // add to known endorsements for source node.
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
             node_info.insert_known_endorsements(
-                endorsement_ids.keys().copied().collect(),
+                endorsement_ids.into_iter().collect(),
                 self.config.max_node_known_endorsements_size,
             );
         }
 
         if !new_endorsements.is_empty() {
-            self.prune_checked_endorsements();
-
             let mut endorsements = self.storage.clone_without_refs();
             endorsements.store_endorsements(new_endorsements.into_values().collect());
 
@@ -1158,7 +1149,7 @@ impl ProtocolWorker {
             self.pool_controller.add_endorsements(endorsements);
         }
 
-        Ok((endorsement_ids, contains_duplicates))
+        Ok(())
     }
 }
 

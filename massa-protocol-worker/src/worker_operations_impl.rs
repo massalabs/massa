@@ -200,6 +200,10 @@ impl ProtocolWorker {
         node_id: NodeId,
         op_pre_ids: OperationPrefixIds,
     ) -> Result<(), ProtocolError> {
+        if op_pre_ids.is_empty() {
+            return Ok(());
+        }
+
         let mut ops: Vec<WrappedOperation> = Vec::with_capacity(op_pre_ids.len());
         {
             // Scope the lock because of the async call to `send_operations` below.

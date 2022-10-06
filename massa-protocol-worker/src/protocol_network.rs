@@ -6,7 +6,7 @@ use std::collections::hash_map::Entry;
 
 use crate::node_info::NodeInfo;
 use crate::protocol_worker::ProtocolWorker;
-use massa_hash::Hash;
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_logging::massa_trace;
 use massa_models::{
     block::Block,
@@ -196,7 +196,7 @@ impl ProtocolWorker {
                         self.config.max_node_known_blocks_size,
                     );
 
-                    // Send only the missing operations that is in storage.
+                    // Send only the missing operations that are in storage.
                     let needed_ops = {
                         let operations = self.storage.read_operations();
                         operations_ids
@@ -346,7 +346,8 @@ impl ProtocolWorker {
             return Ok(());
         }
 
-        let mut total_hash: Vec<u8> = vec![];
+        let mut total_hash: Vec<u8> =
+            Vec::with_capacity(operation_ids.len().saturating_mul(HASH_SIZE_BYTES));
         operation_ids.iter().for_each(|op_id| {
             let op_hash = op_id.get_hash().into_bytes();
             total_hash.extend(op_hash);
@@ -357,11 +358,13 @@ impl ProtocolWorker {
             // Add the ops of info.
             info.operation_ids = Some(operation_ids.clone());
             let known_operations = info.storage.claim_operation_refs(&operation_ids_set);
-            // remember the claimed operation to prune them later
-            self.checked_operations.extend(&known_operations);
 
+            // get the total size of known ops
             info.operations_size =
                 Self::get_total_operations_size(&self.storage, &known_operations);
+
+            // mark ops as checked
+            self.checked_operations.extend(&known_operations);
 
             if info.operations_size > self.config.max_serialized_operations_size_per_block {
                 warn!("Node id {} sent us a operation list for block id {} but the operations we already have in our records exceed max size.", from_node_id, block_id);
