@@ -265,44 +265,6 @@
         {
             "tags": [
                 {
-                    "name": "removed",
-                    "description": "Removed in TEST.12"
-                },
-                {
-                    "name": "public",
-                    "description": "Massa public api"
-                }
-            ],
-            "params": [
-                {
-                    "name": "key",
-                    "schema": {
-                        "type": "string"
-                    },
-                    "required": true
-                },
-                {
-                    "name": "address",
-                    "schema": {
-                        "type": "string"
-                    },
-                    "required": true
-                }
-            ],
-            "result": {
-                "schema": {
-                    "$ref": "#/components/schemas/DataStoreEntry"
-                },
-                "name": "DataStoreEntry"
-            },
-            "deprecated": true,
-            "name": "get_datastore_entry",
-            "summary": "Get datastore entry",
-            "description": "Get datastore entry."
-        },
-        {
-            "tags": [
-                {
                     "name": "public",
                     "description": "Massa public api"
                 }
