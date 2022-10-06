@@ -6,7 +6,7 @@ use massa_graph::{
 use massa_hash::Hash;
 use massa_models::{
     block::{Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, WrappedBlock},
-    endorsement::{Endorsement, EndorsementSerializer},
+    endorsement::{Endorsement, EndorsementSerializerLW},
     slot::Slot,
     wrapped::WrappedContent,
 };
@@ -15,7 +15,7 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use serial_test::serial;
 
-/// the data input to create the public keys was generated using the secp256k1 curve
+/// the data input to create the public keys was generated using the `secp256k1` curve
 /// a test using this function is a regression test not an implementation test
 fn get_export_active_test_block() -> (WrappedBlock, ExportActiveBlock) {
     let keypair = KeyPair::generate();
@@ -32,7 +32,7 @@ fn get_export_active_test_block() -> (WrappedBlock, ExportActiveBlock) {
                             index: 0,
                             slot: Slot::new(1, 0),
                         },
-                        EndorsementSerializer::new(),
+                        EndorsementSerializerLW::new(),
                         &keypair,
                     )
                     .unwrap()],
@@ -77,8 +77,9 @@ fn test_bootstrapable_graph_serialized() {
     };
 
     let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();
-    let bootstrapable_graph_deserializer =
-        BootstrapableGraphDeserializer::new(2, 8, 10000, 10000, 10000, 10000, 10000);
+    let bootstrapable_graph_deserializer = BootstrapableGraphDeserializer::new(
+        2, 8, 10000, 10000, 10000, 10000, 10000, 10, 255, 10_000,
+    );
     let mut bytes = Vec::new();
 
     bootstrapable_graph_serializer

@@ -26,8 +26,8 @@ pub trait SelectorController: Send + Sync {
     ///
     /// # Arguments
     /// * `cycle`: cycle number to be drawn
-    /// * `lookback_rolls`: lookback rolls used for the draw (cycle - 3)
-    /// * `lookback_seed`: lookback seed hash for the draw (cycle - 2)
+    /// * `lookback_rolls`: look back rolls used for the draw (cycle - 3)
+    /// * `lookback_seed`: look back seed hash for the draw (cycle - 2)
     fn feed_cycle(
         &self,
         cycle: u64,
@@ -40,8 +40,8 @@ pub trait SelectorController: Send + Sync {
     /// * `slot`: target slot of the selection
     fn get_selection(&self, slot: Slot) -> PosResult<Selection>;
 
-    /// Return a list of slots where `address` has been choosen to produce a
-    /// block and a list where he is choosen for the endorsements.
+    /// Return a list of slots where `address` has been chosen to produce a
+    /// block and a list where he is chosen for the endorsements.
     /// Look from the `start` slot to the `end` slot.
     fn get_address_selections(
         &self,
@@ -63,7 +63,9 @@ pub trait SelectorController: Send + Sync {
     ///
     /// Only used in tests for post-bootstrap selection matching.
     #[cfg(feature = "testing")]
-    fn get_entire_selection(&self) -> VecDeque<(u64, HashMap<Slot, Selection>)>;
+    fn get_entire_selection(&self) -> VecDeque<(u64, HashMap<Slot, Selection>)> {
+        unimplemented!("mock implementation only")
+    }
 }
 
 /// Allow cloning `Box<dyn SelectorController>`

@@ -9,16 +9,15 @@ use crate::{Command, DrawCachePtr};
 use massa_hash::Hash;
 use massa_models::{address::Address, api::IndexedSlot, slot::Slot};
 use massa_pos_exports::{PosError, PosResult, Selection, SelectorController, SelectorManager};
-use std::sync::mpsc::SyncSender;
-use tracing::{info, warn};
-
 #[cfg(feature = "testing")]
 use std::collections::{HashMap, VecDeque};
+use std::sync::mpsc::SyncSender;
+use tracing::{info, warn};
 
 #[derive(Clone)]
 /// implementation of the selector controller
 pub struct SelectorControllerImpl {
-    /// todo: use a config structure
+    /// todo: use a configuration structure
     pub(crate) periods_per_cycle: u64,
     /// thread count
     pub(crate) thread_count: u8,
@@ -54,8 +53,8 @@ impl SelectorController for SelectorControllerImpl {
     ///
     /// # Arguments
     /// * `cycle`: cycle number to be drawn
-    /// * `lookback_rolls`: lookback rolls used for the draw (cycle - 3)
-    /// * `lookback_seed`: lookback seed hash for the draw (cycle - 2)
+    /// * `lookback_rolls`: look back rolls used for the draw (cycle - 3)
+    /// * `lookback_seed`: look back seed hash for the draw (cycle - 2)
     fn feed_cycle(
         &self,
         cycle: u64,
@@ -113,8 +112,8 @@ impl SelectorController for SelectorControllerImpl {
             .ok_or(PosError::CycleUnavailable(cycle))
     }
 
-    /// Return a list of slots where `address` has been choosen to produce a
-    /// block and a list where he is choosen for the endorsements.
+    /// Return a list of slots where `address` has been chosen to produce a
+    /// block and a list where he is chosen for the endorsements.
     /// Look from the `start` slot to the `end` slot.
     fn get_address_selections(
         &self,

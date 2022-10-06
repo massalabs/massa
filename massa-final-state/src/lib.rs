@@ -38,6 +38,7 @@
 #![feature(hash_drain_filter)]
 #![feature(map_first_last)]
 #![feature(async_closure)]
+#![feature(map_try_insert)]
 
 mod config;
 mod error;
@@ -47,7 +48,7 @@ mod state_changes;
 
 pub use config::FinalStateConfig;
 pub use error::FinalStateError;
-pub use executed_ops::{ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer};
+pub use executed_ops::*;
 pub use final_state::FinalState;
 pub use state_changes::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 

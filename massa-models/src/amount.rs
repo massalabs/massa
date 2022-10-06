@@ -138,7 +138,7 @@ impl Amount {
     /// assert_eq!(res, Amount::from_str("294").unwrap());
     /// ```
     #[must_use]
-    pub fn saturating_mul_u64(self, factor: u64) -> Self {
+    pub const fn saturating_mul_u64(self, factor: u64) -> Self {
         Amount(self.0.saturating_mul(factor))
     }
 
@@ -174,7 +174,7 @@ impl fmt::Display for Amount {
     }
 }
 
-/// Use display impl in debug to get the decimal representation
+/// Use display implementation in debug to get the decimal representation
 impl fmt::Debug for Amount {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self)

@@ -15,10 +15,11 @@ use massa_logging::massa_trace;
 use massa_models::{
     node::NodeId,
     operation::{OperationPrefixIds, WrappedOperation},
-    prehash::{CapacityAllocator, PreHashSet},
+    prehash::CapacityAllocator,
 };
 use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
+use std::pin::Pin;
 use tokio::time::{sleep_until, Instant, Sleep};
 use tracing::warn;
 
@@ -136,12 +137,13 @@ impl ProtocolWorker {
         &mut self,
         node_id: NodeId,
         operations: Vec<WrappedOperation>,
+        op_timer: &mut Pin<&mut Sleep>,
     ) {
-        if self
-            .note_operations_from_node(operations, &node_id)
-            .is_err()
+        if let Err(err) = self
+            .note_operations_from_node(operations, &node_id, op_timer)
+            .await
         {
-            warn!("node {} sent us critically incorrect operation, which may be an attack attempt by the remote node or a loss of sync between us and the remote node", node_id,);
+            warn!("node {} sent us critically incorrect operation, which may be an attack attempt by the remote node or a loss of sync between us and the remote node. Err = {}", node_id, err);
             let _ = self.ban_node(&node_id).await;
         }
     }
@@ -193,27 +195,23 @@ impl ProtocolWorker {
     /// Process the reception of a batch of asked operations, that means that
     /// we have already sent a batch of ids in the network, notifying that we already
     /// have those operations.
-    ///
-    /// See also `on_operation_results_from_pool`
     pub(crate) async fn on_asked_operations_received(
         &mut self,
         node_id: NodeId,
         op_pre_ids: OperationPrefixIds,
     ) -> Result<(), ProtocolError> {
-        let mut req_operation_ids = PreHashSet::default();
-        for prefix in op_pre_ids {
-            if let Some(op_id) = self.checked_operations.get(&prefix) {
-                req_operation_ids.insert(*op_id);
+        let mut ops: Vec<WrappedOperation> = Vec::with_capacity(op_pre_ids.len());
+        {
+            // Scope the lock because of the async call to `send_operations` below.
+            let stored_ops = self.storage.read_operations();
+            for prefix in op_pre_ids {
+                if let Some(id) = self.checked_operations.get(&prefix) {
+                    if let Some(op) = stored_ops.get(id) {
+                        ops.push(op.clone());
+                    }
+                }
             }
         }
-        let ops: Vec<WrappedOperation> = {
-            let stored_ops = self.storage.read_operations();
-            req_operation_ids
-                .iter()
-                .filter_map(|id| stored_ops.get(id))
-                .cloned()
-                .collect()
-        };
         if !ops.is_empty() {
             self.network_command_sender
                 .send_operations(node_id, ops)

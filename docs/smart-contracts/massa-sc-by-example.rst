@@ -239,8 +239,7 @@ You should see one event with a data field which contains the address of your ti
 The data will be different but the format should be the same.
 
 NOTE: The tic-tac-toe is deployed to a new address each time you deploy it because in the `deploy.ts`` we use `create_sc`` to deploy the bytecode of the smart-contract to an address.
-Instead we could use the `Context.set_bytecode` which will set the bytecode directly on your address. An example of GoL is using it : https://github.com/massalabs/game-of-life
-
+You can also use `Storage.set_bytecode` to directly set the bytecode of an address in your SC. WARNING: this can't be called on a non-SC address (address that have a public key associated)
 .. _interacting:
 
 Interacting with your smart-contract

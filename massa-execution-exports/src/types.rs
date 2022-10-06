@@ -4,6 +4,7 @@
 
 use crate::event_store::EventStore;
 use massa_final_state::StateChanges;
+use massa_models::datastore::Datastore;
 use massa_models::{
     address::Address, address::ExecutionAddressCycleInfo, amount::Amount, block::BlockId,
     slot::Slot,
@@ -13,19 +14,16 @@ use std::collections::{BTreeMap, BTreeSet};
 /// Execution info about an address
 #[derive(Clone, Debug)]
 pub struct ExecutionAddressInfo {
-    /// final parallel balance of the address
-    pub final_parallel_balance: Amount,
-    /// final sequential balance of the address
-    pub final_sequential_balance: Amount,
+    /// candidate balance of the address
+    pub candidate_balance: Amount,
+    /// final balance of the address
+    pub final_balance: Amount,
+
     /// final number of rolls the address has
     pub final_roll_count: u64,
     /// final datastore keys of the address
     pub final_datastore_keys: BTreeSet<Vec<u8>>,
 
-    /// candidate parallel balance of the address
-    pub candidate_parallel_balance: Amount,
-    /// candidate sequential balance of the address
-    pub candidate_sequential_balance: Amount,
     /// candidate number of rolls the address has
     pub candidate_roll_count: u64,
     /// candidate datastore keys of the address
@@ -34,7 +32,7 @@ pub struct ExecutionAddressInfo {
     /// future deferred credits
     pub future_deferred_credits: BTreeMap<Slot, Amount>,
 
-    /// cycle infos
+    /// cycle information
     pub cycle_infos: Vec<ExecutionAddressCycleInfo>,
 }
 
@@ -115,8 +113,10 @@ pub struct ExecutionStackElement {
     /// to allow write access on newly created addresses in order to set them up,
     /// but only within the scope of the current stack element.
     /// That way, only the current scope and neither its caller not the functions it calls gain this write access,
-    /// which is important for security.  
+    /// which is important for security.
     /// Note that we use a vector instead of a pre-hashed set to ensure order determinism,
     /// the performance hit of linear search remains minimal because `owned_addresses` will always contain very few elements.
     pub owned_addresses: Vec<Address>,
+    /// Datastore (key value store) for `ExecuteSC` Operation
+    pub operation_datastore: Option<Datastore>,
 }

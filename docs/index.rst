@@ -91,10 +91,11 @@ Contents
    :maxdepth: 2
    :caption: Technical documentation
 
+   technical-doc/storage-costs.rst
    technical-doc/api.rst
    technical-doc/glossary.rst
    technical-doc/concurrency.rst
-   technical-doc/vm-block-feed.rst
+   technical-doc/Endorsements.rst
    technical-doc/vm-ledger-interaction.rst
    technical-doc/dummy-network-generation.rst
 

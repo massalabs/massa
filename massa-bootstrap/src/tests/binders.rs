@@ -12,7 +12,8 @@ use massa_models::config::{
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT,
     MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DATA_ASYNC_MESSAGE,
     MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK,
-    MAX_PARAMETERS_SIZE, THREAD_COUNT,
+    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
+    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, THREAD_COUNT,
 };
 use massa_models::version::Version;
 use massa_signature::KeyPair;
@@ -62,6 +63,9 @@ async fn test_binders() {
         MAX_FUNCTION_NAME_LENGTH,
         MAX_PARAMETERS_SIZE,
         MAX_LEDGER_CHANGES_COUNT,
+        MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        MAX_OPERATION_DATASTORE_KEY_LENGTH,
+        MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         1000,
     );
 
@@ -72,7 +76,7 @@ async fn test_binders() {
             peers: BootstrapPeers(vector_peers.clone()),
         };
 
-        let version: Version = Version::from_str("TEST.1.2").unwrap();
+        let version: Version = Version::from_str("TEST.1.10").unwrap();
 
         server.handshake(version).await.unwrap();
         server.send(test_peers_message.clone()).await.unwrap();
@@ -102,7 +106,7 @@ async fn test_binders() {
         // Test message 1
         let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
 
-        let version: Version = Version::from_str("TEST.1.2").unwrap();
+        let version: Version = Version::from_str("TEST.1.10").unwrap();
 
         client.handshake(version).await.unwrap();
         let message = client.next().await.unwrap();
@@ -176,6 +180,9 @@ async fn test_binders_double_send_server_works() {
         MAX_FUNCTION_NAME_LENGTH,
         MAX_PARAMETERS_SIZE,
         MAX_LEDGER_CHANGES_COUNT,
+        MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        MAX_OPERATION_DATASTORE_KEY_LENGTH,
+        MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         1000,
     );
 
@@ -186,7 +193,7 @@ async fn test_binders_double_send_server_works() {
             peers: BootstrapPeers(vector_peers.clone()),
         };
 
-        let version: Version = Version::from_str("TEST.1.2").unwrap();
+        let version: Version = Version::from_str("TEST.1.10").unwrap();
 
         server.handshake(version).await.unwrap();
         server.send(test_peers_message.clone()).await.unwrap();
@@ -208,7 +215,7 @@ async fn test_binders_double_send_server_works() {
         // Test message 1
         let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
 
-        let version: Version = Version::from_str("TEST.1.2").unwrap();
+        let version: Version = Version::from_str("TEST.1.10").unwrap();
 
         client.handshake(version).await.unwrap();
         let message = client.next().await.unwrap();
@@ -275,6 +282,9 @@ async fn test_binders_try_double_send_client_works() {
         MAX_FUNCTION_NAME_LENGTH,
         MAX_PARAMETERS_SIZE,
         MAX_LEDGER_CHANGES_COUNT,
+        MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        MAX_OPERATION_DATASTORE_KEY_LENGTH,
+        MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         1000,
     );
 
@@ -284,7 +294,7 @@ async fn test_binders_try_double_send_client_works() {
         let test_peers_message = BootstrapServerMessage::BootstrapPeers {
             peers: BootstrapPeers(vector_peers.clone()),
         };
-        let version: Version = Version::from_str("TEST.1.2").unwrap();
+        let version: Version = Version::from_str("TEST.1.10").unwrap();
 
         server.handshake(version).await.unwrap();
         server.send(test_peers_message.clone()).await.unwrap();
@@ -311,7 +321,7 @@ async fn test_binders_try_double_send_client_works() {
     let client_thread = tokio::spawn(async move {
         // Test message 1
         let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
-        let version: Version = Version::from_str("TEST.1.2").unwrap();
+        let version: Version = Version::from_str("TEST.1.10").unwrap();
 
         client.handshake(version).await.unwrap();
         let message = client.next().await.unwrap();

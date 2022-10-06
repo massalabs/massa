@@ -42,9 +42,8 @@ use std::{collections::HashSet, str::FromStr};
 ///
 /// The correction involved taking the point of view of PoS on where the final roll registry is attached.
 /// This test ensures non-regression by making sure `B4` is propagated when `B1` is received.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[serial]
-#[ignore]
 async fn test_inter_cycle_batch_finalization() {
     let t0: MassaTime = 1000.into();
     let staking_key =
@@ -168,6 +167,8 @@ async fn test_inter_cycle_batch_finalization() {
             protocol_controller
                 .receive_block(b1_block_id, b1_block_slot, storage.clone())
                 .await;
+
+            approve_producer_and_selector_for_staker(&staking_key, &selector_controller);
 
             // wait for the propagation of B1, B2, B3 and B4 (unordered)
             let mut to_propagate: HashSet<_> =

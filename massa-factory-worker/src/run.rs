@@ -13,8 +13,9 @@ use massa_wallet::Wallet;
 /// Start factory
 ///
 /// # Arguments
-/// * cfg: factory configuration
-/// * wallet: atomic reference to the node wallet
+/// * `cfg`: factory configuration
+/// * `wallet`: atomic reference to the node wallet
+/// * `channels`: channels to communicate with other modules
 ///
 /// # Return value
 /// Returns a factory manager allowing to stop the workers cleanly.

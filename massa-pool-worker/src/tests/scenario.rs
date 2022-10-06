@@ -4,11 +4,11 @@
 //! configurations and foreign modules initialization.
 //!
 //! # Get operations
-//! Fonction: [test_simple_get_operations]
+//! Function: [`test_simple_get_operations`]
 //! Scenario adding operations to pool then get the operations for a slot
 //!
 //! //! # Get operations overflow
-//! Fonction: [test_get_operations_overflow]
+//! Function: [`test_get_operations_overflow`]
 //! Same as the previous test with a low limit of size to check if
 //! configurations are taken into account.
 
@@ -36,12 +36,12 @@ use massa_signature::KeyPair;
 /// The execution thread will response that no operations had been executed.
 ///
 /// ## Expected results
-/// The execution controller is expected to be asked 2 times for the first interation:
+/// The execution controller is expected to be asked 2 times for the first interaction:
 /// - to check the already executed operations
-/// - to check the final and candidate sequencial balances of the creator address
-/// And one time for the 9 nexts to check the executed operations.
+/// - to check the final and candidate balances of the creator address
+/// And one time for the 9 next to check the executed operations.
 ///
-/// The block operation storage builded for all threads is expected to have the
+/// The block operation storage built for all threads is expected to have the
 /// same length than those added previously.
 #[test]
 #[ignore]
@@ -69,7 +69,7 @@ fn test_simple_get_operations() {
                     Err(_) => panic!("execution never called"),
                 }
                 match execution_receiver.recv_timeout(Duration::from_millis(100)) {
-                    Ok(ControllerMsg::GetFinalAndCandidateSequentialBalances {
+                    Ok(ControllerMsg::GetFinalAndCandidateBalance {
                         addresses,
                         response_tx,
                         ..
@@ -101,7 +101,7 @@ fn test_simple_get_operations() {
     );
 }
 
-/// Launch a default mock for execution controller on call get_block_operation API.
+/// Launch a default mock for execution controller on call `get_block_operation` API.
 fn launch_basic_get_block_operation_execution_mock(
     operations_len: usize,
     unexecuted_ops: PreHashSet<OperationId>,
@@ -109,7 +109,7 @@ fn launch_basic_get_block_operation_execution_mock(
 ) {
     let receive = |er: &Receiver<ControllerMsg>| er.recv_timeout(Duration::from_millis(10));
     std::thread::spawn(move || {
-        use ControllerMsg::GetFinalAndCandidateSequentialBalances as GetFinal;
+        use ControllerMsg::GetFinalAndCandidateBalance as GetFinal;
         use ControllerMsg::UnexecutedOpsAmong as Unexecuted;
 
         if let Ok(Unexecuted { response_tx, .. }) = receive(&recvr) {
@@ -138,7 +138,7 @@ fn launch_basic_get_block_operation_execution_mock(
 /// Start mocked execution controller thread.
 ///
 /// ## Expected result
-/// The block operation storage builded for all threads is expected to have
+/// The block operation storage built for all threads is expected to have
 /// only 5 operations.
 #[test]
 #[ignore]

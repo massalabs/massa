@@ -15,7 +15,7 @@
 //! (`default_testing.rs`) But as for the current file you shouldn't modify it.
 use std::str::FromStr;
 
-use crate::{amount::Amount, version::Version};
+use crate::{address::ADDRESS_SIZE_BYTES, amount::Amount, version::Version};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
@@ -45,14 +45,14 @@ lazy_static::lazy_static! {
                 .saturating_add(MassaTime::from_millis(1000 * 10))
         )
     } else {
-        1663243200000.into()  // Friday, September 15, 2022 12:00:00 UTC
+        1664978400000.into()  // Wednesday, October 5, 2022 2:00:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1664560800000.into())  // Friday, September 30, 2022 18:00:00 UTC
+        Some(1667142000000.into())  // Sunday, October 30, 2022 3:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -64,7 +64,7 @@ lazy_static::lazy_static! {
         if cfg!(feature = "sandbox") {
             "SAND.0.0"
         } else {
-            "TEST.14.1"
+            "TEST.15.0"
         }
         .parse()
         .unwrap()
@@ -75,6 +75,12 @@ lazy_static::lazy_static! {
 pub const ROLL_PRICE: Amount = Amount::from_mantissa_scale(100, 0);
 /// Block reward is given for each block creation
 pub const BLOCK_REWARD: Amount = Amount::from_mantissa_scale(3, 1);
+/// Cost to store one byte in the ledger
+pub const LEDGER_COST_PER_BYTE: Amount = Amount::from_mantissa_scale(25, 5);
+/// Cost for a base entry (address + balance (5 bytes constant))
+pub const LEDGER_ENTRY_BASE_SIZE: usize = ADDRESS_SIZE_BYTES + 8;
+/// Cost for a base entry datastore 10 bytes constant to avoid paying more for longer keys
+pub const LEDGER_ENTRY_DATASTORE_BASE_SIZE: usize = 10;
 /// Time between the periods in the same thread.
 pub const T0: MassaTime = MassaTime::from_millis(16000);
 /// Proof of stake seed for the initial draw
@@ -82,9 +88,9 @@ pub const INITIAL_DRAW_SEED: &str = "massa_genesis_seed";
 /// Number of threads
 pub const THREAD_COUNT: u8 = 32;
 /// Number of endorsement
-pub const ENDORSEMENT_COUNT: u32 = 9;
+pub const ENDORSEMENT_COUNT: u32 = 16;
 /// Threshold for fitness.
-pub const DELTA_F0: u64 = 640;
+pub const DELTA_F0: u64 = 64 * (ENDORSEMENT_COUNT as u64 + 1);
 /// Maximum number of operations per block
 pub const MAX_OPERATIONS_PER_BLOCK: u32 = 5000;
 /// Maximum block size in bytes
@@ -113,8 +119,14 @@ pub const ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 pub const PRODUCTION_STATS_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 /// Maximum length of a datastore key
 pub const MAX_DATASTORE_KEY_LENGTH: u8 = 255;
+/// Maximum length of an operation datastore key
+pub const MAX_OPERATION_DATASTORE_KEY_LENGTH: u8 = MAX_DATASTORE_KEY_LENGTH;
 /// Maximum length of a datastore value
 pub const MAX_DATASTORE_VALUE_LENGTH: u64 = 10_000_000;
+/// Maximum length of a datastore value
+pub const MAX_BYTECODE_LENGTH: u64 = 10_000_000;
+/// Maximum length of an operation datastore value
+pub const MAX_OPERATION_DATASTORE_VALUE_LENGTH: u64 = 1_000;
 /// Maximum ledger changes in a block
 pub const MAX_LEDGER_CHANGES_PER_SLOT: u32 = u32::MAX;
 /// Maximum production events in a block
@@ -124,17 +136,19 @@ pub const MAX_LEDGER_CHANGES_COUNT: u64 =
     100_u32.saturating_mul(MAX_LEDGER_CHANGES_PER_SLOT) as u64;
 /// Maximum number of key/values in the datastore of a ledger entry
 pub const MAX_DATASTORE_ENTRY_COUNT: u64 = u64::MAX;
-/// Maximum length function name in call sc
+/// Maximum number of key/values in the datastore of a `ExecuteSC` operation
+pub const MAX_OPERATION_DATASTORE_ENTRY_COUNT: u64 = 128;
+/// Maximum length function name in call SC
 pub const MAX_FUNCTION_NAME_LENGTH: u16 = u16::MAX;
-/// Maximum size of parameters in call sc
+/// Maximum size of parameters in call SC
 pub const MAX_PARAMETERS_SIZE: u32 = 10_000_000;
-/// Maximum length of rng_seed in thread cycle
+/// Maximum length of `rng_seed` in thread cycle
 pub const MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COUNT as u64) as u32;
-/// Maximum length of rolls_update in thread cycle
+/// Maximum length of `rolls_update` in thread cycle
 pub const MAX_ROLLS_UPDATE_LENGTH: u64 = u64::MAX;
-/// Maximum length of rolls_counts in thread cycle
+/// Maximum length of `rolls_counts` in thread cycle
 pub const MAX_ROLLS_COUNTS_LENGTH: u64 = u64::MAX;
-/// Maximum length of production_stats in thread cycle
+/// Maximum length of `production_stats` in thread cycle
 pub const MAX_PRODUCTION_STATS_LENGTH: u64 = u64::MAX;
 // ***********************
 // Bootstrap constants
@@ -157,7 +171,7 @@ pub const MAX_BOOTSTRAP_POS_ENTRIES: u32 = 1000000000;
 /// Max async pool changes
 pub const MAX_BOOTSTRAP_ASYNC_POOL_CHANGES: u64 = 100_000;
 /// Max bytes in final states parts
-pub const MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u64 = 10_000_000;
+pub const MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u64 = 1_000_000_000;
 /// Max size of the IP list
 pub const IP_LIST_MAX_SIZE: usize = 10000;
 /// Size of the random bytes array used for the bootstrap, safe to import
@@ -171,7 +185,6 @@ pub const MAX_BOOTSTRAP_ERROR_LENGTH: u32 = 10000;
 pub const PROTOCOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
 /// Event channel size
 pub const PROTOCOL_EVENT_CHANNEL_SIZE: usize = 1024;
-
 // ***********************
 // Constants used for execution module (injected from ConsensusConfig)
 //

@@ -53,7 +53,7 @@ impl BlockFactoryWorker {
 
     /// Gets the next slot and the instant when it will happen.
     /// Slots can be skipped if we waited too much in-between.
-    /// Extra safety against double-production caused by clock adjustments (this is the role of the previous_slot parameter).
+    /// Extra safety against double-production caused by clock adjustments (this is the role of the `previous_slot` parameter).
     fn get_next_slot(&self, previous_slot: Option<Slot>) -> (Slot, Instant) {
         // get current absolute time
         let now =
@@ -102,7 +102,7 @@ impl BlockFactoryWorker {
         (next_slot, next_instant)
     }
 
-    /// Interruptibly wait until an instant or a stop signal
+    /// Wait and interrupt or wait until an instant or a stop signal
     ///
     /// # Return value
     /// Returns `true` if the instant was reached, otherwise `false` if there was an interruption.
@@ -167,13 +167,14 @@ impl BlockFactoryWorker {
 
         // get the parent in the same thread, with its period
         // will not panic because the thread is validated before the call
-        let (same_thread_parent_id, same_thread_parent_period) = parents[slot.thread as usize];
+        let (same_thread_parent_id, _) = parents[slot.thread as usize];
 
         // gather endorsements
-        let (endorsements_ids, endo_storage) = self.channels.pool.get_block_endorsements(
-            &same_thread_parent_id,
-            &Slot::new(same_thread_parent_period, slot.thread),
-        );
+        let (endorsements_ids, endo_storage) = self
+            .channels
+            .pool
+            .get_block_endorsements(&same_thread_parent_id, &slot);
+
         //TODO: Do we want ot populate only with endorsement id in the future ?
         let endorsements: Vec<WrappedEndorsement> = {
             let endo_read = endo_storage.read_endorsements();

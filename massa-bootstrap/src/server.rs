@@ -9,13 +9,12 @@ use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::ConsensusCommandSender;
-use massa_final_state::FinalState;
-use massa_graph::BootstrapableGraph;
+use massa_final_state::{ExecutedOpsStreamingStep, FinalState};
 use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::{slot::Slot, version::Version};
-use massa_network_exports::{BootstrapPeers, NetworkCommandSender};
-use massa_pos_exports::PoSInfoStreamingStep;
+use massa_network_exports::NetworkCommandSender;
+use massa_pos_exports::PoSCycleStreamingStep;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
@@ -215,24 +214,8 @@ impl BootstrapServer {
                     let config = self.bootstrap_config.clone();
 
                     bootstrap_sessions.push(async move {
-                        let data_peers = network_command_sender.get_bootstrap_peers().await;
-                        let data_graph = consensus_command_sender.get_bootstrap_state().await;
-                        let data_graph = match data_graph {
-                            Ok(v) => v,
-                            Err(err) => {
-                                warn!("could not retrieve consensus bootstrap state: {}", err);
-                                return;
-                            }
-                        };
-                        let data_peers = match data_peers {
-                            Ok(v) => v,
-                            Err(err) => {
-                                warn!("could not retrieve bootstrap peers: {}", err);
-                                return;
-                            }
-                        };
                         let mut server = BootstrapServerBinder::new(dplx, keypair, config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes);
-                        match manage_bootstrap(&config, &mut server, data_graph, data_peers, data_execution, compensation_millis, version).await {
+                        match manage_bootstrap(&config, &mut server, data_execution, compensation_millis, version, consensus_command_sender, network_command_sender).await {
                             Ok(_) => {
                                 info!("bootstrapped peer {}", remote_addr)
                             },
@@ -270,40 +253,38 @@ impl BootstrapServer {
 #[allow(clippy::too_many_arguments)]
 pub async fn send_final_state_stream(
     server: &mut BootstrapServerBinder,
-    last_key: Option<Vec<u8>>,
     final_state: Arc<RwLock<FinalState>>,
-    slot: Option<Slot>,
-    last_async_message_id: Option<AsyncMessageId>,
-    last_pos_step_cursor: PoSInfoStreamingStep,
-    last_credits_slot: Option<Slot>,
+    mut last_slot: Option<Slot>,
+    mut last_key: Option<Vec<u8>>,
+    mut last_async_message_id: Option<AsyncMessageId>,
+    mut last_cycle_step: PoSCycleStreamingStep,
+    mut last_credits_slot: Option<Slot>,
+    mut last_exec_ops_step: ExecutedOpsStreamingStep,
     write_timeout: Duration,
 ) -> Result<(), BootstrapError> {
-    let mut old_key = last_key;
-    let mut old_last_async_id = last_async_message_id;
-    let mut old_pos_step_cursor = last_pos_step_cursor;
-    let mut old_credits_slot = last_credits_slot;
-    let mut old_slot = slot;
-
     loop {
         #[cfg(test)]
         {
             // Necessary for test_bootstrap_server in tests/scenarios.rs
             tokio::time::sleep(Duration::from_millis(500)).await;
         }
-        // Scope of the read in the final state
+
+        let current_slot;
         let ledger_data;
         let async_pool_data;
         let pos_cycle_data;
         let pos_credits_data;
+        let exec_ops_data;
         let final_state_changes;
-        let current_slot;
+
+        // Scope of the final state read
         {
-            // Get all data for the next message
+            // Get all the next message data
             let final_state_read = final_state.read();
             let (data, new_last_key) =
                 final_state_read
                     .ledger
-                    .get_ledger_part(&old_key)
+                    .get_ledger_part(&last_key)
                     .map_err(|_| {
                         BootstrapError::GeneralError(
                             "Error on fetching ledger part of execution".to_string(),
@@ -313,20 +294,25 @@ pub async fn send_final_state_stream(
 
             let (pool_data, new_last_async_pool_id) = final_state_read
                 .async_pool
-                .get_pool_part(old_last_async_id)?;
+                .get_pool_part(last_async_message_id)?;
             async_pool_data = pool_data;
 
-            let (cycle_data, new_pos_step_cursor) = final_state_read
+            let (cycle_data, new_cycle_step) = final_state_read
                 .pos_state
-                .get_cycle_history_part(old_pos_step_cursor)?;
+                .get_cycle_history_part(last_cycle_step)?;
             pos_cycle_data = cycle_data;
 
             let (credits_data, new_last_credits_slot) = final_state_read
                 .pos_state
-                .get_deferred_credits_part(old_credits_slot)?;
+                .get_deferred_credits_part(last_credits_slot)?;
             pos_credits_data = credits_data;
 
-            if let Some(slot) = old_slot && slot != final_state_read.slot {
+            let (ops_data, new_exec_ops_step) = final_state_read
+                .executed_ops
+                .get_executed_ops_part(last_exec_ops_step)?;
+            exec_ops_data = ops_data;
+
+            if let Some(slot) = last_slot && slot != final_state_read.slot {
                 if slot > final_state_read.slot {
                     return Err(BootstrapError::GeneralError(
                         "Bootstrap cursor set to future slot".to_string(),
@@ -334,7 +320,7 @@ pub async fn send_final_state_stream(
                 }
                 final_state_changes = final_state_read.get_state_changes_part(
                     slot,
-                    old_key
+                    last_key
                         .clone()
                         .map(|key| {
                             get_address_from_key(&key).ok_or_else(|| {
@@ -344,8 +330,9 @@ pub async fn send_final_state_stream(
                             })
                         })
                         .transpose()?,
-                    old_last_async_id,
-                    new_pos_step_cursor,
+                    last_async_message_id,
+                    new_cycle_step,
+                    new_exec_ops_step,
                 )?;
             } else {
                 final_state_changes = Vec::new();
@@ -353,18 +340,21 @@ pub async fn send_final_state_stream(
 
             // Assign value for next turn
             if new_last_key.is_some() || !ledger_data.is_empty() {
-                old_key = new_last_key;
+                last_key = new_last_key;
             }
             if new_last_async_pool_id.is_some() || !async_pool_data.is_empty() {
-                old_last_async_id = new_last_async_pool_id;
+                last_async_message_id = new_last_async_pool_id;
             }
             if !pos_cycle_data.is_empty() {
-                old_pos_step_cursor = new_pos_step_cursor;
+                last_cycle_step = new_cycle_step;
             }
             if new_last_credits_slot.is_some() || !pos_credits_data.is_empty() {
-                old_credits_slot = new_last_credits_slot;
+                last_credits_slot = new_last_credits_slot;
             }
-            old_slot = Some(final_state_read.slot);
+            if !exec_ops_data.is_empty() {
+                last_exec_ops_step = new_exec_ops_step;
+            }
+            last_slot = Some(final_state_read.slot);
             current_slot = final_state_read.slot;
         }
 
@@ -372,6 +362,7 @@ pub async fn send_final_state_stream(
             || !async_pool_data.is_empty()
             || !pos_cycle_data.is_empty()
             || !pos_credits_data.is_empty()
+            || !exec_ops_data.is_empty()
             || !final_state_changes.is_empty()
         {
             match tokio::time::timeout(
@@ -382,6 +373,7 @@ pub async fn send_final_state_stream(
                     async_pool_part: async_pool_data,
                     pos_cycle_part: pos_cycle_data,
                     pos_credits_part: pos_credits_data,
+                    exec_ops_part: exec_ops_data,
                     final_state_changes,
                 }),
             )
@@ -421,11 +413,11 @@ pub async fn send_final_state_stream(
 async fn manage_bootstrap(
     bootstrap_config: &BootstrapConfig,
     server: &mut BootstrapServerBinder,
-    mut data_graph: BootstrapableGraph,
-    data_peers: BootstrapPeers,
     final_state: Arc<RwLock<FinalState>>,
     compensation_millis: i64,
     version: Version,
+    consensus_command_sender: ConsensusCommandSender,
+    network_command_sender: NetworkCommandSender,
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: std::time::Duration = bootstrap_config.read_error_timeout.into();
@@ -488,7 +480,7 @@ async fn manage_bootstrap(
                     match tokio::time::timeout(
                         write_timeout,
                         server.send(BootstrapServerMessage::BootstrapPeers {
-                            peers: data_peers.clone(),
+                            peers: network_command_sender.get_bootstrap_peers().await?,
                         }),
                     )
                     .await
@@ -504,22 +496,21 @@ async fn manage_bootstrap(
                 }
                 BootstrapClientMessage::AskFinalStatePart {
                     last_key,
-                    slot,
+                    last_slot,
                     last_async_message_id,
-                    last_cycle,
+                    last_cycle_step,
                     last_credits_slot,
+                    last_exec_ops_step,
                 } => {
                     send_final_state_stream(
                         server,
-                        last_key,
                         final_state.clone(),
-                        slot,
+                        last_slot,
+                        last_key,
                         last_async_message_id,
-                        match last_cycle {
-                            Some(cycle) => PoSInfoStreamingStep::Ongoing(cycle),
-                            None => PoSInfoStreamingStep::Started,
-                        },
+                        last_cycle_step,
                         last_credits_slot,
+                        last_exec_ops_step,
                         write_timeout,
                     )
                     .await?;
@@ -528,7 +519,7 @@ async fn manage_bootstrap(
                     match tokio::time::timeout(
                         write_timeout,
                         server.send(BootstrapServerMessage::ConsensusState {
-                            graph: data_graph.clone(),
+                            graph: consensus_command_sender.get_bootstrap_state().await?,
                         }),
                     )
                     .await
@@ -539,10 +530,7 @@ async fn manage_bootstrap(
                         )
                         .into()),
                         Ok(Err(e)) => Err(e),
-                        Ok(Ok(_)) => {
-                            data_graph.final_blocks = Vec::new();
-                            Ok(())
-                        }
+                        Ok(Ok(_)) => Ok(()),
                     }?;
                 }
                 BootstrapClientMessage::BootstrapSuccess => break Ok(()),

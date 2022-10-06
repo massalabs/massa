@@ -12,15 +12,6 @@
 //! (see the massa-execution-worker crate for details on execution).
 //! Only the execution worker writes into the final ledger.
 //!
-//! # A note on parallel vs sequential balance
-//!
-//! The distinctions between the parallel and the sequential balance of a ledger entry are the following:
-//! * the parallel balance can be credited or spent in any slot
-//! * the sequential balance can be credited in any slot but only spent in slots form the address' thread
-//! * block producers are credited fees from the sequential balance,
-//!   and they can ensure that this balance will be available for their block simply
-//!   by looking for sequential balance spending within the block's thread.
-//!
 //! # Architecture
 //!
 //! ## `ledger.rs`

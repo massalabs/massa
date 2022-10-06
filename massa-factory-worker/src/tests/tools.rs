@@ -29,7 +29,7 @@ use massa_time::MassaTime;
 use crate::start_factory;
 use massa_wallet::test_exports::create_test_wallet;
 
-/// This structure store all informations and links to creates tests for the factory.
+/// This structure store all information and links to creates tests for the factory.
 /// The factory will ask that to the the pool, consensus and factory and then will send the block to the consensus.
 /// You can use the method `new` to build all the mocks and make the connections
 /// Then you can use the method `get_next_created_block` that will manage the answers from the mock to the factory depending on the parameters you gave.

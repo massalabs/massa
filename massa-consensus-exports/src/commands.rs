@@ -38,6 +38,13 @@ pub enum ConsensusCommand {
         /// response channel
         response_tx: oneshot::Sender<Option<BlockId>>,
     },
+    /// Get a block at a given slot in a blockclique
+    GetLatestBlockcliqueBlockAtSlot {
+        /// wanted slot
+        slot: Slot,
+        /// response channel
+        response_tx: oneshot::Sender<BlockId>,
+    },
     /// Get the best parents and their period
     GetBestParents {
         /// response channel

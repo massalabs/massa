@@ -1,10 +1,13 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::checked_operations::CheckedOperations;
+use crate::sig_verifier::verify_sigs_batch;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 
 use massa_logging::massa_trace;
 
+use massa_models::slot::Slot;
+use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
     block::{BlockId, WrappedHeader},
     endorsement::{EndorsementId, WrappedEndorsement},
@@ -20,9 +23,12 @@ use massa_protocol_exports::{
     ProtocolEventReceiver, ProtocolManagementCommand, ProtocolManager,
 };
 
+use massa_models::wrapped::Id;
 use massa_storage::Storage;
-use massa_time::TimeError;
+use massa_time::{MassaTime, TimeError};
 use std::collections::{HashMap, HashSet};
+use std::mem;
+use std::pin::Pin;
 use tokio::{
     sync::mpsc,
     sync::mpsc::error::SendTimeoutError,
@@ -142,7 +148,7 @@ pub struct ProtocolWorker {
     /// Ids of active nodes mapped to node info.
     pub(crate) active_nodes: HashMap<NodeId, NodeInfo>,
     /// List of wanted blocks,
-    /// with the info representing their state with in the as_block workflow.
+    /// with the info representing their state with in the `as_block` workflow.
     pub(crate) block_wishlist: PreHashMap<BlockId, BlockInfo>,
     /// List of processed endorsements
     checked_endorsements: PreHashSet<EndorsementId>,
@@ -156,6 +162,8 @@ pub struct ProtocolWorker {
     pub(crate) op_batch_buffer: OperationBatchBuffer,
     /// Shared storage.
     pub(crate) storage: Storage,
+    /// Operations to announce at the next interval.
+    operations_to_announce: Vec<OperationId>,
 }
 
 /// channels used by the protocol worker
@@ -211,6 +219,9 @@ impl ProtocolWorker {
                 config.operation_batch_buffer_capacity,
             ),
             storage,
+            operations_to_announce: Vec::with_capacity(
+                config.operation_announcement_buffer_capacity,
+            ),
         }
     }
 
@@ -252,6 +263,9 @@ impl ProtocolWorker {
         let operation_batch_proc_period_timer =
             sleep(self.config.operation_batch_proc_period.into());
         tokio::pin!(operation_batch_proc_period_timer);
+        let operation_announcement_interval =
+            sleep(self.config.operation_announcement_interval.into());
+        tokio::pin!(operation_announcement_interval);
         loop {
             massa_trace!("protocol.protocol_worker.run_loop.begin", {});
             /*
@@ -275,13 +289,15 @@ impl ProtocolWorker {
 
                 // listen to incoming commands
                 Some(cmd) = self.controller_command_rx.recv() => {
-                    self.process_command(cmd, &mut block_ask_timer).await?;
+                    self.process_command(cmd, &mut
+                        block_ask_timer,
+                        &mut operation_announcement_interval).await?;
                 }
 
                 // listen to network controller events
                 evt = self.network_event_receiver.wait_event() => {
                     massa_trace!("protocol.protocol_worker.run_loop.network_event_rx", {});
-                    self.on_network_event(evt?, &mut block_ask_timer).await?;
+                    self.on_network_event(evt?, &mut block_ask_timer, &mut operation_announcement_interval).await?;
                 }
 
                 // block ask timer
@@ -290,9 +306,17 @@ impl ProtocolWorker {
                     self.update_ask_block(&mut block_ask_timer).await?;
                 }
 
+                // Operation announcement interval.
+                _ = &mut operation_announcement_interval => {
+                    // Announce operations.
+                    self.announce_ops(&mut operation_announcement_interval).await;
+                }
+
                 // operation ask timer
                 _ = &mut operation_batch_proc_period_timer => {
-                    massa_trace!("protocol.protocol_worker.run_loop.operation_ask_timer", { });
+                    massa_trace!("protocol.protocol_worker.run_loop.operation_ask_and_announce_timer", { });
+
+                    // Update operations to ask.
                     self.update_ask_operation(&mut operation_batch_proc_period_timer).await?;
                 }
                 // operation prune timer
@@ -307,10 +331,112 @@ impl ProtocolWorker {
         Ok(self.network_event_receiver)
     }
 
+    /// Announce a set of operations to active nodes who do not know about it yet.
+    /// Side effects:
+    /// - notes nodes as knowing about those operations from now on.
+    /// - empties the buffer of operations to announce.
+    async fn announce_ops(&mut self, timer: &mut Pin<&mut Sleep>) {
+        // Quit if empty  to avoid iterating on nodes
+        if self.operations_to_announce.is_empty() {
+            return;
+        }
+        let operation_ids = mem::take(&mut self.operations_to_announce);
+        massa_trace!("protocol.protocol_worker.announce_ops.begin", {
+            "operation_ids": operation_ids
+        });
+        for (node, node_info) in self.active_nodes.iter_mut() {
+            let new_ops: Vec<OperationId> = operation_ids
+                .iter()
+                .filter(|id| !node_info.knows_op(id))
+                .copied()
+                .collect();
+            node_info.insert_known_ops(&new_ops, self.config.max_node_known_ops_size);
+            if !new_ops.is_empty() {
+                let res = self
+                    .network_command_sender
+                    .announce_operations(*node, new_ops.iter().map(|id| id.into_prefix()).collect())
+                    .await;
+                if let Err(err) = res {
+                    debug!("could not send operation batch to node {}: {}", node, err);
+                }
+            }
+        }
+
+        // Reset timer.
+        let now = Instant::now();
+        let next_tick = now
+            .checked_add(self.config.operation_announcement_interval.into())
+            // .ok_or(TimeError::TimeOverflowError)?;
+            .unwrap();
+        timer.set(sleep_until(next_tick));
+    }
+
+    /// Add an list of operations to a buffer for announcement at the next interval,
+    /// or immediately if the buffer is full.
+    async fn note_operations_to_announce(
+        &mut self,
+        operations: &[OperationId],
+        timer: &mut Pin<&mut Sleep>,
+    ) {
+        massa_trace!(
+            "protocol.protocol_worker.note_operations_to_announce.begin",
+            { "operations": operations }
+        );
+        // Add the operations to a list for announcement at the next interval.
+        self.operations_to_announce.extend_from_slice(operations);
+
+        // If the buffer is full,
+        // announce operations immediately,
+        // clearing the data at the same time.
+        if self.operations_to_announce.len() > self.config.operation_announcement_buffer_capacity {
+            self.announce_ops(timer).await;
+        }
+    }
+
+    async fn propagate_endorsements(&mut self, storage: &Storage) {
+        massa_trace!(
+            "protocol.protocol_worker.process_command.propagate_endorsements.begin",
+            { "endorsements": storage.get_endorsement_refs() }
+        );
+        for (node, node_info) in self.active_nodes.iter_mut() {
+            let new_endorsements: PreHashMap<EndorsementId, WrappedEndorsement> = {
+                let endorsements_reader = storage.read_endorsements();
+                storage
+                    .get_endorsement_refs()
+                    .iter()
+                    .filter_map(|id| {
+                        if node_info.knows_endorsement(id) {
+                            return None;
+                        }
+                        Some((*id, endorsements_reader.get(id).cloned().unwrap()))
+                    })
+                    .collect()
+            };
+            node_info.insert_known_endorsements(
+                new_endorsements.keys().copied().collect(),
+                self.config.max_node_known_endorsements_size,
+            );
+            let to_send = new_endorsements.into_values().collect::<Vec<_>>();
+            if !to_send.is_empty() {
+                let res = self
+                    .network_command_sender
+                    .send_endorsements(*node, to_send)
+                    .await;
+                if let Err(err) = res {
+                    debug!(
+                        "could not send endorsements batch to node {}: {}",
+                        node, err
+                    );
+                }
+            }
+        }
+    }
+
     async fn process_command(
         &mut self,
         cmd: ProtocolCommand,
-        timer: &mut std::pin::Pin<&mut Sleep>,
+        block_timer: &mut Pin<&mut Sleep>,
+        op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         match cmd {
             ProtocolCommand::IntegratedBlock { block_id, storage } => {
@@ -391,75 +517,33 @@ impl ProtocolWorker {
                 for block_id in remove.iter() {
                     self.block_wishlist.remove(block_id);
                 }
-                self.update_ask_block(timer).await?;
+                self.update_ask_block(block_timer).await?;
                 massa_trace!(
                     "protocol.protocol_worker.process_command.wishlist_delta.end",
                     {}
                 );
             }
             ProtocolCommand::PropagateOperations(storage) => {
+                // Note: should we claim refs locally?
                 let operation_ids = storage.get_op_refs();
                 massa_trace!(
                     "protocol.protocol_worker.process_command.propagate_operations.begin",
                     { "operation_ids": operation_ids }
                 );
+
+                // Note operations as checked.
                 self.prune_checked_operations();
-                for id in operation_ids.iter() {
+                for id in operation_ids {
                     self.checked_operations.insert(id);
                 }
-                for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_ops: PreHashSet<OperationId> = operation_ids
-                        .iter()
-                        .filter(|id| !node_info.knows_op(id))
-                        .copied()
-                        .collect();
-                    node_info.insert_known_ops(
-                        new_ops.iter().cloned().collect(),
-                        self.config.max_node_known_ops_size,
-                    );
-                    if !new_ops.is_empty() {
-                        self.network_command_sender
-                            .send_operations_batch(
-                                *node,
-                                new_ops.iter().map(|id| id.into_prefix()).collect(),
-                            )
-                            .await?;
-                    }
-                }
+
+                // Announce operations to active nodes not knowing about it.
+                let to_announce: Vec<OperationId> = operation_ids.iter().copied().collect();
+                self.note_operations_to_announce(&to_announce, op_timer)
+                    .await;
             }
             ProtocolCommand::PropagateEndorsements(endorsements) => {
-                massa_trace!(
-                    "protocol.protocol_worker.process_command.propagate_endorsements.begin",
-                    { "endorsements": endorsements.get_endorsement_refs() }
-                );
-                for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_endorsements: PreHashMap<EndorsementId, WrappedEndorsement> = {
-                        let endorsements_reader = endorsements.read_endorsements();
-                        endorsements
-                            .get_endorsement_refs()
-                            .iter()
-                            .filter_map(|id| {
-                                if node_info.knows_endorsement(id) {
-                                    return None;
-                                }
-                                Some((*id, endorsements_reader.get(id).cloned().unwrap()))
-                            })
-                            .collect()
-                    };
-                    node_info.insert_known_endorsements(
-                        new_endorsements.keys().copied().collect(),
-                        self.config.max_node_known_endorsements_size,
-                    );
-                    let to_send = new_endorsements
-                        .into_iter()
-                        .map(|(_, op)| op)
-                        .collect::<Vec<_>>();
-                    if !to_send.is_empty() {
-                        self.network_command_sender
-                            .send_endorsements(*node, to_send)
-                            .await?;
-                    }
-                }
+                self.propagate_endorsements(&endorsements).await;
             }
         }
         massa_trace!("protocol.protocol_worker.process_command.end", {});
@@ -484,7 +568,7 @@ impl ProtocolWorker {
 
     pub(crate) async fn update_ask_block(
         &mut self,
-        ask_block_timer: &mut std::pin::Pin<&mut Sleep>,
+        ask_block_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.update_ask_block.begin", {});
         let now = Instant::now();
@@ -772,11 +856,10 @@ impl ProtocolWorker {
             return Ok(Some((block_id, false)));
         }
 
-        let (_endorsement_ids, endorsements_reused) = match self.note_endorsements_from_node(
-            header.content.endorsements.clone(),
-            source_node_id,
-            false,
-        ) {
+        let (_endorsement_ids, endorsements_reused) = match self
+            .note_endorsements_from_node(header.content.endorsements.clone(), source_node_id, false)
+            .await
+        {
             Err(_) => {
                 warn!(
                     "node {} sent us a header containing critically incorrect endorsements",
@@ -812,9 +895,7 @@ impl ProtocolWorker {
                 return Ok(None);
             }
             // check slot
-            if (endorsement.content.slot.thread != header.content.slot.thread)
-                || (endorsement.content.slot >= header.content.slot)
-            {
+            if endorsement.content.slot != header.content.slot {
                 massa_trace!("protocol.protocol_worker.check_header.err_endorsement_invalid_slot", { "header": header, "endorsement": endorsement});
                 return Ok(None);
             }
@@ -890,10 +971,11 @@ impl ProtocolWorker {
     ///
     /// Checks performed:
     /// - Valid signature
-    pub(crate) fn note_operations_from_node(
+    pub(crate) async fn note_operations_from_node(
         &mut self,
         operations: Vec<WrappedOperation>,
         source_node_id: &NodeId,
+        op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(Vec<OperationId>, PreHashMap<OperationId, usize>), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
         let length = operations.len();
@@ -907,17 +989,21 @@ impl ProtocolWorker {
             // Check operation signature only if not already checked.
             if self.checked_operations.insert(&operation_id) {
                 // check signature if the operation wasn't in `checked_operation`
-                operation.verify_signature()?;
                 new_operations.insert(operation_id, operation);
             };
         }
 
+        // optimized signature verification
+        verify_sigs_batch(
+            &new_operations
+                .iter()
+                .map(|(op_id, op)| (*op_id.get_hash(), op.signature, op.creator_public_key))
+                .collect::<Vec<_>>(),
+        )?;
+
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-            node_info.insert_known_ops(
-                received_ids.keys().copied().collect(),
-                self.config.max_node_known_ops_size,
-            );
+            node_info.insert_known_ops(&seen_ops, self.config.max_node_known_ops_size);
         }
 
         if !new_operations.is_empty() {
@@ -928,7 +1014,42 @@ impl ProtocolWorker {
             let mut ops = self.storage.clone_without_refs();
             ops.store_operations(new_operations.into_values().collect());
 
-            // Add to pool, propagate when received outside of a header.
+            // Propagate operations when their expire period isn't `max_operations_propagation_time` old.
+            let mut ops_to_propagate = ops.clone();
+            let operations_to_not_propagate = {
+                let now = MassaTime::now(0)?;
+                let read_operations = ops_to_propagate.read_operations();
+                ops_to_propagate
+                    .get_op_refs()
+                    .iter()
+                    .filter(|op_id| {
+                        let expire_period =
+                            read_operations.get(op_id).unwrap().content.expire_period;
+                        let expire_period_timestamp = get_block_slot_timestamp(
+                            self.config.thread_count,
+                            self.config.t0,
+                            self.config.genesis_timestamp,
+                            Slot::new(expire_period, 0),
+                        );
+                        match expire_period_timestamp {
+                            Ok(slot_timestamp) => {
+                                slot_timestamp
+                                    .saturating_add(self.config.max_endorsements_propagation_time)
+                                    < now
+                            }
+                            Err(_) => true,
+                        }
+                    })
+                    .copied()
+                    .collect()
+            };
+            ops_to_propagate.drop_operation_refs(&operations_to_not_propagate);
+            let to_announce: Vec<OperationId> =
+                ops_to_propagate.get_op_refs().iter().copied().collect();
+            self.note_operations_to_announce(&to_announce, op_timer)
+                .await;
+
+            // Add to pool
             self.pool_controller.add_operations(ops);
         }
 
@@ -944,7 +1065,7 @@ impl ProtocolWorker {
     ///
     /// Checks performed:
     /// - Valid signature.
-    pub(crate) fn note_endorsements_from_node(
+    pub(crate) async fn note_endorsements_from_node(
         &mut self,
         endorsements: Vec<WrappedEndorsement>,
         source_node_id: &NodeId,
@@ -980,13 +1101,53 @@ impl ProtocolWorker {
             );
         }
 
-        if !new_endorsements.is_empty() && propagate {
+        if !new_endorsements.is_empty() {
             self.prune_checked_endorsements();
 
             let mut endorsements = self.storage.clone_without_refs();
             endorsements.store_endorsements(new_endorsements.into_values().collect());
 
-            // Add to pool, propagate if required
+            // Propagate endorsements
+            if propagate {
+                // Propagate endorsements when the slot of the block they endorse isn't `max_endorsements_propagation_time` old.
+                let mut endorsements_to_propagate = endorsements.clone();
+                let endorsements_to_not_propagate = {
+                    let now = MassaTime::now(0)?;
+                    let read_endorsements = endorsements_to_propagate.read_endorsements();
+                    endorsements_to_propagate
+                        .get_endorsement_refs()
+                        .iter()
+                        .filter_map(|endorsement_id| {
+                            let slot_endorsed_block =
+                                read_endorsements.get(endorsement_id).unwrap().content.slot;
+                            let slot_timestamp = get_block_slot_timestamp(
+                                self.config.thread_count,
+                                self.config.t0,
+                                self.config.genesis_timestamp,
+                                slot_endorsed_block,
+                            );
+                            match slot_timestamp {
+                                Ok(slot_timestamp) => {
+                                    if slot_timestamp.saturating_add(
+                                        self.config.max_endorsements_propagation_time,
+                                    ) < now
+                                    {
+                                        Some(*endorsement_id)
+                                    } else {
+                                        None
+                                    }
+                                }
+                                Err(_) => Some(*endorsement_id),
+                            }
+                        })
+                        .collect()
+                };
+                endorsements_to_propagate.drop_endorsement_refs(&endorsements_to_not_propagate);
+                self.propagate_endorsements(&endorsements_to_propagate)
+                    .await;
+            }
+
+            // Add to pool
             self.pool_controller.add_endorsements(endorsements);
         }
 

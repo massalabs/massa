@@ -12,6 +12,7 @@ use massa_models::api::EventFilter;
 use massa_models::block::BlockId;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::PreHashMap;
 use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
 use massa_models::stats::ExecutionStats;
@@ -24,12 +25,14 @@ pub trait ExecutionController: Send + Sync {
     /// Updates blockclique status by signaling newly finalized blocks and the latest blockclique.
     ///
     /// # Arguments
-    /// * `finalized_blocks`: newly finalized blocks. Each Storage owns refs to the block and its ops/endorsements/parents.
-    /// * `blockclique`: new blockclique. Each Storage owns refs to the block and its ops/endorsements/parents
+    /// * `finalized_blocks`: newly finalized blocks indexed by slot.
+    /// * `blockclique`: new blockclique (if changed). Indexed by slot.
+    /// * `block_storage`: storage instances for new blocks. Each one owns refs to the block and its ops/endorsements/parents.
     fn update_blockclique_status(
         &self,
-        finalized_blocks: HashMap<Slot, (BlockId, Storage)>,
-        blockclique: HashMap<Slot, (BlockId, Storage)>,
+        finalized_blocks: HashMap<Slot, BlockId>,
+        new_blockclique: Option<HashMap<Slot, BlockId>>,
+        block_storage: PreHashMap<BlockId, Storage>,
     );
 
     /// Get execution events optionally filtered by:
@@ -40,11 +43,11 @@ pub trait ExecutionController: Send + Sync {
     /// * operation id
     fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent>;
 
-    /// Get the final and active values of sequential balances.
+    /// Get the final and active values of balance.
     ///
     /// # Return value
     /// * `(final_balance, active_balance)`
-    fn get_final_and_candidate_sequential_balances(
+    fn get_final_and_candidate_balance(
         &self,
         addresses: &[Address],
     ) -> Vec<(Option<Amount>, Option<Amount>)>;
@@ -60,7 +63,7 @@ pub trait ExecutionController: Send + Sync {
     ) -> Vec<(Option<Vec<u8>>, Option<Vec<u8>>)>;
 
     /// Returns for a given cycle the stakers taken into account
-    /// by the selector. That correspond to the roll_counts in `cycle - 3`.
+    /// by the selector. That correspond to the `roll_counts` in `cycle - 3`.
     ///
     /// By default it returns an empty map.
     fn get_cycle_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64>;
@@ -85,7 +88,7 @@ pub trait ExecutionController: Send + Sync {
         thread: u8,
     ) -> PreHashSet<OperationId>;
 
-    /// Gets infos about a batch of addresses
+    /// Gets information about a batch of addresses
     fn get_addresses_infos(&self, addresses: &[Address]) -> Vec<ExecutionAddressInfo>;
 
     /// Get execution statistics

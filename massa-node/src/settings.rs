@@ -68,7 +68,7 @@ pub struct NetworkSettings {
     pub max_bytes_write: f64,
 }
 
-/// Bootstrap config.
+/// Bootstrap configuration.
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapSettings {
     pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
@@ -154,7 +154,7 @@ pub struct ConsensusSettings {
     pub max_item_return_count: usize,
 }
 
-/// Protocol Configuration, read from toml user config file
+/// Protocol Configuration, read from toml user configuration file
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct ProtocolSettings {
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node
@@ -180,12 +180,21 @@ pub struct ProtocolSettings {
     /// Maximum number of batches in the memory buffer.
     /// Dismiss the new batches if overflow
     pub operation_batch_buffer_capacity: usize,
+    /// Maximum number of operations in the announcement buffer.
+    /// Immediately announce if overflow.
+    pub operation_announcement_buffer_capacity: usize,
     /// Start processing batches in the buffer each `operation_batch_proc_period` in millisecond
     pub operation_batch_proc_period: MassaTime,
     /// All operations asked are prune each `operation_asked_pruning_period` millisecond
     pub asked_operations_pruning_period: MassaTime,
+    /// Interval at which operations are announced in batches.
+    pub operation_announcement_interval: MassaTime,
     /// Maximum of operations sent in one message.
     pub max_operations_per_message: u64,
+    /// Time threshold after which operation are not propagated
+    pub max_operations_propagation_time: MassaTime,
+    /// Time threshold after which operation are not propagated
+    pub max_endorsements_propagation_time: MassaTime,
 }
 
 #[cfg(test)]

@@ -7,6 +7,7 @@
 #![feature(ip)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+#![feature(let_chains)]
 
 /// protocol worker
 pub mod protocol_worker;
@@ -15,6 +16,7 @@ pub use protocol_worker::start_protocol_controller;
 mod checked_operations;
 mod node_info;
 mod protocol_network;
+mod sig_verifier;
 
 #[cfg(test)]
 pub mod tests;

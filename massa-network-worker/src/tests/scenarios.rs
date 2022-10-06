@@ -17,8 +17,9 @@ use massa_hash::Hash;
 use massa_models::config::{
     ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
     MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
-    MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_PARAMETERS_SIZE,
-    THREAD_COUNT,
+    MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE,
+    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
+    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, THREAD_COUNT,
 };
 use massa_models::{
     block::BlockId,
@@ -89,6 +90,9 @@ async fn test_node_worker_shutdown() {
             MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
+            MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+            MAX_OPERATION_DATASTORE_KEY_LENGTH,
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         ),
     );
     let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY, MAX_MESSAGE_SIZE);
@@ -158,6 +162,9 @@ async fn test_node_worker_operations_message() {
             MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
+            MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+            MAX_OPERATION_DATASTORE_KEY_LENGTH,
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         ),
     );
     let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY, MAX_MESSAGE_SIZE);
@@ -1192,9 +1199,8 @@ async fn test_endorsements_messages() {
                 &sender_keypair,
             )
             .unwrap();
-            let ref_id = endorsement.id;
             conn1_w
-                .send(&Message::Endorsements(vec![endorsement]))
+                .send(&Message::Endorsements(vec![endorsement.clone()]))
                 .await
                 .unwrap();
 
@@ -1210,8 +1216,7 @@ async fn test_endorsements_messages() {
                 .await
             {
                 assert_eq!(endorsements.len(), 1);
-                let res_id = endorsements[0].id;
-                assert_eq!(ref_id, res_id);
+                assert_eq!(endorsement, endorsements[0]);
                 assert_eq!(node, conn1_id);
             } else {
                 panic!("Timeout while waiting for endorsement event.");
@@ -1230,11 +1235,11 @@ async fn test_endorsements_messages() {
                 &sender_keypair,
             )
             .unwrap();
-            let ref_id = endorsement.id;
+            // let ref_id = endorsement.id;
 
             // reply with another endorsement
             network_command_sender
-                .send_endorsements(conn1_id, vec![endorsement])
+                .send_endorsements(conn1_id, vec![endorsement.clone()])
                 .await
                 .unwrap();
 
@@ -1246,8 +1251,7 @@ async fn test_endorsements_messages() {
                         let evt = evt.unwrap().unwrap().1;
                         if let Message::Endorsements(endorsements) = evt {
                             assert_eq!(endorsements.len(), 1);
-                            let res_id = endorsements[0].id;
-                            assert_eq!(ref_id, res_id);
+                            assert_eq!(endorsement, endorsements[0]);
                             break;
                         }
                     },

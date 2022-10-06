@@ -13,13 +13,13 @@ use tracing::debug;
 /// Then prune the `cache` pointer if max cache is exceeded.
 ///
 /// # Parameters
-/// * cycle: Cycle to draw
-/// * lookback_rolls: Roll counts at lookback (`cycle-3`)
-/// * lookback_seed: RNG seed at lookback (`cycle-2`)
+/// * `cycle`: Cycle to draw
+/// * `lookback_rolls`: Roll counts at look back (`cycle-3`)
+/// * `lookback_seed`: RNG seed at look back (`cycle-2`)
 ///
 /// # Result
-/// - The draws can throw the errors of the function [get_params] and from the
-///   creation of a [Xoshiro256PlusPlus].
+/// - The draws can throw the errors of the function `get_params` and from the
+///   creation of a `Xoshiro256PlusPlus`.
 /// - An inconsistency error is thrown if nobody has rolls
 ///
 /// Otherwise, the draws return an empty success.
@@ -57,6 +57,8 @@ pub(crate) fn perform_draws(
         ),
     };
 
+    let mut five_first_slots: Vec<(Slot, Selection)> = Vec::new();
+    let mut count = 0;
     loop {
         // draw block creator
         let producer = if cur_slot.period > 0 {
@@ -71,14 +73,16 @@ pub(crate) fn perform_draws(
             .map(|_index| addresses[dist.sample(&mut rng)])
             .collect();
 
+        let selection = Selection {
+            producer,
+            endorsements,
+        };
+        if count < 5 {
+            five_first_slots.push((cur_slot, selection.clone()));
+            count += 1;
+        }
         // add to draws
-        cycle_draws.draws.insert(
-            cur_slot,
-            Selection {
-                producer,
-                endorsements,
-            },
-        );
+        cycle_draws.draws.insert(cur_slot, selection);
 
         if cur_slot == last_slot {
             break;
@@ -92,11 +96,7 @@ pub(crate) fn perform_draws(
         "Draws for cycle {} complete. Look_back seed was {:#?}. Five first selections is : {:#?}",
         cycle,
         lookback_seed.to_bytes(),
-        cycle_draws
-            .draws
-            .iter()
-            .take(5)
-            .collect::<Vec<(&Slot, &Selection)>>()
+        five_first_slots
     );
 
     Ok(cycle_draws)

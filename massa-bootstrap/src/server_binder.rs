@@ -35,9 +35,9 @@ impl BootstrapServerBinder {
     /// Creates a new `WriteBinder`.
     ///
     /// # Argument
-    /// * duplex: duplex stream.
-    /// * local_keypair: local node user keypair
-    /// * limit: limit max bytes per second (up and down)
+    /// * `duplex`: duplex stream.
+    /// * `local_keypair`: local node user keypair
+    /// * `limit`: limit max bytes per second (up and down)
     pub fn new(
         duplex: Duplex,
         local_keypair: KeyPair,
@@ -66,7 +66,7 @@ impl BootstrapServerBinder {
 impl BootstrapServerBinder {
     /// Performs a handshake. Should be called after connection
     /// NOT cancel-safe
-    /// MUST always be followed by a send of the BootstrapMessage::BootstrapTime
+    /// MUST always be followed by a send of the `BootstrapMessage::BootstrapTime`
     pub async fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
         // read version and random bytes, send signature
         let msg_hash = {

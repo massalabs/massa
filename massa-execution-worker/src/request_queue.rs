@@ -7,6 +7,7 @@ use std::collections::VecDeque;
 use std::sync::mpsc::Sender;
 
 /// Represents an execution request T coupled with an MPSC sender for a result of type R
+#[derive(Debug)]
 pub(crate) struct RequestWithResponseSender<T, R> {
     /// The underlying execution request
     request: T,
@@ -47,6 +48,7 @@ impl<T, R> RequestWithResponseSender<T, R> {
 /// Structure representing an execution request queue with maximal length.
 /// Each request is a `RequestWithResponseSender` that comes with an MPSC sender
 /// to return the execution result when the execution is over (or an error).
+#[derive(Debug)]
 pub(crate) struct RequestQueue<T, R> {
     /// Max number of item in the queue.
     /// When the queue is full, extra new items are cancelled and dropped.
@@ -66,6 +68,11 @@ impl<T, R> RequestQueue<T, R> {
             max_items,
             queue: VecDeque::with_capacity(max_items),
         }
+    }
+
+    /// Returns the max number of items the queue can contain
+    pub fn capacity(&self) -> usize {
+        self.max_items
     }
 
     /// Extends Self with the contents of another `RequestQueue`.
@@ -132,12 +139,12 @@ impl<T, R> RequestQueue<T, R> {
     }
 
     /// Take all the elements into a new queue and reset the current queue
-    pub fn take(&mut self) -> Self {
+    /*pub fn take(&mut self) -> Self {
         RequestQueue {
             max_items: self.max_items,
             queue: std::mem::take(&mut self.queue),
         }
-    }
+    }*/
 
     /// Checks whether the queue is full
     ///
