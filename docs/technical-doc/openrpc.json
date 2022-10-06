@@ -494,7 +494,7 @@
                     "schema": {
                         "type": "array",
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/NodeId"
                         }
                     },
                     "required": true
@@ -523,7 +523,7 @@
                     "schema": {
                         "type": "array",
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/IpAddr"
                         }
                     },
                     "required": true
@@ -553,7 +553,7 @@
                         "type": "array",
                         "items": {
                             "description": "Ip address",
-                            "type": "string"
+                            "$ref": "#/components/schemas/IpAddr"
                         }
                     },
                     "required": true
@@ -656,8 +656,8 @@
                     "schema": {
                         "type": "array",
                         "items": {
-                            "description": "Ip address",
-                            "type": "string"
+                            "description": "Node id",
+                            "$ref": "#/components/schemas/NodeId"
                         }
                     },
                     "required": true
@@ -687,7 +687,7 @@
                         "type": "array",
                         "items": {
                             "description": "Ip address",
-                            "type": "string"
+                            "$ref": "#/components/schemas/IpAddr"
                         }
                     },
                     "required": true
@@ -717,7 +717,7 @@
                         "type": "array",
                         "items": {
                             "description": "ip address",
-                            "type": "string"
+                            "$ref": "#/components/schemas/IpAddr"
                         }
                     },
                     "required": true
@@ -1451,7 +1451,7 @@
                     },
                     "node_id": {
                         "description": "Our node id",
-                        "type": "string"
+                        "$ref": "#/components/schemas/NodeId"
                     },
                     "node_ip": {
                         "description": "Optional node ip if provided",
@@ -1569,10 +1569,10 @@
                     "type": "object",
                     "properties": {
                         "node_id": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/NodeId"
                         },
                         "ip_address": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/IpAddr"
                         }
                     }
                 },
@@ -2235,6 +2235,14 @@
                         "description": "the content creator address"
                     }
                 }
+            },
+            "IpAddr": {
+                "description": "Ip address Ipv4 or Ipv6",
+                "type": "string"
+            },
+            "NodeId": {
+                "description": "Node id",
+                "type": "string"
             }
         },
         "contentDescriptors": {
@@ -2324,6 +2332,22 @@
                 "description": "A BlockInfo object",
                 "schema": {
                     "$ref": "#/components/schemas/BlockInfo"
+                }
+            },
+            "IpAddr": {
+                "name": "IpAddr",
+                "summary": "Ip address Ipv4 or Ipv6",
+                "description": "A IpAddr object",
+                "schema": {
+                    "$ref": "#/components/schemas/IpAddr"
+                }
+            },
+            "NodeId": {
+                "name": "NodeId",
+                "summary": "NodeId",
+                "description": "A NodeId object",
+                "schema": {
+                    "$ref": "#/components/schemas/NodeId"
                 }
             },
             "PubKey": {
