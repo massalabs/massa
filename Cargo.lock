@@ -2025,7 +2025,6 @@ dependencies = [
 name = "massa_network_worker"
 version = "0.1.0"
 dependencies = [
- "async-speed-limit",
  "enum-map",
  "futures 0.3.24",
  "itertools",
