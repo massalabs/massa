@@ -21,15 +21,15 @@ pub struct PoolControllerImpl {
     pub(crate) _config: PoolConfig,
     pub(crate) operation_pool: Arc<RwLock<OperationPool>>,
     pub(crate) endorsement_pool: Arc<RwLock<EndorsementPool>>,
-    pub(crate) operation_input_mpsc: SyncSender<Command>,
-    pub(crate) endorsement_input_mpsc: SyncSender<Command>,
+    pub(crate) operations_input_sender: SyncSender<Command>,
+    pub(crate) endorsements_input_sender: SyncSender<Command>,
 }
 
 impl PoolController for PoolControllerImpl {
     /// add operations to pool
     fn add_operations(&mut self, ops: Storage) -> Result<(), PoolError> {
         // self.operation_pool.write().add_operations(ops);
-        self.operation_input_mpsc
+        self.operations_input_sender
             .send(Command::AddOperations(ops))
             .map_err(|_err| {
                 PoolError::ChannelError(
@@ -42,7 +42,7 @@ impl PoolController for PoolControllerImpl {
     /// add endorsements to pool
     fn add_endorsements(&mut self, endorsements: Storage) -> Result<(), PoolError> {
         // self.endorsement_pool.write().add_endorsements(endorsements);
-        self.operation_input_mpsc
+        self.endorsements_input_sender
             .send(Command::AddEndorsements(endorsements))
             .map_err(|_err| {
                 PoolError::ChannelError(
@@ -60,14 +60,14 @@ impl PoolController for PoolControllerImpl {
         // self.endorsement_pool
         //     .write()
         //     .notify_final_cs_periods(final_cs_periods);
-        self.operation_input_mpsc
+        self.operations_input_sender
             .send(Command::NotifyFinalCsPeriods(final_cs_periods.to_vec()))
             .map_err(|_err| {
                 PoolError::ChannelError(
                     "could not give consensus periods through pool channel".into(),
                 )
             })?;
-        self.operation_input_mpsc
+        self.endorsements_input_sender
             .send(Command::NotifyFinalCsPeriods(final_cs_periods.to_vec()))
             .map_err(|_err| {
                 PoolError::ChannelError(
@@ -124,22 +124,34 @@ impl PoolController for PoolControllerImpl {
 
 /// TODO
 pub struct PoolManagerImpl {
-    /// Handle used to join the worker thread
-    pub(crate) thread_handle: Option<std::thread::JoinHandle<Result<(), PoolError>>>,
-    /// Input data mpsc (used to stop the pool thread)
-    pub(crate) input_mpsc: SyncSender<Command>,
+    /// Handle used to join the operation thread
+    pub(crate) operations_thread_handle: Option<std::thread::JoinHandle<Result<(), PoolError>>>,
+    /// Handle used to join the endorsement thread
+    pub(crate) endorsements_thread_handle: Option<std::thread::JoinHandle<Result<(), PoolError>>>,
+    /// Operations input data mpsc (used to stop the pool thread)
+    pub(crate) operations_input_sender: SyncSender<Command>,
+    /// Endorsements input data mpsc (used to stop the pool thread)
+    pub(crate) endorsements_input_sender: SyncSender<Command>,
 }
 
 impl PoolManager for PoolManagerImpl {
     /// stops the worker
     fn stop(&mut self) {
         info!("stopping pool worker...");
-        let _ = self.input_mpsc.send(Command::Stop);
-        // join the pool thread
-        if let Some(join_handle) = self.thread_handle.take() {
+        let _ = self.operations_input_sender.send(Command::Stop);
+        let _ = self.endorsements_input_sender.send(Command::Stop);
+        if let Some(join_handle) = self.operations_thread_handle.take() {
             if let Err(err) = join_handle
                 .join()
-                .expect("pool thread panicked on try to join")
+                .expect("operations pool thread panicked on try to join")
+            {
+                warn!("{}", err);
+            }
+        }
+        if let Some(join_handle) = self.endorsements_thread_handle.take() {
+            if let Err(err) = join_handle
+                .join()
+                .expect("endorsements pool thread panicked on try to join")
             {
                 warn!("{}", err);
             }
