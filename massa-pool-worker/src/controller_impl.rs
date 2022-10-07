@@ -28,9 +28,8 @@ pub struct PoolControllerImpl {
 impl PoolController for PoolControllerImpl {
     /// add operations to pool
     fn add_operations(&mut self, ops: Storage) -> Result<(), PoolError> {
-        // TODO: DROP TYPE CHANNEL
         self.operations_input_sender
-            .send(Command::AddOperations(ops))
+            .try_send(Command::AddOperations(ops))
             .map_err(|_err| {
                 PoolError::ChannelError(
                     "could not give operations to add through pool channel".into(),
@@ -42,7 +41,7 @@ impl PoolController for PoolControllerImpl {
     /// add endorsements to pool
     fn add_endorsements(&mut self, endorsements: Storage) -> Result<(), PoolError> {
         self.endorsements_input_sender
-            .send(Command::AddEndorsements(endorsements))
+            .try_send(Command::AddEndorsements(endorsements))
             .map_err(|_err| {
                 PoolError::ChannelError(
                     "could not give endorsements to add through pool channel".into(),

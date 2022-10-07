@@ -46,7 +46,7 @@ use massa_models::config::POOL_CONTROLLER_CHANNEL_SIZE;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
 use massa_pool_exports::{PoolConfig, PoolManager};
-use massa_pool_worker::start_pool_worker;
+use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
@@ -321,7 +321,7 @@ async fn launch(
         channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
     };
     let (pool_manager, pool_controller) =
-        start_pool_worker(pool_config, &shared_storage, execution_controller.clone())
+        start_pool_controller(pool_config, &shared_storage, execution_controller.clone())
             .expect("could not start pool controller");
 
     // launch protocol controller

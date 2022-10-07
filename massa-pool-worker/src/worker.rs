@@ -1,5 +1,5 @@
 use std::{
-    sync::mpsc::{sync_channel, Receiver},
+    sync::mpsc::{sync_channel, Receiver, TryRecvError},
     thread::JoinHandle,
 };
 
@@ -32,13 +32,14 @@ impl EndorsementPoolThread {
         })
     }
 
-    // TODO
     fn run(self) -> Result<(), PoolError> {
         loop {
-            match self.receiver.recv() {
-                Err(_) => break,
+            match self.receiver.try_recv() {
+                Err(TryRecvError::Empty) => continue,
+                Err(TryRecvError::Disconnected) => break,
                 Ok(Command::Stop) => break,
                 Ok(Command::AddEndorsements(endorsements)) => {
+                    // TODO: take write lock and add until no more endorsements
                     self.endorsement_pool.write().add_endorsements(endorsements)
                 }
                 Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => self
@@ -71,13 +72,14 @@ impl OperationPoolThread {
         })
     }
 
-    // TODO
     fn run(self) -> Result<(), PoolError> {
         loop {
-            match self.receiver.recv() {
-                Err(_) => break,
+            match self.receiver.try_recv() {
+                Err(TryRecvError::Empty) => continue,
+                Err(TryRecvError::Disconnected) => break,
                 Ok(Command::Stop) => break,
                 Ok(Command::AddEndorsements(operations)) => {
+                    // TODO: take write lock and add until no more operations
                     self.operation_pool.write().add_operations(operations);
                 }
                 Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => self
@@ -92,7 +94,8 @@ impl OperationPoolThread {
 }
 
 /// Start pool manager and controller
-pub fn start_pool_worker(
+#[allow(clippy::type_complexity)]
+pub fn start_pool_controller(
     config: PoolConfig,
     storage: &Storage,
     execution_controller: Box<dyn ExecutionController>,

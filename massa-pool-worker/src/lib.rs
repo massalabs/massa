@@ -15,7 +15,7 @@ mod operation_pool;
 mod types;
 mod worker;
 
-pub use worker::start_pool_worker;
+pub use worker::start_pool_controller;
 
 #[cfg(test)]
 mod tests;
