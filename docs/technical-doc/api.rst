@@ -34,8 +34,8 @@ Result:
 
     {
     "jsonrpc": "2.0",
-    "result": 123,
-    "id": 1
+    "result": null,
+    "id": 123
     }
 
 Integrations
@@ -43,6 +43,6 @@ Integrations
 
 **JavaScript**: use `massa-web3.js <https://github.com/massalabs/massa-web3>`_.
 
-**Smart contracts**: use `massa-sc-library <https://github.com/massalabs/massa-sc-library>`_.
+**Smart contracts**: use `massa-as-sdk <https://github.com/massalabs/massa-as-sdk>`_.
 
 **Playground**: use `Massa Playground <https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercontent.com/massalabs/massa/main/docs/technical-doc/openrpc.json&uiSchema[appBar][ui:input]=false&uiSchema[appBar][ui:inputPlaceholder]=Enter Massa JSON-RPC server URL&uiSchema[appBar][ui:logoUrl]=https://massa.net/favicons/favicon.ico&uiSchema[appBar][ui:splitView]=false&uiSchema[appBar][ui:darkMode]=false&uiSchema[appBar][ui:title]=Massa&uiSchema[appBar][ui:examplesDropdown]=false&uiSchema[methods][ui:defaultExpanded]=false&uiSchema[methods][ui:methodPlugins]=true&uiSchema[params][ui:defaultExpanded]=false>`_.
