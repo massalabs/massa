@@ -114,7 +114,9 @@ impl PoolController for PoolControllerImpl {
     }
 }
 
-/// TODO
+/// Implementation of the pool manager.
+///
+/// Contains the operations and endorsements thread handles.
 pub struct PoolManagerImpl {
     /// Handle used to join the operation thread
     pub(crate) operations_thread_handle: Option<std::thread::JoinHandle<Result<(), PoolError>>>,
@@ -127,7 +129,7 @@ pub struct PoolManagerImpl {
 }
 
 impl PoolManager for PoolManagerImpl {
-    /// stops the worker
+    /// Stops the worker
     fn stop(&mut self) {
         info!("stopping pool worker...");
         let _ = self.operations_input_sender.send(Command::Stop);
