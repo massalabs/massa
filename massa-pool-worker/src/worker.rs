@@ -23,6 +23,7 @@ impl EndorsementPoolThread {
         })
     }
 
+    // TODO
     fn run(self) -> Result<(), PoolError> {
         loop {
             match self.0.recv() {
@@ -45,6 +46,7 @@ impl OperationPoolThread {
         })
     }
 
+    // TODO
     fn run(self) -> Result<(), PoolError> {
         loop {
             match self.0.recv() {
@@ -57,7 +59,7 @@ impl OperationPoolThread {
     }
 }
 
-/// TODO
+/// Start pool manager and controller
 pub fn start_pool_worker(
     config: PoolConfig,
     storage: &Storage,

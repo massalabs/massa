@@ -53,6 +53,7 @@ impl Clone for Box<dyn PoolController> {
     }
 }
 
+/// Pool manager trait
 pub trait PoolManager: Send + Sync {
     /// Stops the worker
     fn stop(&mut self);

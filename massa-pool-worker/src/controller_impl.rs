@@ -29,6 +29,7 @@ impl PoolController for PoolControllerImpl {
     /// add operations to pool
     fn add_operations(&mut self, ops: Storage) -> Result<(), PoolError> {
         // self.operation_pool.write().add_operations(ops);
+        // TODO: DROP TYPE CHANNEL
         self.operations_input_sender
             .send(Command::AddOperations(ops))
             .map_err(|_err| {
