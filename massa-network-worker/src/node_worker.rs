@@ -370,9 +370,15 @@ impl NodeWorker {
                     debug!("timer-based asking node_id={} for peer list", self.node_id);
                     massa_trace!("node_worker.run_loop. timer_ask_peer_list", {"node_id": self.node_id});
                     massa_trace!("node_worker.run_loop.select.timer send Message::AskPeerList", {"node": self.node_id});
-                    writer_command_tx.send(Message::AskPeerList).await.map_err(
-                        |_| NetworkError::ChannelError("writer send ask peer list failed".into())
-                    )?;
+                    match writer_command_tx.try_send(Message::AskPeerList) {
+                        Ok(()) => {},
+                        Err(TrySendError::Full(_)) => {
+                            warn!("node channel full: {}", self.node_id);
+                        },
+                        Err(TrySendError::Closed(_)) => {
+                            return Err(NetworkError::ChannelError("writer send ask peer list failed".into()));
+                        }
+                    };
                     trace!("after sending Message::AskPeerList from writer_command_tx in node_worker run_loop");
                 }
             }
