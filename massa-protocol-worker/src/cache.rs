@@ -123,7 +123,7 @@ impl<K: PreHashed + std::hash::Hash + Id + Clone + Copy + PartialEq + Eq, V> Has
         match self.container.entry(key) {
             hash_map::Entry::Occupied(mut occ) => {
                 // item was already present
-                return Some(occ.insert(value));
+                Some(occ.insert(value))
             }
             hash_map::Entry::Vacant(vac) => {
                 // item was absent
@@ -131,12 +131,11 @@ impl<K: PreHashed + std::hash::Hash + Id + Clone + Copy + PartialEq + Eq, V> Has
                     // the container was full: clear then insert
                     self.container.clear();
                     self.container.insert(key, value);
-                    return None;
                 } else {
                     // container not full
                     vac.insert(value);
-                    return None;
                 }
+                None
             }
         }
     }
