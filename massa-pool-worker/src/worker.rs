@@ -39,8 +39,12 @@ impl EndorsementPoolThread {
                 Err(TryRecvError::Disconnected) => break,
                 Ok(Command::Stop) => break,
                 Ok(Command::AddEndorsements(endorsements)) => {
-                    // TODO: take write lock and add until no more endorsements
-                    self.endorsement_pool.write().add_endorsements(endorsements)
+                    let mut write = self.endorsement_pool.write();
+                    write.add_endorsements(endorsements);
+                    while let Ok(Command::AddEndorsements(endorsements)) = self.receiver.try_recv()
+                    {
+                        write.add_endorsements(endorsements);
+                    }
                 }
                 Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => self
                     .endorsement_pool
@@ -78,9 +82,12 @@ impl OperationPoolThread {
                 Err(TryRecvError::Empty) => continue,
                 Err(TryRecvError::Disconnected) => break,
                 Ok(Command::Stop) => break,
-                Ok(Command::AddEndorsements(operations)) => {
-                    // TODO: take write lock and add until no more operations
-                    self.operation_pool.write().add_operations(operations);
+                Ok(Command::AddOperations(operations)) => {
+                    let mut write = self.operation_pool.write();
+                    write.add_operations(operations);
+                    while let Ok(Command::AddOperations(operations)) = self.receiver.try_recv() {
+                        write.add_operations(operations);
+                    }
                 }
                 Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => self
                     .operation_pool
