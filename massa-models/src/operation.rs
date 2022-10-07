@@ -1571,25 +1571,30 @@ mod tests {
         let sender_keypair = KeyPair::generate();
 
         let target_keypair = KeyPair::generate();
-        let target_addr = Address::from_public_key(&target_keypair.get_public_key());
+        // let target_addr = Address::from_public_key(&target_keypair.get_public_key());
 
         // Dummy hash & signature (no point in using a real endorsement/block here)
         let de_keypair = KeyPair::generate();
         let data = Hash::compute_from("12345".as_bytes());
         let sig = de_keypair.sign(&data).unwrap();
+        let data2 = Hash::compute_from("6789".as_bytes());
+        let sig2 = de_keypair.sign(&data2).unwrap();
         let slot = Slot::new(1, 5);
 
         let denouncement = Denouncement {
             slot,
+            pub_key: de_keypair.get_public_key(),
             proof: DenouncementProof::Endorsement(EndorsementDenouncement {
                 signature_1: sig,
                 hash_1: data,
                 index_1: 3,
-                signature_2: sig,
-                hash_2: data,
+                signature_2: sig2,
+                hash_2: data2,
                 index_2: 3,
             }),
         };
+
+        assert_eq!(denouncement.is_valid(), true);
 
         let op = OperationType::Denouncement { data: denouncement };
 
@@ -1608,6 +1613,7 @@ mod tests {
         )
         .deserialize::<DeserializeError>(&ser_type)
         .unwrap();
+        // TODO: PartialEq / Eq for Operation
         assert_eq!(format!("{}", res_type), format!("{}", op));
 
         let content = Operation {
@@ -1651,6 +1657,12 @@ mod tests {
             .deserialize::<DeserializeError>(&ser_op)
             .unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
+
+        let res: bool = match res_op.content.op {
+            OperationType::Denouncement { data } => { data.is_valid() },
+            _ => false,
+        };
+        assert_eq!(res, true);
 
         assert_eq!(op.get_validity_range(10), 40..=50);
     }

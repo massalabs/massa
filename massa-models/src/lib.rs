@@ -28,7 +28,7 @@ pub mod config;
 /// datastore serialization / deserialization
 pub mod datastore;
 /// Denouncement
-mod denouncement;
+pub mod denouncement;
 /// endorsements
 pub mod endorsement;
 /// models error
