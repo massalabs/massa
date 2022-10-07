@@ -407,6 +407,12 @@
 <span id="407">407</span>
 <span id="408">408</span>
 <span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use super</span>::{
@@ -779,9 +785,15 @@
                     <span class="macro">debug!</span>(<span class="string">&quot;timer-based asking node_id={} for peer list&quot;</span>, <span class="self">self</span>.node_id);
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. timer_ask_peer_list&quot;</span>, {<span class="string">&quot;node_id&quot;</span>: <span class="self">self</span>.node_id});
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop.select.timer send Message::AskPeerList&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.node_id});
-                    writer_command_tx.send(Message::AskPeerList).<span class="kw">await</span>.map_err(
-                        |<span class="kw">_</span>| NetworkError::ChannelError(<span class="string">&quot;writer send ask peer list failed&quot;</span>.into())
-                    )<span class="question-mark">?</span>;
+                    <span class="kw">match </span>writer_command_tx.try_send(Message::AskPeerList) {
+                        <span class="prelude-val">Ok</span>(()) =&gt; {},
+                        <span class="prelude-val">Err</span>(TrySendError::Full(<span class="kw">_</span>)) =&gt; {
+                            <span class="macro">warn!</span>(<span class="string">&quot;node channel full: {}&quot;</span>, <span class="self">self</span>.node_id);
+                        },
+                        <span class="prelude-val">Err</span>(TrySendError::Closed(<span class="kw">_</span>)) =&gt; {
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(NetworkError::ChannelError(<span class="string">&quot;writer send ask peer list failed&quot;</span>.into()));
+                        }
+                    };
                     <span class="macro">trace!</span>(<span class="string">&quot;after sending Message::AskPeerList from writer_command_tx in node_worker run_loop&quot;</span>);
                 }
             }
@@ -817,4 +829,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (0ca356586 2022-10-06)" ></div></body></html>

@@ -303,6 +303,15 @@
 <span id="303">303</span>
 <span id="304">304</span>
 <span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{
@@ -323,10 +332,13 @@
     net::IpAddr,
 };
 <span class="kw">use </span>tokio::{
-    sync::{mpsc, oneshot},
+    sync::{
+        mpsc::{<span class="self">self</span>, error::TrySendError},
+        oneshot,
+    },
     task::JoinHandle,
 };
-<span class="kw">use </span>tracing::info;
+<span class="kw">use </span>tracing::{info, warn};
 
 <span class="doccomment">/// Network command sender
 </span><span class="attribute">#[derive(Clone)]
@@ -502,14 +514,20 @@
         to_node: NodeId,
         batch: OperationPrefixIds,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
-        <span class="self">self</span>.<span class="number">0
-            </span>.send(NetworkCommand::SendOperationAnnouncements { to_node, batch })
-            .<span class="kw">await
-            </span>.map_err(|<span class="kw">_</span>| {
-                NetworkError::ChannelError(
+        <span class="kw">match </span><span class="self">self
+            </span>.<span class="number">0
+            </span>.try_send(NetworkCommand::SendOperationAnnouncements { to_node, batch })
+        {
+            <span class="prelude-val">Ok</span>(()) =&gt; {}
+            <span class="prelude-val">Err</span>(TrySendError::Full(<span class="kw">_</span>)) =&gt; {
+                <span class="macro">warn!</span>(<span class="string">&quot;Failed to send NetworkCommand SendOperationAnnouncements channel full&quot;</span>);
+            }
+            <span class="prelude-val">Err</span>(TrySendError::Closed(<span class="kw">_</span>)) =&gt; {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(NetworkError::ChannelError(
                     <span class="string">&quot;could not send SendOperationAnnouncements command&quot;</span>.into(),
-                )
-            })<span class="question-mark">?</span>;
+                ));
+            }
+        };
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -609,4 +627,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (0ca356586 2022-10-06)" ></div></body></html>
