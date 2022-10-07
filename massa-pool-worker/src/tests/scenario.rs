@@ -49,14 +49,16 @@ fn test_simple_get_operations() {
     let config = PoolConfig::default();
     pool_test(
         config,
-        |mut pool_controller, execution_receiver, mut storage| {
+        |mut pool_manager, mut pool_controller, execution_receiver, mut storage| {
             let keypair = KeyPair::generate();
             storage.store_operations(create_some_operations(10, &keypair, 1));
 
             let creator_address = Address::from_public_key(&keypair.get_public_key());
             let creator_thread = creator_address.get_thread(config.thread_count);
             let unexecuted_ops = storage.get_op_refs().clone();
-            pool_controller.add_operations(storage);
+            pool_controller
+                .add_operations(storage)
+                .expect("pool_controller.add_operations channel error");
 
             // start mock execution thread
             std::thread::spawn(move || {
@@ -95,6 +97,8 @@ fn test_simple_get_operations() {
             let block_operations_storage = pool_controller
                 .get_block_operations(&Slot::new(1, creator_thread))
                 .1;
+
+            pool_manager.stop();
 
             assert_eq!(block_operations_storage.get_op_refs().len(), 10);
         },
@@ -160,11 +164,13 @@ fn test_get_operations_overflow() {
     let creator_thread = creator_address.get_thread(config.thread_count);
     pool_test(
         config,
-        |mut pool_controller, execution_receiver, mut storage| {
+        |mut pool_manager, mut pool_controller, execution_receiver, mut storage| {
             storage.store_operations(operations);
 
             let unexecuted_ops = storage.get_op_refs().clone();
-            pool_controller.add_operations(storage);
+            pool_controller
+                .add_operations(storage)
+                .expect("pool_controller.add_operations channel error");
 
             // start mock execution thread
             launch_basic_get_block_operation_execution_mock(
@@ -176,6 +182,8 @@ fn test_get_operations_overflow() {
             let block_operations_storage = pool_controller
                 .get_block_operations(&Slot::new(1, creator_thread))
                 .1;
+
+            pool_manager.stop();
 
             assert_eq!(block_operations_storage.get_op_refs().len(), MAX_OP_LEN);
         },

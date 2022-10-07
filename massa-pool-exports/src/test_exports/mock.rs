@@ -11,7 +11,7 @@ use massa_models::{
 use massa_storage::Storage;
 use massa_time::MassaTime;
 
-use crate::PoolController;
+use crate::{PoolController, PoolError};
 
 /// Test tool to mock pool controller responses
 pub struct PoolEventReceiver(pub Receiver<MockPoolControllerMessage>);
@@ -123,20 +123,22 @@ impl PoolEventReceiver {
 /// a response from that channel is read and returned as return value.
 /// See the documentation of `PoolController` for details on each function.
 impl PoolController for MockPoolController {
-    fn add_endorsements(&mut self, endorsements: Storage) {
+    fn add_endorsements(&mut self, endorsements: Storage) -> Result<(), PoolError> {
         self.0
             .lock()
             .unwrap()
             .send(MockPoolControllerMessage::AddEndorsements { endorsements })
             .unwrap();
+        Ok(())
     }
 
-    fn add_operations(&mut self, operations: Storage) {
+    fn add_operations(&mut self, operations: Storage) -> Result<(), PoolError> {
         self.0
             .lock()
             .unwrap()
             .send(MockPoolControllerMessage::AddOperations { operations })
             .unwrap();
+        Ok(())
     }
 
     fn get_block_endorsements(
@@ -216,7 +218,7 @@ impl PoolController for MockPoolController {
         response_rx.recv().unwrap()
     }
 
-    fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
+    fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) -> Result<(), PoolError> {
         self.0
             .lock()
             .unwrap()
@@ -224,6 +226,7 @@ impl PoolController for MockPoolController {
                 periods: final_cs_periods.to_vec(),
             })
             .unwrap();
+        Ok(())
     }
 
     fn clone_box(&self) -> Box<dyn PoolController> {

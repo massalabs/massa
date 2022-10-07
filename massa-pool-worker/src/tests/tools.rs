@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::{operation_pool::OperationPool, start_pool};
+use crate::{operation_pool::OperationPool, start_pool_controller};
 use massa_execution_exports::test_exports::{
     MockExecutionController, MockExecutionControllerMessage,
 };
@@ -14,7 +14,7 @@ use massa_models::{
     slot::Slot,
     wrapped::WrappedContent,
 };
-use massa_pool_exports::{PoolConfig, PoolController};
+use massa_pool_exports::{PoolConfig, PoolController, PoolManager};
 use massa_signature::{KeyPair, PublicKey};
 use massa_storage::Storage;
 use std::collections::BTreeMap;
@@ -54,14 +54,21 @@ pub fn create_some_operations(
 
 pub fn pool_test<F>(cfg: PoolConfig, test: F)
 where
-    F: FnOnce(Box<dyn PoolController>, Receiver<MockExecutionControllerMessage>, Storage),
+    F: FnOnce(
+        Box<dyn PoolManager>,
+        Box<dyn PoolController>,
+        Receiver<MockExecutionControllerMessage>,
+        Storage,
+    ),
 {
     let storage: Storage = Storage::create_root();
 
     let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
-    let pool_controller = start_pool(cfg, &storage, execution_controller);
+    let (pool_manager, pool_controller) =
+        start_pool_controller(cfg, &storage, execution_controller)
+            .expect("start_pool_controller failed");
 
-    test(Box::new(pool_controller), execution_receiver, storage)
+    test(pool_manager, pool_controller, execution_receiver, storage)
 }
 
 pub fn operation_pool_test<F>(cfg: PoolConfig, test: F)
