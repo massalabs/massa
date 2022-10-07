@@ -13,12 +13,21 @@ use massa_storage::Storage;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-pub(crate) struct EndorsementPoolThread(Receiver<Command>);
+pub(crate) struct EndorsementPoolThread {
+    receiver: Receiver<Command>,
+    endorsement_pool: Arc<RwLock<EndorsementPool>>,
+}
 
 impl EndorsementPoolThread {
-    pub(crate) fn spawn(input_mpsc: Receiver<Command>) -> JoinHandle<Result<(), PoolError>> {
+    pub(crate) fn spawn(
+        receiver: Receiver<Command>,
+        endorsement_pool: Arc<RwLock<EndorsementPool>>,
+    ) -> JoinHandle<Result<(), PoolError>> {
         std::thread::spawn(|| {
-            let this = Self(input_mpsc);
+            let this = Self {
+                receiver,
+                endorsement_pool,
+            };
             this.run()
         })
     }
@@ -26,22 +35,33 @@ impl EndorsementPoolThread {
     // TODO
     fn run(self) -> Result<(), PoolError> {
         loop {
-            match self.0.recv() {
+            match self.receiver.recv() {
                 Err(_) => break,
                 Ok(Command::Stop) => break,
-                Ok(_) => break,
+                Ok(Command::AddEndorsements(_operations)) => continue,
+                Ok(Command::NotifyFinalCsPeriods(_periods)) => continue,
+                Ok(_) => continue,
             };
         }
         Ok(())
     }
 }
 
-pub(crate) struct OperationPoolThread(Receiver<Command>);
+pub(crate) struct OperationPoolThread {
+    receiver: Receiver<Command>,
+    operation_pool: Arc<RwLock<OperationPool>>,
+}
 
 impl OperationPoolThread {
-    pub(crate) fn spawn(receiver: Receiver<Command>) -> JoinHandle<Result<(), PoolError>> {
+    pub(crate) fn spawn(
+        receiver: Receiver<Command>,
+        operation_pool: Arc<RwLock<OperationPool>>,
+    ) -> JoinHandle<Result<(), PoolError>> {
         std::thread::spawn(|| {
-            let this = Self(receiver);
+            let this = Self {
+                receiver,
+                operation_pool,
+            };
             this.run()
         })
     }
@@ -49,10 +69,12 @@ impl OperationPoolThread {
     // TODO
     fn run(self) -> Result<(), PoolError> {
         loop {
-            match self.0.recv() {
+            match self.receiver.recv() {
                 Err(_) => break,
                 Ok(Command::Stop) => break,
-                Ok(_) => break,
+                Ok(Command::AddEndorsements(_endorsements)) => continue,
+                Ok(Command::NotifyFinalCsPeriods(_periods)) => continue,
+                Ok(_) => continue,
             };
         }
         Ok(())
@@ -68,27 +90,24 @@ pub fn start_pool_worker(
     let (operations_input_sender, operations_input_receiver) = sync_channel(config.channels_size);
     let (endorsements_input_sender, endorsements_input_receiver) =
         sync_channel(config.channels_size);
-    let controller = {
-        let operation_pool = Arc::new(RwLock::new(OperationPool::init(
-            config,
-            storage,
-            execution_controller,
-        )));
-
-        let endorsement_pool = Arc::new(RwLock::new(EndorsementPool::init(config, storage)));
-
-        PoolControllerImpl {
-            _config: config,
-            operation_pool,
-            endorsement_pool,
-            operations_input_sender: operations_input_sender.clone(),
-            endorsements_input_sender: endorsements_input_sender.clone(),
-        }
+    let operation_pool = Arc::new(RwLock::new(OperationPool::init(
+        config,
+        storage,
+        execution_controller,
+    )));
+    let endorsement_pool = Arc::new(RwLock::new(EndorsementPool::init(config, storage)));
+    let controller = PoolControllerImpl {
+        _config: config,
+        operation_pool: operation_pool.clone(),
+        endorsement_pool: endorsement_pool.clone(),
+        operations_input_sender: operations_input_sender.clone(),
+        endorsements_input_sender: endorsements_input_sender.clone(),
     };
 
-    // launch the selector thread
-    let operations_thread_handle = OperationPoolThread::spawn(operations_input_receiver);
-    let endorsements_thread_handle = EndorsementPoolThread::spawn(endorsements_input_receiver);
+    let operations_thread_handle =
+        OperationPoolThread::spawn(operations_input_receiver, operation_pool);
+    let endorsements_thread_handle =
+        EndorsementPoolThread::spawn(endorsements_input_receiver, endorsement_pool);
 
     let manager = PoolManagerImpl {
         operations_thread_handle: Some(operations_thread_handle),
