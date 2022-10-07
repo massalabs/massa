@@ -1,0 +1,42 @@
+testnet1
+2022-10-06T14:27:36.000130Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 0): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:36.500235Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 1): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:37.000340Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 2): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:37.500452Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 3): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:38.000556Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 4): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:38.500671Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 5): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:39.000776Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 6): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:39.500876Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 7): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:40.000962Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 8): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:40.501064Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 9): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:41.000164Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 10): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:41.500268Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 11): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:42.000370Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 12): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:42.500478Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 13): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:43.000594Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 14): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:43.500703Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 15): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:44.000806Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 16): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:44.000897Z  WARN massa_factory_worker::block_factory: block factory could not get selector draws for slot (period: 5504, thread: 0): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:44.500910Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 17): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:44.500967Z  WARN massa_factory_worker::block_factory: block factory could not get selector draws for slot (period: 5504, thread: 1): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:45.001027Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 18): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:45.001027Z  WARN massa_factory_worker::block_factory: block factory could not get selector draws for slot (period: 5504, thread: 2): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:45.500138Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 19): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:45.500141Z  WARN massa_factory_worker::block_factory: block factory could not get selector draws for slot (period: 5504, thread: 3): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:46.000246Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 5504, thread: 20): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+2022-10-06T14:27:46.000247Z  WARN massa_factory_worker::block_factory: block factory could not get selector draws for slot (period: 5504, thread: 4): `CycleUnavailable`: PoS cycle 43 is needed but is absent from cache
+thread '<unnamed>' panicked at 'couldn't get the expected block producer for a missed slot: CycleUnavailable(43)', massa-execution-worker/src/execution.rs:889:18
+
+testnet2
+2022-10-06T09:02:05.243946Z DEBUG massa_execution_worker::execution: execute_candidate_slot: executing slot=(period: 4146, thread: 26) target=Some(jp2rsAz9vj3vVhoH2deDrSACATxEy7vHpHN3ZRi3YLhJxbgy4)
+thread '<unnamed>' panicked at 'could not execute candidate slot (period: 4146, thread: 26) because final_cursor is at (period: 4271, thread: 14)', massa-execution-worker/src/execution.rs:912:13
+
+massa-canada2
+2022-10-06T09:20:34.000280Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 4352, thread: 20): `CycleUnavailable`: PoS cycle 34 is needed but is absent from cache
+2022-10-06T09:20:34.000329Z  WARN massa_factory_worker::block_factory: block factory could not get selector draws for slot (period: 4352, thread: 4): `CycleUnavailable`: PoS cycle 34 is needed but is absent from cache
+thread '<unnamed>' panicked at 'couldn't get the expected block producer for a missed slot: CycleUnavailable(34)', massa-execution-worker/src/execution.rs:889:18
+
+massa-poland2
+022-10-06T09:20:34.000138Z  WARN massa_factory_worker::block_factory: block factory could not get selector draws for slot (period: 4352, thread: 4): `CycleUnavailable`: PoS cycle 34 is needed but is absent from cache
+thread '<unnamed>' panicked at 'couldn't get the expected block producer for a missed slot: CycleUnavailable(34)', massa-execution-worker/src/execution.rs:889:18
+2022-10-06T09:20:34.001001Z  WARN massa_factory_worker::endorsement_factory: endorsement factory could not get selector draws for slot (period: 4352, thread: 20): `CycleUnavailable`: PoS cycle 34 is needed but is absent from cache

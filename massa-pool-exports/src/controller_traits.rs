@@ -5,16 +5,18 @@ use massa_models::{
 };
 use massa_storage::Storage;
 
+use crate::PoolError;
+
 /// Trait defining a pool controller
 pub trait PoolController: Send + Sync {
     /// add operations to pool
-    fn add_operations(&mut self, ops: Storage);
+    fn add_operations(&mut self, ops: Storage) -> Result<(), PoolError>;
 
     /// add endorsements to pool
-    fn add_endorsements(&mut self, endorsements: Storage);
+    fn add_endorsements(&mut self, endorsements: Storage) -> Result<(), PoolError>;
 
     /// notify of new consensus final periods
-    fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]);
+    fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) -> Result<(), PoolError>;
 
     /// get operations for block creation
     fn get_block_operations(&self, slot: &Slot) -> (Vec<OperationId>, Storage);
