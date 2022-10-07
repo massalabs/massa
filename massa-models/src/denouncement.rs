@@ -7,15 +7,74 @@ use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::ops::Bound::{Excluded, Included};
+use std::str::FromStr;
 
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
-// use crate::serialization::VecU8Serializer;
-// use crate::timeslots::slot_count_in_range;
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
-use massa_signature::{verify_signature_batch, PublicKey, Signature, SignatureDeserializer};
+use massa_signature::{verify_signature_batch, PublicKey, Signature, SignatureDeserializer, PublicKeyDeserializer};
+use crate::address::Address;
+use crate::error::ModelsError;
+use crate::prehash::PreHashed;
+use crate::wrapped::Id;
+
+/// Denouncement ID size in bytes
+pub const DENOUNCEMENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+
+/// endorsement id
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct DenouncementId(Hash);
+
+impl PreHashed for DenouncementId {}
+
+impl Id for DenouncementId {
+    fn new(hash: Hash) -> Self {
+        DenouncementId(hash)
+    }
+
+    fn get_hash(&self) -> &Hash {
+        &self.0
+    }
+}
+
+impl Display for DenouncementId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0.to_bs58_check())
+    }
+}
+
+impl FromStr for DenouncementId {
+    type Err = ModelsError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(DenouncementId(Hash::from_str(s)?))
+    }
+}
+
+impl DenouncementId {
+    /// endorsement id to bytes
+    pub fn to_bytes(&self) -> &[u8; DENOUNCEMENT_ID_SIZE_BYTES] {
+        self.0.to_bytes()
+    }
+
+    /// endorsement id into bytes
+    pub fn into_bytes(self) -> [u8; DENOUNCEMENT_ID_SIZE_BYTES] {
+        self.0.into_bytes()
+    }
+
+    /// endorsement id from bytes
+    pub fn from_bytes(data: &[u8; DENOUNCEMENT_ID_SIZE_BYTES]) -> DenouncementId {
+        DenouncementId(Hash::from_bytes(data))
+    }
+
+    /// endorsement id from `bs58` check
+    pub fn from_bs58_check(data: &str) -> Result<DenouncementId, ModelsError> {
+        Ok(DenouncementId(
+            Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
+        ))
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct EndorsementDenouncement {
@@ -34,7 +93,7 @@ impl EndorsementDenouncement {
             (self.hash_2, self.signature_2, public_key),
         ];
 
-        self.hash_1 == self.hash_2
+        self.hash_1 != self.hash_2
             && self.index_1 == self.index_2
             && verify_signature_batch(&to_verif).is_ok()
     }
@@ -103,14 +162,15 @@ impl Display for DenouncementProof {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Denouncement {
     pub slot: Slot,
+    pub pub_key: PublicKey,
     pub proof: DenouncementProof,
 }
 
 impl Denouncement {
-    fn is_valid(&self, public_key: PublicKey) -> bool {
+    pub fn is_valid(&self) -> bool {
         match self.proof.as_ref() {
-            DenouncementProof::Endorsement(ed) => ed.is_valid(public_key),
-            DenouncementProof::Block(bd) => bd.is_valid(public_key),
+            DenouncementProof::Endorsement(ed) => ed.is_valid(self.pub_key),
+            DenouncementProof::Block(bd) => bd.is_valid(self.pub_key),
         }
     }
 
@@ -120,6 +180,20 @@ impl Denouncement {
 
     fn is_for_endorsement(&self) -> bool {
         matches!(self.proof.as_ref(), DenouncementProof::Endorsement(_))
+    }
+
+    /// Address of the denounced
+    pub fn addr(&self) -> Address {
+        Address::from_public_key(&self.pub_key)
+    }
+
+    pub fn get_id<SC>(&self, serializer: SC) -> Result<DenouncementId, SerializeError>
+        where SC: Serializer<Self>
+    {
+        let mut buffer = Vec::new();
+        serializer.serialize(self, &mut buffer)?;
+        let hash = Hash::compute_from(&buffer[..]);
+        Ok(DenouncementId::new(hash))
     }
 }
 
@@ -172,6 +246,7 @@ impl Serializer<Denouncement> for DenouncementSerializer {
     /// ```
     fn serialize(&self, value: &Denouncement, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.slot_serializer.serialize(&value.slot, buffer)?;
+        buffer.extend(value.pub_key.to_bytes());
         let denouncement_kind = value.is_for_block() as u8;
         buffer.extend([denouncement_kind]);
 
@@ -198,7 +273,8 @@ pub struct DenouncementDeserializer {
     slot_deserializer: SlotDeserializer,
     index_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
-    sig_desserializer: SignatureDeserializer,
+    sig_deserializer: SignatureDeserializer,
+    pub_key_deserializer: PublicKeyDeserializer,
 }
 
 impl DenouncementDeserializer {
@@ -214,7 +290,8 @@ impl DenouncementDeserializer {
                 Excluded(endorsement_count),
             ),
             hash_deserializer: HashDeserializer::new(),
-            sig_desserializer: SignatureDeserializer::new(),
+            sig_deserializer: SignatureDeserializer::new(),
+            pub_key_deserializer: PublicKeyDeserializer::new(),
         }
     }
 }
@@ -243,16 +320,18 @@ impl Deserializer<Denouncement> for DenouncementDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Denouncement, E> {
-        let (rem, (slot, is_for_block)) = context(
+        let (rem, (slot, pub_key, is_for_block)) = context(
             "Failed Denouncement deserialization",
             tuple((
                 context("Failed slot deserialization", |input| {
                     self.slot_deserializer.deserialize(input)
                 }),
+                context("Failed pub_key deserialization", |input| {
+                    self.pub_key_deserializer.deserialize(input)
+                }),
                 context("Failed slot deserialization", |input| take(1usize)(input)),
             )),
         )
-        .map(|(slot, is_for_block)| (slot, is_for_block))
         .parse(buffer)?;
 
         // TODO: rework this
@@ -271,7 +350,7 @@ impl Deserializer<Denouncement> for DenouncementDeserializer {
                 "Failed Endorsement denouncement deser",
                 tuple((
                     context("Failed signature 1 deser", |input| {
-                        self.sig_desserializer.deserialize(input)
+                        self.sig_deserializer.deserialize(input)
                     }),
                     context("Failed hash 1 deser", |input| {
                         self.hash_deserializer.deserialize(input)
@@ -280,7 +359,7 @@ impl Deserializer<Denouncement> for DenouncementDeserializer {
                         self.index_deserializer.deserialize(input)
                     }),
                     context("Failed signature 2 deser", |input| {
-                        self.sig_desserializer.deserialize(input)
+                        self.sig_deserializer.deserialize(input)
                     }),
                     context("Failed hash 2 deser", |input| {
                         self.hash_deserializer.deserialize(input)
@@ -304,7 +383,7 @@ impl Deserializer<Denouncement> for DenouncementDeserializer {
             .parse(rem)?,
         };
 
-        Ok((rem2, Denouncement { slot, proof }))
+        Ok((rem2, Denouncement { slot, pub_key, proof }))
     }
 }
 
@@ -333,7 +412,7 @@ mod tests {
         let content = Endorsement {
             slot,
             index: 0,
-            endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
+            endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
         };
         let endorsement1: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
             content.clone(),
@@ -343,18 +422,22 @@ mod tests {
         )
         .unwrap();
 
+        let content2 = Endorsement {
+            slot,
+            index: 0,
+            endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+        };
         let endorsement2: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
-            content,
+            content2,
             EndorsementSerializer::new(),
             &sender_keypair,
             EndorsementHasher::new(),
         )
         .unwrap();
 
-        assert_eq!(endorsement1, endorsement2);
-
         let denouncement = Denouncement {
             slot,
+            pub_key: sender_keypair.get_public_key(),
             proof: DenouncementProof::Endorsement(EndorsementDenouncement {
                 signature_1: endorsement1.signature,
                 hash_1: *endorsement1.id.get_hash(),
@@ -365,35 +448,52 @@ mod tests {
             }),
         };
 
-        assert_eq!(denouncement.is_valid(sender_keypair.get_public_key()), true);
+        assert_eq!(denouncement.is_valid(), true);
 
-        let content2 = Endorsement {
+    }
+
+    #[test]
+    #[serial]
+    fn test_invalid_endorsement_denouncement() {
+
+        let sender_keypair = KeyPair::generate();
+
+        let slot = Slot::new(3, 7);
+
+        let content = Endorsement {
             slot,
             index: 1,
             endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
         };
-        let endorsement3: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
-            content2.clone(),
+        let endorsement1: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
+            content.clone(),
             EndorsementSerializer::new(),
             &sender_keypair,
             EndorsementHasher::new(),
-        )
-        .unwrap();
+        ).unwrap();
+        let endorsement2: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
+            content.clone(),
+            EndorsementSerializer::new(),
+            &sender_keypair,
+            EndorsementHasher::new(),
+        ).unwrap();
 
-        let denouncement2 = Denouncement {
+        // Here we create a denouncement that report the same block - this is invalid
+        let denouncement = Denouncement {
             slot,
+            pub_key: sender_keypair.get_public_key(),
             proof: DenouncementProof::Endorsement(EndorsementDenouncement {
                 signature_1: endorsement1.signature,
                 hash_1: *endorsement1.id.get_hash(),
                 index_1: endorsement1.content.index,
-                signature_2: endorsement3.signature,
-                hash_2: *endorsement3.id.get_hash(),
-                index_2: endorsement1.content.index, // We explicitly use endorsement1 here as we want to test the sig check
+                signature_2: endorsement2.signature,
+                hash_2: *endorsement2.id.get_hash(),
+                index_2: endorsement2.content.index,
             }),
         };
 
         assert_eq!(
-            denouncement2.is_valid(sender_keypair.get_public_key()),
+            denouncement.is_valid(),
             false
         );
     }
@@ -417,8 +517,13 @@ mod tests {
         )
         .unwrap();
 
+        let content2 = Endorsement {
+            slot,
+            index: 0,
+            endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+        };
         let endorsement2: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
-            content,
+            content2,
             EndorsementSerializer::new(),
             &sender_keypair,
             EndorsementHasher::new(),
@@ -427,6 +532,7 @@ mod tests {
 
         let denouncement = Denouncement {
             slot,
+            pub_key: sender_keypair.get_public_key(),
             proof: DenouncementProof::Endorsement(EndorsementDenouncement {
                 signature_1: endorsement1.signature,
                 hash_1: *endorsement1.id.get_hash(),
@@ -436,6 +542,8 @@ mod tests {
                 index_2: endorsement2.content.index,
             }),
         };
+
+        assert_eq!(denouncement.is_valid(), true);
 
         let mut ser: Vec<u8> = Vec::new();
         let serializer = DenouncementSerializer::new();
