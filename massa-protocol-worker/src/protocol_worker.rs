@@ -1,6 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::checked_operations::CheckedOperations;
+use crate::cache::{LinearHashCacheMap, LinearHashCacheSet};
 use crate::sig_verifier::verify_sigs_batch;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 
@@ -151,13 +151,13 @@ pub struct ProtocolWorker {
     /// with the info representing their state with in the `as_block` workflow.
     pub(crate) block_wishlist: PreHashMap<BlockId, BlockInfo>,
     /// List of processed endorsements
-    checked_endorsements: PreHashSet<EndorsementId>,
+    checked_endorsements: LinearHashCacheSet<EndorsementId>,
     /// List of processed operations
-    pub(crate) checked_operations: CheckedOperations,
+    pub(crate) checked_operations: LinearHashCacheSet<OperationId>,
     /// List of processed headers
-    pub(crate) checked_headers: PreHashMap<BlockId, WrappedHeader>,
+    pub(crate) checked_headers: LinearHashCacheMap<BlockId, WrappedHeader>,
     /// List of ids of operations that we asked to the nodes
-    pub(crate) asked_operations: HashMap<OperationPrefixId, (Instant, Vec<NodeId>)>,
+    pub(crate) asked_operations: PreHashMap<OperationPrefixId, (Instant, Vec<NodeId>)>,
     /// Buffer for operations that we want later
     pub(crate) op_batch_buffer: OperationBatchBuffer,
     /// Shared storage.
@@ -211,9 +211,9 @@ impl ProtocolWorker {
             controller_manager_rx,
             active_nodes: Default::default(),
             block_wishlist: Default::default(),
-            checked_endorsements: Default::default(),
-            checked_operations: Default::default(),
-            checked_headers: Default::default(),
+            checked_endorsements: LinearHashCacheSet::new(config.max_known_endorsements_size),
+            checked_operations: LinearHashCacheSet::new(config.max_known_ops_size),
+            checked_headers: LinearHashCacheMap::new(config.max_node_known_blocks_size),
             asked_operations: Default::default(),
             op_batch_buffer: OperationBatchBuffer::with_capacity(
                 config.operation_batch_buffer_capacity,
@@ -356,7 +356,7 @@ impl ProtocolWorker {
                 .filter(|id| !node_info.knows_op(id))
                 .copied()
                 .collect();
-            node_info.insert_known_ops(&new_ops, self.config.max_node_known_ops_size);
+            node_info.insert_known_ops(new_ops.iter().copied());
             if !new_ops.is_empty() {
                 let res = self
                     .network_command_sender
@@ -417,10 +417,7 @@ impl ProtocolWorker {
                     })
                     .collect()
             };
-            node_info.insert_known_endorsements(
-                new_endorsements.keys().copied().collect(),
-                self.config.max_node_known_endorsements_size,
-            );
+            node_info.insert_known_endorsements(new_endorsements.keys().copied());
             let to_send = new_endorsements.into_values().collect::<Vec<_>>();
             if !to_send.is_empty() {
                 let res = self
@@ -537,8 +534,8 @@ impl ProtocolWorker {
                 );
 
                 // Note operations as checked.
-                self.prune_checked_operations();
-                self.checked_operations.extend(&operation_ids);
+                self.checked_operations
+                    .try_extend(operation_ids.iter().copied());
 
                 // Announce operations to active nodes not knowing about it.
                 let to_announce: Vec<OperationId> = operation_ids.iter().copied().collect();
@@ -847,13 +844,7 @@ impl ProtocolWorker {
                     self.config.max_node_known_blocks_size,
                 );
                 node_info.insert_known_endorsements(
-                    block_header
-                        .content
-                        .endorsements
-                        .iter()
-                        .map(|e| e.id)
-                        .collect(),
-                    self.config.max_node_known_endorsements_size,
+                    block_header.content.endorsements.iter().map(|e| e.id),
                 );
             }
             return Ok(Some((block_id, false)));
@@ -899,13 +890,7 @@ impl ProtocolWorker {
             }
         }
 
-        if self
-            .checked_headers
-            .insert(block_id, header.clone())
-            .is_none()
-        {
-            self.prune_checked_headers();
-        }
+        self.checked_headers.insert(block_id, header.clone());
 
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
             node_info.insert_known_blocks(
@@ -920,35 +905,11 @@ impl ProtocolWorker {
                 now,
                 self.config.max_node_known_blocks_size,
             );
-            node_info.insert_known_endorsements(
-                header.content.endorsements.iter().map(|e| e.id).collect(),
-                self.config.max_node_known_endorsements_size,
-            );
+            node_info.insert_known_endorsements(header.content.endorsements.iter().map(|e| e.id));
             massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": source_node_id,"block_id":block_id, "header": header});
             return Ok(Some((block_id, true)));
         }
         Ok(None)
-    }
-
-    /// Prune `checked_endorsements` if it is too large
-    fn prune_checked_endorsements(&mut self) {
-        if self.checked_endorsements.len() > self.config.max_known_endorsements_size {
-            self.checked_endorsements.clear();
-        }
-    }
-
-    /// Prune `checked_operations` if it has grown too large.
-    fn prune_checked_operations(&mut self) {
-        if self.checked_operations.len() > self.config.max_known_ops_size {
-            self.checked_operations.clear();
-        }
-    }
-
-    /// Prune `checked_headers` if it is too large
-    fn prune_checked_headers(&mut self) {
-        if self.checked_headers.len() > self.config.max_known_blocks_size {
-            self.checked_headers.clear();
-        }
     }
 
     /// Checks operations, caching knowledge of valid ones.
@@ -972,7 +933,7 @@ impl ProtocolWorker {
             received_ids.insert(operation_id);
 
             // Check operation signature only if not already checked.
-            if !self.checked_operations.contains(&operation_id.prefix()) {
+            if !self.checked_operations.contains(&operation_id) {
                 // check signature if the operation wasn't in `checked_operation`
                 new_operations.insert(operation_id, operation);
             };
@@ -988,14 +949,11 @@ impl ProtocolWorker {
 
         // add to checked operations
         self.checked_operations
-            .extend(&new_operations.keys().copied().collect());
+            .try_extend(new_operations.keys().copied());
 
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-            node_info.insert_known_ops(
-                &received_ids.into_iter().collect::<Vec<_>>(),
-                self.config.max_node_known_ops_size,
-            );
+            node_info.insert_known_ops(received_ids);
         }
 
         if !new_operations.is_empty() {
@@ -1090,15 +1048,12 @@ impl ProtocolWorker {
         )?;
 
         // add to verified signature cache
-        self.checked_endorsements.extend(&endorsement_ids);
-        self.prune_checked_endorsements();
+        self.checked_endorsements
+            .try_extend(endorsement_ids.iter().copied());
 
         // add to known endorsements for source node.
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-            node_info.insert_known_endorsements(
-                endorsement_ids.into_iter().collect(),
-                self.config.max_node_known_endorsements_size,
-            );
+            node_info.insert_known_endorsements(endorsement_ids);
         }
 
         if !new_endorsements.is_empty() {

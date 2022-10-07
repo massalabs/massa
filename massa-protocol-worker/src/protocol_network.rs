@@ -306,7 +306,7 @@ impl ProtocolWorker {
 
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
-            node_info.insert_known_ops(&operation_ids, self.config.max_node_known_ops_size);
+            node_info.insert_known_ops(operation_ids.iter().copied());
         }
 
         let info = if let Some(info) = self.block_wishlist.get_mut(&block_id) {
@@ -364,7 +364,8 @@ impl ProtocolWorker {
                 Self::get_total_operations_size(&self.storage, &known_operations);
 
             // mark ops as checked
-            self.checked_operations.extend(&known_operations);
+            self.checked_operations
+                .try_extend(known_operations.iter().copied());
 
             if info.operations_size > self.config.max_serialized_operations_size_per_block {
                 warn!("Node id {} sent us a operation list for block id {} but the operations we already have in our records exceed max size.", from_node_id, block_id);
