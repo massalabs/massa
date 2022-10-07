@@ -24,7 +24,7 @@ use tokio::{
     },
     task::JoinHandle,
 };
-use tracing::{info, log::warn};
+use tracing::{info, warn};
 
 /// Network command sender
 #[derive(Clone)]
