@@ -28,7 +28,6 @@ pub struct PoolControllerImpl {
 impl PoolController for PoolControllerImpl {
     /// add operations to pool
     fn add_operations(&mut self, ops: Storage) -> Result<(), PoolError> {
-        // self.operation_pool.write().add_operations(ops);
         // TODO: DROP TYPE CHANNEL
         self.operations_input_sender
             .send(Command::AddOperations(ops))
@@ -42,7 +41,6 @@ impl PoolController for PoolControllerImpl {
 
     /// add endorsements to pool
     fn add_endorsements(&mut self, endorsements: Storage) -> Result<(), PoolError> {
-        // self.endorsement_pool.write().add_endorsements(endorsements);
         self.endorsements_input_sender
             .send(Command::AddEndorsements(endorsements))
             .map_err(|_err| {
@@ -55,12 +53,6 @@ impl PoolController for PoolControllerImpl {
 
     /// notify of new final consensus periods (1 per thread)
     fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) -> Result<(), PoolError> {
-        // self.operation_pool
-        //     .write()
-        //     .notify_final_cs_periods(final_cs_periods);
-        // self.endorsement_pool
-        //     .write()
-        //     .notify_final_cs_periods(final_cs_periods);
         self.operations_input_sender
             .send(Command::NotifyFinalCsPeriods(final_cs_periods.to_vec()))
             .map_err(|_err| {

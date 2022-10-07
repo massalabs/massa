@@ -38,8 +38,13 @@ impl EndorsementPoolThread {
             match self.receiver.recv() {
                 Err(_) => break,
                 Ok(Command::Stop) => break,
-                Ok(Command::AddEndorsements(_operations)) => continue,
-                Ok(Command::NotifyFinalCsPeriods(_periods)) => continue,
+                Ok(Command::AddEndorsements(endorsements)) => {
+                    self.endorsement_pool.write().add_endorsements(endorsements)
+                }
+                Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => self
+                    .endorsement_pool
+                    .write()
+                    .notify_final_cs_periods(&final_cs_periods),
                 Ok(_) => continue,
             };
         }
@@ -72,8 +77,13 @@ impl OperationPoolThread {
             match self.receiver.recv() {
                 Err(_) => break,
                 Ok(Command::Stop) => break,
-                Ok(Command::AddEndorsements(_endorsements)) => continue,
-                Ok(Command::NotifyFinalCsPeriods(_periods)) => continue,
+                Ok(Command::AddEndorsements(operations)) => {
+                    self.operation_pool.write().add_operations(operations);
+                }
+                Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => self
+                    .operation_pool
+                    .write()
+                    .notify_final_cs_periods(&final_cs_periods),
                 Ok(_) => continue,
             };
         }
