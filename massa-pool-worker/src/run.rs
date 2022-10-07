@@ -7,7 +7,7 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 /// Starts the pool system and returns a controller
-pub fn start_pool(
+pub fn start_pool_a(
     config: PoolConfig,
     storage: &Storage,
     execution_controller: Box<dyn ExecutionController>,

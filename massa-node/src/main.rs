@@ -42,10 +42,11 @@ use massa_models::config::constants::{
     PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE, T0, THREAD_COUNT,
     VERSION,
 };
+use massa_models::config::POOL_CONTROLLER_CHANNEL_SIZE;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
-use massa_pool_exports::{PoolConfig, PoolController};
-use massa_pool_worker::start_pool;
+use massa_pool_exports::{PoolConfig, PoolManager};
+use massa_pool_worker::start_pool_worker;
 use massa_pos_exports::{SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
@@ -54,7 +55,7 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
-use std::{mem, path::PathBuf};
+use std::path::PathBuf;
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
 use tokio::signal;
@@ -72,7 +73,7 @@ async fn launch(
     ConsensusManager,
     Box<dyn ExecutionManager>,
     Box<dyn SelectorManager>,
-    Box<dyn PoolController>,
+    Box<dyn PoolManager>,
     ProtocolManager,
     NetworkManager,
     Box<dyn FactoryManager>,
@@ -317,9 +318,11 @@ async fn launch(
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
         max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
+        channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
     };
-    let pool_controller = start_pool(pool_config, &shared_storage, execution_controller.clone());
-    let pool_manager: Box<dyn PoolController> = Box::new(pool_controller.clone());
+    let (pool_manager, pool_controller) =
+        start_pool_worker(pool_config, &shared_storage, execution_controller.clone())
+            .expect("could not start pool controller");
 
     // launch protocol controller
     let protocol_config = ProtocolConfig {
@@ -357,7 +360,7 @@ async fn launch(
             protocol_config,
             network_command_sender.clone(),
             network_event_receiver,
-            pool_manager.clone(),
+            pool_controller.clone(),
             shared_storage.clone(),
         )
         .await
@@ -394,7 +397,7 @@ async fn launch(
                 execution_controller: execution_controller.clone(),
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
-                pool_command_sender: pool_manager.clone(),
+                pool_command_sender: pool_controller.clone(),
                 selector_controller: selector_controller.clone(),
             },
             bootstrap_state.graph,
@@ -417,7 +420,7 @@ async fn launch(
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
         consensus: consensus_command_sender.clone(),
-        pool: pool_manager.clone(),
+        pool: pool_controller.clone(),
         protocol: protocol_command_sender.clone(),
         storage: shared_storage.clone(),
     };
@@ -467,7 +470,7 @@ async fn launch(
         api_config,
         selector_controller.clone(),
         consensus_config,
-        pool_manager.clone(),
+        pool_controller.clone(),
         protocol_command_sender.clone(),
         network_config,
         *VERSION,
@@ -524,7 +527,7 @@ struct Managers {
     consensus_manager: ConsensusManager,
     execution_manager: Box<dyn ExecutionManager>,
     selector_manager: Box<dyn SelectorManager>,
-    pool_manager: Box<dyn PoolController>,
+    pool_manager: Box<dyn PoolManager>,
     protocol_manager: ProtocolManager,
     network_manager: NetworkManager,
     factory_manager: Box<dyn FactoryManager>,
@@ -537,7 +540,7 @@ async fn stop(
         mut execution_manager,
         consensus_manager,
         mut selector_manager,
-        pool_manager,
+        mut pool_manager,
         protocol_manager,
         network_manager,
         mut factory_manager,
@@ -568,8 +571,7 @@ async fn stop(
         .expect("consensus shutdown failed");
 
     // stop pool
-    //TODO make a proper manager
-    mem::drop(pool_manager);
+    pool_manager.stop();
 
     // stop execution controller
     execution_manager.stop();

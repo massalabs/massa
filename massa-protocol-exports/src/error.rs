@@ -5,6 +5,7 @@ use displaydoc::Display;
 use massa_models::error::ModelsError;
 use massa_network_exports::ConnectionId;
 use massa_network_exports::NetworkError;
+use massa_pool_exports::PoolError;
 use std::net::IpAddr;
 use thiserror::Error;
 
@@ -48,6 +49,8 @@ pub enum ProtocolError {
     ModelsError(#[from] ModelsError),
     /// network error: {0}
     NetworkError(#[from] NetworkError),
+    /// pool error: {0}
+    PoolError(#[from] PoolError),
     /// container inconsistency error: {0}
     ContainerInconsistencyError(String),
 }

@@ -63,9 +63,9 @@ pub fn start_pool_worker(
     storage: &Storage,
     execution_controller: Box<dyn ExecutionController>,
 ) -> Result<(Box<dyn PoolManager>, Box<dyn PoolController>), PoolError> {
-    let (operations_input_sender, operations_input_receiver) = sync_channel(config.channel_size);
+    let (operations_input_sender, operations_input_receiver) = sync_channel(config.channels_size);
     let (endorsements_input_sender, endorsements_input_receiver) =
-        sync_channel(config.channel_size);
+        sync_channel(config.channels_size);
     let controller = {
         let operation_pool = Arc::new(RwLock::new(OperationPool::init(
             config,
@@ -79,8 +79,8 @@ pub fn start_pool_worker(
             _config: config,
             operation_pool,
             endorsement_pool,
-            operations_input_sender,
-            endorsements_input_sender,
+            operations_input_sender: operations_input_sender.clone(),
+            endorsements_input_sender: endorsements_input_sender.clone(),
         }
     };
 

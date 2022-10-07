@@ -208,7 +208,10 @@ impl EndorsementFactoryWorker {
         endo_storage.store_endorsements(endorsements);
 
         // send endorsement to pool for listing and propagation
-        self.channels.pool.add_endorsements(endo_storage.clone());
+        self.channels
+            .pool
+            .add_endorsements(endo_storage.clone())
+            .expect("pool endorsements mspc channel error on add");
 
         if let Err(err) = self.channels.protocol.propagate_endorsements(endo_storage) {
             warn!("could not propagate endorsements to protocol: {}", err);

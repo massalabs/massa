@@ -2127,6 +2127,7 @@ dependencies = [
  "massa_logging",
  "massa_models",
  "massa_network_exports",
+ "massa_pool_exports",
  "massa_signature",
  "massa_storage",
  "massa_time",
