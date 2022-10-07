@@ -1,10 +1,11 @@
 use massa_models::{
     block::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
-use massa_pool_exports::{PoolConfig, PoolController, PoolError};
+use massa_pool_exports::{PoolConfig, PoolController, PoolError, PoolManager};
 use massa_storage::Storage;
 use parking_lot::RwLock;
 use std::sync::{mpsc::SyncSender, Arc};
+use tracing::{info, warn};
 
 use crate::{endorsement_pool::EndorsementPool, operation_pool::OperationPool};
 
@@ -12,6 +13,7 @@ pub enum Command {
     AddOperations(Storage),
     AddEndorsements(Storage),
     NotifyFinalCsPeriods(Vec<u64>),
+    Stop,
 }
 
 #[derive(Clone)]
@@ -117,5 +119,31 @@ impl PoolController for PoolControllerImpl {
     fn contains_operations(&self, operations: &[OperationId]) -> Vec<bool> {
         let lck = self.operation_pool.read();
         operations.iter().map(|id| lck.contains(id)).collect()
+    }
+}
+
+/// TODO
+pub struct PoolManagerImpl {
+    /// Handle used to join the worker thread
+    pub(crate) thread_handle: Option<std::thread::JoinHandle<Result<(), PoolError>>>,
+    /// Input data mpsc (used to stop the pool thread)
+    pub(crate) input_mpsc: SyncSender<Command>,
+}
+
+impl PoolManager for PoolManagerImpl {
+    /// stops the worker
+    fn stop(&mut self) {
+        info!("stopping pool worker...");
+        let _ = self.input_mpsc.send(Command::Stop);
+        // join the pool thread
+        if let Some(join_handle) = self.thread_handle.take() {
+            if let Err(err) = join_handle
+                .join()
+                .expect("pool thread panicked on try to join")
+            {
+                warn!("{}", err);
+            }
+        }
+        info!("pool worker stopped");
     }
 }
