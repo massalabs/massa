@@ -220,6 +220,7 @@
 <span id="220">220</span>
 <span id="221">221</span>
 <span id="222">222</span>
+<span id="223">223</span>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -401,12 +402,13 @@
 <span class="doccomment">/// Max size of the printed error
 </span><span class="kw">pub const </span>MAX_BOOTSTRAP_ERROR_LENGTH: u32 = <span class="number">10000</span>;
 
-<span class="comment">// Protocol constants
-
-</span><span class="doccomment">/// Controller channel size
+<span class="doccomment">/// Protocol controller channel size
 </span><span class="kw">pub const </span>PROTOCOL_CONTROLLER_CHANNEL_SIZE: usize = <span class="number">1024</span>;
-<span class="doccomment">/// Event channel size
+<span class="doccomment">/// Protocol event channel size
 </span><span class="kw">pub const </span>PROTOCOL_EVENT_CHANNEL_SIZE: usize = <span class="number">1024</span>;
+<span class="doccomment">/// Pool controller channel size
+</span><span class="kw">pub const </span>POOL_CONTROLLER_CHANNEL_SIZE: usize = <span class="number">1024</span>;
+
 <span class="comment">// ***********************
 // Constants used for execution module (injected from ConsensusConfig)
 //

@@ -330,7 +330,7 @@
     }
 
     <span class="doccomment">/// notify of new final slot
-    </span><span class="kw">pub fn </span>notify_final_cs_periods(<span class="kw-2">&amp;mut </span><span class="self">self</span>, final_cs_periods: <span class="kw-2">&amp;</span>[u64]) {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>notify_final_cs_periods(<span class="kw-2">&amp;mut </span><span class="self">self</span>, final_cs_periods: <span class="kw-2">&amp;</span>[u64]) {
         <span class="comment">// update internal final slot counter
         </span><span class="self">self</span>.last_cs_final_periods = final_cs_periods.to_vec();
 
@@ -363,7 +363,7 @@
     </span>}
 
     <span class="doccomment">/// Add a list of operations to the pool
-    </span><span class="kw">pub fn </span>add_operations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>ops_storage: Storage) {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>add_operations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>ops_storage: Storage) {
         <span class="kw">let </span>items = ops_storage
             .get_op_refs()
             .iter()

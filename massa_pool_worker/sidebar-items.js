@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["start_pool","Starts the pool system and returns a controller"]]};
+window.SIDEBAR_ITEMS = {"fn":[["start_pool_controller","Start pool manager and controller"]]};

@@ -20,8 +20,8 @@ var sourcesIndex = JSON.parse('{\
 "massa_network_exports":["",[],["commands.rs","common.rs","error.rs","establisher.rs","lib.rs","network_controller.rs","peers.rs","settings.rs"]],\
 "massa_network_worker":["",[],["binders.rs","handshake_worker.rs","lib.rs","messages.rs","network_cmd_impl.rs","network_event.rs","network_worker.rs","node_worker.rs","peer_info_database.rs"]],\
 "massa_node":["",[],["main.rs","settings.rs"]],\
-"massa_pool_exports":["",[],["config.rs","controller_traits.rs","error.rs","lib.rs"]],\
-"massa_pool_worker":["",[],["controller_impl.rs","endorsement_pool.rs","lib.rs","operation_pool.rs","run.rs","types.rs"]],\
+"massa_pool_exports":["",[],["config.rs","controller_traits.rs","lib.rs"]],\
+"massa_pool_worker":["",[],["controller_impl.rs","endorsement_pool.rs","lib.rs","operation_pool.rs","types.rs","worker.rs"]],\
 "massa_pos_exports":["",[],["controller_traits.rs","error.rs","lib.rs","pos_final_state_impl.rs","settings.rs","types.rs"]],\
 "massa_pos_worker":["",[],["controller.rs","draw.rs","lib.rs","worker.rs"]],\
 "massa_protocol_exports":["",[["tests",[],["mock_network_controller.rs","mod.rs","tools.rs"]]],["error.rs","lib.rs","protocol_controller.rs","settings.rs"]],\

@@ -33,10 +33,10 @@
 </span><span class="kw">mod </span>controller_impl;
 <span class="kw">mod </span>endorsement_pool;
 <span class="kw">mod </span>operation_pool;
-<span class="kw">mod </span>run;
 <span class="kw">mod </span>types;
+<span class="kw">mod </span>worker;
 
-<span class="kw">pub use </span>run::start_pool;
+<span class="kw">pub use </span>worker::start_pool_controller;
 
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>tests;

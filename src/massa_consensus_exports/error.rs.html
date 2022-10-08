@@ -66,8 +66,6 @@
 <span id="66">66</span>
 <span id="67">67</span>
 <span id="68">68</span>
-<span id="69">69</span>
-<span id="70">70</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="kw">use </span>displaydoc::Display;
 <span class="kw">use </span>massa_execution_exports::ExecutionError;
@@ -113,8 +111,6 @@
     </span>SendChannelError(String),
     <span class="doccomment">/// Receive  channel error : {0}
     </span>ReceiveChannelError(String),
-    <span class="doccomment">/// pool error : {0}
-    </span>PoolError(<span class="attribute">#[from] </span>massa_pool_exports::PoolError),
     <span class="doccomment">/// io error {0}
     </span>IOError(<span class="attribute">#[from] </span>std::io::Error),
     <span class="doccomment">/// missing block {0}

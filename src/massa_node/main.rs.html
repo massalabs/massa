@@ -734,6 +734,7 @@
 <span id="734">734</span>
 <span id="735">735</span>
 <span id="736">736</span>
+<span id="737">737</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attribute">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -778,10 +779,11 @@
     PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE, T0, THREAD_COUNT,
     VERSION,
 };
+<span class="kw">use </span>massa_models::config::POOL_CONTROLLER_CHANNEL_SIZE;
 <span class="kw">use </span>massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 <span class="kw">use </span>massa_network_worker::start_network_controller;
-<span class="kw">use </span>massa_pool_exports::{PoolConfig, PoolController};
-<span class="kw">use </span>massa_pool_worker::start_pool;
+<span class="kw">use </span>massa_pool_exports::{PoolConfig, PoolManager};
+<span class="kw">use </span>massa_pool_worker::start_pool_controller;
 <span class="kw">use </span>massa_pos_exports::{SelectorConfig, SelectorManager};
 <span class="kw">use </span>massa_pos_worker::start_selector_worker;
 <span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolManager};
@@ -790,7 +792,7 @@
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>std::{mem, path::PathBuf};
+<span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::{path::Path, process, sync::Arc};
 <span class="kw">use </span>structopt::StructOpt;
 <span class="kw">use </span>tokio::signal;
@@ -808,7 +810,7 @@
     ConsensusManager,
     Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
     Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
-    Box&lt;<span class="kw">dyn </span>PoolController&gt;,
+    Box&lt;<span class="kw">dyn </span>PoolManager&gt;,
     ProtocolManager,
     NetworkManager,
     Box&lt;<span class="kw">dyn </span>FactoryManager&gt;,
@@ -1053,9 +1055,10 @@
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
         max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
+        channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
     };
-    <span class="kw">let </span>pool_controller = start_pool(pool_config, <span class="kw-2">&amp;</span>shared_storage, execution_controller.clone());
-    <span class="kw">let </span>pool_manager: Box&lt;<span class="kw">dyn </span>PoolController&gt; = Box::new(pool_controller.clone());
+    <span class="kw">let </span>(pool_manager, pool_controller) =
+        start_pool_controller(pool_config, <span class="kw-2">&amp;</span>shared_storage, execution_controller.clone());
 
     <span class="comment">// launch protocol controller
     </span><span class="kw">let </span>protocol_config = ProtocolConfig {
@@ -1093,7 +1096,7 @@
             protocol_config,
             network_command_sender.clone(),
             network_event_receiver,
-            pool_manager.clone(),
+            pool_controller.clone(),
             shared_storage.clone(),
         )
         .<span class="kw">await
@@ -1130,7 +1133,7 @@
                 execution_controller: execution_controller.clone(),
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
-                pool_command_sender: pool_manager.clone(),
+                pool_command_sender: pool_controller.clone(),
                 selector_controller: selector_controller.clone(),
             },
             bootstrap_state.graph,
@@ -1153,7 +1156,7 @@
     <span class="kw">let </span>factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
         consensus: consensus_command_sender.clone(),
-        pool: pool_manager.clone(),
+        pool: pool_controller.clone(),
         protocol: protocol_command_sender.clone(),
         storage: shared_storage.clone(),
     };
@@ -1203,7 +1206,7 @@
         api_config,
         selector_controller.clone(),
         consensus_config,
-        pool_manager.clone(),
+        pool_controller.clone(),
         protocol_command_sender.clone(),
         network_config,
         <span class="kw-2">*</span>VERSION,
@@ -1260,7 +1263,7 @@
     consensus_manager: ConsensusManager,
     execution_manager: Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
     selector_manager: Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
-    pool_manager: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
+    pool_manager: Box&lt;<span class="kw">dyn </span>PoolManager&gt;,
     protocol_manager: ProtocolManager,
     network_manager: NetworkManager,
     factory_manager: Box&lt;<span class="kw">dyn </span>FactoryManager&gt;,
@@ -1273,7 +1276,7 @@
         <span class="kw-2">mut </span>execution_manager,
         consensus_manager,
         <span class="kw-2">mut </span>selector_manager,
-        pool_manager,
+        <span class="kw-2">mut </span>pool_manager,
         protocol_manager,
         network_manager,
         <span class="kw-2">mut </span>factory_manager,
@@ -1304,8 +1307,7 @@
         </span>.expect(<span class="string">&quot;consensus shutdown failed&quot;</span>);
 
     <span class="comment">// stop pool
-    //TODO make a proper manager
-    </span>mem::drop(pool_manager);
+    </span>pool_manager.stop();
 
     <span class="comment">// stop execution controller
     </span>execution_manager.stop();
