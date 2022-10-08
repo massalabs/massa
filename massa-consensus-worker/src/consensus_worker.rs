@@ -176,7 +176,7 @@ impl ConsensusWorker {
         // signal initial state to pool
         self.channels
             .pool_command_sender
-            .notify_final_cs_periods(&self.latest_final_periods)?;
+            .notify_final_cs_periods(&self.latest_final_periods);
 
         // set slot timer
         let slot_deadline = get_block_slot_timestamp(
@@ -738,7 +738,7 @@ impl ConsensusWorker {
             // signal new last final periods to pool
             self.channels
                 .pool_command_sender
-                .notify_final_cs_periods(&latest_final_periods)?;
+                .notify_final_cs_periods(&latest_final_periods);
             // update final periods
             self.latest_final_periods = latest_final_periods;
         }

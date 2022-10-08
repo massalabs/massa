@@ -879,7 +879,7 @@ impl Endpoints for API<Public> {
                 .collect::<Result<Vec<WrappedOperation>, ApiError>>()?;
             to_send.store_operations(verified_ops.clone());
             let ids: Vec<OperationId> = verified_ops.iter().map(|op| op.id).collect();
-            cmd_sender.add_operations(to_send.clone())?;
+            cmd_sender.add_operations(to_send.clone());
             protocol_sender.propagate_operations(to_send).await?;
             Ok(ids)
         };

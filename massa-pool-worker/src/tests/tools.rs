@@ -65,8 +65,7 @@ where
 
     let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
     let (pool_manager, pool_controller) =
-        start_pool_controller(cfg, &storage, execution_controller)
-            .expect("start_pool_controller failed");
+        start_pool_controller(cfg, &storage, execution_controller);
 
     test(pool_manager, pool_controller, execution_receiver, storage)
 }

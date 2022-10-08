@@ -6,7 +6,6 @@ use massa_execution_exports::ExecutionError;
 use massa_hash::MassaHashError;
 use massa_models::error::ModelsError;
 use massa_network_exports::NetworkError;
-use massa_pool_exports::PoolError;
 use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
 use massa_wallet::WalletError;
@@ -15,8 +14,6 @@ use thiserror::Error;
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum ApiError {
-    /// pool error: {0}
-    PoolError(#[from] PoolError),
     /// too many arguments error: {0}
     TooManyArguments(String),
     /// send channel error: {0}

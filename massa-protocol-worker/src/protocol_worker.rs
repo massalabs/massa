@@ -1057,7 +1057,7 @@ impl ProtocolWorker {
                 .await;
 
             // Add to pool
-            self.pool_controller.add_operations(ops)?;
+            self.pool_controller.add_operations(ops);
         }
 
         Ok((seen_ops, received_ids))
@@ -1155,7 +1155,7 @@ impl ProtocolWorker {
             }
 
             // Add to pool
-            self.pool_controller.add_endorsements(endorsements)?;
+            self.pool_controller.add_endorsements(endorsements);
         }
 
         Ok((endorsement_ids, contains_duplicates))

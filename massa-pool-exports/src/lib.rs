@@ -8,11 +8,9 @@
 
 mod config;
 mod controller_traits;
-mod error;
 
 pub use config::PoolConfig;
 pub use controller_traits::{PoolController, PoolManager};
-pub use error::PoolError;
 
 /// Test utils
 #[cfg(feature = "testing")]

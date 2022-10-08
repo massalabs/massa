@@ -56,9 +56,7 @@ fn test_simple_get_operations() {
             let creator_address = Address::from_public_key(&keypair.get_public_key());
             let creator_thread = creator_address.get_thread(config.thread_count);
             let unexecuted_ops = storage.get_op_refs().clone();
-            pool_controller
-                .add_operations(storage)
-                .expect("pool_controller.add_operations channel error");
+            pool_controller.add_operations(storage);
 
             // start mock execution thread
             std::thread::spawn(move || {
@@ -168,9 +166,7 @@ fn test_get_operations_overflow() {
             storage.store_operations(operations);
 
             let unexecuted_ops = storage.get_op_refs().clone();
-            pool_controller
-                .add_operations(storage)
-                .expect("pool_controller.add_operations channel error");
+            pool_controller.add_operations(storage);
 
             // start mock execution thread
             launch_basic_get_block_operation_execution_mock(

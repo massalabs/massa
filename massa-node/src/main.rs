@@ -321,8 +321,7 @@ async fn launch(
         channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
     };
     let (pool_manager, pool_controller) =
-        start_pool_controller(pool_config, &shared_storage, execution_controller.clone())
-            .expect("could not start pool controller");
+        start_pool_controller(pool_config, &shared_storage, execution_controller.clone());
 
     // launch protocol controller
     let protocol_config = ProtocolConfig {

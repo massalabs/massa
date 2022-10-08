@@ -1,28 +1,36 @@
-use std::{
-    sync::mpsc::{sync_channel, Receiver, TryRecvError},
-    thread::JoinHandle,
-};
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
+
+//! Write worker for the pools, allowing asynchronous writes.
 
 use crate::controller_impl::{Command, PoolManagerImpl};
 use crate::operation_pool::OperationPool;
 use crate::{controller_impl::PoolControllerImpl, endorsement_pool::EndorsementPool};
 use massa_execution_exports::ExecutionController;
 use massa_pool_exports::PoolConfig;
-use massa_pool_exports::{PoolController, PoolError, PoolManager};
+use massa_pool_exports::{PoolController, PoolManager};
 use massa_storage::Storage;
 use parking_lot::RwLock;
-use std::sync::Arc;
+use std::sync::mpsc::RecvError;
+use std::{
+    sync::mpsc::{sync_channel, Receiver},
+    sync::Arc,
+    thread::JoinHandle,
+};
 
+/// Endorsement pool write thread instance
 pub(crate) struct EndorsementPoolThread {
+    /// Command reception channel
     receiver: Receiver<Command>,
+    /// Shared reference to the pool
     endorsement_pool: Arc<RwLock<EndorsementPool>>,
 }
 
 impl EndorsementPoolThread {
+    /// Spawns a pool writer thread, returning a join handle.
     pub(crate) fn spawn(
         receiver: Receiver<Command>,
         endorsement_pool: Arc<RwLock<EndorsementPool>>,
-    ) -> JoinHandle<Result<(), PoolError>> {
+    ) -> JoinHandle<()> {
         std::thread::spawn(|| {
             let this = Self {
                 receiver,
@@ -32,41 +40,36 @@ impl EndorsementPoolThread {
         })
     }
 
-    fn run(self) -> Result<(), PoolError> {
+    /// Runs the thread
+    fn run(self) {
         loop {
-            match self.receiver.try_recv() {
-                Err(TryRecvError::Empty) => continue,
-                Err(TryRecvError::Disconnected) => break,
+            match self.receiver.recv() {
+                Err(RecvError) => break,
                 Ok(Command::Stop) => break,
-                Ok(Command::AddEndorsements(endorsements)) => {
-                    let mut write = self.endorsement_pool.write();
-                    write.add_endorsements(endorsements);
-                    while let Ok(Command::AddEndorsements(endorsements)) = self.receiver.try_recv()
-                    {
-                        write.add_endorsements(endorsements);
-                    }
+                Ok(Command::AddItems(endorsements)) => {
+                    self.endorsement_pool.write().add_endorsements(endorsements)
                 }
                 Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => self
                     .endorsement_pool
                     .write()
                     .notify_final_cs_periods(&final_cs_periods),
-                Ok(_) => continue,
-            };
+            }
         }
-        Ok(())
     }
 }
 
+/// Operation pool writer thread.
 pub(crate) struct OperationPoolThread {
     receiver: Receiver<Command>,
     operation_pool: Arc<RwLock<OperationPool>>,
 }
 
 impl OperationPoolThread {
+    /// Spawns a pool writer thread, returning a join handle.
     pub(crate) fn spawn(
         receiver: Receiver<Command>,
         operation_pool: Arc<RwLock<OperationPool>>,
-    ) -> JoinHandle<Result<(), PoolError>> {
+    ) -> JoinHandle<()> {
         std::thread::spawn(|| {
             let this = Self {
                 receiver,
@@ -76,27 +79,21 @@ impl OperationPoolThread {
         })
     }
 
-    fn run(self) -> Result<(), PoolError> {
+    /// Run the thread.
+    fn run(self) {
         loop {
-            match self.receiver.try_recv() {
-                Err(TryRecvError::Empty) => continue,
-                Err(TryRecvError::Disconnected) => break,
+            match self.receiver.recv() {
+                Err(RecvError) => break,
                 Ok(Command::Stop) => break,
-                Ok(Command::AddOperations(operations)) => {
-                    let mut write = self.operation_pool.write();
-                    write.add_operations(operations);
-                    while let Ok(Command::AddOperations(operations)) = self.receiver.try_recv() {
-                        write.add_operations(operations);
-                    }
+                Ok(Command::AddItems(operations)) => {
+                    self.operation_pool.write().add_operations(operations)
                 }
                 Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => self
                     .operation_pool
                     .write()
                     .notify_final_cs_periods(&final_cs_periods),
-                Ok(_) => continue,
             };
         }
-        Ok(())
     }
 }
 
@@ -106,7 +103,7 @@ pub fn start_pool_controller(
     config: PoolConfig,
     storage: &Storage,
     execution_controller: Box<dyn ExecutionController>,
-) -> Result<(Box<dyn PoolManager>, Box<dyn PoolController>), PoolError> {
+) -> (Box<dyn PoolManager>, Box<dyn PoolController>) {
     let (operations_input_sender, operations_input_receiver) = sync_channel(config.channels_size);
     let (endorsements_input_sender, endorsements_input_receiver) =
         sync_channel(config.channels_size);
@@ -135,5 +132,5 @@ pub fn start_pool_controller(
         operations_input_sender,
         endorsements_input_sender,
     };
-    Ok((Box::new(manager), Box::new(controller)))
+    (Box::new(manager), Box::new(controller))
 }
