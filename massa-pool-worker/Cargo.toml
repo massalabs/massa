@@ -6,6 +6,7 @@ edition = "2021"
 
 [dependencies]
 num = "0.4"
+tracing = "0.1"
 # custom modules
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 massa_models = { path = "../massa-models" }

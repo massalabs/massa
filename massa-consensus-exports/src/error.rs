@@ -43,8 +43,6 @@ pub enum ConsensusError {
     SendChannelError(String),
     /// Receive  channel error : {0}
     ReceiveChannelError(String),
-    /// pool error : {0}
-    PoolError(#[from] massa_pool_exports::PoolError),
     /// io error {0}
     IOError(#[from] std::io::Error),
     /// missing block {0}
