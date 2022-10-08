@@ -801,12 +801,8 @@ fn events_from_switching_blockclique() {
             KeyPair::from_str("S1kEBGgxHFBdsNC4HtRHhsZsB5irAtYHEmuAKATkfiomYmj58tm").unwrap();
         let event_test_data = include_bytes!("./wasm/event_test.wasm");
         let operation = create_execute_sc_operation(&keypair, event_test_data).unwrap();
-        let blockclique_block = create_block(
-            keypair,
-            vec![operation.clone()],
-            blockclique_block_slot,
-        )
-        .unwrap();
+        let blockclique_block =
+            create_block(keypair, vec![operation.clone()], blockclique_block_slot).unwrap();
         blockclique_blocks.insert(blockclique_block_slot, blockclique_block.id);
         let mut blockclique_block_storage = storage.clone_without_refs();
         blockclique_block_storage.store_block(blockclique_block.clone());
@@ -831,12 +827,8 @@ fn events_from_switching_blockclique() {
             KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
         let event_test_data = include_bytes!("./wasm/event_test.wasm");
         let operation = create_execute_sc_operation(&keypair, event_test_data).unwrap();
-        let blockclique_block = create_block(
-            keypair,
-            vec![operation.clone()],
-            blockclique_block_slot,
-        )
-        .unwrap();
+        let blockclique_block =
+            create_block(keypair, vec![operation.clone()], blockclique_block_slot).unwrap();
         blockclique_blocks.insert(blockclique_block_slot, blockclique_block.id);
         let mut blockclique_block_storage = storage.clone_without_refs();
         blockclique_block_storage.store_block(blockclique_block.clone());
