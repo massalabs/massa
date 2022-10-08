@@ -134,7 +134,7 @@ We must chose the minimal parameters `F` and `E` that match this security level.
 Simulation results
 ------------------
 Our simulations results show that with `F = 64`, `E = 16` and given 32 thread and a portion `beta = 1/3` of the stake controlled by the attacker, the probability of success of an attack is in the order of `1e-11`.
-You can find more details on this in the technical paper. 
+You can find more details in the [technical paper](https://arxiv.org/abs/1803.09029).
 
 .. image:: simulation_result.png
 
