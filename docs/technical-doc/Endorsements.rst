@@ -112,7 +112,7 @@ Note that this split also massively increases the frequency at which stakers rec
 Choosing the value of `E`
 =========================
 The value of `E` has implication both in the safety and in the performance of the protocol. In terms of performance, the greater the value of `E` is, 
-the more ressources (bandwith, memory, computing power) is alocated to generating, broadcasting and including endorsments, which could induce latency. 
+the more ressources (bandwith, memory, computing power) is needed to generate, broadcast and include endorsements, which could induce latency. 
 One the other hand, the value of `E` has implications in the safety of the protocol. The threat we are looking at here is the finality fork attack.
 
 Finality fork attacks
