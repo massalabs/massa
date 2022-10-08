@@ -56,10 +56,8 @@ async fn ban_connection_ids(worker: &mut NetworkWorker, ids: HashSet<ConnectionI
                 .send(NodeCommand::Close(ConnectionClosureReason::Banned))
                 .await;
             if res.is_err() {
-                massa_trace!(
-                    "network.network_worker.manage_network_command", {"err": NetworkError::ChannelError(
-                        "close node command send failed".into(),
-                    ).to_string()}
+                warn!(
+                    "network.network_worker.manage_network_command"
                 );
             }
         };
