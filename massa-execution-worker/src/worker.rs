@@ -191,13 +191,13 @@ impl ExecutionThread {
                         self.execution_state.write().execute_final_slot(
                             slot,
                             content,
-                            &self.selector,
+                            self.selector.clone(),
                         )
                     } else {
                         self.execution_state.write().execute_candidate_slot(
                             slot,
                             content,
-                            &self.selector,
+                            self.selector.clone(),
                         )
                     }
                 },

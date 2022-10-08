@@ -374,10 +374,12 @@ impl NetworkWorker {
                         });
 
                         // Note connection alive.
-                        let (ip, _) = self
-                            .active_connections
-                            .get(&new_connection_id)
-                            .ok_or(NetworkError::ActiveConnectionMissing(new_connection_id))?;
+                        let (ip, _) =
+                            self.active_connections
+                                .get(&new_connection_id)
+                                .ok_or_else(|| {
+                                    NetworkError::ActiveConnectionMissing(new_connection_id)
+                                })?;
                         self.peer_info_db.peer_alive(ip)?;
 
                         // spawn node_controller_fn
@@ -458,7 +460,7 @@ impl NetworkWorker {
         let (ip, is_outgoing) = self
             .active_connections
             .remove(&id)
-            .ok_or(NetworkError::ActiveConnectionMissing(id))?;
+            .ok_or_else(|| NetworkError::ActiveConnectionMissing(id))?;
         debug!(
             "connection closed connection_id={}, ip={}, reason={:?}",
             id, ip, reason
