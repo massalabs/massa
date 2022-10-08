@@ -365,7 +365,7 @@ impl ProtocolWorker {
 
             // mark ops as checked
             self.checked_operations
-                .try_extend(known_operations.iter().copied());
+                .extend(known_operations.iter().copied());
 
             if info.operations_size > self.config.max_serialized_operations_size_per_block {
                 warn!("Node id {} sent us a operation list for block id {} but the operations we already have in our records exceed max size.", from_node_id, block_id);

@@ -2,17 +2,14 @@
 
 //! Simple unreliable, but fast cache implementations
 
-use massa_models::{
-    prehash::{CapacityAllocator, PreHashMap, PreHashSet, PreHashed},
-    wrapped::Id,
-};
+use massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet, PreHashed};
 use std::collections::{hash_map, VecDeque};
 
 /// Structure holding a finite capacity cache set that is entirely cleared when full.
 /// Supports efficient deletion.
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
-pub struct HashCacheSet<K: PreHashed + std::hash::Hash + Id + Clone + Copy + PartialEq + Eq> {
+pub struct HashCacheSet<K: PreHashed + std::hash::Hash + Clone + Copy + PartialEq + Eq> {
     /// Cache capacity
     capacity: usize,
     /// Container
@@ -20,7 +17,7 @@ pub struct HashCacheSet<K: PreHashed + std::hash::Hash + Id + Clone + Copy + Par
 }
 
 #[allow(dead_code)]
-impl<K: PreHashed + std::hash::Hash + Id + Clone + Copy + PartialEq + Eq> HashCacheSet<K> {
+impl<K: PreHashed + std::hash::Hash + Clone + Copy + PartialEq + Eq> HashCacheSet<K> {
     /// Create a new cache instance
     pub fn new(capacity: usize) -> Self {
         HashCacheSet {
@@ -77,7 +74,7 @@ impl<K: PreHashed + std::hash::Hash + Id + Clone + Copy + PartialEq + Eq> HashCa
 /// Supports efficient deletion.
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
-pub struct HashCacheMap<K: PreHashed + std::hash::Hash + Id + Clone + Copy + PartialEq + Eq, V> {
+pub struct HashCacheMap<K: PreHashed + std::hash::Hash + Clone + Copy + PartialEq + Eq, V> {
     /// Cache capacity
     capacity: usize,
     /// Container
@@ -85,7 +82,7 @@ pub struct HashCacheMap<K: PreHashed + std::hash::Hash + Id + Clone + Copy + Par
 }
 
 #[allow(dead_code)]
-impl<K: PreHashed + std::hash::Hash + Id + Clone + Copy + PartialEq + Eq, V> HashCacheMap<K, V> {
+impl<K: PreHashed + std::hash::Hash + Clone + Copy + PartialEq + Eq, V> HashCacheMap<K, V> {
     /// Create a new cache instance
     pub fn new(capacity: usize) -> Self {
         HashCacheMap {
@@ -157,7 +154,7 @@ impl<K: PreHashed + std::hash::Hash + Id + Clone + Copy + PartialEq + Eq, V> Has
 /// Structure holding a finite capacity cache set that deletes the oldest item when full.
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
-pub struct LinearHashCacheSet<K: PreHashed + std::hash::Hash + Id + Clone + Copy + PartialEq + Eq> {
+pub struct LinearHashCacheSet<K: PreHashed + std::hash::Hash + Clone + Copy + PartialEq + Eq> {
     /// Cache capacity
     capacity: usize,
     /// Container
@@ -167,7 +164,7 @@ pub struct LinearHashCacheSet<K: PreHashed + std::hash::Hash + Id + Clone + Copy
 }
 
 #[allow(dead_code)]
-impl<K: PreHashed + std::hash::Hash + Id + Clone + Copy + PartialEq + Eq> LinearHashCacheSet<K> {
+impl<K: PreHashed + std::hash::Hash + Clone + Copy + PartialEq + Eq> LinearHashCacheSet<K> {
     /// Create a new cache instance
     pub fn new(capacity: usize) -> Self {
         LinearHashCacheSet {
@@ -221,10 +218,7 @@ impl<K: PreHashed + std::hash::Hash + Id + Clone + Copy + PartialEq + Eq> Linear
 /// Structure holding a finite capacity cache map that deletes the oldest item when full.
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
-pub struct LinearHashCacheMap<
-    K: PreHashed + std::hash::Hash + Id + Clone + Copy + PartialEq + Eq,
-    V,
-> {
+pub struct LinearHashCacheMap<K: PreHashed + std::hash::Hash + Clone + Copy + PartialEq + Eq, V> {
     /// Cache capacity
     capacity: usize,
     /// Container
@@ -234,9 +228,7 @@ pub struct LinearHashCacheMap<
 }
 
 #[allow(dead_code)]
-impl<K: PreHashed + std::hash::Hash + Id + Clone + Copy + PartialEq + Eq, V>
-    LinearHashCacheMap<K, V>
-{
+impl<K: PreHashed + std::hash::Hash + Clone + Copy + PartialEq + Eq, V> LinearHashCacheMap<K, V> {
     /// Create a new cache instance
     pub fn new(capacity: usize) -> Self {
         LinearHashCacheMap {

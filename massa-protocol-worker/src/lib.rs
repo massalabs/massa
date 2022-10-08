@@ -15,6 +15,7 @@ pub mod protocol_worker;
 pub mod worker_operations_impl;
 pub use protocol_worker::start_protocol_controller;
 mod cache;
+mod checked_operations;
 mod node_info;
 mod protocol_network;
 mod sig_verifier;

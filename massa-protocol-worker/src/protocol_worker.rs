@@ -1,6 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::cache::{LinearHashCacheMap, LinearHashCacheSet};
+use crate::checked_operations::CheckedOperations;
 use crate::sig_verifier::verify_sigs_batch;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 
@@ -35,8 +36,6 @@ use tokio::{
     time::{sleep, sleep_until, Instant, Sleep},
 };
 use tracing::{debug, error, info, warn};
-
-// TODO connect protocol to pool so that it sends ops and endorsements
 
 /// start a new `ProtocolController` from a `ProtocolConfig`
 /// - generate keypair
@@ -152,8 +151,8 @@ pub struct ProtocolWorker {
     pub(crate) block_wishlist: PreHashMap<BlockId, BlockInfo>,
     /// List of processed endorsements
     checked_endorsements: LinearHashCacheSet<EndorsementId>,
-    /// List of processed operations
-    pub(crate) checked_operations: LinearHashCacheSet<OperationId>,
+    /// Cache of processed operations
+    pub(crate) checked_operations: CheckedOperations,
     /// List of processed headers
     pub(crate) checked_headers: LinearHashCacheMap<BlockId, WrappedHeader>,
     /// List of ids of operations that we asked to the nodes
@@ -212,7 +211,7 @@ impl ProtocolWorker {
             active_nodes: Default::default(),
             block_wishlist: Default::default(),
             checked_endorsements: LinearHashCacheSet::new(config.max_known_endorsements_size),
-            checked_operations: LinearHashCacheSet::new(config.max_known_ops_size),
+            checked_operations: CheckedOperations::new(config.max_known_ops_size),
             checked_headers: LinearHashCacheMap::new(config.max_node_known_blocks_size),
             asked_operations: Default::default(),
             op_batch_buffer: OperationBatchBuffer::with_capacity(
@@ -535,7 +534,7 @@ impl ProtocolWorker {
 
                 // Note operations as checked.
                 self.checked_operations
-                    .try_extend(operation_ids.iter().copied());
+                    .extend(operation_ids.iter().copied());
 
                 // Announce operations to active nodes not knowing about it.
                 let to_announce: Vec<OperationId> = operation_ids.iter().copied().collect();
@@ -933,7 +932,7 @@ impl ProtocolWorker {
             received_ids.insert(operation_id);
 
             // Check operation signature only if not already checked.
-            if !self.checked_operations.contains(&operation_id) {
+            if !self.checked_operations.contains_id(&operation_id) {
                 // check signature if the operation wasn't in `checked_operation`
                 new_operations.insert(operation_id, operation);
             };
@@ -949,7 +948,7 @@ impl ProtocolWorker {
 
         // add to checked operations
         self.checked_operations
-            .try_extend(new_operations.keys().copied());
+            .extend(new_operations.keys().copied());
 
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {

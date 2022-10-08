@@ -65,10 +65,7 @@ impl ProtocolWorker {
         node_id: NodeId,
     ) -> Result<(), ProtocolError> {
         // filter out the operations that we already know about
-        {
-            let read_ops = self.storage.read_operations();
-            op_batch.retain(|prefix| read_ops.get_operations_by_prefix(prefix).is_none());
-        }
+        op_batch.retain(|prefix| !self.checked_operations.contains_prefix(prefix));
 
         let mut ask_set = OperationPrefixIds::with_capacity(op_batch.len());
         let mut future_set = OperationPrefixIds::with_capacity(op_batch.len());
@@ -102,7 +99,7 @@ impl ProtocolWorker {
                     future_set.insert(op_id);
                 }
             } else {
-                ask_set.insert(op_id.clone());
+                ask_set.insert(op_id);
                 self.asked_operations.insert(op_id, (now, vec![node_id]));
             }
         } // EndOf for op_id in op_batch:
