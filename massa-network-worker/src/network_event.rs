@@ -2,7 +2,7 @@ use massa_models::node::NodeId;
 use massa_network_exports::{ConnectionId, NetworkError, NetworkEvent, NodeCommand, NodeEvent};
 use std::time::Duration;
 use tokio::sync::mpsc::{self, error::SendTimeoutError};
-use tracing::debug;
+use tracing::{warn};
 
 pub struct EventSender {
     /// Sender for network events
@@ -33,14 +33,13 @@ impl EventSender {
             .await;
         match result {
             Ok(()) => return Ok(()),
-            Err(SendTimeoutError::Closed(event)) => {
-                debug!(
-                    "Failed to send NetworkEvent due to channel closure: {:?}.",
-                    event
+            Err(SendTimeoutError::Closed(_event)) => {
+                warn!(
+                    "Failed to send NetworkEvent due to channel closure"
                 );
             }
-            Err(SendTimeoutError::Timeout(event)) => {
-                debug!("Failed to send NetworkEvent due to timeout: {:?}.", event);
+            Err(SendTimeoutError::Timeout(_event)) => {
+                warn!("Failed to send NetworkEvent due to timeout");
             }
         }
         Err(NetworkError::ChannelError("Failed to send event.".into()))
@@ -55,7 +54,7 @@ impl EventSender {
     ) {
         if let Some((_, node_command_tx)) = node {
             if node_command_tx.send(message).await.is_err() {
-                debug!(
+                warn!(
                     "{}",
                     NetworkError::ChannelError("contact with node worker lost while trying to send it a message. Probably a peer disconnect.".into())
                 );
@@ -89,10 +88,10 @@ pub mod event_impl {
     use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NodeCommand};
     use massa_network_exports::{NetworkError, NetworkEvent};
     use std::net::IpAddr;
-    use tracing::{debug, info};
+    use tracing::{debug, warn};
     macro_rules! evt_failed {
         ($err: ident) => {
-            info!("Send network event failed {}", $err)
+            warn!("Send network event failed")
         };
     }
 
@@ -174,7 +173,7 @@ pub mod event_impl {
                 .send(NodeCommand::SendPeerList(peer_list))
                 .await;
             if res.is_err() {
-                debug!(
+                warn!(
                     "{}",
                     NetworkError::ChannelError("node command send send_peer_list failed".into(),)
                 );

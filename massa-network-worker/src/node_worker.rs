@@ -134,9 +134,7 @@ impl NodeWorker {
                             .await
                         {
                             Err(_err) => {
-                                massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv.send.timeout", {
-                                    "node": node_id_copy,
-                                });
+                                warn!("node_worker.run_loop.loop.writer_command_rx.recv.send.timeout");
                                 return Err(std::io::Error::new(
                                     std::io::ErrorKind::TimedOut,
                                     "node data writing timed out",
@@ -144,9 +142,7 @@ impl NodeWorker {
                                 .into());
                             }
                             Ok(Err(err)) => {
-                                massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv.send.error", {
-                                    "node": node_id_copy, "err":  format!("{}", err),
-                                });
+                                warn!("node_worker.run_loop.loop.writer_command_rx.recv.send.error {}", err);
                                 return Err(err);
                             }
                             Ok(Ok(id)) => {
