@@ -78,13 +78,13 @@ impl NodeWorker {
         match result {
             Ok(()) => {}
             Err(SendTimeoutError::Closed(event)) => {
-                debug!(
+                warn!(
                     "Failed to send NodeEvent due to channel closure: {:?}.",
                     event
                 );
             }
             Err(SendTimeoutError::Timeout(event)) => {
-                debug!("Failed to send NodeEvent due to timeout: {:?}.", event);
+                warn!("Failed to send NodeEvent due to timeout: {:?}.", event);
             }
         }
     }
@@ -99,14 +99,14 @@ impl NodeWorker {
     ) -> Result<(), NetworkError> {
         match sender.try_send(msg) {
             Err(TrySendError::Full(_)) => {
-                debug!(
+                warn!(
                     "failed sending message to node {}: send channel full",
                     self.node_id
                 );
                 Ok(())
             }
             Err(TrySendError::Closed(_)) => {
-                debug!("failed sending message deconnected {}.", self.node_id);
+                warn!("failed sending message disconnected {}.", self.node_id);
                 Err(NetworkError::ChannelError(
                     "failed sending message to node: channel closed".into(),
                 ))

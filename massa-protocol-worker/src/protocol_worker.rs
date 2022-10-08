@@ -267,6 +267,7 @@ impl ProtocolWorker {
         tokio::pin!(operation_announcement_interval);
         loop {
             massa_trace!("protocol.protocol_worker.run_loop.begin", {});
+            warn!("PROTOCOL WAITING");
             /*
                 select! without the "biased" modifier will randomly select the 1st branch to check,
                 then will check the next ones in the order they are written.
@@ -279,49 +280,78 @@ impl ProtocolWorker {
             tokio::select! {
                 // listen to management commands
                 cmd = self.controller_manager_rx.recv() => {
+                    warn!("PROTOCOL controller_manager_rx START");
+                    let start_time = std::time::Instant::now();
                     massa_trace!("protocol.protocol_worker.run_loop.controller_manager_rx", { "cmd": cmd });
                     match cmd {
                         None => break,
                         Some(_) => {}
                     };
+                    warn!("PROTOCOL controller_manager_rx END {}", start_time.elapsed().as_nanos());
                 }
 
                 // listen to incoming commands
                 Some(cmd) = self.controller_command_rx.recv() => {
+                    warn!("PROTOCOL controller_command_rx START {}", cmd.get_info());
+                    let start_time = std::time::Instant::now();
                     self.process_command(cmd, &mut
                         block_ask_timer,
                         &mut operation_announcement_interval).await?;
+                    warn!("PROTOCOL controller_command_rx END {}", start_time.elapsed().as_nanos());
+
                 }
 
                 // listen to network controller events
                 evt = self.network_event_receiver.wait_event() => {
+                    let evt = evt?;
+                    warn!("PROTOCOL network_event_receiver START {}", evt.get_info());
+                    let start_time = std::time::Instant::now();
                     massa_trace!("protocol.protocol_worker.run_loop.network_event_rx", {});
-                    self.on_network_event(evt?, &mut block_ask_timer, &mut operation_announcement_interval).await?;
+                    self.on_network_event(evt, &mut block_ask_timer, &mut operation_announcement_interval).await?;
+                    warn!("PROTOCOL network_event_receiver END {}", start_time.elapsed().as_nanos());
                 }
 
                 // block ask timer
                 _ = &mut block_ask_timer => {
                     massa_trace!("protocol.protocol_worker.run_loop.block_ask_timer", { });
+                    warn!("PROTOCOL block_ask_timer START");
+                    let start_time = std::time::Instant::now();
                     self.update_ask_block(&mut block_ask_timer).await?;
+                    warn!("PROTOCOL block_ask_timer END {}", start_time.elapsed().as_nanos());
+
                 }
 
                 // Operation announcement interval.
                 _ = &mut operation_announcement_interval => {
                     // Announce operations.
+                    warn!("PROTOCOL announce_ops START");
+                    let start_time = std::time::Instant::now();
                     self.announce_ops(&mut operation_announcement_interval).await;
+                    warn!("PROTOCOL announce_ops END {}", start_time.elapsed().as_nanos());
                 }
 
                 // operation ask timer
                 _ = &mut operation_batch_proc_period_timer => {
                     massa_trace!("protocol.protocol_worker.run_loop.operation_ask_and_announce_timer", { });
 
+                    warn!("PROTOCOL operation_batch_proc_period_timer START");
+                    let start_time = std::time::Instant::now();
+
                     // Update operations to ask.
                     self.update_ask_operation(&mut operation_batch_proc_period_timer).await?;
+
+                    warn!("PROTOCOL operation_batch_proc_period_timer END {}", start_time.elapsed().as_nanos());
+
                 }
                 // operation prune timer
                 _ = &mut operation_prune_timer => {
                     massa_trace!("protocol.protocol_worker.run_loop.operation_prune_timer", { });
+                    warn!("PROTOCOL operation_prune_timer START");
+                    let start_time = std::time::Instant::now();
+
                     self.prune_asked_operations(&mut operation_prune_timer)?;
+                    warn!("PROTOCOL operation_prune_timer END {}", start_time.elapsed().as_nanos());
+
                 }
             }
             massa_trace!("protocol.protocol_worker.run_loop.end", {});

@@ -135,6 +135,9 @@ impl NetworkWorker {
 
         loop {
             if need_connect_retry {
+                warn!("NETWORK need_connect_retry START");
+                let start_time = std::time::Instant::now();
+
                 // try to connect to candidate IPs
                 let candidate_ips = self.peer_info_db.get_out_connection_candidate_ips()?;
                 for ip in candidate_ips {
@@ -154,6 +157,11 @@ impl NetworkWorker {
                     });
                 }
                 need_connect_retry = false;
+
+                warn!(
+                    "NETWORK need_connect_retry END {}",
+                    start_time.elapsed().as_nanos()
+                );
             }
 
             /*
@@ -168,46 +176,71 @@ impl NetworkWorker {
                     * out connecting events (no problem if a bit late)
                     * listener event (HIGH FREQUENCY) non-critical
             */
+            warn!("NETWORK WAITING");
+
             tokio::select! {
                 // listen to manager commands
                 cmd = self.controller_manager_rx.recv() => {
+                    warn!("NETWORK controller_manager_rx START");
+                    let start_time = std::time::Instant::now();
                     match cmd {
                         None => break,
                         Some(_) => {}
                     }
+                    warn!("NETWORK controller_manager_rx END {}", start_time.elapsed().as_nanos());
                 },
 
                 // event received from a node
                 evt = self.node_event_rx.recv() => {
+                    let evt = evt.ok_or_else(|| NetworkError::ChannelError("node event rx failed".into()))?;
+                    warn!("NETWORK node_event_rx START {}", evt.get_info());
+                    let start_time = std::time::Instant::now();
                     self.on_node_event(
-                        evt.ok_or_else(|| NetworkError::ChannelError("node event rx failed".into()))?
-                    ).await?
+                        evt
+                    ).await?;
+                    warn!("NETWORK node_event_rx END {}", start_time.elapsed().as_nanos());
                 },
 
                 // incoming command
                 Some(cmd) = self.controller_command_rx.recv() => {
+                    warn!("NETWORK controller_command_rx START {}", cmd.get_info());
+                    let start_time = std::time::Instant::now();
                     self.manage_network_command(cmd).await?;
+                    warn!("NETWORK controller_command_rx END {}", start_time.elapsed().as_nanos());
+
                 },
 
                 // wake up interval
                 _ = wakeup_interval.tick() => {
+                    warn!("NETWORK wakeup_interval START");
+                    let start_time = std::time::Instant::now();
                     self.peer_info_db.update()?; // notify tick to peer db
-
                     need_connect_retry = true; // retry out connections
+                    warn!("NETWORK wakeup_interval END {}", start_time.elapsed().as_nanos());
                 }
 
                 // wait for a handshake future to complete
                 Some(res) = self.handshake_futures.next() => {
+                    warn!("NETWORK handshake_futures START");
+                    let start_time = std::time::Instant::now();
                     let (conn_id, outcome) = res?;
                     self.on_handshake_finished(conn_id, outcome).await?;
                     need_connect_retry = true; // retry out connections
+                    warn!("NETWORK handshake_futures END {}", start_time.elapsed().as_nanos());
                 },
 
                 // Managing handshakes that return a PeerList
-                Some(_) = self.handshake_peer_list_futures.next() => {},
+                Some(_) = self.handshake_peer_list_futures.next() => {
+                    warn!("NETWORK handshake_peer_list_futures START");
+                    let start_time = std::time::Instant::now();
+                    warn!("NETWORK handshake_peer_list_futures END {}", start_time.elapsed().as_nanos());
+                },
 
                 // node closed
                 Some(evt) = self.node_worker_handles.next() => {
+                    warn!("NETWORK node_worker_handles START");
+                    let start_time = std::time::Instant::now();
+
                     let (node_id, res) = evt?;  // ? => when a node worker panics
                     let reason = match res {
                         Ok(r) => {
@@ -240,24 +273,37 @@ impl NetworkWorker {
                     }
 
                     need_connect_retry = true; // retry out connections
+
+                    warn!("NETWORK node_worker_handles END {}", start_time.elapsed().as_nanos());
+
                 },
 
                 // out-connector event
                 Some((ip_addr, res)) = out_connecting_futures.next() => {
+                    warn!("NETWORK out_connecting_futures START");
+                    let start_time = std::time::Instant::now();
+
                     need_connect_retry = true; // retry out connections
                     self.manage_out_connections(
                         res,
                         ip_addr,
                         &mut cur_connection_id,
-                    ).await?
+                    ).await?;
+
+                    warn!("NETWORK out_connecting_futures END {}", start_time.elapsed().as_nanos());
                 },
 
                 // listener socket received
                 res = self.listener.accept() => {
+                    warn!("NETWORK manage_in_connections START");
+                    let start_time = std::time::Instant::now();
+
                     self.manage_in_connections(
                         res,
                         &mut cur_connection_id,
-                    ).await?
+                    ).await?;
+
+                    warn!("NETWORK manage_in_connections END {}", start_time.elapsed().as_nanos());
                 }
             }
         }

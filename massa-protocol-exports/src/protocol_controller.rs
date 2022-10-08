@@ -86,6 +86,25 @@ pub enum ProtocolCommand {
     PropagateEndorsements(Storage),
 }
 
+impl ProtocolCommand {
+    /// Get info string
+    pub fn get_info(&self) -> String {
+        match self {
+            ProtocolCommand::IntegratedBlock { .. } => format!("IntegratedBlock"),
+            ProtocolCommand::AttackBlockDetected(_) => format!("AttackBlockDetected"),
+            ProtocolCommand::WishlistDelta { new, remove } => {
+                format!("WishlistDelta {} {}", new.len(), remove.len())
+            }
+            ProtocolCommand::PropagateOperations(ops) => {
+                format!("PropagateOperations {}", ops.get_op_refs().len())
+            }
+            ProtocolCommand::PropagateEndorsements(ops) => {
+                format!("PropagateEndorsements {}", ops.get_endorsement_refs().len())
+            }
+        }
+    }
+}
+
 /// protocol management commands
 #[derive(Debug, Serialize)]
 pub enum ProtocolManagementCommand {}

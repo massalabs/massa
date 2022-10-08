@@ -132,10 +132,40 @@ pub enum NodeEventType {
     ReceivedEndorsements(Vec<WrappedEndorsement>),
 }
 
+impl NodeEventType {
+    /// Get info string
+    pub fn get_info(&self) -> String {
+        match self {
+            NodeEventType::AskedPeerList => format!("AskedPeerList"),
+            NodeEventType::ReceivedPeerList(v) => format!("ReceivedPeerList {}", v.len()),
+            NodeEventType::ReceivedBlockHeader(_) => format!("ReceivedBlockHeader"),
+            NodeEventType::ReceivedAskForBlocks(v) => format!("ReceivedAskForBlocks {}", v.len()),
+            NodeEventType::ReceivedReplyForBlocks(v) => {
+                format!("ReceivedReplyForBlocks {}", v.len())
+            }
+            NodeEventType::ReceivedOperations(v) => format!("ReceivedOperations {}", v.len()),
+            NodeEventType::ReceivedOperationAnnouncements(v) => {
+                format!("ReceivedOperationAnnouncements {}", v.len())
+            }
+            NodeEventType::ReceivedAskForOperations(v) => {
+                format!("ReceivedAskForOperations {}", v.len())
+            }
+            NodeEventType::ReceivedEndorsements(v) => format!("ReceivedEndorsements {}", v.len()),
+        }
+    }
+}
+
 /// Events node worker can emit.
 /// Events are a tuple linking a node id to an event type
 #[derive(Clone, Debug)]
 pub struct NodeEvent(pub NodeId, pub NodeEventType);
+
+impl NodeEvent {
+    /// Get string info
+    pub fn get_info(&self) -> String {
+        self.1.get_info()
+    }
+}
 
 /// Ask for the info about a block.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -231,6 +261,39 @@ pub enum NetworkCommand {
     RemoveFromWhitelist(Vec<IpAddr>),
 }
 
+impl NetworkCommand {
+    /// Get info string
+    pub fn get_info(&self) -> String {
+        match self {
+            NetworkCommand::AskForBlocks { list } => format!("AskForBlocks {}", list.len()),
+            NetworkCommand::SendBlockInfo { info, .. } => format!("SendBlockInfo {}", info.len()),
+            NetworkCommand::SendBlockHeader { .. } => format!("SendBlockHeader"),
+            NetworkCommand::GetPeers { .. } => format!("GetPeers"),
+            NetworkCommand::GetBootstrapPeers { .. } => format!("GetBootstrapPeers"),
+            NetworkCommand::NodeBanByIds(v) => format!("NodeBanByIds {}", v.len()),
+            NetworkCommand::NodeBanByIps(v) => format!("NodeBanByIps {}", v.len()),
+            NetworkCommand::NodeUnbanByIds(v) => format!("NodeUnbanByIds {}", v.len()),
+            NetworkCommand::NodeUnbanByIps(v) => format!("NodeUnbanByIps {}", v.len()),
+            NetworkCommand::SendEndorsements { endorsements, .. } => {
+                format!("SendEndorsements {}", endorsements.len())
+            }
+            NetworkCommand::NodeSignMessage { .. } => format!("NodeSignMessage"),
+            NetworkCommand::GetStats { .. } => format!("GetStats"),
+            NetworkCommand::SendOperations { operations, .. } => {
+                format!("SendOperations {}", operations.len())
+            }
+            NetworkCommand::SendOperationAnnouncements { batch, .. } => {
+                format!("SendOperationAnnouncements {}", batch.len())
+            }
+            NetworkCommand::AskForOperations { wishlist, .. } => {
+                format!("AskForOperations {}", wishlist.len())
+            }
+            NetworkCommand::Whitelist(v) => format!("Whitelist {}", v.len()),
+            NetworkCommand::RemoveFromWhitelist(v) => format!("RemoveFromWhitelist {}", v.len()),
+        }
+    }
+}
+
 /// A node replied with info about a block.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(clippy::large_enum_variant)]
@@ -302,6 +365,38 @@ pub enum NetworkEvent {
         /// Endorsements
         endorsements: Vec<WrappedEndorsement>,
     },
+}
+
+impl NetworkEvent {
+    /// Get info string
+    pub fn get_info(&self) -> String {
+        match self {
+            NetworkEvent::NewConnection(_) => format!("NewConnection"),
+            NetworkEvent::ConnectionClosed(_) => format!("ConnectionClosed"),
+            NetworkEvent::ReceivedBlockInfo { info, .. } => {
+                format!("ReceivedBlockInfo {}", info.len())
+            }
+            NetworkEvent::ReceivedBlockHeader { .. } => format!("ReceivedBlockHeader"),
+            NetworkEvent::AskedForBlocks { list, .. } => format!("AskedForBlocks {}", list.len()),
+            NetworkEvent::ReceivedOperations { operations, .. } => {
+                format!("ReceivedOperations {}", operations.len())
+            }
+            NetworkEvent::ReceivedOperationAnnouncements {
+                operation_prefix_ids,
+                ..
+            } => format!(
+                "ReceivedOperationAnnouncements {}",
+                operation_prefix_ids.len()
+            ),
+            NetworkEvent::ReceiveAskForOperations {
+                operation_prefix_ids,
+                ..
+            } => format!("ReceiveAskForOperations {}", operation_prefix_ids.len()),
+            NetworkEvent::ReceivedEndorsements { endorsements, .. } => {
+                format!("ReceivedEndorsements {}", endorsements.len())
+            }
+        }
+    }
 }
 
 /// Network management command
