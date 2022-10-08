@@ -102,7 +102,7 @@ async fn test_consensus_does_not_ask_for_block() {
             validate_propagate_block_in_list(
                 &mut protocol_controller,
                 &hash_list,
-                3000 + start_slot as u64 * 1000,
+                3000 + start_slot * 1000,
             )
             .await;
 

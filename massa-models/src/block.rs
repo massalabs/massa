@@ -768,7 +768,7 @@ mod test {
                 slot: Slot::new(1, 0),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
-                endorsements: vec![endo.clone()],
+                endorsements: vec![endo],
             },
             BlockHeaderSerializer::new(),
             &keypair,
@@ -934,7 +934,7 @@ mod test {
 
         // serialize block
         let wrapped_block: WrappedBlock =
-            Block::new_wrapped(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
+            Block::new_wrapped(orig_block, BlockSerializer::new(), &keypair).unwrap();
         let mut ser_block = Vec::new();
         WrappedSerializer::new()
             .serialize(&wrapped_block, &mut ser_block)

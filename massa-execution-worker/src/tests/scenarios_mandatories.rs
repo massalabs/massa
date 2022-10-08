@@ -802,7 +802,7 @@ fn events_from_switching_blockclique() {
         let event_test_data = include_bytes!("./wasm/event_test.wasm");
         let operation = create_execute_sc_operation(&keypair, event_test_data).unwrap();
         let blockclique_block = create_block(
-            keypair.clone(),
+            keypair,
             vec![operation.clone()],
             blockclique_block_slot,
         )
@@ -810,7 +810,7 @@ fn events_from_switching_blockclique() {
         blockclique_blocks.insert(blockclique_block_slot, blockclique_block.id);
         let mut blockclique_block_storage = storage.clone_without_refs();
         blockclique_block_storage.store_block(blockclique_block.clone());
-        blockclique_block_storage.store_operations(vec![operation.clone()]);
+        blockclique_block_storage.store_operations(vec![operation]);
         block_storage.insert(blockclique_block.id, blockclique_block_storage);
     }
     // notify execution about blockclique change
@@ -832,7 +832,7 @@ fn events_from_switching_blockclique() {
         let event_test_data = include_bytes!("./wasm/event_test.wasm");
         let operation = create_execute_sc_operation(&keypair, event_test_data).unwrap();
         let blockclique_block = create_block(
-            keypair.clone(),
+            keypair,
             vec![operation.clone()],
             blockclique_block_slot,
         )
@@ -840,7 +840,7 @@ fn events_from_switching_blockclique() {
         blockclique_blocks.insert(blockclique_block_slot, blockclique_block.id);
         let mut blockclique_block_storage = storage.clone_without_refs();
         blockclique_block_storage.store_block(blockclique_block.clone());
-        blockclique_block_storage.store_operations(vec![operation.clone()]);
+        blockclique_block_storage.store_operations(vec![operation]);
         block_storage.insert(blockclique_block.id, blockclique_block_storage);
     }
     // notify execution about blockclique change
@@ -893,7 +893,7 @@ fn create_execute_sc_operation_with_datastore(
         data: data.to_vec(),
         max_gas: 100_000,
         gas_price: Amount::from_mantissa_scale(1, 0),
-        datastore: datastore,
+        datastore,
     };
     let op = Operation::new_wrapped(
         Operation {
