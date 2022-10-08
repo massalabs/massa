@@ -4,4 +4,4 @@
   * [ ] make tests compile
   * [ ] make tests pass 
 * [ ] add logs allowing easy debugging in case the changes caused problems
-* [ ] add comments and docs
+* [ ] if the API has changed, update the API specification
