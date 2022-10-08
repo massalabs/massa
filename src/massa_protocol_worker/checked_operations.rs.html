@@ -47,53 +47,55 @@
 <span id="47">47</span>
 <span id="48">48</span>
 <span id="49">49</span>
-</pre><pre class="rust"><code><span class="kw">use </span>massa_models::{
-    operation::{OperationId, OperationPrefixId},
-    prehash::{PreHashMap, PreHashSet},
-};
+<span id="50">50</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-<span class="doccomment">/// The structure store the previously checked operations.
-/// Manage the relation between `OperationPrefixId` and `OperationId`
-/// note: we could think about replace `Vec&lt;OperationId&gt;` with `Vec&lt;OperationSuffixId&gt;`
-///       if the execution time CPU is equivalent
-</span><span class="attribute">#[derive(Default)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>CheckedOperations(PreHashMap&lt;OperationPrefixId, OperationId&gt;);
+</span><span class="doccomment">//! Cache of previously successfully checked operations and their prefix IDs
+
+</span><span class="kw">use </span>massa_models::operation::{OperationId, OperationPrefixId};
+
+<span class="kw">use </span><span class="kw">crate</span>::cache::LinearHashCacheSet;
+
+<span class="doccomment">/// Checked operations cache.
+/// Note: prefix and ID caches are expected to get durably desynchronized in case of prefix collision.
+</span><span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>CheckedOperations {
+    <span class="doccomment">/// Linear cache of operation IDs
+    </span>op_ids: LinearHashCacheSet&lt;OperationId&gt;,
+    <span class="doccomment">/// Linear cache and counter of operation ID prefixes
+    </span>op_prefixes: LinearHashCacheSet&lt;OperationPrefixId&gt;,
+}
 
 <span class="kw">impl </span>CheckedOperations {
-    <span class="doccomment">/// Insert in the adapter an operation `id`.
-    ///
-    /// If the set did not have this value present, `true` is returned.
-    ///
-    /// If the set did have this value present, `false` is returned.
-    </span><span class="kw">pub fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>OperationId) -&gt; bool {
-        <span class="kw">let </span>prefix = id.prefix();
-        <span class="self">self</span>.<span class="number">0</span>.insert(prefix, <span class="kw-2">*</span>id).is_none()
+    <span class="doccomment">/// Create a new checked operations cache
+    </span><span class="kw">pub fn </span>new(capacity: usize) -&gt; <span class="self">Self </span>{
+        CheckedOperations {
+            op_ids: LinearHashCacheSet::new(capacity),
+            op_prefixes: LinearHashCacheSet::new(capacity),
+        }
     }
 
-    <span class="kw">pub fn </span>extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ids: <span class="kw-2">&amp;</span>PreHashSet&lt;OperationId&gt;) {
-        ids.iter().for_each(|id| {
+    <span class="doccomment">/// Insert an operation ID and its deduced prefix
+    </span><span class="kw">pub fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, operation_id: OperationId) {
+        <span class="self">self</span>.op_ids.try_insert(operation_id);
+        <span class="self">self</span>.op_prefixes.try_insert(operation_id.prefix());
+    }
+
+    <span class="doccomment">/// Check if the cache contains a given operation ID
+    </span><span class="kw">pub fn </span>contains_id(<span class="kw-2">&amp;</span><span class="self">self</span>, operation_id: <span class="kw-2">&amp;</span>OperationId) -&gt; bool {
+        <span class="self">self</span>.op_ids.contains(operation_id)
+    }
+
+    <span class="doccomment">/// Check if the cache contains a given operation ID prefix
+    </span><span class="kw">pub fn </span>contains_prefix(<span class="kw-2">&amp;</span><span class="self">self</span>, prefix: <span class="kw-2">&amp;</span>OperationPrefixId) -&gt; bool {
+        <span class="self">self</span>.op_prefixes.contains(prefix)
+    }
+
+    <span class="doccomment">/// Extend with new IDs
+    </span><span class="kw">pub fn </span>extend&lt;I: IntoIterator&lt;Item = OperationId&gt;&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, iter: I) {
+        iter.into_iter().for_each(|id| {
             <span class="self">self</span>.insert(id);
         });
-    }
-
-    <span class="doccomment">/// Get a operation id matching with the given `prefix` or None if there is none.
-    </span><span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, prefix: <span class="kw-2">&amp;</span>OperationPrefixId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>OperationId&gt; {
-        <span class="self">self</span>.<span class="number">0</span>.get(prefix)
-    }
-
-    <span class="doccomment">/// Clear the content of the adapter.
-    </span><span class="kw">pub fn </span>clear(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; PreHashSet&lt;OperationId&gt; {
-        <span class="self">self</span>.<span class="number">0</span>.drain().map(|(<span class="kw">_</span>, id)| id).collect()
-    }
-
-    <span class="doccomment">/// Returns the number of prefix keys in the adapter.
-    </span><span class="kw">pub fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="self">self</span>.<span class="number">0</span>.len()
-    }
-
-    <span class="attribute">#[inline(always)]
-    </span><span class="kw">pub fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, prefix: <span class="kw-2">&amp;</span>OperationPrefixId) -&gt; bool {
-        <span class="self">self</span>.<span class="number">0</span>.contains_key(prefix)
     }
 }
 </code></pre></div>

@@ -105,36 +105,6 @@
 <span id="105">105</span>
 <span id="106">106</span>
 <span id="107">107</span>
-<span id="108">108</span>
-<span id="109">109</span>
-<span id="110">110</span>
-<span id="111">111</span>
-<span id="112">112</span>
-<span id="113">113</span>
-<span id="114">114</span>
-<span id="115">115</span>
-<span id="116">116</span>
-<span id="117">117</span>
-<span id="118">118</span>
-<span id="119">119</span>
-<span id="120">120</span>
-<span id="121">121</span>
-<span id="122">122</span>
-<span id="123">123</span>
-<span id="124">124</span>
-<span id="125">125</span>
-<span id="126">126</span>
-<span id="127">127</span>
-<span id="128">128</span>
-<span id="129">129</span>
-<span id="130">130</span>
-<span id="131">131</span>
-<span id="132">132</span>
-<span id="133">133</span>
-<span id="134">134</span>
-<span id="135">135</span>
-<span id="136">136</span>
-<span id="137">137</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Only public for the protocol worker.
 //! Contains all what we know for each node we are connected or we used to
 //! know in the network.
@@ -143,11 +113,12 @@
 //! Same as for wanted/known blocks, we remember here in cache which node asked
 //! for operations and which operations he seem to already know.
 
-</span><span class="kw">use </span>massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet};
+</span><span class="kw">use </span>massa_models::prehash::{CapacityAllocator, PreHashMap};
 <span class="kw">use </span>massa_models::{block::BlockId, endorsement::EndorsementId, operation::OperationId};
 <span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
-<span class="kw">use </span>std::collections::VecDeque;
 <span class="kw">use </span>tokio::time::Instant;
+
+<span class="kw">use </span><span class="kw">crate</span>::cache::LinearHashCacheSet;
 
 <span class="doccomment">/// Information about a node we are connected to,
 /// essentially our view of its state.
@@ -161,13 +132,9 @@
     <span class="doccomment">/// Instant when the node was added
     </span><span class="kw">pub </span>connection_instant: Instant,
     <span class="doccomment">/// all known operations
-    </span>known_operations: PreHashSet&lt;OperationId&gt;,
-    <span class="doccomment">/// Same as `known_operations` but sorted for a premature optimization :-)
-    </span>known_operations_queue: VecDeque&lt;OperationId&gt;,
+    </span>known_operations: LinearHashCacheSet&lt;OperationId&gt;,
     <span class="doccomment">/// all known endorsements
-    </span>known_endorsements: PreHashSet&lt;EndorsementId&gt;,
-    <span class="doccomment">/// Same as `known_endorsements` but sorted for a premature optimization :-)
-    </span>known_endorsements_queue: VecDeque&lt;EndorsementId&gt;,
+    </span>known_endorsements: LinearHashCacheSet&lt;EndorsementId&gt;,
 }
 
 <span class="kw">impl </span>NodeInfo {
@@ -177,16 +144,8 @@
             known_blocks: PreHashMap::with_capacity(pool_settings.max_node_known_blocks_size),
             asked_blocks: Default::default(),
             connection_instant: Instant::now(),
-            known_operations: PreHashSet::&lt;OperationId&gt;::with_capacity(
-                pool_settings.max_node_known_ops_size.saturating_add(<span class="number">1</span>),
-            ),
-            known_operations_queue: VecDeque::with_capacity(
-                pool_settings.max_node_known_ops_size.saturating_add(<span class="number">1</span>),
-            ),
-            known_endorsements: PreHashSet::&lt;EndorsementId&gt;::with_capacity(
-                pool_settings.max_node_known_endorsements_size,
-            ),
-            known_endorsements_queue: VecDeque::with_capacity(
+            known_operations: LinearHashCacheSet::new(pool_settings.max_node_known_ops_size),
+            known_endorsements: LinearHashCacheSet::new(
                 pool_settings.max_node_known_endorsements_size,
             ),
         }
@@ -234,38 +193,19 @@
         <span class="self">self</span>.remove_excess_known_blocks(max_node_known_blocks_size);
     }
 
-    <span class="kw">pub fn </span>insert_known_endorsements(
+    <span class="kw">pub fn </span>insert_known_endorsements&lt;I: IntoIterator&lt;Item = EndorsementId&gt;&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        endorsements: Vec&lt;EndorsementId&gt;,
-        max_endorsements_nb: usize,
+        endorsements: I,
     ) {
-        <span class="kw">for </span>endorsement_id <span class="kw">in </span>endorsements.into_iter() {
-            <span class="kw">if </span><span class="self">self</span>.known_endorsements.insert(endorsement_id) {
-                <span class="self">self</span>.known_endorsements_queue.push_front(endorsement_id);
-                <span class="kw">if </span><span class="self">self</span>.known_endorsements_queue.len() &gt; max_endorsements_nb {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(r) = <span class="self">self</span>.known_endorsements_queue.pop_back() {
-                        <span class="self">self</span>.known_endorsements.remove(<span class="kw-2">&amp;</span>r);
-                    }
-                }
-            }
-        }
+        <span class="self">self</span>.known_endorsements.try_extend(endorsements);
     }
 
     <span class="kw">pub fn </span>knows_endorsement(<span class="kw-2">&amp;</span><span class="self">self</span>, endorsement_id: <span class="kw-2">&amp;</span>EndorsementId) -&gt; bool {
         <span class="self">self</span>.known_endorsements.contains(endorsement_id)
     }
 
-    <span class="kw">pub fn </span>insert_known_ops(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ops: <span class="kw-2">&amp;</span>[OperationId], max_ops_nb: usize) {
-        <span class="kw">for </span>operation_id <span class="kw">in </span>ops.iter() {
-            <span class="kw">if </span><span class="self">self</span>.known_operations.insert(<span class="kw-2">*</span>operation_id) {
-                <span class="self">self</span>.known_operations_queue.push_back(<span class="kw-2">*</span>operation_id);
-                <span class="kw">while </span><span class="self">self</span>.known_operations_queue.len() &gt; max_ops_nb {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(op_id) = <span class="self">self</span>.known_operations_queue.pop_front() {
-                        <span class="self">self</span>.known_operations.remove(<span class="kw-2">&amp;</span>op_id);
-                    }
-                }
-            }
-        }
+    <span class="kw">pub fn </span>insert_known_ops&lt;I: IntoIterator&lt;Item = OperationId&gt;&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ops: I) {
+        <span class="self">self</span>.known_operations.try_extend(ops);
     }
 
     <span class="kw">pub fn </span>knows_op(<span class="kw-2">&amp;</span><span class="self">self</span>, op: <span class="kw-2">&amp;</span>OperationId) -&gt; bool {

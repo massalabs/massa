@@ -562,7 +562,7 @@
 <span class="kw">use </span>massa_models::{address::Address, amount::Amount};
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::sync::Arc;
-<span class="kw">use </span>tracing::log::debug;
+<span class="kw">use </span>tracing::debug;
 
 <span class="doccomment">/// The `SpeculativeLedger` contains an thread-safe shared reference to the final ledger (read-only),
 /// a list of existing changes that happened o the ledger since its finality,

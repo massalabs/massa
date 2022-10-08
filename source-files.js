@@ -25,7 +25,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_pos_exports":["",[],["controller_traits.rs","error.rs","lib.rs","pos_final_state_impl.rs","settings.rs","types.rs"]],\
 "massa_pos_worker":["",[],["controller.rs","draw.rs","lib.rs","worker.rs"]],\
 "massa_protocol_exports":["",[["tests",[],["mock_network_controller.rs","mod.rs","tools.rs"]]],["error.rs","lib.rs","protocol_controller.rs","settings.rs"]],\
-"massa_protocol_worker":["",[],["checked_operations.rs","lib.rs","node_info.rs","protocol_network.rs","protocol_worker.rs","sig_verifier.rs","worker_operations_impl.rs"]],\
+"massa_protocol_worker":["",[],["cache.rs","checked_operations.rs","lib.rs","node_info.rs","protocol_network.rs","protocol_worker.rs","sig_verifier.rs","worker_operations_impl.rs"]],\
 "massa_sdk":["",[],["lib.rs"]],\
 "massa_serialization":["",[],["lib.rs"]],\
 "massa_signature":["",[],["error.rs","lib.rs","signature_impl.rs"]],\

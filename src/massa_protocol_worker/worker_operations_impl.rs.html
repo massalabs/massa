@@ -220,6 +220,15 @@
 <span id="220">220</span>
 <span id="221">221</span>
 <span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Contains the implementation of the life cycle of operations
 //!
 //! Implement the propagation algorithm written here [redirect to GitHub]
@@ -283,18 +292,18 @@
     ///```
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>on_operations_announcements_received(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        op_batch: OperationPrefixIds,
+        <span class="kw-2">mut </span>op_batch: OperationPrefixIds,
         node_id: NodeId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+        <span class="comment">// filter out the operations that we already know about
+        </span>op_batch.retain(|prefix| !<span class="self">self</span>.checked_operations.contains_prefix(prefix));
+
         <span class="kw">let </span><span class="kw-2">mut </span>ask_set = OperationPrefixIds::with_capacity(op_batch.len());
         <span class="kw">let </span><span class="kw-2">mut </span>future_set = OperationPrefixIds::with_capacity(op_batch.len());
         <span class="comment">// exactitude isn&#39;t important, we want to have a now for that function call
         </span><span class="kw">let </span>now = Instant::now();
         <span class="kw">let </span><span class="kw-2">mut </span>count_reask = <span class="number">0</span>;
         <span class="kw">for </span>op_id <span class="kw">in </span>op_batch {
-            <span class="kw">if </span><span class="self">self</span>.checked_operations.contains(<span class="kw-2">&amp;</span>op_id) {
-                <span class="kw">continue</span>;
-            }
             <span class="kw">let </span>wish = <span class="kw">match </span><span class="self">self</span>.asked_operations.get_mut(<span class="kw-2">&amp;</span>op_id) {
                 <span class="prelude-val">Some</span>(wish) =&gt; {
                     <span class="kw">if </span>wish.<span class="number">1</span>.contains(<span class="kw-2">&amp;</span>node_id) {
@@ -321,7 +330,7 @@
                     future_set.insert(op_id);
                 }
             } <span class="kw">else </span>{
-                ask_set.insert(op_id.clone());
+                ask_set.insert(op_id);
                 <span class="self">self</span>.asked_operations.insert(op_id, (now, <span class="macro">vec!</span>[node_id]));
             }
         } <span class="comment">// EndOf for op_id in op_batch:
@@ -422,15 +431,24 @@
         node_id: NodeId,
         op_pre_ids: OperationPrefixIds,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+        <span class="kw">if </span>op_pre_ids.is_empty() {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+        }
+
         <span class="kw">let </span><span class="kw-2">mut </span>ops: Vec&lt;WrappedOperation&gt; = Vec::with_capacity(op_pre_ids.len());
         {
             <span class="comment">// Scope the lock because of the async call to `send_operations` below.
             </span><span class="kw">let </span>stored_ops = <span class="self">self</span>.storage.read_operations();
             <span class="kw">for </span>prefix <span class="kw">in </span>op_pre_ids {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(id) = <span class="self">self</span>.checked_operations.get(<span class="kw-2">&amp;</span>prefix) {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(op) = stored_ops.get(id) {
-                        ops.push(op.clone());
-                    }
+                <span class="kw">let </span>opt_op = <span class="kw">match </span>stored_ops
+                    .get_operations_by_prefix(<span class="kw-2">&amp;</span>prefix)
+                    .and_then(|ids| ids.iter().next())
+                {
+                    <span class="prelude-val">Some</span>(id) =&gt; stored_ops.get(id),
+                    <span class="prelude-val">None </span>=&gt; <span class="kw">continue</span>,
+                };
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(op) = opt_op {
+                    ops.push(op.clone());
                 }
             }
         }

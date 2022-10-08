@@ -1545,7 +1545,7 @@
 </span><span class="kw">pub struct </span>OperationId(Hash);
 
 <span class="doccomment">/// Left part of the operation id hash stored in a vector of size [`OPERATION_ID_PREFIX_SIZE_BYTES`]
-</span><span class="attribute">#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+</span><span class="attribute">#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>OperationPrefixId([u8; OPERATION_ID_PREFIX_SIZE_BYTES]);
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>OperationId {

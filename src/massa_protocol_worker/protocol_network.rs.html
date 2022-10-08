@@ -583,6 +583,10 @@
 <span id="583">583</span>
 <span id="584">584</span>
 <span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Worker implementation for the network events
 //!
 //! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
@@ -591,7 +595,7 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::node_info::NodeInfo;
 <span class="kw">use </span><span class="kw">crate</span>::protocol_worker::ProtocolWorker;
-<span class="kw">use </span>massa_hash::Hash;
+<span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
     block::Block,
@@ -781,7 +785,7 @@
                         <span class="self">self</span>.config.max_node_known_blocks_size,
                     );
 
-                    <span class="comment">// Send only the missing operations that is in storage.
+                    <span class="comment">// Send only the missing operations that are in storage.
                     </span><span class="kw">let </span>needed_ops = {
                         <span class="kw">let </span>operations = <span class="self">self</span>.storage.read_operations();
                         operations_ids
@@ -891,7 +895,7 @@
 
         <span class="comment">// add to known ops
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(node_info) = <span class="self">self</span>.active_nodes.get_mut(<span class="kw-2">&amp;</span>from_node_id) {
-            node_info.insert_known_ops(<span class="kw-2">&amp;</span>operation_ids, <span class="self">self</span>.config.max_node_known_ops_size);
+            node_info.insert_known_ops(operation_ids.iter().copied());
         }
 
         <span class="kw">let </span>info = <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = <span class="self">self</span>.block_wishlist.get_mut(<span class="kw-2">&amp;</span>block_id) {
@@ -931,7 +935,8 @@
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
 
-        <span class="kw">let </span><span class="kw-2">mut </span>total_hash: Vec&lt;u8&gt; = <span class="macro">vec!</span>[];
+        <span class="kw">let </span><span class="kw-2">mut </span>total_hash: Vec&lt;u8&gt; =
+            Vec::with_capacity(operation_ids.len().saturating_mul(HASH_SIZE_BYTES));
         operation_ids.iter().for_each(|op_id| {
             <span class="kw">let </span>op_hash = op_id.get_hash().into_bytes();
             total_hash.extend(op_hash);
@@ -942,11 +947,14 @@
             <span class="comment">// Add the ops of info.
             </span>info.operation_ids = <span class="prelude-val">Some</span>(operation_ids.clone());
             <span class="kw">let </span>known_operations = info.storage.claim_operation_refs(<span class="kw-2">&amp;</span>operation_ids_set);
-            <span class="comment">// remember the claimed operation to prune them later
-            </span><span class="self">self</span>.checked_operations.extend(<span class="kw-2">&amp;</span>known_operations);
 
-            info.operations_size =
+            <span class="comment">// get the total size of known ops
+            </span>info.operations_size =
                 <span class="self">Self</span>::get_total_operations_size(<span class="kw-2">&amp;</span><span class="self">self</span>.storage, <span class="kw-2">&amp;</span>known_operations);
+
+            <span class="comment">// mark ops as checked
+            </span><span class="self">self</span>.checked_operations
+                .extend(known_operations.iter().copied());
 
             <span class="kw">if </span>info.operations_size &gt; <span class="self">self</span>.config.max_serialized_operations_size_per_block {
                 <span class="macro">warn!</span>(<span class="string">&quot;Node id {} sent us a operation list for block id {} but the operations we already have in our records exceed max size.&quot;</span>, from_node_id, block_id);
