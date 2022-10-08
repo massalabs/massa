@@ -60,7 +60,9 @@ impl EndorsementPoolThread {
 
 /// Operation pool writer thread.
 pub(crate) struct OperationPoolThread {
+    /// Command reception channel
     receiver: Receiver<Command>,
+    /// Shared reference to the operation pool
     operation_pool: Arc<RwLock<OperationPool>>,
 }
 
