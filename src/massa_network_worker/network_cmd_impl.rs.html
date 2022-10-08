@@ -785,8 +785,8 @@
     response_tx: oneshot::Sender&lt;NetworkStats&gt;,
 ) {
     <span class="kw">let </span>res = NetworkStats {
-        in_connection_count: worker.peer_info_db.get_in_connection_count() <span class="kw">as </span>u64,
-        out_connection_count: worker.peer_info_db.get_out_connection_count() <span class="kw">as </span>u64,
+        in_connection_count: worker.peer_info_db.get_in_connection_count(),
+        out_connection_count: worker.peer_info_db.get_out_connection_count(),
         known_peer_count: worker.peer_info_db.peers.len() <span class="kw">as </span>u64,
         banned_peer_count: worker
             .peer_info_db

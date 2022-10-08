@@ -1259,9 +1259,6 @@
 <span id="1259">1259</span>
 <span id="1260">1260</span>
 <span id="1261">1261</span>
-<span id="1262">1262</span>
-<span id="1263">1263</span>
-<span id="1264">1264</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1981,12 +1978,11 @@
     ///
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
-    </span><span class="attribute">#[allow(clippy::borrowed_box)]
     </span><span class="kw">pub fn </span>execute_slot(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         slot: <span class="kw-2">&amp;</span>Slot,
         exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, Storage)&gt;,
-        selector: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
+        selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     ) -&gt; ExecutionOutput {
         <span class="comment">// Create a new execution context for the whole active slot
         </span><span class="kw">let </span><span class="kw-2">mut </span>execution_context = ExecutionContext::active_slot(
@@ -2159,12 +2155,11 @@
     }
 
     <span class="doccomment">/// Execute a candidate slot
-    </span><span class="attribute">#[allow(clippy::borrowed_box)]
     </span><span class="kw">pub fn </span>execute_candidate_slot(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         slot: <span class="kw-2">&amp;</span>Slot,
         exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, Storage)&gt;,
-        selector: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
+        selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     ) {
         <span class="kw">let </span>target_id = exec_target.as_ref().map(|(b_id, <span class="kw">_</span>)| <span class="kw-2">*</span>b_id);
         <span class="macro">debug!</span>(
@@ -2202,12 +2197,11 @@
     }
 
     <span class="doccomment">/// Execute an SCE-final slot
-    </span><span class="attribute">#[allow(clippy::borrowed_box)]
     </span><span class="kw">pub fn </span>execute_final_slot(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         slot: <span class="kw-2">&amp;</span>Slot,
         exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, Storage)&gt;,
-        selector: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
+        selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     ) {
         <span class="kw">let </span>target_id = exec_target.as_ref().map(|(b_id, <span class="kw">_</span>)| <span class="kw-2">*</span>b_id);
         <span class="macro">debug!</span>(

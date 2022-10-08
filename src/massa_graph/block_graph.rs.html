@@ -4869,7 +4869,7 @@
             <span class="kw">while let </span><span class="prelude-val">Some</span>((current_block, <span class="kw">_</span>)) = <span class="self">self</span>.get_active_block(<span class="kw-2">&amp;</span>current_block_id) {
                 <span class="kw">let </span>parent_id = {
                     <span class="kw">if </span>!current_block.parents.is_empty() {
-                        <span class="prelude-val">Some</span>(current_block.parents[thread <span class="kw">as </span>usize].<span class="number">0</span>)
+                        <span class="prelude-val">Some</span>(current_block.parents[thread].<span class="number">0</span>)
                     } <span class="kw">else </span>{
                         <span class="prelude-val">None
                     </span>}

@@ -982,8 +982,6 @@
 <span id="982">982</span>
 <span id="983">983</span>
 <span id="984">984</span>
-<span id="985">985</span>
-<span id="986">986</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>enum_map::EnumMap;
@@ -1455,7 +1453,7 @@
         <span class="kw">let </span>ip = ip.to_canonical();
         <span class="self">self</span>.peers
             .get_mut(<span class="kw-2">&amp;</span>ip)
-            .ok_or({
+            .ok_or_else(|| {
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
@@ -1473,7 +1471,7 @@
         <span class="kw">let </span>ip = ip.to_canonical();
         <span class="self">self</span>.peers
             .get_mut(<span class="kw-2">&amp;</span>ip)
-            .ok_or({
+            .ok_or_else(|| {
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
@@ -1514,7 +1512,7 @@
     </span><span class="kw">pub fn </span>out_connection_closed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ip: <span class="kw-2">&amp;</span>IpAddr) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
         <span class="kw">let </span>ip = ip.to_canonical();
         <span class="kw">let </span>peer_type = {
-            <span class="kw">let </span>peer = <span class="self">self</span>.peers.get(<span class="kw-2">&amp;</span>ip).ok_or({
+            <span class="kw">let </span>peer = <span class="self">self</span>.peers.get(<span class="kw-2">&amp;</span>ip).ok_or_else(|| {
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
@@ -1526,7 +1524,7 @@
                     NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip),
                 ));
             }
-            <span class="kw">let </span>peer = <span class="self">self</span>.peers.get_mut(<span class="kw-2">&amp;</span>ip).ok_or({
+            <span class="kw">let </span>peer = <span class="self">self</span>.peers.get_mut(<span class="kw-2">&amp;</span>ip).ok_or_else(|| {
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
@@ -1553,7 +1551,7 @@
     </span><span class="kw">pub fn </span>in_connection_closed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ip: <span class="kw-2">&amp;</span>IpAddr) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
         <span class="kw">let </span>ip = ip.to_canonical();
         <span class="kw">let </span>peer_type = {
-            <span class="kw">let </span>peer = <span class="self">self</span>.peers.get(<span class="kw-2">&amp;</span>ip).ok_or({
+            <span class="kw">let </span>peer = <span class="self">self</span>.peers.get(<span class="kw-2">&amp;</span>ip).ok_or_else(|| {
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
@@ -1565,7 +1563,7 @@
                     NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip),
                 ));
             }
-            <span class="kw">let </span>peer = <span class="self">self</span>.peers.get_mut(<span class="kw-2">&amp;</span>ip).ok_or({
+            <span class="kw">let </span>peer = <span class="self">self</span>.peers.get_mut(<span class="kw-2">&amp;</span>ip).ok_or_else(|| {
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
@@ -1598,7 +1596,7 @@
         <span class="kw">let </span>ip = ip.to_canonical();
         <span class="comment">// a connection attempt succeeded
         // remove out connection attempt and add out connection
-        </span><span class="kw">let </span>peer_type = <span class="self">self</span>.get_peer_type(<span class="kw-2">&amp;</span>ip).ok_or({
+        </span><span class="kw">let </span>peer_type = <span class="self">self</span>.get_peer_type(<span class="kw-2">&amp;</span>ip).ok_or_else(|| {
             NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(ip))
         })<span class="question-mark">?</span>;
 
@@ -1610,7 +1608,7 @@
         <span class="self">self</span>.decrease_global_active_out_connection_attempt_count(peer_type, <span class="kw-2">&amp;</span>ip)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>peer_type = {
-            <span class="kw">let </span>peer = <span class="self">self</span>.peers.get(<span class="kw-2">&amp;</span>ip).ok_or({
+            <span class="kw">let </span>peer = <span class="self">self</span>.peers.get(<span class="kw-2">&amp;</span>ip).ok_or_else(|| {
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
@@ -1620,7 +1618,7 @@
                     NetworkConnectionErrorType::TooManyConnectionAttempts(ip),
                 ));
             }
-            <span class="kw">let </span>peer = <span class="self">self</span>.peers.get_mut(<span class="kw-2">&amp;</span>ip).ok_or({
+            <span class="kw">let </span>peer = <span class="self">self</span>.peers.get_mut(<span class="kw-2">&amp;</span>ip).ok_or_else(|| {
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
@@ -1653,12 +1651,11 @@
     </span><span class="kw">pub fn </span>out_connection_attempt_failed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ip: <span class="kw-2">&amp;</span>IpAddr) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
         <span class="kw">let </span>ip = ip.to_canonical();
         <span class="kw">let </span>peer_type = {
-            <span class="kw">let </span>peer = <span class="self">self
-                </span>.peers
-                .get(<span class="kw-2">&amp;</span>ip)
-                .ok_or(NetworkError::PeerConnectionError(
+            <span class="kw">let </span>peer = <span class="self">self</span>.peers.get(<span class="kw-2">&amp;</span>ip).ok_or_else(|| {
+                NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
-                ))<span class="question-mark">?</span>;
+                )
+            })<span class="question-mark">?</span>;
             <span class="kw">if </span>peer.active_out_connection_attempts == <span class="number">0
                 </span>|| !<span class="self">self</span>.can_remove_new_out_connection_attempt(peer.peer_type)
             {
@@ -1666,12 +1663,11 @@
                     NetworkConnectionErrorType::TooManyConnectionFailure(ip),
                 ));
             }
-            <span class="kw">let </span>peer = <span class="self">self
-                </span>.peers
-                .get_mut(<span class="kw-2">&amp;</span>ip)
-                .ok_or(NetworkError::PeerConnectionError(
+            <span class="kw">let </span>peer = <span class="self">self</span>.peers.get_mut(<span class="kw-2">&amp;</span>ip).ok_or_else(|| {
+                NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
-                ))<span class="question-mark">?</span>;
+                )
+            })<span class="question-mark">?</span>;
             peer.active_out_connection_attempts -= <span class="number">1</span>;
             peer.last_failure = <span class="prelude-val">Some</span>(MassaTime::now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>);
             <span class="kw">let </span>pt = peer.peer_type;
@@ -1724,7 +1720,7 @@
         }
 
         <span class="kw">let </span>peer_type = {
-            <span class="kw">let </span>peer = <span class="self">self</span>.peers.get_mut(<span class="kw-2">&amp;</span>ip).ok_or({
+            <span class="kw">let </span>peer = <span class="self">self</span>.peers.get_mut(<span class="kw-2">&amp;</span>ip).ok_or_else(|| {
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
