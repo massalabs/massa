@@ -81,7 +81,7 @@ fn test_readonly_execution() {
 fn init_execution_worker(
     config: &ExecutionConfig,
     storage: &Storage,
-    execution_controller: &Box<dyn ExecutionController>,
+    execution_controller: Box<dyn ExecutionController>,
 ) {
     let genesis_keypair = KeyPair::generate();
     let mut finalized_blocks: HashMap<Slot, BlockId> = HashMap::new();
@@ -129,7 +129,7 @@ fn test_nested_call_gas_usage() {
         sample_state.read().pos_state.selector.clone(),
     );
     // initialize the execution system with genesis blocks
-    init_execution_worker(&exec_cfg, &storage, &controller);
+    init_execution_worker(&exec_cfg, &storage, controller.clone());
 
     // get random keypair
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
@@ -267,7 +267,7 @@ fn send_and_receive_async_message() {
         sample_state.read().pos_state.selector.clone(),
     );
     // initialize the execution system with genesis blocks
-    init_execution_worker(&exec_cfg, &storage, &controller);
+    init_execution_worker(&exec_cfg, &storage, controller.clone());
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load send_message bytecode
@@ -327,7 +327,7 @@ pub fn send_and_receive_transaction() {
         sample_state.read().pos_state.selector.clone(),
     );
     // initialize the execution system with genesis blocks
-    init_execution_worker(&exec_cfg, &storage, &controller);
+    init_execution_worker(&exec_cfg, &storage, controller.clone());
     // generate the sender_keypair and recipient_address
     let sender_keypair =
         KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
@@ -405,7 +405,7 @@ pub fn roll_buy() {
         sample_state.read().pos_state.selector.clone(),
     );
     // initialize the execution system with genesis blocks
-    init_execution_worker(&exec_cfg, &storage, &controller);
+    init_execution_worker(&exec_cfg, &storage, controller.clone());
     // generate the keypair and its corresponding address
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
@@ -470,7 +470,7 @@ pub fn roll_sell() {
         sample_state.read().pos_state.selector.clone(),
     );
     // initialize the execution system with genesis blocks
-    init_execution_worker(&exec_cfg, &storage, &controller);
+    init_execution_worker(&exec_cfg, &storage, controller.clone());
     // generate the keypair and its corresponding address
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
@@ -538,7 +538,7 @@ fn sc_execution_error() {
         sample_state.read().pos_state.selector.clone(),
     );
     // initialize the execution system with genesis blocks
-    init_execution_worker(&exec_cfg, &storage, &controller);
+    init_execution_worker(&exec_cfg, &storage, controller.clone());
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load bytecode
@@ -597,7 +597,7 @@ fn sc_datastore() {
         sample_state.read().pos_state.selector.clone(),
     );
     // initialize the execution system with genesis blocks
-    init_execution_worker(&exec_cfg, &storage, &controller);
+    init_execution_worker(&exec_cfg, &storage, controller.clone());
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load bytecode
@@ -656,7 +656,7 @@ fn set_bytecode_error() {
         sample_state.read().pos_state.selector.clone(),
     );
     // initialize the execution system with genesis blocks
-    init_execution_worker(&exec_cfg, &storage, &controller);
+    init_execution_worker(&exec_cfg, &storage, controller.clone());
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load bytecode
@@ -713,7 +713,7 @@ fn datastore_manipulations() {
         sample_state.read().pos_state.selector.clone(),
     );
     // initialize the execution system with genesis blocks
-    init_execution_worker(&exec_cfg, &storage, &controller);
+    init_execution_worker(&exec_cfg, &storage, controller.clone());
 
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
@@ -789,7 +789,7 @@ fn events_from_switching_blockclique() {
         sample_state.read().pos_state.selector.clone(),
     );
     // initialize the execution system with genesis blocks
-    init_execution_worker(&exec_cfg, &storage, &controller);
+    init_execution_worker(&exec_cfg, &storage, controller.clone());
 
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
     let mut blockclique_blocks: HashMap<Slot, BlockId> = HashMap::new();
