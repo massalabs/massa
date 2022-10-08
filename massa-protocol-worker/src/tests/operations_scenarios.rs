@@ -881,21 +881,16 @@ async fn test_protocol_does_not_re_ask_operations_to_another_node_if_received() 
 
             // Second ask, to a different node, should not occur,
             // because the operation has been received in the meantime.
-            match network_controller
-                .wait_command(1000.into(), |cmd| {
-                    if let cmd @ NetworkCommand::AskForOperations { .. } = cmd {
-                        Some(cmd)
-                    } else {
-                        None
-                    }
+            if let Some(NetworkCommand::AskForOperations { .. }) = network_controller
+                .wait_command(1000.into(), |cmd| match cmd {
+                    cmd @ NetworkCommand::AskForOperations { .. } => Some(cmd),
+                    _ => None,
                 })
                 .await
             {
-                Some(NetworkCommand::AskForOperations { .. }) => {
-                    panic!("Unexpected ask for operations");
-                }
-                _ => {}
-            };
+                panic!("Unexpected ask for operations");
+            }
+
             (
                 network_controller,
                 protocol_event_receiver,
