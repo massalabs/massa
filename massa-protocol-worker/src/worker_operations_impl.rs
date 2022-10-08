@@ -61,18 +61,18 @@ impl ProtocolWorker {
     ///```
     pub(crate) async fn on_operations_announcements_received(
         &mut self,
-        op_batch: OperationPrefixIds,
+        mut op_batch: OperationPrefixIds,
         node_id: NodeId,
     ) -> Result<(), ProtocolError> {
+        // filter out the operations that we already know about
+        op_batch.retain(|prefix| !self.checked_operations.contains_prefix(prefix));
+
         let mut ask_set = OperationPrefixIds::with_capacity(op_batch.len());
         let mut future_set = OperationPrefixIds::with_capacity(op_batch.len());
         // exactitude isn't important, we want to have a now for that function call
         let now = Instant::now();
         let mut count_reask = 0;
         for op_id in op_batch {
-            if self.checked_operations.contains(&op_id) {
-                continue;
-            }
             let wish = match self.asked_operations.get_mut(&op_id) {
                 Some(wish) => {
                     if wish.1.contains(&node_id) {
@@ -99,7 +99,7 @@ impl ProtocolWorker {
                     future_set.insert(op_id);
                 }
             } else {
-                ask_set.insert(op_id.clone());
+                ask_set.insert(op_id);
                 self.asked_operations.insert(op_id, (now, vec![node_id]));
             }
         } // EndOf for op_id in op_batch:
@@ -200,15 +200,24 @@ impl ProtocolWorker {
         node_id: NodeId,
         op_pre_ids: OperationPrefixIds,
     ) -> Result<(), ProtocolError> {
+        if op_pre_ids.is_empty() {
+            return Ok(());
+        }
+
         let mut ops: Vec<WrappedOperation> = Vec::with_capacity(op_pre_ids.len());
         {
             // Scope the lock because of the async call to `send_operations` below.
             let stored_ops = self.storage.read_operations();
             for prefix in op_pre_ids {
-                if let Some(id) = self.checked_operations.get(&prefix) {
-                    if let Some(op) = stored_ops.get(id) {
-                        ops.push(op.clone());
-                    }
+                let opt_op = match stored_ops
+                    .get_operations_by_prefix(&prefix)
+                    .and_then(|ids| ids.iter().next())
+                {
+                    Some(id) => stored_ops.get(id),
+                    None => continue,
+                };
+                if let Some(op) = opt_op {
+                    ops.push(op.clone());
                 }
             }
         }

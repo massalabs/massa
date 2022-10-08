@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! Optimized batch signature verifier for operations
+//! Optimized batch signature verifier
 
 use massa_hash::Hash;
 use massa_protocol_exports::ProtocolError;
