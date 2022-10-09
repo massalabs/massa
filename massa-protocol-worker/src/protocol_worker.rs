@@ -357,7 +357,7 @@ impl ProtocolWorker {
                 .collect();
             if !new_ops.is_empty() {
                 node_info.insert_known_ops(new_ops.iter().map(|id| id.prefix()));
-                
+
                 let res = self
                     .network_command_sender
                     .announce_operations(*node, new_ops.iter().map(|id| id.into_prefix()).collect())
