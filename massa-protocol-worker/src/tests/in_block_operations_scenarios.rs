@@ -65,21 +65,19 @@ async fn test_protocol_does_propagate_operations_received_in_blocks() {
             .await;
 
             // Propagates the operation found in the block.
-            match network_controller
-                .wait_command(1000.into(), |cmd| match cmd {
-                    cmd @ NetworkCommand::SendOperationAnnouncements { .. } => Some(cmd),
-                    _ => None,
-                })
-                .await
+            if let Some(NetworkCommand::SendOperationAnnouncements { to_node, batch }) =
+                network_controller
+                    .wait_command(1000.into(), |cmd| match cmd {
+                        cmd @ NetworkCommand::SendOperationAnnouncements { .. } => Some(cmd),
+                        _ => None,
+                    })
+                    .await
             {
-                Some(NetworkCommand::SendOperationAnnouncements { to_node, batch }) => {
-                    if !batch.contains(&op.id.prefix())
-                        && to_node == nodes.pop().expect("Failed to get node info.").id
-                    {
-                        panic!("Operation in block not propagated.");
-                    }
+                if !batch.contains(&op.id.prefix())
+                    && to_node == nodes.pop().expect("Failed to get node info.").id
+                {
+                    panic!("Operation in block not propagated.");
                 }
-                _ => {}
             };
             (
                 network_controller,

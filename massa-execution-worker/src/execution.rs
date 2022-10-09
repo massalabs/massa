@@ -717,12 +717,11 @@ impl ExecutionState {
     ///
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
-    #[allow(clippy::borrowed_box)]
     pub fn execute_slot(
         &self,
         slot: &Slot,
         exec_target: Option<&(BlockId, Storage)>,
-        selector: &Box<dyn SelectorController>,
+        selector: Box<dyn SelectorController>,
     ) -> ExecutionOutput {
         // Create a new execution context for the whole active slot
         let mut execution_context = ExecutionContext::active_slot(
@@ -895,12 +894,11 @@ impl ExecutionState {
     }
 
     /// Execute a candidate slot
-    #[allow(clippy::borrowed_box)]
     pub fn execute_candidate_slot(
         &mut self,
         slot: &Slot,
         exec_target: Option<&(BlockId, Storage)>,
-        selector: &Box<dyn SelectorController>,
+        selector: Box<dyn SelectorController>,
     ) {
         let target_id = exec_target.as_ref().map(|(b_id, _)| *b_id);
         debug!(
@@ -938,12 +936,11 @@ impl ExecutionState {
     }
 
     /// Execute an SCE-final slot
-    #[allow(clippy::borrowed_box)]
     pub fn execute_final_slot(
         &mut self,
         slot: &Slot,
         exec_target: Option<&(BlockId, Storage)>,
-        selector: &Box<dyn SelectorController>,
+        selector: Box<dyn SelectorController>,
     ) {
         let target_id = exec_target.as_ref().map(|(b_id, _)| *b_id);
         debug!(
