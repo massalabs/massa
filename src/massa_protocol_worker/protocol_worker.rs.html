@@ -1178,6 +1178,7 @@
 <span id="1178">1178</span>
 <span id="1179">1179</span>
 <span id="1180">1180</span>
+<span id="1181">1181</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::cache::{LinearHashCacheMap, LinearHashCacheSet};
@@ -1532,11 +1533,12 @@
         <span class="kw">for </span>(node, node_info) <span class="kw">in </span><span class="self">self</span>.active_nodes.iter_mut() {
             <span class="kw">let </span>new_ops: Vec&lt;OperationId&gt; = operation_ids
                 .iter()
-                .filter(|id| !node_info.knows_op(id))
+                .filter(|id| !node_info.knows_op(<span class="kw-2">&amp;</span>id.prefix()))
                 .copied()
                 .collect();
-            node_info.insert_known_ops(new_ops.iter().copied());
             <span class="kw">if </span>!new_ops.is_empty() {
+                node_info.insert_known_ops(new_ops.iter().map(|id| id.prefix()));
+                
                 <span class="kw">let </span>res = <span class="self">self
                     </span>.network_command_sender
                     .announce_operations(<span class="kw-2">*</span>node, new_ops.iter().map(|id| id.into_prefix()).collect())
@@ -2132,7 +2134,7 @@
 
         <span class="comment">// add to known ops
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(node_info) = <span class="self">self</span>.active_nodes.get_mut(source_node_id) {
-            node_info.insert_known_ops(received_ids);
+            node_info.insert_known_ops(received_ids.iter().map(|id| id.prefix()));
         }
 
         <span class="kw">if </span>!new_operations.is_empty() {
@@ -2359,4 +2361,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b0c05d9a 2022-10-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8796e7a9c 2022-10-08)" ></div></body></html>

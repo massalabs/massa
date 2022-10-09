@@ -105,6 +105,7 @@
 <span id="105">105</span>
 <span id="106">106</span>
 <span id="107">107</span>
+<span id="108">108</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Only public for the protocol worker.
 //! Contains all what we know for each node we are connected or we used to
 //! know in the network.
@@ -113,8 +114,9 @@
 //! Same as for wanted/known blocks, we remember here in cache which node asked
 //! for operations and which operations he seem to already know.
 
-</span><span class="kw">use </span>massa_models::prehash::{CapacityAllocator, PreHashMap};
-<span class="kw">use </span>massa_models::{block::BlockId, endorsement::EndorsementId, operation::OperationId};
+</span><span class="kw">use </span>massa_models::operation::OperationPrefixId;
+<span class="kw">use </span>massa_models::prehash::{CapacityAllocator, PreHashMap};
+<span class="kw">use </span>massa_models::{block::BlockId, endorsement::EndorsementId};
 <span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
 <span class="kw">use </span>tokio::time::Instant;
 
@@ -131,8 +133,8 @@
     </span><span class="kw">pub </span>asked_blocks: PreHashMap&lt;BlockId, Instant&gt;,
     <span class="doccomment">/// Instant when the node was added
     </span><span class="kw">pub </span>connection_instant: Instant,
-    <span class="doccomment">/// all known operations
-    </span>known_operations: LinearHashCacheSet&lt;OperationId&gt;,
+    <span class="doccomment">/// all known operations (prefix-based)
+    </span>known_operations: LinearHashCacheSet&lt;OperationPrefixId&gt;,
     <span class="doccomment">/// all known endorsements
     </span>known_endorsements: LinearHashCacheSet&lt;EndorsementId&gt;,
 }
@@ -204,13 +206,13 @@
         <span class="self">self</span>.known_endorsements.contains(endorsement_id)
     }
 
-    <span class="kw">pub fn </span>insert_known_ops&lt;I: IntoIterator&lt;Item = OperationId&gt;&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ops: I) {
+    <span class="kw">pub fn </span>insert_known_ops&lt;I: IntoIterator&lt;Item = OperationPrefixId&gt;&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ops: I) {
         <span class="self">self</span>.known_operations.try_extend(ops);
     }
 
-    <span class="kw">pub fn </span>knows_op(<span class="kw-2">&amp;</span><span class="self">self</span>, op: <span class="kw-2">&amp;</span>OperationId) -&gt; bool {
+    <span class="kw">pub fn </span>knows_op(<span class="kw-2">&amp;</span><span class="self">self</span>, op: <span class="kw-2">&amp;</span>OperationPrefixId) -&gt; bool {
         <span class="self">self</span>.known_operations.contains(op)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b0c05d9a 2022-10-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8796e7a9c 2022-10-08)" ></div></body></html>

@@ -895,7 +895,7 @@
 
         <span class="comment">// add to known ops
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(node_info) = <span class="self">self</span>.active_nodes.get_mut(<span class="kw-2">&amp;</span>from_node_id) {
-            node_info.insert_known_ops(operation_ids.iter().copied());
+            node_info.insert_known_ops(operation_ids.iter().map(|id| id.prefix()));
         }
 
         <span class="kw">let </span>info = <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = <span class="self">self</span>.block_wishlist.get_mut(<span class="kw-2">&amp;</span>block_id) {
@@ -1177,4 +1177,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b0c05d9a 2022-10-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8796e7a9c 2022-10-08)" ></div></body></html>

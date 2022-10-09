@@ -229,6 +229,11 @@
 <span id="229">229</span>
 <span id="230">230</span>
 <span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Contains the implementation of the life cycle of operations
 //!
 //! Implement the propagation algorithm written here [redirect to GitHub]
@@ -295,6 +300,11 @@
         <span class="kw-2">mut </span>op_batch: OperationPrefixIds,
         node_id: NodeId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+        <span class="comment">// mark sender as knowing the ops
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(node_info) = <span class="self">self</span>.active_nodes.get_mut(<span class="kw-2">&amp;</span>node_id) {
+            node_info.insert_known_ops(op_batch.iter().copied());
+        }
+
         <span class="comment">// filter out the operations that we already know about
         </span>op_batch.retain(|prefix| !<span class="self">self</span>.checked_operations.contains_prefix(prefix));
 
@@ -461,4 +471,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b0c05d9a 2022-10-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8796e7a9c 2022-10-08)" ></div></body></html>
