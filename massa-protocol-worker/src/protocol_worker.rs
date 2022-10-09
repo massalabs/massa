@@ -352,11 +352,12 @@ impl ProtocolWorker {
         for (node, node_info) in self.active_nodes.iter_mut() {
             let new_ops: Vec<OperationId> = operation_ids
                 .iter()
-                .filter(|id| !node_info.knows_op(id))
+                .filter(|id| !node_info.knows_op(&id.prefix()))
                 .copied()
                 .collect();
-            node_info.insert_known_ops(new_ops.iter().copied());
             if !new_ops.is_empty() {
+                node_info.insert_known_ops(new_ops.iter().map(|id| id.prefix()));
+                
                 let res = self
                     .network_command_sender
                     .announce_operations(*node, new_ops.iter().map(|id| id.into_prefix()).collect())
@@ -952,7 +953,7 @@ impl ProtocolWorker {
 
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-            node_info.insert_known_ops(received_ids);
+            node_info.insert_known_ops(received_ids.iter().map(|id| id.prefix()));
         }
 
         if !new_operations.is_empty() {

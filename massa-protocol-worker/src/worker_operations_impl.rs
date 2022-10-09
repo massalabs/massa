@@ -64,6 +64,11 @@ impl ProtocolWorker {
         mut op_batch: OperationPrefixIds,
         node_id: NodeId,
     ) -> Result<(), ProtocolError> {
+        // mark sender as knowing the ops
+        if let Some(node_info) = self.active_nodes.get_mut(&node_id) {
+            node_info.insert_known_ops(op_batch.iter().copied());
+        }
+
         // filter out the operations that we already know about
         op_batch.retain(|prefix| !self.checked_operations.contains_prefix(prefix));
 
