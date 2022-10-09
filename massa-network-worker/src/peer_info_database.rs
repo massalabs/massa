@@ -469,7 +469,7 @@ impl PeerInfoDatabase {
         let ip = ip.to_canonical();
         self.peers
             .get_mut(&ip)
-            .ok_or_else(|| {
+            .ok_or({
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
@@ -487,7 +487,7 @@ impl PeerInfoDatabase {
         let ip = ip.to_canonical();
         self.peers
             .get_mut(&ip)
-            .ok_or_else(|| {
+            .ok_or({
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
@@ -528,7 +528,7 @@ impl PeerInfoDatabase {
     pub fn out_connection_closed(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
         let ip = ip.to_canonical();
         let peer_type = {
-            let peer = self.peers.get(&ip).ok_or_else(|| {
+            let peer = self.peers.get(&ip).ok_or({
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
@@ -540,7 +540,7 @@ impl PeerInfoDatabase {
                     NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip),
                 ));
             }
-            let peer = self.peers.get_mut(&ip).ok_or_else(|| {
+            let peer = self.peers.get_mut(&ip).ok_or({
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
@@ -567,7 +567,7 @@ impl PeerInfoDatabase {
     pub fn in_connection_closed(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
         let ip = ip.to_canonical();
         let peer_type = {
-            let peer = self.peers.get(&ip).ok_or_else(|| {
+            let peer = self.peers.get(&ip).ok_or({
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
@@ -579,7 +579,7 @@ impl PeerInfoDatabase {
                     NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip),
                 ));
             }
-            let peer = self.peers.get_mut(&ip).ok_or_else(|| {
+            let peer = self.peers.get_mut(&ip).ok_or({
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
@@ -612,7 +612,7 @@ impl PeerInfoDatabase {
         let ip = ip.to_canonical();
         // a connection attempt succeeded
         // remove out connection attempt and add out connection
-        let peer_type = self.get_peer_type(&ip).ok_or_else(|| {
+        let peer_type = self.get_peer_type(&ip).ok_or({
             NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(ip))
         })?;
 
@@ -624,7 +624,7 @@ impl PeerInfoDatabase {
         self.decrease_global_active_out_connection_attempt_count(peer_type, &ip)?;
 
         let peer_type = {
-            let peer = self.peers.get(&ip).ok_or_else(|| {
+            let peer = self.peers.get(&ip).ok_or({
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
@@ -634,7 +634,7 @@ impl PeerInfoDatabase {
                     NetworkConnectionErrorType::TooManyConnectionAttempts(ip),
                 ));
             }
-            let peer = self.peers.get_mut(&ip).ok_or_else(|| {
+            let peer = self.peers.get_mut(&ip).ok_or({
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
@@ -667,7 +667,7 @@ impl PeerInfoDatabase {
     pub fn out_connection_attempt_failed(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
         let ip = ip.to_canonical();
         let peer_type = {
-            let peer = self.peers.get(&ip).ok_or_else(|| {
+            let peer = self.peers.get(&ip).ok_or({
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
@@ -679,7 +679,7 @@ impl PeerInfoDatabase {
                     NetworkConnectionErrorType::TooManyConnectionFailure(ip),
                 ));
             }
-            let peer = self.peers.get_mut(&ip).ok_or_else(|| {
+            let peer = self.peers.get_mut(&ip).ok_or({
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
@@ -736,7 +736,7 @@ impl PeerInfoDatabase {
         }
 
         let peer_type = {
-            let peer = self.peers.get_mut(&ip).ok_or_else(|| {
+            let peer = self.peers.get_mut(&ip).ok_or({
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
