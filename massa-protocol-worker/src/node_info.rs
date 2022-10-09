@@ -6,8 +6,9 @@
 //! Same as for wanted/known blocks, we remember here in cache which node asked
 //! for operations and which operations he seem to already know.
 
+use massa_models::operation::OperationPrefixId;
 use massa_models::prehash::{CapacityAllocator, PreHashMap};
-use massa_models::{block::BlockId, endorsement::EndorsementId, operation::OperationId};
+use massa_models::{block::BlockId, endorsement::EndorsementId};
 use massa_protocol_exports::ProtocolConfig;
 use tokio::time::Instant;
 
@@ -24,8 +25,8 @@ pub(crate) struct NodeInfo {
     pub asked_blocks: PreHashMap<BlockId, Instant>,
     /// Instant when the node was added
     pub connection_instant: Instant,
-    /// all known operations
-    known_operations: LinearHashCacheSet<OperationId>,
+    /// all known operations (prefix-based)
+    known_operations: LinearHashCacheSet<OperationPrefixId>,
     /// all known endorsements
     known_endorsements: LinearHashCacheSet<EndorsementId>,
 }
@@ -97,11 +98,11 @@ impl NodeInfo {
         self.known_endorsements.contains(endorsement_id)
     }
 
-    pub fn insert_known_ops<I: IntoIterator<Item = OperationId>>(&mut self, ops: I) {
+    pub fn insert_known_ops<I: IntoIterator<Item = OperationPrefixId>>(&mut self, ops: I) {
         self.known_operations.try_extend(ops);
     }
 
-    pub fn knows_op(&self, op: &OperationId) -> bool {
+    pub fn knows_op(&self, op: &OperationPrefixId) -> bool {
         self.known_operations.contains(op)
     }
 }
