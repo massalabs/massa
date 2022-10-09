@@ -1538,7 +1538,7 @@
                 .collect();
             <span class="kw">if </span>!new_ops.is_empty() {
                 node_info.insert_known_ops(new_ops.iter().map(|id| id.prefix()));
-                
+
                 <span class="kw">let </span>res = <span class="self">self
                     </span>.network_command_sender
                     .announce_operations(<span class="kw-2">*</span>node, new_ops.iter().map(|id| id.into_prefix()).collect())
