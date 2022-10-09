@@ -377,7 +377,7 @@ impl NetworkWorker {
                         let (ip, _) = self
                             .active_connections
                             .get(&new_connection_id)
-                            .ok_or({ NetworkError::ActiveConnectionMissing(new_connection_id) })?;
+                            .ok_or(NetworkError::ActiveConnectionMissing(new_connection_id))?;
                         self.peer_info_db.peer_alive(ip)?;
 
                         // spawn node_controller_fn
