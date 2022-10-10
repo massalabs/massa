@@ -60,7 +60,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
             validate_propagate_block_in_list(
                 &mut protocol_controller,
                 &hash_list,
-                3000 + start_slot as u64 * 1000,
+                3000 + start_slot * 1000,
             )
             .await;
 

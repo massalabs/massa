@@ -306,7 +306,7 @@ impl ProtocolWorker {
 
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
-            node_info.insert_known_ops(operation_ids.iter().copied());
+            node_info.insert_known_ops(operation_ids.iter().map(|id| id.prefix()));
         }
 
         let info = if let Some(info) = self.block_wishlist.get_mut(&block_id) {

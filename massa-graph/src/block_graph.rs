@@ -740,6 +740,8 @@ impl BlockGraph {
             return Ok(());
         }
 
+        debug!("received block {} for slot {}", block_id, slot);
+
         let mut to_ack: BTreeSet<(Slot, BlockId)> = BTreeSet::new();
         match self.block_statuses.entry(block_id) {
             // if absent => add as Incoming, call rec_ack on it
@@ -2129,7 +2131,7 @@ impl BlockGraph {
             while let Some((current_block, _)) = self.get_active_block(&current_block_id) {
                 let parent_id = {
                     if !current_block.parents.is_empty() {
-                        Some(current_block.parents[thread as usize].0)
+                        Some(current_block.parents[thread].0)
                     } else {
                         None
                     }

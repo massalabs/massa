@@ -22,7 +22,7 @@ even in a fully decentralized network with thousands of nodes.
 An easy-to-read blog post introduction with videos is written
 [here](https://massa.net/blog/introduction/).
 
-We are now releasing the **Massa testnet** in this Gitlab repository,
+We are now releasing the **Massa testnet** in this GitHub repository,
 with its explorer available at <https://massa.net/testnet>.
 
 ## Testnet Incentives
