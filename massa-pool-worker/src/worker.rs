@@ -32,7 +32,7 @@ impl EndorsementPoolThread {
         receiver: Receiver<Command>,
         endorsement_pool: Arc<RwLock<EndorsementPool>>,
     ) -> JoinHandle<()> {
-        let thread_builder = thread::Builder::new().name("endorsement-worker".into());
+        let thread_builder = thread::Builder::new().name("endorsement".into());
         thread_builder
             .spawn(|| {
                 let this = Self {
@@ -41,7 +41,7 @@ impl EndorsementPoolThread {
                 };
                 this.run()
             })
-            .expect("failed to spawn thread : endorsement-worker")
+            .expect("failed to spawn thread : endorsement")
     }
 
     /// Runs the thread

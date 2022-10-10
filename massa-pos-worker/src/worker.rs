@@ -39,7 +39,7 @@ impl SelectorThread {
         cache: DrawCachePtr,
         cfg: SelectorConfig,
     ) -> JoinHandle<PosResult<()>> {
-        let thread_builder = thread::Builder::new().name("pos-worker".into());
+        let thread_builder = thread::Builder::new().name("selector".into());
         thread_builder
             .spawn(|| {
                 let this = Self {
@@ -49,7 +49,7 @@ impl SelectorThread {
                 };
                 this.run()
             })
-            .expect("failed to spawn thread : pos-worker")
+            .expect("failed to spawn thread : selector")
     }
 
     /// process the result of a draw

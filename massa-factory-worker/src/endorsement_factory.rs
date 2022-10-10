@@ -39,7 +39,7 @@ impl EndorsementFactoryWorker {
         factory_receiver: mpsc::Receiver<()>,
     ) -> thread::JoinHandle<()> {
         thread::Builder::new()
-            .name("endorsement-factory-worker".into())
+            .name("endorsement-factory".into())
             .spawn(|| {
                 let mut this = Self {
                     half_t0: cfg
@@ -54,7 +54,7 @@ impl EndorsementFactoryWorker {
                 };
                 this.run();
             })
-            .expect("failed to spawn thread : endorsement-factory-worker")
+            .expect("failed to spawn thread : endorsement-factory")
     }
 
     /// Gets the next slot and the instant when the corresponding endorsements should be made.
