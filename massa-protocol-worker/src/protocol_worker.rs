@@ -970,12 +970,23 @@ impl ProtocolWorker {
         }
 
         // optimized signature verification
-        verify_sigs_batch(
-            &new_operations
-                .iter()
-                .map(|(op_id, op)| (*op_id.get_hash(), op.signature, op.creator_public_key))
-                .collect::<Vec<_>>(),
-        )?;
+        if !new_operations.is_empty() {
+            warn!(
+                "PROTOCOL verify_signatures START operations {}",
+                new_operations.len()
+            );
+            let start_time = std::time::Instant::now();
+            verify_sigs_batch(
+                &new_operations
+                    .iter()
+                    .map(|(op_id, op)| (*op_id.get_hash(), op.signature, op.creator_public_key))
+                    .collect::<Vec<_>>(),
+            )?;
+            warn!(
+                "PROTOCOL verify_signatures END {}",
+                start_time.elapsed().as_nanos()
+            );
+        }
 
         // add to checked operations
         self.checked_operations
@@ -1062,20 +1073,30 @@ impl ProtocolWorker {
             }
         }
 
-        // Batch signature verification
         // optimized signature verification
-        verify_sigs_batch(
-            &new_endorsements
-                .iter()
-                .map(|(endorsement_id, endorsement)| {
-                    (
-                        *endorsement_id.get_hash(),
-                        endorsement.signature,
-                        endorsement.creator_public_key,
-                    )
-                })
-                .collect::<Vec<_>>(),
-        )?;
+        if !new_endorsements.is_empty() {
+            warn!(
+                "PROTOCOL verify_signatures START endorsements {}",
+                new_endorsements.len()
+            );
+            let start_time = std::time::Instant::now();
+            verify_sigs_batch(
+                &new_endorsements
+                    .iter()
+                    .map(|(endorsement_id, endorsement)| {
+                        (
+                            *endorsement_id.get_hash(),
+                            endorsement.signature,
+                            endorsement.creator_public_key,
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+            )?;
+            warn!(
+                "PROTOCOL verify_signatures END {}",
+                start_time.elapsed().as_nanos()
+            );
+        }
 
         // add to verified signature cache
         self.checked_endorsements
