@@ -12,7 +12,7 @@ use massa_models::{
     node::NodeId,
     wrapped::Id,
 };
-use massa_network_exports::{ConnectionClosureReason, NetworkConfig, NetworkError, NetworkEvent, NodeCommand, NodeEvent, NodeEventType};
+use massa_network_exports::{ConnectionClosureReason, NetworkConfig, NetworkError, NodeCommand, NodeEvent, NodeEventType};
 use tokio::{
     sync::mpsc,
     sync::mpsc::{
@@ -20,6 +20,7 @@ use tokio::{
         Sender,
     },
     time::timeout,
+    io::AsyncWriteExt,
 };
 use tracing::{debug, trace, warn};
 use massa_time::MassaTime;
@@ -79,6 +80,7 @@ impl NodeWorker {
                 "NodeWorker call run_loop more than once".to_string(),
             )
         })?;
+
         let write_timeout = self.cfg.message_timeout;
         let node_id_copy = self.node_id;
         let node_writer_handle = tokio::spawn(async move {
@@ -115,6 +117,12 @@ impl NodeWorker {
                     }
                 };
             }
+
+            if let Err(e) = socket_writer.write_half.shutdown().await {
+                let err = format!("{}", e);
+                massa_trace!("node_worker.run_loop.loop.writer_shutdown error: {}", err);
+            }
+
             Ok(())
         });
         tokio::pin!(node_writer_handle);
@@ -173,7 +181,7 @@ impl NodeWorker {
                     reader_joined = true;
                     exit_reason_reader = match res {
                         Ok(r) => {
-                            ConnectionClosureReason::Normal
+                            r
                         },
                         Err(_) => {
                             ConnectionClosureReason::Failed
@@ -314,19 +322,26 @@ impl NodeWorker {
                     massa_trace!("node_worker.run_loop.cleanup.node_writer_handle.clean_exit", {"node": self.node_id});
                 }
             }
+
+        }
+
+        // 3- Stop node_reader_handle
+        if !reader_joined {
+            // Abort the task otherwise socket_reader.next() is stuck, waiting for some data to read
+            node_reader_handle.abort();
         }
 
         Ok(exit_reason)
     }
 }
 
-async fn node_sender_handle(socker_reader: &mut ReadBinder, node_event_tx: &mut Sender<NodeEvent>,
+async fn node_sender_handle(socket_reader: &mut ReadBinder, node_event_tx: &mut Sender<NodeEvent>,
                             node_id: NodeId, max_send_wait: MassaTime) -> ConnectionClosureReason {
 
     let mut exit_reason = ConnectionClosureReason::Normal;
 
     loop {
-        match socker_reader.next().await {
+        match socket_reader.next().await {
             Ok(Some((index, msg))) => {
 
                 massa_trace!(
