@@ -240,6 +240,9 @@
 <span id="240">240</span>
 <span id="241">241</span>
 <span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -431,8 +434,11 @@
 <span class="kw">impl </span>Version {
     <span class="doccomment">/// true if instance and major are the same
     </span><span class="kw">pub fn </span>is_compatible(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>Version) -&gt; bool {
-        <span class="self">self</span>.instance == other.instance &amp;&amp; <span class="self">self</span>.major == other.major
-    }
+        <span class="self">self</span>.instance == other.instance
+            &amp;&amp; <span class="self">self</span>.major == other.major
+            &amp;&amp; <span class="self">self</span>.minor &gt;= <span class="number">1
+            </span>&amp;&amp; other.minor &gt;= <span class="number">1
+    </span>}
 }
 
 <span class="kw">impl </span>fmt::Display <span class="kw">for </span>Version {
