@@ -136,7 +136,7 @@
                     "schema": {
                         "type": "array",
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/Address"
                         }
                     },
                     "required": true
@@ -265,6 +265,44 @@
         {
             "tags": [
                 {
+                    "name": "removed",
+                    "description": "Removed in TEST.12"
+                },
+                {
+                    "name": "public",
+                    "description": "Massa public api"
+                }
+            ],
+            "params": [
+                {
+                    "name": "key",
+                    "schema": {
+                        "type": "string"
+                    },
+                    "required": true
+                },
+                {
+                    "name": "address",
+                    "schema": {
+                        "$ref": "#/components/schemas/Address"
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "schema": {
+                    "$ref": "#/components/schemas/DataStoreEntry"
+                },
+                "name": "DataStoreEntry"
+            },
+            "deprecated": true,
+            "name": "get_datastore_entry",
+            "summary": "Get datastore entry",
+            "description": "Get datastore entry."
+        },
+        {
+            "tags": [
+                {
                     "name": "public",
                     "description": "Massa public api"
                 }
@@ -365,12 +403,12 @@
             ],
             "params": [
                 {
-                    "name": "OperationId",
+                    "name": "name",
                     "description": "String must be an operation Id",
                     "schema": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/OperationId"
+                            "type": "string"
                         }
                     },
                     "required": true
@@ -469,8 +507,8 @@
                 "schema": {
                     "type": "array",
                     "items": {
-                        "description": "address",
-                        "type": "string"
+                        "description": "Address",
+                        "$ref": "#/components/schemas/Address"
                     }
                 },
                 "description": "The strings are addresses.",
@@ -494,7 +532,7 @@
                     "schema": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/NodeId"
+                            "type": "string"
                         }
                     },
                     "required": true
@@ -523,7 +561,7 @@
                     "schema": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/IpAddr"
+                            "type": "string"
                         }
                     },
                     "required": true
@@ -553,7 +591,7 @@
                         "type": "array",
                         "items": {
                             "description": "Ip address",
-                            "$ref": "#/components/schemas/IpAddr"
+                            "type": "string"
                         }
                     },
                     "required": true
@@ -583,7 +621,7 @@
                         "type": "array",
                         "items": {
                             "description": "Address",
-                            "type": "string"
+                            "$ref": "#/components/schemas/Address"
                         }
                     },
                     "required": true
@@ -656,8 +694,8 @@
                     "schema": {
                         "type": "array",
                         "items": {
-                            "description": "Node id",
-                            "$ref": "#/components/schemas/NodeId"
+                            "description": "Ip address",
+                            "type": "string"
                         }
                     },
                     "required": true
@@ -687,7 +725,7 @@
                         "type": "array",
                         "items": {
                             "description": "Ip address",
-                            "$ref": "#/components/schemas/IpAddr"
+                            "type": "string"
                         }
                     },
                     "required": true
@@ -717,7 +755,7 @@
                         "type": "array",
                         "items": {
                             "description": "ip address",
-                            "$ref": "#/components/schemas/IpAddr"
+                            "type": "string"
                         }
                     },
                     "required": true
@@ -741,24 +779,23 @@
             ],
             "params": [
                 {
-                    "name": "OperationInput",
+                    "name": "SignedOperation",
                     "schema": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/OperationInput"
+                            "$ref": "#/components/schemas/SignedOperation"
                         }
-                    },
-                    "required": true
+                    }
                 }
             ],
             "result": {
                 "schema": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/components/schemas/OperationId"
+                        "type": "string"
                     }
                 },
-                "name": "Operation(s) id(s)"
+                "name": "Operation(s)"
             },
             "name": "send_operations",
             "summary": "Adds operations to pool",
@@ -888,7 +925,7 @@
                     },
                     "address": {
                         "description": "caller's address",
-                        "type": "string"
+                        "$ref": "#/components/schemas/Address"
                     },
                     "operation_datastore": {
                         "description": "An operation datastore",
@@ -1294,7 +1331,7 @@
                         "type": "boolean"
                     },
                     "operation": {
-                        "$ref": "#/components/schemas/WrappedOperation",
+                        "$ref": "#/components/schemas/SignedOperation",
                         "description": "The operation itself"
                     }
                 },
@@ -1315,7 +1352,7 @@
                 "properties": {
                     "target_addr": {
                         "description": "Address",
-                        "type": "string"
+                        "$ref": "#/components/schemas/Address"
                     },
                     "target_func": {
                         "description": "Function name",
@@ -1451,7 +1488,7 @@
                     },
                     "node_id": {
                         "description": "Our node id",
-                        "$ref": "#/components/schemas/NodeId"
+                        "type": "string"
                     },
                     "node_ip": {
                         "description": "Optional node ip if provided",
@@ -1569,10 +1606,10 @@
                     "type": "object",
                     "properties": {
                         "node_id": {
-                            "$ref": "#/components/schemas/NodeId"
+                            "type": "string"
                         },
                         "ip_address": {
-                            "$ref": "#/components/schemas/IpAddr"
+                            "type": "string"
                         }
                     }
                 },
@@ -1701,7 +1738,7 @@
                     "type": "object",
                     "properties": {
                         "address": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/Address"
                         },
                         "active_rolls": {
                             "type": "number"
@@ -1734,6 +1771,28 @@
                         "type": "number"
                     },
                     "endorsed_block": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "SignedOperation": {
+                "title": "SignedOperation",
+                "description": "Signed Operation",
+                "required": [
+                    "creator_public_key",
+                    "serialized_content",
+                    "signature"
+                ],
+                "type": "object",
+                "properties": {
+                    "creator_public_key": {
+                        "type": "string"
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "signature": {
                         "type": "string"
                     }
                 },
@@ -2053,8 +2112,8 @@
                 "additionalProperties": false
             },
             "Address": {
-                "description": "",
-                "type": "object"
+                "description": "Address",
+                "type": "string"
             },
             "LedgerInfo": {
                 "title": "SceLedgerInfo",
@@ -2115,134 +2174,6 @@
                         "type": "string"
                     }
                 }
-            },
-            "OperationType": {
-                "description": "Type specific operation content",
-                "type": "object",
-                "properties": {
-                    "Transaction": {
-                        "$ref": "#/components/schemas/Transaction",
-                        "description": "transfer coins from sender to recipient"
-                    },
-                    "ExecutSC": {
-                        "$ref": "#/components/schemas/ExecuteSC",
-                        "description": "Execute a smart contract."
-                    },
-                    "CallSC": {
-                        "$ref": "#/components/schemas/CallSC",
-                        "description": "Calls an exported function from a stored smart contract"
-                    },
-                    "RollBuy": {
-                        "$ref": "#/components/schemas/RollBuy",
-                        "description": "the sender buys `roll_count` rolls. Roll price is defined in configuration"
-                    },
-                    "RollSell": {
-                        "$ref": "#/components/schemas/RollSell",
-                        "description": "the sender sells `roll_count` rolls. Roll price is defined in configuration"
-                    }
-                }
-            },
-            "RollBuy": {
-                "description": "the sender buys `roll_count` rolls. Roll price is defined in configuration",
-                "required": [
-                    "roll_count"
-                ],
-                "type": "object",
-                "properties": {
-                    "roll_count": {
-                        "description": "roll count",
-                        "type": "number"
-                    }
-                }
-            },
-            "RollSell": {
-                "description": "the sender sells `roll_count` rolls. Roll price is defined in configuration",
-                "required": [
-                    "roll_count"
-                ],
-                "type": "object",
-                "properties": {
-                    "roll_count": {
-                        "description": "roll count",
-                        "type": "number"
-                    }
-                }
-            },
-            "OperationInput": {
-                "description": "Operation input",
-                "required": [
-                    "creator_public_key",
-                    "signature",
-                    "serialized_content"
-                ],
-                "type": "object",
-                "properties": {
-                    "creator_public_key": {
-                        "description": "The public key of the creator of the TX",
-                        "type": "string"
-                    },
-                    "signature": {
-                        "$ref": "#/components/schemas/Signature",
-                        "description": "The signature of the operation"
-                    },
-                    "serialized_content": {
-                        "description": "The serialized version of the content `base58` encoded",
-                        "type": "array",
-                        "items": {
-                            "format": "byte",
-                            "type": "string"
-                        }
-                    }
-                },
-                "additionalProperties": false
-            },
-            "OperationId": {
-                "description": "Operation id",
-                "type": "string"
-            },
-            "Signature": {
-                "description": "Signature generated from a message and a `KeyPair`.",
-                "type": "string"
-            },
-            "PubKey": {
-                "description": "Public key used to check if a message was encoded by the corresponding `PublicKey`.\nGenerated from the `KeyPair` using `SignatureEngine`",
-                "type": "string"
-            },
-            "WrappedOperation" : {
-                "description": "signed operation",
-                "required": [
-                    "content",
-                    "signature",
-                    "creator_public_key",
-                    "creator_address"
-                ],
-                "type": "object",
-                "properties": {
-                    "content": {
-                        "$ref": "#/components/schemas/OperationType",
-                        "description": "operation type"
-                    },
-                    "signature": {
-                        "$ref": "#/components/schemas/Signature",
-                        "description": "signature"
-                    },
-                    "creator_public_key": {
-                        "$ref": "#/components/schemas/PubKey",
-                        "description": "the content creator public key"
-                    },
-                    "creator_address": {
-                        "$ref": "#/components/schemas/Address",
-                        "description": "the content creator address"
-                    }
-                }
-            },
-            "IpAddr": {
-                "description": "Ip address Ipv4 or Ipv6",
-                "type": "string"
-            },
-            "NodeId": {
-                "description": "Node id",
-                "type": "string"
             }
         },
         "contentDescriptors": {
@@ -2254,20 +2185,12 @@
                     "$ref": "#/components/schemas/AddressInfo"
                 }
             },
-            "OperationId": {
-                "name": "OperationId",
-                "summary": "Operation Id",
-                "description": "A OperationId object",
+            "SignedOperation": {
+                "name": "SignedOperation",
+                "summary": "Signed operation",
+                "description": "A SignedOperation object",
                 "schema": {
-                    "$ref": "#/components/schemas/OperationId"
-                }
-            },
-            "OperationInput": {
-                "name": "OperationInput",
-                "summary": "Operation input",
-                "description": "A OperationInput object",
-                "schema": {
-                    "$ref": "#/components/schemas/OperationInput"
+                    "$ref": "#/components/schemas/SignedOperation"
                 }
             },
             "NodeStatus": {
@@ -2334,44 +2257,12 @@
                     "$ref": "#/components/schemas/BlockInfo"
                 }
             },
-            "IpAddr": {
-                "name": "IpAddr",
-                "summary": "Ip address Ipv4 or Ipv6",
-                "description": "A IpAddr object",
-                "schema": {
-                    "$ref": "#/components/schemas/IpAddr"
-                }
-            },
-            "NodeId": {
-                "name": "NodeId",
-                "summary": "NodeId",
-                "description": "A NodeId object",
-                "schema": {
-                    "$ref": "#/components/schemas/NodeId"
-                }
-            },
-            "PubKey": {
-                "name": "PubKey",
-                "summary": "Public key",
-                "description": "A PubKey object",
-                "schema": {
-                    "$ref": "#/components/schemas/PubKey"
-                }
-            },
             "PubkeySig": {
                 "name": "PubkeySig",
                 "summary": "PubkeySig",
                 "description": "A PubkeySig object",
                 "schema": {
                     "$ref": "#/components/schemas/PubkeySig"
-                }
-            },
-            "Signature": {
-                "name": "Signature",
-                "summary": "Signature",
-                "description": "A Signature object",
-                "schema": {
-                    "$ref": "#/components/schemas/Signature"
                 }
             },
             "SCOutputEvent": {
