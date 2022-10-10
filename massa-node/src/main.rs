@@ -56,6 +56,7 @@ use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
 use tokio::signal;
@@ -487,23 +488,27 @@ async fn launch(
         use std::thread;
         use std::time::Duration;
         // Create a background thread which checks for deadlocks every 10s
-        let handler2 = thread::spawn(move || loop {
-            thread::sleep(Duration::from_secs(10));
-            let deadlocks = deadlock::check_deadlock();
-            println!("deadlocks check");
-            if deadlocks.is_empty() {
-                continue;
-            }
+        let thread_builder = thread::Builder::new().name("deadlock-detection".into());
+        thread_builder
+            .spawn(move || loop {
+                thread::sleep(Duration::from_secs(10));
+                let deadlocks = deadlock::check_deadlock();
+                println!("deadlocks check");
 
-            println!("{} deadlocks detected", deadlocks.len());
-            for (i, threads) in deadlocks.iter().enumerate() {
-                println!("Deadlock #{}", i);
-                for t in threads {
-                    println!("Thread Id {:#?}", t.thread_id());
-                    println!("{:#?}", t.backtrace());
+                if deadlocks.is_empty() {
+                    continue;
                 }
-            }
-        });
+
+                println!("{} deadlocks detected", deadlocks.len());
+                for (i, threads) in deadlocks.iter().enumerate() {
+                    println!("Deadlock #{}", i);
+                    for t in threads {
+                        println!("Thread Id {:#?}", t.thread_id());
+                        println!("{:#?}", t.backtrace());
+                    }
+                }
+            })
+            .expect("failed to spawn thread : deadlock-detection");
     }
     (
         consensus_event_receiver,
@@ -629,8 +634,21 @@ fn load_wallet(password: Option<String>, path: &Path) -> anyhow::Result<Arc<RwLo
 }
 
 #[paw::main]
-#[tokio::main]
-async fn main(args: Args) -> anyhow::Result<()> {
+fn main(args: Args) -> anyhow::Result<()> {
+    let tokio_rt = tokio::runtime::Builder::new_multi_thread()
+        .thread_name_fn(|| {
+            static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
+            let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
+            format!("tokio-node-{}", id)
+        })
+        .enable_all()
+        .build()
+        .unwrap();
+
+    tokio_rt.block_on(run(args))
+}
+
+async fn run(args: Args) -> anyhow::Result<()> {
     use tracing_subscriber::prelude::*;
     // spawn the console server in the background, returning a `Layer`:
     let tracing_layer = tracing_subscriber::fmt::layer()
