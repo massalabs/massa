@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+
 use super::{
     binders::{ReadBinder, WriteBinder},
     messages::Message,
@@ -73,7 +74,7 @@ impl NodeWorker {
     async fn send_node_event(&self, event: NodeEvent) {
         let result = self
             .node_event_tx
-            .send_timeout(event, self.cfg.max_send_wait.to_duration())
+            .send_timeout(event, tokio::time::Duration::from_millis(10000))
             .await;
         match result {
             Ok(()) => {}
