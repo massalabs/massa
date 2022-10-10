@@ -55,8 +55,8 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::{mem, path::PathBuf};
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
 use tokio::signal;
@@ -488,23 +488,27 @@ async fn launch(
         use std::thread;
         use std::time::Duration;
         // Create a background thread which checks for deadlocks every 10s
-        let handler2 = thread::spawn(move || loop {
-            thread::sleep(Duration::from_secs(10));
-            let deadlocks = deadlock::check_deadlock();
-            println!("deadlocks check");
-            if deadlocks.is_empty() {
-                continue;
-            }
+        let thread_builder = thread::Builder::new().name("deadlock-detection".into());
+        thread_builder
+            .spawn(move || loop {
+                thread::sleep(Duration::from_secs(10));
+                let deadlocks = deadlock::check_deadlock();
+                println!("deadlocks check");
 
-            println!("{} deadlocks detected", deadlocks.len());
-            for (i, threads) in deadlocks.iter().enumerate() {
-                println!("Deadlock #{}", i);
-                for t in threads {
-                    println!("Thread Id {:#?}", t.thread_id());
-                    println!("{:#?}", t.backtrace());
+                if deadlocks.is_empty() {
+                    continue;
                 }
-            }
-        });
+
+                println!("{} deadlocks detected", deadlocks.len());
+                for (i, threads) in deadlocks.iter().enumerate() {
+                    println!("Deadlock #{}", i);
+                    for t in threads {
+                        println!("Thread Id {:#?}", t.thread_id());
+                        println!("{:#?}", t.backtrace());
+                    }
+                }
+            })
+            .expect("failed to spawn thread : deadlock-detection");
     }
     (
         consensus_event_receiver,

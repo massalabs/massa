@@ -11,6 +11,7 @@ use massa_pool_exports::{PoolController, PoolManager};
 use massa_storage::Storage;
 use parking_lot::RwLock;
 use std::sync::mpsc::RecvError;
+use std::thread;
 use std::{
     sync::mpsc::{sync_channel, Receiver},
     sync::Arc,
@@ -31,13 +32,16 @@ impl EndorsementPoolThread {
         receiver: Receiver<Command>,
         endorsement_pool: Arc<RwLock<EndorsementPool>>,
     ) -> JoinHandle<()> {
-        std::thread::spawn(|| {
-            let this = Self {
-                receiver,
-                endorsement_pool,
-            };
-            this.run()
-        })
+        let thread_builder = thread::Builder::new().name("endorsement-worker".into());
+        thread_builder
+            .spawn(|| {
+                let this = Self {
+                    receiver,
+                    endorsement_pool,
+                };
+                this.run()
+            })
+            .expect("failed to spawn thread : endorsement-worker")
     }
 
     /// Runs the thread
