@@ -7,6 +7,7 @@ mod settings;
 
 pub mod block_graph_export;
 pub mod block_status;
+pub mod events;
 
 pub use channels::GraphChannels;
 pub use controller_trait::{GraphController, GraphManager};

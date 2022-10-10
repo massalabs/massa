@@ -1,14 +1,16 @@
+use std::collections::HashMap;
+
 use massa_graph::error::{GraphError, GraphResult};
 use massa_graph_2_exports::{
     block_graph_export::BlockGraphExport,
-    block_status::{BlockStatus, ExportCompiledBlock},
+    block_status::{BlockStatus, ExportCompiledBlock, HeaderOrBlock},
     GraphChannels, GraphConfig,
 };
 use massa_models::{
     active_block::ActiveBlock,
     address::Address,
     api::BlockGraphStatus,
-    block::BlockId,
+    block::{BlockId, WrappedHeader},
     clique::Clique,
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     slot::Slot,
@@ -67,11 +69,15 @@ impl GraphState {
         self.sequence_counter
     }
 
-    fn get_full_active_block(&self, block_id: &BlockId) -> Option<(&ActiveBlock, &Storage)> {
+    pub fn get_full_active_block(&self, block_id: &BlockId) -> Option<(&ActiveBlock, &Storage)> {
         match self.block_statuses.get(block_id) {
             Some(BlockStatus::Active { a_block, storage }) => Some((a_block.as_ref(), storage)),
             _ => None,
         }
+    }
+
+    pub fn get_clique_count(&self) -> usize {
+        self.max_cliques.len()
     }
 
     /// get the blockclique (or final) block ID at a given slot, if any
@@ -372,5 +378,63 @@ impl GraphState {
         }
 
         Ok(export)
+    }
+
+    /// Gets all stored final blocks, not only the still-useful ones
+    /// This is used when initializing Execution from Consensus.
+    /// Since the Execution bootstrap snapshot is older than the Consensus snapshot,
+    /// we might need to signal older final blocks for Execution to catch up.
+    pub fn get_all_final_blocks(&self) -> HashMap<BlockId, (Slot, Storage)> {
+        self.active_index
+            .iter()
+            .map(|b_id| {
+                let block_infos = match self.block_statuses.get(&b_id) {
+                    Some(BlockStatus::Active { a_block, storage }) => {
+                        (a_block.slot, storage.clone())
+                    }
+                    _ => panic!("active block missing"),
+                };
+                (*b_id, block_infos)
+            })
+            .collect()
+    }
+
+    /// get the clique of higher fitness
+    pub fn get_blockclique(&self) -> &PreHashSet<BlockId> {
+        &self
+            .max_cliques
+            .iter()
+            .find(|c| c.is_blockclique)
+            .expect("blockclique missing")
+            .block_ids
+    }
+
+    /// get the current block wish list, including the operations hash.
+    pub fn get_block_wishlist(&self) -> GraphResult<PreHashMap<BlockId, Option<WrappedHeader>>> {
+        let mut wishlist = PreHashMap::<BlockId, Option<WrappedHeader>>::default();
+        for block_id in self.waiting_for_dependencies_index.iter() {
+            if let Some(BlockStatus::WaitingForDependencies {
+                unsatisfied_dependencies,
+                ..
+            }) = self.block_statuses.get(block_id)
+            {
+                for unsatisfied_h in unsatisfied_dependencies.iter() {
+                    match self.block_statuses.get(unsatisfied_h) {
+                        Some(BlockStatus::WaitingForDependencies {
+                            header_or_block: HeaderOrBlock::Header(header),
+                            ..
+                        }) => {
+                            wishlist.insert(header.id, Some(header.clone()));
+                        }
+                        None => {
+                            wishlist.insert(*unsatisfied_h, None);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        Ok(wishlist)
     }
 }

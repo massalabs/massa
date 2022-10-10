@@ -1,3 +1,4 @@
+use std::cmp::max;
 use std::collections::{hash_map, BTreeSet};
 
 use super::GraphWorker;
@@ -7,10 +8,41 @@ use massa_logging::massa_trace;
 use massa_models::{
     block::{BlockId, WrappedHeader},
     slot::Slot,
+    stats::ConsensusStats,
 };
+use massa_time::MassaTime;
 use tracing::log::debug;
 
 impl GraphWorker {
+    pub fn get_stats(&self) -> GraphResult<ConsensusStats> {
+        let timespan_end = max(
+            self.launch_time,
+            MassaTime::now(self.config.clock_compensation_millis)?,
+        );
+        let timespan_start = max(
+            timespan_end.saturating_sub(self.config.stats_timespan),
+            self.launch_time,
+        );
+        let final_block_count = self
+            .final_block_stats
+            .iter()
+            .filter(|(t, _, _)| *t >= timespan_start && *t < timespan_end)
+            .count() as u64;
+        let stale_block_count = self
+            .stale_block_stats
+            .iter()
+            .filter(|t| **t >= timespan_start && **t < timespan_end)
+            .count() as u64;
+        let clique_count = self.shared_state.read().get_clique_count() as u64;
+        Ok(ConsensusStats {
+            final_block_count,
+            stale_block_count,
+            clique_count,
+            start_timespan: timespan_start,
+            end_timespan: timespan_end,
+        })
+    }
+
     pub fn register_block_header(
         &mut self,
         block_id: BlockId,
@@ -41,7 +73,8 @@ impl GraphWorker {
                     sequence_number, ..
                 } => {
                     // promote if discarded
-                    write_shared_state.new_sequence_number();
+                    //TODO: Readd this
+                    //*sequence_number = write_shared_state.new_sequence_number();
                 }
                 BlockStatus::WaitingForDependencies { .. } => {
                     // promote in dependencies

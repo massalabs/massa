@@ -1,4 +1,5 @@
 use massa_graph::BootstrapableGraph;
+use massa_graph_2_exports::events::GraphEvent;
 use massa_graph_2_exports::{GraphChannels, GraphConfig, GraphController, GraphManager};
 use massa_models::address::Address;
 use massa_models::block::{BlockId, WrappedHeader};
@@ -9,6 +10,7 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use std::collections::VecDeque;
+use std::sync::mpsc::Receiver;
 use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Instant;
@@ -40,10 +42,13 @@ pub struct GraphWorker {
     /// the time span considered for stats
     stats_history_timespan: MassaTime,
     /// the time span considered for desynchronization detection
-    #[allow(dead_code)]
     stats_desync_detection_timespan: MassaTime,
+    /// save latest final periods
+    latest_final_periods: Vec<u64>,
     /// time at which the node was launched (used for desynchronization detection)
     launch_time: MassaTime,
+    /// previous blockclique notified to Execution
+    prev_blockclique: PreHashMap<BlockId, Slot>,
     /// Shared storage,
     storage: Storage,
 }
@@ -51,6 +56,8 @@ pub struct GraphWorker {
 mod init;
 mod main_loop;
 mod process_commands;
+mod stats;
+mod tick;
 
 pub fn start_graph_worker(
     config: GraphConfig,
@@ -89,9 +96,15 @@ pub fn start_graph_worker(
     let thread_graph = thread::Builder::new()
         .name("graph worker".into())
         .spawn(move || {
-            let mut graph_worker =
-            //TODO: Better error management
-                GraphWorker::new(rx, config, channels, shared_state_cloned, init_graph, storage).expect("Failed to initialize graph worker");
+            let mut graph_worker = GraphWorker::new(
+                rx,
+                config,
+                channels,
+                shared_state_cloned,
+                init_graph,
+                storage,
+            )
+            .unwrap();
             graph_worker.run()
         })
         .expect("Can't spawn thread graph.");

@@ -1927,10 +1927,14 @@ dependencies = [
 name = "massa_graph_2_exports"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "displaydoc",
+ "massa_execution_exports",
  "massa_graph",
  "massa_models",
+ "massa_pool_exports",
  "massa_pos_exports",
+ "massa_protocol_exports",
  "massa_signature",
  "massa_storage",
  "massa_time",

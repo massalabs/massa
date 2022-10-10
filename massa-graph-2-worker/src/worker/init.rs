@@ -1,5 +1,5 @@
 use std::{
-    collections::VecDeque,
+    collections::{HashMap, VecDeque},
     sync::{mpsc, Arc},
 };
 
@@ -126,6 +126,12 @@ impl GraphWorker {
             next_slot.period,
             next_slot.thread,
         );
+        let latest_final_periods: Vec<u64> = shared_state
+            .read()
+            .latest_final_blocks_periods
+            .iter()
+            .map(|(_block_id, period)| *period)
+            .collect();
         if config.genesis_timestamp > now {
             let (days, hours, mins, secs) = config
                 .genesis_timestamp
@@ -175,6 +181,8 @@ impl GraphWorker {
                 config.stats_timespan,
             ),
             launch_time: MassaTime::now(config.clock_compensation_millis)?,
+            latest_final_periods,
+            prev_blockclique: Default::default(),
             storage: storage.clone(),
         };
 
@@ -230,8 +238,41 @@ impl GraphWorker {
                 write_shared_state.block_statuses = block_statuses;
             }
         }
+
+        // Notify execution module of current blockclique and all final blocks.
+        // we need to do this because the bootstrap snapshots of the executor vs the consensus may not have been taken in sync
+        // because the two modules run concurrently and out of sync.
+        {
+            let read_shared_state = res_graph.shared_state.read();
+            let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+            let notify_finals: HashMap<Slot, BlockId> = read_shared_state
+                .get_all_final_blocks()
+                .into_iter()
+                .map(|(b_id, block_infos)| {
+                    block_storage.insert(b_id, block_infos.1);
+                    (block_infos.0, b_id)
+                })
+                .collect();
+            let notify_blockclique: HashMap<Slot, BlockId> = read_shared_state
+                .get_blockclique()
+                .iter()
+                .map(|b_id| {
+                    let (a_block, storage) = read_shared_state
+                        .get_full_active_block(b_id)
+                        .expect("active block missing from block_db");
+                    let slot = a_block.slot;
+                    block_storage.insert(*b_id, storage.clone());
+                    (slot, *b_id)
+                })
+                .collect();
+            res_graph.prev_blockclique = notify_blockclique.iter().map(|(k, v)| (*v, *k)).collect();
+            res_graph
+                .channels
+                .execution_controller
+                .update_blockclique_status(notify_finals, Some(notify_blockclique), block_storage);
+        }
+
         Ok(res_graph)
-        //TODO: Add notify execution
     }
 
     fn claim_parent_refs(&mut self) -> GraphResult<()> {

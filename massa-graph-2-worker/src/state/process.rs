@@ -977,4 +977,30 @@ impl GraphState {
         }
         Ok(result)
     }
+
+    /// signal new slot
+    pub fn slot_tick(&mut self, current_slot: Option<Slot>) -> GraphResult<()> {
+        // list all elements for which the time has come
+        let to_process: BTreeSet<(Slot, BlockId)> = self
+            .waiting_for_slot_index
+            .iter()
+            .filter_map(|b_id| match self.block_statuses.get(b_id) {
+                Some(BlockStatus::WaitingForSlot(header_or_block)) => {
+                    let slot = header_or_block.get_slot();
+                    if Some(slot) <= current_slot {
+                        Some((slot, *b_id))
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            })
+            .collect();
+
+        massa_trace!("consensus.block_graph.slot_tick", {});
+        // process those elements
+        self.rec_process(to_process, current_slot)?;
+
+        Ok(())
+    }
 }
