@@ -71,9 +71,9 @@
     # max milliseconds to wait while sending an event before dropping it
     max_send_wait = 0
     # max cache size for which operations your node knows about
-    max_known_ops_size = 200000
+    max_known_ops_size = 2000000
     # max cache size for which operations a foreign node knows about
-    max_node_known_ops_size = 20000
+    max_node_known_ops_size = 200000
     # max cache size for which endorsements our node knows about
     max_known_endorsements_size = 2048
     # max cache size for which endorsements a foreign node knows about
@@ -147,6 +147,8 @@
     max_bytes_read = 20_000_000.0
     # Write limitation for a connection in bytes per seconds
     max_bytes_write = 20_000_000.0
+    # 
+    node_send_event_timeout = 
 
     [network.peer_types_config]
     Standard = { target_out_connections = 10, max_out_attempts = 10, max_in_connections = 15}
