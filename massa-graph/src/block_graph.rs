@@ -740,6 +740,8 @@ impl BlockGraph {
             return Ok(());
         }
 
+        debug!("received block {} for slot {}", block_id, slot);
+
         let mut to_ack: BTreeSet<(Slot, BlockId)> = BTreeSet::new();
         match self.block_statuses.entry(block_id) {
             // if absent => add as Incoming, call rec_ack on it
