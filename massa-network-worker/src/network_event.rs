@@ -2,7 +2,7 @@ use massa_models::node::NodeId;
 use massa_network_exports::{ConnectionId, NetworkError, NetworkEvent, NodeCommand, NodeEvent};
 use std::time::Duration;
 use tokio::sync::mpsc::{self, error::SendTimeoutError};
-use tracing::{warn};
+use tracing::warn;
 
 pub struct EventSender {
     /// Sender for network events
@@ -34,9 +34,7 @@ impl EventSender {
         match result {
             Ok(()) => return Ok(()),
             Err(SendTimeoutError::Closed(_event)) => {
-                warn!(
-                    "Failed to send NetworkEvent due to channel closure"
-                );
+                warn!("Failed to send NetworkEvent due to channel closure");
             }
             Err(SendTimeoutError::Timeout(_event)) => {
                 warn!("Failed to send NetworkEvent due to timeout");
