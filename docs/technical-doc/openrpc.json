@@ -474,13 +474,12 @@
             ],
             "params": [
                 {
-                    "name": "privateKey",
-                    "description": "The strings must be private keys",
+                    "name": "SecretKeys",
+                    "description": "The strings must be secret keys(keypairs)",
                     "schema": {
                         "type": "array",
                         "items": {
-                            "type": "string",
-                            "description": "Private key"
+                            "$ref": "#/components/schemas/KeyPair"
                         }
                     },
                     "required": true
@@ -492,8 +491,8 @@
                 "schema": false
             },
             "name": "add_staking_secret_keys",
-            "summary": "Add a vec of new private keys for the node to use to stake",
-            "description": "Add a vec of new private keys for the node to use to stake."
+            "summary": "Add a vec of new secret keys(keypairs) for the node to use to stake",
+            "description": "Add a vec of new secret keys(keypairs) for the node to use to stake."
         },
         {
             "tags": [
@@ -2174,6 +2173,10 @@
                         "type": "string"
                     }
                 }
+            },
+            "KeyPair": {
+                "description": "`KeyPair` is used for signature and decryption",
+                "type": "string"
             }
         },
         "contentDescriptors": {
@@ -2263,6 +2266,14 @@
                 "description": "A PubkeySig object",
                 "schema": {
                     "$ref": "#/components/schemas/PubkeySig"
+                }
+            },
+            "KeyPair": {
+                "name": "KeyPair",
+                "summary": "KeyPair",
+                "description": "A KeyPair object",
+                "schema": {
+                    "$ref": "#/components/schemas/KeyPair"
                 }
             },
             "SCOutputEvent": {
