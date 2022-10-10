@@ -32,7 +32,7 @@ impl EndorsementPoolThread {
         receiver: Receiver<Command>,
         endorsement_pool: Arc<RwLock<EndorsementPool>>,
     ) -> JoinHandle<()> {
-        let thread_builder = thread::Builder::new().name("endorsement".into());
+        let thread_builder = thread::Builder::new().name("endorsement-pool".into());
         thread_builder
             .spawn(|| {
                 let this = Self {
@@ -41,7 +41,7 @@ impl EndorsementPoolThread {
                 };
                 this.run()
             })
-            .expect("failed to spawn thread : endorsement")
+            .expect("failed to spawn thread : endorsement-pool")
     }
 
     /// Runs the thread
@@ -76,13 +76,16 @@ impl OperationPoolThread {
         receiver: Receiver<Command>,
         operation_pool: Arc<RwLock<OperationPool>>,
     ) -> JoinHandle<()> {
-        std::thread::spawn(|| {
-            let this = Self {
-                receiver,
-                operation_pool,
-            };
-            this.run()
-        })
+        let thread_builder = thread::Builder::new().name("operation-pool".into());
+        thread_builder
+            .spawn(|| {
+                let this = Self {
+                    receiver,
+                    operation_pool,
+                };
+                this.run()
+            })
+            .expect("failed to spawn thread : operation-pool")
     }
 
     /// Run the thread.
