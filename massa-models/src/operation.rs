@@ -781,26 +781,11 @@ impl WrappedOperation {
         }
     }
 
-    /// Get the gas price set by the operation
-    pub fn get_gas_price(&self) -> Amount {
-        match &self.content.op {
-            OperationType::ExecuteSC { gas_price, .. } => *gas_price,
-            OperationType::CallSC { gas_price, .. } => *gas_price,
-            OperationType::RollBuy { .. } => Amount::default(),
-            OperationType::RollSell { .. } => Amount::default(),
-            OperationType::Transaction { .. } => Amount::default(),
-        }
-    }
-
-    /// Get the amount of coins used by the operation to pay for gas
-    pub fn get_gas_coins(&self) -> Amount {
-        self.get_gas_price()
-            .saturating_mul_u64(self.get_gas_usage())
-    }
-
     /// Get the total fee paid by the creator
     pub fn get_total_fee(&self) -> Amount {
-        self.get_gas_coins().saturating_add(self.content.fee)
+        self.content
+            .fee
+            .saturating_add(Amount::from_raw(self.get_gas_usage()))
     }
 
     /// get the addresses that are involved in this operation from a ledger point of view

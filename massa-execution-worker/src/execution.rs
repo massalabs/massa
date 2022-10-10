@@ -267,9 +267,6 @@ impl ExecutionState {
             // save a snapshot of the context to revert any further changes on error
             context_snapshot = context.get_snapshot();
 
-            // set the context gas price to match the one defined in the operation
-            context.gas_price = operation.get_gas_price();
-
             // set the context max gas to match the one defined in the operation
             context.max_gas = operation.get_gas_usage();
 
@@ -633,7 +630,6 @@ impl ExecutionState {
             let mut context = context_guard!(self);
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
-            context.gas_price = message.gas_price;
             context.creator_address = None;
             context.stack = vec![
                 ExecutionStackElement {
@@ -1024,7 +1020,6 @@ impl ExecutionState {
             self.config.clone(),
             slot,
             req.max_gas,
-            req.simulated_gas_price,
             req.call_stack,
             self.final_state.clone(),
             self.active_history.clone(),
