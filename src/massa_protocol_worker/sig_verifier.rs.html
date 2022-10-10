@@ -34,7 +34,7 @@
 </span><span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_protocol_exports::ProtocolError;
 <span class="kw">use </span>massa_signature::{verify_signature_batch, PublicKey, Signature};
-<span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>rayon::{prelude::ParallelIterator, slice::ParallelSlice};
 
 <span class="doccomment">/// Limit for small batch optimization
 </span><span class="kw">const </span>SMALL_BATCH_LIMIT: usize = <span class="number">2</span>;

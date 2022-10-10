@@ -136,6 +136,13 @@
 <span id="136">136</span>
 <span id="137">137</span>
 <span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Write worker for the pools, allowing asynchronous writes.
@@ -149,6 +156,7 @@
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::sync::mpsc::RecvError;
+<span class="kw">use </span>std::thread;
 <span class="kw">use </span>std::{
     sync::mpsc::{sync_channel, Receiver},
     sync::Arc,
@@ -169,13 +177,16 @@
         receiver: Receiver&lt;Command&gt;,
         endorsement_pool: Arc&lt;RwLock&lt;EndorsementPool&gt;&gt;,
     ) -&gt; JoinHandle&lt;()&gt; {
-        std::thread::spawn(|| {
-            <span class="kw">let </span>this = <span class="self">Self </span>{
-                receiver,
-                endorsement_pool,
-            };
-            this.run()
-        })
+        <span class="kw">let </span>thread_builder = thread::Builder::new().name(<span class="string">&quot;endorsement-pool&quot;</span>.into());
+        thread_builder
+            .spawn(|| {
+                <span class="kw">let </span>this = <span class="self">Self </span>{
+                    receiver,
+                    endorsement_pool,
+                };
+                this.run()
+            })
+            .expect(<span class="string">&quot;failed to spawn thread : endorsement-pool&quot;</span>)
     }
 
     <span class="doccomment">/// Runs the thread
@@ -210,13 +221,16 @@
         receiver: Receiver&lt;Command&gt;,
         operation_pool: Arc&lt;RwLock&lt;OperationPool&gt;&gt;,
     ) -&gt; JoinHandle&lt;()&gt; {
-        std::thread::spawn(|| {
-            <span class="kw">let </span>this = <span class="self">Self </span>{
-                receiver,
-                operation_pool,
-            };
-            this.run()
-        })
+        <span class="kw">let </span>thread_builder = thread::Builder::new().name(<span class="string">&quot;operation-pool&quot;</span>.into());
+        thread_builder
+            .spawn(|| {
+                <span class="kw">let </span>this = <span class="self">Self </span>{
+                    receiver,
+                    operation_pool,
+                };
+                this.run()
+            })
+            .expect(<span class="string">&quot;failed to spawn thread : operation-pool&quot;</span>)
     }
 
     <span class="doccomment">/// Run the thread.

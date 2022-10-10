@@ -274,6 +274,9 @@
 <span id="274">274</span>
 <span id="275">275</span>
 <span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This module allows launching the execution worker thread, returning objects to communicate with it.
@@ -297,6 +300,7 @@
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>parking_lot::{Condvar, Mutex, RwLock};
 <span class="kw">use </span>std::sync::Arc;
+<span class="kw">use </span>std::thread;
 <span class="kw">use </span>tracing::debug;
 
 <span class="doccomment">/// Structure gathering all elements needed by the execution thread
@@ -537,10 +541,12 @@
 
     <span class="comment">// launch the execution thread
     </span><span class="kw">let </span>input_data_clone = input_data.clone();
-    <span class="kw">let </span>thread_handle = std::thread::spawn(<span class="kw">move </span>|| {
-        ExecutionThread::new(config, input_data_clone, execution_state, selector).main_loop();
-    });
-
+    <span class="kw">let </span>thread_builder = thread::Builder::new().name(<span class="string">&quot;execution&quot;</span>.into());
+    <span class="kw">let </span>thread_handle = thread_builder
+        .spawn(<span class="kw">move </span>|| {
+            ExecutionThread::new(config, input_data_clone, execution_state, selector).main_loop();
+        })
+        .expect(<span class="string">&quot;failed to spawn thread : execution&quot;</span>);
     <span class="comment">// create a manager
     </span><span class="kw">let </span>manager = ExecutionManagerImpl {
         input_data,

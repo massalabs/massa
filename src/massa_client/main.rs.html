@@ -145,6 +145,20 @@
 <span id="145">145</span>
 <span id="146">146</span>
 <span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Massa stateless CLI
 </span><span class="attribute">#![feature(str_split_whitespace_as_str)]
@@ -161,6 +175,7 @@
 <span class="kw">use </span>serde::Serialize;
 <span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::path::{Path, PathBuf};
+<span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
 <span class="kw">use </span>structopt::StructOpt;
 
 <span class="kw">mod </span>cmds;
@@ -227,8 +242,21 @@
 }
 
 <span class="attribute">#[paw::main]
-#[tokio::main]
-</span><span class="kw">async fn </span>main(args: Args) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+</span><span class="kw">fn </span>main(args: Args) -&gt; anyhow::Result&lt;()&gt; {
+    <span class="kw">let </span>tokio_rt = tokio::runtime::Builder::new_multi_thread()
+        .thread_name_fn(|| {
+            <span class="kw">static </span>ATOMIC_ID: AtomicUsize = AtomicUsize::new(<span class="number">0</span>);
+            <span class="kw">let </span>id = ATOMIC_ID.fetch_add(<span class="number">1</span>, Ordering::SeqCst);
+            <span class="macro">format!</span>(<span class="string">&quot;tokio-client-{}&quot;</span>, id)
+        })
+        .enable_all()
+        .build()
+        .unwrap();
+
+    tokio_rt.block_on(run(args))
+}
+
+<span class="kw">async fn </span>run(args: Args) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="comment">// TODO: move settings loading in another crate ... see #1277
     </span><span class="kw">let </span>settings = SETTINGS.clone();
     <span class="kw">let </span>address = <span class="kw">match </span>args.ip {

@@ -735,6 +735,24 @@
 <span id="735">735</span>
 <span id="736">736</span>
 <span id="737">737</span>
+<span id="738">738</span>
+<span id="739">739</span>
+<span id="740">740</span>
+<span id="741">741</span>
+<span id="742">742</span>
+<span id="743">743</span>
+<span id="744">744</span>
+<span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
+<span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attribute">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -793,6 +811,7 @@
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::path::PathBuf;
+<span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
 <span class="kw">use </span>std::{path::Path, process, sync::Arc};
 <span class="kw">use </span>structopt::StructOpt;
 <span class="kw">use </span>tokio::signal;
@@ -1224,23 +1243,27 @@
         <span class="kw">use </span>std::thread;
         <span class="kw">use </span>std::time::Duration;
         <span class="comment">// Create a background thread which checks for deadlocks every 10s
-        </span><span class="kw">let </span>handler2 = thread::spawn(<span class="kw">move </span>|| <span class="kw">loop </span>{
-            thread::sleep(Duration::from_secs(<span class="number">10</span>));
-            <span class="kw">let </span>deadlocks = deadlock::check_deadlock();
-            <span class="macro">println!</span>(<span class="string">&quot;deadlocks check&quot;</span>);
-            <span class="kw">if </span>deadlocks.is_empty() {
-                <span class="kw">continue</span>;
-            }
+        </span><span class="kw">let </span>thread_builder = thread::Builder::new().name(<span class="string">&quot;deadlock-detection&quot;</span>.into());
+        thread_builder
+            .spawn(<span class="kw">move </span>|| <span class="kw">loop </span>{
+                thread::sleep(Duration::from_secs(<span class="number">10</span>));
+                <span class="kw">let </span>deadlocks = deadlock::check_deadlock();
+                <span class="macro">println!</span>(<span class="string">&quot;deadlocks check&quot;</span>);
 
-            <span class="macro">println!</span>(<span class="string">&quot;{} deadlocks detected&quot;</span>, deadlocks.len());
-            <span class="kw">for </span>(i, threads) <span class="kw">in </span>deadlocks.iter().enumerate() {
-                <span class="macro">println!</span>(<span class="string">&quot;Deadlock #{}&quot;</span>, i);
-                <span class="kw">for </span>t <span class="kw">in </span>threads {
-                    <span class="macro">println!</span>(<span class="string">&quot;Thread Id {:#?}&quot;</span>, t.thread_id());
-                    <span class="macro">println!</span>(<span class="string">&quot;{:#?}&quot;</span>, t.backtrace());
+                <span class="kw">if </span>deadlocks.is_empty() {
+                    <span class="kw">continue</span>;
                 }
-            }
-        });
+
+                <span class="macro">println!</span>(<span class="string">&quot;{} deadlocks detected&quot;</span>, deadlocks.len());
+                <span class="kw">for </span>(i, threads) <span class="kw">in </span>deadlocks.iter().enumerate() {
+                    <span class="macro">println!</span>(<span class="string">&quot;Deadlock #{}&quot;</span>, i);
+                    <span class="kw">for </span>t <span class="kw">in </span>threads {
+                        <span class="macro">println!</span>(<span class="string">&quot;Thread Id {:#?}&quot;</span>, t.thread_id());
+                        <span class="macro">println!</span>(<span class="string">&quot;{:#?}&quot;</span>, t.backtrace());
+                    }
+                }
+            })
+            .expect(<span class="string">&quot;failed to spawn thread : deadlock-detection&quot;</span>);
     }
     (
         consensus_event_receiver,
@@ -1366,8 +1389,21 @@
 }
 
 <span class="attribute">#[paw::main]
-#[tokio::main]
-</span><span class="kw">async fn </span>main(args: Args) -&gt; anyhow::Result&lt;()&gt; {
+</span><span class="kw">fn </span>main(args: Args) -&gt; anyhow::Result&lt;()&gt; {
+    <span class="kw">let </span>tokio_rt = tokio::runtime::Builder::new_multi_thread()
+        .thread_name_fn(|| {
+            <span class="kw">static </span>ATOMIC_ID: AtomicUsize = AtomicUsize::new(<span class="number">0</span>);
+            <span class="kw">let </span>id = ATOMIC_ID.fetch_add(<span class="number">1</span>, Ordering::SeqCst);
+            <span class="macro">format!</span>(<span class="string">&quot;tokio-node-{}&quot;</span>, id)
+        })
+        .enable_all()
+        .build()
+        .unwrap();
+
+    tokio_rt.block_on(run(args))
+}
+
+<span class="kw">async fn </span>run(args: Args) -&gt; anyhow::Result&lt;()&gt; {
     <span class="kw">use </span>tracing_subscriber::prelude::<span class="kw-2">*</span>;
     <span class="comment">// spawn the console server in the background, returning a `Layer`:
     </span><span class="kw">let </span>tracing_layer = tracing_subscriber::fmt::layer()

@@ -161,6 +161,10 @@
 <span id="161">161</span>
 <span id="162">162</span>
 <span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::controller::SelectorControllerImpl;
@@ -180,6 +184,7 @@
 <span class="kw">use </span>std::sync::mpsc::sync_channel;
 <span class="kw">use </span>std::sync::mpsc::Receiver;
 <span class="kw">use </span>std::sync::Arc;
+<span class="kw">use </span>std::thread;
 <span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="doccomment">/// Structure gathering all elements needed by the selector thread
@@ -201,14 +206,17 @@
         cache: DrawCachePtr,
         cfg: SelectorConfig,
     ) -&gt; JoinHandle&lt;PosResult&lt;()&gt;&gt; {
-        std::thread::spawn(|| {
-            <span class="kw">let </span>this = <span class="self">Self </span>{
-                input_mpsc,
-                cache,
-                cfg,
-            };
-            this.run()
-        })
+        <span class="kw">let </span>thread_builder = thread::Builder::new().name(<span class="string">&quot;selector&quot;</span>.into());
+        thread_builder
+            .spawn(|| {
+                <span class="kw">let </span>this = <span class="self">Self </span>{
+                    input_mpsc,
+                    cache,
+                    cfg,
+                };
+                this.run()
+            })
+            .expect(<span class="string">&quot;failed to spawn thread : selector&quot;</span>)
     }
 
     <span class="doccomment">/// process the result of a draw

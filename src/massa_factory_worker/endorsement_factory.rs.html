@@ -276,7 +276,7 @@
         factory_receiver: mpsc::Receiver&lt;()&gt;,
     ) -&gt; thread::JoinHandle&lt;()&gt; {
         thread::Builder::new()
-            .name(<span class="string">&quot;endorsement factory worker&quot;</span>.into())
+            .name(<span class="string">&quot;endorsement-factory&quot;</span>.into())
             .spawn(|| {
                 <span class="kw">let </span><span class="kw-2">mut </span>this = <span class="self">Self </span>{
                     half_t0: cfg
@@ -291,7 +291,7 @@
                 };
                 this.run();
             })
-            .expect(<span class="string">&quot;could not spawn endorsement factory worker thread&quot;</span>)
+            .expect(<span class="string">&quot;failed to spawn thread : endorsement-factory&quot;</span>)
     }
 
     <span class="doccomment">/// Gets the next slot and the instant when the corresponding endorsements should be made.
