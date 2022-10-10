@@ -110,7 +110,7 @@ impl ProtocolWorker {
         } // EndOf for op_id in op_batch:
 
         if count_reask > 0 {
-            massa_trace!("re-ask operations.", { "count": count_reask });
+            warn!("re-ask operations {}", count_reask);
         }
         if self.op_batch_buffer.len() < self.config.operation_batch_buffer_capacity
             && !future_set.is_empty()
