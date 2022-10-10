@@ -502,7 +502,6 @@ impl ConsensusWorker {
                 storage,
             } => {
                 warn!("CONSENSUS received_block START");
-                debug!("consensus received block {}", block_id);
                 let start_time = std::time::Instant::now();
                 massa_trace!(
                     "consensus.consensus_worker.process_protocol_event.received_block",
@@ -520,7 +519,6 @@ impl ConsensusWorker {
             }
             ProtocolEvent::ReceivedBlockHeader { block_id, header } => {
                 warn!("CONSENSUS received_header START");
-                debug!("consensus received header {}", block_id);
                 let start_time = std::time::Instant::now();
                 massa_trace!("consensus.consensus_worker.process_protocol_event.received_header", { "block_id": block_id, "header": header });
                 self.block_db
