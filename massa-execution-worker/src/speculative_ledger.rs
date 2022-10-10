@@ -13,7 +13,7 @@ use massa_ledger_exports::{Applicable, LedgerChanges};
 use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
 use std::sync::Arc;
-use tracing::log::debug;
+use tracing::debug;
 
 /// The `SpeculativeLedger` contains an thread-safe shared reference to the final ledger (read-only),
 /// a list of existing changes that happened o the ledger since its finality,

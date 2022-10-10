@@ -317,11 +317,16 @@ impl SlotSequencer {
                 in_sce_finality,
             );
 
-            // The computed slot is not SCE-final => all subsequent slots are not SCE-final
+            // If the computed slot is not SCE-final => all subsequent slots are not SCE-final
             in_sce_finality = in_sce_finality && seq_item.sce_final;
 
             // Append the slot to the new sequence.
             new_sequence.push_back(seq_item);
+
+            // If this slot is SCE-final => update the latest SCE-final slot
+            if in_sce_finality {
+                self.latest_sce_final_slot = slot;
+            }
 
             // If the obtained slot overwrites history before the candidate execution cursor,
             // roll back the candidate execution cursor to the slot just before the overwrite.
@@ -441,7 +446,7 @@ impl SlotSequencer {
                 return (prev_slot_info, false);
             }
 
-            // There is a new blockclique: check whether new slot content matches the old one
+            // There is a new blockclique: check whether the new slot content matches the old one
             if new_blockclique_block.as_ref() == prev_slot_info.get_block_id() {
                 // Contents match => simply return the old slot state
                 return (prev_slot_info, false);
@@ -468,6 +473,10 @@ impl SlotSequencer {
 
         // Check if the new slot is CSS-final.
         if new_css_final {
+            // The slot was absent (or considered a miss) before.
+            // So, if there is a new block there, consider that it caused a mismatch at this slot.
+            let mismatch = new_css_final_block.is_some();
+
             // Generate the new CSS-final slot state.
             let slot_info = SlotInfo {
                 slot,
@@ -486,10 +495,14 @@ impl SlotSequencer {
             };
 
             // Return the newly created CSS-final slot.
-            return (slot_info, false);
+            return (slot_info, mismatch);
         }
 
         // Here we know that the slot was absent from the old sequence and that it is not CSS-final.
+
+        // The slot was absent (or considered a miss) before.
+        // So, if there is a new block there, consider that it caused a mismatch at this slot.
+        let mismatch = new_blockclique_block.is_some();
 
         // Generate a new speculative slot state for that slot.
         let slot_info = SlotInfo {
@@ -507,7 +520,7 @@ impl SlotSequencer {
         };
 
         // Return the newly created speculative slot state.
-        (slot_info, false)
+        (slot_info, mismatch)
     }
 
     /// Get the index of a slot in the sequence, if present, otherwise None

@@ -45,14 +45,14 @@ lazy_static::lazy_static! {
                 .saturating_add(MassaTime::from_millis(1000 * 10))
         )
     } else {
-        1663754400000.into()  //  Wednesday, September 21, 2022 10:00:00 PM UTC
+        1664978400000.into()  // Wednesday, October 5, 2022 2:00:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1664560800000.into())  // Friday, September 30, 2022 18:00:00 UTC
+        Some(1667142000000.into())  // Sunday, October 30, 2022 3:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -76,9 +76,9 @@ pub const ROLL_PRICE: Amount = Amount::from_mantissa_scale(100, 0);
 /// Block reward is given for each block creation
 pub const BLOCK_REWARD: Amount = Amount::from_mantissa_scale(3, 1);
 /// Cost to store one byte in the ledger
-pub const LEDGER_COST_PER_BYTE: Amount = Amount::from_mantissa_scale(2, 4);
+pub const LEDGER_COST_PER_BYTE: Amount = Amount::from_mantissa_scale(25, 5);
 /// Cost for a base entry (address + balance (5 bytes constant))
-pub const LEDGER_ENTRY_BASE_SIZE: usize = ADDRESS_SIZE_BYTES + 5;
+pub const LEDGER_ENTRY_BASE_SIZE: usize = ADDRESS_SIZE_BYTES + 8;
 /// Cost for a base entry datastore 10 bytes constant to avoid paying more for longer keys
 pub const LEDGER_ENTRY_DATASTORE_BASE_SIZE: usize = 10;
 /// Time between the periods in the same thread.
@@ -179,12 +179,13 @@ pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 /// Max size of the printed error
 pub const MAX_BOOTSTRAP_ERROR_LENGTH: u32 = 10000;
 
-// Protocol constants
-
-/// Controller channel size
+/// Protocol controller channel size
 pub const PROTOCOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
-/// Event channel size
+/// Protocol event channel size
 pub const PROTOCOL_EVENT_CHANNEL_SIZE: usize = 1024;
+/// Pool controller channel size
+pub const POOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
+
 // ***********************
 // Constants used for execution module (injected from ConsensusConfig)
 //

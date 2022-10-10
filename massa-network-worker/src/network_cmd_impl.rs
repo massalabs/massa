@@ -329,8 +329,8 @@ pub async fn on_get_stats_cmd(
     response_tx: oneshot::Sender<NetworkStats>,
 ) {
     let res = NetworkStats {
-        in_connection_count: worker.peer_info_db.get_in_connection_count() as u64,
-        out_connection_count: worker.peer_info_db.get_out_connection_count() as u64,
+        in_connection_count: worker.peer_info_db.get_in_connection_count(),
+        out_connection_count: worker.peer_info_db.get_out_connection_count(),
         known_peer_count: worker.peer_info_db.peers.len() as u64,
         banned_peer_count: worker
             .peer_info_db

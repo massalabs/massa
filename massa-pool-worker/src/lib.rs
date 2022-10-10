@@ -12,10 +12,10 @@
 mod controller_impl;
 mod endorsement_pool;
 mod operation_pool;
-mod run;
 mod types;
+mod worker;
 
-pub use run::start_pool;
+pub use worker::start_pool_controller;
 
 #[cfg(test)]
 mod tests;

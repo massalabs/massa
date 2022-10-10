@@ -2,7 +2,7 @@ use std::collections::hash_map;
 
 use massa_models::{
     address::Address,
-    operation::{OperationId, WrappedOperation},
+    operation::{OperationId, OperationPrefixId, WrappedOperation},
     prehash::{PreHashMap, PreHashSet},
 };
 
@@ -14,6 +14,8 @@ pub struct OperationIndexes {
     operations: PreHashMap<OperationId, WrappedOperation>,
     /// Structure mapping creators with the created operations
     index_by_creator: PreHashMap<Address, PreHashSet<OperationId>>,
+    /// Structure indexing operations by ID prefix
+    index_by_prefix: PreHashMap<OperationPrefixId, PreHashSet<OperationId>>,
 }
 
 impl OperationIndexes {
@@ -25,6 +27,11 @@ impl OperationIndexes {
             // update creator index
             self.index_by_creator
                 .entry(o.creator_address)
+                .or_default()
+                .insert(o.id);
+            // update prefix index
+            self.index_by_prefix
+                .entry(o.id.prefix())
                 .or_default()
                 .insert(o.id);
         }
@@ -39,6 +46,13 @@ impl OperationIndexes {
             if let hash_map::Entry::Occupied(mut occ) =
                 self.index_by_creator.entry(o.creator_address)
             {
+                occ.get_mut().remove(&o.id);
+                if occ.get().is_empty() {
+                    occ.remove();
+                }
+            }
+            // update prefix index
+            if let hash_map::Entry::Occupied(mut occ) = self.index_by_prefix.entry(o.id.prefix()) {
                 occ.get_mut().remove(&o.id);
                 if occ.get().is_empty() {
                     occ.remove();
@@ -67,5 +81,18 @@ impl OperationIndexes {
     /// - optional reference to a set of operations created by that address
     pub fn get_operations_created_by(&self, address: &Address) -> Option<&PreHashSet<OperationId>> {
         self.index_by_creator.get(address)
+    }
+
+    /// Get operations by prefix
+    /// Arguments:
+    /// * `prefix`: the prefix to look up
+    ///
+    /// Returns:
+    /// - optional reference to a set of operations that match that prefix
+    pub fn get_operations_by_prefix(
+        &self,
+        prefix: &OperationPrefixId,
+    ) -> Option<&PreHashSet<OperationId>> {
+        self.index_by_prefix.get(prefix)
     }
 }

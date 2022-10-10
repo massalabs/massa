@@ -112,7 +112,7 @@ fn test_pool() {
     // sort from bigger fee to smaller and truncate
     for lst in thread_tx_lists.iter_mut() {
         lst.reverse();
-        lst.truncate(pool_config.max_operation_pool_size_per_thread as usize);
+        lst.truncate(pool_config.max_operation_pool_size_per_thread);
     }
 
     // checks ops are the expected ones for thread 0 and 1 and various periods

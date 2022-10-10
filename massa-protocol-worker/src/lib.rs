@@ -8,11 +8,13 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 #![feature(let_chains)]
+#![feature(map_try_insert)]
 
 /// protocol worker
 pub mod protocol_worker;
 pub mod worker_operations_impl;
 pub use protocol_worker::start_protocol_controller;
+mod cache;
 mod checked_operations;
 mod node_info;
 mod protocol_network;
