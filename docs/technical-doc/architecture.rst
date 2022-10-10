@@ -137,7 +137,7 @@ The content of a block is as follows:
 ``creator_public_key``           The public key of the block creator (64 bytes)           
 ``parents``                      A list of the 32 parents of the block, one parent per thread (parent blocks are 
                                  identified by the block hash)        
-``endorsements``                 A list of the 9 endorsements for the block (more about endorsements below)
+``endorsements``                 A list of the 16 endorsements for the block (more about endorsements below)
 ``operations_hash``              A hash of all the operations included in the block (=hash of the block body below)
 ``signature``                    signature of all the above with the private key of    
                                  the block creator                               
@@ -249,7 +249,7 @@ If a block is only contained inside cliques that have a fitness lower than the f
 
 A block is considered final if it is part of all maximal cliques, and included in at least one clique where the total sum of the fitness of all its descendants is greater than :math:`\Delta_f^0`. 
 
-:math:`\Delta_f^0` is defined as a constant F multiplied by 1+E (E being the total max number of endorsements in a block, currently 9), and F effectively measuring the maximum span in fully endorsed blocks of a successful blockclique, or the number of fully endorsed blocks by which an alternative clique can be shorter than the blockclique before its blocks may be discarded as stale.
+:math:`\Delta_f^0` is defined as a constant F multiplied by 1+E (E being the total max number of endorsements in a block, currently 16), and F effectively measuring the maximum span in fully endorsed blocks of a successful blockclique, or the number of fully endorsed blocks by which an alternative clique can be shorter than the blockclique before its blocks may be discarded as stale.
 
 
 Graph/Consensus Module Function
