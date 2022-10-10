@@ -134,7 +134,9 @@ impl NodeWorker {
                             .await
                         {
                             Err(_err) => {
-                                warn!("node_worker.run_loop.loop.writer_command_rx.recv.send.timeout");
+                                warn!(
+                                    "node_worker.run_loop.loop.writer_command_rx.recv.send.timeout"
+                                );
                                 return Err(std::io::Error::new(
                                     std::io::ErrorKind::TimedOut,
                                     "node data writing timed out",

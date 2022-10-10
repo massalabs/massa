@@ -56,9 +56,7 @@ async fn ban_connection_ids(worker: &mut NetworkWorker, ids: HashSet<ConnectionI
                 .send(NodeCommand::Close(ConnectionClosureReason::Banned))
                 .await;
             if res.is_err() {
-                warn!(
-                    "network.network_worker.manage_network_command"
-                );
+                warn!("network.network_worker.manage_network_command");
             }
         };
     }

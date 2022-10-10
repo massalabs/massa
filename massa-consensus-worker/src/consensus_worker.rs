@@ -501,6 +501,8 @@ impl ConsensusWorker {
                 slot,
                 storage,
             } => {
+                warn!("CONSENSUS received_block START");
+                let start_time = std::time::Instant::now();
                 massa_trace!(
                     "consensus.consensus_worker.process_protocol_event.received_block",
                     { "block_id": block_id }
@@ -510,12 +512,22 @@ impl ConsensusWorker {
                 let now = MassaTime::now(self.clock_compensation)?;
                 self.protocol_blocks.push_back((now, block_id));
                 self.block_db_changed().await?;
+                warn!(
+                    "CONSENSUS received_block END {}",
+                    start_time.elapsed().as_nanos()
+                );
             }
             ProtocolEvent::ReceivedBlockHeader { block_id, header } => {
+                warn!("CONSENSUS received_header START");
+                let start_time = std::time::Instant::now();
                 massa_trace!("consensus.consensus_worker.process_protocol_event.received_header", { "block_id": block_id, "header": header });
                 self.block_db
                     .incoming_header(block_id, header, self.previous_slot)?;
                 self.block_db_changed().await?;
+                warn!(
+                    "CONSENSUS received_header END {}",
+                    start_time.elapsed().as_nanos()
+                );
             }
             ProtocolEvent::InvalidBlock { block_id, header } => {
                 massa_trace!(
