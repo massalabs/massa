@@ -1,14 +1,12 @@
 use crate::{
-    DeferredCredits, DeferredCreditsDeserializer, ProductionStats, ProductionStatsDeserializer,
-    RollsDeserializer,
+    DeferredCredits, DeferredCreditsDeserializer, DeferredCreditsSerializer, ProductionStats,
+    ProductionStatsDeserializer, ProductionStatsSerializer, RollsDeserializer,
 };
 use bitvec::prelude::*;
 use massa_models::{
     address::Address,
-    amount::AmountSerializer,
     prehash::PreHashMap,
     serialization::{BitVecDeserializer, BitVecSerializer},
-    slot::SlotSerializer,
 };
 use massa_serialization::{Deserializer, SerializeError, Serializer, U64VarIntSerializer};
 use nom::{
@@ -16,6 +14,7 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
+use std::ops::Bound::Unbounded;
 
 /// Recap of all PoS changes
 #[derive(Default, Debug, Clone)]
@@ -67,8 +66,8 @@ impl PoSChanges {
 pub struct PoSChangesSerializer {
     bit_vec_serializer: BitVecSerializer,
     u64_serializer: U64VarIntSerializer,
-    slot_serializer: SlotSerializer,
-    amount_serializer: AmountSerializer,
+    production_stats_serializer: ProductionStatsSerializer,
+    deferred_credits_serializer: DeferredCreditsSerializer,
 }
 
 impl Default for PoSChangesSerializer {
@@ -83,8 +82,8 @@ impl PoSChangesSerializer {
         PoSChangesSerializer {
             bit_vec_serializer: BitVecSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
-            slot_serializer: SlotSerializer::new(),
-            amount_serializer: AmountSerializer::new(),
+            production_stats_serializer: ProductionStatsSerializer::new(),
+            deferred_credits_serializer: DeferredCreditsSerializer::new(Unbounded),
         }
     }
 }
@@ -96,50 +95,21 @@ impl Serializer<PoSChanges> for PoSChangesSerializer {
             .serialize(&value.seed_bits, buffer)?;
 
         // roll_changes
-        let entry_count: u64 = value.roll_changes.len().try_into().map_err(|err| {
-            SerializeError::GeneralError(format!("too many entries in roll_changes: {}", err))
-        })?;
-        self.u64_serializer.serialize(&entry_count, buffer)?;
+        self.u64_serializer
+            .serialize(&(value.roll_changes.len() as u64), buffer)?;
         for (addr, roll) in value.roll_changes.iter() {
             buffer.extend(addr.to_bytes());
             self.u64_serializer.serialize(roll, buffer)?;
         }
 
         // production_stats
-        let entry_count: u64 = value.production_stats.len().try_into().map_err(|err| {
-            SerializeError::GeneralError(format!("too many entries in production_stats: {}", err))
-        })?;
-        self.u64_serializer.serialize(&entry_count, buffer)?;
-        for (
-            addr,
-            ProductionStats {
-                block_success_count,
-                block_failure_count,
-            },
-        ) in value.production_stats.iter()
-        {
-            buffer.extend(addr.to_bytes());
-            self.u64_serializer.serialize(block_success_count, buffer)?;
-            self.u64_serializer.serialize(block_failure_count, buffer)?;
-        }
+        self.production_stats_serializer
+            .serialize(&value.production_stats, buffer)?;
 
         // deferred_credits
-        let entry_count: u64 = value.deferred_credits.0.len().try_into().map_err(|err| {
-            SerializeError::GeneralError(format!("too many entries in deferred_credits: {}", err))
-        })?;
-        self.u64_serializer.serialize(&entry_count, buffer)?;
-        for (slot, credits) in value.deferred_credits.0.iter() {
-            self.slot_serializer.serialize(slot, buffer)?;
-            let credits_entry_count: u64 = credits.len().try_into().map_err(|err| {
-                SerializeError::GeneralError(format!("too many entries in credits: {}", err))
-            })?;
-            self.u64_serializer
-                .serialize(&credits_entry_count, buffer)?;
-            for (addr, amount) in credits {
-                buffer.extend(addr.to_bytes());
-                self.amount_serializer.serialize(amount, buffer)?;
-            }
-        }
+        self.deferred_credits_serializer
+            .serialize(&value.deferred_credits, buffer)?;
+
         Ok(())
     }
 }

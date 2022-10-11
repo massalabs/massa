@@ -39,6 +39,7 @@ pub struct CycleInfo {
 pub struct CycleInfoSerializer {
     u64_ser: U64VarIntSerializer,
     bitvec_ser: BitVecSerializer,
+    production_stats_ser: ProductionStatsSerializer,
 }
 
 impl CycleInfoSerializer {
@@ -47,6 +48,7 @@ impl CycleInfoSerializer {
         Self {
             u64_ser: U64VarIntSerializer::new(),
             bitvec_ser: BitVecSerializer::new(),
+            production_stats_ser: ProductionStatsSerializer::new(),
         }
     }
 }
@@ -71,13 +73,9 @@ impl Serializer<CycleInfo> for CycleInfoSerializer {
         self.bitvec_ser.serialize(&value.rng_seed, buffer)?;
 
         // cycle_info.production_stats
-        self.u64_ser
-            .serialize(&(value.production_stats.len() as u64), buffer)?;
-        for (addr, stats) in &value.production_stats {
-            buffer.extend(addr.to_bytes());
-            self.u64_ser.serialize(&stats.block_success_count, buffer)?;
-            self.u64_ser.serialize(&stats.block_failure_count, buffer)?;
-        }
+        self.production_stats_ser
+            .serialize(&value.production_stats, buffer)?;
+
         Ok(())
     }
 }
@@ -141,7 +139,7 @@ impl Deserializer<CycleInfo> for CycleInfoDeserializer {
     }
 }
 
-/// Block production statistic
+/// Block production statistics
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ProductionStats {
     /// Number of successfully created blocks
@@ -168,6 +166,43 @@ impl ProductionStats {
         self.block_failure_count = self
             .block_failure_count
             .saturating_add(stats.block_failure_count);
+    }
+}
+
+/// Serializer for `ProductionStats`
+pub struct ProductionStatsSerializer {
+    u64_ser: U64VarIntSerializer,
+}
+
+impl ProductionStatsSerializer {
+    /// Creates a new `ProductionStats` serializer
+    pub fn new() -> Self {
+        Self {
+            u64_ser: U64VarIntSerializer::new(),
+        }
+    }
+}
+
+impl Serializer<PreHashMap<Address, ProductionStats>> for ProductionStatsSerializer {
+    fn serialize(
+        &self,
+        value: &PreHashMap<Address, ProductionStats>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        self.u64_ser.serialize(&(value.len() as u64), buffer)?;
+        for (
+            addr,
+            ProductionStats {
+                block_success_count,
+                block_failure_count,
+            },
+        ) in value.iter()
+        {
+            buffer.extend(addr.to_bytes());
+            self.u64_ser.serialize(block_success_count, buffer)?;
+            self.u64_ser.serialize(block_failure_count, buffer)?;
+        }
+        Ok(())
     }
 }
 
