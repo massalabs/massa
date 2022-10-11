@@ -1,3 +1,6 @@
+.. role:: raw-html(raw)
+    :format: html
+
 Introduction
 ============
 
@@ -41,9 +44,9 @@ The information stored in the ledger with each address is the following:
 ------------------------------------------------------------------------------------------ 
 ``balance``                      The amount of Massa coins owned by the address              
 ``bytecode``                     When the address references a smart contract, this is the compiled code
-                                 corresponding to the smart contract (typically contains several functions that act as API entry points for the smart contract)        
+                                 :raw-html:`<br/>` corresponding to the smart contract (typically contains several functions that act as :raw-html:`<br/>` API entry points for the smart contract)        
 ``datastore``                    A key/value map that can store any persistent data related to a smart 
-                                 contract, its variables, etc                                     
+                                 :raw-html:`<br/>` contract, its variables, etc
 ===============================  =========================================================
 
 
@@ -68,7 +71,7 @@ Fundamentally, the point of the Massa network is to gather, order and execute op
 ``fee``                          The amount of fees the creator is willing to pay     
 ``payload``                      The content of the operation (see below)            
 ``signature``                    signature of all the above with the private key of    
-                                 the operation creator                                
+                                 :raw-html:`<br/>` the operation creator
 ===============================  =========================================================
 
 Transactions operations
@@ -133,10 +136,10 @@ The content of a block is as follows:
 **Block header**       
 ------------------------------------------------------------------------------------------ 
 ``slot``                         A description of the block slot, defined by a couple (period, thread) that 
-                                 uniquely identify it
+                                 :raw-html:`<br/>` uniquely identify it
 ``creator_public_key``           The public key of the block creator (64 bytes)           
-``parents``                      A list of the 32 parents of the block, one parent per thread (parent blocks are 
-                                 identified by the block hash)        
+``parents``                      A list of the 32 parents of the block, one parent per thread (parent blocks are
+                                 :raw-html:`<br/>` identified by the block hash)
 ``endorsements``                 A list of the 16 endorsements for the block (more about endorsements below)
 ``operations_hash``              A hash of all the operations included in the block (=hash of the block body below)
 ``signature``                    signature of all the above with the private key of    
@@ -146,12 +149,12 @@ The content of a block is as follows:
 ``operations``                   The list of all operations included in the block                         
 ===============================  =========================================================
 
-Endorsements are optional inclusion in the block, but their inclusion is incentivized for block creators. They are validations of the validity of the parent block on the thread of the block, done by other nodes that have also been deterministically selected via the proof of stake probability distribution (see below). A comprehensive description of endorsements can be found `here <https://github.com/massalabs/massa/blob/main/docs/technical-doc/Endorsements.rst>`_, so we will not go further into details in the context of this introduction.
+Endorsements are optional inclusion in the block, but their inclusion is incentivized for block creators. They are validations of the fact that the parent block on the thread of the block is the best parent that could have been chosen, done by other nodes that have also been deterministically selected via the proof of stake probability distribution (see below). A comprehensive description of endorsements can be found `here <https://github.com/massalabs/massa/blob/main/docs/technical-doc/Endorsements.rst>`_, so we will not go further into details in the context of this introduction.
 
 Architecture
 ============
 
-This is the diagram of the architecture of the software modules involved in building, endorsing and propagating blocks. The bottom part corresponds to a single process running in a node and is in charge of the execution and consensus building. The pool and factories, referred to as "factory", can be potentially running in a different process or be part of the node. Overall, each of the modules described here runs inside one or more threads attached to their respective executable process (NB: the factory/node separation is not yet implemented, but will be soon)
+This is the diagram of the architecture of the software modules involved in building, endorsing and propagating blocks. The bottom part corresponds to a single process running in a node and is in charge of the execution and consensus building. The pool and factories, referred to as "factory", can be potentially running in a different process or be part of the node. Overall, each of the modules described here runs inside one or more threads attached to their respective executable process (NB: the factory/node separation is not yet implemented, but will be soon).
 
 .. image:: architecture.drawio.svg
 
@@ -235,7 +238,7 @@ This brings us to the notion of a maximal clique which is a subset of the incomp
 
 They represent candidates to extend the set of already finalized blocks into a coherent set of new blocks. All we need to add to be able to build a consensus rule now is to introduce a deterministic metric to rank those candidates so that nodes can independently and consistently decide on which clique is the best candidate and keep building on top of it. In particular, once the best maximal clique is identified, it becomes trivial to define the list of the parents for a new block simply by picking the oldest block from that clique in each thread.
 
-The metric used in a traditional blockchain to rank competing chain candidates is habitually the length of the chain (also known as "Nakamoto consensus"). In the case of block cliques, we will introduce a notion of fitness for each block, and the fitness of the clique will simply be the sum of all its block's fitness. The block fitness f(b) is simply defined as 1+e, e being the number of endorsements registered in the block.
+The metric used in a traditional blockchain to rank competing chain candidates is habitually the length of the chain, or more precisely the total amount of work invested in the chain (also known as "Nakamoto consensus"). In the case of block cliques, we will introduce a notion of fitness for each block, and the fitness of the clique will simply be the sum of all its block's fitness. The block fitness :math:`f(b)` is simply defined as :math:`1+e`, :math:`e` being the number of endorsements registered in the block.
 
 Taking the maximal clique with the highest fitness (or some hash-based deterministic selection in case of equality), the Graph/Consensus module can define what is called the **blockclique** at the current time. 
 
@@ -249,7 +252,7 @@ If a block is only contained inside cliques that have a fitness lower than the f
 
 A block is considered final if it is part of all maximal cliques, and included in at least one clique where the total sum of the fitness of all its descendants is greater than :math:`\Delta_f^0`. 
 
-:math:`\Delta_f^0` is defined as a constant F multiplied by 1+E (E being the total max number of endorsements in a block, currently 16), and F effectively measuring the maximum span in fully endorsed blocks of a successful blockclique, or the number of fully endorsed blocks by which an alternative clique can be shorter than the blockclique before its blocks may be discarded as stale.
+:math:`\Delta_f^0` is defined as a constant :math:`F` multiplied by :math:`1+E` (:math:`E` being the total max number of endorsements in a block, currently 16), and :math:`F` effectively measuring the maximum span in fully endorsed blocks of a successful blockclique, or the number of fully endorsed blocks by which an alternative clique can be shorter than the blockclique before its blocks may be discarded as stale.
 
 
 Graph/Consensus Module Function
@@ -263,9 +266,11 @@ It is also able to answer queries about the current best parents for a new block
 Execution Module
 ****************
 
-The Execution Module is in charge of effectively executing the operations contained in blocks within the current blockclique, which is provided by the Graph/Consensus Module. Operations will typically modify the ledger, either by changing the balances of accounts or by modifying the datastore of smart contracts after the execution of some code. Ledger modifications are however stored as diff vs the current finalized ledger, until the corresponding blocks are marked as finalized by the Graph/Consensus Module.
+The Execution Module is in charge of effectively executing the operations contained in blocks within the current blockclique, which is provided by the Graph/Consensus Module. Operations will typically modify the ledger, either by changing the balances of accounts or by modifying the datastore of smart contracts after the execution of some code. From an implementation point of view, ledger modifications are however stored as diff vs the current finalized ledger, until the corresponding blocks are marked as finalized by the Graph/Consensus Module.
 
-Block creators will typically need to query the Execution Module to check current balances at a given slot and verify if some operations can be run with sufficient funds or not, before being integrated into a new block. 
+Block creators will typically need to query the Execution Module to check current balances at a given slot and verify if some operations can be run with sufficient funds or not, before being integrated into a new block.
+
+As a side note, it is also possible that blocks might include invalid operations, in which case the Execution Module will simply ignore them.
 
 Being the maintainer of the ledger, the Execution Module is also queried about address information in general, via the API, for any Module that needs it.
 
