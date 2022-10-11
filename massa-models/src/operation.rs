@@ -1585,12 +1585,11 @@ mod tests {
             slot,
             pub_key: de_keypair.get_public_key(),
             proof: DenunciationProof::Endorsement(EndorsementDenunciation {
+                index: 3,
                 signature_1: sig,
                 hash_1: data,
-                index_1: 3,
                 signature_2: sig2,
                 hash_2: data2,
-                index_2: 3,
             }),
         };
 
