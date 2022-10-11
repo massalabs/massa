@@ -877,7 +877,6 @@ impl Command {
                     OperationType::ExecuteSC {
                         data,
                         max_gas,
-                        gas_price,
                         datastore,
                     },
                     fee,

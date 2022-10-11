@@ -384,8 +384,6 @@ pub enum OperationType {
         data: Vec<u8>,
         /// The maximum amount of gas that the execution of the contract is allowed to cost.
         max_gas: u64,
-        /// The price per unit of gas that the caller is willing to pay for the execution.
-        gas_price: Amount,
         /// A key-value store associating a hash to arbitrary bytes
         datastore: Datastore,
     },
@@ -427,13 +425,11 @@ impl std::fmt::Display for OperationType {
             }
             OperationType::ExecuteSC {
                 max_gas,
-                gas_price,
                 ..
                 // data & datastore, // these fields are ignored because bytes eh
             } => {
                 writeln!(f, "ExecuteSC: ")?;
                 writeln!(f, "\t- max_gas:{}", max_gas)?;
-                writeln!(f, "\t- gas_price:{}", gas_price)?;
             },
             OperationType::CallSC {
                 max_gas,
@@ -531,13 +527,11 @@ impl Serializer<OperationType> for OperationTypeSerializer {
             OperationType::ExecuteSC {
                 data,
                 max_gas,
-                gas_price,
                 datastore,
             } => {
                 self.u32_serializer
                     .serialize(&u32::from(OperationTypeId::ExecuteSC), buffer)?;
                 self.u64_serializer.serialize(max_gas, buffer)?;
-                self.amount_serializer.serialize(gas_price, buffer)?;
                 self.vec_u8_serializer.serialize(data, buffer)?;
                 self.datastore_serializer.serialize(datastore, buffer)?;
             }
@@ -697,9 +691,6 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                         context("Failed max_gas deserialization", |input| {
                             self.max_gas_deserializer.deserialize(input)
                         }),
-                        context("Failed gas_price deserialization", |input| {
-                            self.amount_deserializer.deserialize(input)
-                        }),
                         context("Failed data deserialization", |input| {
                             self.data_deserializer.deserialize(input)
                         }),
@@ -708,14 +699,11 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                         }),
                     )),
                 )
-                .map(
-                    |(max_gas, gas_price, data, datastore)| OperationType::ExecuteSC {
-                        data,
-                        max_gas,
-                        gas_price,
-                        datastore,
-                    },
-                )
+                .map(|(max_gas, data, datastore)| OperationType::ExecuteSC {
+                    data,
+                    max_gas,
+                    datastore,
+                })
                 .parse(input),
                 OperationTypeId::CallSC => context(
                     "Failed CallSC deserialization",
@@ -816,9 +804,7 @@ impl WrappedOperation {
             OperationType::Transaction { amount, .. } => *amount,
             OperationType::RollBuy { roll_count } => roll_price.saturating_mul_u64(*roll_count),
             OperationType::RollSell { .. } => Amount::zero(),
-            OperationType::ExecuteSC {
-                max_gas, gas_price, ..
-            } => gas_price.saturating_mul_u64(*max_gas),
+            OperationType::ExecuteSC { max_gas, .. } => Amount::from_raw(*max_gas),
             OperationType::CallSC {
                 max_gas,
                 gas_price,
