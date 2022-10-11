@@ -399,8 +399,6 @@ pub enum OperationType {
         max_gas: u64,
         /// Extra coins that are spent from the caller's balance and transferred to the target
         coins: Amount,
-        /// The price per unit of gas that the caller is willing to pay for the execution.
-        gas_price: Amount,
     },
 }
 
@@ -434,7 +432,6 @@ impl std::fmt::Display for OperationType {
             OperationType::CallSC {
                 max_gas,
                 coins,
-                gas_price,
                 target_addr,
                 target_func,
                 param
@@ -444,7 +441,6 @@ impl std::fmt::Display for OperationType {
                 writeln!(f, "\t- target function:{}", target_func)?;
                 writeln!(f, "\t- target parameter:{}", param)?;
                 writeln!(f, "\t- max_gas:{}", max_gas)?;
-                writeln!(f, "\t- gas_price:{}", gas_price)?;
                 writeln!(f, "\t- coins:{}", coins)?;
             }
         }
@@ -541,13 +537,11 @@ impl Serializer<OperationType> for OperationTypeSerializer {
                 param,
                 max_gas,
                 coins,
-                gas_price,
             } => {
                 self.u32_serializer
                     .serialize(&u32::from(OperationTypeId::CallSC), buffer)?;
                 self.u64_serializer.serialize(max_gas, buffer)?;
                 self.amount_serializer.serialize(coins, buffer)?;
-                self.amount_serializer.serialize(gas_price, buffer)?;
                 buffer.extend(target_addr.to_bytes());
                 self.function_name_serializer
                     .serialize(target_func, buffer)?;
@@ -714,9 +708,6 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                         context("Failed coins deserialization", |input| {
                             self.amount_deserializer.deserialize(input)
                         }),
-                        context("Failed gas_price deserialization", |input| {
-                            self.amount_deserializer.deserialize(input)
-                        }),
                         context("Failed target_addr deserialization", |input| {
                             self.address_deserializer.deserialize(input)
                         }),
@@ -729,15 +720,12 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                     )),
                 )
                 .map(
-                    |(max_gas, coins, gas_price, target_addr, target_func, param)| {
-                        OperationType::CallSC {
-                            target_addr,
-                            target_func,
-                            param,
-                            max_gas,
-                            coins,
-                            gas_price,
-                        }
+                    |(max_gas, coins, target_addr, target_func, param)| OperationType::CallSC {
+                        target_addr,
+                        target_func,
+                        param,
+                        max_gas,
+                        coins,
                     },
                 )
                 .parse(input),
@@ -805,14 +793,9 @@ impl WrappedOperation {
             OperationType::RollBuy { roll_count } => roll_price.saturating_mul_u64(*roll_count),
             OperationType::RollSell { .. } => Amount::zero(),
             OperationType::ExecuteSC { max_gas, .. } => Amount::from_raw(*max_gas),
-            OperationType::CallSC {
-                max_gas,
-                gas_price,
-                coins,
-                ..
-            } => gas_price
-                .saturating_mul_u64(*max_gas)
-                .saturating_add(*coins),
+            OperationType::CallSC { max_gas, coins, .. } => {
+                Amount::from_raw(max_gas.saturating_add(coins.to_raw()))
+            }
         };
 
         // add all fees and return

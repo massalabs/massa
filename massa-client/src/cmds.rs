@@ -935,7 +935,6 @@ impl Command {
                         param,
                         max_gas,
                         coins,
-                        gas_price,
                     },
                     fee,
                     addr,
