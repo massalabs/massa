@@ -27,8 +27,8 @@ pub mod composite;
 pub mod config;
 /// datastore serialization / deserialization
 pub mod datastore;
-/// Denouncement
-pub mod denouncement;
+/// Denunciation
+pub mod denunciation;
 /// endorsements
 pub mod endorsement;
 /// models error

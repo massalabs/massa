@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
-use crate::denouncement::{Denouncement, DenouncementDeserializer, DenouncementSerializer};
+use crate::denunciation::{Denunciation, DenunciationDeserializer, DenunciationSerializer};
 use crate::prehash::{PreHashSet, PreHashed};
 use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
 use crate::{
@@ -198,7 +198,7 @@ enum OperationTypeId {
     RollSell = 2,
     ExecuteSC = 3,
     CallSC = 4,
-    Denouncement = 5,
+    Denunciation = 5,
 }
 
 /// the operation as sent in the network
@@ -427,9 +427,9 @@ pub enum OperationType {
         gas_price: Amount,
     },
     /// Report on double block (at the same slot) or multiple endorsement (same slot, same index)
-    Denouncement {
-        /// The denouncement
-        data: Denouncement,
+    Denunciation {
+        /// The Denunciation
+        data: Denunciation,
     },
 }
 
@@ -478,10 +478,10 @@ impl std::fmt::Display for OperationType {
                 writeln!(f, "\t- gas_price:{}", gas_price)?;
                 writeln!(f, "\t- coins:{}", coins)?;
             }
-            OperationType::Denouncement {
+            OperationType::Denunciation {
                 data
             } => {
-                writeln!(f, "Denouncement:")?;
+                writeln!(f, "Denunciation:")?;
                 writeln!(f, "\t- {}", data)?;
             }
         }
@@ -498,7 +498,7 @@ pub struct OperationTypeSerializer {
     function_name_serializer: StringSerializer<U16VarIntSerializer, u16>,
     parameter_serializer: StringSerializer<U32VarIntSerializer, u32>,
     datastore_serializer: DatastoreSerializer,
-    denouncement_serializer: DenouncementSerializer,
+    denunciation_serializer: DenunciationSerializer,
 }
 
 impl OperationTypeSerializer {
@@ -512,7 +512,7 @@ impl OperationTypeSerializer {
             function_name_serializer: StringSerializer::new(U16VarIntSerializer::new()),
             parameter_serializer: StringSerializer::new(U32VarIntSerializer::new()),
             datastore_serializer: DatastoreSerializer::new(),
-            denouncement_serializer: DenouncementSerializer::new(),
+            denunciation_serializer: DenunciationSerializer::new(),
         }
     }
 }
@@ -594,10 +594,10 @@ impl Serializer<OperationType> for OperationTypeSerializer {
                     .serialize(target_func, buffer)?;
                 self.parameter_serializer.serialize(param, buffer)?;
             }
-            OperationType::Denouncement { data } => {
+            OperationType::Denunciation { data } => {
                 self.u32_serializer
-                    .serialize(&u32::from(OperationTypeId::Denouncement), buffer)?;
-                self.denouncement_serializer.serialize(&data, buffer)?;
+                    .serialize(&u32::from(OperationTypeId::Denunciation), buffer)?;
+                self.denunciation_serializer.serialize(&data, buffer)?;
             }
         }
         Ok(())
@@ -615,7 +615,7 @@ pub struct OperationTypeDeserializer {
     function_name_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
     parameter_deserializer: StringDeserializer<U32VarIntDeserializer, u32>,
     datastore_deserializer: DatastoreDeserializer,
-    denoucement_deserializer: DenouncementDeserializer,
+    denoucement_deserializer: DenunciationDeserializer,
 }
 
 impl OperationTypeDeserializer {
@@ -654,7 +654,7 @@ impl OperationTypeDeserializer {
                 max_op_datastore_key_length,
                 max_op_datastore_value_length,
             ),
-            denoucement_deserializer: DenouncementDeserializer::new(
+            denoucement_deserializer: DenunciationDeserializer::new(
                 // FIXME
                 32, 16,
             ),
@@ -798,13 +798,13 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                     },
                 )
                 .parse(input),
-                OperationTypeId::Denouncement => context(
-                    "Failed Denouncement op deser",
+                OperationTypeId::Denunciation => context(
+                    "Failed Denunciation op deser",
                     context("Failed max_gas deserialization", |input| {
                         self.denoucement_deserializer.deserialize(input)
                     }),
                 )
-                .map(|de| OperationType::Denouncement { data: de })
+                .map(|de| OperationType::Denunciation { data: de })
                 .parse(input),
             }
         })
@@ -831,7 +831,7 @@ impl WrappedOperation {
             OperationType::RollBuy { .. } => 0,
             OperationType::RollSell { .. } => 0,
             OperationType::Transaction { .. } => 0,
-            OperationType::Denouncement { .. } => 0,
+            OperationType::Denunciation { .. } => 0,
         }
     }
 
@@ -843,7 +843,7 @@ impl WrappedOperation {
             OperationType::RollBuy { .. } => Amount::default(),
             OperationType::RollSell { .. } => Amount::default(),
             OperationType::Transaction { .. } => Amount::default(),
-            OperationType::Denouncement { .. } => Amount::default(),
+            OperationType::Denunciation { .. } => Amount::default(),
         }
     }
 
@@ -875,7 +875,7 @@ impl WrappedOperation {
             OperationType::CallSC { target_addr, .. } => {
                 res.insert(*target_addr);
             }
-            OperationType::Denouncement { .. } => {}
+            OperationType::Denunciation { .. } => {}
         }
         res
     }
@@ -898,7 +898,7 @@ impl WrappedOperation {
             } => gas_price
                 .saturating_mul_u64(*max_gas)
                 .saturating_add(*coins),
-            OperationType::Denouncement { .. } => Amount::zero(),
+            OperationType::Denunciation { .. } => Amount::zero(),
         };
 
         // add all fees and return
@@ -918,7 +918,7 @@ impl WrappedOperation {
             }
             OperationType::ExecuteSC { .. } => {}
             OperationType::CallSC { .. } => {}
-            OperationType::Denouncement { .. } => {}
+            OperationType::Denunciation { .. } => {}
         }
         Ok(res)
     }
@@ -1333,7 +1333,7 @@ mod tests {
     };
 
     use super::*;
-    use crate::denouncement::{DenouncementProof, EndorsementDenouncement};
+    use crate::denunciation::{DenunciationProof, EndorsementDenunciation};
     use crate::slot::Slot;
     use massa_serialization::DeserializeError;
     use massa_signature::KeyPair;
@@ -1567,7 +1567,7 @@ mod tests {
 
     #[test]
     #[serial]
-    fn test_denouncement() {
+    fn test_denunciation() {
         let sender_keypair = KeyPair::generate();
 
         let target_keypair = KeyPair::generate();
@@ -1581,10 +1581,10 @@ mod tests {
         let sig2 = de_keypair.sign(&data2).unwrap();
         let slot = Slot::new(1, 5);
 
-        let denouncement = Denouncement {
+        let denunciation = Denunciation {
             slot,
             pub_key: de_keypair.get_public_key(),
-            proof: DenouncementProof::Endorsement(EndorsementDenouncement {
+            proof: DenunciationProof::Endorsement(EndorsementDenunciation {
                 signature_1: sig,
                 hash_1: data,
                 index_1: 3,
@@ -1594,9 +1594,9 @@ mod tests {
             }),
         };
 
-        assert_eq!(denouncement.is_valid(), true);
+        assert_eq!(denunciation.is_valid(), true);
 
-        let op = OperationType::Denouncement { data: denouncement };
+        let op = OperationType::Denunciation { data: denunciation };
 
         let mut ser_type = Vec::new();
         OperationTypeSerializer::new()
@@ -1659,7 +1659,7 @@ mod tests {
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
         let res: bool = match res_op.content.op {
-            OperationType::Denouncement { data } => { data.is_valid() },
+            OperationType::Denunciation { data } => { data.is_valid() },
             _ => false,
         };
         assert_eq!(res, true);
