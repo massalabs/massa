@@ -1,9 +1,7 @@
-use std::{
-    collections::BTreeMap,
-    ops::Bound::{Excluded, Included},
-    path::PathBuf,
+use crate::DeferredCredits;
+use crate::{
+    CycleInfo, PoSChanges, PoSFinalState, PosError, PosResult, ProductionStats, SelectorController,
 };
-
 use bitvec::vec::BitVec;
 use massa_hash::Hash;
 use massa_models::{
@@ -13,11 +11,12 @@ use massa_models::{
     slot::{Slot, SlotDeserializer},
 };
 use massa_serialization::U64VarIntDeserializer;
-use tracing::debug;
-
-use crate::{
-    CycleInfo, PoSChanges, PoSFinalState, PosError, PosResult, ProductionStats, SelectorController,
+use std::{
+    collections::BTreeMap,
+    ops::Bound::{Excluded, Included},
+    path::PathBuf,
 };
+use tracing::debug;
 
 impl PoSFinalState {
     /// create a new `PoSFinalState`
@@ -53,7 +52,7 @@ impl PoSFinalState {
 
         Ok(Self {
             cycle_history: Default::default(),
-            deferred_credits: Default::default(),
+            deferred_credits: DeferredCredits::default(),
             selector,
             initial_rolls,
             initial_seeds,

@@ -185,6 +185,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 slot,
                 final_state_changes,
             } => {
+                // IMPORTANT TODO
                 self.u32_serializer
                     .serialize(&u32::from(MessageServerTypeId::FinalStatePart), buffer)?;
                 self.vec_u8_serializer.serialize(ledger_data, buffer)?;
