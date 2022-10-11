@@ -13,8 +13,7 @@ mod cycle_info;
 mod deferred_credits;
 mod error;
 mod pos_changes;
-mod pos_final_state_impl;
-mod pos_streaming;
+mod pos_final_state;
 mod settings;
 
 pub use controller_traits::{Selection, SelectorController, SelectorManager};
@@ -22,7 +21,7 @@ pub use cycle_info::*;
 pub use deferred_credits::*;
 pub use error::*;
 pub use pos_changes::*;
-pub use pos_streaming::*;
+pub use pos_final_state::*;
 pub use settings::SelectorConfig;
 
 #[cfg(feature = "testing")]
