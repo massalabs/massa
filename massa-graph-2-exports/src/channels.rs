@@ -1,3 +1,5 @@
+use std::sync::mpsc::Receiver;
+
 use crossbeam_channel::Sender;
 use massa_execution_exports::ExecutionController;
 use massa_pool_exports::PoolController;

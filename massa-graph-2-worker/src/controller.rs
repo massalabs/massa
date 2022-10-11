@@ -95,7 +95,8 @@ impl GraphController for GraphControllerImpl {
     }
 
     fn get_stats(&self) -> GraphResult<ConsensusStats> {
-        self.get_stats()
+        //TODO: Get the stats here
+        todo!()
     }
 
     fn get_best_parents(&self) -> Vec<(BlockId, u64)> {

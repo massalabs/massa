@@ -18,6 +18,7 @@ use massa_models::{
 use massa_storage::Storage;
 
 mod process;
+mod process_commands;
 mod verifications;
 
 #[derive(Clone)]
@@ -224,7 +225,7 @@ impl GraphState {
             while let Some((current_block, _)) = self.get_full_active_block(&current_block_id) {
                 let parent_id = {
                     if !current_block.parents.is_empty() {
-                        Some(current_block.parents[thread as usize].0)
+                        Some(current_block.parents[thread].0)
                     } else {
                         None
                     }
@@ -388,7 +389,7 @@ impl GraphState {
         self.active_index
             .iter()
             .map(|b_id| {
-                let block_infos = match self.block_statuses.get(&b_id) {
+                let block_infos = match self.block_statuses.get(b_id) {
                     Some(BlockStatus::Active { a_block, storage }) => {
                         (a_block.slot, storage.clone())
                     }

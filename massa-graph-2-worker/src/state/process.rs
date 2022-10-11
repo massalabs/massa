@@ -88,7 +88,7 @@ impl GraphState {
                         block_id
                     )));
                 };
-                match self.check_header(&block_id, &header, current_slot, &self)? {
+                match self.check_header(&block_id, &header, current_slot, self)? {
                     HeaderCheckOutcome::Proceed { .. } => {
                         // set as waiting dependencies
                         let mut dependencies = PreHashSet::<BlockId>::default();
@@ -206,7 +206,7 @@ impl GraphState {
                     &block_id,
                     &stored_block.content.header,
                     current_slot,
-                    &self,
+                    self,
                 )? {
                     HeaderCheckOutcome::Proceed {
                         parents_hash_period,
@@ -611,7 +611,7 @@ impl GraphState {
             );
             let before = self.max_cliques.len();
             self.max_cliques = self
-                .compute_max_cliques(&self)
+                .compute_max_cliques(self)
                 .into_iter()
                 .map(|c| Clique {
                     block_ids: c,

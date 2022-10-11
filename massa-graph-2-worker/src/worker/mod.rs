@@ -1,5 +1,4 @@
 use massa_graph::BootstrapableGraph;
-use massa_graph_2_exports::events::GraphEvent;
 use massa_graph_2_exports::{GraphChannels, GraphConfig, GraphController, GraphManager};
 use massa_models::address::Address;
 use massa_models::block::{BlockId, WrappedHeader};
@@ -10,7 +9,6 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use std::collections::VecDeque;
-use std::sync::mpsc::Receiver;
 use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Instant;
@@ -97,8 +95,8 @@ pub fn start_graph_worker(
         .name("graph worker".into())
         .spawn(move || {
             let mut graph_worker = GraphWorker::new(
-                rx,
                 config,
+                rx,
                 channels,
                 shared_state_cloned,
                 init_graph,

@@ -24,17 +24,36 @@ enum WaitingStatus {
 }
 
 impl GraphWorker {
-    fn manage_command(&self, command: GraphCommand) -> GraphResult<()> {
+    fn manage_command(&mut self, command: GraphCommand) -> GraphResult<()> {
         match command {
-            GraphCommand::RegisterBlockHeader(_, _) => {}
-            GraphCommand::RegisterBlock(_, _, _) => {
-                // TODO
+            GraphCommand::RegisterBlockHeader(block_id, header) => {
+                {
+                    let mut write_shared_state = self.shared_state.write();
+                    write_shared_state.register_block_header(
+                        block_id,
+                        header,
+                        self.previous_slot,
+                    )?;
+                }
+                self.block_db_changed()
+            }
+            GraphCommand::RegisterBlock(block_id, slot, block_storage) => {
+                {
+                    let mut write_shared_state = self.shared_state.write();
+                    write_shared_state.register_block(
+                        block_id,
+                        slot,
+                        self.previous_slot,
+                        block_storage,
+                    )?;
+                }
+                self.block_db_changed()
             }
             _ => {
+                Ok(())
                 // TODO
             }
         }
-        Ok(())
     }
 
     /// Wait and interrupt or wait until an instant or a stop signal
@@ -43,14 +62,13 @@ impl GraphWorker {
     /// Returns the error of the process of the command if any.
     /// Returns true if we reached the instant.
     /// Returns false if we were interrupted by a command.
-    fn wait_slot_or_command(&self, deadline: Instant) -> WaitingStatus {
+    fn wait_slot_or_command(&mut self, deadline: Instant) -> WaitingStatus {
         match self.command_receiver.recv_deadline(deadline) {
             // message received => manage it
             Ok(command) => {
-                match self.manage_command(command) {
-                    Err(err) => warn!("Error in graph: {}", err),
-                    Ok(()) => {}
-                };
+                if let Err(err) = self.manage_command(command) {
+                    warn!("Error in graph: {}", err);
+                }
                 WaitingStatus::Interrupted
             }
             // timeout => continue main loop
@@ -100,6 +118,9 @@ impl GraphWorker {
     }
 
     /// Notify execution about blockclique changes and finalized blocks.
+    ///
+    /// # Arguments:
+    /// * `finalized_blocks`: Block that became final and need to be send to execution
     fn notify_execution(&mut self, finalized_blocks: HashMap<Slot, BlockId>) {
         let read_shared_state = self.shared_state.read();
         // List new block storage instances that Execution doesn't know about.
@@ -314,13 +335,19 @@ impl GraphWorker {
         Ok(())
     }
 
+    /// Runs in loop forever. This loop must stop every slot to perform operations on stats and graph
+    /// but can be stopped anytime by a command received.
     pub fn run(&mut self) {
         loop {
             match self.wait_slot_or_command(self.next_instant) {
                 WaitingStatus::Ended => {
-                    //TODO: Desync, stats, block_db changed
-                    self.slot_tick(self.next_slot);
                     self.previous_slot = Some(self.next_slot);
+                    if let Err(err) = self.slot_tick(self.next_slot) {
+                        warn!("Error while processing block tick: {}", err);
+                    }
+                    if let Err(err) = self.stats_tick() {
+                        warn!("Error while processing stats tick: {}", err);
+                    }
                     (self.next_slot, self.next_instant) = self.get_next_slot(Some(self.next_slot));
                 }
                 WaitingStatus::Disconnected => {

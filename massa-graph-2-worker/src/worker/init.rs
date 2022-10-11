@@ -30,12 +30,12 @@ use super::GraphWorker;
 /// Creates genesis block in given thread.
 ///
 /// # Arguments
-/// * `cfg`: consensus configuration
+/// * `cfg`: graph configuration
 /// * `thread_number`: thread in which we want a genesis block
-pub fn create_genesis_block(
-    cfg: &GraphConfig,
-    thread_number: u8,
-) -> GraphResult<(BlockId, WrappedBlock)> {
+///
+/// # Returns
+/// A genesis block
+pub fn create_genesis_block(cfg: &GraphConfig, thread_number: u8) -> GraphResult<WrappedBlock> {
     let keypair = &cfg.genesis_key;
     let header = BlockHeader::new_wrapped(
         BlockHeader {
@@ -48,23 +48,32 @@ pub fn create_genesis_block(
         keypair,
     )?;
 
-    Ok((
-        header.id,
-        Block::new_wrapped(
-            Block {
-                header,
-                operations: Default::default(),
-            },
-            BlockSerializer::new(),
-            keypair,
-        )?,
-    ))
+    Ok(Block::new_wrapped(
+        Block {
+            header,
+            operations: Default::default(),
+        },
+        BlockSerializer::new(),
+        keypair,
+    )?)
 }
 
 impl GraphWorker {
+    /// Creates a new Graph worker.
+    ///
+    /// # Arguments
+    /// * `config`: graph configuration
+    /// * `command_receiver`: channel to receive commands from controller
+    /// * `channels`: channels to communicate with other workers
+    /// * `shared_state`: shared state with the controller
+    /// * `init_graph`: Optional graph of blocks to init the worker
+    /// * `storage`: shared storage
+    ///
+    /// # Returns:
+    /// A GraphWorker, to interact with it use the `GraphController`
     pub fn new(
-        command_receiver: mpsc::Receiver<GraphCommand>,
         config: GraphConfig,
+        command_receiver: mpsc::Receiver<GraphCommand>,
         channels: GraphChannels,
         shared_state: Arc<RwLock<GraphState>>,
         init_graph: Option<BootstrapableGraph>,
@@ -79,19 +88,19 @@ impl GraphWorker {
             now,
         )
         .expect("Couldn't get the init slot consensus.");
-        // load genesis blocks
 
+        // load genesis blocks
         let mut block_statuses = PreHashMap::default();
         let mut genesis_block_ids = Vec::with_capacity(config.thread_count as usize);
         for thread in 0u8..config.thread_count {
-            let (block_id, block) = create_genesis_block(&config, thread).map_err(|err| {
+            let block = create_genesis_block(&config, thread).map_err(|err| {
                 GraphError::GenesisCreationError(format!("genesis error {}", err))
             })?;
             let mut storage = storage.clone_without_refs();
             storage.store_block(block.clone());
-            genesis_block_ids.push(block_id);
+            genesis_block_ids.push(block.id);
             block_statuses.insert(
-                block_id,
+                block.id,
                 BlockStatus::Active {
                     a_block: Box::new(ActiveBlock {
                         creator_address: block.creator_address,
@@ -99,7 +108,7 @@ impl GraphWorker {
                         children: vec![PreHashMap::default(); config.thread_count as usize],
                         descendants: Default::default(),
                         is_final: true,
-                        block_id,
+                        block_id: block.id,
                         slot: block.content.header.content.slot,
                         fitness: block.get_fitness(),
                     }),
@@ -275,6 +284,7 @@ impl GraphWorker {
         Ok(res_graph)
     }
 
+    /// Internal function used at initialization of the `GraphWorker` to link blocks with their parents
     fn claim_parent_refs(&mut self) -> GraphResult<()> {
         let mut write_shared_state = self.shared_state.write();
         for (_b_id, block_status) in write_shared_state.block_statuses.iter_mut() {
