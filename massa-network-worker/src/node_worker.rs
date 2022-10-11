@@ -185,7 +185,7 @@ impl NodeWorker {
                             r
                         },
                         Err(e) => {
-                            masa_trace!("node_worker.run_loop.node_reader.error", , {"node": self.node_id, "err": format!("{}", err)});
+                            massa_trace!("node_worker.run_loop.node_reader.error", {"node": self.node_id, "err": format!("{}", e)});
                             ConnectionClosureReason::Failed
                         }
                     };
