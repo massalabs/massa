@@ -53,7 +53,7 @@ impl DeferredCredits {
     }
 }
 
-/// Deserializer for DeferredCredits
+/// Deserializer for `DeferredCredits`
 pub struct DeferredCreditsDeserializer {
     u64_deserializer: U64VarIntDeserializer,
     slot_deserializer: SlotDeserializer,
@@ -61,7 +61,7 @@ pub struct DeferredCreditsDeserializer {
 }
 
 impl DeferredCreditsDeserializer {
-    /// Creates a new DeferredCredits deserializer
+    /// Creates a new `DeferredCredits` deserializer
     pub fn new(thread_count: u8) -> DeferredCreditsDeserializer {
         DeferredCreditsDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
@@ -96,7 +96,7 @@ impl Deserializer<DeferredCredits> for DeferredCreditsDeserializer {
     }
 }
 
-/// Deserializer for a single Credit
+/// Deserializer for a single credit
 struct CreditDeserializer {
     u64_deserializer: U64VarIntDeserializer,
     address_deserializer: AddressDeserializer,
@@ -104,7 +104,7 @@ struct CreditDeserializer {
 }
 
 impl CreditDeserializer {
-    /// Creates a new Credit deserializer
+    /// Creates a new single credit deserializer
     fn new() -> CreditDeserializer {
         CreditDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),

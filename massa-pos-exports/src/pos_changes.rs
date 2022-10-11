@@ -1,6 +1,6 @@
 use crate::{
     DeferredCredits, DeferredCreditsDeserializer, ProductionStats, ProductionStatsDeserializer,
-    RollChangesDeserializer,
+    RollsDeserializer,
 };
 use bitvec::prelude::*;
 use massa_models::{
@@ -147,7 +147,7 @@ impl Serializer<PoSChanges> for PoSChangesSerializer {
 /// `PoSChanges` Deserializer
 pub struct PoSChangesDeserializer {
     bit_vec_deserializer: BitVecDeserializer,
-    roll_changes_deserializer: RollChangesDeserializer,
+    roll_changes_deserializer: RollsDeserializer,
     production_stats_deserializer: ProductionStatsDeserializer,
     deferred_credits_deserializer: DeferredCreditsDeserializer,
 }
@@ -157,7 +157,7 @@ impl PoSChangesDeserializer {
     pub fn new(thread_count: u8) -> PoSChangesDeserializer {
         PoSChangesDeserializer {
             bit_vec_deserializer: BitVecDeserializer::new(),
-            roll_changes_deserializer: RollChangesDeserializer::new(),
+            roll_changes_deserializer: RollsDeserializer::new(),
             production_stats_deserializer: ProductionStatsDeserializer::new(),
             deferred_credits_deserializer: DeferredCreditsDeserializer::new(thread_count),
         }

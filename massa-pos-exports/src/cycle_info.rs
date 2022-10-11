@@ -59,14 +59,14 @@ impl ProductionStats {
     }
 }
 
-/// Deserializer for ProductionStats
+/// Deserializer for `ProductionStats`
 pub struct ProductionStatsDeserializer {
     address_deserializer: AddressDeserializer,
     u64_deserializer: U64VarIntDeserializer,
 }
 
 impl ProductionStatsDeserializer {
-    /// Creates a new ProductionStats deserializer
+    /// Creates a new `ProductionStats` deserializer
     pub fn new() -> ProductionStatsDeserializer {
         ProductionStatsDeserializer {
             address_deserializer: AddressDeserializer::new(),
@@ -111,21 +111,23 @@ impl Deserializer<PreHashMap<Address, ProductionStats>> for ProductionStatsDeser
     }
 }
 
-pub struct RollChangesDeserializer {
+/// Deserializer for rolls
+pub struct RollsDeserializer {
     address_deserializer: AddressDeserializer,
     u64_deserializer: U64VarIntDeserializer,
 }
 
-impl RollChangesDeserializer {
-    pub fn new() -> RollChangesDeserializer {
-        RollChangesDeserializer {
+impl RollsDeserializer {
+    /// Creates a new rolls deserializer
+    pub fn new() -> RollsDeserializer {
+        RollsDeserializer {
             address_deserializer: AddressDeserializer::new(),
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
         }
     }
 }
 
-impl Deserializer<PreHashMap<Address, u64>> for RollChangesDeserializer {
+impl Deserializer<PreHashMap<Address, u64>> for RollsDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
