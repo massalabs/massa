@@ -1,7 +1,18 @@
 use bitvec::vec::BitVec;
-use massa_models::{address::Address, prehash::PreHashMap};
+use massa_models::{
+    address::{Address, AddressDeserializer},
+    prehash::PreHashMap,
+};
+use massa_serialization::{Deserializer, U64VarIntDeserializer};
+use nom::{
+    error::{context, ContextError, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult, Parser,
+};
 use num::rational::Ratio;
 use std::collections::BTreeMap;
+use std::ops::Bound::Included;
 
 /// State of a cycle for all threads
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -45,5 +56,93 @@ impl ProductionStats {
         self.block_failure_count = self
             .block_failure_count
             .saturating_add(stats.block_failure_count);
+    }
+}
+
+/// Deserializer for ProductionStats
+pub struct ProductionStatsDeserializer {
+    address_deserializer: AddressDeserializer,
+    u64_deserializer: U64VarIntDeserializer,
+}
+
+impl ProductionStatsDeserializer {
+    /// Creates a new ProductionStats deserializer
+    pub fn new() -> ProductionStatsDeserializer {
+        ProductionStatsDeserializer {
+            address_deserializer: AddressDeserializer::new(),
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+        }
+    }
+}
+
+impl Deserializer<PreHashMap<Address, ProductionStats>> for ProductionStatsDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], PreHashMap<Address, ProductionStats>, E> {
+        context(
+            "Failed ProductionStats deserialization",
+            length_count(
+                context("Failed length deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                tuple((
+                    |input| self.address_deserializer.deserialize(input),
+                    |input| self.u64_deserializer.deserialize(input),
+                    |input| self.u64_deserializer.deserialize(input),
+                )),
+            ),
+        )
+        .map(|elements| {
+            elements
+                .into_iter()
+                .map(|(addr, block_success_count, block_failure_count)| {
+                    (
+                        addr,
+                        ProductionStats {
+                            block_success_count,
+                            block_failure_count,
+                        },
+                    )
+                })
+                .collect()
+        })
+        .parse(buffer)
+    }
+}
+
+pub struct RollChangesDeserializer {
+    address_deserializer: AddressDeserializer,
+    u64_deserializer: U64VarIntDeserializer,
+}
+
+impl RollChangesDeserializer {
+    pub fn new() -> RollChangesDeserializer {
+        RollChangesDeserializer {
+            address_deserializer: AddressDeserializer::new(),
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+        }
+    }
+}
+
+impl Deserializer<PreHashMap<Address, u64>> for RollChangesDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], PreHashMap<Address, u64>, E> {
+        context(
+            "Failed RollChanges deserialization",
+            length_count(
+                context("Failed length deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                tuple((
+                    |input| self.address_deserializer.deserialize(input),
+                    |input| self.u64_deserializer.deserialize(input),
+                )),
+            ),
+        )
+        .map(|elements| elements.into_iter().collect())
+        .parse(buffer)
     }
 }
