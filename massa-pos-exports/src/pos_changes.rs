@@ -147,7 +147,7 @@ impl Serializer<PoSChanges> for PoSChangesSerializer {
 /// `PoSChanges` Deserializer
 pub struct PoSChangesDeserializer {
     bit_vec_deserializer: BitVecDeserializer,
-    roll_changes_deserializer: RollsDeserializer,
+    rolls_deserializer: RollsDeserializer,
     production_stats_deserializer: ProductionStatsDeserializer,
     deferred_credits_deserializer: DeferredCreditsDeserializer,
 }
@@ -157,7 +157,7 @@ impl PoSChangesDeserializer {
     pub fn new(thread_count: u8) -> PoSChangesDeserializer {
         PoSChangesDeserializer {
             bit_vec_deserializer: BitVecDeserializer::new(),
-            roll_changes_deserializer: RollsDeserializer::new(),
+            rolls_deserializer: RollsDeserializer::new(),
             production_stats_deserializer: ProductionStatsDeserializer::new(),
             deferred_credits_deserializer: DeferredCreditsDeserializer::new(thread_count),
         }
@@ -173,7 +173,7 @@ impl Deserializer<PoSChanges> for PoSChangesDeserializer {
             "Failed PoSChanges deserialization",
             tuple((
                 |input| self.bit_vec_deserializer.deserialize(input),
-                |input| self.roll_changes_deserializer.deserialize(input),
+                |input| self.rolls_deserializer.deserialize(input),
                 |input| self.production_stats_deserializer.deserialize(input),
                 |input| self.deferred_credits_deserializer.deserialize(input),
             )),
@@ -181,7 +181,7 @@ impl Deserializer<PoSChanges> for PoSChangesDeserializer {
         .map(
             |(seed_bits, roll_changes, production_stats, deferred_credits)| PoSChanges {
                 seed_bits,
-                roll_changes,
+                roll_changes: roll_changes.into_iter().collect(),
                 production_stats,
                 deferred_credits,
             },

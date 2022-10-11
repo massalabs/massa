@@ -84,18 +84,20 @@ impl Serializer<CycleInfo> for CycleInfoSerializer {
 
 /// Deserializer for `CycleInfo`
 pub struct CycleInfoDeserializer {
-    address_deser: AddressDeserializer,
     u64_deser: U64VarIntDeserializer,
+    rolls_deser: RollsDeserializer,
     bitvec_deser: BitVecDeserializer,
+    production_stats_deser: ProductionStatsDeserializer,
 }
 
 impl CycleInfoDeserializer {
     /// Creates a new `CycleInfo` deserializer
     pub fn new() -> CycleInfoDeserializer {
         CycleInfoDeserializer {
-            address_deser: AddressDeserializer::new(),
             u64_deser: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            rolls_deser: RollsDeserializer::new(),
             bitvec_deser: BitVecDeserializer::new(),
+            production_stats_deser: ProductionStatsDeserializer::new(),
         }
     }
 }
@@ -113,49 +115,24 @@ impl Deserializer<CycleInfo> for CycleInfoDeserializer {
                     "complete",
                     alt((value(true, tag(&[1])), value(false, tag(&[0])))),
                 ),
-                context(
-                    "roll_counts",
-                    length_count(
-                        context("roll_counts length", |input| {
-                            self.u64_deser.deserialize(input)
-                        }),
-                        tuple((
-                            context("address", |input| self.address_deser.deserialize(input)),
-                            context("count", |input| self.u64_deser.deserialize(input)),
-                        )),
-                    ),
-                ),
+                context("roll_counts", |input| self.rolls_deser.deserialize(input)),
                 context("rng_seed", |input| self.bitvec_deser.deserialize(input)),
-                context(
-                    "production_stats",
-                    length_count(
-                        context("production_stats length", |input| {
-                            self.u64_deser.deserialize(input)
-                        }),
-                        tuple((
-                            context("address", |input| self.address_deser.deserialize(input)),
-                            context("block_success_count", |input| {
-                                self.u64_deser.deserialize(input)
-                            }),
-                            context("block_failure_count", |input| {
-                                self.u64_deser.deserialize(input)
-                            }),
-                        )),
-                    ),
-                ),
+                context("production_stats", |input| {
+                    self.production_stats_deser.deserialize(input)
+                }),
             )),
         )
         .map(
             |(cycle, complete, roll_counts, rng_seed, production_stats): (
-                u64,                      // cycle
-                bool,                     // complete
-                Vec<(Address, u64)>,      // roll_counts
-                bitvec::vec::BitVec<u8>,  // rng_seed
-                Vec<(Address, u64, u64)>, // production_stats (address, n_success, n_fail)
+                u64,                                  // cycle
+                bool,                                 // complete
+                Vec<(Address, u64)>,                  // roll_counts
+                BitVec<u8>,                           // rng_seed
+                PreHashMap<Address, ProductionStats>, // production_stats (address, n_success, n_fail)
             )| CycleInfo {
                 cycle,
                 complete,
-                roll_counts: roll_counts,
+                roll_counts: roll_counts.into_iter().collect(),
                 rng_seed,
                 production_stats: production_stats,
             },
@@ -262,11 +239,11 @@ impl RollsDeserializer {
     }
 }
 
-impl Deserializer<PreHashMap<Address, u64>> for RollsDeserializer {
+impl Deserializer<Vec<(Address, u64)>> for RollsDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], PreHashMap<Address, u64>, E> {
+    ) -> IResult<&'a [u8], Vec<(Address, u64)>, E> {
         context(
             "Failed RollChanges deserialization",
             length_count(
@@ -279,7 +256,6 @@ impl Deserializer<PreHashMap<Address, u64>> for RollsDeserializer {
                 )),
             ),
         )
-        .map(|elements| elements.into_iter().collect())
         .parse(buffer)
     }
 }
