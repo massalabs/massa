@@ -1,18 +1,20 @@
 use massa_models::{
     address::{Address, AddressDeserializer},
-    amount::{Amount, AmountDeserializer},
+    amount::{Amount, AmountDeserializer, AmountSerializer},
     prehash::PreHashMap,
-    slot::{Slot, SlotDeserializer},
+    slot::{Slot, SlotDeserializer, SlotSerializer},
 };
-use massa_serialization::{Deserializer, U64VarIntDeserializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 use nom::{
     error::{context, ContextError, ParseError},
     multi::length_count,
     sequence::tuple,
     IResult, Parser,
 };
-use std::collections::BTreeMap;
-use std::ops::Bound::{Excluded, Included};
+use std::ops::Bound::{Excluded, Included, Unbounded};
+use std::{collections::BTreeMap, ops::Bound};
 
 #[derive(Debug, Default, Clone)]
 /// Structure containing all the PoS deferred credits information
@@ -50,6 +52,56 @@ impl DeferredCredits {
         for slot in delete_slots {
             self.0.remove(&slot);
         }
+    }
+}
+
+/// Serializer for `DeferredCredits`
+pub struct DeferredCreditsSerializer {
+    slot_ser: SlotSerializer,
+    u64_ser: U64VarIntSerializer,
+    amount_ser: AmountSerializer,
+    cursor: Bound<Slot>,
+}
+
+impl DeferredCreditsSerializer {
+    /// Creates a new `DeferredCredits` serializer
+    pub fn new(cursor: Bound<Slot>) -> Self {
+        Self {
+            slot_ser: SlotSerializer::new(),
+            u64_ser: U64VarIntSerializer::new(),
+            amount_ser: AmountSerializer::new(),
+            cursor,
+        }
+    }
+}
+
+impl Serializer<DeferredCredits> for DeferredCreditsSerializer {
+    fn serialize(
+        &self,
+        value: &DeferredCredits,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        let range = value.0.range((self.cursor, Unbounded));
+        // deferred credits given range length
+        if range.clone().last().is_some() {
+            self.u64_ser
+                .serialize(&(range.clone().count() as u64), buffer)?;
+        }
+        // deferred credits
+        for (slot, credits) in range.clone() {
+            // slot
+            self.slot_ser.serialize(slot, buffer)?;
+            // slot credits length
+            self.u64_ser.serialize(&(credits.len() as u64), buffer)?;
+            // slot credits
+            for (addr, amount) in credits {
+                // address
+                buffer.extend(addr.to_bytes());
+                // credited amount
+                self.amount_ser.serialize(amount, buffer)?;
+            }
+        }
+        Ok(())
     }
 }
 
