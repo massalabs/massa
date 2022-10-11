@@ -1,30 +1,22 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::{CycleInfo, DeferredCredits, ProductionStats, SelectorController};
+use crate::{CycleInfo, DeferredCredits, SelectorController};
 use massa_hash::Hash;
 use massa_models::{
     address::{Address, AddressDeserializer},
-    amount::{Amount, AmountDeserializer},
+    amount::AmountDeserializer,
     error::ModelsError,
-    serialization::BitVecDeserializer,
     slot::{Slot, SlotDeserializer},
 };
 use massa_serialization::{
-    DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
-    U64VarIntSerializer,
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::{
-    branch::alt,
-    bytes::complete::tag,
-    combinator::value,
     error::{context, ContextError, ParseError},
-    multi::length_count,
-    sequence::tuple,
     IResult, Parser,
 };
 use std::collections::{BTreeMap, VecDeque};
 use std::ops::Bound::{Excluded, Included, Unbounded};
-use tracing::warn;
 
 /// Final state of PoS
 pub struct PoSFinalState {
@@ -213,109 +205,19 @@ impl PoSFinalState {
     /// Sets a part of the Proof of Stake `cycle_history`. Used only in the bootstrap process.
     ///
     /// # Arguments
-    /// `part`: the raw data received from `get_pos_state_part` and used to update PoS State
+    /// `part`: a `CycleInfo` received from `get_pos_state_part` and used to update PoS final state
     pub fn set_cycle_history_part(
         &mut self,
-        part: &[u8],
+        part: CycleInfo,
     ) -> Result<PoSCycleStreamingStep, ModelsError> {
-        if part.is_empty() {
-            return Ok(PoSCycleStreamingStep::Finished);
+        let opt_next_cycle = self
+            .cycle_history
+            .back()
+            .map(|info| info.cycle.saturating_add(1));
+        if let Some(next_cycle) = opt_next_cycle && part.cycle != next_cycle {
+            panic!("PoS received cycle ({}) should be equal to the next expected cycle ({})", part.cycle, next_cycle);
         }
-        let u64_deser = U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX));
-        let bitvec_deser = BitVecDeserializer::new();
-        let address_deser = AddressDeserializer::new();
-        #[allow(clippy::type_complexity)]
-        let (rest, cycle): (
-            &[u8], // non-deserialized buffer remainder
-            (
-                u64,                      // cycle
-                bool,                     // complete
-                Vec<(Address, u64)>,      // roll counts
-                bitvec::vec::BitVec<u8>,  // seed
-                Vec<(Address, u64, u64)>, // production stats (address, n_success, n_fail)
-            ),
-        ) = context(
-            "cycle_history",
-            tuple((
-                context("cycle", |input| {
-                    u64_deser.deserialize::<DeserializeError>(input)
-                }),
-                context(
-                    "complete",
-                    alt((value(true, tag(&[1])), value(false, tag(&[0])))),
-                ),
-                context(
-                    "roll_counts",
-                    length_count(
-                        context("roll_counts length", |input| u64_deser.deserialize(input)),
-                        tuple((
-                            context("address", |input| address_deser.deserialize(input)),
-                            context("count", |input| u64_deser.deserialize(input)),
-                        )),
-                    ),
-                ),
-                context("rng_seed", |input| bitvec_deser.deserialize(input)),
-                context(
-                    "production_stats",
-                    length_count(
-                        context("production_stats length", |input| {
-                            u64_deser.deserialize(input)
-                        }),
-                        tuple((
-                            context("address", |input| address_deser.deserialize(input)),
-                            context("block_success_count", |input| u64_deser.deserialize(input)),
-                            context("block_failure_count", |input| u64_deser.deserialize(input)),
-                        )),
-                    ),
-                ),
-            )),
-        )
-        .parse(part)
-        .map_err(|err| ModelsError::DeserializeError(err.to_string()))?;
-
-        if !rest.is_empty() {
-            return Err(ModelsError::SerializeError(
-                "data is left after set_cycle_history_part PoSFinalState part deserialization"
-                    .to_string(),
-            ));
-        }
-
-        let stats_iter =
-            cycle
-                .4
-                .into_iter()
-                .map(|(addr, block_success_count, block_failure_count)| {
-                    (
-                        addr,
-                        ProductionStats {
-                            block_success_count,
-                            block_failure_count,
-                        },
-                    )
-                });
-
-        if let Some(info) = self.cycle_history.back_mut() && info.cycle == cycle.0 {
-            info.complete = cycle.1;
-            info.roll_counts.extend(cycle.2);
-            info.rng_seed.extend(cycle.3);
-            info.production_stats.extend(stats_iter);
-        } else {
-            let opt_next_cycle = self.cycle_history.back().map(|info| info.cycle.saturating_add(1));
-            if let Some(next_cycle) = opt_next_cycle && cycle.0 != next_cycle {
-                if self.cycle_history.iter().map(|item| item.cycle).any(|x| x == cycle.0) {
-                    warn!("PoS received cycle ({}) is already owned by the connecting node", cycle.0);
-                }
-                panic!("PoS received cycle ({}) should be equal to the next expected cycle ({})", cycle.0, next_cycle);
-            }
-            self.cycle_history.push_back(CycleInfo {
-                cycle: cycle.0,
-                complete: cycle.1,
-                roll_counts: cycle.2.into_iter().collect(),
-                rng_seed: cycle.3,
-                production_stats: stats_iter.collect(),
-            })
-        }
-
+        self.cycle_history.push_back(part);
         Ok(PoSCycleStreamingStep::Ongoing(
             self.cycle_history
                 .back()
@@ -327,59 +229,16 @@ impl PoSFinalState {
     /// Sets a part of the Proof of Stake `deferred_credits`. Used only in the bootstrap process.
     ///
     /// # Arguments
-    /// `part`: the raw data received from `get_pos_state_part` and used to update PoS State
-    pub fn set_deferred_credits_part(&mut self, part: &[u8]) -> Result<Option<Slot>, ModelsError> {
-        if part.is_empty() {
-            return Ok(self.deferred_credits.0.last_key_value().map(|(k, _)| *k));
-        }
-        #[allow(clippy::type_complexity)]
-        let (rest, credits): (&[u8], Vec<(Slot, Vec<(Address, Amount)>)>) = context(
-            "deferred_credits",
-            length_count(
-                context("deferred_credits length", |input| {
-                    self.deferred_credit_length_deserializer.deserialize(input)
-                }),
-                tuple((
-                    context("slot", |input| {
-                        self.slot_deserializer
-                            .deserialize::<DeserializeError>(input)
-                    }),
-                    context(
-                        "credits",
-                        length_count(
-                            context("credits length", |input| {
-                                self.deferred_credit_length_deserializer.deserialize(input)
-                            }),
-                            tuple((
-                                context("address", |input| {
-                                    self.address_deserializer.deserialize(input)
-                                }),
-                                context("amount", |input| {
-                                    self.amount_deserializer.deserialize(input)
-                                }),
-                            )),
-                        ),
-                    ),
-                )),
-            ),
-        )
-        .parse(part)
-        .map_err(|err| ModelsError::DeserializeError(err.to_string()))?;
-        if !rest.is_empty() {
-            return Err(ModelsError::SerializeError(
-                "data is left after set_deferred_credits_part PoSFinalState part deserialization"
-                    .to_string(),
-            ));
-        }
-
-        let new_credits = DeferredCredits(
-            credits
-                .into_iter()
-                .map(|(slot, credits)| (slot, credits.into_iter().collect()))
-                .collect(),
-        );
-        self.deferred_credits.nested_extend(new_credits);
-
-        Ok(self.deferred_credits.0.last_key_value().map(|(k, _)| *k))
+    /// `part`: `DeferredCredits` from `get_pos_state_part` and used to update PoS final state
+    pub fn set_deferred_credits_part(
+        &mut self,
+        part: DeferredCredits,
+    ) -> Result<Option<Slot>, ModelsError> {
+        self.deferred_credits.nested_extend(part);
+        Ok(self
+            .deferred_credits
+            .0
+            .last_key_value()
+            .map(|(&slot, _)| slot))
     }
 }
