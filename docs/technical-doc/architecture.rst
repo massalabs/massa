@@ -230,7 +230,7 @@ From these definitions, you can build another graph, called the incompatibility 
 
 .. image:: incompatibility_graph.drawio.svg
 
-As you can see, some blocks are isolated and therefore compatible with any other, while some are linked, because they have a form of incompatibility. We can also define symmetrically the notion of compatibility graph which is the dual of this incompatibility graph, but we will not need it for now. 
+As you can see, some blocks are isolated and therefore compatible with any other, while some are linked, because they have a form of incompatibility. 
 
 This brings us to the notion of a maximal clique which is a subset of the incompatibility graph such as none of the block members are incompatible with each other (so, no internal link withing the clique), and it is impossible to add an extra block to the set without introducing incompatibilities. In the above example, there are three maximal cliques that can be built, as illustrated below:
 
