@@ -201,16 +201,14 @@ impl GraphWorker {
                 });
                 self.channels
                     .protocol_command_sender
-                    .integrated_block(block_id, storage)
-                    .await?;
+                    .integrated_block(block_id, storage)?;
             }
 
             // Notify protocol of attack attempts.
             for hash in mem::take(&mut write_shared_state.attack_attempts).into_iter() {
                 self.channels
                     .protocol_command_sender
-                    .notify_block_attack(hash)
-                    .await?;
+                    .notify_block_attack(hash)?;
                 massa_trace!("consensus.consensus_worker.block_db_changed.attack", {
                     "hash": hash
                 });
@@ -284,8 +282,7 @@ impl GraphWorker {
                 massa_trace!("consensus.consensus_worker.block_db_changed.send_wishlist_delta", { "new": new_wishlist, "remove": remove_blocks });
                 self.channels
                     .protocol_command_sender
-                    .send_wishlist_delta(new_blocks, remove_blocks)
-                    .await?;
+                    .send_wishlist_delta(new_blocks, remove_blocks)?;
                 self.wishlist = new_wishlist;
             }
 

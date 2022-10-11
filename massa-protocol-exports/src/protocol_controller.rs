@@ -100,7 +100,7 @@ impl ProtocolCommandSender {
     /// # Arguments
     /// * `block_id`: ID of the block
     /// * `storage`: Storage instance containing references to the block and all its dependencies
-    pub async fn integrated_block(
+    pub fn integrated_block(
         &mut self,
         block_id: BlockId,
         storage: Storage,
@@ -109,34 +109,31 @@ impl ProtocolCommandSender {
             "block_id": block_id
         });
         self.0
-            .send(ProtocolCommand::IntegratedBlock { block_id, storage })
-            .await
+            .blocking_send(ProtocolCommand::IntegratedBlock { block_id, storage })
             .map_err(|_| ProtocolError::ChannelError("block_integrated command send error".into()))
     }
 
     /// Notify to protocol an attack attempt.
-    pub async fn notify_block_attack(&mut self, block_id: BlockId) -> Result<(), ProtocolError> {
+    pub fn notify_block_attack(&mut self, block_id: BlockId) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.notify_block_attack", {
             "block_id": block_id
         });
         self.0
-            .send(ProtocolCommand::AttackBlockDetected(block_id))
-            .await
+            .blocking_send(ProtocolCommand::AttackBlockDetected(block_id))
             .map_err(|_| {
                 ProtocolError::ChannelError("notify_block_attack command send error".into())
             })
     }
 
     /// update the block wish list
-    pub async fn send_wishlist_delta(
+    pub fn send_wishlist_delta(
         &mut self,
         new: PreHashMap<BlockId, Option<WrappedHeader>>,
         remove: PreHashSet<BlockId>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.send_wishlist_delta", { "new": new, "remove": remove });
         self.0
-            .send(ProtocolCommand::WishlistDelta { new, remove })
-            .await
+            .blocking_send(ProtocolCommand::WishlistDelta { new, remove })
             .map_err(|_| {
                 ProtocolError::ChannelError("send_wishlist_delta command send error".into())
             })
@@ -145,13 +142,12 @@ impl ProtocolCommandSender {
     /// Propagate a batch of operation ids (from pool).
     ///
     /// note: Full `OperationId` is replaced by a `OperationPrefixId` later by the worker.
-    pub async fn propagate_operations(&mut self, operations: Storage) -> Result<(), ProtocolError> {
+    pub fn propagate_operations(&mut self, operations: Storage) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_operations", {
             "operations": operations.get_op_refs()
         });
         self.0
-            .send(ProtocolCommand::PropagateOperations(operations))
-            .await
+            .blocking_send(ProtocolCommand::PropagateOperations(operations))
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_operation command send error".into())
             })

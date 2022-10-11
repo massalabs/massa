@@ -2,6 +2,7 @@
 use displaydoc::Display;
 use massa_execution_exports::ExecutionError;
 use massa_models::error::ModelsError;
+use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
 use std::array::TryFromSliceError;
 use thiserror::Error;
@@ -44,6 +45,8 @@ pub enum GraphError {
     MassaTimeError(#[from] TimeError),
     /// transaction error {0}
     TransactionError(String),
+    /// Protocol error {0}
+    ProtocolError(#[from] ProtocolError),
 }
 
 /// Internal error

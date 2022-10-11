@@ -61,7 +61,6 @@ async fn test_full_ask_block_workflow() {
                         .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
-                .await
                 .unwrap();
 
             // assert it was asked to node A, then B
@@ -178,7 +177,6 @@ async fn test_empty_block() {
                         .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
-                .await
                 .unwrap();
 
             // assert it was asked to node A, then B
@@ -291,7 +289,6 @@ async fn test_someone_knows_it() {
                         .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
-                .await
                 .unwrap();
 
             assert_hash_asked_to_node(hash_1, node_c.id, &mut network_controller).await;
@@ -377,7 +374,6 @@ async fn test_dont_want_it_anymore() {
                         .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
-                .await
                 .unwrap();
 
             // assert it was asked to node A
@@ -386,7 +382,6 @@ async fn test_dont_want_it_anymore() {
             // we don't want it anymore
             protocol_command_sender
                 .send_wishlist_delta(Default::default(), vec![hash_1].into_iter().collect())
-                .await
                 .unwrap();
 
             // 7. Make sure protocol did not send additional ask for block commands.
@@ -454,7 +449,6 @@ async fn test_no_one_has_it() {
                         .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
-                .await
                 .unwrap();
 
             // assert it was asked to node A
@@ -545,7 +539,6 @@ async fn test_multiple_blocks_without_a_priori() {
                     .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
-                .await
                 .unwrap();
 
             let list = asked_list(&mut network_controller).await;

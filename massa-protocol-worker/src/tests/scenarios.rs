@@ -72,7 +72,6 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
                         .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
-                .await
                 .expect("Failed to ask for block.");
 
             // 6. Check that protocol asks the node for the full block.
@@ -143,7 +142,6 @@ async fn test_protocol_sends_blocks_when_asked_for() {
             storage.store_block(block.clone());
             protocol_command_sender
                 .integrated_block(expected_hash, storage.clone())
-                .await
                 .unwrap();
 
             // 3. Simulate two nodes asking for a block.
@@ -260,7 +258,6 @@ async fn test_protocol_propagates_block_to_all_nodes_including_those_who_asked_f
             let _op_ids = ref_block.content.operations.clone();
             protocol_command_sender
                 .integrated_block(ref_hash, storage)
-                .await
                 .expect("Failed to ask for block.");
 
             // 6. Check that protocol propagates the header to the right nodes.
@@ -369,7 +366,6 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_onl
             let _op_ids = ref_block.content.operations.clone();
             protocol_command_sender
                 .integrated_block(ref_hash, storage)
-                .await
                 .expect("Failed to ask for block.");
 
             // 6. Check that protocol propagates the header to the right nodes.

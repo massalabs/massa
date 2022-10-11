@@ -165,7 +165,6 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
             storage.store_operations(vec![operation.clone()]);
             protocol_command_sender
                 .propagate_operations(storage)
-                .await
                 .unwrap();
 
             loop {
@@ -239,7 +238,6 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             storage.store_operations(vec![operation.clone()]);
             protocol_command_sender
                 .propagate_operations(storage)
-                .await
                 .unwrap();
 
             loop {
@@ -372,7 +370,6 @@ async fn test_protocol_batches_propagation_of_operations_received_over_the_netwo
             storage.store_operations(vec![operation.clone()]);
             protocol_command_sender
                 .propagate_operations(storage)
-                .await
                 .unwrap();
 
             let expected_operation_id_2 = operation.id;
@@ -455,7 +452,6 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                         .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
-                .await
                 .unwrap();
 
             assert_hash_asked_to_node(block.id, nodes[0].id, &mut network_controller).await;
@@ -480,7 +476,6 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             storage.store_operations(vec![operation.clone()]);
             protocol_command_sender
                 .propagate_operations(storage)
-                .await
                 .unwrap();
 
             match network_controller
@@ -569,7 +564,6 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                         .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
-                .await
                 .unwrap();
 
             // assert it was asked to node A, then B, then C.
@@ -608,7 +602,6 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             storage.store_operations(vec![op_2.clone()]);
             protocol_command_sender
                 .propagate_operations(storage)
-                .await
                 .unwrap();
 
             match network_controller

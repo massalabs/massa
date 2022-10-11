@@ -185,7 +185,6 @@ pub async fn send_and_propagate_block(
                 .collect(),
             PreHashSet::<BlockId>::default(),
         )
-        .await
         .unwrap();
 
     // Send block info to protocol.

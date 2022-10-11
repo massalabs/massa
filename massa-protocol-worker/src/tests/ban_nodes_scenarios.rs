@@ -163,7 +163,6 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
                         .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
-                .await
                 .unwrap();
 
             tools::assert_hash_asked_to_node(block.id, to_ban_node.id, &mut network_controller)
@@ -287,7 +286,6 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
                         .collect(),
                     PreHashSet::<BlockId>::default(),
                 )
-                .await
                 .expect("Failed to ask for block.");
 
             // 6. Make sure protocol did not ask for the block from the banned node.
@@ -473,7 +471,6 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
             // Simulate consensus notifying an attack attempt.
             protocol_command_sender
                 .notify_block_attack(expected_hash)
-                .await
                 .expect("Failed to ask for block.");
 
             // Make sure all initial nodes are banned.
