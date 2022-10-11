@@ -13,8 +13,8 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
-use std::ops::Bound::{Excluded, Included, Unbounded};
-use std::{collections::BTreeMap, ops::Bound};
+use std::collections::BTreeMap;
+use std::ops::Bound::{Excluded, Included};
 
 #[derive(Debug, Default, Clone)]
 /// Structure containing all the PoS deferred credits information
@@ -60,17 +60,15 @@ pub struct DeferredCreditsSerializer {
     slot_ser: SlotSerializer,
     u64_ser: U64VarIntSerializer,
     amount_ser: AmountSerializer,
-    cursor: Bound<Slot>,
 }
 
 impl DeferredCreditsSerializer {
     /// Creates a new `DeferredCredits` serializer
-    pub fn new(cursor: Bound<Slot>) -> Self {
+    pub fn new() -> Self {
         Self {
             slot_ser: SlotSerializer::new(),
             u64_ser: U64VarIntSerializer::new(),
             amount_ser: AmountSerializer::new(),
-            cursor,
         }
     }
 }
@@ -81,14 +79,10 @@ impl Serializer<DeferredCredits> for DeferredCreditsSerializer {
         value: &DeferredCredits,
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
-        let range = value.0.range((self.cursor, Unbounded));
-        // deferred credits given range length
-        if range.clone().last().is_some() {
-            self.u64_ser
-                .serialize(&(range.clone().count() as u64), buffer)?;
-        }
+        // deferred credits length
+        self.u64_ser.serialize(&(value.0.len() as u64), buffer)?;
         // deferred credits
-        for (slot, credits) in range.clone() {
+        for (slot, credits) in &value.0 {
             // slot
             self.slot_ser.serialize(slot, buffer)?;
             // slot credits length

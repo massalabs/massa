@@ -4,10 +4,10 @@ use crate::{CycleInfo, DeferredCredits, ProductionStats, SelectorController};
 use massa_hash::Hash;
 use massa_models::{
     address::{Address, AddressDeserializer},
-    amount::{Amount, AmountDeserializer, AmountSerializer},
+    amount::{Amount, AmountDeserializer},
     error::ModelsError,
-    serialization::{BitVecDeserializer, BitVecSerializer},
-    slot::{Slot, SlotDeserializer, SlotSerializer},
+    serialization::BitVecDeserializer,
+    slot::{Slot, SlotDeserializer},
 };
 use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
@@ -150,69 +150,40 @@ impl PoSFinalState {
         usize::from(self.cycle_history.len() >= 6)
     }
 
-    /// Gets a part of the Proof of Stake `cycle_history`. Used only in the bootstrap process.
+    /// Gets a cycle of the Proof of Stake `cycle_history`. Used only in the bootstrap process.
     ///
     /// # Arguments:
     /// `cursor`: indicates the bootstrap state after the previous payload
     ///
     /// # Returns
-    /// The PoS part and the updated cursor
-    #[allow(clippy::type_complexity)]
+    /// The PoS cycle and the updated cursor
     pub fn get_cycle_history_part(
         &self,
         cursor: PoSCycleStreamingStep,
-    ) -> Result<(Vec<u8>, PoSCycleStreamingStep), ModelsError> {
+    ) -> Result<(Option<CycleInfo>, PoSCycleStreamingStep), ModelsError> {
         let cycle_index = match cursor {
             PoSCycleStreamingStep::Started => self.get_first_cycle_index(),
             PoSCycleStreamingStep::Ongoing(last_cycle) => {
                 if let Some(index) = self.get_cycle_index(last_cycle) {
                     if index == self.cycle_history.len() - 1 {
-                        return Ok((Vec::default(), PoSCycleStreamingStep::Finished));
+                        return Ok((None, PoSCycleStreamingStep::Finished));
                     }
                     index.saturating_add(1)
                 } else {
                     return Err(ModelsError::OutdatedBootstrapCursor);
                 }
             }
-            PoSCycleStreamingStep::Finished => {
-                return Ok((Vec::default(), PoSCycleStreamingStep::Finished))
-            }
+            PoSCycleStreamingStep::Finished => return Ok((None, PoSCycleStreamingStep::Finished)),
         };
-        let mut part = Vec::new();
-        let u64_ser = U64VarIntSerializer::new();
-        let bitvec_ser = BitVecSerializer::new();
-        let CycleInfo {
-            cycle,
-            complete,
-            roll_counts,
-            rng_seed,
-            production_stats,
-        } = self
+        let cycle_info = self
             .cycle_history
             .get(cycle_index)
             .expect("a cycle should be available here");
 
-        // TODO: move this serialization into CycleInfo::Serialize
-
-        // TODO: limit the whole info with CYCLE_INFO_SIZE_MESSAGE_BYTES
-        u64_ser.serialize(cycle, &mut part)?;
-        part.push(u8::from(*complete));
-        // TODO: limit this with ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES
-        u64_ser.serialize(&(roll_counts.len() as u64), &mut part)?;
-        for (addr, count) in roll_counts {
-            part.extend(addr.to_bytes());
-            u64_ser.serialize(count, &mut part)?;
-        }
-        bitvec_ser.serialize(rng_seed, &mut part)?;
-        // TODO: limit this with PRODUCTION_STATS_PART_SIZE_MESSAGE_BYTES
-        u64_ser.serialize(&(production_stats.len() as u64), &mut part)?;
-        for (addr, stats) in production_stats {
-            part.extend(addr.to_bytes());
-            u64_ser.serialize(&stats.block_success_count, &mut part)?;
-            u64_ser.serialize(&stats.block_failure_count, &mut part)?;
-        }
-
-        Ok((part, PoSCycleStreamingStep::Ongoing(*cycle)))
+        Ok((
+            Some(cycle_info.clone()),
+            PoSCycleStreamingStep::Ongoing(cycle_info.cycle),
+        ))
     }
 
     /// Gets a part of the Proof of Stake `deferred_credits`. Used only in the bootstrap process.
@@ -221,38 +192,22 @@ impl PoSFinalState {
     /// `cursor`: indicates the bootstrap state after the previous payload
     ///
     /// # Returns
-    /// The PoS part and the updated cursor
+    /// The PoS `deferred_credits` part and the updated cursor
     pub fn get_deferred_credits_part(
         &self,
         cursor: Option<Slot>,
-    ) -> Result<(Vec<u8>, Option<Slot>), ModelsError> {
-        let dl_range_start = if let Some(last_slot) = cursor {
+    ) -> Result<(DeferredCredits, Option<Slot>), ModelsError> {
+        let left_bound = if let Some(last_slot) = cursor {
             Excluded(last_slot)
         } else {
             Unbounded
         };
-        let mut part = Vec::new();
-        let slot_ser = SlotSerializer::new();
-        let u64_ser = U64VarIntSerializer::new();
-        let amount_ser = AmountSerializer::new();
-        // TODO return an option directly, and upstream we should check part.is_none() instead of part.is_empty()
-        let range = self.deferred_credits.0.range((dl_range_start, Unbounded));
-        if range.clone().last().is_some() {
-            u64_ser.serialize(&(range.clone().count() as u64), &mut part)?;
+        let mut credits_part = DeferredCredits::default();
+        for (slot, credits) in self.deferred_credits.0.range((left_bound, Unbounded)) {
+            credits_part.0.insert(slot.clone(), credits.clone());
         }
-        // TODO: iterate in reverse order to avoid steaming credits that will be soon removed
-        for (slot, credits) in range.clone() {
-            // TODO: limit this with DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES
-            // NOTE: above will prevent the use of lenght_count combinator, many0 did not do the job
-            slot_ser.serialize(slot, &mut part)?;
-            u64_ser.serialize(&(credits.len() as u64), &mut part)?;
-            for (addr, amount) in credits {
-                part.extend(addr.to_bytes());
-                amount_ser.serialize(amount, &mut part)?;
-            }
-        }
-        let last_credits_slot = range.last().map(|(s, _)| *s);
-        Ok((part, last_credits_slot))
+        let last_credits_slot = credits_part.0.last_key_value().map(|(&slot, _)| slot);
+        Ok((credits_part, last_credits_slot))
     }
 
     /// Sets a part of the Proof of Stake `cycle_history`. Used only in the bootstrap process.

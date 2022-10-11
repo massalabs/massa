@@ -14,7 +14,6 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
-use std::ops::Bound::Unbounded;
 
 /// Recap of all PoS changes
 #[derive(Default, Debug, Clone)]
@@ -83,7 +82,7 @@ impl PoSChangesSerializer {
             bit_vec_serializer: BitVecSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
             production_stats_serializer: ProductionStatsSerializer::new(),
-            deferred_credits_serializer: DeferredCreditsSerializer::new(Unbounded),
+            deferred_credits_serializer: DeferredCreditsSerializer::new(),
         }
     }
 }
