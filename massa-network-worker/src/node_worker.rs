@@ -192,7 +192,7 @@ impl NodeWorker {
                             r
                         },
                         Err(e) => {
-                            massa_trace!("node_worker.run_loop.node_reader.error", {"node": self.node_id, "err": format!("{}", e)});
+                            debug!("node_worker.run_loop.node_reader.error: {}", e);
                             ConnectionClosureReason::Failed
                         }
                     };
@@ -336,7 +336,10 @@ impl NodeWorker {
         // 3- Stop node_reader_handle
         if !reader_joined {
             // Abort the task otherwise socket_reader.next() is stuck, waiting for some data to read
-            massa_trace!("node_worker.run_loop.cleanup.node_reader_handle.abort", {"node": self.node_id});
+            debug!(
+                "node_worker.run_loop.cleanup.node_reader_handle.abort, node_id: {}",
+                self.node_id
+            );
             node_reader_handle.abort();
         }
 
@@ -437,9 +440,9 @@ async fn node_sender_handle(
             } // peer closed cleanly
             Err(err) => {
                 // stream error
-                massa_trace!(
-                    "node_worker.run_loop.self.socket_reader.next(). receive error",
-                    { "error": format!("{}", err) }
+                debug!(
+                    "node_worker.run_loop.self.socket_reader.next(). receive error: {}",
+                    err
                 );
                 exit_reason = ConnectionClosureReason::Failed;
                 break;
@@ -453,7 +456,7 @@ async fn node_sender_handle(
 async fn send_node_event(
     node_event_tx: &mut Sender<NodeEvent>,
     event: NodeEvent,
-    max_send_wait: MassaTime,
+    _max_send_wait: MassaTime,
 ) {
     let result = node_event_tx
         // .send_timeout(event, max_send_wait.to_duration())
