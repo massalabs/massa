@@ -54,8 +54,6 @@ pub struct ExecutionOutput {
 pub struct ReadOnlyExecutionRequest {
     /// Maximum gas to spend in the execution.
     pub max_gas: u64,
-    /// The simulated price of gas for the read-only execution.
-    pub simulated_gas_price: Amount,
     /// Call stack to simulate, older caller first
     pub call_stack: Vec<ExecutionStackElement>,
     /// Target of the request

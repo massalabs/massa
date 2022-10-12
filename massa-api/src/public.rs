@@ -123,7 +123,6 @@ impl Endpoints for API<Public> {
         for ReadOnlyBytecodeExecution {
             max_gas,
             address,
-            simulated_gas_price,
             bytecode,
             operation_datastore,
         } in reqs
@@ -160,7 +159,6 @@ impl Endpoints for API<Public> {
             // translate request
             let req = ReadOnlyExecutionRequest {
                 max_gas,
-                simulated_gas_price,
                 target: ReadOnlyExecutionTarget::BytecodeExecution(bytecode),
                 call_stack: vec![ExecutionStackElement {
                     address,
@@ -204,7 +202,6 @@ impl Endpoints for API<Public> {
         let mut res: Vec<ExecuteReadOnlyResponse> = Vec::with_capacity(reqs.len());
         for ReadOnlyCall {
             max_gas,
-            simulated_gas_price,
             target_address,
             target_function,
             parameter,
@@ -224,7 +221,6 @@ impl Endpoints for API<Public> {
             // translate request
             let req = ReadOnlyExecutionRequest {
                 max_gas,
-                simulated_gas_price,
                 target: ReadOnlyExecutionTarget::FunctionCall {
                     target_func: target_function,
                     target_addr: target_address,

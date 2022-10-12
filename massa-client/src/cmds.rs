@@ -961,8 +961,7 @@ impl Command {
 
                 let path = parameters[0].parse::<PathBuf>()?;
                 let max_gas = parameters[1].parse::<u64>()?;
-                let simulated_gas_price = parameters[2].parse::<Amount>()?;
-                let address = if let Some(adr) = parameters.get(3) {
+                let address = if let Some(adr) = parameters.get(2) {
                     Some(adr.parse::<Address>()?)
                 } else {
                     None
@@ -972,7 +971,6 @@ impl Command {
                     .public
                     .execute_read_only_bytecode(ReadOnlyBytecodeExecution {
                         max_gas,
-                        simulated_gas_price,
                         bytecode,
                         address,
                         operation_datastore: None, // TODO - #3072
@@ -992,8 +990,7 @@ impl Command {
                 let target_function = parameters[1].parse::<String>()?;
                 let parameter = parameters[2].parse::<String>()?;
                 let max_gas = parameters[3].parse::<u64>()?;
-                let simulated_gas_price = parameters[4].parse::<Amount>()?;
-                let caller_address = if let Some(addr) = parameters.get(5) {
+                let caller_address = if let Some(addr) = parameters.get(4) {
                     Some(addr.parse::<Address>()?)
                 } else {
                     None
@@ -1006,7 +1003,6 @@ impl Command {
                         target_function,
                         parameter,
                         max_gas,
-                        simulated_gas_price,
                     })
                     .await
                 {
