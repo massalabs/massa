@@ -2,10 +2,10 @@
 
 use massa_async_pool::{
     AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
+    AsyncMessageSerializer,
 };
 use massa_final_state::{
-    ExecutedOps, ExecutedOpsStreamingStep, ExecutedOpsStreamingStepDeserializer,
-    ExecutedOpsStreamingStepSerializer, StateChanges, StateChangesDeserializer,
+    ExecutedOps, ExecutedOpsSerializer, StateChanges, StateChangesDeserializer,
     StateChangesSerializer,
 };
 use massa_graph::{
@@ -23,12 +23,11 @@ use massa_models::{
 };
 use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
 use massa_pos_exports::{
-    CycleInfo, DeferredCredits, PoSCycleStreamingStep, PoSCycleStreamingStepDeserializer,
-    PoSCycleStreamingStepSerializer,
+    CycleInfo, CycleInfoSerializer, DeferredCredits, DeferredCreditsSerializer,
 };
 use massa_serialization::{
     Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
-    U32VarIntDeserializer, U32VarIntSerializer,
+    U32VarIntDeserializer, U32VarIntSerializer, U64VarIntSerializer,
 };
 use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 use nom::error::context;
@@ -108,6 +107,7 @@ enum MessageServerTypeId {
 /// Serializer for `BootstrapServerMessage`
 pub struct BootstrapServerMessageSerializer {
     u32_serializer: U32VarIntSerializer,
+    u64_serializer: U64VarIntSerializer,
     time_serializer: MassaTimeSerializer,
     version_serializer: VersionSerializer,
     peers_serializer: BootstrapPeersSerializer,
@@ -115,6 +115,11 @@ pub struct BootstrapServerMessageSerializer {
     bootstrapable_graph_serializer: BootstrapableGraphSerializer,
     vec_u8_serializer: VecU8Serializer,
     slot_serializer: SlotSerializer,
+    async_message_id_serializer: AsyncMessageIdSerializer,
+    async_message_serializer: AsyncMessageSerializer,
+    opt_pos_cycle_serializer: OptionSerializer<CycleInfo, CycleInfoSerializer>,
+    pos_credits_serializer: DeferredCreditsSerializer,
+    exec_ops_serializer: ExecutedOpsSerializer,
 }
 
 impl Default for BootstrapServerMessageSerializer {
@@ -128,6 +133,7 @@ impl BootstrapServerMessageSerializer {
     pub fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
+            u64_serializer: U64VarIntSerializer::new(),
             time_serializer: MassaTimeSerializer::new(),
             version_serializer: VersionSerializer::new(),
             peers_serializer: BootstrapPeersSerializer::new(),
@@ -135,6 +141,11 @@ impl BootstrapServerMessageSerializer {
             bootstrapable_graph_serializer: BootstrapableGraphSerializer::new(),
             vec_u8_serializer: VecU8Serializer::new(),
             slot_serializer: SlotSerializer::new(),
+            async_message_id_serializer: AsyncMessageIdSerializer::new(),
+            async_message_serializer: AsyncMessageSerializer::new(),
+            opt_pos_cycle_serializer: OptionSerializer::new(CycleInfoSerializer::new()),
+            pos_credits_serializer: DeferredCreditsSerializer::new(),
+            exec_ops_serializer: ExecutedOpsSerializer::new(),
         }
     }
 }
@@ -153,13 +164,13 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
     ///    server_time: MassaTime::from(0),
     ///    version: Version::from_str("TEST.1.10").unwrap(),
     /// };
-    /// let message_serialized = Vec::new();
-    /// message_serializer.serialize(&bootstrap_server_message, &message_serialized).unwrap();
+    /// let mut message_serialized = Vec::new();
+    /// message_serializer.serialize(&bootstrap_server_message, &mut message_serialized).unwrap();
     /// ```
     fn serialize(
         &self,
         value: &BootstrapServerMessage,
-        buffer: &Vec<u8>,
+        buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
         match value {
             BootstrapServerMessage::BootstrapTime {
@@ -183,25 +194,42 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                     .serialize(graph, buffer)?;
             }
             BootstrapServerMessage::FinalStatePart {
-                ledger_data,
+                slot,
+                ledger_part,
                 async_pool_part,
                 pos_cycle_part,
                 pos_credits_part,
                 exec_ops_part,
-                slot,
                 final_state_changes,
             } => {
-                // IMPORTANT TODO
+                // message type
                 self.u32_serializer
                     .serialize(&u32::from(MessageServerTypeId::FinalStatePart), buffer)?;
-                self.vec_u8_serializer.serialize(ledger_data, buffer)?;
-                self.vec_u8_serializer.serialize(async_pool_part, buffer)?;
-                self.vec_u8_serializer.serialize(pos_cycle_part, buffer)?;
-                self.vec_u8_serializer.serialize(pos_credits_part, buffer)?;
-                self.vec_u8_serializer.serialize(exec_ops_part, buffer)?;
+                // slot
                 self.slot_serializer.serialize(slot, buffer)?;
-                self.u32_serializer
-                    .serialize(&(final_state_changes.len() as u32), buffer)?;
+                // ledger
+                self.vec_u8_serializer.serialize(ledger_part, buffer)?;
+                // async pool length
+                self.u64_serializer
+                    .serialize(&(async_pool_part.len() as u64), buffer)?;
+                // async pool
+                for (message_id, message) in async_pool_part {
+                    self.async_message_id_serializer
+                        .serialize(message_id, buffer)?;
+                    self.async_message_serializer.serialize(message, buffer)?;
+                }
+                // pos cycle info
+                self.opt_pos_cycle_serializer
+                    .serialize(pos_cycle_part, buffer)?;
+                // pos deferred credits
+                self.pos_credits_serializer
+                    .serialize(pos_credits_part, buffer)?;
+                // executed operations
+                self.exec_ops_serializer.serialize(exec_ops_part, buffer)?;
+                // changes length
+                self.u64_serializer
+                    .serialize(&(final_state_changes.len() as u64), buffer)?;
+                // changes
                 for (slot, state_changes) in final_state_changes {
                     self.slot_serializer.serialize(slot, buffer)?;
                     self.state_changes_serializer
@@ -334,8 +362,8 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ///    server_time: MassaTime::from(0),
     ///    version: Version::from_str("TEST.1.10").unwrap(),
     /// };
-    /// let message_serialized = Vec::new();
-    /// message_serializer.serialize(&bootstrap_server_message, &message_serialized).unwrap();
+    /// let mut message_serialized = Vec::new();
+    /// message_serializer.serialize(&bootstrap_server_message, &mut message_serialized).unwrap();
     /// let (rest, message_deserialized) = message_deserializer.deserialize::<DeserializeError>(&message_serialized).unwrap();
     /// match message_deserialized {
     ///     BootstrapServerMessage::BootstrapTime {
@@ -552,13 +580,13 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
     ///
     /// let message_serializer = BootstrapClientMessageSerializer::new();
     /// let bootstrap_server_message = BootstrapClientMessage::AskBootstrapPeers;
-    /// let message_serialized = Vec::new();
-    /// message_serializer.serialize(&bootstrap_server_message, &message_serialized).unwrap();
+    /// let mut message_serialized = Vec::new();
+    /// message_serializer.serialize(&bootstrap_server_message, &mut message_serialized).unwrap();
     /// ```
     fn serialize(
         &self,
         value: &BootstrapClientMessage,
-        buffer: &Vec<u8>,
+        buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
         match value {
             BootstrapClientMessage::AskBootstrapPeers => {
@@ -655,8 +683,8 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
     /// let message_serializer = BootstrapClientMessageSerializer::new();
     /// let message_deserializer = BootstrapClientMessageDeserializer::new(32, 255);
     /// let bootstrap_server_message = BootstrapClientMessage::AskBootstrapPeers;
-    /// let message_serialized = Vec::new();
-    /// message_serializer.serialize(&bootstrap_server_message, &message_serialized).unwrap();
+    /// let mut message_serialized = Vec::new();
+    /// message_serializer.serialize(&bootstrap_server_message, &mut message_serialized).unwrap();
     /// let (rest, message_deserialized) = message_deserializer.deserialize::<DeserializeError>(&message_serialized).unwrap();
     /// match message_deserialized {
     ///     BootstrapClientMessage::AskBootstrapPeers => (),
