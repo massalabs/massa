@@ -6,10 +6,21 @@ use crate::{
     changes::{AsyncPoolChanges, Change},
     config::AsyncPoolConfig,
     message::{AsyncMessage, AsyncMessageId},
+    AsyncMessageDeserializer, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
+    AsyncMessageSerializer,
 };
 use massa_models::{error::ModelsError, slot::Slot, streaming_step::StreamingStep};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
+use nom::{
+    error::{context, ContextError, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult, Parser,
+};
 use std::collections::BTreeMap;
-use std::ops::Bound::{Excluded, Unbounded};
+use std::ops::Bound::{Excluded, Included, Unbounded};
 
 /// Represents a pool of sorted messages in a deterministic way.
 /// The final asynchronous pool is attached to the output of the latest final slot within the context of massa-final-state.
@@ -194,6 +205,86 @@ impl AsyncPool {
                 .map(|(&id, _)| id)
                 .expect("should contain at least one message"),
         ))
+    }
+}
+
+/// Serializer for `AsyncPool`
+pub struct AsyncPoolSerializer {
+    u64_serializer: U64VarIntSerializer,
+    async_message_id_serializer: AsyncMessageIdSerializer,
+    async_message_serializer: AsyncMessageSerializer,
+}
+
+impl AsyncPoolSerializer {
+    /// Creates a new `AsyncPool` serializer
+    pub fn new() -> Self {
+        Self {
+            u64_serializer: U64VarIntSerializer::new(),
+            async_message_id_serializer: AsyncMessageIdSerializer::new(),
+            async_message_serializer: AsyncMessageSerializer::new(),
+        }
+    }
+}
+
+impl Serializer<BTreeMap<AsyncMessageId, AsyncMessage>> for AsyncPoolSerializer {
+    fn serialize(
+        &self,
+        value: &BTreeMap<AsyncMessageId, AsyncMessage>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        // async pool length
+        self.u64_serializer
+            .serialize(&(value.len() as u64), buffer)?;
+        // async pool
+        for (message_id, message) in value {
+            self.async_message_id_serializer
+                .serialize(message_id, buffer)?;
+            self.async_message_serializer.serialize(message, buffer)?;
+        }
+        Ok(())
+    }
+}
+
+/// Deserializer for `AsyncPool`
+pub struct AsyncPoolDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    async_message_id_deserializer: AsyncMessageIdDeserializer,
+    async_message_deserializer: AsyncMessageDeserializer,
+}
+
+impl AsyncPoolDeserializer {
+    /// Creates a new `AsyncPool` deserializer
+    pub fn new(thread_count: u8, max_data_async_message: u64) -> AsyncPoolDeserializer {
+        AsyncPoolDeserializer {
+            u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            async_message_id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
+            async_message_deserializer: AsyncMessageDeserializer::new(
+                thread_count,
+                max_data_async_message,
+            ),
+        }
+    }
+}
+
+impl Deserializer<BTreeMap<AsyncMessageId, AsyncMessage>> for AsyncPoolDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], BTreeMap<AsyncMessageId, AsyncMessage>, E> {
+        context(
+            "Failed async_pool_part deserialization",
+            length_count(
+                context("Failed length deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                tuple((
+                    |input| self.async_message_id_deserializer.deserialize(input),
+                    |input| self.async_message_deserializer.deserialize(input),
+                )),
+            ),
+        )
+        .map(|vec| vec.into_iter().collect())
+        .parse(buffer)
     }
 }
 
