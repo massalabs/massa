@@ -7,12 +7,13 @@
 
 use crate::{
     config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges, ExecutedOps,
-    ExecutedOpsStreamingStep,
 };
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_ledger_exports::{LedgerChanges, LedgerController};
-use massa_models::{address::Address, slot::Slot};
-use massa_pos_exports::{PoSCycleStreamingStep, PoSFinalState, SelectorController};
+use massa_models::{
+    address::Address, operation::OperationId, slot::Slot, streaming_cursor::StreamingStep,
+};
+use massa_pos_exports::{PoSFinalState, SelectorController};
 use std::collections::VecDeque;
 use tracing::debug;
 
@@ -141,8 +142,9 @@ impl FinalState {
         last_slot: Slot,
         last_address: Option<Address>,
         last_id_async_pool: Option<AsyncMessageId>,
-        last_pos_step_cursor: PoSCycleStreamingStep,
-        last_exec_ops_cursor: ExecutedOpsStreamingStep,
+        last_pos_step_cursor: StreamingStep<u64>,
+        // IMPORTANT TODO: ADD DEF CREDITS STEP CHECK
+        last_exec_ops_cursor: StreamingStep<OperationId>,
     ) -> Result<Vec<(Slot, StateChanges)>, FinalStateError> {
         let position_slot = if let Some((first_slot, _)) = self.changes_history.front() {
             // Safe because we checked that there is changes just above.
@@ -205,12 +207,12 @@ impl FinalState {
             }
 
             // Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
-            if last_pos_step_cursor == PoSCycleStreamingStep::Finished {
+            if last_pos_step_cursor == StreamingStep::Finished {
                 slot_changes.pos_changes = changes.pos_changes.clone();
             }
 
             // Get executed operations changes if classic bootstrap finished
-            if last_exec_ops_cursor == ExecutedOpsStreamingStep::Finished {
+            if last_exec_ops_cursor == StreamingStep::Finished {
                 slot_changes.executed_ops = changes.executed_ops.clone();
             }
 

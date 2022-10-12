@@ -3,17 +3,14 @@ use crate::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, Selecto
 use bitvec::vec::BitVec;
 use massa_hash::Hash;
 use massa_models::error::ModelsError;
+use massa_models::streaming_cursor::StreamingStep;
 use massa_models::{
     address::{Address, AddressDeserializer},
     amount::{Amount, AmountDeserializer},
     prehash::PreHashMap,
     slot::{Slot, SlotDeserializer},
 };
-use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
-};
-use nom::error::{context, ContextError, ParseError};
-use nom::{IResult, Parser};
+use massa_serialization::U64VarIntDeserializer;
 use std::collections::VecDeque;
 use std::{
     collections::BTreeMap,
@@ -399,31 +396,30 @@ impl PoSFinalState {
     /// The PoS cycle and the updated cursor
     pub fn get_cycle_history_part(
         &self,
-        cursor: PoSCycleStreamingStep,
-    ) -> Result<(Option<CycleInfo>, PoSCycleStreamingStep), ModelsError> {
+        cursor: StreamingStep<u64>,
+    ) -> Result<(Option<CycleInfo>, StreamingStep<u64>), ModelsError> {
         let cycle_index = match cursor {
             // TODO: use config for `6`
-            PoSCycleStreamingStep::Started => usize::from(self.cycle_history.len() >= 6),
-            PoSCycleStreamingStep::Ongoing(last_cycle) => {
+            StreamingStep::Started => usize::from(self.cycle_history.len() >= 6),
+            StreamingStep::Ongoing(last_cycle) => {
                 if let Some(index) = self.get_cycle_index(last_cycle) {
                     if index == self.cycle_history.len() - 1 {
-                        return Ok((None, PoSCycleStreamingStep::Finished));
+                        return Ok((None, StreamingStep::Finished));
                     }
                     index.saturating_add(1)
                 } else {
                     return Err(ModelsError::OutdatedBootstrapCursor);
                 }
             }
-            PoSCycleStreamingStep::Finished => return Ok((None, PoSCycleStreamingStep::Finished)),
+            StreamingStep::Finished => return Ok((None, StreamingStep::Finished)),
         };
         let cycle_info = self
             .cycle_history
             .get(cycle_index)
             .expect("a cycle should be available here");
-
         Ok((
             Some(cycle_info.clone()),
-            PoSCycleStreamingStep::Ongoing(cycle_info.cycle),
+            StreamingStep::Ongoing(cycle_info.cycle),
         ))
     }
 
@@ -436,19 +432,26 @@ impl PoSFinalState {
     /// The PoS `deferred_credits` part and the updated cursor
     pub fn get_deferred_credits_part(
         &self,
-        cursor: Option<Slot>,
-    ) -> Result<(DeferredCredits, Option<Slot>), ModelsError> {
-        let left_bound = if let Some(last_slot) = cursor {
-            Excluded(last_slot)
-        } else {
-            Unbounded
-        };
+        cursor: StreamingStep<Slot>,
+    ) -> Result<(DeferredCredits, StreamingStep<Slot>), ModelsError> {
         let mut credits_part = DeferredCredits::default();
+        let left_bound = match cursor {
+            StreamingStep::Started => Unbounded,
+            StreamingStep::Ongoing(last_slot) => Excluded(last_slot),
+            StreamingStep::Finished => return Ok((credits_part, StreamingStep::Finished)),
+        };
         for (slot, credits) in self.deferred_credits.0.range((left_bound, Unbounded)) {
             credits_part.0.insert(slot.clone(), credits.clone());
         }
-        let last_credits_slot = credits_part.0.last_key_value().map(|(&slot, _)| slot);
-        Ok((credits_part, last_credits_slot))
+        if credits_part.0.is_empty() {
+            return Ok((credits_part, StreamingStep::Finished));
+        }
+        let last_credits_slot = credits_part
+            .0
+            .last_key_value()
+            .map(|(&slot, _)| slot)
+            .expect("slot credits should be available here");
+        Ok((credits_part, StreamingStep::Ongoing(last_credits_slot)))
     }
 
     /// Sets a part of the Proof of Stake `cycle_history`. Used only in the bootstrap process.
@@ -458,7 +461,8 @@ impl PoSFinalState {
     pub fn set_cycle_history_part(
         &mut self,
         part: CycleInfo,
-    ) -> Result<PoSCycleStreamingStep, ModelsError> {
+    ) -> Result<StreamingStep<u64>, ModelsError> {
+        // IMPORTANT TODO: DO NOT FORGET EMPTY CASE
         let opt_next_cycle = self
             .cycle_history
             .back()
@@ -467,7 +471,7 @@ impl PoSFinalState {
             panic!("PoS received cycle ({}) should be equal to the next expected cycle ({})", part.cycle, next_cycle);
         }
         self.cycle_history.push_back(part);
-        Ok(PoSCycleStreamingStep::Ongoing(
+        Ok(StreamingStep::Ongoing(
             self.cycle_history
                 .back()
                 .map(|v| v.cycle)
@@ -482,105 +486,14 @@ impl PoSFinalState {
     pub fn set_deferred_credits_part(
         &mut self,
         part: DeferredCredits,
-    ) -> Result<Option<Slot>, ModelsError> {
+    ) -> Result<StreamingStep<Slot>, ModelsError> {
         self.deferred_credits.nested_extend(part);
-        Ok(self
-            .deferred_credits
-            .0
-            .last_key_value()
-            .map(|(&slot, _)| slot))
-    }
-}
-
-/// PoS bootstrap streaming steps
-#[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub enum PoSCycleStreamingStep {
-    /// Started step, only when launching the streaming
-    Started,
-    /// Ongoing step, as long as you are streaming complete cycles
-    Ongoing(u64),
-    /// Finished step, after the incomplete cycle was streamed
-    Finished,
-}
-
-/// PoS bootstrap streaming steps serializer
-pub struct PoSCycleStreamingStepSerializer {
-    u64_serializer: U64VarIntSerializer,
-}
-
-impl Default for PoSCycleStreamingStepSerializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl PoSCycleStreamingStepSerializer {
-    /// Creates a new PoS bootstrap streaming steps serializer
-    pub fn new() -> Self {
-        Self {
-            u64_serializer: U64VarIntSerializer,
-        }
-    }
-}
-
-impl Serializer<PoSCycleStreamingStep> for PoSCycleStreamingStepSerializer {
-    fn serialize(
-        &self,
-        value: &PoSCycleStreamingStep,
-        buffer: &mut Vec<u8>,
-    ) -> Result<(), SerializeError> {
-        match value {
-            PoSCycleStreamingStep::Started => self.u64_serializer.serialize(&0u64, buffer)?,
-            PoSCycleStreamingStep::Ongoing(last_cycle) => {
-                self.u64_serializer.serialize(&1u64, buffer)?;
-                self.u64_serializer.serialize(last_cycle, buffer)?;
-            }
-            PoSCycleStreamingStep::Finished => self.u64_serializer.serialize(&2u64, buffer)?,
-        };
-        Ok(())
-    }
-}
-
-/// PoS bootstrap streaming steps deserializer
-pub struct PoSCycleStreamingStepDeserializer {
-    u64_deserializer: U64VarIntDeserializer,
-}
-
-impl Default for PoSCycleStreamingStepDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl PoSCycleStreamingStepDeserializer {
-    /// Creates a new PoS bootstrap streaming steps deserializer
-    pub fn new() -> Self {
-        Self {
-            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
-        }
-    }
-}
-
-impl Deserializer<PoSCycleStreamingStep> for PoSCycleStreamingStepDeserializer {
-    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
-        &self,
-        buffer: &'a [u8],
-    ) -> IResult<&'a [u8], PoSCycleStreamingStep, E> {
-        let (rest, ident) = context("identifier", |input| {
-            self.u64_deserializer.deserialize(input)
-        })
-        .parse(buffer)?;
-        match ident {
-            0u64 => Ok((rest, PoSCycleStreamingStep::Started)),
-            1u64 => context("cycle", |input| self.u64_deserializer.deserialize(input))
-                .map(PoSCycleStreamingStep::Ongoing)
-                .parse(rest),
-
-            2u64 => Ok((rest, PoSCycleStreamingStep::Finished)),
-            _ => Err(nom::Err::Error(ParseError::from_error_kind(
-                buffer,
-                nom::error::ErrorKind::Digit,
-            ))),
-        }
+        Ok(StreamingStep::Ongoing(
+            self.deferred_credits
+                .0
+                .last_key_value()
+                .map(|(&slot, _)| slot)
+                .expect("should contain at least the credits for one slot"),
+        ))
     }
 }

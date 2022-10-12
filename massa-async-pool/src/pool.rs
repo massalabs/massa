@@ -5,12 +5,9 @@
 use crate::{
     changes::{AsyncPoolChanges, Change},
     config::AsyncPoolConfig,
-    message::{AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
-    AsyncMessageDeserializer, AsyncMessageSerializer,
+    message::{AsyncMessage, AsyncMessageId},
 };
-use massa_models::{error::ModelsError, slot::Slot};
-use massa_serialization::{Deserializer, Serializer};
-use nom::{multi::many0, sequence::tuple};
+use massa_models::{error::ModelsError, slot::Slot, streaming_cursor::StreamingStep};
 use std::collections::BTreeMap;
 use std::ops::Bound::{Excluded, Unbounded};
 
@@ -130,73 +127,72 @@ impl AsyncPool {
             .collect()
     }
 
-    /// Used for bootstrap
-    /// Take a part of the async pool starting from the next element after `last_id` and with a max length of the constant `ASYNC_POOL_PART_SIZE_MESSAGE_BYTES`.
-    /// Should always follow the same behavior as the `get_ledger_part` from `FinalLedger`method.
-    pub fn get_pool_part(
-        &self,
-        last_id: Option<AsyncMessageId>,
-    ) -> Result<(Vec<u8>, Option<AsyncMessageId>), ModelsError> {
-        let last_id = if let Some(last_id) = last_id {
-            Excluded(last_id)
-        } else if self.messages.first_key_value().is_some() {
-            Unbounded
-        } else {
-            return Ok((Vec::new(), None));
-        };
-        let mut part = Vec::new();
-        let mut next_last_id = None;
-        let id_async_message_serializer = AsyncMessageIdSerializer::new();
-        let async_message_serializer = AsyncMessageSerializer::new();
-        for (id, message) in self.messages.range((last_id, Unbounded)) {
-            if part.len() < self.config.part_size_message_bytes as usize {
-                id_async_message_serializer.serialize(id, &mut part)?;
-                async_message_serializer.serialize(message, &mut part)?;
-                next_last_id = Some(*id);
-            }
-        }
-        Ok((part, next_last_id))
-    }
-
-    /// Set a part of the async pool.
-    /// We deserialize in this function because we insert in the async pool while deserializing.
+    /// Get a part of the async pool.
     /// Used for bootstrap.
     ///
     /// # Arguments
-    /// * data: must be the serialized version provided by `get_pool_part`
+    /// * cursor: current bootstrap state
     ///
     /// # Returns
-    /// The last id of the inserted entry (this is an optimization to easily keep a reference to the last id)
+    /// The async pool part and the updated cursor
+    pub fn get_pool_part(
+        &self,
+        cursor: StreamingStep<AsyncMessageId>,
+    ) -> Result<
+        (
+            BTreeMap<AsyncMessageId, AsyncMessage>,
+            StreamingStep<AsyncMessageId>,
+        ),
+        ModelsError,
+    > {
+        let left_bound = match cursor {
+            StreamingStep::Started => Unbounded,
+            StreamingStep::Ongoing(last_id) => {
+                if last_id
+                    == self
+                        .messages
+                        .first_key_value()
+                        .map(|(&message_id, _)| message_id)
+                        .expect("async_pool should contain at least one message")
+                {
+                    return Ok((BTreeMap::new(), StreamingStep::Finished));
+                }
+                Excluded(last_id)
+            }
+            StreamingStep::Finished => return Ok((BTreeMap::new(), StreamingStep::Finished)),
+        };
+        let mut pool_part = BTreeMap::new();
+        for (id, message) in self.messages.range((left_bound, Unbounded)) {
+            if pool_part.len() < self.config.part_size_message_bytes as usize {
+                pool_part.insert(id.clone(), message.clone());
+            }
+        }
+        let part_last_id = pool_part
+            .last_key_value()
+            .map(|(&message_id, _)| message_id)
+            .expect("pool_part should contain at least one message");
+        Ok((pool_part, StreamingStep::Ongoing(part_last_id)))
+    }
+
+    /// Set a part of the async pool.
+    /// Used for bootstrap.
+    ///
+    /// # Arguments
+    /// * part: the async pool part provided by `get_pool_part`
+    ///
+    /// # Returns
+    /// The updated cursor after the current insert
     pub fn set_pool_part<'a>(
         &mut self,
-        part: &'a [u8],
-    ) -> Result<Option<AsyncMessageId>, ModelsError> {
-        let async_message_id_deserializer =
-            AsyncMessageIdDeserializer::new(self.config.thread_count);
-        let async_message_deserializer = AsyncMessageDeserializer::new(
-            self.config.thread_count,
-            self.config.max_data_async_message,
-        );
-        let (rest, messages) = many0(|input: &'a [u8]| {
-            if input.is_empty() {
-                return Err(nom::Err::Error(nom::error::Error::new(
-                    input,
-                    nom::error::ErrorKind::LengthValue,
-                )));
-            }
-            tuple((
-                |input| async_message_id_deserializer.deserialize(input),
-                |input| async_message_deserializer.deserialize(input),
-            ))(input)
-        })(part)?;
-        if rest.is_empty() {
-            self.messages.extend(messages);
-            Ok(self.messages.last_key_value().map(|(id, _)| *id))
-        } else {
-            Err(ModelsError::SerializeError(
-                "pool part deserialization has data left".to_string(),
-            ))
-        }
+        part: BTreeMap<AsyncMessageId, AsyncMessage>,
+    ) -> Result<StreamingStep<AsyncMessageId>, ModelsError> {
+        self.messages.extend(part);
+        Ok(StreamingStep::Ongoing(
+            self.messages
+                .last_key_value()
+                .map(|(&id, _)| id)
+                .expect("should contain at least one message"),
+        ))
     }
 }
 
