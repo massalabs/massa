@@ -3,7 +3,7 @@ use crate::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, Selecto
 use bitvec::vec::BitVec;
 use massa_hash::Hash;
 use massa_models::error::ModelsError;
-use massa_models::streaming_cursor::StreamingStep;
+use massa_models::streaming_step::StreamingStep;
 use massa_models::{
     address::{Address, AddressDeserializer},
     amount::{Amount, AmountDeserializer},

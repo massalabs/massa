@@ -9,7 +9,7 @@ use massa_models::{
     operation::{OperationId, OperationIdDeserializer},
     prehash::PreHashMap,
     slot::{Slot, SlotDeserializer, SlotSerializer},
-    streaming_cursor::StreamingStep,
+    streaming_step::StreamingStep,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,

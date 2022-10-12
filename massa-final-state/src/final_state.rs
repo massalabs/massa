@@ -11,7 +11,7 @@ use crate::{
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_ledger_exports::{LedgerChanges, LedgerController};
 use massa_models::{
-    address::Address, operation::OperationId, slot::Slot, streaming_cursor::StreamingStep,
+    address::Address, operation::OperationId, slot::Slot, streaming_step::StreamingStep,
 };
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use std::collections::VecDeque;

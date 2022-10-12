@@ -13,7 +13,7 @@ use massa_final_state::FinalState;
 use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::{
-    operation::OperationId, slot::Slot, streaming_cursor::StreamingStep, version::Version,
+    operation::OperationId, slot::Slot, streaming_step::StreamingStep, version::Version,
 };
 use massa_network_exports::NetworkCommandSender;
 use massa_signature::KeyPair;
@@ -257,10 +257,10 @@ pub async fn send_final_state_stream(
     final_state: Arc<RwLock<FinalState>>,
     mut last_slot: Option<Slot>,
     mut last_key: Option<Vec<u8>>,
-    mut last_async_message_id: StreamingStep<AsyncMessageId>,
+    mut last_pool_step: StreamingStep<AsyncMessageId>,
     mut last_cycle_step: StreamingStep<u64>,
-    mut last_credits_slot: StreamingStep<Slot>,
-    mut last_exec_ops_step: StreamingStep<OperationId>,
+    mut last_credits_step: StreamingStep<Slot>,
+    mut last_ops_step: StreamingStep<OperationId>,
     write_timeout: Duration,
 ) -> Result<(), BootstrapError> {
     loop {
@@ -292,9 +292,8 @@ pub async fn send_final_state_stream(
                     })?;
             ledger_data = data;
 
-            let (pool_data, new_last_async_pool_id) = final_state_read
-                .async_pool
-                .get_pool_part(last_async_message_id)?;
+            let (pool_data, new_pool_step) =
+                final_state_read.async_pool.get_pool_part(last_pool_step)?;
             async_pool_data = pool_data;
 
             let (cycle_data, new_cycle_step) = final_state_read
@@ -302,14 +301,14 @@ pub async fn send_final_state_stream(
                 .get_cycle_history_part(last_cycle_step)?;
             pos_cycle_data = cycle_data;
 
-            let (credits_data, new_last_credits_slot) = final_state_read
+            let (credits_data, new_credits_step) = final_state_read
                 .pos_state
-                .get_deferred_credits_part(last_credits_slot)?;
+                .get_deferred_credits_part(last_credits_step)?;
             pos_credits_data = credits_data;
 
-            let (ops_data, new_exec_ops_step) = final_state_read
+            let (ops_data, new_ops_step) = final_state_read
                 .executed_ops
-                .get_executed_ops_part(last_exec_ops_step)?;
+                .get_executed_ops_part(last_ops_step)?;
             exec_ops_data = ops_data;
 
             if let Some(slot) = last_slot && slot != final_state_read.slot {
@@ -330,39 +329,31 @@ pub async fn send_final_state_stream(
                             })
                         })
                         .transpose()?,
-                    last_async_message_id,
+                    last_pool_step,
                     new_cycle_step,
-                    new_exec_ops_step,
+                    new_ops_step,
                 )?;
             } else {
                 final_state_changes = Vec::new();
             }
 
-            // Assign value for next turn
+            // Update cursors for next turn
             if new_last_key.is_some() || !ledger_data.is_empty() {
                 last_key = new_last_key;
             }
-            if new_last_async_pool_id.is_some() || !async_pool_data.is_empty() {
-                last_async_message_id = new_last_async_pool_id;
-            }
-            if !pos_cycle_data.is_empty() {
-                last_cycle_step = new_cycle_step;
-            }
-            if new_last_credits_slot.is_some() || !pos_credits_data.is_empty() {
-                last_credits_slot = new_last_credits_slot;
-            }
-            if !exec_ops_data.is_empty() {
-                last_exec_ops_step = new_exec_ops_step;
-            }
+            last_pool_step = new_pool_step;
+            last_cycle_step = new_cycle_step;
+            last_credits_step = new_credits_step;
+            last_ops_step = new_ops_step;
             last_slot = Some(final_state_read.slot);
             current_slot = final_state_read.slot;
         }
 
         if !ledger_data.is_empty()
-            || !async_pool_data.is_empty()
-            || !pos_cycle_data.is_empty()
-            || !pos_credits_data.is_empty()
-            || !exec_ops_data.is_empty()
+            || !last_pool_step.finished()
+            || !last_cycle_step.finished()
+            || !last_credits_step.finished()
+            || !last_ops_step.finished()
             || !final_state_changes.is_empty()
         {
             match tokio::time::timeout(
@@ -497,20 +488,20 @@ async fn manage_bootstrap(
                 BootstrapClientMessage::AskFinalStatePart {
                     last_key,
                     last_slot,
-                    last_async_message_id,
+                    last_pool_step,
                     last_cycle_step,
-                    last_credits_slot,
-                    last_exec_ops_step,
+                    last_credits_step,
+                    last_ops_step,
                 } => {
                     send_final_state_stream(
                         server,
                         final_state.clone(),
                         last_slot,
                         last_key,
-                        last_async_message_id,
+                        last_pool_step,
                         last_cycle_step,
-                        last_credits_slot,
-                        last_exec_ops_step,
+                        last_credits_step,
+                        last_ops_step,
                         write_timeout,
                     )
                     .await?;

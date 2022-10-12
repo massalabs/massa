@@ -7,7 +7,7 @@ use crate::{
     config::AsyncPoolConfig,
     message::{AsyncMessage, AsyncMessageId},
 };
-use massa_models::{error::ModelsError, slot::Slot, streaming_cursor::StreamingStep};
+use massa_models::{error::ModelsError, slot::Slot, streaming_step::StreamingStep};
 use std::collections::BTreeMap;
 use std::ops::Bound::{Excluded, Unbounded};
 
