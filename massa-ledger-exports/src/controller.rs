@@ -1,5 +1,7 @@
 use massa_hash::Hash;
-use massa_models::{address::Address, amount::Amount, error::ModelsError, slot::Slot};
+use massa_models::{
+    address::Address, amount::Amount, error::ModelsError, slot::Slot, streaming_step::StreamingStep,
+};
 use std::collections::BTreeSet;
 use std::fmt::Debug;
 
@@ -64,13 +66,13 @@ pub trait LedgerController: Send + Sync + Debug {
     /// Return: Tuple with data and last key
     fn get_ledger_part(
         &self,
-        last_key: &Option<Vec<u8>>,
-    ) -> Result<(Vec<u8>, Option<Vec<u8>>), ModelsError>;
+        last_key: StreamingStep<Vec<u8>>,
+    ) -> Result<(Vec<u8>, StreamingStep<Vec<u8>>), ModelsError>;
 
     /// Set a part of the ledger
     /// Used for bootstrap
     /// Return: Last key inserted
-    fn set_ledger_part(&self, data: Vec<u8>) -> Result<Option<Vec<u8>>, ModelsError>;
+    fn set_ledger_part(&self, data: Vec<u8>) -> Result<StreamingStep<Vec<u8>>, ModelsError>;
 
     /// Get every address and their corresponding balance.
     ///
