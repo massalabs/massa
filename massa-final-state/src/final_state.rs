@@ -9,10 +9,8 @@ use crate::{
     config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges, ExecutedOps,
 };
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
-use massa_ledger_exports::{LedgerChanges, LedgerController};
-use massa_models::{
-    address::Address, operation::OperationId, slot::Slot, streaming_step::StreamingStep,
-};
+use massa_ledger_exports::{get_address_from_key, LedgerChanges, LedgerController};
+use massa_models::{operation::OperationId, slot::Slot, streaming_step::StreamingStep};
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use std::collections::VecDeque;
 use tracing::debug;
@@ -132,30 +130,32 @@ impl FinalState {
     }
 
     /// Used for bootstrap
-    /// Take a part of the final state changes (ledger and async pool) using a `Slot`, a `Address` and a `AsyncMessageId`.
-    /// Every ledgers changes that are after `last_slot` and before or equal of `last_address` must be returned.
-    /// Every async pool changes that are after `last_slot` and before or equal of `last_id_async_pool` must be returned.
+    /// Take a part of the final state changes.
+    /// Every ledger change that is after `slot` and before or equal to `ledger_step`.
+    /// Every async pool change that is after `slot` and before or equal to `pool_step`.
+    /// Every proof-of-stake change if main bootstrap process is finished.
+    /// Every executed ops change if main bootstrap process is finished.
     ///
-    /// Error case: When the `last_slot` is too old for `self.changes_history`
+    /// Error case: When the `slot` is too old for `self.changes_history`
     pub fn get_state_changes_part(
         &self,
-        last_slot: Slot,
-        last_address: Option<Address>,
-        last_id_async_pool: StreamingStep<AsyncMessageId>,
-        last_pos_step_cursor: StreamingStep<u64>,
+        slot: Slot,
+        ledger_step: StreamingStep<Vec<u8>>,
+        pool_step: StreamingStep<AsyncMessageId>,
+        cycle_step: StreamingStep<u64>,
         // IMPORTANT TODO: ADD DEF CREDITS STEP CHECK
-        last_exec_ops_cursor: StreamingStep<OperationId>,
+        ops_step: StreamingStep<OperationId>,
     ) -> Result<Vec<(Slot, StateChanges)>, FinalStateError> {
         let position_slot = if let Some((first_slot, _)) = self.changes_history.front() {
             // Safe because we checked that there is changes just above.
-            let index = last_slot
+            let index = slot
                 .slots_since(first_slot, self.config.thread_count)
                 .map_err(|_| {
                     FinalStateError::LedgerError("Last slot is overflowing history.".to_string())
                 })?
                 .saturating_add(1);
 
-            // Check if `last_slot` isn't in the future
+            // Check if `slot` isn't in the future
             if self.changes_history.len() as u64 <= index {
                 return Err(FinalStateError::LedgerError(
                     "Last slot is overflowing history.".to_string(),
@@ -169,8 +169,12 @@ impl FinalState {
         for (slot, changes) in self.changes_history.range((position_slot as usize)..) {
             let mut slot_changes = StateChanges::default();
 
-            // Get ledger change that concern address <= last_address.
-            if let Some(addr) = last_address {
+            // Get ledger change that concern address <= ledger_step
+            if let StreamingStep::Ongoing(key) = ledger_step.clone() {
+                // IMPORTANT TODO: HANDLE FINISHED CASE
+                let addr = get_address_from_key(&key).ok_or_else(|| {
+                    FinalStateError::LedgerError("Invalid key in ledger streaming step".to_string())
+                })?;
                 let ledger_changes: LedgerChanges = LedgerChanges(
                     changes
                         .ledger_changes
@@ -188,8 +192,8 @@ impl FinalState {
                 slot_changes.ledger_changes.0 = ledger_changes.0;
             }
 
-            // Get async pool changes that concern ids <= last_id_async_pool
-            if let StreamingStep::Ongoing(last_id) = last_id_async_pool {
+            // Get async pool changes that concern ids <= pool_step
+            if let StreamingStep::Ongoing(last_id) = pool_step {
                 // IMPORTANT TODO: HANDLE FINISHED CASE
                 let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(
                     changes
@@ -208,12 +212,12 @@ impl FinalState {
             }
 
             // Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
-            if last_pos_step_cursor.finished() {
+            if cycle_step.finished() {
                 slot_changes.pos_changes = changes.pos_changes.clone();
             }
 
             // Get executed operations changes if classic bootstrap finished
-            if last_exec_ops_cursor.finished() {
+            if ops_step.finished() {
                 slot_changes.executed_ops = changes.executed_ops.clone();
             }
 

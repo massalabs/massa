@@ -1,8 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_async_pool::{AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer};
+use massa_async_pool::{
+    AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
+};
 use massa_final_state::{
-    ExecutedOpsStreamingStep, ExecutedOpsStreamingStepDeserializer,
+    ExecutedOps, ExecutedOpsStreamingStep, ExecutedOpsStreamingStepDeserializer,
     ExecutedOpsStreamingStepSerializer, StateChanges, StateChangesDeserializer,
     StateChangesSerializer,
 };
@@ -10,8 +12,10 @@ use massa_graph::{
     BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
 };
 use massa_ledger_exports::{KeyDeserializer, KeySerializer};
+use massa_models::operation::OperationId;
 use massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
 use massa_models::slot::SlotDeserializer;
+use massa_models::streaming_step::StreamingStep;
 use massa_models::{
     slot::Slot,
     slot::SlotSerializer,
@@ -19,7 +23,8 @@ use massa_models::{
 };
 use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
 use massa_pos_exports::{
-    PoSCycleStreamingStep, PoSCycleStreamingStepDeserializer, PoSCycleStreamingStepSerializer,
+    CycleInfo, DeferredCredits, PoSCycleStreamingStep, PoSCycleStreamingStepDeserializer,
+    PoSCycleStreamingStepSerializer,
 };
 use massa_serialization::{
     Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
@@ -35,6 +40,7 @@ use nom::{
     IResult,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use std::collections::BTreeMap;
 use std::convert::TryInto;
 use std::ops::Bound::{Excluded, Included};
 
@@ -61,18 +67,18 @@ pub enum BootstrapServerMessage {
     },
     /// Part of the final state
     FinalStatePart {
-        /// Part of the execution ledger sent in a serialized way
-        ledger_data: Vec<u8>,
-        /// Part of the async pool
-        async_pool_part: Vec<u8>,
-        /// Part of the Proof of Stake `cycle_history`
-        pos_cycle_part: Vec<u8>,
-        /// Part of the Proof of Stake `deferred_credits`
-        pos_credits_part: Vec<u8>,
-        /// Part of the executed operations
-        exec_ops_part: Vec<u8>,
         /// Slot the state changes are attached to
         slot: Slot,
+        /// Part of the execution ledger sent in a serialized way
+        ledger_part: Vec<u8>,
+        /// Part of the async pool
+        async_pool_part: BTreeMap<AsyncMessageId, AsyncMessage>,
+        /// Part of the Proof of Stake `cycle_history`
+        pos_cycle_part: Option<CycleInfo>,
+        /// Part of the Proof of Stake `deferred_credits`
+        pos_credits_part: DeferredCredits,
+        /// Part of the executed operations
+        exec_ops_part: ExecutedOps,
         /// Ledger change for addresses inferior to `address` of the client message until the actual slot.
         final_state_changes: Vec<(Slot, StateChanges)>,
     },
@@ -147,13 +153,13 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
     ///    server_time: MassaTime::from(0),
     ///    version: Version::from_str("TEST.1.10").unwrap(),
     /// };
-    /// let mut message_serialized = Vec::new();
-    /// message_serializer.serialize(&bootstrap_server_message, &mut message_serialized).unwrap();
+    /// let message_serialized = Vec::new();
+    /// message_serializer.serialize(&bootstrap_server_message, &message_serialized).unwrap();
     /// ```
     fn serialize(
         &self,
         value: &BootstrapServerMessage,
-        buffer: &mut Vec<u8>,
+        buffer: &Vec<u8>,
     ) -> Result<(), SerializeError> {
         match value {
             BootstrapServerMessage::BootstrapTime {
@@ -328,8 +334,8 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ///    server_time: MassaTime::from(0),
     ///    version: Version::from_str("TEST.1.10").unwrap(),
     /// };
-    /// let mut message_serialized = Vec::new();
-    /// message_serializer.serialize(&bootstrap_server_message, &mut message_serialized).unwrap();
+    /// let message_serialized = Vec::new();
+    /// message_serializer.serialize(&bootstrap_server_message, &message_serialized).unwrap();
     /// let (rest, message_deserialized) = message_deserializer.deserialize::<DeserializeError>(&message_serialized).unwrap();
     /// match message_deserialized {
     ///     BootstrapServerMessage::BootstrapTime {
@@ -473,16 +479,16 @@ pub enum BootstrapClientMessage {
     AskFinalStatePart {
         /// Slot we are attached to for changes
         last_slot: Option<Slot>,
-        /// Last key of the ledger we received from the server
-        last_key: Option<Vec<u8>>,
-        /// Last async message id  of the async message pool we received from the server
-        last_async_message_id: Option<AsyncMessageId>,
+        /// Last received ledger key
+        last_ledger_step: StreamingStep<Vec<u8>>,
+        /// Last received async message id
+        last_pool_step: StreamingStep<AsyncMessageId>,
         /// Last received Proof of Stake cycle
-        last_cycle_step: PoSCycleStreamingStep,
-        /// Last receive Proof of Stake credits slot
-        last_credits_slot: Option<Slot>,
-        /// Last executed operations streaming step
-        last_exec_ops_step: ExecutedOpsStreamingStep,
+        last_cycle_step: StreamingStep<u64>,
+        /// Last received Proof of Stake credits slot
+        last_credits_step: StreamingStep<Slot>,
+        /// Last received executed operation id
+        last_ops_step: StreamingStep<OperationId>,
     },
     /// Bootstrap error
     BootstrapError {
@@ -546,13 +552,13 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
     ///
     /// let message_serializer = BootstrapClientMessageSerializer::new();
     /// let bootstrap_server_message = BootstrapClientMessage::AskBootstrapPeers;
-    /// let mut message_serialized = Vec::new();
-    /// message_serializer.serialize(&bootstrap_server_message, &mut message_serialized).unwrap();
+    /// let message_serialized = Vec::new();
+    /// message_serializer.serialize(&bootstrap_server_message, &message_serialized).unwrap();
     /// ```
     fn serialize(
         &self,
         value: &BootstrapClientMessage,
-        buffer: &mut Vec<u8>,
+        buffer: &Vec<u8>,
     ) -> Result<(), SerializeError> {
         match value {
             BootstrapClientMessage::AskBootstrapPeers => {
@@ -649,8 +655,8 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
     /// let message_serializer = BootstrapClientMessageSerializer::new();
     /// let message_deserializer = BootstrapClientMessageDeserializer::new(32, 255);
     /// let bootstrap_server_message = BootstrapClientMessage::AskBootstrapPeers;
-    /// let mut message_serialized = Vec::new();
-    /// message_serializer.serialize(&bootstrap_server_message, &mut message_serialized).unwrap();
+    /// let message_serialized = Vec::new();
+    /// message_serializer.serialize(&bootstrap_server_message, &message_serialized).unwrap();
     /// let (rest, message_deserialized) = message_deserializer.deserialize::<DeserializeError>(&message_serialized).unwrap();
     /// match message_deserialized {
     ///     BootstrapClientMessage::AskBootstrapPeers => (),

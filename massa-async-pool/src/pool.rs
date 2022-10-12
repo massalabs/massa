@@ -159,6 +159,7 @@ impl AsyncPool {
                 }
                 Excluded(last_id)
             }
+            // IMPORTANT TODO: MIGHT BE DIFFERENT
             StreamingStep::Finished(_) => return Ok((BTreeMap::new(), cursor)),
         };
         let mut pool_part = BTreeMap::new();

@@ -10,7 +10,6 @@ use futures::StreamExt;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::ConsensusCommandSender;
 use massa_final_state::FinalState;
-use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::{
     operation::OperationId, slot::Slot, streaming_step::StreamingStep, version::Version,
@@ -256,7 +255,7 @@ pub async fn send_final_state_stream(
     server: &mut BootstrapServerBinder,
     final_state: Arc<RwLock<FinalState>>,
     mut last_slot: Option<Slot>,
-    mut last_key: Option<Vec<u8>>,
+    mut last_ledger_step: StreamingStep<Vec<u8>>,
     mut last_pool_step: StreamingStep<AsyncMessageId>,
     mut last_cycle_step: StreamingStep<u64>,
     mut last_credits_step: StreamingStep<Slot>,
@@ -271,45 +270,44 @@ pub async fn send_final_state_stream(
         }
 
         let current_slot;
-        let ledger_data;
-        let async_pool_data;
-        let pos_cycle_data;
-        let pos_credits_data;
-        let exec_ops_data;
+        let ledger_part;
+        let async_pool_part;
+        let pos_cycle_part;
+        let pos_credits_part;
+        let exec_ops_part;
         let final_state_changes;
 
         // Scope of the final state read
         {
             let final_state_read = final_state.read();
-            let (data, new_last_key) =
-                final_state_read
-                    .ledger
-                    .get_ledger_part(&last_key)
-                    .map_err(|_| {
-                        BootstrapError::GeneralError(
-                            "Error on fetching ledger part of execution".to_string(),
-                        )
-                    })?;
-            ledger_data = data;
+            let (data, new_ledger_step) = final_state_read
+                .ledger
+                .get_ledger_part(last_ledger_step.clone())
+                .map_err(|_| {
+                    BootstrapError::GeneralError(
+                        "Error on fetching ledger part of execution".to_string(),
+                    )
+                })?;
+            ledger_part = data;
 
             let (pool_data, new_pool_step) =
                 final_state_read.async_pool.get_pool_part(last_pool_step)?;
-            async_pool_data = pool_data;
+            async_pool_part = pool_data;
 
             let (cycle_data, new_cycle_step) = final_state_read
                 .pos_state
                 .get_cycle_history_part(last_cycle_step)?;
-            pos_cycle_data = cycle_data;
+            pos_cycle_part = cycle_data;
 
             let (credits_data, new_credits_step) = final_state_read
                 .pos_state
                 .get_deferred_credits_part(last_credits_step)?;
-            pos_credits_data = credits_data;
+            pos_credits_part = credits_data;
 
             let (ops_data, new_ops_step) = final_state_read
                 .executed_ops
                 .get_executed_ops_part(last_ops_step)?;
-            exec_ops_data = ops_data;
+            exec_ops_part = ops_data;
 
             if let Some(slot) = last_slot && slot != final_state_read.slot {
                 if slot > final_state_read.slot {
@@ -319,16 +317,7 @@ pub async fn send_final_state_stream(
                 }
                 final_state_changes = final_state_read.get_state_changes_part(
                     slot,
-                    last_key
-                        .clone()
-                        .map(|key| {
-                            get_address_from_key(&key).ok_or_else(|| {
-                                BootstrapError::GeneralError(
-                                    "Malformed key in slot changes".to_string(),
-                                )
-                            })
-                        })
-                        .transpose()?,
+                    last_ledger_step,
                     last_pool_step,
                     new_cycle_step,
                     new_ops_step,
@@ -338,9 +327,7 @@ pub async fn send_final_state_stream(
             }
 
             // Update cursors for next turn
-            if new_last_key.is_some() || !ledger_data.is_empty() {
-                last_key = new_last_key;
-            }
+            last_ledger_step = new_ledger_step;
             last_pool_step = new_pool_step;
             last_cycle_step = new_cycle_step;
             last_credits_step = new_credits_step;
@@ -349,7 +336,7 @@ pub async fn send_final_state_stream(
             current_slot = final_state_read.slot;
         }
 
-        if !ledger_data.is_empty()
+        if !ledger_part.is_empty()
             || !last_pool_step.finished()
             || !last_cycle_step.finished()
             || !last_credits_step.finished()
@@ -359,12 +346,12 @@ pub async fn send_final_state_stream(
             match tokio::time::timeout(
                 write_timeout,
                 server.send(BootstrapServerMessage::FinalStatePart {
-                    ledger_data,
                     slot: current_slot,
-                    async_pool_part: async_pool_data,
-                    pos_cycle_part: pos_cycle_data,
-                    pos_credits_part: pos_credits_data,
-                    exec_ops_part: exec_ops_data,
+                    ledger_part,
+                    async_pool_part,
+                    pos_cycle_part,
+                    pos_credits_part,
+                    exec_ops_part,
                     final_state_changes,
                 }),
             )
@@ -486,8 +473,8 @@ async fn manage_bootstrap(
                     }?;
                 }
                 BootstrapClientMessage::AskFinalStatePart {
-                    last_key,
                     last_slot,
+                    last_ledger_step,
                     last_pool_step,
                     last_cycle_step,
                     last_credits_step,
@@ -497,7 +484,7 @@ async fn manage_bootstrap(
                         server,
                         final_state.clone(),
                         last_slot,
-                        last_key,
+                        last_ledger_step,
                         last_pool_step,
                         last_cycle_step,
                         last_credits_step,

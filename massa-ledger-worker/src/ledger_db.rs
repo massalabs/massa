@@ -487,6 +487,7 @@ impl LedgerDB {
                 iter.next();
                 (iter, StreamingStep::Finished(Some(last_key)))
             }
+            // IMPORTANT TODO: MIGHT BE DIFFERENT
             StreamingStep::Finished(_) => return Ok((Vec::new(), cursor)),
         };
 
