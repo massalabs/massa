@@ -1,6 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-
 use super::{
     binders::{ReadBinder, WriteBinder},
     messages::Message,
@@ -12,18 +11,20 @@ use massa_models::{
     node::NodeId,
     wrapped::Id,
 };
-use massa_network_exports::{ConnectionClosureReason, NetworkConfig, NetworkError, NodeCommand, NodeEvent, NodeEventType};
+use massa_network_exports::{
+    ConnectionClosureReason, NetworkConfig, NetworkError, NodeCommand, NodeEvent, NodeEventType,
+};
+use massa_time::MassaTime;
 use tokio::{
+    io::AsyncWriteExt,
     sync::mpsc,
     sync::mpsc::{
         error::{SendTimeoutError, TrySendError},
         Sender,
     },
     time::timeout,
-    io::AsyncWriteExt,
 };
 use tracing::{debug, trace, warn};
-use massa_time::MassaTime;
 
 /// Manages connections
 /// One worker per node.
@@ -129,8 +130,13 @@ impl NodeWorker {
         let mut writer_joined = false;
 
         let node_reader_handle = tokio::spawn(async move {
-            node_sender_handle(&mut self.socket_reader, &mut self.node_event_tx,
-                               self.node_id, self.cfg.max_send_wait).await
+            node_sender_handle(
+                &mut self.socket_reader,
+                &mut self.node_event_tx,
+                self.node_id,
+                self.cfg.max_send_wait,
+            )
+            .await
         });
         tokio::pin!(node_reader_handle);
         let mut reader_joined = false;
@@ -138,7 +144,7 @@ impl NodeWorker {
         let mut ask_peer_list_interval =
             tokio::time::interval(self.cfg.ask_peer_list_interval.to_duration());
         let mut exit_reason = ConnectionClosureReason::Normal;
-        let mut exit_reason_reader = ConnectionClosureReason::Normal;
+        let mut _exit_reason_reader = ConnectionClosureReason::Normal;
 
         'select_loop: loop {
             /*
@@ -179,7 +185,7 @@ impl NodeWorker {
                 // incoming socket data
                 res = &mut node_reader_handle => {
                     reader_joined = true;
-                    exit_reason_reader = match res {
+                    _exit_reason_reader = match res {
                         Ok(r) => {
                             r
                         },
@@ -323,7 +329,6 @@ impl NodeWorker {
                     massa_trace!("node_worker.run_loop.cleanup.node_writer_handle.clean_exit", {"node": self.node_id});
                 }
             }
-
         }
 
         // 3- Stop node_reader_handle
@@ -337,26 +342,29 @@ impl NodeWorker {
     }
 }
 
-async fn node_sender_handle(socket_reader: &mut ReadBinder, node_event_tx: &mut Sender<NodeEvent>,
-                            node_id: NodeId, max_send_wait: MassaTime) -> ConnectionClosureReason {
-
+async fn node_sender_handle(
+    socket_reader: &mut ReadBinder,
+    node_event_tx: &mut Sender<NodeEvent>,
+    node_id: NodeId,
+    max_send_wait: MassaTime,
+) -> ConnectionClosureReason {
     let mut exit_reason = ConnectionClosureReason::Normal;
 
     loop {
         match socket_reader.next().await {
             Ok(Some((index, msg))) => {
-
-                massa_trace!(
-                            "node_worker.run_loop. receive self.socket_reader.next()", {"index": index});
+                massa_trace!("node_worker.run_loop. receive self.socket_reader.next()", {
+                    "index": index
+                });
                 match msg {
                     Message::BlockHeader(header) => {
                         massa_trace!(
-                                    "node_worker.run_loop. receive Message::BlockHeader",
-                                    {"block_id": header.id.get_hash(), "header": header, "node": node_id}
-                                );
+                            "node_worker.run_loop. receive Message::BlockHeader",
+                            {"block_id": header.id.get_hash(), "header": header, "node": node_id}
+                        );
                         let event = NodeEvent(node_id, NodeEventType::ReceivedBlockHeader(header));
                         send_node_event(node_event_tx, event, max_send_wait).await
-                    },
+                    }
                     Message::AskForBlocks(list) => {
                         massa_trace!("node_worker.run_loop. receive Message::AskForBlocks", {"hashlist": list, "node": node_id});
                         let event = NodeEvent(node_id, NodeEventType::ReceivedAskForBlocks(list));
@@ -378,55 +386,73 @@ async fn node_sender_handle(socket_reader: &mut ReadBinder, node_event_tx: &mut 
                     }
                     Message::Operations(operations) => {
                         massa_trace!(
-                                    "node_worker.run_loop. receive Message::Operations: ",
-                                    {"node": node_id, "operations": operations}
-                                );
+                            "node_worker.run_loop. receive Message::Operations: ",
+                            {"node": node_id, "operations": operations}
+                        );
                         //massa_trace!("node_worker.run_loop. receive Message::Operations", {"node": self.node_id, "operations": operations});
-                        let event = NodeEvent(node_id, NodeEventType::ReceivedOperations(operations));
+                        let event =
+                            NodeEvent(node_id, NodeEventType::ReceivedOperations(operations));
                         send_node_event(node_event_tx, event, max_send_wait).await
                     }
                     Message::AskForOperations(operation_prefix_ids) => {
                         massa_trace!(
-                                    "node_worker.run_loop. receive Message::AskForOperations: ",
-                                    {"node": node_id, "operation_ids": operation_prefix_ids}
-                                );
+                            "node_worker.run_loop. receive Message::AskForOperations: ",
+                            {"node": node_id, "operation_ids": operation_prefix_ids}
+                        );
                         //massa_trace!("node_worker.run_loop. receive Message::AskForOperations", {"node": self.node_id, "operations": operation_ids});
-                        let event = NodeEvent(node_id, NodeEventType::ReceivedAskForOperations(operation_prefix_ids));
+                        let event = NodeEvent(
+                            node_id,
+                            NodeEventType::ReceivedAskForOperations(operation_prefix_ids),
+                        );
                         send_node_event(node_event_tx, event, max_send_wait).await
                     }
                     Message::OperationsAnnouncement(operation_prefix_ids) => {
                         massa_trace!("node_worker.run_loop. receive Message::OperationsBatch", {"node": node_id, "operation_prefix_ids": operation_prefix_ids});
-                        let event = NodeEvent(node_id, NodeEventType::ReceivedOperationAnnouncements(operation_prefix_ids));
+                        let event = NodeEvent(
+                            node_id,
+                            NodeEventType::ReceivedOperationAnnouncements(operation_prefix_ids),
+                        );
                         send_node_event(node_event_tx, event, max_send_wait).await
                     }
                     Message::Endorsements(endorsements) => {
                         massa_trace!("node_worker.run_loop. receive Message::Endorsement", {"node": node_id, "endorsements": endorsements});
-                        let event =NodeEvent(node_id, NodeEventType::ReceivedEndorsements(endorsements));
+                        let event =
+                            NodeEvent(node_id, NodeEventType::ReceivedEndorsements(endorsements));
                         send_node_event(node_event_tx, event, max_send_wait).await
                     }
                     _ => {
                         // TODO: Write a more user-friendly warning/logout after several consecutive fails? see #1082
                         massa_trace!("node_worker.run_loop.self.socket_reader.next(). Unexpected message Warning", {});
-                    },
+                    }
                 }
-            },
-            Ok(None)=> {
-                massa_trace!("node_worker.run_loop.self.socket_reader.next(). Ok(None) Error", {});
-                break
-            }, // peer closed cleanly
-            Err(err) => {  // stream error
-                massa_trace!("node_worker.run_loop.self.socket_reader.next(). receive error", {"error": format!("{}", err)});
+            }
+            Ok(None) => {
+                massa_trace!(
+                    "node_worker.run_loop.self.socket_reader.next(). Ok(None) Error",
+                    {}
+                );
+                break;
+            } // peer closed cleanly
+            Err(err) => {
+                // stream error
+                massa_trace!(
+                    "node_worker.run_loop.self.socket_reader.next(). receive error",
+                    { "error": format!("{}", err) }
+                );
                 exit_reason = ConnectionClosureReason::Failed;
                 break;
-            },
+            }
         }
     }
 
     return exit_reason;
 }
 
-async fn send_node_event(node_event_tx: &mut Sender<NodeEvent>, event: NodeEvent, max_send_wait: MassaTime) {
-
+async fn send_node_event(
+    node_event_tx: &mut Sender<NodeEvent>,
+    event: NodeEvent,
+    max_send_wait: MassaTime,
+) {
     let result = node_event_tx
         // .send_timeout(event, max_send_wait.to_duration())
         .send_timeout(event, tokio::time::Duration::from_millis(10000))
@@ -435,9 +461,9 @@ async fn send_node_event(node_event_tx: &mut Sender<NodeEvent>, event: NodeEvent
         Ok(()) => {}
         Err(SendTimeoutError::Closed(event)) => {
             warn!(
-                    "Failed to send NodeEvent due to channel closure: {:?}.",
-                    event
-                );
+                "Failed to send NodeEvent due to channel closure: {:?}.",
+                event
+            );
         }
         Err(SendTimeoutError::Timeout(event)) => {
             warn!("Failed to send NodeEvent due to timeout: {:?}.", event);
@@ -453,9 +479,9 @@ pub fn try_send_to_node(
     match sender.try_send(msg) {
         Err(TrySendError::Full(_)) => {
             warn!(
-                    "failed sending message to node {}: send channel full",
-                    node_id
-                );
+                "failed sending message to node {}: send channel full",
+                node_id
+            );
             Ok(())
         }
         Err(TrySendError::Closed(_)) => {
