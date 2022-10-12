@@ -82,8 +82,6 @@ pub enum ReadOnlyExecutionTarget {
 pub struct ReadOnlyCallRequest {
     /// Maximum gas to spend in the execution.
     pub max_gas: u64,
-    /// The simulated price of gas for the read-only execution.
-    pub simulated_gas_price: Amount,
     /// Call stack to simulate, older caller first. Target should be last.
     pub call_stack: Vec<ExecutionStackElement>,
     /// Target address
