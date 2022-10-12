@@ -135,12 +135,7 @@ impl GraphWorker {
             next_slot.period,
             next_slot.thread,
         );
-        let latest_final_periods: Vec<u64> = shared_state
-            .read()
-            .latest_final_blocks_periods
-            .iter()
-            .map(|(_block_id, period)| *period)
-            .collect();
+
         if config.genesis_timestamp > now {
             let (days, hours, mins, secs) = config
                 .genesis_timestamp
@@ -176,8 +171,6 @@ impl GraphWorker {
             previous_slot,
             next_slot,
             next_instant,
-            wishlist: Default::default(),
-            latest_final_periods,
             prev_blockclique: Default::default(),
             storage: storage.clone(),
         };

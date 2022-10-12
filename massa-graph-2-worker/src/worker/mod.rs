@@ -1,14 +1,12 @@
 use massa_graph::BootstrapableGraph;
 use massa_graph_2_exports::{GraphChannels, GraphConfig, GraphController, GraphManager};
-use massa_models::address::Address;
-use massa_models::block::{BlockId, WrappedHeader};
+use massa_models::block::BlockId;
 use massa_models::clique::Clique;
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::slot::Slot;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
-use std::collections::VecDeque;
 use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Instant;
@@ -29,10 +27,6 @@ pub struct GraphWorker {
     next_slot: Slot,
     /// Next slot instant
     next_instant: Instant,
-    /// blocks we want
-    wishlist: PreHashMap<BlockId, Option<WrappedHeader>>,
-    /// save latest final periods
-    latest_final_periods: Vec<u64>,
     /// previous blockclique notified to Execution
     prev_blockclique: PreHashMap<BlockId, Slot>,
     /// Shared storage,
@@ -41,7 +35,6 @@ pub struct GraphWorker {
 
 mod init;
 mod main_loop;
-mod tick;
 
 pub fn start_graph_worker(
     config: GraphConfig,
@@ -80,6 +73,7 @@ pub fn start_graph_worker(
         final_block_stats: Default::default(),
         stale_block_stats: Default::default(),
         protocol_blocks: Default::default(),
+        wishlist: Default::default(),
         launch_time: MassaTime::now(config.clock_compensation_millis).unwrap(),
         stats_desync_detection_timespan,
         stats_history_timespan: std::cmp::max(

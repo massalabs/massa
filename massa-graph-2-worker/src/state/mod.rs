@@ -21,6 +21,7 @@ use massa_time::MassaTime;
 mod process;
 mod process_commands;
 mod stats;
+mod tick;
 mod verifications;
 
 #[derive(Clone)]
@@ -76,6 +77,8 @@ pub struct GraphState {
     pub stats_history_timespan: MassaTime,
     /// the time span considered for desynchronization detection
     pub stats_desync_detection_timespan: MassaTime,
+    /// blocks we want
+    pub wishlist: PreHashMap<BlockId, Option<WrappedHeader>>,
 }
 
 impl GraphState {

@@ -1,4 +1,7 @@
-use std::collections::{BTreeSet, VecDeque};
+use std::{
+    collections::{BTreeSet, HashMap, VecDeque},
+    mem,
+};
 
 use massa_graph::error::{GraphError, GraphResult};
 use massa_graph_2_exports::block_status::{BlockStatus, DiscardReason, HeaderOrBlock};
@@ -13,6 +16,7 @@ use massa_models::{
 };
 use massa_signature::PublicKey;
 use massa_storage::Storage;
+use massa_time::MassaTime;
 use tracing::log::{debug, info};
 
 use crate::state::verifications::HeaderCheckOutcome;
@@ -444,7 +448,7 @@ impl GraphState {
     }
 
     /// Computes max cliques of compatible blocks
-    pub fn compute_max_cliques(&self, read_shared_state: &GraphState) -> Vec<PreHashSet<BlockId>> {
+    pub fn compute_max_cliques(&self) -> Vec<PreHashSet<BlockId>> {
         let mut max_cliques: Vec<PreHashSet<BlockId>> = Vec::new();
 
         // algorithm adapted from IK_GPX as summarized in:
@@ -459,7 +463,7 @@ impl GraphState {
             PreHashSet<BlockId>,
         )> = vec![(
             PreHashSet::<BlockId>::default(),
-            read_shared_state.gi_head.keys().cloned().collect(),
+            self.gi_head.keys().cloned().collect(),
             PreHashSet::<BlockId>::default(),
         )];
         while let Some((r, mut p, mut x)) = stack.pop() {
@@ -472,18 +476,18 @@ impl GraphState {
             let &u_p = p
                 .union(&x)
                 .max_by_key(|&u| {
-                    p.difference(&(&read_shared_state.gi_head[u] | &vec![*u].into_iter().collect()))
+                    p.difference(&(&self.gi_head[u] | &vec![*u].into_iter().collect()))
                         .count()
                 })
                 .unwrap(); // p was checked to be non-empty before
 
             // iterate over u_set = (p /\ Neighbors(u_p, GI))
             let u_set: PreHashSet<BlockId> =
-                &p & &(&read_shared_state.gi_head[&u_p] | &vec![u_p].into_iter().collect());
+                &p & &(&self.gi_head[&u_p] | &vec![u_p].into_iter().collect());
             for u_i in u_set.into_iter() {
                 p.remove(&u_i);
                 let u_i_set: PreHashSet<BlockId> = vec![u_i].into_iter().collect();
-                let comp_n_u_i: PreHashSet<BlockId> = &read_shared_state.gi_head[&u_i] | &u_i_set;
+                let comp_n_u_i: PreHashSet<BlockId> = &self.gi_head[&u_i] | &u_i_set;
                 stack.push((&r | &u_i_set, &p - &comp_n_u_i, &x - &comp_n_u_i));
                 x.insert(u_i);
             }
@@ -611,7 +615,7 @@ impl GraphState {
             );
             let before = self.max_cliques.len();
             self.max_cliques = self
-                .compute_max_cliques(self)
+                .compute_max_cliques()
                 .into_iter()
                 .map(|c| Clique {
                     block_ids: c,
@@ -987,7 +991,6 @@ impl GraphState {
     pub fn get_active_block_and_descendants(
         &self,
         block_id: &BlockId,
-        read_shared_state: &GraphState,
     ) -> GraphResult<PreHashSet<BlockId>> {
         let mut to_visit = vec![*block_id];
         let mut result = PreHashSet::<BlockId>::default();
@@ -995,7 +998,7 @@ impl GraphState {
             if !result.insert(visit_h) {
                 continue; // already visited
             }
-            match read_shared_state.block_statuses.get(&visit_h) {
+            match self.block_statuses.get(&visit_h) {
                 Some(BlockStatus::Active { a_block, .. }) => {
                     a_block.as_ref()
                     .children.iter()
@@ -1007,28 +1010,216 @@ impl GraphState {
         Ok(result)
     }
 
-    /// signal new slot
-    pub fn slot_tick(&mut self, current_slot: Option<Slot>) -> GraphResult<()> {
-        // list all elements for which the time has come
-        let to_process: BTreeSet<(Slot, BlockId)> = self
-            .waiting_for_slot_index
+    /// Notify execution about blockclique changes and finalized blocks.
+    ///
+    /// # Arguments:
+    /// * `finalized_blocks`: Block that became final and need to be send to execution
+    fn notify_execution(&mut self, finalized_blocks: HashMap<Slot, BlockId>) {
+        // List new block storage instances that Execution doesn't know about.
+        // That's blocks that have not been sent to execution before, ie. in the previous blockclique).
+        let mut new_blocks_storage: PreHashMap<BlockId, Storage> = finalized_blocks
             .iter()
-            .filter_map(|b_id| match self.block_statuses.get(b_id) {
-                Some(BlockStatus::WaitingForSlot(header_or_block)) => {
-                    let slot = header_or_block.get_slot();
-                    if Some(slot) <= current_slot {
-                        Some((slot, *b_id))
-                    } else {
-                        None
-                    }
+            .filter_map(|(_slot, b_id)| {
+                if self.prev_blockclique.contains_key(b_id) {
+                    // was previously sent as a blockclique element
+                    return None;
                 }
-                _ => None,
+                let storage = match self.block_statuses.get(b_id) {
+                    Some(BlockStatus::Active {
+                        a_block: _,
+                        storage,
+                    }) => storage,
+                    _ => panic!("final block not found in active blocks"),
+                };
+                Some((*b_id, storage.clone()))
             })
             .collect();
 
-        massa_trace!("consensus.block_graph.slot_tick", {});
-        // process those elements
-        self.rec_process(to_process, current_slot)?;
+        // Get new blockclique block list with slots.
+        let mut blockclique_changed = false;
+        let new_blockclique: PreHashMap<BlockId, Slot> = self
+            .get_blockclique()
+            .iter()
+            .map(|b_id| {
+                if let Some(slot) = self.prev_blockclique.remove(b_id) {
+                    // The block was already sent in the previous blockclique:
+                    // the slot can be gathered from there without locking Storage.
+                    // Note: the block is removed from self.prev_blockclique.
+                    (*b_id, slot)
+                } else {
+                    // The block was not present in the previous blockclique:
+                    // the blockclique has changed => get the block's slot by querying Storage.
+                    blockclique_changed = true;
+                    let (slot, storage) = match self.block_statuses.get(b_id) {
+                        Some(BlockStatus::Active { a_block, storage }) => (a_block.slot, storage),
+                        _ => panic!("blockclique block not found in active blocks"),
+                    };
+                    new_blocks_storage.insert(*b_id, storage.clone());
+                    (*b_id, slot)
+                }
+            })
+            .collect();
+        if !self.prev_blockclique.is_empty() {
+            // All elements present in the new blockclique have been removed from `prev_blockclique` above.
+            // If `prev_blockclique` is not empty here, it means that it contained elements that are not in the new blockclique anymore.
+            // In that case, we mark the blockclique as having changed.
+            blockclique_changed = true;
+        }
+        // Overwrite previous blockclique.
+        // Should still be done even if unchanged because elements were removed from it above.
+        self.prev_blockclique = new_blockclique.clone();
+
+        if finalized_blocks.is_empty() && !blockclique_changed {
+            // There are no changes (neither block finalizations not blockclique changes) to send to execution.
+            return;
+        }
+
+        // Notify execution of block finalizations and blockclique changes
+        self.channels
+            .execution_controller
+            .update_blockclique_status(
+                finalized_blocks,
+                if blockclique_changed {
+                    Some(new_blockclique.into_iter().map(|(k, v)| (v, k)).collect())
+                } else {
+                    None
+                },
+                new_blocks_storage,
+            );
+    }
+
+    /// call me if the block database changed
+    /// Processing of final blocks, pruning.
+    ///
+    /// 1. propagate blocks
+    /// 2. Notify of attack attempts
+    /// 3. get new final blocks
+    /// 4. get blockclique
+    /// 5. notify Execution
+    /// 6. Process new final blocks
+    /// 7. Notify pool of new final ops
+    /// 8. Notify PoS of final blocks
+    /// 9. notify protocol of block wish list
+    /// 10. note new latest final periods (prune graph if changed)
+    /// 11. add stale blocks to stats
+    pub fn block_db_changed(&mut self) -> GraphResult<()> {
+        let final_block_slots = {
+            massa_trace!("consensus.consensus_worker.block_db_changed", {});
+
+            // Propagate new blocks
+            for (block_id, storage) in mem::take(&mut self.to_propagate).into_iter() {
+                massa_trace!("consensus.consensus_worker.block_db_changed.integrated", {
+                    "block_id": block_id
+                });
+                self.channels
+                    .protocol_command_sender
+                    .integrated_block(block_id, storage)?;
+            }
+
+            // Notify protocol of attack attempts.
+            for hash in mem::take(&mut self.attack_attempts).into_iter() {
+                self.channels
+                    .protocol_command_sender
+                    .notify_block_attack(hash)?;
+                massa_trace!("consensus.consensus_worker.block_db_changed.attack", {
+                    "hash": hash
+                });
+            }
+
+            // manage finalized blocks
+            let timestamp = MassaTime::now(self.config.clock_compensation_millis)?;
+            let finalized_blocks = mem::take(&mut self.new_final_blocks);
+            let mut final_block_slots = HashMap::with_capacity(finalized_blocks.len());
+            let mut final_block_stats = VecDeque::with_capacity(finalized_blocks.len());
+            for b_id in finalized_blocks {
+                if let Some(BlockStatus::Active {
+                    a_block,
+                    storage: _,
+                }) = self.block_statuses.get(&b_id)
+                {
+                    // add to final blocks to notify execution
+                    final_block_slots.insert(a_block.slot, b_id);
+
+                    // add to stats
+                    let block_is_from_protocol = self
+                        .protocol_blocks
+                        .iter()
+                        .any(|(_, block_id)| block_id == &b_id);
+                    final_block_stats.push_back((
+                        timestamp,
+                        a_block.creator_address,
+                        block_is_from_protocol,
+                    ));
+                }
+            }
+            self.final_block_stats.extend(final_block_stats);
+
+            // add stale blocks to stats
+            let new_stale_block_ids_creators_slots = mem::take(&mut self.new_stale_blocks);
+            let timestamp = MassaTime::now(self.config.clock_compensation_millis)?;
+            for (_b_id, (_b_creator, _b_slot)) in new_stale_block_ids_creators_slots.into_iter() {
+                self.stale_block_stats.push_back(timestamp);
+            }
+            final_block_slots
+        };
+
+        // notify execution
+        self.notify_execution(final_block_slots);
+
+        // notify protocol of block wishlist
+        let new_wishlist = self.get_block_wishlist()?;
+        let new_blocks: PreHashMap<BlockId, Option<WrappedHeader>> = new_wishlist
+            .iter()
+            .filter_map(|(id, header)| {
+                if !self.wishlist.contains_key(id) {
+                    Some((*id, header.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let remove_blocks: PreHashSet<BlockId> = self
+            .wishlist
+            .iter()
+            .filter_map(|(id, _)| {
+                if !new_wishlist.contains_key(id) {
+                    Some(*id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        if !new_blocks.is_empty() || !remove_blocks.is_empty() {
+            massa_trace!("consensus.consensus_worker.block_db_changed.send_wishlist_delta", { "new": new_wishlist, "remove": remove_blocks });
+            self.channels
+                .protocol_command_sender
+                .send_wishlist_delta(new_blocks, remove_blocks)?;
+            self.wishlist = new_wishlist;
+        }
+
+        // note new latest final periods
+        let latest_final_periods: Vec<u64> = self
+            .latest_final_blocks_periods
+            .iter()
+            .map(|(_block_id, period)| *period)
+            .collect();
+        // if changed...
+        if self.latest_final_periods != latest_final_periods {
+            // signal new last final periods to pool
+            self.channels
+                .pool_command_sender
+                .notify_final_cs_periods(&latest_final_periods);
+            // update final periods
+            self.latest_final_periods = latest_final_periods;
+        }
+
+        /*
+        TODO add this again
+        let creator_addr = Address::from_public_key(&b_creator);
+        if self.staking_keys.contains_key(&creator_addr) {
+            warn!("block {} that was produced by our address {} at slot {} became stale. This is probably due to a temporary desynchronization.", b_id, creator_addr, b_slot);
+        }
+        */
 
         Ok(())
     }
