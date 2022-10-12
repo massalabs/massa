@@ -168,10 +168,6 @@ impl GraphWorker {
             ))
         }
 
-        // desync detection timespan
-        let stats_desync_detection_timespan =
-            config.t0.checked_mul(config.periods_per_cycle * 2)?;
-
         let mut res_graph = GraphWorker {
             config: config.clone(),
             command_receiver,
@@ -181,15 +177,6 @@ impl GraphWorker {
             next_slot,
             next_instant,
             wishlist: Default::default(),
-            final_block_stats,
-            protocol_blocks: Default::default(),
-            stale_block_stats: VecDeque::new(),
-            stats_desync_detection_timespan,
-            stats_history_timespan: std::cmp::max(
-                stats_desync_detection_timespan,
-                config.stats_timespan,
-            ),
-            launch_time: MassaTime::now(config.clock_compensation_millis)?,
             latest_final_periods,
             prev_blockclique: Default::default(),
             storage: storage.clone(),
@@ -232,6 +219,7 @@ impl GraphWorker {
                         ))
                     })
                     .collect::<GraphResult<_>>()?;
+                write_shared_state.final_block_stats = final_block_stats;
             }
 
             res_graph.claim_parent_refs()?;
@@ -245,6 +233,7 @@ impl GraphWorker {
                     genesis_block_ids.iter().map(|v| (*v, 0)).collect();
                 write_shared_state.genesis_hashes = genesis_block_ids;
                 write_shared_state.block_statuses = block_statuses;
+                write_shared_state.final_block_stats = final_block_stats;
             }
         }
 

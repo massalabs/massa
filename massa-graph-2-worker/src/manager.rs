@@ -12,7 +12,8 @@ pub struct GraphManagerImpl {
 impl GraphManager for GraphManagerImpl {
     fn stop(&mut self) {
         info!("stopping graph worker...");
-        let _ = self.graph_command_sender.send(GraphCommand::Stop);
+        //TODO: Stop graph command sender
+        //drop(self.graph_command_sender);
         // join the graph thread
         if let Some(join_handle) = self.thread_graph.take() {
             join_handle

@@ -6,7 +6,7 @@ use massa_logging::massa_trace;
 use massa_models::{
     active_block::ActiveBlock,
     address::Address,
-    block::BlockId,
+    block::{BlockId, WrappedHeader},
     clique::Clique,
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,
@@ -935,6 +935,35 @@ impl GraphState {
         }
 
         massa_trace!("consensus.block_graph.add_block_to_graph.end", {});
+        Ok(())
+    }
+
+    /// Mark a block as invalid
+    pub fn mark_invalid_block(
+        &mut self,
+        block_id: &BlockId,
+        header: WrappedHeader,
+    ) -> Result<(), GraphError> {
+        let reason = DiscardReason::Invalid("invalid".to_string());
+        self.maybe_note_attack_attempt(&reason, block_id);
+        massa_trace!("consensus.block_graph.process.invalid_block", {"block_id": block_id, "reason": reason});
+
+        // add to discard
+        self.block_statuses.insert(
+            *block_id,
+            BlockStatus::Discarded {
+                slot: header.content.slot,
+                creator: header.creator_address,
+                parents: header.content.parents,
+                reason,
+                sequence_number: {
+                    self.sequence_counter += 1;
+                    self.sequence_counter
+                },
+            },
+        );
+        self.discarded_index.insert(*block_id);
+
         Ok(())
     }
 

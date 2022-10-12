@@ -10,5 +10,4 @@ pub enum GraphCommand {
     RegisterBlock(BlockId, Slot, Storage),
     RegisterBlockHeader(BlockId, Wrapped<BlockHeader, BlockId>),
     MarkInvalidBlock(BlockId, Wrapped<BlockHeader, BlockId>),
-    Stop,
 }

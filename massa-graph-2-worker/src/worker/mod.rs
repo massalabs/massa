@@ -31,20 +31,8 @@ pub struct GraphWorker {
     next_instant: Instant,
     /// blocks we want
     wishlist: PreHashMap<BlockId, Option<WrappedHeader>>,
-    /// Final block stats `(time, creator, is_from_protocol)`
-    final_block_stats: VecDeque<(MassaTime, Address, bool)>,
-    /// Blocks that come from protocol used for stats and ids are removed when inserted in `final_block_stats`
-    protocol_blocks: VecDeque<(MassaTime, BlockId)>,
-    /// Stale block timestamp
-    stale_block_stats: VecDeque<MassaTime>,
-    /// the time span considered for stats
-    stats_history_timespan: MassaTime,
-    /// the time span considered for desynchronization detection
-    stats_desync_detection_timespan: MassaTime,
     /// save latest final periods
     latest_final_periods: Vec<u64>,
-    /// time at which the node was launched (used for desynchronization detection)
-    launch_time: MassaTime,
     /// previous blockclique notified to Execution
     prev_blockclique: PreHashMap<BlockId, Slot>,
     /// Shared storage,
@@ -53,8 +41,6 @@ pub struct GraphWorker {
 
 mod init;
 mod main_loop;
-mod process_commands;
-mod stats;
 mod tick;
 
 pub fn start_graph_worker(
@@ -64,6 +50,9 @@ pub fn start_graph_worker(
     storage: Storage,
 ) -> (Box<dyn GraphController>, Box<dyn GraphManager>) {
     let (tx, rx) = mpsc::sync_channel(10);
+    // desync detection timespan
+    let stats_desync_detection_timespan =
+        config.t0.checked_mul(config.periods_per_cycle * 2).unwrap();
     let shared_state = Arc::new(RwLock::new(GraphState {
         storage: storage.clone(),
         config: config.clone(),
@@ -88,6 +77,15 @@ pub fn start_graph_worker(
         block_statuses: Default::default(),
         genesis_hashes: Default::default(),
         gi_head: Default::default(),
+        final_block_stats: Default::default(),
+        stale_block_stats: Default::default(),
+        protocol_blocks: Default::default(),
+        launch_time: MassaTime::now(config.clock_compensation_millis).unwrap(),
+        stats_desync_detection_timespan,
+        stats_history_timespan: std::cmp::max(
+            stats_desync_detection_timespan,
+            config.stats_timespan,
+        ),
     }));
 
     let shared_state_cloned = shared_state.clone();

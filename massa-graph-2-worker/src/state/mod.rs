@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use massa_graph::error::{GraphError, GraphResult};
 use massa_graph_2_exports::{
@@ -16,9 +16,11 @@ use massa_models::{
     slot::Slot,
 };
 use massa_storage::Storage;
+use massa_time::MassaTime;
 
 mod process;
 mod process_commands;
+mod stats;
 mod verifications;
 
 #[derive(Clone)]
@@ -62,6 +64,18 @@ pub struct GraphState {
     pub new_final_blocks: PreHashSet<BlockId>,
     /// Newly stale block mapped to creator and slot
     pub new_stale_blocks: PreHashMap<BlockId, (Address, Slot)>,
+    /// time at which the node was launched (used for desynchronization detection)
+    pub launch_time: MassaTime,
+    /// Final block stats `(time, creator, is_from_protocol)`
+    pub final_block_stats: VecDeque<(MassaTime, Address, bool)>,
+    /// Blocks that come from protocol used for stats and ids are removed when inserted in `final_block_stats`
+    pub protocol_blocks: VecDeque<(MassaTime, BlockId)>,
+    /// Stale block timestamp
+    pub stale_block_stats: VecDeque<MassaTime>,
+    /// the time span considered for stats
+    pub stats_history_timespan: MassaTime,
+    /// the time span considered for desynchronization detection
+    pub stats_desync_detection_timespan: MassaTime,
 }
 
 impl GraphState {

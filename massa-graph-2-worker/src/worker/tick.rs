@@ -9,31 +9,6 @@ use tracing::{info, log::warn};
 use super::GraphWorker;
 
 impl GraphWorker {
-    pub fn stats_tick(&mut self) -> GraphResult<()> {
-        let now = MassaTime::now(self.config.clock_compensation_millis)?;
-
-        // check if there are any final blocks is coming from protocol
-        // if none => we are probably desync
-        #[cfg(not(feature = "sandbox"))]
-        if now
-            > max(self.config.genesis_timestamp, self.launch_time)
-                .saturating_add(self.stats_desync_detection_timespan)
-            && !self
-                .final_block_stats
-                .iter()
-                .any(|(time, _, is_from_protocol)| {
-                    time > &now.saturating_sub(self.stats_desync_detection_timespan)
-                        && *is_from_protocol
-                })
-        {
-            warn!("desynchronization detected because the recent final block history is empty or contains only blocks produced by this node");
-            let _ = self.channels.controller_event_tx.send(GraphEvent::NeedSync);
-        }
-        // prune stats
-        self.prune_stats()?;
-        Ok(())
-    }
-
     pub fn slot_tick(&mut self, slot: Slot) -> GraphResult<()> {
         massa_trace!("consensus.consensus_worker.slot_tick", { "slot": slot });
 
@@ -50,7 +25,11 @@ impl GraphWorker {
         }
 
         // signal tick to block graph
-        self.shared_state.write().slot_tick(Some(slot))?;
+        {
+            let mut write_shared_state = self.shared_state.write();
+            write_shared_state.slot_tick(Some(slot))?;
+            write_shared_state.stats_tick()?;
+        }
 
         // take care of block db changes
         self.block_db_changed()?;

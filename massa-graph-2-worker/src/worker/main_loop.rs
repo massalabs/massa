@@ -1,4 +1,9 @@
-use std::{collections::HashMap, mem, sync::mpsc, time::Instant};
+use std::{
+    collections::{HashMap, VecDeque},
+    mem,
+    sync::mpsc,
+    time::Instant,
+};
 
 use massa_graph::error::GraphResult;
 use massa_graph_2_exports::block_status::BlockStatus;
@@ -49,9 +54,12 @@ impl GraphWorker {
                 }
                 self.block_db_changed()
             }
-            _ => {
+            GraphCommand::MarkInvalidBlock(block_id, header) => {
+                {
+                    let mut write_shared_state = self.shared_state.write();
+                    write_shared_state.mark_invalid_block(&block_id, header)?;
+                }
                 Ok(())
-                // TODO
             }
         }
     }
@@ -239,6 +247,7 @@ impl GraphWorker {
             let timestamp = MassaTime::now(self.config.clock_compensation_millis)?;
             let finalized_blocks = mem::take(&mut write_shared_state.new_final_blocks);
             let mut final_block_slots = HashMap::with_capacity(finalized_blocks.len());
+            let mut final_block_stats = VecDeque::with_capacity(finalized_blocks.len());
             for b_id in finalized_blocks {
                 if let Some(BlockStatus::Active {
                     a_block,
@@ -249,24 +258,27 @@ impl GraphWorker {
                     final_block_slots.insert(a_block.slot, b_id);
 
                     // add to stats
-                    let block_is_from_protocol = self
+                    let block_is_from_protocol = write_shared_state
                         .protocol_blocks
                         .iter()
                         .any(|(_, block_id)| block_id == &b_id);
-                    self.final_block_stats.push_back((
+                    final_block_stats.push_back((
                         timestamp,
                         a_block.creator_address,
                         block_is_from_protocol,
                     ));
                 }
             }
+            write_shared_state
+                .final_block_stats
+                .extend(final_block_stats);
 
             // add stale blocks to stats
             let new_stale_block_ids_creators_slots =
                 mem::take(&mut write_shared_state.new_stale_blocks);
             let timestamp = MassaTime::now(self.config.clock_compensation_millis)?;
             for (_b_id, (_b_creator, _b_slot)) in new_stale_block_ids_creators_slots.into_iter() {
-                self.stale_block_stats.push_back(timestamp);
+                write_shared_state.stale_block_stats.push_back(timestamp);
             }
             final_block_slots
         };
@@ -344,9 +356,6 @@ impl GraphWorker {
                     self.previous_slot = Some(self.next_slot);
                     if let Err(err) = self.slot_tick(self.next_slot) {
                         warn!("Error while processing block tick: {}", err);
-                    }
-                    if let Err(err) = self.stats_tick() {
-                        warn!("Error while processing stats tick: {}", err);
                     }
                     (self.next_slot, self.next_instant) = self.get_next_slot(Some(self.next_slot));
                 }
