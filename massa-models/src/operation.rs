@@ -615,7 +615,7 @@ pub struct OperationTypeDeserializer {
     function_name_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
     parameter_deserializer: StringDeserializer<U32VarIntDeserializer, u32>,
     datastore_deserializer: DatastoreDeserializer,
-    denoucement_deserializer: DenunciationDeserializer,
+    denunciation_deserializer: DenunciationDeserializer,
 }
 
 impl OperationTypeDeserializer {
@@ -654,7 +654,7 @@ impl OperationTypeDeserializer {
                 max_op_datastore_key_length,
                 max_op_datastore_value_length,
             ),
-            denoucement_deserializer: DenunciationDeserializer::new(
+            denunciation_deserializer: DenunciationDeserializer::new(
                 // FIXME
                 32, 16,
             ),
@@ -801,7 +801,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                 OperationTypeId::Denunciation => context(
                     "Failed Denunciation op deser",
                     context("Failed max_gas deserialization", |input| {
-                        self.denoucement_deserializer.deserialize(input)
+                        self.denunciation_deserializer.deserialize(input)
                     }),
                 )
                 .map(|de| OperationType::Denunciation { data: de })
