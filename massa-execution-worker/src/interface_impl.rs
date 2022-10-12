@@ -546,7 +546,7 @@ impl Interface for InterfaceImpl {
         validity_start: (u64, u8),
         validity_end: (u64, u8),
         max_gas: u64,
-        gas_price: u64,
+        _gas_price: u64,
         raw_coins: u64,
         data: &[u8],
     ) -> Result<()> {
@@ -571,7 +571,6 @@ impl Interface for InterfaceImpl {
             validity_start: Slot::new(validity_start.0, validity_start.1),
             validity_end: Slot::new(validity_end.0, validity_end.1),
             max_gas,
-            gas_price: Amount::from_raw(gas_price),
             coins,
             data: data.to_vec(),
         });

@@ -188,10 +188,6 @@ pub struct AsyncMessage {
     /// Maximum gas to use when processing the message
     pub max_gas: u64,
 
-    /// Gas price to take into account when executing the message.
-    /// `max_gas * gas_price` are burned by the sender when the message is sent.
-    pub gas_price: Amount,
-
     /// Coins sent from the sender to the target address of the message.
     /// Those coins are spent by the sender address when the message is sent,
     /// and credited to the destination address when receiving the message.
@@ -213,7 +209,7 @@ impl AsyncMessage {
     /// For now, the formula is simply `score = (gas_price * max_gas, rev(emission_slot), rev(emission_index))`
     pub fn compute_id(&self) -> AsyncMessageId {
         (
-            std::cmp::Reverse(self.gas_price.saturating_mul_u64(self.max_gas)),
+            std::cmp::Reverse(Amount::from_raw(self.max_gas)),
             self.emission_slot,
             self.emission_index,
         )
@@ -288,7 +284,6 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
         buffer.extend(handler_bytes);
 
         self.u64_serializer.serialize(&value.max_gas, buffer)?;
-        self.amount_serializer.serialize(&value.gas_price, buffer)?;
         self.amount_serializer.serialize(&value.coins, buffer)?;
         self.slot_serializer
             .serialize(&value.validity_start, buffer)?;
@@ -401,9 +396,6 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                 context("Failed max_gas deserialization", |input| {
                     self.max_gas_deserializer.deserialize(input)
                 }),
-                context("Failed gas_price deserialization", |input| {
-                    self.amount_deserializer.deserialize(input)
-                }),
                 context("Failed coins deserialization", |input| {
                     self.amount_deserializer.deserialize(input)
                 }),
@@ -426,7 +418,6 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                 destination,
                 handler,
                 max_gas,
-                gas_price,
                 coins,
                 validity_start,
                 validity_end,
@@ -438,7 +429,6 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                 destination,
                 handler,
                 max_gas,
-                gas_price,
                 coins,
                 validity_start,
                 validity_end,
