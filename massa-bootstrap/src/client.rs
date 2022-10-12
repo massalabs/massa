@@ -1,10 +1,9 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
-use massa_final_state::{ExecutedOpsStreamingStep, FinalState};
+use massa_final_state::FinalState;
 use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::version::Version;
-use massa_pos_exports::PoSCycleStreamingStep;
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use nom::AsBytes;

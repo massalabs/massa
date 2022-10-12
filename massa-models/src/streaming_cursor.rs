@@ -1,5 +1,6 @@
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
+    U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::{
     error::{context, ContextError, ParseError},
@@ -15,7 +16,19 @@ pub enum StreamingStep<T> {
     /// Ongoing step, as long as you are streaming
     Ongoing(T),
     /// Finished step, after all the information has been streamed
-    Finished,
+    ///
+    /// Also can keep an indicator of the last content streamed
+    Finished(Option<T>),
+}
+
+impl<T> StreamingStep<T> {
+    /// Indicates if the current step if finished or not without caring about the values
+    pub fn finished(&self) -> bool {
+        match self {
+            StreamingStep::Finished(_) => true,
+            _ => false,
+        }
+    }
 }
 
 /// `StreamingStep` serializer
@@ -25,17 +38,19 @@ where
 {
     u64_serializer: U64VarIntSerializer,
     data_serializer: ST,
+    option_serializer: OptionSerializer<T, ST>,
     phantom_t: PhantomData<T>,
 }
 
 impl<T, ST> StreamingStepSerializer<T, ST>
 where
-    ST: Serializer<T>,
+    ST: Serializer<T> + Clone,
 {
     /// Creates a new `StreamingStep` serializer
     pub fn new(data_serializer: ST) -> Self {
         Self {
             u64_serializer: U64VarIntSerializer::new(),
+            option_serializer: OptionSerializer::new(data_serializer.clone()),
             data_serializer,
             phantom_t: PhantomData,
         }
@@ -57,7 +72,10 @@ where
                 self.u64_serializer.serialize(&1u64, buffer)?;
                 self.data_serializer.serialize(cursor_data, buffer)?;
             }
-            StreamingStep::Finished => self.u64_serializer.serialize(&2u64, buffer)?,
+            StreamingStep::Finished(last_data) => {
+                self.u64_serializer.serialize(&2u64, buffer)?;
+                self.option_serializer.serialize(last_data, buffer)?;
+            }
         };
         Ok(())
     }
@@ -66,22 +84,26 @@ where
 /// `StreamingStep` deserializer
 pub struct StreamingStepDeserializer<T, ST>
 where
+    T: Clone,
     ST: Deserializer<T>,
 {
     u64_deserializer: U64VarIntDeserializer,
-    data_serializer: ST,
+    data_deserializer: ST,
+    option_deserializer: OptionDeserializer<T, ST>,
     phantom_t: PhantomData<T>,
 }
 
 impl<T, ST> StreamingStepDeserializer<T, ST>
 where
-    ST: Deserializer<T>,
+    T: Clone,
+    ST: Deserializer<T> + Clone,
 {
     /// Creates a new `StreamingStep` deserializer
-    pub fn new(data_serializer: ST) -> Self {
+    pub fn new(data_deserializer: ST) -> Self {
         Self {
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
-            data_serializer,
+            option_deserializer: OptionDeserializer::new(data_deserializer.clone()),
+            data_deserializer,
             phantom_t: PhantomData,
         }
     }
@@ -89,6 +111,7 @@ where
 
 impl<T, ST> Deserializer<StreamingStep<T>> for StreamingStepDeserializer<T, ST>
 where
+    T: Clone,
     ST: Deserializer<T>,
 {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
@@ -102,12 +125,15 @@ where
         match ident {
             0u64 => Ok((rest, StreamingStep::Started)),
             1u64 => context("cursor_data", |input| {
-                self.data_serializer.deserialize(input)
+                self.data_deserializer.deserialize(input)
             })
             .map(StreamingStep::Ongoing)
             .parse(rest),
-
-            2u64 => Ok((rest, StreamingStep::Finished)),
+            2u64 => context("last_data", |input| {
+                self.option_deserializer.deserialize(input)
+            })
+            .map(StreamingStep::Finished)
+            .parse(rest),
             _ => Err(nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::Digit,

@@ -399,19 +399,19 @@ impl PoSFinalState {
         cursor: StreamingStep<u64>,
     ) -> Result<(Option<CycleInfo>, StreamingStep<u64>), ModelsError> {
         let cycle_index = match cursor {
-            // TODO: use config for `6`
+            // IMPORTANT TODO: use config for `6`
             StreamingStep::Started => usize::from(self.cycle_history.len() >= 6),
             StreamingStep::Ongoing(last_cycle) => {
                 if let Some(index) = self.get_cycle_index(last_cycle) {
                     if index == self.cycle_history.len() - 1 {
-                        return Ok((None, StreamingStep::Finished));
+                        return Ok((None, StreamingStep::Finished(None)));
                     }
                     index.saturating_add(1)
                 } else {
                     return Err(ModelsError::OutdatedBootstrapCursor);
                 }
             }
-            StreamingStep::Finished => return Ok((None, StreamingStep::Finished)),
+            StreamingStep::Finished(_) => return Ok((None, cursor)),
         };
         let cycle_info = self
             .cycle_history
@@ -438,13 +438,14 @@ impl PoSFinalState {
         let left_bound = match cursor {
             StreamingStep::Started => Unbounded,
             StreamingStep::Ongoing(last_slot) => Excluded(last_slot),
-            StreamingStep::Finished => return Ok((credits_part, StreamingStep::Finished)),
+            StreamingStep::Finished(_) => return Ok((credits_part, cursor)),
         };
         for (slot, credits) in self.deferred_credits.0.range((left_bound, Unbounded)) {
+            // IMPORTANT TODO: LIMIT HERE
             credits_part.0.insert(slot.clone(), credits.clone());
         }
         if credits_part.0.is_empty() {
-            return Ok((credits_part, StreamingStep::Finished));
+            return Ok((credits_part, StreamingStep::Finished(None)));
         }
         let last_credits_slot = credits_part
             .0

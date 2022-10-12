@@ -155,11 +155,11 @@ impl AsyncPool {
                         .map(|(&message_id, _)| message_id)
                         .expect("async_pool should contain at least one message")
                 {
-                    return Ok((BTreeMap::new(), StreamingStep::Finished));
+                    return Ok((BTreeMap::new(), StreamingStep::Finished(Some(last_id))));
                 }
                 Excluded(last_id)
             }
-            StreamingStep::Finished => return Ok((BTreeMap::new(), StreamingStep::Finished)),
+            StreamingStep::Finished(_) => return Ok((BTreeMap::new(), cursor)),
         };
         let mut pool_part = BTreeMap::new();
         for (id, message) in self.messages.range((left_bound, Unbounded)) {

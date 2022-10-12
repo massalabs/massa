@@ -141,7 +141,7 @@ impl FinalState {
         &self,
         last_slot: Slot,
         last_address: Option<Address>,
-        last_id_async_pool: Option<AsyncMessageId>,
+        last_id_async_pool: StreamingStep<AsyncMessageId>,
         last_pos_step_cursor: StreamingStep<u64>,
         // IMPORTANT TODO: ADD DEF CREDITS STEP CHECK
         last_exec_ops_cursor: StreamingStep<OperationId>,
@@ -189,7 +189,8 @@ impl FinalState {
             }
 
             // Get async pool changes that concern ids <= last_id_async_pool
-            if let Some(last_id) = last_id_async_pool {
+            if let StreamingStep::Ongoing(last_id) = last_id_async_pool {
+                // IMPORTANT TODO: HANDLE FINISHED CASE
                 let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(
                     changes
                         .async_pool_changes
@@ -207,12 +208,12 @@ impl FinalState {
             }
 
             // Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
-            if last_pos_step_cursor == StreamingStep::Finished {
+            if last_pos_step_cursor.finished() {
                 slot_changes.pos_changes = changes.pos_changes.clone();
             }
 
             // Get executed operations changes if classic bootstrap finished
-            if last_exec_ops_cursor == StreamingStep::Finished {
+            if last_exec_ops_cursor.finished() {
                 slot_changes.executed_ops = changes.executed_ops.clone();
             }
 

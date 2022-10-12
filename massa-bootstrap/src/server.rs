@@ -9,12 +9,13 @@ use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::ConsensusCommandSender;
-use massa_final_state::{ExecutedOpsStreamingStep, FinalState};
+use massa_final_state::FinalState;
 use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
-use massa_models::{slot::Slot, version::Version};
+use massa_models::{
+    operation::OperationId, slot::Slot, streaming_cursor::StreamingStep, version::Version,
+};
 use massa_network_exports::NetworkCommandSender;
-use massa_pos_exports::PoSCycleStreamingStep;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
@@ -256,10 +257,10 @@ pub async fn send_final_state_stream(
     final_state: Arc<RwLock<FinalState>>,
     mut last_slot: Option<Slot>,
     mut last_key: Option<Vec<u8>>,
-    mut last_async_message_id: Option<AsyncMessageId>,
-    mut last_cycle_step: PoSCycleStreamingStep,
-    mut last_credits_slot: Option<Slot>,
-    mut last_exec_ops_step: ExecutedOpsStreamingStep,
+    mut last_async_message_id: StreamingStep<AsyncMessageId>,
+    mut last_cycle_step: StreamingStep<u64>,
+    mut last_credits_slot: StreamingStep<Slot>,
+    mut last_exec_ops_step: StreamingStep<OperationId>,
     write_timeout: Duration,
 ) -> Result<(), BootstrapError> {
     loop {
@@ -279,7 +280,6 @@ pub async fn send_final_state_stream(
 
         // Scope of the final state read
         {
-            // Get all the next message data
             let final_state_read = final_state.read();
             let (data, new_last_key) =
                 final_state_read
