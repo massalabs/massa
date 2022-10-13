@@ -7,13 +7,13 @@ use massa_graph::{
     error::{GraphError, GraphResult},
     BootstrapableGraph,
 };
-use massa_graph_2_exports::{block_status::BlockStatus, GraphChannels, GraphConfig};
+use massa_graph_2_exports::{block_status::BlockStatus, GraphConfig};
 use massa_hash::Hash;
 use massa_models::{
     active_block::ActiveBlock,
     address::Address,
     block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock},
-    prehash::{PreHashMap, PreHashSet},
+    prehash::PreHashMap,
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
     wrapped::WrappedContent,
@@ -74,7 +74,6 @@ impl GraphWorker {
     pub fn new(
         config: GraphConfig,
         command_receiver: mpsc::Receiver<GraphCommand>,
-        channels: GraphChannels,
         shared_state: Arc<RwLock<GraphState>>,
         init_graph: Option<BootstrapableGraph>,
         storage: Storage,
@@ -166,13 +165,10 @@ impl GraphWorker {
         let mut res_graph = GraphWorker {
             config: config.clone(),
             command_receiver,
-            channels,
             shared_state,
             previous_slot,
             next_slot,
             next_instant,
-            prev_blockclique: Default::default(),
-            storage: storage.clone(),
         };
 
         if let Some(BootstrapableGraph { final_blocks }) = init_graph {
@@ -234,9 +230,9 @@ impl GraphWorker {
         // we need to do this because the bootstrap snapshots of the executor vs the consensus may not have been taken in sync
         // because the two modules run concurrently and out of sync.
         {
-            let read_shared_state = res_graph.shared_state.read();
+            let mut write_shared_state = res_graph.shared_state.write();
             let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-            let notify_finals: HashMap<Slot, BlockId> = read_shared_state
+            let notify_finals: HashMap<Slot, BlockId> = write_shared_state
                 .get_all_final_blocks()
                 .into_iter()
                 .map(|(b_id, block_infos)| {
@@ -244,11 +240,11 @@ impl GraphWorker {
                     (block_infos.0, b_id)
                 })
                 .collect();
-            let notify_blockclique: HashMap<Slot, BlockId> = read_shared_state
+            let notify_blockclique: HashMap<Slot, BlockId> = write_shared_state
                 .get_blockclique()
                 .iter()
                 .map(|b_id| {
-                    let (a_block, storage) = read_shared_state
+                    let (a_block, storage) = write_shared_state
                         .get_full_active_block(b_id)
                         .expect("active block missing from block_db");
                     let slot = a_block.slot;
@@ -256,8 +252,9 @@ impl GraphWorker {
                     (slot, *b_id)
                 })
                 .collect();
-            res_graph.prev_blockclique = notify_blockclique.iter().map(|(k, v)| (*v, *k)).collect();
-            res_graph
+            write_shared_state.prev_blockclique =
+                notify_blockclique.iter().map(|(k, v)| (*v, *k)).collect();
+            write_shared_state
                 .channels
                 .execution_controller
                 .update_blockclique_status(notify_finals, Some(notify_blockclique), block_storage);
@@ -304,32 +301,7 @@ impl GraphWorker {
             .collect();
 
         for (b_id, (b_slot, b_parents)) in active_blocks_map.into_iter() {
-            // deduce children
-            for parent_id in &b_parents {
-                if let Some(BlockStatus::Active {
-                    a_block: parent, ..
-                }) = write_shared_state.block_statuses.get_mut(parent_id)
-                {
-                    parent.children[b_slot.thread as usize].insert(b_id, b_slot.period);
-                }
-            }
-
-            // deduce descendants
-            let mut ancestors: VecDeque<BlockId> = b_parents.into_iter().collect();
-            let mut visited: PreHashSet<BlockId> = Default::default();
-            while let Some(ancestor_h) = ancestors.pop_back() {
-                if !visited.insert(ancestor_h) {
-                    continue;
-                }
-                if let Some(BlockStatus::Active { a_block: ab, .. }) =
-                    write_shared_state.block_statuses.get_mut(&ancestor_h)
-                {
-                    ab.descendants.insert(b_id);
-                    for (ancestor_parent_h, _) in ab.parents.iter() {
-                        ancestors.push_front(*ancestor_parent_h);
-                    }
-                }
-            }
+            write_shared_state.insert_parents_descendants(b_id, b_slot, &b_parents);
         }
         Ok(())
     }

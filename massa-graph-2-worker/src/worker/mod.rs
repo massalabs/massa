@@ -2,7 +2,7 @@ use massa_graph::BootstrapableGraph;
 use massa_graph_2_exports::{GraphChannels, GraphConfig, GraphController, GraphManager};
 use massa_models::block::BlockId;
 use massa_models::clique::Clique;
-use massa_models::prehash::{PreHashMap, PreHashSet};
+use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -19,7 +19,6 @@ use crate::state::GraphState;
 pub struct GraphWorker {
     command_receiver: mpsc::Receiver<GraphCommand>,
     config: GraphConfig,
-    channels: GraphChannels,
     shared_state: Arc<RwLock<GraphState>>,
     /// Previous slot.
     previous_slot: Option<Slot>,
@@ -27,10 +26,6 @@ pub struct GraphWorker {
     next_slot: Slot,
     /// Next slot instant
     next_instant: Instant,
-    /// previous blockclique notified to Execution
-    prev_blockclique: PreHashMap<BlockId, Slot>,
-    /// Shared storage,
-    storage: Storage,
 }
 
 mod init;
@@ -65,6 +60,7 @@ pub fn start_graph_worker(
         new_stale_blocks: Default::default(),
         incoming_index: Default::default(),
         active_index: Default::default(),
+        save_final_periods: Default::default(),
         latest_final_blocks_periods: Default::default(),
         best_parents: Default::default(),
         block_statuses: Default::default(),
@@ -80,21 +76,15 @@ pub fn start_graph_worker(
             stats_desync_detection_timespan,
             config.stats_timespan,
         ),
+        prev_blockclique: Default::default(),
     }));
 
     let shared_state_cloned = shared_state.clone();
     let thread_graph = thread::Builder::new()
         .name("graph worker".into())
         .spawn(move || {
-            let mut graph_worker = GraphWorker::new(
-                config,
-                rx,
-                channels,
-                shared_state_cloned,
-                init_graph,
-                storage,
-            )
-            .unwrap();
+            let mut graph_worker =
+                GraphWorker::new(config, rx, shared_state_cloned, init_graph, storage).unwrap();
             graph_worker.run()
         })
         .expect("Can't spawn thread graph.");

@@ -6,7 +6,7 @@ use massa_models::{
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
 };
 use massa_time::MassaTime;
-use tracing::log::warn;
+use tracing::{info, log::warn};
 
 use crate::commands::GraphCommand;
 
@@ -105,16 +105,28 @@ impl GraphWorker {
     /// Runs in loop forever. This loop must stop every slot to perform operations on stats and graph
     /// but can be stopped anytime by a command received.
     pub fn run(&mut self) {
+        //TODO: Add notify cs periods
         loop {
             match self.wait_slot_or_command(self.next_instant) {
                 WaitingStatus::Ended => {
-                    self.previous_slot = Some(self.next_slot);
+                    let previous_cycle = self
+                        .previous_slot
+                        .map(|s| s.get_cycle(self.config.periods_per_cycle));
+                    let observed_cycle = self.next_slot.get_cycle(self.config.periods_per_cycle);
+                    if previous_cycle.is_none() {
+                        // first cycle observed
+                        info!("Massa network has started ! 🎉")
+                    }
+                    if previous_cycle < Some(observed_cycle) {
+                        info!("Started cycle {}", observed_cycle);
+                    }
                     {
                         let mut write_shared_state = self.shared_state.write();
                         if let Err(err) = write_shared_state.slot_tick(self.next_slot) {
                             warn!("Error while processing block tick: {}", err);
                         }
                     };
+                    self.previous_slot = Some(self.next_slot);
                     (self.next_slot, self.next_instant) = self.get_next_slot(Some(self.next_slot));
                 }
                 WaitingStatus::Disconnected => {

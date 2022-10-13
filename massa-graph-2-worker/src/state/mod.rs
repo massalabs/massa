@@ -18,6 +18,7 @@ use massa_models::{
 use massa_storage::Storage;
 use massa_time::MassaTime;
 
+mod graph;
 mod process;
 mod process_commands;
 mod stats;
@@ -41,6 +42,8 @@ pub struct GraphState {
     pub max_cliques: Vec<Clique>,
     /// ids of active blocks
     pub active_index: PreHashSet<BlockId>,
+    /// Save of latest periods
+    pub save_final_periods: Vec<u64>,
     /// One (block id, period) per thread
     pub latest_final_blocks_periods: Vec<(BlockId, u64)>,
     /// One `(block id, period)` per thread TODO not sure I understand the difference with `latest_final_blocks_periods`
@@ -79,14 +82,11 @@ pub struct GraphState {
     pub stats_desync_detection_timespan: MassaTime,
     /// blocks we want
     pub wishlist: PreHashMap<BlockId, Option<WrappedHeader>>,
+    /// previous blockclique notified to Execution
+    pub prev_blockclique: PreHashMap<BlockId, Slot>,
 }
 
 impl GraphState {
-    pub fn new_sequence_number(&mut self) -> u64 {
-        self.sequence_counter += 1;
-        self.sequence_counter
-    }
-
     pub fn get_full_active_block(&self, block_id: &BlockId) -> Option<(&ActiveBlock, &Storage)> {
         match self.block_statuses.get(block_id) {
             Some(BlockStatus::Active { a_block, storage }) => Some((a_block.as_ref(), storage)),
@@ -142,11 +142,7 @@ impl GraphState {
             .get(slot.thread as usize)
             .unwrap_or_else(|| panic!("unexpected not found latest final block period"));
 
-        self.max_cliques
-            .iter()
-            .find(|c| c.is_blockclique)
-            .expect("expected one clique to be the blockclique")
-            .block_ids
+        self.get_blockclique()
             .iter()
             .for_each(|id| match self.block_statuses.get(id) {
                 Some(BlockStatus::Active {
@@ -417,16 +413,6 @@ impl GraphState {
             .collect()
     }
 
-    /// get the clique of higher fitness
-    pub fn get_blockclique(&self) -> &PreHashSet<BlockId> {
-        &self
-            .max_cliques
-            .iter()
-            .find(|c| c.is_blockclique)
-            .expect("blockclique missing")
-            .block_ids
-    }
-
     /// get the current block wish list, including the operations hash.
     pub fn get_block_wishlist(&self) -> GraphResult<PreHashMap<BlockId, Option<WrappedHeader>>> {
         let mut wishlist = PreHashMap::<BlockId, Option<WrappedHeader>>::default();
@@ -454,5 +440,31 @@ impl GraphState {
         }
 
         Ok(wishlist)
+    }
+
+    /// Gets a block and all its descendants
+    ///
+    /// # Argument
+    /// * hash : hash of the given block
+    pub fn get_active_block_and_descendants(
+        &self,
+        block_id: &BlockId,
+    ) -> GraphResult<PreHashSet<BlockId>> {
+        let mut to_visit = vec![*block_id];
+        let mut result = PreHashSet::<BlockId>::default();
+        while let Some(visit_h) = to_visit.pop() {
+            if !result.insert(visit_h) {
+                continue; // already visited
+            }
+            match self.block_statuses.get(&visit_h) {
+                Some(BlockStatus::Active { a_block, .. }) => {
+                    a_block.as_ref()
+                    .children.iter()
+                    .for_each(|thread_children| to_visit.extend(thread_children.keys()))
+                },
+                _ => return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses iterating through descendants of {} - missing {}", block_id, visit_h))),
+            }
+        }
+        Ok(result)
     }
 }

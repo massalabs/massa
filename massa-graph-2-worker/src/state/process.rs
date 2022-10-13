@@ -447,58 +447,6 @@ impl GraphState {
         Ok(())
     }
 
-    /// Computes max cliques of compatible blocks
-    pub fn compute_max_cliques(&self) -> Vec<PreHashSet<BlockId>> {
-        let mut max_cliques: Vec<PreHashSet<BlockId>> = Vec::new();
-
-        // algorithm adapted from IK_GPX as summarized in:
-        //   Cazals et al., "A note on the problem of reporting maximal cliques"
-        //   Theoretical Computer Science, 2008
-        //   https://doi.org/10.1016/j.tcs.2008.05.010
-
-        // stack: r, p, x
-        let mut stack: Vec<(
-            PreHashSet<BlockId>,
-            PreHashSet<BlockId>,
-            PreHashSet<BlockId>,
-        )> = vec![(
-            PreHashSet::<BlockId>::default(),
-            self.gi_head.keys().cloned().collect(),
-            PreHashSet::<BlockId>::default(),
-        )];
-        while let Some((r, mut p, mut x)) = stack.pop() {
-            if p.is_empty() && x.is_empty() {
-                max_cliques.push(r);
-                continue;
-            }
-            // choose the pivot vertex following the GPX scheme:
-            // u_p = node from (p \/ x) that maximizes the cardinality of (P \ Neighbors(u_p, GI))
-            let &u_p = p
-                .union(&x)
-                .max_by_key(|&u| {
-                    p.difference(&(&self.gi_head[u] | &vec![*u].into_iter().collect()))
-                        .count()
-                })
-                .unwrap(); // p was checked to be non-empty before
-
-            // iterate over u_set = (p /\ Neighbors(u_p, GI))
-            let u_set: PreHashSet<BlockId> =
-                &p & &(&self.gi_head[&u_p] | &vec![u_p].into_iter().collect());
-            for u_i in u_set.into_iter() {
-                p.remove(&u_i);
-                let u_i_set: PreHashSet<BlockId> = vec![u_i].into_iter().collect();
-                let comp_n_u_i: PreHashSet<BlockId> = &self.gi_head[&u_i] | &u_i_set;
-                stack.push((&r | &u_i_set, &p - &comp_n_u_i, &x - &comp_n_u_i));
-                x.insert(u_i);
-            }
-        }
-        if max_cliques.is_empty() {
-            // make sure at least one clique remains
-            max_cliques = vec![PreHashSet::<BlockId>::default()];
-        }
-        max_cliques
-    }
-
     #[allow(clippy::too_many_arguments)]
     fn add_block_to_graph(
         &mut self,
@@ -539,40 +487,12 @@ impl GraphState {
         self.active_index.insert(add_block_id);
 
         // add as child to parents
-        for (parent_h, _parent_period) in parents_hash_period.iter() {
-            if let Some(BlockStatus::Active {
-                a_block: a_parent, ..
-            }) = self.block_statuses.get_mut(parent_h)
-            {
-                a_parent.children[add_block_slot.thread as usize]
-                    .insert(add_block_id, add_block_slot.period);
-            } else {
-                return Err(GraphError::ContainerInconsistency(format!(
-                    "inconsistency inside block statuses adding child {} of block {}",
-                    add_block_id, parent_h
-                )));
-            }
-        }
-
         // add as descendant to ancestors. Note: descendants are never removed.
-        {
-            let mut ancestors: VecDeque<BlockId> =
-                parents_hash_period.iter().map(|(h, _)| *h).collect();
-            let mut visited = PreHashSet::<BlockId>::default();
-            while let Some(ancestor_h) = ancestors.pop_back() {
-                if !visited.insert(ancestor_h) {
-                    continue;
-                }
-                if let Some(BlockStatus::Active { a_block: ab, .. }) =
-                    self.block_statuses.get_mut(&ancestor_h)
-                {
-                    ab.descendants.insert(add_block_id);
-                    for (ancestor_parent_h, _) in ab.parents.iter() {
-                        ancestors.push_front(*ancestor_parent_h);
-                    }
-                }
-            }
-        }
+        self.insert_parents_descendants(
+            add_block_id,
+            add_block_slot,
+            &parents_hash_period.iter().map(|(p_id, _)| *p_id).collect(),
+        );
 
         // add incompatibilities to gi_head
         massa_trace!(
@@ -640,33 +560,7 @@ impl GraphState {
         // compute clique fitnesses and find blockclique
         massa_trace!("consensus.block_graph.add_block_to_graph.compute_clique_fitnesses_and_find_blockclique", {});
         // note: clique_fitnesses is pair (fitness, -hash_sum) where the second parameter is negative for sorting
-        {
-            let mut blockclique_i = 0usize;
-            let mut max_clique_fitness = (0u64, num::BigInt::default());
-            for (clique_i, clique) in self.max_cliques.iter_mut().enumerate() {
-                clique.fitness = 0;
-                clique.is_blockclique = false;
-                let mut sum_hash = num::BigInt::default();
-                for block_h in clique.block_ids.iter() {
-                    let fitness = match self.block_statuses.get(block_h) {
-                        Some(BlockStatus::Active { a_block, storage: _ }) => a_block.fitness,
-                        _ => return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses computing fitness while adding {} - missing {}", add_block_id, block_h))),
-                    };
-                    clique.fitness = clique
-                        .fitness
-                        .checked_add(fitness)
-                        .ok_or(GraphError::FitnessOverflow)?;
-                    sum_hash -=
-                        num::BigInt::from_bytes_be(num::bigint::Sign::Plus, block_h.to_bytes());
-                }
-                let cur_fit = (clique.fitness, sum_hash);
-                if cur_fit > max_clique_fitness {
-                    blockclique_i = clique_i;
-                    max_clique_fitness = cur_fit;
-                }
-            }
-            self.max_cliques[blockclique_i].is_blockclique = true;
-        }
+        let position_blockclique = self.compute_fitness_find_blockclique(&add_block_id)?;
 
         // update best parents
         massa_trace!(
@@ -674,13 +568,7 @@ impl GraphState {
             {}
         );
         {
-            // find blockclique
-            let blockclique_i = self
-                .max_cliques
-                .iter()
-                .position(|c| c.is_blockclique)
-                .unwrap_or_default();
-            let blockclique = &self.max_cliques[blockclique_i];
+            let blockclique = &self.max_cliques[position_blockclique];
 
             // init best parents as latest_final_blocks_periods
             self.best_parents = self.latest_final_blocks_periods.clone();
@@ -702,111 +590,18 @@ impl GraphState {
             "consensus.block_graph.add_block_to_graph.list_stale_blocks",
             {}
         );
-        let stale_blocks = {
-            let blockclique_i = self
-                .max_cliques
-                .iter()
-                .position(|c| c.is_blockclique)
-                .unwrap_or_default();
-            let fitness_threshold = self.max_cliques[blockclique_i]
-                .fitness
-                .saturating_sub(self.config.delta_f0);
-            // iterate from largest to smallest to minimize reallocations
-            let mut indices: Vec<usize> = (0..self.max_cliques.len()).collect();
-            indices
-                .sort_unstable_by_key(|&i| std::cmp::Reverse(self.max_cliques[i].block_ids.len()));
-            let mut high_set = PreHashSet::<BlockId>::default();
-            let mut low_set = PreHashSet::<BlockId>::default();
-            for clique_i in indices.into_iter() {
-                if self.max_cliques[clique_i].fitness >= fitness_threshold {
-                    high_set.extend(&self.max_cliques[clique_i].block_ids);
-                } else {
-                    low_set.extend(&self.max_cliques[clique_i].block_ids);
-                }
-            }
-            self.max_cliques.retain(|c| c.fitness >= fitness_threshold);
-            &low_set - &high_set
-        };
+        let fitness_threshold = self.max_cliques[position_blockclique]
+            .fitness
+            .saturating_sub(self.config.delta_f0);
+        let stale_blocks = self.list_stale_blocks(fitness_threshold);
+        self.max_cliques.retain(|c| c.fitness >= fitness_threshold);
         // mark stale blocks
         massa_trace!(
             "consensus.block_graph.add_block_to_graph.mark_stale_blocks",
             {}
         );
         for stale_block_hash in stale_blocks.into_iter() {
-            if let Some(BlockStatus::Active {
-                a_block: active_block,
-                storage: _storage,
-            }) = self.block_statuses.remove(&stale_block_hash)
-            {
-                self.active_index.remove(&stale_block_hash);
-                if active_block.is_final {
-                    return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {} - block {} was already final", add_block_id, stale_block_hash)));
-                }
-
-                // remove from gi_head
-                if let Some(other_incomps) = self.gi_head.remove(&stale_block_hash) {
-                    for other_incomp in other_incomps.into_iter() {
-                        if let Some(other_incomp_lst) = self.gi_head.get_mut(&other_incomp) {
-                            other_incomp_lst.remove(&stale_block_hash);
-                        }
-                    }
-                }
-
-                // remove from cliques
-                let stale_block_fitness = active_block.fitness;
-                self.max_cliques.iter_mut().for_each(|c| {
-                    if c.block_ids.remove(&stale_block_hash) {
-                        c.fitness -= stale_block_fitness;
-                    }
-                });
-                self.max_cliques.retain(|c| !c.block_ids.is_empty()); // remove empty cliques
-                if self.max_cliques.is_empty() {
-                    // make sure at least one clique remains
-                    self.max_cliques = vec![Clique {
-                        block_ids: PreHashSet::<BlockId>::default(),
-                        fitness: 0,
-                        is_blockclique: true,
-                    }];
-                }
-
-                // remove from parent's children
-                for (parent_h, _parent_period) in active_block.parents.iter() {
-                    if let Some(BlockStatus::Active {
-                        a_block: parent_active_block,
-                        ..
-                    }) = self.block_statuses.get_mut(parent_h)
-                    {
-                        parent_active_block.children[active_block.slot.thread as usize]
-                            .remove(&stale_block_hash);
-                    }
-                }
-
-                massa_trace!("consensus.block_graph.add_block_to_graph.stale", {
-                    "hash": stale_block_hash
-                });
-
-                // mark as stale
-                self.new_stale_blocks.insert(
-                    stale_block_hash,
-                    (active_block.creator_address, active_block.slot),
-                );
-                self.block_statuses.insert(
-                    stale_block_hash,
-                    BlockStatus::Discarded {
-                        slot: active_block.slot,
-                        creator: active_block.creator_address,
-                        parents: active_block.parents.iter().map(|(h, _)| *h).collect(),
-                        reason: DiscardReason::Stale,
-                        sequence_number: {
-                            self.sequence_counter += 1;
-                            self.sequence_counter
-                        },
-                    },
-                );
-                self.discarded_index.insert(stale_block_hash);
-            } else {
-                return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {} - block {} is missing", add_block_id, stale_block_hash)));
-            }
+            self.remove_block(&add_block_id, &stale_block_hash)?;
         }
 
         // list final blocks
@@ -814,165 +609,21 @@ impl GraphState {
             "consensus.block_graph.add_block_to_graph.list_final_blocks",
             {}
         );
-        let final_blocks = {
-            // short-circuiting intersection of cliques from smallest to largest
-            let mut indices: Vec<usize> = (0..self.max_cliques.len()).collect();
-            indices.sort_unstable_by_key(|&i| self.max_cliques[i].block_ids.len());
-            let mut final_candidates = self.max_cliques[indices[0]].block_ids.clone();
-            for i in 1..indices.len() {
-                final_candidates.retain(|v| self.max_cliques[i].block_ids.contains(v));
-                if final_candidates.is_empty() {
-                    break;
-                }
-            }
-
-            // restrict search to cliques with high enough fitness, sort cliques by fitness (highest to lowest)
-            massa_trace!(
-                "consensus.block_graph.add_block_to_graph.list_final_blocks.restrict",
-                {}
-            );
-            indices.retain(|&i| self.max_cliques[i].fitness > self.config.delta_f0);
-            indices.sort_unstable_by_key(|&i| std::cmp::Reverse(self.max_cliques[i].fitness));
-
-            let mut final_blocks = PreHashSet::<BlockId>::default();
-            for clique_i in indices.into_iter() {
-                massa_trace!(
-                    "consensus.block_graph.add_block_to_graph.list_final_blocks.loop",
-                    { "clique_i": clique_i }
-                );
-                // check in cliques from highest to lowest fitness
-                if final_candidates.is_empty() {
-                    // no more final candidates
-                    break;
-                }
-                let clique = &self.max_cliques[clique_i];
-
-                // compute the total fitness of all the descendants of the candidate within the clique
-                let loc_candidates = final_candidates.clone();
-                for candidate_h in loc_candidates.into_iter() {
-                    let descendants = match self.block_statuses.get(&candidate_h) {
-                        Some(BlockStatus::Active {
-                            a_block,
-                            storage: _,
-                        }) => &a_block.descendants,
-                        _ => {
-                            return Err(GraphError::MissingBlock(format!(
-                                "missing block when computing total fitness of descendants: {}",
-                                candidate_h
-                            )))
-                        }
-                    };
-                    let desc_fit: u64 = descendants
-                        .intersection(&clique.block_ids)
-                        .map(|h| {
-                            if let Some(BlockStatus::Active { a_block: ab, .. }) =
-                                self.block_statuses.get(h)
-                            {
-                                return ab.fitness;
-                            }
-                            0
-                        })
-                        .sum();
-                    if desc_fit > self.config.delta_f0 {
-                        // candidate is final
-                        final_candidates.remove(&candidate_h);
-                        final_blocks.insert(candidate_h);
-                    }
-                }
-            }
-            final_blocks
-        };
+        let final_blocks = self.list_final_blocks()?;
 
         // mark final blocks and update latest_final_blocks_periods
         massa_trace!(
             "consensus.block_graph.add_block_to_graph.mark_final_blocks",
             {}
         );
-        for final_block_hash in final_blocks.into_iter() {
-            // remove from gi_head
-            if let Some(other_incomps) = self.gi_head.remove(&final_block_hash) {
-                for other_incomp in other_incomps.into_iter() {
-                    if let Some(other_incomp_lst) = self.gi_head.get_mut(&other_incomp) {
-                        other_incomp_lst.remove(&final_block_hash);
-                    }
-                }
-            }
-
-            // mark as final and update latest_final_blocks_periods
-            if let Some(BlockStatus::Active {
-                a_block: final_block,
-                ..
-            }) = self.block_statuses.get_mut(&final_block_hash)
-            {
-                massa_trace!("consensus.block_graph.add_block_to_graph.final", {
-                    "hash": final_block_hash
-                });
-                final_block.is_final = true;
-                // remove from cliques
-                let final_block_fitness = final_block.fitness;
-                self.max_cliques.iter_mut().for_each(|c| {
-                    if c.block_ids.remove(&final_block_hash) {
-                        c.fitness -= final_block_fitness;
-                    }
-                });
-                self.max_cliques.retain(|c| !c.block_ids.is_empty()); // remove empty cliques
-                if self.max_cliques.is_empty() {
-                    // make sure at least one clique remains
-                    self.max_cliques = vec![Clique {
-                        block_ids: PreHashSet::<BlockId>::default(),
-                        fitness: 0,
-                        is_blockclique: true,
-                    }];
-                }
-                // update latest final blocks
-                if final_block.slot.period
-                    > self.latest_final_blocks_periods[final_block.slot.thread as usize].1
-                {
-                    self.latest_final_blocks_periods[final_block.slot.thread as usize] =
-                        (final_block_hash, final_block.slot.period);
-                }
-                // update new final blocks list
-                self.new_final_blocks.insert(final_block_hash);
-            } else {
-                return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks adding {} - block {} is missing", add_block_id, final_block_hash)));
-            }
-        }
+        self.mark_final_blocks(&add_block_id, final_blocks)?;
 
         massa_trace!("consensus.block_graph.add_block_to_graph.end", {});
         Ok(())
     }
 
-    /// Mark a block as invalid
-    pub fn mark_invalid_block(
-        &mut self,
-        block_id: &BlockId,
-        header: WrappedHeader,
-    ) -> Result<(), GraphError> {
-        let reason = DiscardReason::Invalid("invalid".to_string());
-        self.maybe_note_attack_attempt(&reason, block_id);
-        massa_trace!("consensus.block_graph.process.invalid_block", {"block_id": block_id, "reason": reason});
-
-        // add to discard
-        self.block_statuses.insert(
-            *block_id,
-            BlockStatus::Discarded {
-                slot: header.content.slot,
-                creator: header.creator_address,
-                parents: header.content.parents,
-                reason,
-                sequence_number: {
-                    self.sequence_counter += 1;
-                    self.sequence_counter
-                },
-            },
-        );
-        self.discarded_index.insert(*block_id);
-
-        Ok(())
-    }
-
     /// Note an attack attempt if the discard reason indicates one.
-    fn maybe_note_attack_attempt(&mut self, reason: &DiscardReason, hash: &BlockId) {
+    pub fn maybe_note_attack_attempt(&mut self, reason: &DiscardReason, hash: &BlockId) {
         massa_trace!("consensus.block_graph.maybe_note_attack_attempt", {"hash": hash, "reason": reason});
         // If invalid, note the attack attempt.
         if let DiscardReason::Invalid(reason) = reason {
@@ -982,32 +633,6 @@ impl GraphState {
             );
             self.attack_attempts.push(*hash);
         }
-    }
-
-    /// Gets a block and all its descendants
-    ///
-    /// # Argument
-    /// * hash : hash of the given block
-    pub fn get_active_block_and_descendants(
-        &self,
-        block_id: &BlockId,
-    ) -> GraphResult<PreHashSet<BlockId>> {
-        let mut to_visit = vec![*block_id];
-        let mut result = PreHashSet::<BlockId>::default();
-        while let Some(visit_h) = to_visit.pop() {
-            if !result.insert(visit_h) {
-                continue; // already visited
-            }
-            match self.block_statuses.get(&visit_h) {
-                Some(BlockStatus::Active { a_block, .. }) => {
-                    a_block.as_ref()
-                    .children.iter()
-                    .for_each(|thread_children| to_visit.extend(thread_children.keys()))
-                },
-                _ => return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses iterating through descendants of {} - missing {}", block_id, visit_h))),
-            }
-        }
-        Ok(result)
     }
 
     /// Notify execution about blockclique changes and finalized blocks.
@@ -1204,13 +829,13 @@ impl GraphState {
             .map(|(_block_id, period)| *period)
             .collect();
         // if changed...
-        if self.latest_final_periods != latest_final_periods {
+        if self.save_final_periods != latest_final_periods {
             // signal new last final periods to pool
             self.channels
                 .pool_command_sender
                 .notify_final_cs_periods(&latest_final_periods);
             // update final periods
-            self.latest_final_periods = latest_final_periods;
+            self.save_final_periods = latest_final_periods;
         }
 
         /*

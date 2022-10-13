@@ -272,8 +272,7 @@ impl GraphState {
             .keys()
             .filter(|&sibling_h| sibling_h != block_id)
             .try_for_each(|&sibling_h| {
-                incomp
-                    .extend(self.get_active_block_and_descendants(&sibling_h, read_shared_state)?);
+                incomp.extend(self.get_active_block_and_descendants(&sibling_h)?);
                 GraphResult::<()>::Ok(())
             })?;
 
@@ -327,8 +326,7 @@ impl GraphState {
                     ))?.slot.period;
                 if parent_period < parent_in_own_thread.slot.period {
                     // GPI detected
-                    incomp
-                        .extend(self.get_active_block_and_descendants(&cur_h, read_shared_state)?);
+                    incomp.extend(self.get_active_block_and_descendants(&cur_h)?);
                 } // otherwise, cur_b and its descendants cannot be GPI with the block: don't traverse
             }
         }
