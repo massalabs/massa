@@ -158,18 +158,7 @@ impl AsyncPool {
     > {
         let left_bound = match cursor {
             StreamingStep::Started => Unbounded,
-            StreamingStep::Ongoing(last_id) => {
-                if last_id
-                    == self
-                        .messages
-                        .first_key_value()
-                        .map(|(&message_id, _)| message_id)
-                        .expect("async_pool should contain at least one message")
-                {
-                    return Ok((BTreeMap::new(), StreamingStep::Finished(Some(last_id))));
-                }
-                Excluded(last_id)
-            }
+            StreamingStep::Ongoing(last_id) => Excluded(last_id),
             // IMPORTANT TODO: MIGHT BE DIFFERENT
             StreamingStep::Finished(_) => return Ok((BTreeMap::new(), cursor)),
         };
@@ -181,9 +170,16 @@ impl AsyncPool {
         }
         let part_last_id = pool_part
             .last_key_value()
-            .map(|(&message_id, _)| message_id)
-            .expect("pool_part should contain at least one message");
-        Ok((pool_part, StreamingStep::Ongoing(part_last_id)))
+            .map(|(&message_id, _)| message_id);
+        if pool_part.is_empty() {
+            return Ok((BTreeMap::new(), StreamingStep::Finished(part_last_id)));
+        };
+        Ok((
+            pool_part,
+            StreamingStep::Ongoing(
+                part_last_id.expect("pool part should contain at least one message here"),
+            ),
+        ))
     }
 
     /// Set a part of the async pool.
@@ -203,7 +199,7 @@ impl AsyncPool {
             self.messages
                 .last_key_value()
                 .map(|(&id, _)| id)
-                .expect("should contain at least one message"),
+                .expect("async pool should contain at least one message here"),
         ))
     }
 }
