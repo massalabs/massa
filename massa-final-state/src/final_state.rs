@@ -198,7 +198,7 @@ impl FinalState {
                     );
                     slot_changes.ledger_changes = ledger_changes;
                 }
-                StreamingStep::Finished(Some(_)) => {
+                StreamingStep::Finished => {
                     slot_changes.ledger_changes = changes.ledger_changes.clone();
                 }
                 _ => (),
@@ -222,7 +222,7 @@ impl FinalState {
                     );
                     slot_changes.async_pool_changes = async_pool_changes;
                 }
-                StreamingStep::Finished(_) => {
+                StreamingStep::Finished => {
                     slot_changes.async_pool_changes = changes.async_pool_changes.clone();
                 }
                 _ => (),

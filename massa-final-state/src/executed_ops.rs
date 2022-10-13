@@ -113,9 +113,9 @@ impl ExecutedOps {
         match cursor {
             StreamingStep::Started => (), // TODO: when parts start at unbounded left range
             StreamingStep::Ongoing(_op_id) => (), // TODO: when parts start at op_id left range
-            StreamingStep::Finished(_) => return Ok((ExecutedOps::default(), cursor)),
+            StreamingStep::Finished => return Ok((ExecutedOps::default(), cursor)),
         }
-        Ok((self.clone(), StreamingStep::Finished(None)))
+        Ok((self.clone(), StreamingStep::Finished))
     }
 
     /// Set a part of the executed operations.
@@ -129,7 +129,7 @@ impl ExecutedOps {
         part: ExecutedOps,
     ) -> Result<StreamingStep<OperationId>, ModelsError> {
         self.extend(part);
-        Ok(StreamingStep::Finished(None))
+        Ok(StreamingStep::Finished)
     }
 }
 

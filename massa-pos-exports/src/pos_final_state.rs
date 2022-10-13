@@ -404,14 +404,14 @@ impl PoSFinalState {
             StreamingStep::Ongoing(last_cycle) => {
                 if let Some(index) = self.get_cycle_index(last_cycle) {
                     if index == self.cycle_history.len() - 1 {
-                        return Ok((None, StreamingStep::Finished(None)));
+                        return Ok((None, StreamingStep::Finished));
                     }
                     index.saturating_add(1)
                 } else {
                     return Err(ModelsError::OutdatedBootstrapCursor);
                 }
             }
-            StreamingStep::Finished(_) => return Ok((None, cursor)),
+            StreamingStep::Finished => return Ok((None, cursor)),
         };
         let cycle_info = self
             .cycle_history
@@ -438,14 +438,14 @@ impl PoSFinalState {
         let left_bound = match cursor {
             StreamingStep::Started => Unbounded,
             StreamingStep::Ongoing(last_slot) => Excluded(last_slot),
-            StreamingStep::Finished(_) => return Ok((credits_part, cursor)),
+            StreamingStep::Finished => return Ok((credits_part, cursor)),
         };
         for (slot, credits) in self.deferred_credits.0.range((left_bound, Unbounded)) {
             // FOLLOW-UP TODO: stream in multiple parts
             credits_part.0.insert(*slot, credits.clone());
         }
         if credits_part.0.is_empty() {
-            return Ok((credits_part, StreamingStep::Finished(None)));
+            return Ok((credits_part, StreamingStep::Finished));
         }
         let last_credits_slot = credits_part
             .0

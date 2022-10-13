@@ -156,12 +156,12 @@ impl AsyncPool {
         ),
         ModelsError,
     > {
-        let left_bound = match dbg!(cursor) {
+        let mut pool_part = BTreeMap::new();
+        let left_bound = match cursor {
             StreamingStep::Started => Unbounded,
             StreamingStep::Ongoing(last_id) => Excluded(last_id),
-            StreamingStep::Finished(_) => return Ok((BTreeMap::new(), cursor)),
+            StreamingStep::Finished => return Ok((pool_part, cursor)),
         };
-        let mut pool_part = BTreeMap::new();
         for (id, message) in self.messages.range((left_bound, Unbounded)) {
             // IMPORTANT TODO: update this value
             if pool_part.len() < self.config.part_size_message_bytes as usize {
@@ -169,16 +169,12 @@ impl AsyncPool {
             }
         }
         if pool_part.is_empty() {
-            let pool_part_last_id = self
-                .messages
-                .last_key_value()
-                .map(|(&message_id, _)| message_id);
-            return Ok((BTreeMap::new(), StreamingStep::Finished(pool_part_last_id)));
+            return Ok((pool_part, StreamingStep::Finished));
         };
         let pool_part_last_id = pool_part
             .last_key_value()
             .map(|(&message_id, _)| message_id)
-            .expect("pool part should contain at least one message here");
+            .expect("pool_part should contain at least one message here");
         Ok((pool_part, StreamingStep::Ongoing(pool_part_last_id)))
     }
 

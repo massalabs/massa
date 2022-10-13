@@ -76,7 +76,7 @@ async fn stream_final_state(
                             .pos_state
                             .set_cycle_history_part(cycle_info)?
                     } else {
-                        StreamingStep::Finished(None)
+                        StreamingStep::Finished
                     };
                     let last_credits_step = write_final_state
                         .pos_state

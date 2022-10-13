@@ -470,7 +470,7 @@ impl LedgerDB {
         let opt = ReadOptions::default();
         let ser = VecU8Serializer::new();
         let key_serializer = KeySerializer::new();
-        let mut part = Vec::new();
+        let mut ledger_part = Vec::new();
 
         // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key of the ledger.
         let (db_iterator, mut new_cursor) = match cursor {
@@ -485,22 +485,22 @@ impl LedgerDB {
                     IteratorMode::From(&last_key, Direction::Forward),
                 );
                 iter.next();
-                (iter, StreamingStep::Finished(Some(last_key)))
+                (iter, StreamingStep::Finished)
             }
-            StreamingStep::Finished(_) => return Ok((Vec::new(), cursor)),
+            StreamingStep::Finished => return Ok((ledger_part, cursor)),
         };
 
         // Iterates over the whole database
         for (key, entry) in db_iterator.flatten() {
-            if (part.len() as u64) < (self.ledger_part_size_message_bytes) {
-                key_serializer.serialize(&key.to_vec(), &mut part)?;
-                ser.serialize(&entry.to_vec(), &mut part)?;
+            if (ledger_part.len() as u64) < (self.ledger_part_size_message_bytes) {
+                key_serializer.serialize(&key.to_vec(), &mut ledger_part)?;
+                ser.serialize(&entry.to_vec(), &mut ledger_part)?;
                 new_cursor = StreamingStep::Ongoing(key.to_vec());
             } else {
                 break;
             }
         }
-        Ok((part, new_cursor))
+        Ok((ledger_part, new_cursor))
     }
 
     /// Set a part of the ledger in the database.
