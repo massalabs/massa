@@ -48,7 +48,7 @@ pub struct PoSFinalState {
 impl PoSFinalState {
     /// create a new `PoSFinalState`
     pub fn new(
-        // IMPORTANT TODO: use a config
+        // FOLLOW-UP TODO: use a config
         initial_seed_string: &String,
         initial_rolls_path: &PathBuf,
         periods_per_cycle: u64,
@@ -399,7 +399,7 @@ impl PoSFinalState {
         cursor: StreamingStep<u64>,
     ) -> Result<(Option<CycleInfo>, StreamingStep<u64>), ModelsError> {
         let cycle_index = match cursor {
-            // IMPORTANT TODO: use config for `6`
+            // FOLLOW-UP TODO: use the config value for `6`
             StreamingStep::Started => usize::from(self.cycle_history.len() >= 6),
             StreamingStep::Ongoing(last_cycle) => {
                 if let Some(index) = self.get_cycle_index(last_cycle) {
@@ -441,7 +441,7 @@ impl PoSFinalState {
             StreamingStep::Finished(_) => return Ok((credits_part, cursor)),
         };
         for (slot, credits) in self.deferred_credits.0.range((left_bound, Unbounded)) {
-            // IMPORTANT TODO: LIMIT HERE
+            // FOLLOW-UP TODO: stream in multiple parts
             credits_part.0.insert(*slot, credits.clone());
         }
         if credits_part.0.is_empty() {
@@ -463,7 +463,6 @@ impl PoSFinalState {
         &mut self,
         part: CycleInfo,
     ) -> Result<StreamingStep<u64>, ModelsError> {
-        // IMPORTANT TODO: DO NOT FORGET EMPTY CASE
         let opt_next_cycle = self
             .cycle_history
             .back()

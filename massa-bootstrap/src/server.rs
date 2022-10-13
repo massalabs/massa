@@ -315,11 +315,10 @@ pub async fn send_final_state_stream(
                         "Bootstrap cursor set to future slot".to_string(),
                     ));
                 }
-                // IMPORTANT TODO: MIGHT WANT TO CHANGE THIS BEHAVIOUR
                 final_state_changes = final_state_read.get_state_changes_part(
                     slot,
-                    last_ledger_step,
-                    last_pool_step,
+                    new_ledger_step.clone(),
+                    new_pool_step,
                     new_cycle_step,
                     new_credits_step,
                     new_ops_step,

@@ -109,7 +109,7 @@ impl ExecutedOps {
         &self,
         cursor: StreamingStep<OperationId>,
     ) -> Result<(ExecutedOps, StreamingStep<OperationId>), ModelsError> {
-        // TODO: stream in multiple parts
+        // FOLLOW-UP TODO: stream in multiple parts
         match cursor {
             StreamingStep::Started => (), // TODO: when parts start at unbounded left range
             StreamingStep::Ongoing(_op_id) => (), // TODO: when parts start at op_id left range
