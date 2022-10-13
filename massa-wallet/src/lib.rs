@@ -145,7 +145,7 @@ impl Wallet {
     ) -> Result<WrappedOperation, WalletError> {
         let sender_keypair = self
             .find_associated_keypair(&address)
-            .ok_or_else(|| WalletError::MissingKeyError(address))?;
+            .ok_or(WalletError::MissingKeyError(address))?;
         Ok(Operation::new_wrapped(content, OperationSerializer::new(), sender_keypair).unwrap())
     }
 }

@@ -24,10 +24,7 @@ pub enum StreamingStep<T> {
 impl<T> StreamingStep<T> {
     /// Indicates if the current step if finished or not without caring about the values
     pub fn finished(&self) -> bool {
-        match self {
-            StreamingStep::Finished(_) => true,
-            _ => false,
-        }
+        matches!(self, StreamingStep::Finished(_))
     }
 }
 

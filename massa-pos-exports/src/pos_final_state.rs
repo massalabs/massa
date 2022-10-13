@@ -442,7 +442,7 @@ impl PoSFinalState {
         };
         for (slot, credits) in self.deferred_credits.0.range((left_bound, Unbounded)) {
             // IMPORTANT TODO: LIMIT HERE
-            credits_part.0.insert(slot.clone(), credits.clone());
+            credits_part.0.insert(*slot, credits.clone());
         }
         if credits_part.0.is_empty() {
             return Ok((credits_part, StreamingStep::Finished(None)));

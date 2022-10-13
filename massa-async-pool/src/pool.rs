@@ -176,7 +176,7 @@ impl AsyncPool {
         let mut pool_part = BTreeMap::new();
         for (id, message) in self.messages.range((left_bound, Unbounded)) {
             if pool_part.len() < self.config.part_size_message_bytes as usize {
-                pool_part.insert(id.clone(), message.clone());
+                pool_part.insert(*id, message.clone());
             }
         }
         let part_last_id = pool_part
@@ -194,7 +194,7 @@ impl AsyncPool {
     ///
     /// # Returns
     /// The updated cursor after the current insert
-    pub fn set_pool_part<'a>(
+    pub fn set_pool_part(
         &mut self,
         part: BTreeMap<AsyncMessageId, AsyncMessage>,
     ) -> Result<StreamingStep<AsyncMessageId>, ModelsError> {
@@ -213,6 +213,12 @@ pub struct AsyncPoolSerializer {
     u64_serializer: U64VarIntSerializer,
     async_message_id_serializer: AsyncMessageIdSerializer,
     async_message_serializer: AsyncMessageSerializer,
+}
+
+impl Default for AsyncPoolSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AsyncPoolSerializer {

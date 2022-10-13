@@ -62,6 +62,12 @@ pub struct DeferredCreditsSerializer {
     amount_ser: AmountSerializer,
 }
 
+impl Default for DeferredCreditsSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DeferredCreditsSerializer {
     /// Creates a new `DeferredCredits` serializer
     pub fn new() -> Self {

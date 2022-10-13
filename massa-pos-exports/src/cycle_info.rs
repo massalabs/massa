@@ -88,6 +88,12 @@ pub struct CycleInfoDeserializer {
     production_stats_deser: ProductionStatsDeserializer,
 }
 
+impl Default for CycleInfoDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CycleInfoDeserializer {
     /// Creates a new `CycleInfo` deserializer
     pub fn new() -> CycleInfoDeserializer {
@@ -121,6 +127,7 @@ impl Deserializer<CycleInfo> for CycleInfoDeserializer {
             )),
         )
         .map(
+            #[allow(clippy::type_complexity)]
             |(cycle, complete, roll_counts, rng_seed, production_stats): (
                 u64,                                  // cycle
                 bool,                                 // complete
@@ -174,6 +181,12 @@ pub struct ProductionStatsSerializer {
     u64_ser: U64VarIntSerializer,
 }
 
+impl Default for ProductionStatsSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ProductionStatsSerializer {
     /// Creates a new `ProductionStats` serializer
     pub fn new() -> Self {
@@ -210,6 +223,12 @@ impl Serializer<PreHashMap<Address, ProductionStats>> for ProductionStatsSeriali
 pub struct ProductionStatsDeserializer {
     address_deserializer: AddressDeserializer,
     u64_deserializer: U64VarIntDeserializer,
+}
+
+impl Default for ProductionStatsDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ProductionStatsDeserializer {
@@ -262,6 +281,12 @@ impl Deserializer<PreHashMap<Address, ProductionStats>> for ProductionStatsDeser
 pub struct RollsDeserializer {
     address_deserializer: AddressDeserializer,
     u64_deserializer: U64VarIntDeserializer,
+}
+
+impl Default for RollsDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RollsDeserializer {
