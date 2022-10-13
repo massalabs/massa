@@ -129,14 +129,17 @@ impl FinalState {
         );
     }
 
-    /// Used for bootstrap
-    /// Take a part of the final state changes.
-    /// Every ledger change that is after `slot` and before or equal to `ledger_step`.
-    /// Every async pool change that is after `slot` and before or equal to `pool_step`.
-    /// Every proof-of-stake change if main bootstrap process is finished.
-    /// Every executed ops change if main bootstrap process is finished.
+    /// Used for bootstrap.
     ///
-    /// Error case: When the `slot` is too old for `self.changes_history`
+    /// Retrieves every:
+    /// * ledger change that is after `slot` and before or equal to `ledger_step` key
+    /// * ledger change if main bootstrap process is finished
+    /// * async pool change that is after `slot` and before or equal to `pool_step` message id
+    /// * proof-of-stake change if main bootstrap process is finished
+    /// * proof-of-stake change if main bootstrap process is finished
+    /// * executed ops change if main bootstrap process is finished
+    ///
+    /// Produces an error when the `slot` is too old for `self.changes_history`
     pub fn get_state_changes_part(
         &self,
         slot: Slot,
@@ -151,14 +154,16 @@ impl FinalState {
             let index = slot
                 .slots_since(first_slot, self.config.thread_count)
                 .map_err(|_| {
-                    FinalStateError::LedgerError("Last slot is overflowing history.".to_string())
+                    FinalStateError::LedgerError(
+                        "get_state_changes_part given slot is overflowing history.".to_string(),
+                    )
                 })?
                 .saturating_add(1);
 
-            // Check if `slot` isn't in the future
+            // Check if the `slot` index isn't in the future
             if self.changes_history.len() as u64 <= index {
                 return Err(FinalStateError::LedgerError(
-                    "Last slot is overflowing history.".to_string(),
+                    "slot index is overflowing history.".to_string(),
                 ));
             }
             index
@@ -171,7 +176,7 @@ impl FinalState {
 
             // Get ledger change that concern address <= ledger_step
             match ledger_step.clone() {
-                StreamingStep::Ongoing(key) | StreamingStep::Finished(Some(key)) => {
+                StreamingStep::Ongoing(key) => {
                     let addr = get_address_from_key(&key).ok_or_else(|| {
                         FinalStateError::LedgerError(
                             "Invalid key in ledger streaming step".to_string(),
@@ -191,14 +196,17 @@ impl FinalState {
                             })
                             .collect(),
                     );
-                    slot_changes.ledger_changes.0 = ledger_changes.0;
+                    slot_changes.ledger_changes = ledger_changes;
+                }
+                StreamingStep::Finished(Some(_)) => {
+                    slot_changes.ledger_changes = changes.ledger_changes.clone();
                 }
                 _ => (),
             }
 
             // Get async pool changes that concern ids <= pool_step
             match pool_step {
-                StreamingStep::Ongoing(last_id) | StreamingStep::Finished(Some(last_id)) => {
+                StreamingStep::Ongoing(last_id) => {
                     let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(
                         changes
                             .async_pool_changes
@@ -213,6 +221,9 @@ impl FinalState {
                             .collect(),
                     );
                     slot_changes.async_pool_changes = async_pool_changes;
+                }
+                StreamingStep::Finished(_) => {
+                    slot_changes.async_pool_changes = changes.async_pool_changes.clone();
                 }
                 _ => (),
             }
