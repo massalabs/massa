@@ -33,7 +33,7 @@ use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::Mutex;
-use std::{collections::BTreeMap, collections::HashSet, future::Future, path::Path};
+use std::{collections::HashSet, future::Future, path::Path};
 use std::{str::FromStr, sync::Arc, time::Duration};
 
 use tracing::info;

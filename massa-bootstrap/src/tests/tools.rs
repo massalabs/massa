@@ -43,7 +43,6 @@ use massa_signature::{KeyPair, PublicKey, Signature};
 use massa_time::MassaTime;
 use rand::Rng;
 use std::collections::{HashMap, VecDeque};
-use std::str::FromStr;
 use std::{
     collections::BTreeMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -181,7 +180,7 @@ pub fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
 pub fn get_random_async_pool_changes(r_limit: u64) -> AsyncPoolChanges {
     let mut changes = AsyncPoolChanges::default();
     for _ in 0..r_limit {
-        let mut message = get_random_message();
+        let message = get_random_message();
         changes.0.push(Change::Add(message.compute_id(), message));
     }
     changes
