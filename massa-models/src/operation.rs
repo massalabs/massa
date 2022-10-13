@@ -144,8 +144,26 @@ impl OperationId {
     }
 }
 
+/// Serializer for `OperationId`
+#[derive(Default, Clone)]
+pub struct OperationIdSerializer;
+
+impl OperationIdSerializer {
+    /// Creates a new serializer for `OperationId`
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Serializer<OperationId> for OperationIdSerializer {
+    fn serialize(&self, value: &OperationId, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        buffer.extend(value.to_bytes());
+        Ok(())
+    }
+}
+
 /// Deserializer for `OperationId`
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct OperationIdDeserializer {
     hash_deserializer: HashDeserializer,
 }

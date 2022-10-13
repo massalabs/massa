@@ -56,7 +56,7 @@ pub fn get_address_from_key(key: &[u8]) -> Option<Address> {
 }
 
 /// Basic key serializer
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct KeySerializer {
     vec_u8_serializer: VecU8Serializer,
 }
@@ -105,6 +105,7 @@ impl Serializer<Vec<u8>> for KeySerializer {
 }
 
 /// Basic key deserializer
+#[derive(Clone)]
 pub struct KeyDeserializer {
     address_deserializer: AddressDeserializer,
     datastore_key_deserializer: VecU8Deserializer,

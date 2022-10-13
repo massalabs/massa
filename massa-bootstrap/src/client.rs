@@ -6,7 +6,6 @@ use massa_logging::massa_trace;
 use massa_models::version::Version;
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
-use nom::AsBytes;
 use parking_lot::RwLock;
 use rand::{
     prelude::{SliceRandom, StdRng},

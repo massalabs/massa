@@ -26,6 +26,7 @@ use std::ops::Bound::{Excluded, Included};
 /// `(rev(max_gas*gas_price), emission_slot, emission_index)`
 pub type AsyncMessageId = (std::cmp::Reverse<Amount>, Slot, u64);
 
+#[derive(Clone)]
 pub struct AsyncMessageIdSerializer {
     amount_serializer: AmountSerializer,
     slot_serializer: SlotSerializer,
@@ -87,6 +88,7 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
     }
 }
 
+#[derive(Clone)]
 pub struct AsyncMessageIdDeserializer {
     amount_deserializer: AmountDeserializer,
     slot_deserializer: SlotDeserializer,
