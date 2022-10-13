@@ -12,7 +12,7 @@ use rand::Rng;
 /// Creates a `AsyncPool` from pre-set values
 pub fn create_async_pool(
     config: AsyncPoolConfig,
-    messages: BTreeMap<(Reverse<Amount>, Slot, u64), AsyncMessage>,
+    messages: BTreeMap<(Reverse<u64>, Slot, u64), AsyncMessage>,
 ) -> AsyncPool {
     let mut async_pool = AsyncPool::new(config);
     async_pool.messages = messages;

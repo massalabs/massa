@@ -190,7 +190,6 @@ fn test_nested_call_gas_usage() {
     let operation = create_call_sc_operation(
         &keypair,
         10000000,
-        Amount::from_str("0").unwrap(),
         Address::from_str(&address).unwrap(),
         String::from("test"),
         address,

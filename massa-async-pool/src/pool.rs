@@ -217,7 +217,7 @@ fn test_take_batch() {
     for i in 1..10 {
         pool.messages.insert(
             (
-                std::cmp::Reverse(Amount::from_mantissa_scale(i, 0)),
+                std::cmp::Reverse(i),
                 Slot::new(0, 0),
                 0,
             ),
