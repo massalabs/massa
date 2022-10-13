@@ -13,6 +13,15 @@ use tracing::debug;
 use super::GraphState;
 
 impl GraphState {
+    /// Register a block header in the graph. Ignore genesis hashes.
+    /// 
+    /// # Arguments:
+    /// * `block_id`: the block id
+    /// * `header`: the header to register
+    /// * `current_slot`: the slot when this function is called
+    /// 
+    /// # Returns:
+    /// Success or error if the header is invalid or too old
     pub fn register_block_header(
         &mut self,
         block_id: BlockId,
@@ -59,11 +68,16 @@ impl GraphState {
         Ok(())
     }
 
-    /// A new block has come
+    /// Register a new full block in the graph. Ignore genesis hashes.
     ///
-    /// Checks performed:
-    /// - Ignore genesis blocks.
-    /// - See `process`.
+    /// # Arguments:
+    /// * `block_id`: the block id
+    /// * `slot`: the slot of the block
+    /// * `current_slot`: the slot when this function is called
+    /// * `storage`: Storage containing the whole content of the block
+    /// 
+    /// # Returns:
+    ///  Success or error if the block is invalid or too old
     pub fn register_block(
         &mut self,
         block_id: BlockId,
@@ -134,12 +148,16 @@ impl GraphState {
         Ok(())
     }
 
-    /// Mark a block as invalid
+    /// Mark a block that is in the graph as invalid.
+    /// 
+    /// # Arguments:
+    /// * `block_id`: Block id of the block to mark as invalid
+    /// * `header`: Header of the block to mark as invalid
     pub fn mark_invalid_block(
         &mut self,
         block_id: &BlockId,
         header: WrappedHeader,
-    ) -> Result<(), GraphError> {
+    ) {
         let reason = DiscardReason::Invalid("invalid".to_string());
         self.maybe_note_attack_attempt(&reason, block_id);
         massa_trace!("consensus.block_graph.process.invalid_block", {"block_id": block_id, "reason": reason});
@@ -159,7 +177,5 @@ impl GraphState {
             },
         );
         self.discarded_index.insert(*block_id);
-
-        Ok(())
     }
 }

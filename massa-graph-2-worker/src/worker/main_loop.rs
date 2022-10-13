@@ -19,6 +19,13 @@ enum WaitingStatus {
 }
 
 impl GraphWorker {
+    /// Execute a command received from the controller also run an update of the graph after processing the command.
+    /// 
+    /// # Arguments:
+    /// * `command`: the command to execute
+    /// 
+    /// # Returns:
+    /// An error if the command failed
     fn manage_command(&mut self, command: GraphCommand) -> GraphResult<()> {
         let mut write_shared_state = self.shared_state.write();
         match command {
@@ -36,7 +43,8 @@ impl GraphWorker {
                 write_shared_state.block_db_changed()
             }
             GraphCommand::MarkInvalidBlock(block_id, header) => {
-                write_shared_state.mark_invalid_block(&block_id, header)
+                write_shared_state.mark_invalid_block(&block_id, header);
+                Ok(())
             }
         }
     }

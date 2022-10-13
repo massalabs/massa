@@ -87,6 +87,7 @@ pub struct GraphState {
 }
 
 impl GraphState {
+    /// Get a full active block
     pub fn get_full_active_block(&self, block_id: &BlockId) -> Option<(&ActiveBlock, &Storage)> {
         match self.block_statuses.get(block_id) {
             Some(BlockStatus::Active { a_block, storage }) => Some((a_block.as_ref(), storage)),

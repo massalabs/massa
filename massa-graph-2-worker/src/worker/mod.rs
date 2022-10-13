@@ -16,9 +16,13 @@ use crate::controller::GraphControllerImpl;
 use crate::manager::GraphManagerImpl;
 use crate::state::GraphState;
 
+/// The graph worker structure that contains all informations and tools for the graph worker thread.
 pub struct GraphWorker {
+    /// Channel to receive command from the controller
     command_receiver: mpsc::Receiver<GraphCommand>,
+    /// Configuration of the graph
     config: GraphConfig,
+    /// State shared with the controller
     shared_state: Arc<RwLock<GraphState>>,
     /// Previous slot.
     previous_slot: Option<Slot>,
@@ -31,6 +35,17 @@ pub struct GraphWorker {
 mod init;
 mod main_loop;
 
+/// Create a new graph worker thread.
+/// 
+/// # Arguments:
+/// * `config`: Configuration of the graph
+/// * `channels`: Channels to communicate with others modules
+/// * `init_graph`: Optional initial graph to bootstrap the graph. if None, the graph will have only genesis blocks.
+/// * `storage`: Storage to use for the graph
+/// 
+/// # Returns:
+/// * The graph controller to communicate with the graph worker thread 
+/// * The graph manager to manage the graph worker thread
 pub fn start_graph_worker(
     config: GraphConfig,
     channels: GraphChannels,

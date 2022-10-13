@@ -7,8 +7,7 @@ use std::cmp::max;
 use tracing::log::warn;
 
 impl GraphState {
-    /// retrieve stats
-    /// Used in response to a API request
+    /// Calculate and return stats about graph
     pub fn get_stats(&self) -> GraphResult<ConsensusStats> {
         let timespan_end = max(
             self.launch_time,
@@ -37,7 +36,8 @@ impl GraphState {
             end_timespan: timespan_end,
         })
     }
-
+    
+    /// Must be called each tick to update stats. Will detect if a desynchronization happened
     pub fn stats_tick(&mut self) -> GraphResult<()> {
         let now = MassaTime::now(self.config.clock_compensation_millis)?;
 
@@ -63,6 +63,7 @@ impl GraphState {
         Ok(())
     }
 
+    /// Remove old stats from graph storage
     pub fn prune_stats(&mut self) -> GraphResult<()> {
         let start_time = MassaTime::now(self.config.clock_compensation_millis)?
             .saturating_sub(self.stats_history_timespan);
