@@ -493,7 +493,6 @@ impl Serializer<OperationType> for OperationTypeSerializer {
     /// let op = OperationType::ExecuteSC {
     ///    data: vec![0x01, 0x02, 0x03],
     ///    max_gas: 100,
-    ///    gas_price: Amount::from_str("1").unwrap(),
     ///    datastore: BTreeMap::default(),
     /// };
     /// let mut buffer = Vec::new();
@@ -618,7 +617,6 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
     /// let op = OperationType::ExecuteSC {
     ///    data: vec![0x01, 0x02, 0x03],
     ///    max_gas: 100,
-    ///    gas_price: Amount::from_str("1").unwrap(),
     ///    datastore: BTreeMap::from([(vec![1, 2], vec![254, 255])])
     /// };
     /// let mut buffer = Vec::new();
@@ -629,12 +627,10 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
     ///    OperationType::ExecuteSC {
     ///      data,
     ///      max_gas,
-    ///      gas_price,
     ///      datastore
     ///   } => {
     ///     assert_eq!(data, vec![0x01, 0x02, 0x03]);
     ///     assert_eq!(max_gas, 100);
-    ///     assert_eq!(gas_price, Amount::from_str("1").unwrap());
     ///     assert_eq!(datastore, BTreeMap::from([(vec![1, 2], vec![254, 255])]))
     ///   }
     ///   _ => panic!("Unexpected operation type"),
@@ -1312,7 +1308,6 @@ mod tests {
 
         let op = OperationType::ExecuteSC {
             max_gas: 123,
-            gas_price: Amount::from_str("772.122").unwrap(),
             data: vec![23u8, 123u8, 44u8],
             datastore: BTreeMap::from([
                 (vec![1, 2, 3], vec![4, 5, 6, 7, 8, 9]),
@@ -1392,7 +1387,6 @@ mod tests {
             max_gas: 123,
             target_addr,
             coins: Amount::from_str("456.789").unwrap(),
-            gas_price: Amount::from_str("772.122").unwrap(),
             target_func: "target function".to_string(),
             param: "parameter".to_string(),
         };

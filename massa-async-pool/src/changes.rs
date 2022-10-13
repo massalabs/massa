@@ -71,7 +71,6 @@ impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
     ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     ///     handler: String::from("test"),
     ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str("1").unwrap(),
     ///     coins: Amount::from_str("1").unwrap(),
     ///     validity_start: Slot::new(2, 0),
     ///     validity_end: Slot::new(3, 0),
@@ -148,8 +147,6 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     ///     handler: String::from("test"),
     ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str("1").unwrap(),
-    ///     coins: Amount::from_str("1").unwrap(),
     ///     validity_start: Slot::new(2, 0),
     ///     validity_end: Slot::new(3, 0),
     ///     data: vec![1, 2, 3, 4]

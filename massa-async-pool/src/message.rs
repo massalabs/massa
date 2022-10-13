@@ -23,11 +23,11 @@ use std::ops::Bound::{Excluded, Included};
 
 /// Unique identifier of a message.
 /// Also has the property of ordering by priority (highest first) following the triplet:
-/// `(rev(max_gas*gas_price), emission_slot, emission_index)`
-pub type AsyncMessageId = (std::cmp::Reverse<Amount>, Slot, u64);
+/// `(rev(max_gas), emission_slot, emission_index)`
+pub type AsyncMessageId = (std::cmp::Reverse<u64>, Slot, u64);
 
 pub struct AsyncMessageIdSerializer {
-    amount_serializer: AmountSerializer,
+    max_gas_serializer: U64VarIntSerializer,
     slot_serializer: SlotSerializer,
     u64_serializer: U64VarIntSerializer,
 }
@@ -35,7 +35,7 @@ pub struct AsyncMessageIdSerializer {
 impl AsyncMessageIdSerializer {
     pub fn new() -> Self {
         Self {
-            amount_serializer: AmountSerializer::new(),
+            max_gas_serializer: U64VarIntSerializer::new(),
             slot_serializer: SlotSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
         }
@@ -64,7 +64,6 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
     ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     ///     handler: String::from("test"),
     ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str("1").unwrap(),
     ///     coins: Amount::from_str("1").unwrap(),
     ///     validity_start: Slot::new(2, 0),
     ///     validity_end: Slot::new(3, 0),
@@ -80,7 +79,7 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
         value: &AsyncMessageId,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
-        self.amount_serializer.serialize(&value.0 .0, buffer)?;
+        self.max_gas_serializer.serialize(&value.0 .0, buffer)?;
         self.slot_serializer.serialize(&value.1, buffer)?;
         self.u64_serializer.serialize(&value.2, buffer)?;
         Ok(())
@@ -88,7 +87,7 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
 }
 
 pub struct AsyncMessageIdDeserializer {
-    amount_deserializer: AmountDeserializer,
+    max_gas_deserializer: U64VarIntDeserializer,
     slot_deserializer: SlotDeserializer,
     emission_index_deserializer: U64VarIntDeserializer,
 }
@@ -96,9 +95,9 @@ pub struct AsyncMessageIdDeserializer {
 impl AsyncMessageIdDeserializer {
     pub fn new(thread_count: u8) -> Self {
         Self {
-            amount_deserializer: AmountDeserializer::new(
-                Included(Amount::MIN),
-                Included(Amount::MAX),
+            max_gas_deserializer: U64VarIntDeserializer::new(
+                Included(u64::MIN),
+                Included(u64::MAX),
             ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
@@ -128,7 +127,6 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
     ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     ///     handler: String::from("test"),
     ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str("1").unwrap(),
     ///     coins: Amount::from_str("1").unwrap(),
     ///     validity_start: Slot::new(2, 0),
     ///     validity_end: Slot::new(3, 0),
@@ -150,8 +148,8 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
         context(
             "Failed AsyncMessageId deserialization",
             tuple((
-                context("Failed gas_price deserialization", |input| {
-                    self.amount_deserializer.deserialize(input)
+                context("Failed max_gas deserialization", |input| {
+                    self.max_gas_deserializer.deserialize(input)
                 }),
                 context("Failed emission_slot deserialization", |input| {
                     self.slot_deserializer.deserialize(input)
@@ -161,7 +159,7 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
                 }),
             )),
         )
-        .map(|(amount, slot, index)| (std::cmp::Reverse(amount), slot, index))
+        .map(|(max_gas, slot, index)| (std::cmp::Reverse(max_gas), slot, index))
         .parse(buffer)
     }
 }
@@ -206,10 +204,10 @@ pub struct AsyncMessage {
 
 impl AsyncMessage {
     /// Compute the ID of the message for use when choosing which operations to keep in priority (highest score) on pool overflow.
-    /// For now, the formula is simply `score = (gas_price * max_gas, rev(emission_slot), rev(emission_index))`
+    /// For now, the formula is simply `score = (max_gas, rev(emission_slot), rev(emission_index))`
     pub fn compute_id(&self) -> AsyncMessageId {
         (
-            std::cmp::Reverse(Amount::from_raw(self.max_gas)),
+            std::cmp::Reverse(self.max_gas),
             self.emission_slot,
             self.emission_index,
         )
@@ -254,7 +252,6 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
     ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     ///     handler: String::from("test"),
     ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str("1").unwrap(),
     ///     coins: Amount::from_str("1").unwrap(),
     ///     validity_start: Slot::new(2, 0),
     ///     validity_end: Slot::new(3, 0),
@@ -342,7 +339,6 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     ///     handler: String::from("test"),
     ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str("1").unwrap(),
     ///     coins: Amount::from_str("1").unwrap(),
     ///     validity_start: Slot::new(2, 0),
     ///     validity_end: Slot::new(3, 0),
@@ -463,7 +459,6 @@ mod tests {
                 .unwrap(),
             handler: String::from("test"),
             max_gas: 10000000,
-            gas_price: Amount::from_str("1").unwrap(),
             coins: Amount::from_str("1").unwrap(),
             validity_start: Slot::new(2, 0),
             validity_end: Slot::new(3, 0),

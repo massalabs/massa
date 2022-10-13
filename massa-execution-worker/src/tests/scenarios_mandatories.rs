@@ -65,7 +65,6 @@ fn test_readonly_execution() {
     let mut res = controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
             max_gas: 1_000_000,
-            simulated_gas_price: Amount::from_mantissa_scale(1_000_000, 0),
             call_stack: vec![],
             target: ReadOnlyExecutionTarget::BytecodeExecution(
                 include_bytes!("./wasm/event_test.wasm").to_vec(),
@@ -859,7 +858,6 @@ fn create_execute_sc_operation(
     let op = OperationType::ExecuteSC {
         data: data.to_vec(),
         max_gas: 100_000,
-        gas_price: Amount::from_mantissa_scale(1, 0),
         datastore: BTreeMap::new(),
     };
     let op = Operation::new_wrapped(
@@ -884,7 +882,6 @@ fn create_execute_sc_operation_with_datastore(
     let op = OperationType::ExecuteSC {
         data: data.to_vec(),
         max_gas: 100_000,
-        gas_price: Amount::from_mantissa_scale(1, 0),
         datastore,
     };
     let op = Operation::new_wrapped(
@@ -904,7 +901,6 @@ fn create_execute_sc_operation_with_datastore(
 fn create_call_sc_operation(
     sender_keypair: &KeyPair,
     max_gas: u64,
-    gas_price: Amount,
     target_addr: Address,
     target_func: String,
     param: String,
@@ -913,7 +909,6 @@ fn create_call_sc_operation(
         max_gas,
         target_addr,
         coins: Amount::from_str("0").unwrap(),
-        gas_price,
         target_func,
         param,
     };

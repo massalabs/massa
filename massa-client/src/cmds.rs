@@ -830,14 +830,10 @@ impl Command {
                 let addr = parameters[0].parse::<Address>()?;
                 let path = parameters[1].parse::<PathBuf>()?;
                 let max_gas = parameters[2].parse::<u64>()?;
-                let gas_price = parameters[3].parse::<Amount>()?;
-                let fee = parameters[4].parse::<Amount>()?;
+                let fee = parameters[3].parse::<Amount>()?;
 
                 if !json {
-                    match gas_price
-                        .checked_mul_u64(max_gas)
-                        .and_then(|x| x.checked_add(fee))
-                    {
+                    match Amount::from_raw(max_gas).checked_add(fee) {
                         Some(total) => {
                             if let Ok(addresses_info) =
                                 client.public.get_addresses(vec![addr]).await
@@ -894,14 +890,10 @@ impl Command {
                 let target_func = parameters[2].clone();
                 let param = parameters[3].clone();
                 let max_gas = parameters[4].parse::<u64>()?;
-                let gas_price = parameters[5].parse::<Amount>()?;
-                let coins = parameters[6].parse::<Amount>()?;
-                let fee = parameters[7].parse::<Amount>()?;
+                let coins = parameters[5].parse::<Amount>()?;
+                let fee = parameters[6].parse::<Amount>()?;
                 if !json {
-                    match gas_price
-                        .checked_mul_u64(max_gas)
-                        .and_then(|x| x.checked_add(fee))
-                    {
+                    match Amount::from_raw(max_gas).checked_add(fee) {
                         Some(total) => {
                             if let Ok(addresses_info) =
                                 client.public.get_addresses(vec![target_addr]).await

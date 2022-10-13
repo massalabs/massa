@@ -410,30 +410,6 @@ pub fn _create_transaction(
     Operation::new_wrapped(content, OperationSerializer::new(), keypair).unwrap()
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn _create_executesc(
-    keypair: &KeyPair,
-    expire_period: u64,
-    fee: u64,
-    data: Vec<u8>,
-    max_gas: u64,
-    gas_price: u64,
-) -> WrappedOperation {
-    let op = OperationType::ExecuteSC {
-        data,
-        max_gas,
-        gas_price: Amount::from_str(&gas_price.to_string()).unwrap(),
-        datastore: BTreeMap::new(),
-    };
-
-    let content = Operation {
-        fee: Amount::from_str(&fee.to_string()).unwrap(),
-        expire_period,
-        op,
-    };
-    Operation::new_wrapped(content, OperationSerializer::new(), keypair).unwrap()
-}
-
 pub fn _create_roll_buy(
     keypair: &KeyPair,
     roll_count: u64,
