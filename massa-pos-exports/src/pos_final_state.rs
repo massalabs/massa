@@ -21,7 +21,7 @@ use tracing::debug;
 
 /// Final state of PoS
 pub struct PoSFinalState {
-    /// contiguous cycle history. Back = newest.‚
+    /// contiguous cycle history, back = newest
     pub cycle_history: VecDeque<CycleInfo>,
     /// coins to be credited at the end of the slot
     pub deferred_credits: DeferredCredits,

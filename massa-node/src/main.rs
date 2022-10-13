@@ -103,7 +103,7 @@ async fn launch(
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
         thread_count: THREAD_COUNT,
-        part_size_message_bytes: ASYNC_POOL_PART_SIZE_MESSAGE_BYTES,
+        bootstrap_part_size: ASYNC_POOL_PART_SIZE_MESSAGE_BYTES,
         max_data_async_message: MAX_DATA_ASYNC_MESSAGE,
     };
     let final_state_config = FinalStateConfig {

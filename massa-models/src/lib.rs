@@ -51,7 +51,7 @@ pub mod serialization;
 pub mod slot;
 /// various statistics
 pub mod stats;
-/// bootrsap streaming cursor
+/// bootstrap streaming cursor
 pub mod streaming_step;
 /// management of the relation between time and slots
 pub mod timeslots;

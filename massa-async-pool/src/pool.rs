@@ -163,8 +163,7 @@ impl AsyncPool {
             StreamingStep::Finished => return Ok((pool_part, cursor)),
         };
         for (id, message) in self.messages.range((left_bound, Unbounded)) {
-            // IMPORTANT TODO: update this value
-            if pool_part.len() < self.config.part_size_message_bytes as usize {
+            if pool_part.len() < self.config.bootstrap_part_size as usize {
                 pool_part.insert(*id, message.clone());
             }
         }
@@ -296,7 +295,7 @@ fn test_take_batch() {
         thread_count: 2,
         max_length: 10,
         max_data_async_message: 1000000,
-        part_size_message_bytes: 1_000_000,
+        bootstrap_part_size: 1_000_000,
     };
     let mut pool = AsyncPool::new(config);
     let address = Address(Hash::compute_from(b"abc"));
