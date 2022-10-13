@@ -216,11 +216,7 @@ fn test_take_batch() {
     let address = Address(Hash::compute_from(b"abc"));
     for i in 1..10 {
         pool.messages.insert(
-            (
-                std::cmp::Reverse(i),
-                Slot::new(0, 0),
-                0,
-            ),
+            (std::cmp::Reverse(i), Slot::new(0, 0), 0),
             AsyncMessage {
                 emission_slot: Slot::new(0, 0),
                 emission_index: 0,
