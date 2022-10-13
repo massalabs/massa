@@ -1,6 +1,6 @@
 use std::collections::{hash_map::Entry, BTreeSet};
 
-use massa_graph::error::{GraphError, GraphResult};
+use massa_graph::error::GraphResult;
 use massa_graph_2_exports::block_status::{BlockStatus, DiscardReason, HeaderOrBlock};
 use massa_logging::massa_trace;
 use massa_models::{
@@ -14,12 +14,12 @@ use super::GraphState;
 
 impl GraphState {
     /// Register a block header in the graph. Ignore genesis hashes.
-    /// 
+    ///
     /// # Arguments:
     /// * `block_id`: the block id
     /// * `header`: the header to register
     /// * `current_slot`: the slot when this function is called
-    /// 
+    ///
     /// # Returns:
     /// Success or error if the header is invalid or too old
     pub fn register_block_header(
@@ -75,7 +75,7 @@ impl GraphState {
     /// * `slot`: the slot of the block
     /// * `current_slot`: the slot when this function is called
     /// * `storage`: Storage containing the whole content of the block
-    /// 
+    ///
     /// # Returns:
     ///  Success or error if the block is invalid or too old
     pub fn register_block(
@@ -149,15 +149,11 @@ impl GraphState {
     }
 
     /// Mark a block that is in the graph as invalid.
-    /// 
+    ///
     /// # Arguments:
     /// * `block_id`: Block id of the block to mark as invalid
     /// * `header`: Header of the block to mark as invalid
-    pub fn mark_invalid_block(
-        &mut self,
-        block_id: &BlockId,
-        header: WrappedHeader,
-    ) {
+    pub fn mark_invalid_block(&mut self, block_id: &BlockId, header: WrappedHeader) {
         let reason = DiscardReason::Invalid("invalid".to_string());
         self.maybe_note_attack_attempt(&reason, block_id);
         massa_trace!("consensus.block_graph.process.invalid_block", {"block_id": block_id, "reason": reason});

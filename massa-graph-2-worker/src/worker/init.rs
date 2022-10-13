@@ -301,7 +301,7 @@ impl GraphWorker {
             .collect();
 
         for (b_id, (b_slot, b_parents)) in active_blocks_map.into_iter() {
-            write_shared_state.insert_parents_descendants(b_id, b_slot, &b_parents);
+            write_shared_state.insert_parents_descendants(b_id, b_slot, b_parents);
         }
         Ok(())
     }

@@ -12,7 +12,7 @@ impl GraphState {
         &mut self,
         add_block_id: BlockId,
         add_block_slot: Slot,
-        parents_hash: &Vec<BlockId>,
+        parents_hash: Vec<BlockId>,
     ) {
         // add as child to parents
         for parent_h in parents_hash.iter() {
@@ -26,7 +26,7 @@ impl GraphState {
         }
 
         // add as descendant to ancestors. Note: descendants are never removed.
-        let mut ancestors: VecDeque<BlockId> = parents_hash.iter().map(|e| *e).collect();
+        let mut ancestors: VecDeque<BlockId> = parents_hash.iter().copied().collect();
         let mut visited = PreHashSet::<BlockId>::default();
         while let Some(ancestor_h) = ancestors.pop_back() {
             if !visited.insert(ancestor_h) {
@@ -98,18 +98,18 @@ impl GraphState {
         if let Some(BlockStatus::Active {
             a_block: active_block,
             storage: _storage,
-        }) = self.block_statuses.remove(&block_id)
+        }) = self.block_statuses.remove(block_id)
         {
-            self.active_index.remove(&block_id);
+            self.active_index.remove(block_id);
             if active_block.is_final {
                 return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {} - block {} was already final", add_block_id, block_id)));
             }
 
             // remove from gi_head
-            if let Some(other_incomps) = self.gi_head.remove(&block_id) {
+            if let Some(other_incomps) = self.gi_head.remove(block_id) {
                 for other_incomp in other_incomps.into_iter() {
                     if let Some(other_incomp_lst) = self.gi_head.get_mut(&other_incomp) {
-                        other_incomp_lst.remove(&block_id);
+                        other_incomp_lst.remove(block_id);
                     }
                 }
             }
@@ -117,7 +117,7 @@ impl GraphState {
             // remove from cliques
             let stale_block_fitness = active_block.fitness;
             self.max_cliques.iter_mut().for_each(|c| {
-                if c.block_ids.remove(&block_id) {
+                if c.block_ids.remove(block_id) {
                     c.fitness -= stale_block_fitness;
                 }
             });
@@ -139,7 +139,7 @@ impl GraphState {
                 }) = self.block_statuses.get_mut(parent_h)
                 {
                     parent_active_block.children[active_block.slot.thread as usize]
-                        .remove(&block_id);
+                        .remove(block_id);
                 }
             }
 

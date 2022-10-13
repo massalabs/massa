@@ -20,10 +20,10 @@ enum WaitingStatus {
 
 impl GraphWorker {
     /// Execute a command received from the controller also run an update of the graph after processing the command.
-    /// 
+    ///
     /// # Arguments:
     /// * `command`: the command to execute
-    /// 
+    ///
     /// # Returns:
     /// An error if the command failed
     fn manage_command(&mut self, command: GraphCommand) -> GraphResult<()> {

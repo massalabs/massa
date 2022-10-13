@@ -36,7 +36,7 @@ impl GraphState {
             end_timespan: timespan_end,
         })
     }
-    
+
     /// Must be called each tick to update stats. Will detect if a desynchronization happened
     pub fn stats_tick(&mut self) -> GraphResult<()> {
         let now = MassaTime::now(self.config.clock_compensation_millis)?;

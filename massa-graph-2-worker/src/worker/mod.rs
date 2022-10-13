@@ -36,15 +36,15 @@ mod init;
 mod main_loop;
 
 /// Create a new graph worker thread.
-/// 
+///
 /// # Arguments:
 /// * `config`: Configuration of the graph
 /// * `channels`: Channels to communicate with others modules
 /// * `init_graph`: Optional initial graph to bootstrap the graph. if None, the graph will have only genesis blocks.
 /// * `storage`: Storage to use for the graph
-/// 
+///
 /// # Returns:
-/// * The graph controller to communicate with the graph worker thread 
+/// * The graph controller to communicate with the graph worker thread
 /// * The graph manager to manage the graph worker thread
 pub fn start_graph_worker(
     config: GraphConfig,
@@ -59,7 +59,7 @@ pub fn start_graph_worker(
     let shared_state = Arc::new(RwLock::new(GraphState {
         storage: storage.clone(),
         config: config.clone(),
-        channels: channels.clone(),
+        channels,
         max_cliques: vec![Clique {
             block_ids: PreHashSet::<BlockId>::default(),
             fitness: 0,

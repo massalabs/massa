@@ -25,11 +25,11 @@ use super::GraphState;
 
 impl GraphState {
     /// Acknowledge a set of items recursively and process them
-    /// 
+    ///
     /// # Arguments:
     /// * `to_ack`: the set of items to acknowledge and process
     /// * `current_slot`: the current slot when this function is called
-    /// 
+    ///
     /// # Returns:
     /// Success or error if an error happened during the processing of items
     pub fn rec_process(
@@ -45,11 +45,11 @@ impl GraphState {
     }
 
     /// Acknowledge a single item, return a set of items to re-ack
-    /// 
+    ///
     /// # Arguments:
     /// * `block_id`: the id of the block to acknowledge
     /// * `current_slot`: the current slot when this function is called
-    /// 
+    ///
     /// # Returns:
     /// A list of items to re-ack and process or an error if the process of an item failed
     pub fn process(
@@ -463,7 +463,7 @@ impl GraphState {
     }
 
     /// Add a block to the graph and update the cliques, the graph dependencies and incompatibilities
-    /// 
+    ///
     /// # Arguments:
     /// * `add_block_id`: Block id of the block to add
     /// * `parents_hash_period`: Ids and periods of the parents of the block to add
@@ -472,7 +472,7 @@ impl GraphState {
     /// * `incomp`: Block ids of the blocks incompatible with the block to add
     /// * `fitness`: Fitness of the block to add
     /// * `storage`: Storage containing all the data of the block to add
-    /// 
+    ///
     /// # Returns:
     /// Success or error if any steps failed
     #[allow(clippy::too_many_arguments)]
@@ -519,7 +519,7 @@ impl GraphState {
         self.insert_parents_descendants(
             add_block_id,
             add_block_slot,
-            &parents_hash_period.iter().map(|(p_id, _)| *p_id).collect(),
+            parents_hash_period.iter().map(|(p_id, _)| *p_id).collect(),
         );
 
         // add incompatibilities to gi_head

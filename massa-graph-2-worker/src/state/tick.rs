@@ -9,10 +9,10 @@ use super::GraphState;
 
 impl GraphState {
     /// This function should be called each tick and will check if there is a block in the graph that should be processed at this slot, and if so, process it.
-    /// 
+    ///
     /// # Arguments:
     /// * `current_slot`: the current slot
-    /// 
+    ///
     /// # Returns:
     /// Error if the process of a block returned an error.
     pub fn slot_tick(&mut self, current_slot: Slot) -> GraphResult<()> {
