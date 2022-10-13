@@ -143,7 +143,7 @@ impl FinalState {
         ledger_step: StreamingStep<Vec<u8>>,
         pool_step: StreamingStep<AsyncMessageId>,
         cycle_step: StreamingStep<u64>,
-        // IMPORTANT TODO: ADD DEF CREDITS STEP CHECK
+        credits_step: StreamingStep<Slot>,
         ops_step: StreamingStep<OperationId>,
     ) -> Result<Vec<(Slot, StateChanges)>, FinalStateError> {
         let position_slot = if let Some((first_slot, _)) = self.changes_history.front() {
@@ -170,49 +170,55 @@ impl FinalState {
             let mut slot_changes = StateChanges::default();
 
             // Get ledger change that concern address <= ledger_step
-            if let StreamingStep::Ongoing(key) = ledger_step.clone() {
-                // IMPORTANT TODO: HANDLE FINISHED CASE
-                let addr = get_address_from_key(&key).ok_or_else(|| {
-                    FinalStateError::LedgerError("Invalid key in ledger streaming step".to_string())
-                })?;
-                let ledger_changes: LedgerChanges = LedgerChanges(
-                    changes
-                        .ledger_changes
-                        .0
-                        .iter()
-                        .filter_map(|(address, change)| {
-                            if *address <= addr {
-                                Some((*address, change.clone()))
-                            } else {
-                                None
-                            }
-                        })
-                        .collect(),
-                );
-                slot_changes.ledger_changes.0 = ledger_changes.0;
+            match ledger_step.clone() {
+                StreamingStep::Ongoing(key) | StreamingStep::Finished(Some(key)) => {
+                    let addr = get_address_from_key(&key).ok_or_else(|| {
+                        FinalStateError::LedgerError(
+                            "Invalid key in ledger streaming step".to_string(),
+                        )
+                    })?;
+                    let ledger_changes: LedgerChanges = LedgerChanges(
+                        changes
+                            .ledger_changes
+                            .0
+                            .iter()
+                            .filter_map(|(address, change)| {
+                                if *address <= addr {
+                                    Some((*address, change.clone()))
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect(),
+                    );
+                    slot_changes.ledger_changes.0 = ledger_changes.0;
+                }
+                _ => (),
             }
 
             // Get async pool changes that concern ids <= pool_step
-            if let StreamingStep::Ongoing(last_id) = pool_step {
-                // IMPORTANT TODO: HANDLE FINISHED CASE
-                let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(
-                    changes
-                        .async_pool_changes
-                        .0
-                        .iter()
-                        .filter_map(|change| match change {
-                            Change::Add(id, _) if id <= &last_id => Some(change.clone()),
-                            Change::Delete(id) if id <= &last_id => Some(change.clone()),
-                            Change::Add(..) => None,
-                            Change::Delete(..) => None,
-                        })
-                        .collect(),
-                );
-                slot_changes.async_pool_changes = async_pool_changes;
+            match pool_step {
+                StreamingStep::Ongoing(last_id) | StreamingStep::Finished(Some(last_id)) => {
+                    let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(
+                        changes
+                            .async_pool_changes
+                            .0
+                            .iter()
+                            .filter_map(|change| match change {
+                                Change::Add(id, _) if id <= &last_id => Some(change.clone()),
+                                Change::Delete(id) if id <= &last_id => Some(change.clone()),
+                                Change::Add(..) => None,
+                                Change::Delete(..) => None,
+                            })
+                            .collect(),
+                    );
+                    slot_changes.async_pool_changes = async_pool_changes;
+                }
+                _ => (),
             }
 
             // Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
-            if cycle_step.finished() {
+            if cycle_step.finished() && credits_step.finished() {
                 slot_changes.pos_changes = changes.pos_changes.clone();
             }
 
