@@ -7,7 +7,6 @@ use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::ops::Bound::{Excluded, Included};
-use std::str::FromStr;
 
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 use massa_hash::{Hash, HashDeserializer};
@@ -18,14 +17,13 @@ use massa_signature::{verify_signature_batch, PublicKey, Signature, SignatureDes
 use crate::address::Address;
 use crate::block::WrappedHeader;
 use crate::endorsement::WrappedEndorsement;
-use crate::error::ModelsError;
-use crate::prehash::PreHashed;
 use crate::wrapped::Id;
 
 /// Denunciation ID size in bytes
 pub const DENUNCIATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
-/// endorsement id
+/*
+/// denunciation id
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct DenunciationId(Hash);
 
@@ -77,6 +75,7 @@ impl DenunciationId {
         ))
     }
 }
+*/
 
 /// Denunciation proof for endorsements
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -317,8 +316,11 @@ impl Serializer<Denunciation> for DenunciationSerializer {
                 buffer.extend(ed.signature_2.to_bytes());
                 buffer.extend(ed.hash_2.to_bytes());
             }
-            DenunciationProof::Block(_bd) => {
-                todo!()
+            DenunciationProof::Block(bd) => {
+                buffer.extend(bd.signature_1.to_bytes());
+                buffer.extend(bd.hash_1.to_bytes());
+                buffer.extend(bd.signature_2.to_bytes());
+                buffer.extend(bd.hash_2.to_bytes());
             }
         }
 
@@ -377,14 +379,33 @@ impl Deserializer<Denunciation> for DenunciationDeserializer {
         let is_for_block_ = matches!(is_for_block, [1]);
 
         let (rem2, proof): (_, DenunciationProof) = match is_for_block_ {
-            true => {
-                todo!()
-                /*
-                context("Failed Block Denunciation deser", |input| {
-                    todo!()
-                })
-                */
-            }
+            true => context(
+                "Failed Block Denunciation deser",
+                tuple((
+                    context("Failed signature 1 deser", |input| {
+                        self.sig_deserializer.deserialize(input)
+                    }),
+                    context("Failed hash 1 deser", |input| {
+                        self.hash_deserializer.deserialize(input)
+                    }),
+                    context("Failed signature 2 deser", |input| {
+                        self.sig_deserializer.deserialize(input)
+                    }),
+                    context("Failed hash 2 deser", |input| {
+                        self.hash_deserializer.deserialize(input)
+                    }),
+                )),
+            )
+            .map(|(sig1, hash1, sig2, hash2)| {
+                let bd = BlockDenunciation {
+                    signature_1: sig1,
+                    hash_1: hash1,
+                    signature_2: sig2,
+                    hash_2: hash2,
+                };
+                DenunciationProof::Block(bd)
+            })
+            .parse(rem)?,
             false => context(
                 "Failed Endorsement Denunciation deser",
                 tuple((
@@ -661,5 +682,14 @@ mod tests {
         };
 
         assert_eq!(denunciation.is_valid(), true);
+
+        let mut ser: Vec<u8> = Vec::new();
+        let serializer = DenunciationSerializer::new();
+        serializer.serialize(&denunciation, &mut ser).unwrap();
+
+        let deserializer = DenunciationDeserializer::new(32, 16);
+        let (_, res_denunciation) = deserializer.deserialize::<DeserializeError>(&ser).unwrap();
+
+        assert_eq!(denunciation, res_denunciation);
     }
 }
