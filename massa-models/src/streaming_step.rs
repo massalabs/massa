@@ -104,20 +104,23 @@ where
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], StreamingStep<T>, E> {
-        let (rest, ident) = context("identifier", |input| {
-            self.u64_deserializer.deserialize(input)
+        context("StreamingStep", |input| {
+            let (rest, ident) = context("identifier", |input| {
+                self.u64_deserializer.deserialize(input)
+            })
+            .parse(input)?;
+            match ident {
+                0u64 => Ok((rest, StreamingStep::Started)),
+                1u64 => context("data", |input| self.data_deserializer.deserialize(input))
+                    .map(StreamingStep::Ongoing)
+                    .parse(rest),
+                2u64 => Ok((rest, StreamingStep::Finished)),
+                _ => Err(nom::Err::Error(ParseError::from_error_kind(
+                    buffer,
+                    nom::error::ErrorKind::Digit,
+                ))),
+            }
         })
-        .parse(buffer)?;
-        match ident {
-            0u64 => Ok((rest, StreamingStep::Started)),
-            1u64 => context("data", |input| self.data_deserializer.deserialize(input))
-                .map(StreamingStep::Ongoing)
-                .parse(rest),
-            2u64 => Ok((rest, StreamingStep::Finished)),
-            _ => Err(nom::Err::Error(ParseError::from_error_kind(
-                buffer,
-                nom::error::ErrorKind::Digit,
-            ))),
-        }
+        .parse(buffer)
     }
 }
