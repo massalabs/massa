@@ -274,7 +274,7 @@ impl Deserializer<BTreeMap<AsyncMessageId, AsyncMessage>> for AsyncPoolDeseriali
                     self.u64_deserializer.deserialize(input)
                 }),
                 tuple((
-                    |input| self.async_message_id_deserializer.deserialize(input),
+                    context("Failed async_message_id deserialization", |input| self.async_message_id_deserializer.deserialize(input)),
                     |input| self.async_message_deserializer.deserialize(input),
                 )),
             ),
