@@ -16,29 +16,37 @@ use std::{
     time::Instant,
 };
 use std::collections::hash_map::Entry;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use tracing::{debug, warn};
 use massa_models::endorsement::{EndorsementId, WrappedEndorsement};
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use itertools::Itertools;
-use massa_models::operation::{Operation, OperationSerializer, OperationType};
+use massa_models::operation::{Operation, OperationSerializer, OperationType, WrappedOperation};
 use crossbeam_channel::{select, unbounded, Receiver};
+use massa_models::block::WrappedHeader;
+use massa_models::denunciation::DenunciationProof;
 use massa_models::denunciation_interest::DenunciationInterest;
 
 /// Structure gathering all elements needed by the factory thread
 pub(crate) struct DenunciationFactoryWorker {
     cfg: FactoryConfig,
-    wallet: Arc<RwLock<Wallet>>,
+    // wallet: Arc<RwLock<Wallet>>,
     channels: FactoryChannels,
     factory_receiver: Receiver<()>,
     half_t0: MassaTime,
 
     // TODO: BlockHeader, Denunciation
     items_of_interest_receiver: Receiver<DenunciationInterest>,
+    genesis_key: KeyPair,
 
     denunciation_serializer: DenunciationSerializer, // FIXME: should be OperationSerializer?
     // seen_endorsements: PreHashMap<EndorsementId, WrappedEndorsement>,
     endorsements_by_slot_index: HashMap<(Slot, u32), Vec<WrappedEndorsement>>,
+    block_header_by_slot: HashMap<Slot, Vec<WrappedHeader>>,
+
+    seen_endorsement_denunciation: HashSet<(Slot, u32)>,
+    seen_block_header_denunciation: HashSet<Slot>,
+
 }
 
 impl DenunciationFactoryWorker {
@@ -46,10 +54,11 @@ impl DenunciationFactoryWorker {
     /// needed by the factory worker thread.
     pub(crate) fn spawn(
         cfg: FactoryConfig,
-        wallet: Arc<RwLock<Wallet>>,
+        // wallet: Arc<RwLock<Wallet>>,
         channels: FactoryChannels,
         factory_receiver: Receiver<()>,
-        items_of_interest_receiver: Receiver<DenunciationInterest>
+        items_of_interest_receiver: Receiver<DenunciationInterest>,
+        genesis_key: KeyPair
     ) -> thread::JoinHandle<()> {
         thread::Builder::new()
             .name("endorsement factory worker".into())
@@ -60,13 +69,16 @@ impl DenunciationFactoryWorker {
                         .checked_div_u64(2)
                         .expect("could not compute half_t0"),
                     cfg,
-                    wallet,
+                    // wallet,
                     channels,
                     factory_receiver,
                     denunciation_serializer: DenunciationSerializer::new(),
-                    // seen_endorsements: Default::default(),
                     endorsements_by_slot_index: Default::default(),
+                    block_header_by_slot: Default::default(),
+                    seen_endorsement_denunciation: Default::default(),
+                    seen_block_header_denunciation: Default::default(),
                     items_of_interest_receiver,
+                    genesis_key
                 };
                 this.run();
             })
@@ -174,11 +186,16 @@ impl DenunciationFactoryWorker {
     fn process_new_endorsement(&mut self, wrapped_endorsement: WrappedEndorsement) {
 
         let key = (wrapped_endorsement.content.slot, wrapped_endorsement.content.index);
+        if self.seen_endorsement_denunciation.contains(&key) {
+            return;
+        }
+
         let mut denunciations: Vec<Denunciation> = Vec::with_capacity(1);
 
         match self.endorsements_by_slot_index.entry(key) {
             Entry::Occupied(mut eo) => {
                 let wrapped_endos = eo.get_mut();
+
                 // Store at max 2 WrappedEndorsement's
                 if wrapped_endos.len() == 1 {
 
@@ -189,9 +206,9 @@ impl DenunciationFactoryWorker {
                             .take(2)
                             .tuples()
                             .map(|(we1, we2)| {
-                                Denunciation::from_wrapped_endorsements(we1, we2);
+                                Denunciation::from_wrapped_endorsements(we1, we2)
                             })
-                            .collect()
+                            .collect::<Vec<Denunciation>>()
                     );
                 } else {
                     debug!("[De Factory][WrappedEndorsement] len: {}", wrapped_endos.len());
@@ -204,7 +221,8 @@ impl DenunciationFactoryWorker {
 
         // Send Denunciation in OperationPool
         let mut de_storage = self.channels.storage.clone_without_refs();
-        de_storage.store_operations(denunciations
+
+        let wrapped_operations: Result<Vec<WrappedOperation>, _> = denunciations
             .iter()
             .map(|de| {
                 let op = Operation {
@@ -214,20 +232,123 @@ impl DenunciationFactoryWorker {
                     expire_period: 0,
                     op: OperationType::Denunciation { data: de.clone() },
                 };
-                // TODO: no unwrap
                 Operation::new_wrapped(op,
                                        OperationSerializer::new(),
-                                       keypair).unwrap()
+                                       &self.genesis_key)
             })
-            .collect()
-        );
+            .collect();
 
-        self.channels.pool.add_operations(de_storage.clone());
+        if let Err(e) = wrapped_operations {
+            // Should never happen
+            panic!("Cannot build wrapped operations for new denunciations: {}", e);
+        }
+
+        de_storage.store_operations(wrapped_operations.unwrap());
+        // TODO: enable this for testnet 17
+        // self.channels.pool.add_operations(de_storage.clone());
+        debug!("Should add Denunciation operations to pool...");
+        // TODO: enable this for testnet 17
         // And now send them to ProtocolWorker (for propagation)
-        // FIXME: propagate_operations is async while propagate_endorsements is not?
-        if let Err(err) = self.channels.protocol.propagate_operations(de_storage) {
+        /*
+        if let Err(err) = self.channels.protocol.propagate_operations_sync(de_storage) {
             warn!("could not propagate denunciations to protocol: {}", err);
         }
+        */
+        debug!("Should propagate Denunciation operations...");
+    }
+
+    fn process_new_block_header(&mut self, wrapped_header: WrappedHeader) {
+
+        let key = wrapped_header.content.slot;
+
+        if self.seen_block_header_denunciation.contains(&key) {
+            return;
+        }
+
+        let mut denunciations: Vec<Denunciation> = Vec::with_capacity(1);
+
+        match self.block_header_by_slot.entry(key) {
+            Entry::Occupied(mut eo) => {
+                let wrapped_headers = eo.get_mut();
+
+                // Store at max 2 WrappedHeader's
+                if wrapped_headers.len() == 1 {
+
+                    wrapped_headers.push(wrapped_header);
+
+                    denunciations.extend(
+                        wrapped_headers.iter()
+                            .take(2)
+                            .tuples()
+                            .map(|(wh1, wh2)| {
+                                Denunciation::from_wrapped_headers(wh1, wh2)
+                            })
+                            .collect::<Vec<Denunciation>>()
+                    );
+                } else {
+                    debug!("[De Factory][WrappedHeader] len: {}", wrapped_headers.len());
+                }
+            }
+            Entry::Vacant(ev) => {
+                ev.insert(vec![wrapped_header]);
+            }
+        }
+
+        // Send Denunciation in OperationPool
+        let mut de_storage = self.channels.storage.clone_without_refs();
+
+        let wrapped_operations: Result<Vec<WrappedOperation>, _> = denunciations
+            .iter()
+            .map(|de| {
+                let op = Operation {
+                    // Note: we do not care about fee & expire_period
+                    //       as Denunciation will be 'stolen' by the block creator
+                    fee: Default::default(),
+                    expire_period: 0,
+                    op: OperationType::Denunciation { data: de.clone() },
+                };
+                Operation::new_wrapped(op,
+                                       OperationSerializer::new(),
+                                       &self.genesis_key)
+            })
+            .collect();
+
+        if let Err(e) = wrapped_operations {
+            // Should never happen
+            panic!("Cannot build wrapped operations for new denunciations: {}", e);
+        }
+
+        de_storage.store_operations(wrapped_operations.unwrap());
+        // TODO: enable this for testnet 17
+        // self.channels.pool.add_operations(de_storage.clone());
+        debug!("Should add Denunciation operations to pool...");
+        // TODO: enable this for testnet 17
+        // And now send them to ProtocolWorker (for propagation)
+        /*
+        if let Err(err) = self.channels.protocol.propagate_operations_sync(de_storage) {
+            warn!("could not propagate denunciations to protocol: {}", err);
+        }
+        */
+        debug!("Should propagate Denunciation operations...");
+    }
+
+    fn process_new_ops(&mut self, wrapped_operations: Vec<WrappedOperation>) {
+
+        // Keep only Operation(Denunciation) && update 'seen hashset'
+        wrapped_operations
+            .iter()
+            .for_each(|wop| {
+                if let OperationType::Denunciation { data: de } = &wop.content.op {
+                    match de.proof.as_ref() {
+                        DenunciationProof::Endorsement(ed) => {
+                            self.seen_endorsement_denunciation.insert((de.slot, ed.index));
+                        }
+                        DenunciationProof::Block(_) => {
+                            self.seen_block_header_denunciation.insert(de.slot);
+                        }
+                    }
+                }
+            })
     }
 
     /// main run loop of the endorsement creator thread
@@ -241,10 +362,10 @@ impl DenunciationFactoryWorker {
                             self.process_new_endorsement(wrapped_endo);
                         }
                         Ok(DenunciationInterest::WrappedOperations(ops)) => {
-                            todo!()
+                            self.process_new_ops(ops);
                         }
                         Ok(DenunciationInterest::WrappedHeader(wrapped_header)) => {
-                            todo!()
+                            self.process_new_block_header(wrapped_header);
                         }
                         Err(e) => {
                             debug!("[De Factory] Error from items of interest receiver: {}", e);
