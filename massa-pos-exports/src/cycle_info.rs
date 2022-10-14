@@ -253,7 +253,7 @@ impl Deserializer<PreHashMap<Address, ProductionStats>> for ProductionStatsDeser
                     self.u64_deserializer.deserialize(input)
                 }),
                 tuple((
-                    |input| self.address_deserializer.deserialize(input),
+                    context("Failed address deserialization", |input| self.address_deserializer.deserialize(input)),
                     context("Failed block_success_count deserialization", |input| {
                         self.u64_deserializer.deserialize(input)
                     }),
