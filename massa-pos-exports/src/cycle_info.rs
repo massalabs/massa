@@ -312,7 +312,7 @@ impl Deserializer<Vec<(Address, u64)>> for RollsDeserializer {
                 }),
                 tuple((
                     context("Failed address deserialization", |input| self.address_deserializer.deserialize(input)),
-                    |input| self.u64_deserializer.deserialize(input),
+                    context("Failed number deserialization", |input| self.u64_deserializer.deserialize(input)),
                 )),
             ),
         )
