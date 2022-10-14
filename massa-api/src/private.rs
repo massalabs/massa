@@ -88,14 +88,13 @@ impl Endpoints for API<Private> {
     }
 
     fn add_staking_secret_keys(&self, secret_keys: Vec<String>) -> BoxFuture<Result<(), ApiError>> {
-        let keypairs =
-            match secret_keys.iter().map(|x| KeyPair::from_str(x)).collect() {
-                Ok(keypairs) => keypairs,
-                Err(e) => {
-                    let closure = async move || Err(ApiError::BadRequest(e.to_string()));
-                    return Box::pin(closure());
-                }
-            };
+        let keypairs = match secret_keys.iter().map(|x| KeyPair::from_str(x)).collect() {
+            Ok(keypairs) => keypairs,
+            Err(e) => {
+                let closure = async move || Err(ApiError::BadRequest(e.to_string()));
+                return Box::pin(closure());
+            }
+        };
         let node_wallet = self.0.node_wallet.clone();
         let closure = async move || {
             let mut w_wallet = node_wallet.write();
