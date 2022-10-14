@@ -305,7 +305,7 @@ impl Deserializer<Vec<(Address, u64)>> for RollsDeserializer {
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Vec<(Address, u64)>, E> {
         context(
-            "Failed RollChanges deserialization",
+            "Failed rolls deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
                     self.u64_deserializer.deserialize(input)
