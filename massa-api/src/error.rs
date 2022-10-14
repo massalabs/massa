@@ -14,8 +14,6 @@ use thiserror::Error;
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum ApiError {
-    /// too many arguments error: {0}
-    TooManyArguments(String),
     /// send channel error: {0}
     SendChannelError(String),
     /// receive channel error: {0}
@@ -46,12 +44,20 @@ pub enum ApiError {
     MissingConfig(String),
     /// the wrong API (either Public or Private) was called
     WrongAPI,
+    /// bad request: {0}
+    BadRequest(String),
 }
 
 impl From<ApiError> for jsonrpc_core::Error {
     fn from(err: ApiError) -> Self {
+        let code = match err {
+            ApiError::BadRequest(_) => -32400,
+            ApiError::NotFound => -32404,
+            ApiError::WrongAPI => -32405,
+            _ => -32500,
+        };
         jsonrpc_core::Error {
-            code: jsonrpc_core::ErrorCode::ServerError(500),
+            code: jsonrpc_core::ErrorCode::ServerError(code),
             message: err.to_string(),
             data: None,
         }
