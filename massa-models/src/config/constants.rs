@@ -210,7 +210,7 @@ pub const NETWORK_EVENT_CHANNEL_SIZE: usize = 1024;
 /// network node command channel size
 pub const NETWORK_NODE_COMMAND_CHANNEL_SIZE: usize = 1024;
 /// network node event channel size
-pub const NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = 1024;
+pub const NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = 10_000;
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]
