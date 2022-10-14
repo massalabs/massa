@@ -1,28 +1,21 @@
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_models::{
-    block::BlockId,
     denunciation::{Denunciation, DenunciationSerializer},
     slot::Slot,
-    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
     wrapped::WrappedContent,
 };
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use massa_wallet::Wallet;
-use parking_lot::RwLock;
 use std::{
-    sync::Arc,
     thread,
-    time::Instant,
 };
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
-use tracing::{debug, warn};
-use massa_models::endorsement::{EndorsementId, WrappedEndorsement};
-use massa_models::prehash::{PreHashMap, PreHashSet};
+use tracing::debug;
+use massa_models::endorsement::WrappedEndorsement;
 use itertools::Itertools;
 use massa_models::operation::{Operation, OperationSerializer, OperationType, WrappedOperation};
-use crossbeam_channel::{select, unbounded, Receiver};
+use crossbeam_channel::{select, Receiver};
 use massa_models::block::WrappedHeader;
 use massa_models::denunciation::DenunciationProof;
 use massa_models::denunciation_interest::DenunciationInterest;
@@ -54,7 +47,6 @@ impl DenunciationFactoryWorker {
     /// needed by the factory worker thread.
     pub(crate) fn spawn(
         cfg: FactoryConfig,
-        // wallet: Arc<RwLock<Wallet>>,
         channels: FactoryChannels,
         factory_receiver: Receiver<()>,
         items_of_interest_receiver: Receiver<DenunciationInterest>,

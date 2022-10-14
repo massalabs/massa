@@ -29,6 +29,8 @@ pub mod config;
 pub mod datastore;
 /// Denunciation
 pub mod denunciation;
+/// Denunciation interest
+pub mod denunciation_interest;
 /// endorsements
 pub mod endorsement;
 /// models error
