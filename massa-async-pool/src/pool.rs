@@ -162,19 +162,18 @@ impl AsyncPool {
             StreamingStep::Ongoing(last_id) => Excluded(last_id),
             StreamingStep::Finished => return Ok((pool_part, cursor)),
         };
+        let mut pool_part_last_id: Option<AsyncMessageId> = None;
         for (id, message) in self.messages.range((left_bound, Unbounded)) {
             if pool_part.len() < self.config.bootstrap_part_size as usize {
                 pool_part.insert(*id, message.clone());
+                pool_part_last_id = Some(*id);
             }
         }
-        if pool_part.is_empty() {
-            return Ok((pool_part, StreamingStep::Finished));
-        };
-        let pool_part_last_id = pool_part
-            .last_key_value()
-            .map(|(&message_id, _)| message_id)
-            .expect("pool_part should contain at least one message here");
-        Ok((pool_part, StreamingStep::Ongoing(pool_part_last_id)))
+        if let Some(last_id) = pool_part_last_id {
+            Ok((pool_part, StreamingStep::Ongoing(last_id)))
+        } else {
+            Ok((pool_part, StreamingStep::Finished))
+        }
     }
 
     /// Set a part of the async pool.
