@@ -33,7 +33,7 @@ use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use tracing::debug;
+use tracing::{debug, warn};
 
 /// A snapshot taken from an `ExecutionContext` and that represents its current state.
 /// The `ExecutionContext` state can then be restored later from this snapshot.
@@ -634,6 +634,46 @@ impl ExecutionContext {
             self.config.thread_count,
             self.config.roll_price,
         )
+    }
+
+    /// Try to slash 1 roll from the denounced address.
+    ///
+    /// # Arguments
+    /// * `denounced_addr`: address to slash the roll from
+    pub fn try_slash_roll(
+        &mut self,
+        denounced_addr: &Address,
+    ) -> u32
+    {
+        const roll_count: u32 = 1;
+        let mut sold_rolls: u32 = 0;
+
+        // First try to slash roll if any
+        if let Err(_) = self.speculative_roll_state.try_sell_rolls(
+            denounced_addr,
+            self.slot,
+            1,
+            self.config.periods_per_cycle,
+            self.config.thread_count,
+            self.config.roll_price,
+        ) {
+
+            // if no roll were slashed, that can likely be done from deferred credit
+            // FIXME: use the right function
+            let credits = self.speculative_roll_state.get_deferred_credits(&self.slot);
+
+            if credits.contains_key(denounced_addr) {
+                let amount = credits.get(denounced_addr).unwrap();
+                self.speculative_roll_state.remove_deferred_credits(&self.slot, denounced_addr, amount);
+            } else {
+                warn!("No deferred credit for denounced addr: {}", denounced_addr);
+            }
+
+        } else {
+            sold_rolls = roll_count;
+        }
+
+        sold_rolls
     }
 
     /// Update production statistics of an address.

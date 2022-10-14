@@ -476,4 +476,13 @@ impl SpeculativeRollState {
 
         credits
     }
+
+    pub fn remove_deferred_credits(&mut self, slot: &Slot, addr: &Address, amount: &Amount) {
+        let mut credits = self
+            .final_state
+            .read()
+            .pos_state
+            .rm_deferred_credits(slot, addr, amount);
+    }
+
 }

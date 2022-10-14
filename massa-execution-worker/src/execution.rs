@@ -306,8 +306,8 @@ impl ExecutionState {
             OperationType::Transaction { .. } => {
                 self.execute_transaction_op(&operation.content.op, sender_addr)
             }
-            OperationType::Denouncement { .. } => {
-                self.execute_denouncement_op(&operation.content.op, sender_addr)
+            OperationType::Denunciation { .. } => {
+                self.execute_denunciation_op(&operation.content.op, sender_addr, block_credits)
             }
         };
 
@@ -620,12 +620,50 @@ impl ExecutionState {
         Ok(())
     }
 
-    pub fn execute_denouncement_op(
+    pub fn execute_denunciation_op(
         &self,
         operation: &OperationType,
         sender_addr: Address,
+        block_credits: &mut Amount,
     ) -> Result<(), ExecutionError> {
-        todo!()
+
+        // process denunciation operations only
+        let denunciation = match operation {
+            OperationType::Denunciation { data } => data,
+            _ => panic!("unexpected operation type"),
+        };
+
+        if denunciation.is_valid() {
+
+            // acquire write access to the context
+            let mut context = context_guard!(self);
+
+            let addr_denounced = denunciation.addr();
+            // FIXME / TODO: Add a constant for this? == 1 roll == 100 coins
+            let amount = Amount::from_mantissa_scale(1, 2);
+
+            // Set call stack
+            // This needs to be defined before anything can fail, so that the emitted event contains the right stack
+            context.stack = vec![ExecutionStackElement {
+                address: addr_denounced,
+                coins: amount,
+                owned_addresses: vec![],
+                operation_datastore: None,
+            }];
+
+            let roll_count = context.try_slash_roll(&addr_denounced);
+
+            // TODO: proper roll -> coin conversion
+            let amount = roll_count * 100;
+
+            // Add slashed amount to block reward
+            *block_credits = block_credits.saturating_add(amount);
+
+        } else {
+            debug!("Invalid denunciation: {:?}", denunciation);
+        }
+
+        Ok(())
     }
 
     /// Tries to execute an asynchronous message
