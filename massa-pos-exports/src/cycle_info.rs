@@ -257,7 +257,7 @@ impl Deserializer<PreHashMap<Address, ProductionStats>> for ProductionStatsDeser
                     context("Failed block_success_count deserialization", |input| {
                         self.u64_deserializer.deserialize(input)
                     }),
-                    |input| self.u64_deserializer.deserialize(input),
+                    contenxt("Failed block_failure_count deserialization", |input| self.u64_deserializer.deserialize(input)),
                 )),
             ),
         )

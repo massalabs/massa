@@ -131,8 +131,8 @@ impl Deserializer<DeferredCredits> for DeferredCreditsDeserializer {
                     self.u64_deserializer.deserialize(input)
                 }),
                 tuple((
-                    |input| self.slot_deserializer.deserialize(input),
-                    |input| self.credit_deserializer.deserialize(input),
+                    context("Failed slot deserialization", |input| self.slot_deserializer.deserialize(input)),
+                    context("Failed credit deserialization", |input| self.credit_deserializer.deserialize(input)),
                 )),
             ),
         )
@@ -208,8 +208,8 @@ impl Deserializer<PreHashMap<Address, Amount>> for CreditsDeserializer {
                     self.u64_deserializer.deserialize(input)
                 }),
                 tuple((
-                    |input| self.address_deserializer.deserialize(input),
-                    |input| self.amount_deserializer.deserialize(input),
+                    context("Failed address deserialization", |input| self.address_deserializer.deserialize(input)),
+                    context("Failed amount deserialization", |input| self.amount_deserializer.deserialize(input)),
                 )),
             ),
         )
