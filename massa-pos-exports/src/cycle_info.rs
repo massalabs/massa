@@ -88,18 +88,12 @@ pub struct CycleInfoDeserializer {
     production_stats_deser: ProductionStatsDeserializer,
 }
 
-impl Default for CycleInfoDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl CycleInfoDeserializer {
     /// Creates a new `CycleInfo` deserializer
-    pub fn new() -> CycleInfoDeserializer {
+    pub fn new(max_rolls_length: u64) -> CycleInfoDeserializer {
         CycleInfoDeserializer {
             u64_deser: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
-            rolls_deser: RollsDeserializer::new(),
+            rolls_deser: RollsDeserializer::new(max_rolls_length),
             bitvec_deser: BitVecDeserializer::new(),
             production_stats_deser: ProductionStatsDeserializer::new(),
         }
@@ -253,11 +247,15 @@ impl Deserializer<PreHashMap<Address, ProductionStats>> for ProductionStatsDeser
                     self.u64_deserializer.deserialize(input)
                 }),
                 tuple((
-                    context("Failed address deserialization", |input| self.address_deserializer.deserialize(input)),
+                    context("Failed address deserialization", |input| {
+                        self.address_deserializer.deserialize(input)
+                    }),
                     context("Failed block_success_count deserialization", |input| {
                         self.u64_deserializer.deserialize(input)
                     }),
-                    contenxt("Failed block_failure_count deserialization", |input| self.u64_deserializer.deserialize(input)),
+                    context("Failed block_failure_count deserialization", |input| {
+                        self.u64_deserializer.deserialize(input)
+                    }),
                 )),
             ),
         )
@@ -285,18 +283,15 @@ pub struct RollsDeserializer {
     u64_deserializer: U64VarIntDeserializer,
 }
 
-impl Default for RollsDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl RollsDeserializer {
     /// Creates a new rolls deserializer
-    pub fn new() -> RollsDeserializer {
+    pub fn new(max_rolls_length: u64) -> RollsDeserializer {
         RollsDeserializer {
             address_deserializer: AddressDeserializer::new(),
-            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            u64_deserializer: U64VarIntDeserializer::new(
+                Included(u64::MIN),
+                Included(max_rolls_length),
+            ),
         }
     }
 }

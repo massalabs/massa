@@ -107,14 +107,14 @@ pub struct DeferredCreditsDeserializer {
 
 impl DeferredCreditsDeserializer {
     /// Creates a new `DeferredCredits` deserializer
-    pub fn new(thread_count: u8) -> DeferredCreditsDeserializer {
+    pub fn new(thread_count: u8, max_credits_length: u64) -> DeferredCreditsDeserializer {
         DeferredCreditsDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
                 (Included(0), Excluded(thread_count)),
             ),
-            credit_deserializer: CreditsDeserializer::new(),
+            credit_deserializer: CreditsDeserializer::new(max_credits_length),
         }
     }
 }
@@ -131,8 +131,12 @@ impl Deserializer<DeferredCredits> for DeferredCreditsDeserializer {
                     self.u64_deserializer.deserialize(input)
                 }),
                 tuple((
-                    context("Failed slot deserialization", |input| self.slot_deserializer.deserialize(input)),
-                    context("Failed credit deserialization", |input| self.credit_deserializer.deserialize(input)),
+                    context("Failed slot deserialization", |input| {
+                        self.slot_deserializer.deserialize(input)
+                    }),
+                    context("Failed credit deserialization", |input| {
+                        self.credit_deserializer.deserialize(input)
+                    }),
                 )),
             ),
         )
@@ -184,9 +188,12 @@ struct CreditsDeserializer {
 
 impl CreditsDeserializer {
     /// Creates a new single credit deserializer
-    fn new() -> CreditsDeserializer {
+    fn new(max_credits_length: u64) -> CreditsDeserializer {
         CreditsDeserializer {
-            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            u64_deserializer: U64VarIntDeserializer::new(
+                Included(u64::MIN),
+                Included(max_credits_length),
+            ),
             address_deserializer: AddressDeserializer::new(),
             amount_deserializer: AmountDeserializer::new(
                 Included(Amount::MIN),
@@ -208,8 +215,12 @@ impl Deserializer<PreHashMap<Address, Amount>> for CreditsDeserializer {
                     self.u64_deserializer.deserialize(input)
                 }),
                 tuple((
-                    context("Failed address deserialization", |input| self.address_deserializer.deserialize(input)),
-                    context("Failed amount deserialization", |input| self.amount_deserializer.deserialize(input)),
+                    context("Failed address deserialization", |input| {
+                        self.address_deserializer.deserialize(input)
+                    }),
+                    context("Failed amount deserialization", |input| {
+                        self.amount_deserializer.deserialize(input)
+                    }),
                 )),
             ),
         )
