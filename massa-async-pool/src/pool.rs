@@ -294,7 +294,7 @@ fn test_take_batch() {
         thread_count: 2,
         max_length: 10,
         max_data_async_message: 1000000,
-        bootstrap_part_size: 1_000_000,
+        bootstrap_part_size: 100,
     };
     let mut pool = AsyncPool::new(config);
     let address = Address(Hash::compute_from(b"abc"));
