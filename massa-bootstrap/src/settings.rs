@@ -59,7 +59,7 @@ pub struct BootstrapConfig {
     /// max bootstrap async pool changes
     pub max_bootstrap_async_pool_changes: u64,
     /// max bootstrap error length
-    pub max_bootstrap_error_length: u32,
+    pub max_bootstrap_error_length: u64,
     /// max bootstrap final state parts size
     pub max_bootstrap_final_state_parts_size: u64,
     /// max datastore entry count
@@ -81,5 +81,5 @@ pub struct BootstrapConfig {
     /// max ledger changes
     pub max_ledger_changes_count: u64,
     /// maximum of slot in state changes
-    pub max_changes_slot_count: u32,
+    pub max_changes_slot_count: u64,
 }

@@ -254,7 +254,9 @@ impl Deserializer<PreHashMap<Address, ProductionStats>> for ProductionStatsDeser
                 }),
                 tuple((
                     |input| self.address_deserializer.deserialize(input),
-                    context("Failed block_success_count deserialization", |input| self.u64_deserializer.deserialize(input)),
+                    context("Failed block_success_count deserialization", |input| {
+                        self.u64_deserializer.deserialize(input)
+                    }),
                     |input| self.u64_deserializer.deserialize(input),
                 )),
             ),
@@ -311,8 +313,12 @@ impl Deserializer<Vec<(Address, u64)>> for RollsDeserializer {
                     self.u64_deserializer.deserialize(input)
                 }),
                 tuple((
-                    context("Failed address deserialization", |input| self.address_deserializer.deserialize(input)),
-                    context("Failed number deserialization", |input| self.u64_deserializer.deserialize(input)),
+                    context("Failed address deserialization", |input| {
+                        self.address_deserializer.deserialize(input)
+                    }),
+                    context("Failed number deserialization", |input| {
+                        self.u64_deserializer.deserialize(input)
+                    }),
                 )),
             ),
         )

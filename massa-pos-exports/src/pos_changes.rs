@@ -141,10 +141,18 @@ impl Deserializer<PoSChanges> for PoSChangesDeserializer {
         context(
             "Failed PoSChanges deserialization",
             tuple((
-                context("Failed bit_vec deserialization", |input| self.bit_vec_deserializer.deserialize(input)),
-                context("Failed rolls deserialization", |input| self.rolls_deserializer.deserialize(input)),
-                context("Failed production_stats deserialization", |input| self.production_stats_deserializer.deserialize(input)),
-                context("Failed deferred_credits deserialization", |input| self.deferred_credits_deserializer.deserialize(input)),
+                context("Failed bit_vec deserialization", |input| {
+                    self.bit_vec_deserializer.deserialize(input)
+                }),
+                context("Failed rolls deserialization", |input| {
+                    self.rolls_deserializer.deserialize(input)
+                }),
+                context("Failed production_stats deserialization", |input| {
+                    self.production_stats_deserializer.deserialize(input)
+                }),
+                context("Failed deferred_credits deserialization", |input| {
+                    self.deferred_credits_deserializer.deserialize(input)
+                }),
             )),
         )
         .map(

@@ -169,7 +169,7 @@ pub const IP_LIST_MAX_SIZE: usize = 10000;
 /// Size of the random bytes array used for the bootstrap, safe to import
 pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 /// Max size of the printed error
-pub const MAX_BOOTSTRAP_ERROR_LENGTH: u32 = 10000;
+pub const MAX_BOOTSTRAP_ERROR_LENGTH: u64 = 10000;
 
 /// Protocol controller channel size
 pub const PROTOCOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;

@@ -261,11 +261,11 @@ pub struct BootstrapServerMessageDeserializer {
     time_deserializer: MassaTimeDeserializer,
     version_deserializer: VersionDeserializer,
     peers_deserializer: BootstrapPeersDeserializer,
-    length_state_changes: U32VarIntDeserializer,
+    length_state_changes: U64VarIntDeserializer,
     state_changes_deserializer: StateChangesDeserializer,
     bootstrapable_graph_deserializer: BootstrapableGraphDeserializer,
     ledger_bytes_deserializer: VecU8Deserializer,
-    length_bootstrap_error: U32VarIntDeserializer,
+    length_bootstrap_error: U64VarIntDeserializer,
     slot_deserializer: SlotDeserializer,
     async_pool_deserializer: AsyncPoolDeserializer,
     opt_pos_cycle_deserializer: OptionDeserializer<CycleInfo, CycleInfoDeserializer>,
@@ -291,11 +291,11 @@ impl BootstrapServerMessageDeserializer {
         max_datastore_entry_count: u64,
         max_function_name_length: u16,
         max_parameters_size: u32,
-        max_bootstrap_error_length: u32,
+        max_bootstrap_error_length: u64,
         max_op_datastore_entry_count: u64,
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
-        max_changes_slot_count: u32,
+        max_changes_slot_count: u64,
     ) -> Self {
         Self {
             message_id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
@@ -314,7 +314,7 @@ impl BootstrapServerMessageDeserializer {
                 max_datastore_value_length,
                 max_datastore_entry_count,
             ),
-            length_state_changes: U32VarIntDeserializer::new(
+            length_state_changes: U64VarIntDeserializer::new(
                 Included(0),
                 Included(max_changes_slot_count),
             ),
@@ -334,7 +334,7 @@ impl BootstrapServerMessageDeserializer {
                 Included(0),
                 Included(max_bootstrap_final_state_parts_size),
             ),
-            length_bootstrap_error: U32VarIntDeserializer::new(
+            length_bootstrap_error: U64VarIntDeserializer::new(
                 Included(0),
                 Included(max_bootstrap_error_length),
             ),

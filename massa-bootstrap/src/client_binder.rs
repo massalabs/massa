@@ -32,7 +32,7 @@ pub struct BootstrapClientBinder {
     thread_count: u8,
     randomness_size_bytes: usize,
     max_bootstrap_async_pool_changes: u64,
-    max_bootstrap_error_length: u32,
+    max_bootstrap_error_length: u64,
     max_bootstrap_final_state_parts_size: u64,
     max_datastore_entry_count: u64,
     max_datastore_key_length: u8,
@@ -44,7 +44,7 @@ pub struct BootstrapClientBinder {
     max_op_datastore_entry_count: u64,
     max_op_datastore_key_length: u8,
     max_op_datastore_value_length: u64,
-    max_changes_slot_count: u32,
+    max_changes_slot_count: u64,
 }
 
 impl BootstrapClientBinder {
@@ -66,7 +66,7 @@ impl BootstrapClientBinder {
         thread_count: u8,
         randomness_size_bytes: usize,
         max_bootstrap_async_pool_changes: u64,
-        max_bootstrap_error_length: u32,
+        max_bootstrap_error_length: u64,
         max_bootstrap_final_state_parts_size: u64,
         max_datastore_entry_count: u64,
         max_datastore_key_length: u8,
@@ -78,7 +78,7 @@ impl BootstrapClientBinder {
         max_op_datastore_entry_count: u64,
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
-        max_changes_slot_count: u32,
+        max_changes_slot_count: u64,
     ) -> Self {
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapClientBinder {
