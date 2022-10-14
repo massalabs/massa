@@ -110,6 +110,7 @@ fn init_execution_worker(
 /// This test can fail if the gas is going up in the execution
 #[test]
 #[serial]
+#[ignore]
 fn test_nested_call_gas_usage() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
@@ -691,6 +692,7 @@ fn set_bytecode_error() {
 
 #[test]
 #[serial]
+#[ignore]
 fn datastore_manipulations() {
     // setup the period duration and the maximum gas for asynchronous messages execution
     let exec_cfg = ExecutionConfig {

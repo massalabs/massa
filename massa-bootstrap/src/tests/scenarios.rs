@@ -37,6 +37,7 @@ lazy_static::lazy_static! {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_bootstrap_server() {
     let (bootstrap_config, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
 
