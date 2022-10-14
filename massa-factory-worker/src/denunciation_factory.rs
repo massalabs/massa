@@ -211,9 +211,7 @@ impl DenunciationFactoryWorker {
             }
         }
 
-        // Send Denunciation in OperationPool
-        let mut de_storage = self.channels.storage.clone_without_refs();
-
+        // Create Operation from our denunciations
         let wrapped_operations: Result<Vec<WrappedOperation>, _> = denunciations
             .iter()
             .map(|de| {
@@ -235,6 +233,8 @@ impl DenunciationFactoryWorker {
             panic!("Cannot build wrapped operations for new denunciations: {}", e);
         }
 
+        // Add to operation pool
+        let mut de_storage = self.channels.storage.clone_without_refs();
         de_storage.store_operations(wrapped_operations.unwrap());
         // TODO: enable this for testnet 17
         // self.channels.pool.add_operations(de_storage.clone());
@@ -286,9 +286,7 @@ impl DenunciationFactoryWorker {
             }
         }
 
-        // Send Denunciation in OperationPool
-        let mut de_storage = self.channels.storage.clone_without_refs();
-
+        // Create Operation from our denunciations
         let wrapped_operations: Result<Vec<WrappedOperation>, _> = denunciations
             .iter()
             .map(|de| {
@@ -310,7 +308,10 @@ impl DenunciationFactoryWorker {
             panic!("Cannot build wrapped operations for new denunciations: {}", e);
         }
 
+        // Add to operation pool
+        let mut de_storage = self.channels.storage.clone_without_refs();
         de_storage.store_operations(wrapped_operations.unwrap());
+
         // TODO: enable this for testnet 17
         // self.channels.pool.add_operations(de_storage.clone());
         debug!("Should add Denunciation operations to pool...");
