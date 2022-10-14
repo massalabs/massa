@@ -378,7 +378,7 @@ async fn connect_to_server(
         bootstrap_config.endorsement_count,
         bootstrap_config.max_advertise_length,
         bootstrap_config.max_bootstrap_blocks_length,
-        bootstrap_config.max_operations_per_blocks,
+        bootstrap_config.max_operations_per_block,
         bootstrap_config.thread_count,
         bootstrap_config.randomness_size_bytes,
         bootstrap_config.max_bootstrap_async_pool_changes,
@@ -395,6 +395,8 @@ async fn connect_to_server(
         bootstrap_config.max_op_datastore_key_length,
         bootstrap_config.max_op_datastore_value_length,
         bootstrap_config.max_changes_slot_count,
+        bootstrap_config.max_rolls_length,
+        bootstrap_config.max_credits_length,
     ))
 }
 

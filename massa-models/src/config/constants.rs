@@ -109,6 +109,10 @@ pub const POS_SAVED_CYCLES: u64 = 4;
 pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 /// Maximum async messages in a batch of the bootstrap of the async pool
 pub const ASYNC_POOL_BOOTSTRAP_PART_SIZE: u64 = 100;
+/// Maximum size of a proof-of-stake rolls part in bootstrap
+pub const MAX_BOOTSTRAP_ROLLS_LENGTH: u64 = 10_000;
+/// Maximum size of a proof-of-stake deferred credits part in bootstrap
+pub const MAX_BOOTSTRAP_CREDITS_LENGTH: u64 = 10_000;
 /// Maximum length of a datastore key
 pub const MAX_DATASTORE_KEY_LENGTH: u8 = 255;
 /// Maximum length of an operation datastore key

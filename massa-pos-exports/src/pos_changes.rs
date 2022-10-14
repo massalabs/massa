@@ -123,12 +123,19 @@ pub struct PoSChangesDeserializer {
 
 impl PoSChangesDeserializer {
     /// Create a new `PoSChanges` Deserializer
-    pub fn new(thread_count: u8) -> PoSChangesDeserializer {
+    pub fn new(
+        thread_count: u8,
+        max_rolls_length: u64,
+        max_credits_length: u64,
+    ) -> PoSChangesDeserializer {
         PoSChangesDeserializer {
             bit_vec_deserializer: BitVecDeserializer::new(),
-            rolls_deserializer: RollsDeserializer::new(),
+            rolls_deserializer: RollsDeserializer::new(max_rolls_length),
             production_stats_deserializer: ProductionStatsDeserializer::new(),
-            deferred_credits_deserializer: DeferredCreditsDeserializer::new(thread_count),
+            deferred_credits_deserializer: DeferredCreditsDeserializer::new(
+                thread_count,
+                max_credits_length,
+            ),
         }
     }
 }

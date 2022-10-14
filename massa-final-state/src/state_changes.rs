@@ -130,6 +130,8 @@ impl StateChangesDeserializer {
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
+        max_rolls_length: u64,
+        max_credits_length: u64,
     ) -> Self {
         Self {
             ledger_changes_deserializer: LedgerChangesDeserializer::new(
@@ -143,7 +145,11 @@ impl StateChangesDeserializer {
                 max_async_pool_changes,
                 max_data_async_message,
             ),
-            pos_changes_deserializer: PoSChangesDeserializer::new(thread_count),
+            pos_changes_deserializer: PoSChangesDeserializer::new(
+                thread_count,
+                max_rolls_length,
+                max_credits_length,
+            ),
             executed_ops_deserializer: ExecutedOpsDeserializer::new(thread_count),
         }
     }

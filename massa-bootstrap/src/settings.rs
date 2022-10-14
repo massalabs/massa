@@ -54,8 +54,8 @@ pub struct BootstrapConfig {
     pub max_advertise_length: u32,
     /// max bootstrap blocks length
     pub max_bootstrap_blocks_length: u32,
-    /// max operations per blocks
-    pub max_operations_per_blocks: u32,
+    /// max operations per block
+    pub max_operations_per_block: u32,
     /// max bootstrap async pool changes
     pub max_bootstrap_async_pool_changes: u64,
     /// max bootstrap error length
@@ -80,6 +80,10 @@ pub struct BootstrapConfig {
     pub max_parameters_size: u32,
     /// max ledger changes
     pub max_ledger_changes_count: u64,
-    /// maximum of slot in state changes
+    /// max slot count in state changes
     pub max_changes_slot_count: u64,
+    /// max rolls in proof-of-stake and state changes
+    pub max_rolls_length: u64,
+    /// max credits in proof-of-stake and state changes
+    pub max_credits_length: u64,
 }

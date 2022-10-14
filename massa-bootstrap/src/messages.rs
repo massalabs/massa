@@ -296,6 +296,8 @@ impl BootstrapServerMessageDeserializer {
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
         max_changes_slot_count: u64,
+        max_rolls_length: u64,
+        max_credits_length: u64,
     ) -> Self {
         Self {
             message_id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
@@ -313,6 +315,8 @@ impl BootstrapServerMessageDeserializer {
                 max_datastore_key_length,
                 max_datastore_value_length,
                 max_datastore_entry_count,
+                max_rolls_length,
+                max_credits_length,
             ),
             length_state_changes: U64VarIntDeserializer::new(
                 Included(0),
@@ -346,8 +350,13 @@ impl BootstrapServerMessageDeserializer {
                 thread_count,
                 max_data_async_message,
             ),
-            opt_pos_cycle_deserializer: OptionDeserializer::new(CycleInfoDeserializer::new()),
-            pos_credits_deserializer: DeferredCreditsDeserializer::new(thread_count),
+            opt_pos_cycle_deserializer: OptionDeserializer::new(CycleInfoDeserializer::new(
+                max_rolls_length,
+            )),
+            pos_credits_deserializer: DeferredCreditsDeserializer::new(
+                thread_count,
+                max_credits_length,
+            ),
             exec_ops_deserializer: ExecutedOpsDeserializer::new(thread_count),
         }
     }
