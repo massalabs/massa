@@ -440,19 +440,17 @@ impl PoSFinalState {
             StreamingStep::Ongoing(last_slot) => Excluded(last_slot),
             StreamingStep::Finished => return Ok((credits_part, cursor)),
         };
+        let mut credit_part_last_slot: Option<Slot> = None;
         for (slot, credits) in self.deferred_credits.0.range((left_bound, Unbounded)) {
             // FOLLOW-UP TODO: stream in multiple parts
             credits_part.0.insert(*slot, credits.clone());
+            credit_part_last_slot = Some(*slot);
         }
-        if credits_part.0.is_empty() {
-            return Ok((credits_part, StreamingStep::Finished));
+        if let Some(last_slot) = credit_part_last_slot {
+            Ok((credits_part, StreamingStep::Ongoing(last_slot)))
+        } else {
+            Ok((credits_part, StreamingStep::Finished))
         }
-        let last_credits_slot = credits_part
-            .0
-            .last_key_value()
-            .map(|(&slot, _)| slot)
-            .expect("slot credits should be available here");
-        Ok((credits_part, StreamingStep::Ongoing(last_credits_slot)))
     }
 
     /// Sets a part of the Proof of Stake `cycle_history`. Used only in the bootstrap process.
