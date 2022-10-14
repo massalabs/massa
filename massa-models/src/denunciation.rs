@@ -16,6 +16,7 @@ use massa_serialization::{
 };
 use massa_signature::{verify_signature_batch, PublicKey, Signature, SignatureDeserializer, PublicKeyDeserializer};
 use crate::address::Address;
+use crate::block::WrappedHeader;
 use crate::endorsement::WrappedEndorsement;
 use crate::error::ModelsError;
 use crate::prehash::PreHashed;
@@ -120,7 +121,8 @@ impl BlockDenunciation {
             (self.hash_2, self.signature_2, public_key),
         ];
 
-        self.hash_1 == self.hash_2 && verify_signature_batch(&to_verif).is_ok()
+        self.hash_1 != self.hash_2
+            && verify_signature_batch(&to_verif).is_ok()
     }
 }
 
@@ -173,7 +175,7 @@ impl Denunciation {
         }
     }
 
-    fn is_for_block(&self) -> bool {
+    pub fn is_for_block(&self) -> bool {
         matches!(self.proof.as_ref(), DenunciationProof::Block(_))
     }
 
@@ -193,6 +195,21 @@ impl Denunciation {
                 hash_1: e1.id.get_hash().clone(),
                 signature_2: e2.signature,
                 hash_2: e2.id.get_hash().clone(),
+            })
+        }
+    }
+
+    pub fn from_wrapped_headers(h1: &WrappedHeader, h2: &WrappedHeader) -> Self {
+
+        // FIXME: Should we return a Result and only forge valid Denunciation?
+        Self {
+            slot: h1.content.slot,
+            pub_key: h1.creator_public_key,
+            proof: DenunciationProof::Block(BlockDenunciation {
+                signature_1: h1.signature,
+                hash_1: h1.id.get_hash().clone(),
+                signature_2: h2.signature,
+                hash_2: h2.id.get_hash().clone(),
             })
         }
     }
@@ -406,12 +423,11 @@ mod tests {
     use serial_test::serial;
 
     // use massa_serialization::DeserializeError;
-    use crate::block::BlockId;
-    use crate::endorsement::{
-        Endorsement, EndorsementHasher, EndorsementSerializer, WrappedEndorsement,
-    };
-    use crate::wrapped::{Id, WrappedContent};
+    use crate::block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, WrappedHeader};
+    use crate::endorsement::{Endorsement, EndorsementHasher, EndorsementSerializer, EndorsementSerializerLW, WrappedEndorsement};
+    use crate::wrapped::{Id, Wrapped, WrappedContent};
     use massa_signature::KeyPair;
+    use crate::config::THREAD_COUNT;
 
     #[test]
     #[serial]
@@ -560,5 +576,82 @@ mod tests {
         let (_, res_denunciation) = deserializer.deserialize::<DeserializeError>(&ser).unwrap();
 
         assert_eq!(denunciation, res_denunciation);
+    }
+
+    #[test]
+    #[serial]
+    fn test_block_denunciation() {
+
+        let keypair = KeyPair::generate();
+
+        let slot = Slot::new(2, 1);
+        let parents: Vec<BlockId> = (0..THREAD_COUNT)
+            .map(|i| BlockId(Hash::compute_from(&[i])))
+            .collect();
+
+        let parents2: Vec<BlockId> = (0..THREAD_COUNT)
+            .map(|i| BlockId(Hash::compute_from(&[i+1])))
+            .collect();
+
+        let header1 = BlockHeader {
+            slot,
+            parents: parents.clone(),
+            operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+            endorsements: vec![
+                Endorsement::new_wrapped(
+                    Endorsement {
+                        slot: Slot::new(1, 1),
+                        index: 1,
+                        endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+                    },
+                    EndorsementSerializerLW::new(),
+                    &keypair,
+                )
+                    .unwrap(),
+            ],
+        };
+
+        let wrapped_header1: Wrapped<BlockHeader, BlockId> = BlockHeader::new_wrapped(
+            header1,
+            BlockHeaderSerializer::new(),
+            &keypair
+        ).unwrap();
+
+        let header2 = BlockHeader {
+            slot,
+            parents: parents2,
+            operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+            endorsements: vec![
+                Endorsement::new_wrapped(
+                    Endorsement {
+                        slot: Slot::new(1, 1),
+                        index: 1,
+                        endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+                    },
+                    EndorsementSerializerLW::new(),
+                    &keypair,
+                )
+                    .unwrap(),
+            ],
+        };
+
+        let wrapped_header2: Wrapped<BlockHeader, BlockId> = BlockHeader::new_wrapped(
+            header2,
+            BlockHeaderSerializer::new(),
+            &keypair
+        ).unwrap();
+
+        let denunciation = Denunciation {
+            slot,
+            pub_key: keypair.get_public_key(),
+            proof: DenunciationProof::Block(BlockDenunciation {
+                signature_1: wrapped_header1.signature,
+                hash_1: *wrapped_header1.id.get_hash(),
+                signature_2: wrapped_header2.signature,
+                hash_2: *wrapped_header2.id.get_hash(),
+            }),
+        };
+
+        assert_eq!(denunciation.is_valid(), true);
     }
 }
