@@ -2,7 +2,6 @@
 
 #![feature(async_closure)]
 #![feature(hash_drain_filter)]
-#![feature(map_first_last)]
 #![feature(int_roundings)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
