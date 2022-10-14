@@ -59,7 +59,7 @@ impl DeferredCredits {
 pub struct DeferredCreditsSerializer {
     slot_ser: SlotSerializer,
     u64_ser: U64VarIntSerializer,
-    amount_ser: AmountSerializer,
+    credits_ser: CreditsSerializer,
 }
 
 impl Default for DeferredCreditsSerializer {
@@ -74,7 +74,7 @@ impl DeferredCreditsSerializer {
         Self {
             slot_ser: SlotSerializer::new(),
             u64_ser: U64VarIntSerializer::new(),
-            amount_ser: AmountSerializer::new(),
+            credits_ser: CreditsSerializer::new(),
         }
     }
 }
@@ -91,15 +91,8 @@ impl Serializer<DeferredCredits> for DeferredCreditsSerializer {
         for (slot, credits) in &value.0 {
             // slot
             self.slot_ser.serialize(slot, buffer)?;
-            // slot credits length
-            self.u64_ser.serialize(&(credits.len() as u64), buffer)?;
-            // slot credits
-            for (addr, amount) in credits {
-                // address
-                buffer.extend(addr.to_bytes());
-                // credited amount
-                self.amount_ser.serialize(amount, buffer)?;
-            }
+            // credits
+            self.credits_ser.serialize(credits, buffer)?;
         }
         Ok(())
     }
@@ -109,7 +102,7 @@ impl Serializer<DeferredCredits> for DeferredCreditsSerializer {
 pub struct DeferredCreditsDeserializer {
     u64_deserializer: U64VarIntDeserializer,
     slot_deserializer: SlotDeserializer,
-    credit_deserializer: CreditDeserializer,
+    credit_deserializer: CreditsDeserializer,
 }
 
 impl DeferredCreditsDeserializer {
@@ -121,7 +114,7 @@ impl DeferredCreditsDeserializer {
                 (Included(0), Included(u64::MAX)),
                 (Included(0), Excluded(thread_count)),
             ),
-            credit_deserializer: CreditDeserializer::new(),
+            credit_deserializer: CreditsDeserializer::new(),
         }
     }
 }
@@ -147,18 +140,52 @@ impl Deserializer<DeferredCredits> for DeferredCreditsDeserializer {
         .parse(buffer)
     }
 }
+/// Serializer for `Credits`
+pub struct CreditsSerializer {
+    u64_ser: U64VarIntSerializer,
+    amount_ser: AmountSerializer,
+}
+
+impl CreditsSerializer {
+    /// Creates a new `Credits` serializer
+    pub fn new() -> Self {
+        Self {
+            u64_ser: U64VarIntSerializer::new(),
+            amount_ser: AmountSerializer::new(),
+        }
+    }
+}
+
+impl Serializer<PreHashMap<Address, Amount>> for CreditsSerializer {
+    fn serialize(
+        &self,
+        value: &PreHashMap<Address, Amount>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        // slot credits length
+        self.u64_ser.serialize(&(value.len() as u64), buffer)?;
+        // slot credits
+        for (addr, amount) in value {
+            // address
+            buffer.extend(addr.to_bytes());
+            // credited amount
+            self.amount_ser.serialize(amount, buffer)?;
+        }
+        Ok(())
+    }
+}
 
 /// Deserializer for a single credit
-struct CreditDeserializer {
+struct CreditsDeserializer {
     u64_deserializer: U64VarIntDeserializer,
     address_deserializer: AddressDeserializer,
     amount_deserializer: AmountDeserializer,
 }
 
-impl CreditDeserializer {
+impl CreditsDeserializer {
     /// Creates a new single credit deserializer
-    fn new() -> CreditDeserializer {
-        CreditDeserializer {
+    fn new() -> CreditsDeserializer {
+        CreditsDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             address_deserializer: AddressDeserializer::new(),
             amount_deserializer: AmountDeserializer::new(
@@ -169,7 +196,7 @@ impl CreditDeserializer {
     }
 }
 
-impl Deserializer<PreHashMap<Address, Amount>> for CreditDeserializer {
+impl Deserializer<PreHashMap<Address, Amount>> for CreditsDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
