@@ -19,6 +19,7 @@ use std::{
     time::Instant,
 };
 use tracing::{info, warn};
+use massa_models::operation::{Operation, OperationId, OperationSerializer, OperationType, WrappedOperation};
 
 /// Structure gathering all elements needed by the factory thread
 pub(crate) struct BlockFactoryWorker {
@@ -192,7 +193,41 @@ impl BlockFactoryWorker {
         block_storage.extend(endo_storage);
 
         // gather operations and compute global operations hash
-        let (op_ids, op_storage) = self.channels.pool.get_block_operations(&slot);
+        let (op_ids_, op_storage) = self.channels.pool.get_block_operations(&slot);
+
+        // 'Steal' op denunciation
+        // TODO: add doc about why we stole those
+        let ops = op_storage.read_operations();
+        let mut new_ops: Vec<WrappedOperation> = Vec::new();
+        let new_ops_ref = &mut new_ops;
+        let op_ids: Vec<OperationId> = op_ids_
+            .into_iter()
+            .map(|op_id| {
+                // safe to unwrap as we iterate over what we got from get_block_operations
+                let op = ops.get(&op_id).unwrap();
+                match &op.content.op {
+                    OperationType::Denunciation { data: de } => {
+                        let op = Operation {
+                            fee: Default::default(),
+                            expire_period: 0,
+                            op: OperationType::Denunciation { data: de.clone() },
+                        };
+                        // safe to unwrap as this should never fail
+                        let wrapped_op: WrappedOperation = Operation::new_wrapped(op,
+                                               OperationSerializer::new(),
+                                               block_producer_keypair).unwrap();
+
+                        let op_id_ = wrapped_op.id.clone();
+                        new_ops_ref.push(wrapped_op);
+                        op_id_
+                    },
+                    _ => op_id,
+                }
+            })
+            .collect();
+
+        drop(ops); // op_storage is borrowed when we call read_operations()
+
         block_storage.extend(op_storage);
         let global_operations_hash = Hash::compute_from(
             &op_ids
@@ -218,7 +253,9 @@ impl BlockFactoryWorker {
         let block = Block::new_wrapped(
             Block {
                 header,
-                operations: op_ids.into_iter().collect(),
+                operations: op_ids
+                    .into_iter()
+                    .collect(),
             },
             BlockSerializer::new(), // TODO reuse self.block_serializer
             block_producer_keypair,
@@ -233,6 +270,15 @@ impl BlockFactoryWorker {
             "block {} created at slot {} by address {}",
             block_id, slot, block_producer_addr
         );
+
+        // Send new operations (stolen denunciations) to pool
+        self.channels.storage.store_operations(new_ops.clone());
+        // And now propage them
+        let mut new_ops_storage = self.channels.storage.clone_without_refs();
+        new_ops_storage.store_operations(new_ops);
+        if let Err(err) = self.channels.protocol.propagate_operations_sync(new_ops_storage) {
+            warn!("could not propagate new denunciation operations to protocol: {}", err);
+        }
 
         // send full block to consensus
         if self
