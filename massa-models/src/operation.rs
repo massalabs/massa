@@ -788,10 +788,12 @@ impl WrappedOperation {
             OperationType::Transaction { amount, .. } => *amount,
             OperationType::RollBuy { roll_count } => roll_price.saturating_mul_u64(*roll_count),
             OperationType::RollSell { .. } => Amount::zero(),
-            OperationType::ExecuteSC { max_gas, .. } => Amount::from_raw(*max_gas),
-            OperationType::CallSC { max_gas, coins, .. } => {
-                Amount::from_raw(max_gas.saturating_add(coins.to_raw()))
+            OperationType::ExecuteSC { max_gas, .. } => {
+                Amount::from_str(&max_gas.to_string()).unwrap_or(Amount::default())
             }
+            OperationType::CallSC { max_gas, coins, .. } => Amount::from_str(&max_gas.to_string())
+                .unwrap_or(Amount::default())
+                .saturating_add(*coins),
         };
 
         // add all fees and return
