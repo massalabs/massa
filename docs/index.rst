@@ -64,6 +64,7 @@ Contents
    smart-contracts/getting-started.rst
    smart-contracts/massa-sc-by-example.rst
    smart-contracts/types.rst
+   smart-contracts/playground.rst
 
 .. toctree::
    :maxdepth: 2
