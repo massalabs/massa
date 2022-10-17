@@ -651,11 +651,11 @@ impl ExecutionState {
                 operation_datastore: None,
             }];
 
-            let roll_count = context.try_slash_roll(&addr_denounced);
+            let roll_slashed = context.try_slash_roll(&addr_denounced);
 
-            if roll_count > 0 {
-                // safe to unwrap as roll_count > 0
-                let amount = Amount::from_mantissa_scale(roll_count as u64, 2)
+            if roll_slashed > Amount::zero() {
+                // safe to unwrap as roll_slashed > 0
+                let amount = roll_slashed
                     .checked_div_u64(2)
                     .unwrap();
 

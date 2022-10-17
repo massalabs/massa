@@ -477,12 +477,12 @@ impl SpeculativeRollState {
         credits
     }
 
-    pub fn remove_deferred_credits(&mut self, slot: &Slot, addr: &Address, amount: &Amount) {
+    pub fn remove_deferred_credits(&mut self, slot: &Slot, addr: &Address, amount: &Amount) -> Amount {
         self
             .final_state
             .write()
             .pos_state
-            .rm_deferred_credits(slot, addr, amount);
+            .rm_deferred_credits(slot, addr, amount)
     }
 
 }
