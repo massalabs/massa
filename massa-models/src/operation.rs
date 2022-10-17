@@ -755,9 +755,9 @@ impl WrappedOperation {
 
     /// Get the total fee paid by the creator
     pub fn get_total_fee(&self) -> Amount {
-        self.content
-            .fee
-            .saturating_add(Amount::from_raw(self.get_gas_usage()))
+        self.content.fee.saturating_add(
+            Amount::from_str(&self.get_gas_usage().to_string()).unwrap_or(Amount::default()),
+        )
     }
 
     /// get the addresses that are involved in this operation from a ledger point of view

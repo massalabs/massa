@@ -110,7 +110,6 @@ fn init_execution_worker(
 /// This test can fail if the gas is going up in the execution
 #[test]
 #[serial]
-#[ignore]
 fn test_nested_call_gas_usage() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
