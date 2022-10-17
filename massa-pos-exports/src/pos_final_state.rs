@@ -433,12 +433,12 @@ impl PoSFinalState {
     pub fn get_deferred_credits_part(
         &self,
         cursor: StreamingStep<Slot>,
-    ) -> Result<(DeferredCredits, StreamingStep<Slot>), ModelsError> {
+    ) -> (DeferredCredits, StreamingStep<Slot>) {
         let mut credits_part = DeferredCredits::default();
         let left_bound = match cursor {
             StreamingStep::Started => Unbounded,
             StreamingStep::Ongoing(last_slot) => Excluded(last_slot),
-            StreamingStep::Finished => return Ok((credits_part, cursor)),
+            StreamingStep::Finished => return (credits_part, cursor),
         };
         let mut credit_part_last_slot: Option<Slot> = None;
         for (slot, credits) in self.deferred_credits.0.range((left_bound, Unbounded)) {
@@ -447,9 +447,9 @@ impl PoSFinalState {
             credit_part_last_slot = Some(*slot);
         }
         if let Some(last_slot) = credit_part_last_slot {
-            Ok((credits_part, StreamingStep::Ongoing(last_slot)))
+            (credits_part, StreamingStep::Ongoing(last_slot))
         } else {
-            Ok((credits_part, StreamingStep::Finished))
+            (credits_part, StreamingStep::Finished)
         }
     }
 
@@ -457,41 +457,38 @@ impl PoSFinalState {
     ///
     /// # Arguments
     /// `part`: a `CycleInfo` received from `get_pos_state_part` and used to update PoS final state
-    pub fn set_cycle_history_part(
-        &mut self,
-        part: CycleInfo,
-    ) -> Result<StreamingStep<u64>, ModelsError> {
-        let opt_next_cycle = self
-            .cycle_history
-            .back()
-            .map(|info| info.cycle.saturating_add(1));
-        if let Some(next_cycle) = opt_next_cycle && part.cycle != next_cycle {
-            panic!("PoS received cycle ({}) should be equal to the next expected cycle ({})", part.cycle, next_cycle);
-        }
-        self.cycle_history.push_back(part);
-        Ok(StreamingStep::Ongoing(
-            self.cycle_history
+    pub fn set_cycle_history_part(&mut self, part: Option<CycleInfo>) -> StreamingStep<u64> {
+        if let Some(cycle_info) = part {
+            let opt_next_cycle = self
+                .cycle_history
                 .back()
-                .map(|v| v.cycle)
-                .expect("should contain at least one cycle"),
-        ))
+                .map(|info| info.cycle.saturating_add(1));
+            let current_cycle = cycle_info.cycle.clone();
+            if let Some(next_cycle) = opt_next_cycle && current_cycle != next_cycle {
+            panic!("PoS received cycle ({}) should be equal to the next expected cycle ({})", current_cycle, next_cycle);
+        }
+            self.cycle_history.push_back(cycle_info);
+            StreamingStep::Ongoing(current_cycle)
+        } else {
+            StreamingStep::Finished
+        }
     }
 
     /// Sets a part of the Proof of Stake `deferred_credits`. Used only in the bootstrap process.
     ///
     /// # Arguments
     /// `part`: `DeferredCredits` from `get_pos_state_part` and used to update PoS final state
-    pub fn set_deferred_credits_part(
-        &mut self,
-        part: DeferredCredits,
-    ) -> Result<StreamingStep<Slot>, ModelsError> {
+    pub fn set_deferred_credits_part(&mut self, part: DeferredCredits) -> StreamingStep<Slot> {
         self.deferred_credits.nested_extend(part);
-        Ok(StreamingStep::Ongoing(
-            self.deferred_credits
-                .0
-                .last_key_value()
-                .map(|(&slot, _)| slot)
-                .expect("should contain at least the credits for one slot"),
-        ))
+        if let Some(slot) = self
+            .deferred_credits
+            .0
+            .last_key_value()
+            .map(|(&slot, _)| slot)
+        {
+            StreamingStep::Ongoing(slot)
+        } else {
+            StreamingStep::Finished
+        }
     }
 }

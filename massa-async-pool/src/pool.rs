@@ -9,7 +9,7 @@ use crate::{
     AsyncMessageDeserializer, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
     AsyncMessageSerializer,
 };
-use massa_models::{error::ModelsError, slot::Slot, streaming_step::StreamingStep};
+use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -149,18 +149,15 @@ impl AsyncPool {
     pub fn get_pool_part(
         &self,
         cursor: StreamingStep<AsyncMessageId>,
-    ) -> Result<
-        (
-            BTreeMap<AsyncMessageId, AsyncMessage>,
-            StreamingStep<AsyncMessageId>,
-        ),
-        ModelsError,
-    > {
+    ) -> (
+        BTreeMap<AsyncMessageId, AsyncMessage>,
+        StreamingStep<AsyncMessageId>,
+    ) {
         let mut pool_part = BTreeMap::new();
         let left_bound = match cursor {
             StreamingStep::Started => Unbounded,
             StreamingStep::Ongoing(last_id) => Excluded(last_id),
-            StreamingStep::Finished => return Ok((pool_part, cursor)),
+            StreamingStep::Finished => return (pool_part, cursor),
         };
         let mut pool_part_last_id: Option<AsyncMessageId> = None;
         for (id, message) in self.messages.range((left_bound, Unbounded)) {
@@ -170,9 +167,9 @@ impl AsyncPool {
             }
         }
         if let Some(last_id) = pool_part_last_id {
-            Ok((pool_part, StreamingStep::Ongoing(last_id)))
+            (pool_part, StreamingStep::Ongoing(last_id))
         } else {
-            Ok((pool_part, StreamingStep::Finished))
+            (pool_part, StreamingStep::Finished)
         }
     }
 
@@ -187,14 +184,13 @@ impl AsyncPool {
     pub fn set_pool_part(
         &mut self,
         part: BTreeMap<AsyncMessageId, AsyncMessage>,
-    ) -> Result<StreamingStep<AsyncMessageId>, ModelsError> {
+    ) -> StreamingStep<AsyncMessageId> {
         self.messages.extend(part);
-        Ok(StreamingStep::Ongoing(
-            self.messages
-                .last_key_value()
-                .map(|(&id, _)| id)
-                .expect("async pool should contain at least one message here"),
-        ))
+        if let Some(message_id) = self.messages.last_key_value().map(|(&id, _)| id) {
+            StreamingStep::Ongoing(message_id)
+        } else {
+            StreamingStep::Finished
+        }
     }
 }
 

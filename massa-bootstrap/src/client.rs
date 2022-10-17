@@ -68,22 +68,17 @@ async fn stream_final_state(
                 } => {
                     let mut write_final_state = global_bootstrap_state.final_state.write();
                     let last_ledger_step = write_final_state.ledger.set_ledger_part(ledger_part)?;
-                    let last_pool_step = write_final_state
-                        .async_pool
-                        .set_pool_part(async_pool_part)?;
-                    let last_cycle_step = if let Some(cycle_info) = pos_cycle_part {
-                        write_final_state
-                            .pos_state
-                            .set_cycle_history_part(cycle_info)?
-                    } else {
-                        StreamingStep::Finished
-                    };
+                    let last_pool_step =
+                        write_final_state.async_pool.set_pool_part(async_pool_part);
+                    let last_cycle_step = write_final_state
+                        .pos_state
+                        .set_cycle_history_part(pos_cycle_part);
                     let last_credits_step = write_final_state
                         .pos_state
-                        .set_deferred_credits_part(pos_credits_part)?;
+                        .set_deferred_credits_part(pos_credits_part);
                     let last_ops_step = write_final_state
                         .executed_ops
-                        .set_executed_ops_part(exec_ops_part)?;
+                        .set_executed_ops_part(exec_ops_part);
                     for (changes_slot, changes) in final_state_changes.iter() {
                         write_final_state
                             .ledger

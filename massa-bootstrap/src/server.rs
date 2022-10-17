@@ -282,16 +282,11 @@ pub async fn send_final_state_stream(
             let final_state_read = final_state.read();
             let (data, new_ledger_step) = final_state_read
                 .ledger
-                .get_ledger_part(last_ledger_step.clone())
-                .map_err(|_| {
-                    BootstrapError::GeneralError(
-                        "Error on fetching ledger part of execution".to_string(),
-                    )
-                })?;
+                .get_ledger_part(last_ledger_step.clone())?;
             ledger_part = data;
 
             let (pool_data, new_pool_step) =
-                final_state_read.async_pool.get_pool_part(last_pool_step)?;
+                final_state_read.async_pool.get_pool_part(last_pool_step);
             async_pool_part = pool_data;
 
             let (cycle_data, new_cycle_step) = final_state_read
@@ -301,12 +296,12 @@ pub async fn send_final_state_stream(
 
             let (credits_data, new_credits_step) = final_state_read
                 .pos_state
-                .get_deferred_credits_part(last_credits_step)?;
+                .get_deferred_credits_part(last_credits_step);
             pos_credits_part = credits_data;
 
             let (ops_data, new_ops_step) = final_state_read
                 .executed_ops
-                .get_executed_ops_part(last_ops_step)?;
+                .get_executed_ops_part(last_ops_step);
             exec_ops_part = ops_data;
 
             if let Some(slot) = last_slot && slot != final_state_read.slot {

@@ -5,7 +5,6 @@
 
 use massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
 use massa_models::{
-    error::ModelsError,
     operation::{OperationId, OperationIdDeserializer},
     prehash::PreHashMap,
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -108,14 +107,14 @@ impl ExecutedOps {
     pub fn get_executed_ops_part(
         &self,
         cursor: StreamingStep<OperationId>,
-    ) -> Result<(ExecutedOps, StreamingStep<OperationId>), ModelsError> {
+    ) -> (ExecutedOps, StreamingStep<OperationId>) {
         // FOLLOW-UP TODO: stream in multiple parts
         match cursor {
             StreamingStep::Started => (), // TODO: when parts start at unbounded left range
             StreamingStep::Ongoing(_op_id) => (), // TODO: when parts start at op_id left range
-            StreamingStep::Finished => return Ok((ExecutedOps::default(), cursor)),
+            StreamingStep::Finished => return (ExecutedOps::default(), cursor),
         }
-        Ok((self.clone(), StreamingStep::Finished))
+        (self.clone(), StreamingStep::Finished)
     }
 
     /// Set a part of the executed operations.
@@ -124,12 +123,9 @@ impl ExecutedOps {
     ///
     /// # Returns
     /// The next executed ops streaming step
-    pub fn set_executed_ops_part(
-        &mut self,
-        part: ExecutedOps,
-    ) -> Result<StreamingStep<OperationId>, ModelsError> {
+    pub fn set_executed_ops_part(&mut self, part: ExecutedOps) -> StreamingStep<OperationId> {
         self.extend(part);
-        Ok(StreamingStep::Finished)
+        StreamingStep::Finished
     }
 }
 
