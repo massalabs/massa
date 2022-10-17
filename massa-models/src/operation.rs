@@ -1570,7 +1570,7 @@ mod tests {
     fn test_denunciation() {
         let sender_keypair = KeyPair::generate();
 
-        let target_keypair = KeyPair::generate();
+        // let target_keypair = KeyPair::generate();
         // let target_addr = Address::from_public_key(&target_keypair.get_public_key());
 
         // Dummy hash & signature (no point in using a real endorsement/block here)

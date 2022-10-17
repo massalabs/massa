@@ -20,6 +20,8 @@ use massa_storage::Storage;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::sync::mpsc::Receiver;
+use crossbeam_channel::unbounded;
+use massa_models::denunciation_interest::DenunciationInterest;
 
 /// Tooling to create a transaction with an expire periods
 /// TODO move tooling in a dedicated module
@@ -64,8 +66,9 @@ where
     let storage: Storage = Storage::create_root();
 
     let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
+    let (de_items_tx, de_items_rx) = unbounded::<DenunciationInterest>();
     let (pool_manager, pool_controller) =
-        start_pool_controller(cfg, &storage, execution_controller);
+        start_pool_controller(cfg, &storage, execution_controller, de_items_tx);
 
     test(pool_manager, pool_controller, execution_receiver, storage)
 }

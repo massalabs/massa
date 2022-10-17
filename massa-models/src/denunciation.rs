@@ -385,7 +385,7 @@ mod tests {
     use serial_test::serial;
 
     // use massa_serialization::DeserializeError;
-    use crate::block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, WrappedHeader};
+    use crate::block::{BlockHeader, BlockHeaderSerializer, BlockId};
     use crate::endorsement::{Endorsement, EndorsementHasher, EndorsementSerializer, EndorsementSerializerLW, WrappedEndorsement};
     use crate::wrapped::{Id, Wrapped, WrappedContent};
     use massa_signature::KeyPair;
