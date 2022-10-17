@@ -114,7 +114,7 @@ impl DenunciationFactoryWorker {
                             .take(2)
                             .tuples()
                             .map(|(we1, we2)| {
-                                Denunciation::from_wrapped_endorsements(we1, we2)
+                                Denunciation::from((we1, we2))
                             })
                             .collect::<Vec<Denunciation>>()
                     );
@@ -191,7 +191,7 @@ impl DenunciationFactoryWorker {
                             .take(2)
                             .tuples()
                             .map(|(wh1, wh2)| {
-                                Denunciation::from_wrapped_headers(wh1, wh2)
+                                Denunciation::from((wh1, wh2))
                             })
                             .collect::<Vec<Denunciation>>()
                     );

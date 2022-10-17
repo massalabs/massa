@@ -22,61 +22,6 @@ use crate::wrapped::Id;
 /// Denunciation ID size in bytes
 pub const DENUNCIATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
-/*
-/// denunciation id
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct DenunciationId(Hash);
-
-impl PreHashed for DenunciationId {}
-
-impl Id for DenunciationId {
-    fn new(hash: Hash) -> Self {
-        DenunciationId(hash)
-    }
-
-    fn get_hash(&self) -> &Hash {
-        &self.0
-    }
-}
-
-impl Display for DenunciationId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.0.to_bs58_check())
-    }
-}
-
-impl FromStr for DenunciationId {
-    type Err = ModelsError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(DenunciationId(Hash::from_str(s)?))
-    }
-}
-
-impl DenunciationId {
-    /// endorsement id to bytes
-    pub fn to_bytes(&self) -> &[u8; DENUNCIATION_ID_SIZE_BYTES] {
-        self.0.to_bytes()
-    }
-
-    /// endorsement id into bytes
-    pub fn into_bytes(self) -> [u8; DENUNCIATION_ID_SIZE_BYTES] {
-        self.0.into_bytes()
-    }
-
-    /// endorsement id from bytes
-    pub fn from_bytes(data: &[u8; DENUNCIATION_ID_SIZE_BYTES]) -> DenunciationId {
-        DenunciationId(Hash::from_bytes(data))
-    }
-
-    /// endorsement id from `bs58` check
-    pub fn from_bs58_check(data: &str) -> Result<DenunciationId, ModelsError> {
-        Ok(DenunciationId(
-            Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
-        ))
-    }
-}
-*/
-
 /// Denunciation proof for endorsements
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct EndorsementDenunciation {
@@ -205,10 +150,16 @@ impl Denunciation {
     }
     */
 
-    /// TODO
-    pub fn from_wrapped_endorsements(e1: &WrappedEndorsement, e2: &WrappedEndorsement) -> Self {
+    /// Address of the denounced
+    pub fn addr(&self) -> Address {
+        Address::from_public_key(&self.pub_key)
+    }
 
-        // FIXME: Should we return a Result and only forge valid Denunciation?
+}
+
+/// Create a new Denunciation from 2 WrappedEndorsement - no guarantee that it is valid
+impl From<(&WrappedEndorsement, &WrappedEndorsement)> for Denunciation {
+    fn from((e1, e2): (&WrappedEndorsement, &WrappedEndorsement)) -> Self {
         Self {
             slot: e1.content.slot,
             pub_key: e1.creator_public_key,
@@ -221,11 +172,11 @@ impl Denunciation {
             })
         }
     }
+}
 
-    /// TODO
-    pub fn from_wrapped_headers(h1: &WrappedHeader, h2: &WrappedHeader) -> Self {
-
-        // FIXME: Should we return a Result and only forge valid Denunciation?
+/// Create a new Denunciation from 2 WrappedHeader - no guarantee that it is valid
+impl From<(&WrappedHeader, &WrappedHeader)> for Denunciation {
+    fn from((h1, h2): (&WrappedHeader, &WrappedHeader)) -> Self {
         Self {
             slot: h1.content.slot,
             pub_key: h1.creator_public_key,
@@ -237,22 +188,6 @@ impl Denunciation {
             })
         }
     }
-
-    /// Address of the denounced
-    pub fn addr(&self) -> Address {
-        Address::from_public_key(&self.pub_key)
-    }
-
-    /*
-    pub fn get_id<SC>(&self, serializer: SC) -> Result<DenunciationId, SerializeError>
-        where SC: Serializer<Self>
-    {
-        let mut buffer = Vec::new();
-        serializer.serialize(self, &mut buffer)?;
-        let hash = Hash::compute_from(&buffer[..]);
-        Ok(DenunciationId::new(hash))
-    }
-    */
 }
 
 impl Display for Denunciation {
