@@ -645,7 +645,7 @@ impl ExecutionContext {
         denounced_addr: &Address,
     ) -> u32
     {
-        const roll_count: u32 = 1;
+        const ROLL_COUNT: u32 = 1;
         let mut sold_rolls: u32 = 0;
 
         // First try to slash roll if any
@@ -670,7 +670,7 @@ impl ExecutionContext {
             }
 
         } else {
-            sold_rolls = roll_count;
+            sold_rolls = ROLL_COUNT;
         }
 
         sold_rolls

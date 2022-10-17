@@ -623,7 +623,7 @@ impl ExecutionState {
     pub fn execute_denunciation_op(
         &self,
         operation: &OperationType,
-        sender_addr: Address,
+        _sender_addr: Address,
         block_credits: &mut Amount,
     ) -> Result<(), ExecutionError> {
 
@@ -653,11 +653,17 @@ impl ExecutionState {
 
             let roll_count = context.try_slash_roll(&addr_denounced);
 
-            // TODO: proper roll -> coin conversion
-            let amount = roll_count * 100;
+            if roll_count > 0 {
+                // safe to unwrap as roll_count > 0
+                let amount = Amount::from_mantissa_scale(roll_count as u64, 2)
+                    .checked_div_u64(2)
+                    .unwrap();
 
-            // Add slashed amount to block reward
-            *block_credits = block_credits.saturating_add(amount);
+                // Add slashed amount to block reward
+                *block_credits = block_credits.saturating_add(amount);
+            } else {
+                warn!("Unable to slash rolls");
+            }
 
         } else {
             debug!("Invalid denunciation: {:?}", denunciation);
