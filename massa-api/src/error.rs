@@ -36,7 +36,7 @@ pub enum ApiError {
     WalletError(#[from] WalletError),
     /// Not found
     NotFound,
-    /// Inconsistency: {0}
+    /// Inconsistency error: {0}
     InconsistencyError(String),
     /// Missing command sender: {0}
     MissingCommandSender(String),
@@ -50,9 +50,10 @@ pub enum ApiError {
 
 impl From<ApiError> for jsonrpc_core::Error {
     fn from(err: ApiError) -> Self {
+        // JSON-RPC Server errors codes must be between -32099 to -32000
         let code = match err {
-            ApiError::NotFound => -32004,
             ApiError::BadRequest(_) => -32000,
+            ApiError::NotFound => -32004,
             ApiError::SendChannelError(_) => -32006,
             ApiError::ReceiveChannelError(_) => -32007,
             ApiError::MassaHashError(_) => -32008,
@@ -68,7 +69,6 @@ impl From<ApiError> for jsonrpc_core::Error {
             ApiError::MissingConfig(_) => -32018,
             ApiError::WrongAPI => -32019,
         };
-        
         jsonrpc_core::Error {
             code: jsonrpc_core::ErrorCode::ServerError(code),
             message: err.to_string(),
