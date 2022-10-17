@@ -337,7 +337,7 @@ pub async fn send_final_state_stream(
             current_slot = final_state_read.slot;
         }
 
-        if !ledger_part.is_empty()
+        if !last_ledger_step.finished()
             || !last_pool_step.finished()
             || !last_cycle_step.finished()
             || !last_credits_step.finished()
