@@ -4,6 +4,7 @@
 
 mod block_factory;
 mod endorsement_factory;
+mod denunciation_factory;
 mod manager;
 mod run;
 

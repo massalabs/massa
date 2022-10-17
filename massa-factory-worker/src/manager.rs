@@ -4,6 +4,7 @@
 //! See `massa-factory-exports/manager_traits.rs` for functional details.
 
 use std::{sync::mpsc, thread::JoinHandle};
+use crossbeam_channel::Sender;
 
 use massa_factory_exports::FactoryManager;
 use tracing::{info, warn};
@@ -16,6 +17,9 @@ pub struct FactoryManagerImpl {
 
     /// endorsement worker message sender and join handle
     pub(crate) endorsement_worker: Option<(mpsc::Sender<()>, JoinHandle<()>)>,
+
+    /// denunciation worker message sender and join handle
+    pub(crate) denunciation_worker: Option<(Sender<()>, JoinHandle<()>)>,
 }
 
 impl FactoryManager for FactoryManagerImpl {
@@ -34,6 +38,14 @@ impl FactoryManager for FactoryManagerImpl {
                 warn!("endorsement factory worker panicked: {:?}", err);
             }
         }
+
+        if let Some((chan_tx, join_handle)) = self.denunciation_worker.take() {
+            std::mem::drop(chan_tx);
+            if let Err(err) = join_handle.join() {
+                warn!("denunciation factory worker panicked: {:?}", err);
+            }
+        }
+
         info!("factory stopped");
     }
 }

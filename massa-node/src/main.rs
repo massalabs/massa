@@ -63,6 +63,8 @@ use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
 use tokio::signal;
 use tokio::sync::mpsc;
+use crossbeam_channel::unbounded;
+use massa_models::denunciation_interest::DenunciationInterest;
 use tracing::{error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 
@@ -332,6 +334,8 @@ async fn launch(
         selector_controller.clone(),
     );
 
+    let (de_items_tx, de_items_rx) = unbounded::<DenunciationInterest>();
+
     // launch pool controller
     let pool_config = PoolConfig {
         thread_count: THREAD_COUNT,
@@ -345,7 +349,7 @@ async fn launch(
         channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
     };
     let (pool_manager, pool_controller) =
-        start_pool_controller(pool_config, &shared_storage, execution_controller.clone());
+        start_pool_controller(pool_config, &shared_storage, execution_controller.clone(), de_items_tx.clone());
 
     // launch protocol controller
     let protocol_config = ProtocolConfig {
@@ -385,6 +389,7 @@ async fn launch(
             network_event_receiver,
             pool_controller.clone(),
             shared_storage.clone(),
+            de_items_tx
         )
         .await
         .expect("could not start protocol controller");
@@ -439,6 +444,7 @@ async fn launch(
         initial_delay: SETTINGS.factory.initial_delay,
         max_block_size: MAX_BLOCK_SIZE as u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
+        periods_per_cycle: PERIODS_PER_CYCLE,
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
@@ -447,7 +453,8 @@ async fn launch(
         protocol: protocol_command_sender.clone(),
         storage: shared_storage.clone(),
     };
-    let factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
+    let factory_manager = start_factory(factory_config, node_wallet.clone(),
+                                        factory_channels, de_items_rx, GENESIS_KEY.clone());
 
     // launch bootstrap server
     let bootstrap_manager = start_bootstrap_server(

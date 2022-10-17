@@ -17,6 +17,8 @@ use std::{
     sync::Arc,
     thread::JoinHandle,
 };
+use crossbeam_channel::Sender;
+use massa_models::denunciation_interest::DenunciationInterest;
 
 /// Endorsement pool write thread instance
 pub(crate) struct EndorsementPoolThread {
@@ -112,6 +114,7 @@ pub fn start_pool_controller(
     config: PoolConfig,
     storage: &Storage,
     execution_controller: Box<dyn ExecutionController>,
+    de_items_tx: Sender<DenunciationInterest>
 ) -> (Box<dyn PoolManager>, Box<dyn PoolController>) {
     let (operations_input_sender, operations_input_receiver) = sync_channel(config.channels_size);
     let (endorsements_input_sender, endorsements_input_receiver) =
@@ -121,7 +124,7 @@ pub fn start_pool_controller(
         storage,
         execution_controller,
     )));
-    let endorsement_pool = Arc::new(RwLock::new(EndorsementPool::init(config, storage)));
+    let endorsement_pool = Arc::new(RwLock::new(EndorsementPool::init(config, storage, de_items_tx)));
     let controller = PoolControllerImpl {
         _config: config,
         operation_pool: operation_pool.clone(),

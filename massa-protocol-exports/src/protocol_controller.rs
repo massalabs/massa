@@ -157,6 +157,20 @@ impl ProtocolCommandSender {
             })
     }
 
+    /// Propagate a batch of operation ids (from pool).
+    ///
+    /// note: Full `OperationId` is replaced by a `OperationPrefixId` later by the worker.
+    pub fn propagate_operations_sync(&mut self, operations: Storage) -> Result<(), ProtocolError> {
+        massa_trace!("protocol.command_sender.propagate_operations", {
+            "operations": operations.get_op_refs()
+        });
+        self.0
+            .blocking_send(ProtocolCommand::PropagateOperations(operations))
+            .map_err(|_| {
+                ProtocolError::ChannelError("propagate_operation command send error".into())
+            })
+    }
+
     /// propagate endorsements to connected node
     pub fn propagate_endorsements(&mut self, endorsements: Storage) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_endorsements", {

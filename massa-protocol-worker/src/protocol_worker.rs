@@ -36,6 +36,9 @@ use tokio::{
     time::{sleep, sleep_until, Instant, Sleep},
 };
 use tracing::{debug, error, info, warn};
+use massa_models::denunciation_interest::DenunciationInterest;
+use crossbeam_channel::Sender;
+use massa_models::operation::OperationType;
 
 /// start a new `ProtocolController` from a `ProtocolConfig`
 /// - generate keypair
@@ -47,12 +50,14 @@ use tracing::{debug, error, info, warn};
 /// * `network_command_sender`: the `NetworkCommandSender` we interact with
 /// * `network_event_receiver`: the `NetworkEventReceiver` we interact with
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
+/// * `de_items_tx`: Queue to Denunciation factory
 pub async fn start_protocol_controller(
     config: ProtocolConfig,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
+    de_items_tx: Sender<DenunciationInterest>
 ) -> Result<
     (
         ProtocolCommandSender,
@@ -81,6 +86,7 @@ pub async fn start_protocol_controller(
             },
             pool_controller,
             storage,
+            de_items_tx
         )
         .run_loop()
         .await;
@@ -163,6 +169,8 @@ pub struct ProtocolWorker {
     pub(crate) storage: Storage,
     /// Operations to announce at the next interval.
     operations_to_announce: Vec<OperationId>,
+    /// Queue to Denunciation factory
+    pub de_factory_sender: Sender<DenunciationInterest>,
 }
 
 /// channels used by the protocol worker
@@ -199,6 +207,7 @@ impl ProtocolWorker {
         }: ProtocolWorkerChannels,
         pool_controller: Box<dyn PoolController>,
         storage: Storage,
+        de_factory_sender: Sender<DenunciationInterest>,
     ) -> ProtocolWorker {
         ProtocolWorker {
             config,
@@ -221,6 +230,7 @@ impl ProtocolWorker {
             operations_to_announce: Vec::with_capacity(
                 config.operation_announcement_buffer_capacity,
             ),
+            de_factory_sender
         }
     }
 
@@ -909,6 +919,13 @@ impl ProtocolWorker {
             massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": source_node_id,"block_id":block_id, "header": header});
             return Ok(Some((block_id, true)));
         }
+
+
+        if let Err(e) = self.de_factory_sender.send(
+            DenunciationInterest::WrappedHeader(header.clone())) {
+            debug!("Unable to send BlockHeader to DenunciationFactory: {}", e);
+        }
+
         Ok(None)
     }
 
@@ -934,6 +951,14 @@ impl ProtocolWorker {
 
             // Check operation signature only if not already checked.
             if !self.checked_operations.contains_id(&operation_id) {
+
+                // Skip invalid Denunciation op
+                if !match &operation.content.op {
+                    OperationType::Denunciation { data } => { data.is_valid() }
+                    _ => true,
+                } {
+                    continue;
+                }
                 // check signature if the operation wasn't in `checked_operation`
                 new_operations.insert(operation_id, operation);
             };
@@ -959,7 +984,7 @@ impl ProtocolWorker {
         if !new_operations.is_empty() {
             // Store operation, claim locally
             let mut ops = self.storage.clone_without_refs();
-            ops.store_operations(new_operations.into_values().collect());
+            ops.store_operations(new_operations.values().cloned().collect());
 
             // Propagate operations when their expire period isn't `max_operations_propagation_time` old.
             let mut ops_to_propagate = ops.clone();
@@ -995,6 +1020,25 @@ impl ProtocolWorker {
                 ops_to_propagate.get_op_refs().iter().copied().collect();
             self.note_operations_to_announce(&to_announce, op_timer)
                 .await;
+
+            // send Operation(Denunciation) to DenunciationFactory
+            let de_interest_ops = new_operations
+                .iter()
+                .filter(|(_, wrapped_op)| {
+                    match wrapped_op.content.op {
+                        OperationType::Denunciation { .. } => true,
+                        _ => false,
+                    }
+                })
+                .map(|(_, wrapped_op)| wrapped_op.clone())
+                .collect::<Vec<WrappedOperation>>();
+
+            if !de_interest_ops.is_empty() {
+                if let Err(e) = self.de_factory_sender.send(
+                    DenunciationInterest::WrappedOperations(de_interest_ops)) {
+                    debug!("Unable to send Operations to DenunciationFactory: {}", e);
+                }
+            }
 
             // Add to pool
             self.pool_controller.add_operations(ops);
@@ -1100,7 +1144,7 @@ impl ProtocolWorker {
                     .await;
             }
 
-            // Add to pool
+            // Add endorsements to pool
             self.pool_controller.add_endorsements(endorsements);
         }
 

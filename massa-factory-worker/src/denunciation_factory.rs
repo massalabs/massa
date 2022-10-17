@@ -1,6 +1,6 @@
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_models::{
-    denunciation::{Denunciation, DenunciationSerializer},
+    denunciation::{Denunciation},
     slot::Slot,
     wrapped::WrappedContent,
 };
@@ -26,15 +26,12 @@ const DENUNCIATION_EXPIRE_CYCLE_DELTA_EXPIRE_COUNT: u64 = 3;
 /// Structure gathering all elements needed by the factory thread
 pub(crate) struct DenunciationFactoryWorker {
     cfg: FactoryConfig,
-    // wallet: Arc<RwLock<Wallet>>,
     channels: FactoryChannels,
     factory_receiver: Receiver<()>,
-    half_t0: MassaTime,
 
     items_of_interest_receiver: Receiver<DenunciationInterest>,
     genesis_key: KeyPair,
 
-    denunciation_serializer: DenunciationSerializer, // FIXME: should be OperationSerializer?
     endorsements_by_slot_index: HashMap<(Slot, u32), Vec<WrappedEndorsement>>,
     block_header_by_slot: HashMap<Slot, Vec<WrappedHeader>>,
 
@@ -56,20 +53,14 @@ impl DenunciationFactoryWorker {
         genesis_key: KeyPair
     ) -> thread::JoinHandle<()> {
         thread::Builder::new()
-            .name("endorsement factory worker".into())
+            .name("Denunciation factory worker".into())
             .spawn(|| {
 
                 let thread_count: usize = cfg.thread_count.into();
                 let mut this = Self {
-                    half_t0: cfg
-                        .t0
-                        .checked_div_u64(2)
-                        .expect("could not compute half_t0"),
                     cfg,
-                    // wallet,
                     channels,
                     factory_receiver,
-                    denunciation_serializer: DenunciationSerializer::new(),
                     endorsements_by_slot_index: Default::default(),
                     block_header_by_slot: Default::default(),
                     seen_endorsement_denunciation: Default::default(),

@@ -1575,6 +1575,7 @@ name = "massa-node"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "crossbeam-channel",
  "dialoguer",
  "enum-map",
  "lazy_static",
@@ -1878,6 +1879,8 @@ name = "massa_factory_worker"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "crossbeam-channel",
+ "itertools",
  "massa_consensus_exports",
  "massa_factory_exports",
  "massa_hash",
@@ -2074,6 +2077,7 @@ dependencies = [
 name = "massa_pool_worker"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "massa_execution_exports",
  "massa_hash",
  "massa_models",
@@ -2153,6 +2157,7 @@ dependencies = [
 name = "massa_protocol_worker"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "futures 0.3.24",
  "lazy_static",
  "massa_hash",

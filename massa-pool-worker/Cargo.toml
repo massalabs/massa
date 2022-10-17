@@ -7,8 +7,9 @@ edition = "2021"
 [dependencies]
 num = "0.4"
 tracing = "0.1"
-# custom modules
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
+crossbeam-channel = "0.5"
+# custom modules
 massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
 massa_pool_exports = { path = "../massa-pool-exports" }
