@@ -22,6 +22,10 @@ use massa_models::denunciation_interest::DenunciationInterest;
 use massa_models::timeslots::get_closest_slot_to_timestamp;
 
 const DENUNCIATION_EXPIRE_CYCLE_DELTA_EXPIRE_COUNT: u64 = 3;
+const ENDORSEMENT_DENUNCIATION_CACHE_MAX_SIZE: usize = 4096;
+const ENDORSEMENT_BY_CACHE_MAX_SIZE: usize = 4096;
+const BLOCK_HEADER_DENUNCIATION_CACHE_MAX_SIZE: usize = 4096;
+const BLOCK_HEADER_BY_CACHE_MAX_SIZE: usize = 4096;
 
 /// Structure gathering all elements needed by the factory thread
 pub(crate) struct DenunciationFactoryWorker {
@@ -93,6 +97,16 @@ impl DenunciationFactoryWorker {
 
         let key = (wrapped_endorsement.content.slot, wrapped_endorsement.content.index);
         if self.seen_endorsement_denunciation.contains(&key) {
+            return;
+        }
+
+        if self.seen_endorsement_denunciation.len() > ENDORSEMENT_DENUNCIATION_CACHE_MAX_SIZE ||
+            self.endorsements_by_slot_index.len() > ENDORSEMENT_BY_CACHE_MAX_SIZE {
+            // TODO: Remove this for Testnet 17
+            //       Debug feature for Testnet 16.x only
+            debug!("[De Factory] new endorsements: cache full: {}, {}",
+                self.seen_endorsement_denunciation.len(),
+                self.endorsements_by_slot_index.len());
             return;
         }
 
@@ -170,6 +184,16 @@ impl DenunciationFactoryWorker {
         let key = wrapped_header.content.slot;
 
         if self.seen_block_header_denunciation.contains(&key) {
+            return;
+        }
+
+        if self.seen_block_header_denunciation.len() > BLOCK_HEADER_DENUNCIATION_CACHE_MAX_SIZE ||
+            self.block_header_by_slot.len() > BLOCK_HEADER_BY_CACHE_MAX_SIZE {
+            // TODO: Remove this for Testnet 17
+            //       Debug feature for Testnet 16.x only
+            debug!("[De Factory] new block header: cache full: {}, {}",
+                self.seen_block_header_denunciation.len(),
+                self.block_header_by_slot.len());
             return;
         }
 
