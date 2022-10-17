@@ -29,6 +29,7 @@ use std::fmt::{Debug, Display};
 use std::net::IpAddr;
 use std::path::PathBuf;
 use std::process;
+use std::str::FromStr;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty, EnumString};
 
@@ -833,7 +834,10 @@ impl Command {
                 let fee = parameters[3].parse::<Amount>()?;
 
                 if !json {
-                    match Amount::from_raw(max_gas).checked_add(fee) {
+                    match Amount::from_str(&max_gas.to_string())
+                        .unwrap_or(Amount::default())
+                        .checked_add(fee)
+                    {
                         Some(total) => {
                             if let Ok(addresses_info) =
                                 client.public.get_addresses(vec![addr]).await
@@ -893,7 +897,10 @@ impl Command {
                 let coins = parameters[5].parse::<Amount>()?;
                 let fee = parameters[6].parse::<Amount>()?;
                 if !json {
-                    match Amount::from_raw(max_gas).checked_add(fee) {
+                    match Amount::from_str(&max_gas.to_string())
+                        .unwrap_or(Amount::default())
+                        .checked_add(fee)
+                    {
                         Some(total) => {
                             if let Ok(addresses_info) =
                                 client.public.get_addresses(vec![target_addr]).await
