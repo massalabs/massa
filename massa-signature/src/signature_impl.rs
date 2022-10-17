@@ -76,7 +76,7 @@ impl FromStr for KeyPair {
                         .with_check(None)
                         .into_vec()
                         .map_err(|_| {
-                            MassaSignatureError::ParsingError(format!("Bad secret key bs58: {}", s))
+                            MassaSignatureError::ParsingError(format!("bad secret key bs58: {}", s))
                         })?;
                 let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
                 let (rest, _version) = u64_deserializer
@@ -84,13 +84,13 @@ impl FromStr for KeyPair {
                     .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))?;
                 KeyPair::from_bytes(&rest.try_into().map_err(|_| {
                     MassaSignatureError::ParsingError(format!(
-                        "Secret key not long enough for: {}",
+                        "secret key not long enough for: {}",
                         s
                     ))
                 })?)
             }
             _ => Err(MassaSignatureError::ParsingError(format!(
-                "Bad secret prefix for: {}",
+                "bad secret prefix for: {}",
                 s
             ))),
         }

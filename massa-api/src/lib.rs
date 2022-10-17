@@ -158,7 +158,7 @@ pub trait Endpoints {
     #[rpc(name = "node_sign_message")]
     fn node_sign_message(&self, _: Vec<u8>) -> BoxFuture<Result<PubkeySig, ApiError>>;
 
-    /// Add a vector of new private keys for the node to use to stake.
+    /// Add a vector of new secret(private) keys for the node to use to stake.
     /// No confirmation to expect.
     #[rpc(name = "add_staking_secret_keys")]
     fn add_staking_secret_keys(&self, _: Vec<String>) -> BoxFuture<Result<(), ApiError>>;
