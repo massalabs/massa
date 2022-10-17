@@ -27,4 +27,7 @@ pub struct FactoryConfig {
 
     /// maximal block gas
     pub max_block_gas: u64,
+
+    /// cycle duration in periods
+    pub periods_per_cycle: u64
 }

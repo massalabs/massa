@@ -9,6 +9,9 @@ use massa_models::{
 use massa_pool_exports::PoolConfig;
 use massa_storage::Storage;
 use std::collections::{BTreeMap, HashMap};
+use crossbeam_channel::Sender;
+use tracing::debug;
+use massa_models::denunciation_interest::DenunciationInterest;
 
 pub struct EndorsementPool {
     /// configuration
@@ -26,16 +29,21 @@ pub struct EndorsementPool {
 
     /// last consensus final periods, per thread
     last_cs_final_periods: Vec<u64>,
+
+    /// Queue to Denunciation factory
+    de_items_tx: Sender<DenunciationInterest>
 }
 
 impl EndorsementPool {
-    pub fn init(config: PoolConfig, storage: &Storage) -> Self {
+    pub fn init(config: PoolConfig, storage: &Storage, de_items_tx: Sender<DenunciationInterest>) -> Self {
         EndorsementPool {
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
             endorsements_indexed: Default::default(),
             endorsements_sorted: vec![Default::default(); config.thread_count as usize],
+            // endorsements_indexed_light: Default::default(),
             config,
             storage: storage.clone_without_refs(),
+            de_items_tx
         }
     }
 
@@ -72,6 +80,12 @@ impl EndorsementPool {
             }
         }
         self.storage.drop_endorsement_refs(&removed);
+
+        // Send to Denunciation factory
+        let de_interest = DenunciationInterest::Final(self.last_cs_final_periods.clone());
+        self.de_items_tx
+            .send(de_interest)
+            .expect("Unable to send consensus final periods");
     }
 
     /// Add a list of endorsements to the pool
@@ -115,6 +129,12 @@ impl EndorsementPool {
                         panic!("endorsement is expected to be absent from endorsements_sorted at this point");
                     }
                     added.insert(endo.id);
+
+                    // Send endorsements to Denunciation Factory
+                    let de_interest = DenunciationInterest::WrappedEndorsement(endo.clone());
+                    if let Err(e) = self.de_items_tx.send(de_interest) {
+                        debug!("Cannot send endorsement to Denunciation factory: {}", e);
+                    }
                 }
             }
         }

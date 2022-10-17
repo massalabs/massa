@@ -13,4 +13,6 @@ pub enum DenunciationInterest {
     WrappedOperations(Vec<WrappedOperation>),
     /// Send new block header to Denunciation factory
     WrappedHeader(WrappedHeader), // Wrapped<BlockHeader, BlockId>
+    /// Use to notify for final cs period to Denunciation Factory
+    Final(Vec<u64>)
 }

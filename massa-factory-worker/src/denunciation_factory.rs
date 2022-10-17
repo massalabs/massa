@@ -19,6 +19,9 @@ use crossbeam_channel::{select, Receiver};
 use massa_models::block::WrappedHeader;
 use massa_models::denunciation::DenunciationProof;
 use massa_models::denunciation_interest::DenunciationInterest;
+use massa_models::timeslots::get_closest_slot_to_timestamp;
+
+const DENUNCIATION_EXPIRE_CYCLE_DELTA_EXPIRE_COUNT: u64 = 3;
 
 /// Structure gathering all elements needed by the factory thread
 pub(crate) struct DenunciationFactoryWorker {
@@ -28,18 +31,18 @@ pub(crate) struct DenunciationFactoryWorker {
     factory_receiver: Receiver<()>,
     half_t0: MassaTime,
 
-    // TODO: BlockHeader, Denunciation
     items_of_interest_receiver: Receiver<DenunciationInterest>,
     genesis_key: KeyPair,
 
     denunciation_serializer: DenunciationSerializer, // FIXME: should be OperationSerializer?
-    // seen_endorsements: PreHashMap<EndorsementId, WrappedEndorsement>,
     endorsements_by_slot_index: HashMap<(Slot, u32), Vec<WrappedEndorsement>>,
     block_header_by_slot: HashMap<Slot, Vec<WrappedHeader>>,
 
     seen_endorsement_denunciation: HashSet<(Slot, u32)>,
     seen_block_header_denunciation: HashSet<Slot>,
 
+    /// last consensus final periods, per thread
+    last_cs_final_periods: Vec<u64>,
 }
 
 impl DenunciationFactoryWorker {
@@ -55,6 +58,8 @@ impl DenunciationFactoryWorker {
         thread::Builder::new()
             .name("endorsement factory worker".into())
             .spawn(|| {
+
+                let thread_count: usize = cfg.thread_count.into();
                 let mut this = Self {
                     half_t0: cfg
                         .t0
@@ -70,110 +75,30 @@ impl DenunciationFactoryWorker {
                     seen_endorsement_denunciation: Default::default(),
                     seen_block_header_denunciation: Default::default(),
                     items_of_interest_receiver,
-                    genesis_key
+                    genesis_key,
+                    last_cs_final_periods: vec![0u64; thread_count]
                 };
                 this.run();
             })
             .expect("could not spawn endorsement factory worker thread")
     }
 
-    /*
-    /// Process a slot: produce an endorsement at that slot if one of the managed keys is drawn.
-    fn process_slot(&mut self, slot: Slot) {
+    /// Gets the next slot
+    fn get_next_slot(&self) -> Slot {
+        // get delayed time
+        let now = MassaTime::now(self.cfg.clock_compensation_millis)
+                .expect("could not get current time");
 
-        // FIXME: Which address to use?
-        // Early return if nothing in Wallet (need a pub ley to sign new Operation)
-        let keypairs = self.wallet
-            .read()
-            .get_full_wallet()
-            .iter()
-            .take(1)
-            .map(|(addr, keypair)| keypair.clone())
-            .collect::<Vec<KeyPair>>();
-
-        if keypairs.is_empty() {
-            return;
-        }
-        let keypair = keypairs.get(0).unwrap(); // safe to unwrap here
-
-        // Find new endorsements (not yet seen) from Storage
-        let mut endo_storage = self.channels.storage.clone_without_refs();
-        let endorsement_indexes = endo_storage.read_endorsements();
-
-        let new_endorsements: PreHashMap<EndorsementId, WrappedEndorsement> = endorsement_indexes
-            .endorsements
-            .iter()
-            .filter(|(id, _)| self.seen_endorsements.contains_key(id) )
-            .map(|(id, wrapped_endo)| (id.clone(), wrapped_endo.clone()))
-            .collect();
-
-        // Early return if nothing to do
-        if new_endorsements.is_empty() {
-            return;
-        }
-
-        let mut denunciations : Vec<Denunciation> = Vec::new();
-
-        for (endo_id, wrapped_endo) in new_endorsements.into_iter() {
-
-            // Store them in seen_endorsements
-            // FIXME: what to do if insert fail?
-            self.seen_endorsements.insert(endo_id, wrapped_endo.clone());
-
-            // Store them in endorsements_by_slot_index
-            let key = (wrapped_endo.content.slot, wrapped_endo.content.index);
-            let res = self.endorsements_by_slot_index
-                .entry(key)
-                .and_modify(|h| {
-                    h.insert(endo_id);
-                });
-
-            // create a denunciation
-            match res {
-                Entry::Occupied(eo) => {
-                    let denunciations_ = eo
-                        .get()
-                        .iter()
-                        .take(2) // only 1 denunciation for now
-                        .tuples()
-                        .map(|(e_id1, e_id2)| {
-                            let e1 = self.seen_endorsements.get(e_id1).unwrap();
-                            let e2 = self.seen_endorsements.get(e_id2).unwrap();
-                            Denunciation::from_wrapped_endorsements(e1, e2)
-                        })
-                        .collect::<Vec<Denunciation>>();
-
-                    denunciations.extend(denunciations_);
-                }
-                Entry::Vacant(_) => {}
-            }
-        }
-
-        // Store WrappedOperation's (made from denunciations) it
-        self.channels.storage.store_operations(
-            denunciations
-                .iter()
-                .map(|de| {
-                    // FIXME: fee & expire_period?
-                    let op = Operation {
-                        fee: Default::default(),
-                        expire_period: 0,
-                        op: OperationType::Denunciation { data: de.clone() },
-                    };
-                    Operation::new_wrapped(op,
-                                           OperationSerializer::new(),
-                                           keypair).unwrap()
-                })
-                .collect()
+        // get closest slot according to the current absolute time
+        let next_slot = get_closest_slot_to_timestamp(
+            self.cfg.thread_count,
+            self.cfg.t0,
+            self.cfg.genesis_timestamp,
+            now,
         );
 
-        // Clean too old Denunciations (removing too old Slot)
-        // TODO: on what criteria? Too old / Too much in the future?
-        //
-
-
+        next_slot
     }
-    */
 
     fn process_new_endorsement(&mut self, wrapped_endorsement: WrappedEndorsement) {
 
@@ -238,7 +163,7 @@ impl DenunciationFactoryWorker {
         de_storage.store_operations(wrapped_operations.unwrap());
         // TODO: enable this for testnet 17
         // self.channels.pool.add_operations(de_storage.clone());
-        debug!("Should add Denunciation operations to pool...");
+        debug!("[De Factory] Should add Denunciation operations to pool...");
         // TODO: enable this for testnet 17
         // And now send them to ProtocolWorker (for propagation)
         /*
@@ -246,7 +171,9 @@ impl DenunciationFactoryWorker {
             warn!("could not propagate denunciations to protocol: {}", err);
         }
         */
-        debug!("Should propagate Denunciation operations...");
+        debug!("[De Factory] Should propagate Denunciation operations...");
+
+        self.cleanup_cache();
     }
 
     fn process_new_block_header(&mut self, wrapped_header: WrappedHeader) {
@@ -314,7 +241,7 @@ impl DenunciationFactoryWorker {
 
         // TODO: enable this for testnet 17
         // self.channels.pool.add_operations(de_storage.clone());
-        debug!("Should add Denunciation operations to pool...");
+        debug!("[De Factory] Should add Denunciation operations to pool...");
         // TODO: enable this for testnet 17
         // And now send them to ProtocolWorker (for propagation)
         /*
@@ -322,7 +249,9 @@ impl DenunciationFactoryWorker {
             warn!("could not propagate denunciations to protocol: {}", err);
         }
         */
-        debug!("Should propagate Denunciation operations...");
+        debug!("[De Factory] Should propagate Denunciation operations...");
+
+        self.cleanup_cache();
     }
 
     fn process_new_ops(&mut self, wrapped_operations: Vec<WrappedOperation>) {
@@ -332,16 +261,43 @@ impl DenunciationFactoryWorker {
             .iter()
             .for_each(|wop| {
                 if let OperationType::Denunciation { data: de } = &wop.content.op {
-                    match de.proof.as_ref() {
-                        DenunciationProof::Endorsement(ed) => {
-                            self.seen_endorsement_denunciation.insert((de.slot, ed.index));
-                        }
-                        DenunciationProof::Block(_) => {
-                            self.seen_block_header_denunciation.insert(de.slot);
+                    let next_slot = self.get_next_slot();
+                    if !is_expired_for_denunciation(&de.slot, &next_slot,
+                                                         &self.last_cs_final_periods, self.cfg.periods_per_cycle) {
+                        match de.proof.as_ref() {
+                            DenunciationProof::Endorsement(ed) => {
+                                self.seen_endorsement_denunciation.insert((de.slot, ed.index));
+                            }
+                            DenunciationProof::Block(_) => {
+                                self.seen_block_header_denunciation.insert(de.slot);
+                            }
                         }
                     }
                 }
             })
+    }
+
+
+    fn cleanup_cache(&mut self) {
+
+        let next_slot = self.get_next_slot();
+
+        self.endorsements_by_slot_index.retain(|(slot, _index), _| {
+            !is_expired_for_denunciation(slot, &next_slot,
+                                         &self.last_cs_final_periods, self.cfg.periods_per_cycle)
+        });
+        self.block_header_by_slot.retain(|slot, _| {
+            !is_expired_for_denunciation(slot, &next_slot,
+                                         &self.last_cs_final_periods, self.cfg.periods_per_cycle)
+        });
+        self.seen_endorsement_denunciation.retain(|(slot, _index)| {
+            !is_expired_for_denunciation(slot, &next_slot,
+                                         &self.last_cs_final_periods, self.cfg.periods_per_cycle)
+        });
+        self.seen_block_header_denunciation.retain(|slot| {
+            !is_expired_for_denunciation(slot, &next_slot,
+                                         &self.last_cs_final_periods, self.cfg.periods_per_cycle)
+        });
     }
 
     /// main run loop of the endorsement creator thread
@@ -360,6 +316,9 @@ impl DenunciationFactoryWorker {
                         Ok(DenunciationInterest::WrappedHeader(wrapped_header)) => {
                             self.process_new_block_header(wrapped_header);
                         }
+                        Ok(DenunciationInterest::Final(final_periods)) => {
+                            self.last_cs_final_periods = final_periods;
+                        }
                         Err(e) => {
                             debug!("[De Factory] Error from items of interest receiver: {}", e);
                             break;
@@ -375,4 +334,26 @@ impl DenunciationFactoryWorker {
             }
         }
     }
+}
+
+
+/// Return true if denunciation slot is expired (either final or in tool old cycle)
+fn is_expired_for_denunciation(denunciation_slot: &Slot, next_slot: &Slot,
+                               last_cs_final_periods: &Vec<u64>, periods_per_cycle: u64) -> bool {
+
+    // Slot is final => cannot be Denounced anymore
+    if denunciation_slot.period <= last_cs_final_periods[denunciation_slot.thread as usize] {
+        return true;
+    }
+
+    // As we need to ensure that the Denounced has Deferred credit
+    // we reject Denunciation older than 3 cycle compared to the next slot
+    let cycle = denunciation_slot.get_cycle(periods_per_cycle);
+    let next_cycle = next_slot.get_cycle(periods_per_cycle);
+
+    if (next_cycle - cycle) > DENUNCIATION_EXPIRE_CYCLE_DELTA_EXPIRE_COUNT {
+        return true;
+    }
+
+    false
 }
