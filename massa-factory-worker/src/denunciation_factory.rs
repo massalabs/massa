@@ -81,14 +81,12 @@ impl DenunciationFactoryWorker {
                 .expect("could not get current time");
 
         // get closest slot according to the current absolute time
-        let next_slot = get_closest_slot_to_timestamp(
+        get_closest_slot_to_timestamp(
             self.cfg.thread_count,
             self.cfg.t0,
             self.cfg.genesis_timestamp,
             now,
-        );
-
-        next_slot
+        )
     }
 
     fn process_new_endorsement(&mut self, wrapped_endorsement: WrappedEndorsement) {
@@ -330,7 +328,7 @@ impl DenunciationFactoryWorker {
 
 /// Return true if denunciation slot is expired (either final or in tool old cycle)
 fn is_expired_for_denunciation(denunciation_slot: &Slot, next_slot: &Slot,
-                               last_cs_final_periods: &Vec<u64>, periods_per_cycle: u64) -> bool {
+                               last_cs_final_periods: &[u64], periods_per_cycle: u64) -> bool {
 
     // Slot is final => cannot be Denounced anymore
     if denunciation_slot.period <= last_cs_final_periods[denunciation_slot.thread as usize] {

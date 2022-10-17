@@ -99,7 +99,7 @@ pub enum DenunciationProof {
 
 impl AsRef<Self> for DenunciationProof {
     fn as_ref(&self) -> &Self {
-        &self
+        self
     }
 }
 
@@ -166,9 +166,9 @@ impl From<(&WrappedEndorsement, &WrappedEndorsement)> for Denunciation {
             proof: DenunciationProof::Endorsement(EndorsementDenunciation {
                 index: e1.content.index,
                 signature_1: e1.signature,
-                hash_1: e1.id.get_hash().clone(),
+                hash_1: *e1.id.get_hash(),
                 signature_2: e2.signature,
-                hash_2: e2.id.get_hash().clone(),
+                hash_2: *e2.id.get_hash(),
             })
         }
     }
@@ -182,9 +182,9 @@ impl From<(&WrappedHeader, &WrappedHeader)> for Denunciation {
             pub_key: h1.creator_public_key,
             proof: DenunciationProof::Block(BlockDenunciation {
                 signature_1: h1.signature,
-                hash_1: h1.id.get_hash().clone(),
+                hash_1: *h1.id.get_hash(),
                 signature_2: h2.signature,
-                hash_2: h2.id.get_hash().clone(),
+                hash_2: *h2.id.get_hash(),
             })
         }
     }
@@ -214,13 +214,11 @@ impl DenunciationSerializer {
     }
 }
 
-/*
 impl Default for DenunciationSerializer {
     fn default() -> Self {
         Self::new()
     }
 }
-*/
 
 impl Serializer<Denunciation> for DenunciationSerializer {
     /// ## Example:

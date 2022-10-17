@@ -49,7 +49,7 @@ pub fn start_factory(
 
     // start endorsement factory worker
     let endorsement_worker_handle =
-        EndorsementFactoryWorker::spawn(cfg.clone(), wallet.clone(), channels.clone(), endorsement_worker_rx);
+        EndorsementFactoryWorker::spawn(cfg.clone(), wallet, channels.clone(), endorsement_worker_rx);
 
     let denunciation_worker_handle = DenunciationFactoryWorker::spawn(
         cfg,

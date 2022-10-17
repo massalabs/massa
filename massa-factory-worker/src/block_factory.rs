@@ -217,7 +217,7 @@ impl BlockFactoryWorker {
                                                OperationSerializer::new(),
                                                block_producer_keypair).unwrap();
 
-                        let op_id_ = wrapped_op.id.clone();
+                        let op_id_ = wrapped_op.id;
                         new_ops_ref.push(wrapped_op);
                         op_id_
                     },

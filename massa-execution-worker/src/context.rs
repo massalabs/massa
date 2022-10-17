@@ -649,14 +649,14 @@ impl ExecutionContext {
         let mut sold_rolls = Amount::zero();
 
         // First try to slash roll if any
-        if let Err(_) = self.speculative_roll_state.try_sell_rolls(
+        if self.speculative_roll_state.try_sell_rolls(
             denounced_addr,
             self.slot,
             ROLL_COUNT,
             self.config.periods_per_cycle,
             self.config.thread_count,
             self.config.roll_price,
-        ) {
+        ).is_err() {
 
             // if no roll were slashed, that can likely be done from deferred credit
             let credits = self.speculative_roll_state.get_deferred_credits(&self.slot);

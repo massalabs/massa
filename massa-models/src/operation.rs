@@ -597,7 +597,7 @@ impl Serializer<OperationType> for OperationTypeSerializer {
             OperationType::Denunciation { data } => {
                 self.u32_serializer
                     .serialize(&u32::from(OperationTypeId::Denunciation), buffer)?;
-                self.denunciation_serializer.serialize(&data, buffer)?;
+                self.denunciation_serializer.serialize(data, buffer)?;
             }
         }
         Ok(())

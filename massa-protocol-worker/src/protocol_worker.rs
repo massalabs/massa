@@ -1025,10 +1025,7 @@ impl ProtocolWorker {
             let de_interest_ops = new_operations
                 .iter()
                 .filter(|(_, wrapped_op)| {
-                    match wrapped_op.content.op {
-                        OperationType::Denunciation { .. } => true,
-                        _ => false,
-                    }
+                    matches!(wrapped_op.content.op, OperationType::Denunciation { .. })
                 })
                 .map(|(_, wrapped_op)| wrapped_op.clone())
                 .collect::<Vec<WrappedOperation>>();
