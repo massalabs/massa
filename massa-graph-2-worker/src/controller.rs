@@ -21,6 +21,13 @@ use std::sync::{mpsc::SyncSender, Arc};
 
 use crate::{commands::GraphCommand, state::GraphState};
 
+/// The retrieval of data is made using a shared state and modifications are asked by sending message to a channel.
+/// This is done mostly to be able to:
+///
+/// - send commands through the channel without waiting for them to be processed from the point of view of the sending thread, and channels are very much optimal for that (much faster than locks)
+/// - still be able to read the current state of the graph as processed so far (for this we need a shared state)
+///
+/// Note that sending commands and reading the state is done from different, mutually-asynchronous tasks and they can have data that are not sync yet.
 #[derive(Clone)]
 pub struct GraphControllerImpl {
     command_sender: SyncSender<GraphCommand>,
@@ -40,6 +47,14 @@ impl GraphControllerImpl {
 }
 
 impl GraphController for GraphControllerImpl {
+    /// Get a block graph export in a given period.
+    ///
+    /// # Arguments:
+    /// * `start_slot`: the start slot
+    /// * `end_slot`: the end slot
+    ///
+    /// # Returns:
+    /// An export of the block graph in this period
     fn get_block_graph_status(
         &self,
         start_slot: Option<Slot>,
@@ -50,6 +65,13 @@ impl GraphController for GraphControllerImpl {
             .extract_block_graph_part(start_slot, end_slot)
     }
 
+    /// Get statuses of blocks present in the graph
+    ///
+    /// # Arguments:
+    /// * `block_ids`: the block ids to get the status of
+    ///
+    /// # Returns:
+    /// A vector of statuses sorted by the order of the block ids
     fn get_block_statuses(&self, ids: Vec<BlockId>) -> Vec<BlockGraphStatus> {
         let read_shared_state = self.shared_state.read();
         ids.iter()
@@ -57,10 +79,19 @@ impl GraphController for GraphControllerImpl {
             .collect()
     }
 
+    /// Get all the cliques possible in the block graph.
+    ///
+    /// # Returns:
+    /// A vector of cliques
     fn get_cliques(&self) -> Vec<Clique> {
         self.shared_state.read().max_cliques.clone()
     }
 
+    /// Get a part of the graph to send to a node so that he can setup his graph.
+    /// Used for bootstrap.
+    ///
+    /// # Returns:
+    /// A portion of the graph
     fn get_bootstrap_graph(&self) -> GraphResult<BootstrapableGraph> {
         let read_shared_state = self.shared_state.read();
         let mut required_final_blocks: PreHashSet<_> =
@@ -94,20 +125,39 @@ impl GraphController for GraphControllerImpl {
         Ok(BootstrapableGraph { final_blocks })
     }
 
+    /// Get the stats of the consensus
     fn get_stats(&self) -> GraphResult<ConsensusStats> {
         self.shared_state.read().get_stats()
     }
 
+    /// Get the current best parents for a block creation
+    ///
+    /// # Returns:
+    /// A block id and a period for each thread of the graph
     fn get_best_parents(&self) -> Vec<(BlockId, u64)> {
         self.shared_state.read().best_parents.clone()
     }
 
+    /// Get the block, that is in the blockclique, at a given slot.
+    ///
+    /// # Arguments:
+    /// * `slot`: the slot to get the block at
+    ///
+    /// # Returns:
+    /// The block id of the block at the given slot if exists
     fn get_blockclique_block_at_slot(&self, slot: Slot) -> Option<BlockId> {
         self.shared_state
             .read()
             .get_blockclique_block_at_slot(&slot)
     }
 
+    /// Get the latest block, that is in the blockclique, in the thread of the given slot and before this `slot`.
+    ///
+    /// # Arguments:
+    /// * `slot`: the slot that will give us the thread and the upper bound
+    ///
+    /// # Returns:
+    /// The block id of the latest block in the thread of the given slot and before this slot if exists
     fn get_latest_blockclique_block_at_slot(&self, slot: Slot) -> BlockId {
         self.shared_state
             .read()
