@@ -72,13 +72,11 @@ impl ExecutedOps {
 
     /// check if an operation was executed
     pub fn contains(&self, op_id: &OperationId) -> bool {
-        // TODO: impl id contains for new struct
-        // self.ops.contains(op_id)
-        true
+        self.ops.values().any(|contained_id| contained_id == op_id)
     }
 
     /// marks an op as executed
-    pub fn insert(&mut self, op_id: OperationId, expiration_slot: Slot) {
+    pub fn insert(&mut self, expiration_slot: Slot, op_id: OperationId) {
         if self.ops.try_insert(expiration_slot, op_id).is_ok() {
             let hash = Hash::compute_from(
                 &[&op_id.to_bytes()[..], &expiration_slot.to_bytes_key()[..]].concat(),
@@ -115,8 +113,17 @@ impl ExecutedOps {
             StreamingStep::Ongoing(operation_id) => Excluded(operation_id),
             StreamingStep::Finished => return (ops_part, cursor),
         };
-        // TODO: stream parts here
-        (self.clone(), StreamingStep::Finished)
+        let mut ops_part_last_slot: Option<Slot> = None;
+        for (&slot, &op_id) in self.ops.range((left_bound, Unbounded)) {
+            // FOLLOW-UP TODO: stream in multiple parts
+            ops_part.insert(slot, op_id);
+            ops_part_last_slot = Some(slot);
+        }
+        if let Some(last_slot) = ops_part_last_slot {
+            (ops_part, StreamingStep::Ongoing(last_slot))
+        } else {
+            (ops_part, StreamingStep::Finished)
+        }
     }
 
     /// Set a part of the executed operations.
@@ -145,28 +152,28 @@ fn test_executed_ops_xor_computing() {
     for i in 0u8..20 {
         if i < 12 {
             a.insert(
-                OperationId::new(Hash::compute_from(&[i])),
                 Slot {
                     period: i as u64,
                     thread: 0,
                 },
+                OperationId::new(Hash::compute_from(&[i])),
             );
         }
         if i > 8 {
             b.insert(
-                OperationId::new(Hash::compute_from(&[i])),
                 Slot {
                     period: (i as u64),
                     thread: 0,
                 },
+                OperationId::new(Hash::compute_from(&[i])),
             );
         }
         c.insert(
-            OperationId::new(Hash::compute_from(&[i])),
             Slot {
                 period: (i as u64),
                 thread: 0,
             },
+            OperationId::new(Hash::compute_from(&[i])),
         );
     }
     // extend a with b which performs a.hash ^ b.hash

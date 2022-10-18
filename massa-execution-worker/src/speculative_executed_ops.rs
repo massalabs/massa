@@ -81,8 +81,8 @@ impl SpeculativeExecutedOps {
     ///
     /// # Arguments
     /// * `op_id`: operation ID
-    /// * `op_valid_until_slot`: slot until which the operation remains valid (included)
-    pub fn insert_executed_op(&mut self, op_id: OperationId, op_valid_until_slot: Slot) {
-        self.executed_ops.insert(op_id, op_valid_until_slot);
+    /// * `expiration_slot`: slot until which the operation remains valid (included)
+    pub fn insert_executed_op(&mut self, expiration_slot: Slot, op_id: OperationId) {
+        self.executed_ops.insert(expiration_slot, op_id);
     }
 }
