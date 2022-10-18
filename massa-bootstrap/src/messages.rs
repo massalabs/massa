@@ -284,7 +284,8 @@ impl BootstrapServerMessageDeserializer {
         max_operations_per_block: u32,
         max_bootstrap_final_state_parts_size: u64,
         max_async_pool_changes: u64,
-        max_data_async_message: u64,
+        max_async_pool_length: u64,
+        max_async_message_data: u64,
         max_ledger_changes_count: u64,
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
@@ -297,6 +298,7 @@ impl BootstrapServerMessageDeserializer {
         max_op_datastore_value_length: u64,
         max_changes_slot_count: u64,
         max_rolls_length: u64,
+        max_production_stats_length: u64,
         max_credits_length: u64,
     ) -> Self {
         Self {
@@ -310,12 +312,13 @@ impl BootstrapServerMessageDeserializer {
             state_changes_deserializer: StateChangesDeserializer::new(
                 thread_count,
                 max_async_pool_changes,
-                max_data_async_message,
+                max_async_message_data,
                 max_ledger_changes_count,
                 max_datastore_key_length,
                 max_datastore_value_length,
                 max_datastore_entry_count,
                 max_rolls_length,
+                max_production_stats_length,
                 max_credits_length,
             ),
             length_state_changes: U64VarIntDeserializer::new(
@@ -348,10 +351,12 @@ impl BootstrapServerMessageDeserializer {
             ),
             async_pool_deserializer: AsyncPoolDeserializer::new(
                 thread_count,
-                max_data_async_message,
+                max_async_pool_length,
+                max_async_message_data,
             ),
             opt_pos_cycle_deserializer: OptionDeserializer::new(CycleInfoDeserializer::new(
                 max_rolls_length,
+                max_production_stats_length,
             )),
             pos_credits_deserializer: DeferredCreditsDeserializer::new(
                 thread_count,

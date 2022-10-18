@@ -311,7 +311,7 @@ pub struct AsyncMessageDeserializer {
 }
 
 impl AsyncMessageDeserializer {
-    pub fn new(thread_count: u8, max_data_async_message: u64) -> Self {
+    pub fn new(thread_count: u8, max_async_message_data: u64) -> Self {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
@@ -328,7 +328,7 @@ impl AsyncMessageDeserializer {
             max_gas_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             data_deserializer: VecU8Deserializer::new(
                 Included(0),
-                Included(max_data_async_message),
+                Included(max_async_message_data),
             ),
             address_deserializer: AddressDeserializer::new(),
         }

@@ -90,12 +90,12 @@ pub struct CycleInfoDeserializer {
 
 impl CycleInfoDeserializer {
     /// Creates a new `CycleInfo` deserializer
-    pub fn new(max_rolls_length: u64) -> CycleInfoDeserializer {
+    pub fn new(max_rolls_length: u64, max_production_stats_length: u64) -> CycleInfoDeserializer {
         CycleInfoDeserializer {
             u64_deser: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             rolls_deser: RollsDeserializer::new(max_rolls_length),
             bitvec_deser: BitVecDeserializer::new(),
-            production_stats_deser: ProductionStatsDeserializer::new(),
+            production_stats_deser: ProductionStatsDeserializer::new(max_production_stats_length),
         }
     }
 }
@@ -215,20 +215,19 @@ impl Serializer<PreHashMap<Address, ProductionStats>> for ProductionStatsSeriali
 
 /// Deserializer for `ProductionStats`
 pub struct ProductionStatsDeserializer {
+    length_deserializer: U64VarIntDeserializer,
     address_deserializer: AddressDeserializer,
     u64_deserializer: U64VarIntDeserializer,
 }
 
-impl Default for ProductionStatsDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl ProductionStatsDeserializer {
     /// Creates a new `ProductionStats` deserializer
-    pub fn new() -> ProductionStatsDeserializer {
+    pub fn new(max_production_stats_length: u64) -> ProductionStatsDeserializer {
         ProductionStatsDeserializer {
+            length_deserializer: U64VarIntDeserializer::new(
+                Included(u64::MIN),
+                Included(max_production_stats_length),
+            ),
             address_deserializer: AddressDeserializer::new(),
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
         }
@@ -244,7 +243,7 @@ impl Deserializer<PreHashMap<Address, ProductionStats>> for ProductionStatsDeser
             "Failed ProductionStats deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
+                    self.length_deserializer.deserialize(input)
                 }),
                 tuple((
                     context("Failed address deserialization", |input| {
@@ -279,6 +278,7 @@ impl Deserializer<PreHashMap<Address, ProductionStats>> for ProductionStatsDeser
 
 /// Deserializer for rolls
 pub struct RollsDeserializer {
+    length_deserializer: U64VarIntDeserializer,
     address_deserializer: AddressDeserializer,
     u64_deserializer: U64VarIntDeserializer,
 }
@@ -287,11 +287,12 @@ impl RollsDeserializer {
     /// Creates a new rolls deserializer
     pub fn new(max_rolls_length: u64) -> RollsDeserializer {
         RollsDeserializer {
-            address_deserializer: AddressDeserializer::new(),
-            u64_deserializer: U64VarIntDeserializer::new(
+            length_deserializer: U64VarIntDeserializer::new(
                 Included(u64::MIN),
                 Included(max_rolls_length),
             ),
+            address_deserializer: AddressDeserializer::new(),
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
         }
     }
 }
@@ -305,7 +306,7 @@ impl Deserializer<Vec<(Address, u64)>> for RollsDeserializer {
             "Failed rolls deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
+                    self.length_deserializer.deserialize(input)
                 }),
                 tuple((
                     context("Failed address deserialization", |input| {

@@ -125,12 +125,13 @@ impl StateChangesDeserializer {
     pub fn new(
         thread_count: u8,
         max_async_pool_changes: u64,
-        max_data_async_message: u64,
+        max_async_message_data: u64,
         max_ledger_changes_count: u64,
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
         max_rolls_length: u64,
+        max_production_stats_length: u64,
         max_credits_length: u64,
     ) -> Self {
         Self {
@@ -143,11 +144,12 @@ impl StateChangesDeserializer {
             async_pool_changes_deserializer: AsyncPoolChangesDeserializer::new(
                 thread_count,
                 max_async_pool_changes,
-                max_data_async_message,
+                max_async_message_data,
             ),
             pos_changes_deserializer: PoSChangesDeserializer::new(
                 thread_count,
                 max_rolls_length,
+                max_production_stats_length,
                 max_credits_length,
             ),
             executed_ops_deserializer: ExecutedOpsDeserializer::new(thread_count),

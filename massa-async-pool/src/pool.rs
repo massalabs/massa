@@ -246,13 +246,20 @@ pub struct AsyncPoolDeserializer {
 
 impl AsyncPoolDeserializer {
     /// Creates a new `AsyncPool` deserializer
-    pub fn new(thread_count: u8, max_data_async_message: u64) -> AsyncPoolDeserializer {
+    pub fn new(
+        thread_count: u8,
+        max_async_pool_length: u64,
+        max_async_message_data: u64,
+    ) -> AsyncPoolDeserializer {
         AsyncPoolDeserializer {
-            u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            u64_deserializer: U64VarIntDeserializer::new(
+                Included(0),
+                Included(max_async_pool_length),
+            ),
             async_message_id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
             async_message_deserializer: AsyncMessageDeserializer::new(
                 thread_count,
-                max_data_async_message,
+                max_async_message_data,
             ),
         }
     }

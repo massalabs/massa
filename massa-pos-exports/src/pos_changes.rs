@@ -126,12 +126,15 @@ impl PoSChangesDeserializer {
     pub fn new(
         thread_count: u8,
         max_rolls_length: u64,
+        max_production_stats_length: u64,
         max_credits_length: u64,
     ) -> PoSChangesDeserializer {
         PoSChangesDeserializer {
             bit_vec_deserializer: BitVecDeserializer::new(),
             rolls_deserializer: RollsDeserializer::new(max_rolls_length),
-            production_stats_deserializer: ProductionStatsDeserializer::new(),
+            production_stats_deserializer: ProductionStatsDeserializer::new(
+                max_production_stats_length,
+            ),
             deferred_credits_deserializer: DeferredCreditsDeserializer::new(
                 thread_count,
                 max_credits_length,
