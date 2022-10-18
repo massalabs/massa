@@ -6,6 +6,7 @@
 use massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
 use massa_models::{
     operation::{OperationId, OperationIdDeserializer},
+    prehash::PreHashSet,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
 };
@@ -19,7 +20,7 @@ use nom::{
     IResult, Parser,
 };
 use std::{
-    collections::BTreeMap,
+    collections::VecDeque,
     ops::Bound::{Excluded, Included, Unbounded},
 };
 
@@ -28,73 +29,88 @@ const EXECUTED_OPS_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 /// A structure to list and prune previously executed operations
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExecutedOps {
-    /// Map of the executed operations
-    ops: BTreeMap<Slot, OperationId>,
+    /// Executed operations deque associated with a Slot for better pruning complexity
+    ops_deque: VecDeque<(Slot, PreHashSet<OperationId>)>,
+    /// Executed operations only for better insertion complexity
+    ops: PreHashSet<OperationId>,
     /// Accumulated hash of the executed operations
     pub hash: Hash,
-}
-
-impl Default for ExecutedOps {
-    fn default() -> Self {
-        Self::new()
-    }
+    /// Number of threads
+    thread_count: u8,
 }
 
 impl ExecutedOps {
     /// Creates a new `ExecutedOps`
-    pub fn new() -> Self {
+    pub fn new(thread_count: u8) -> Self {
         Self {
-            ops: BTreeMap::new(),
+            ops_deque: VecDeque::new(),
+            ops: PreHashSet::default(),
             hash: Hash::from_bytes(EXECUTED_OPS_INITIAL_BYTES),
+            thread_count,
         }
     }
 
-    /// returns the number of executed operations
+    /// Returns the number of executed operations
     pub fn len(&self) -> usize {
         self.ops.len()
     }
 
-    /// Check is there is no executed ops
+    /// Check executed ops emptiness
     pub fn is_empty(&self) -> bool {
         self.ops.is_empty()
     }
 
-    /// extends with another `ExecutedOps`
-    pub fn extend(&mut self, other: ExecutedOps) {
-        for (slot, op_id) in other.ops {
-            if self.ops.try_insert(slot, op_id).is_ok() {
-                let hash =
-                    Hash::compute_from(&[&op_id.to_bytes()[..], &slot.to_bytes_key()[..]].concat());
-                self.hash ^= hash;
+    /// Internal function used to insert values into `ops` and update the object hash
+    fn extend_and_compute_hash(&mut self, values: PreHashSet<OperationId>) {
+        for op_id in values {
+            if self.ops.insert(op_id) {
+                self.hash ^= Hash::compute_from(op_id.to_bytes());
             }
         }
     }
 
-    /// check if an operation was executed
-    pub fn contains(&self, op_id: &OperationId) -> bool {
-        self.ops.values().any(|contained_id| contained_id == op_id)
+    /// Apply speculative operations changes to the final executed operations state
+    pub fn apply_changes(&mut self, other: PreHashSet<OperationId>, slot: Slot) {
+        self.extend_and_compute_hash(other);
+        match self.ops_deque.back_mut() {
+            Some((last_slot, ids)) if *last_slot == slot => {
+                ids.extend(other);
+            }
+            Some((last_slot, _)) => match last_slot.get_next_slot(self.thread_count) {
+                Ok(next_to_last_slot) if next_to_last_slot == slot => {
+                    self.ops_deque.push_back((next_to_last_slot, other));
+                }
+                _ => panic!("executed ops associated slot must be sequential"),
+            },
+            None => {
+                self.ops_deque.push_back((slot, other));
+            }
+        }
     }
 
-    /// marks an op as executed
-    pub fn insert(&mut self, expiration_slot: Slot, op_id: OperationId) {
-        if self.ops.try_insert(expiration_slot, op_id).is_ok() {
-            let hash = Hash::compute_from(
-                &[&op_id.to_bytes()[..], &expiration_slot.to_bytes_key()[..]].concat(),
-            );
-            self.hash ^= hash;
-        }
+    /// Check if an operation was executed
+    pub fn contains(&self, op_id: &OperationId) -> bool {
+        self.ops.contains(op_id)
     }
 
     /// Prune all operations that expire strictly before `slot`
     pub fn prune(&mut self, slot: Slot) {
-        let kept = self.ops.split_off(&slot);
-        let removed = std::mem::take(&mut self.ops);
-        for (slot, op_id) in removed {
-            let hash =
-                Hash::compute_from(&[&op_id.to_bytes()[..], &slot.to_bytes_key()[..]].concat());
-            self.hash ^= hash;
+        let index = match self
+            .ops_deque
+            .binary_search_by_key(&slot, |(slot, _ids)| *slot)
+        {
+            Ok(index) => index,
+            Err(_) => return,
+        };
+        let kept = self.ops_deque.split_off(index);
+        let removed = std::mem::take(&mut self.ops_deque);
+        for (_, ids) in removed {
+            for op_id in ids {
+                self.ops.remove(&op_id);
+                self.hash ^= Hash::compute_from(op_id.to_bytes());
+            }
         }
-        self.ops = kept;
+        self.ops_deque = kept;
     }
 
     /// Get a part of the executed operations.
@@ -106,25 +122,27 @@ impl ExecutedOps {
     pub fn get_executed_ops_part(
         &self,
         cursor: StreamingStep<Slot>,
-    ) -> (ExecutedOps, StreamingStep<Slot>) {
-        let mut ops_part = ExecutedOps::default();
+    ) -> (
+        VecDeque<(Slot, PreHashSet<OperationId>)>,
+        StreamingStep<Slot>,
+    ) {
+        let mut ops_part = PreHashSet::default();
         let left_bound = match cursor {
             StreamingStep::Started => Unbounded,
-            StreamingStep::Ongoing(operation_id) => Excluded(operation_id),
+            StreamingStep::Ongoing(operation_id) => Excluded(self),
             StreamingStep::Finished => return (ops_part, cursor),
         };
-        // let mut ops_part_last_slot: Option<Slot> = None;
-        // for (&slot, &op_id) in self.ops.range((left_bound, Unbounded)) {
-        //     // FOLLOW-UP TODO: stream in multiple parts
-        //     ops_part.insert(slot, op_id);
-        //     ops_part_last_slot = Some(slot);
-        // }
-        // if let Some(last_slot) = ops_part_last_slot {
-        //     (ops_part, StreamingStep::Ongoing(last_slot))
-        // } else {
-        //     (ops_part, StreamingStep::Finished)
-        // }
-        (self.clone(), StreamingStep::Finished)
+        let mut ops_part_last_slot: Option<Slot> = None;
+        for (&slot, &op_id) in self.ops_deque.range((left_bound, Unbounded)) {
+            // FOLLOW-UP TODO: stream in multiple parts
+            ops_part.insert(slot, op_id);
+            ops_part_last_slot = Some(slot);
+        }
+        if let Some(last_slot) = ops_part_last_slot {
+            (ops_part, StreamingStep::Ongoing(last_slot))
+        } else {
+            (ops_part, StreamingStep::Finished)
+        }
     }
 
     /// Set a part of the executed operations.
