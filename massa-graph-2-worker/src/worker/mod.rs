@@ -105,8 +105,7 @@ pub fn start_graph_worker(
         .expect("Can't spawn thread graph.");
 
     let manager = GraphManagerImpl {
-        thread_graph: Some(thread_graph),
-        graph_command_sender: tx.clone(),
+        thread_graph: Some((tx.clone(), thread_graph)),
     };
 
     let controller = GraphControllerImpl::new(tx, shared_state);
