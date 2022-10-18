@@ -132,7 +132,7 @@ impl NodeWorker {
         let mut writer_joined = false;
 
         let node_reader_handle = tokio::spawn(async move {
-            node_sender_handle(
+            node_reader_handle(
                 &mut self.socket_reader,
                 &mut self.node_event_tx,
                 self.node_id,
@@ -347,7 +347,8 @@ impl NodeWorker {
     }
 }
 
-async fn node_sender_handle(
+/// Handle socket read function until a message is received then send it via node_event_tx queue
+async fn node_reader_handle(
     socket_reader: &mut ReadBinder,
     node_event_tx: &mut Sender<NodeEvent>,
     node_id: NodeId,
@@ -453,14 +454,14 @@ async fn node_sender_handle(
     exit_reason
 }
 
+/// Send a node event via node_event_tx queue - used by node_reader_handle
 async fn send_node_event(
     node_event_tx: &mut Sender<NodeEvent>,
     event: NodeEvent,
-    _max_send_wait: MassaTime,
+    max_send_wait: MassaTime,
 ) {
     let result = node_event_tx
-        // .send_timeout(event, max_send_wait.to_duration())
-        .send_timeout(event, tokio::time::Duration::from_millis(10000))
+        .send_timeout(event, max_send_wait.to_duration())
         .await;
     match result {
         Ok(()) => {}
@@ -476,6 +477,7 @@ async fn send_node_event(
     }
 }
 
+/// Try to send a Message via sender queue - used in run_loop
 pub fn try_send_to_node(
     sender: &Sender<Message>,
     msg: Message,
