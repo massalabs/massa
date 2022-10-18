@@ -475,11 +475,11 @@
             "params": [
                 {
                     "name": "SecretKeys",
-                    "description": "The strings must be secret keys(keypairs)",
+                    "description": "The strings must be secret(private) keys",
                     "schema": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/KeyPair"
+                            "$ref": "#/components/schemas/PrivateKey"
                         }
                     },
                     "required": true
@@ -491,8 +491,8 @@
                 "schema": false
             },
             "name": "add_staking_secret_keys",
-            "summary": "Add a vec of new secret keys(keypairs) for the node to use to stake",
-            "description": "Add a vec of new secret keys(keypairs) for the node to use to stake."
+            "summary": "Add a vec of new secret(private) keys for the node to use to stake",
+            "description": "Add a vec of new secret keys(private) for the node to use to stake."
         },
         {
             "tags": [
@@ -2174,8 +2174,8 @@
                     }
                 }
             },
-            "KeyPair": {
-                "description": "`KeyPair` is used for signature and decryption",
+            "PrivateKey": {
+                "description": "`PrivateKey` is used for signature and decryption",
                 "type": "string"
             }
         },
@@ -2268,12 +2268,12 @@
                     "$ref": "#/components/schemas/PubkeySig"
                 }
             },
-            "KeyPair": {
-                "name": "KeyPair",
-                "summary": "KeyPair",
-                "description": "A KeyPair object",
+            "PrivateKey": {
+                "name": "PrivateKey",
+                "summary": "PrivateKey",
+                "description": "A PrivateKey object",
                 "schema": {
-                    "$ref": "#/components/schemas/KeyPair"
+                    "$ref": "#/components/schemas/PrivateKey"
                 }
             },
             "SCOutputEvent": {
