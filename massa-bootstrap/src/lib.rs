@@ -11,7 +11,6 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 #![feature(ip)]
-#![feature(map_first_last)]
 #![feature(let_chains)]
 
 #[macro_use]

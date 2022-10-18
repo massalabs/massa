@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 // Features used for draining cache in selector thread
-#![feature(map_first_last)]
 
 mod controller;
 mod draw;
