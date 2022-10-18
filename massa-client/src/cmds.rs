@@ -220,30 +220,28 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "SenderAddress PathToBytecode MaxGas GasPrice Fee",),
+        props(args = "SenderAddress PathToBytecode MaxGas Fee",),
         message = "create and send an operation containing byte code"
     )]
     send_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
-        props(
-            args = "SenderAddress TargetAddress FunctionName Parameter MaxGas GasPrice Coins Fee",
-        ),
+        props(args = "SenderAddress TargetAddress FunctionName Parameter MaxGas Coins Fee",),
         message = "create and send an operation to call a function of a smart contract"
     )]
     call_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "PathToBytecode MaxGas GasPrice Address",),
+        props(args = "PathToBytecode MaxGas Address",),
         message = "execute byte code, address is optional. Nothing is really executed on chain"
     )]
     read_only_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "TargetAddress TargetFunction Parameter MaxGas GasPrice SenderAddress",),
+        props(args = "TargetAddress TargetFunction Parameter MaxGas SenderAddress",),
         message = "call a smart contract function, sender address is optional. Nothing is really executed on chain"
     )]
     read_only_call,
@@ -825,7 +823,7 @@ impl Command {
                 Ok(Box::new(()))
             }
             Command::send_smart_contract => {
-                if parameters.len() != 5 {
+                if parameters.len() != 4 {
                     bail!("wrong number of parameters");
                 }
                 let addr = parameters[0].parse::<Address>()?;
@@ -886,7 +884,7 @@ impl Command {
                 .await
             }
             Command::call_smart_contract => {
-                if parameters.len() != 8 {
+                if parameters.len() != 7 {
                     bail!("wrong number of parameters");
                 }
                 let addr = parameters[0].parse::<Address>()?;
@@ -954,7 +952,7 @@ impl Command {
                 }
             }
             Command::read_only_smart_contract => {
-                if parameters.len() != 3 && parameters.len() != 4 {
+                if parameters.len() != 2 && parameters.len() != 3 {
                     bail!("wrong number of parameters");
                 }
 
@@ -981,7 +979,7 @@ impl Command {
                 }
             }
             Command::read_only_call => {
-                if parameters.len() != 5 && parameters.len() != 6 {
+                if parameters.len() != 4 && parameters.len() != 5 {
                     bail!("wrong number of parameters");
                 }
 
