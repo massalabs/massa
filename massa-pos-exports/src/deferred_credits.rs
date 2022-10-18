@@ -53,6 +53,27 @@ impl DeferredCredits {
             self.0.remove(&slot);
         }
     }
+
+    /// Remove an amount of deferred credit for the given Slot & Address
+    pub fn sub_amount(&mut self, slot: &Slot, address: &Address, amount: &Amount) -> Amount {
+
+        let mut result = Amount::zero();
+
+        if self.0.contains_key(slot) {
+            // TODO: saturing_sub handle Result
+            self.0
+                .entry(*slot)
+                .and_modify(|current_credits| {
+                    current_credits
+                        .entry(*address)
+                        .and_modify(|e| {
+                            result = e.saturating_sub(*amount);
+                        });
+                });
+        }
+
+        result
+    }
 }
 
 /// Serializer for `DeferredCredits`
