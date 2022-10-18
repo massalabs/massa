@@ -98,7 +98,7 @@ pub const MAX_BLOCK_SIZE: u32 = 500_000;
 /// Maximum capacity of the asynchronous messages pool
 pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
 /// Maximum data size in async message
-pub const MAX_DATA_ASYNC_MESSAGE: u64 = 1_000_000;
+pub const MAX_ASYNC_MESSAGE_DATA: u64 = 1_000_000;
 /// Maximum operation validity period count
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
@@ -108,15 +108,13 @@ pub const POS_SAVED_CYCLES: u64 = 4;
 /// Maximum size batch of data in a part of the ledger
 pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 /// Maximum async messages in a batch of the bootstrap of the async pool
-pub const ASYNC_POOL_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
-/// Maximum deferred credits in a bootstrap batch
-pub const DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
-/// Maximum cycle info in a bootstrap batch
-pub const CYCLE_INFO_SIZE_MESSAGE_BYTES: u64 = 1000000;
-/// Maximum rolls in a bootstrap batch
-pub const ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
-/// Maximum production stats in a bootstrap batch
-pub const PRODUCTION_STATS_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
+pub const ASYNC_POOL_BOOTSTRAP_PART_SIZE: u64 = 100;
+/// Maximum size of a proof-of-stake rolls part in bootstrap
+pub const MAX_BOOTSTRAP_ROLLS_LENGTH: u64 = 10_000;
+/// Maximum size of a proof-of-stake production stats part in bootstrap
+pub const MAX_BOOTSTRAP_PRODUCTION_STATS: u64 = 10_000;
+/// Maximum size of a proof-of-stake deferred credits part in bootstrap
+pub const MAX_BOOTSTRAP_CREDITS_LENGTH: u64 = 10_000;
 /// Maximum length of a datastore key
 pub const MAX_DATASTORE_KEY_LENGTH: u8 = 255;
 /// Maximum length of an operation datastore key
@@ -177,7 +175,7 @@ pub const IP_LIST_MAX_SIZE: usize = 10000;
 /// Size of the random bytes array used for the bootstrap, safe to import
 pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 /// Max size of the printed error
-pub const MAX_BOOTSTRAP_ERROR_LENGTH: u32 = 10000;
+pub const MAX_BOOTSTRAP_ERROR_LENGTH: u64 = 10000;
 
 /// Protocol controller channel size
 pub const PROTOCOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;

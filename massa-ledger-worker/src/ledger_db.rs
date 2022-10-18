@@ -10,6 +10,7 @@ use massa_models::{
     error::ModelsError,
     serialization::{VecU8Deserializer, VecU8Serializer},
     slot::{Slot, SlotSerializer},
+    streaming_step::StreamingStep,
 };
 use massa_serialization::{Deserializer, Serializer, U64VarIntSerializer};
 use nom::multi::many0;
@@ -463,37 +464,43 @@ impl LedgerDB {
     /// * The last taken key (this is an optimization to easily keep a reference to the last key)
     pub fn get_ledger_part(
         &self,
-        last_key: &Option<Vec<u8>>,
-    ) -> Result<(Vec<u8>, Option<Vec<u8>>), ModelsError> {
+        cursor: StreamingStep<Vec<u8>>,
+    ) -> Result<(Vec<u8>, StreamingStep<Vec<u8>>), ModelsError> {
+        let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let opt = ReadOptions::default();
         let ser = VecU8Serializer::new();
         let key_serializer = KeySerializer::new();
-        let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
-        let mut part = Vec::new();
-        let opt = ReadOptions::default();
+        let mut ledger_part = Vec::new();
 
         // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key of the ledger.
-        let db_iterator = if let Some(key) = last_key {
-            let mut iter =
-                self.db
-                    .iterator_cf_opt(handle, opt, IteratorMode::From(key, Direction::Forward));
-            iter.next();
-            iter
-        } else {
-            self.db.iterator_cf_opt(handle, opt, IteratorMode::Start)
+        let (db_iterator, mut new_cursor) = match cursor {
+            StreamingStep::Started => (
+                self.db.iterator_cf_opt(handle, opt, IteratorMode::Start),
+                StreamingStep::Started,
+            ),
+            StreamingStep::Ongoing(last_key) => {
+                let mut iter = self.db.iterator_cf_opt(
+                    handle,
+                    opt,
+                    IteratorMode::From(&last_key, Direction::Forward),
+                );
+                iter.next();
+                (iter, StreamingStep::Finished)
+            }
+            StreamingStep::Finished => return Ok((ledger_part, cursor)),
         };
-        let mut last_key = None;
 
         // Iterates over the whole database
         for (key, entry) in db_iterator.flatten() {
-            if (part.len() as u64) < (self.ledger_part_size_message_bytes) {
-                key_serializer.serialize(&key.to_vec(), &mut part)?;
-                ser.serialize(&entry.to_vec(), &mut part)?;
-                last_key = Some(key.to_vec());
+            if (ledger_part.len() as u64) < (self.ledger_part_size_message_bytes) {
+                key_serializer.serialize(&key.to_vec(), &mut ledger_part)?;
+                ser.serialize(&entry.to_vec(), &mut ledger_part)?;
+                new_cursor = StreamingStep::Ongoing(key.to_vec());
             } else {
                 break;
             }
         }
-        Ok((part, last_key))
+        Ok((ledger_part, new_cursor))
     }
 
     /// Set a part of the ledger in the database.
@@ -505,12 +512,15 @@ impl LedgerDB {
     ///
     /// # Returns
     /// The last key of the inserted entry (this is an optimization to easily keep a reference to the last key)
-    pub fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<Option<Vec<u8>>, ModelsError> {
+    pub fn set_ledger_part<'a>(
+        &self,
+        data: &'a [u8],
+    ) -> Result<StreamingStep<Vec<u8>>, ModelsError> {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let vec_u8_deserializer =
             VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
         let key_deserializer = KeyDeserializer::new(self.max_datastore_key_length);
-        let mut last_key = Rc::new(None);
+        let mut last_key = Rc::new(Vec::new());
         let mut batch = LedgerBatch::new(self.get_ledger_hash());
 
         // Since this data is coming from the network, deser to address and ser back to bytes for a security check.
@@ -521,7 +531,7 @@ impl LedgerDB {
             ))(input)?;
             *Rc::get_mut(&mut last_key).ok_or_else(|| {
                 nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Fail))
-            })? = Some(key.clone());
+            })? = key.clone();
             self.put_entry_value(handle, &mut batch, &key, &value);
             Ok((rest, ()))
         })(data)
@@ -530,7 +540,7 @@ impl LedgerDB {
         // Every byte should have been read
         if rest.is_empty() {
             self.write_batch(batch);
-            Ok((*last_key).clone())
+            Ok(StreamingStep::Ongoing((*last_key).clone()))
         } else {
             Err(ModelsError::SerializeError(
                 "rest is not empty.".to_string(),
@@ -617,6 +627,7 @@ mod tests {
     use massa_models::{
         address::Address,
         amount::{Amount, AmountDeserializer},
+        streaming_step::StreamingStep,
     };
     use massa_serialization::{DeserializeError, Deserializer};
     use massa_signature::KeyPair;
@@ -700,7 +711,7 @@ mod tests {
         let pub_a = KeyPair::generate().get_public_key();
         let a = Address::from_public_key(&pub_a);
         let (db, _) = init_test_ledger(a);
-        let res = db.get_ledger_part(&None).unwrap();
+        let res = db.get_ledger_part(StreamingStep::Started).unwrap();
         db.set_ledger_part(&res.0[..]).unwrap();
     }
 }

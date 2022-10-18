@@ -1,17 +1,23 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_async_pool::{AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer};
+use massa_async_pool::{
+    AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
+    AsyncPoolDeserializer, AsyncPoolSerializer,
+};
 use massa_final_state::{
-    ExecutedOpsStreamingStep, ExecutedOpsStreamingStepDeserializer,
-    ExecutedOpsStreamingStepSerializer, StateChanges, StateChangesDeserializer,
-    StateChangesSerializer,
+    ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer, StateChanges,
+    StateChangesDeserializer, StateChangesSerializer,
 };
 use massa_graph::{
     BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
 };
 use massa_ledger_exports::{KeyDeserializer, KeySerializer};
+use massa_models::operation::{OperationId, OperationIdDeserializer, OperationIdSerializer};
 use massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
 use massa_models::slot::SlotDeserializer;
+use massa_models::streaming_step::{
+    StreamingStep, StreamingStepDeserializer, StreamingStepSerializer,
+};
 use massa_models::{
     slot::Slot,
     slot::SlotSerializer,
@@ -19,11 +25,12 @@ use massa_models::{
 };
 use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
 use massa_pos_exports::{
-    PoSCycleStreamingStep, PoSCycleStreamingStepDeserializer, PoSCycleStreamingStepSerializer,
+    CycleInfo, CycleInfoDeserializer, CycleInfoSerializer, DeferredCredits,
+    DeferredCreditsDeserializer, DeferredCreditsSerializer,
 };
 use massa_serialization::{
     Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
-    U32VarIntDeserializer, U32VarIntSerializer,
+    U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 use nom::error::context;
@@ -35,6 +42,7 @@ use nom::{
     IResult,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use std::collections::BTreeMap;
 use std::convert::TryInto;
 use std::ops::Bound::{Excluded, Included};
 
@@ -61,18 +69,18 @@ pub enum BootstrapServerMessage {
     },
     /// Part of the final state
     FinalStatePart {
-        /// Part of the execution ledger sent in a serialized way
-        ledger_data: Vec<u8>,
-        /// Part of the async pool
-        async_pool_part: Vec<u8>,
-        /// Part of the Proof of Stake `cycle_history`
-        pos_cycle_part: Vec<u8>,
-        /// Part of the Proof of Stake `deferred_credits`
-        pos_credits_part: Vec<u8>,
-        /// Part of the executed operations
-        exec_ops_part: Vec<u8>,
         /// Slot the state changes are attached to
         slot: Slot,
+        /// Part of the execution ledger sent in a serialized way
+        ledger_part: Vec<u8>,
+        /// Part of the async pool
+        async_pool_part: BTreeMap<AsyncMessageId, AsyncMessage>,
+        /// Part of the Proof of Stake `cycle_history`
+        pos_cycle_part: Option<CycleInfo>,
+        /// Part of the Proof of Stake `deferred_credits`
+        pos_credits_part: DeferredCredits,
+        /// Part of the executed operations
+        exec_ops_part: ExecutedOps,
         /// Ledger change for addresses inferior to `address` of the client message until the actual slot.
         final_state_changes: Vec<(Slot, StateChanges)>,
     },
@@ -102,6 +110,7 @@ enum MessageServerTypeId {
 /// Serializer for `BootstrapServerMessage`
 pub struct BootstrapServerMessageSerializer {
     u32_serializer: U32VarIntSerializer,
+    u64_serializer: U64VarIntSerializer,
     time_serializer: MassaTimeSerializer,
     version_serializer: VersionSerializer,
     peers_serializer: BootstrapPeersSerializer,
@@ -109,6 +118,10 @@ pub struct BootstrapServerMessageSerializer {
     bootstrapable_graph_serializer: BootstrapableGraphSerializer,
     vec_u8_serializer: VecU8Serializer,
     slot_serializer: SlotSerializer,
+    async_pool_serializer: AsyncPoolSerializer,
+    opt_pos_cycle_serializer: OptionSerializer<CycleInfo, CycleInfoSerializer>,
+    pos_credits_serializer: DeferredCreditsSerializer,
+    exec_ops_serializer: ExecutedOpsSerializer,
 }
 
 impl Default for BootstrapServerMessageSerializer {
@@ -122,6 +135,7 @@ impl BootstrapServerMessageSerializer {
     pub fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
+            u64_serializer: U64VarIntSerializer::new(),
             time_serializer: MassaTimeSerializer::new(),
             version_serializer: VersionSerializer::new(),
             peers_serializer: BootstrapPeersSerializer::new(),
@@ -129,6 +143,10 @@ impl BootstrapServerMessageSerializer {
             bootstrapable_graph_serializer: BootstrapableGraphSerializer::new(),
             vec_u8_serializer: VecU8Serializer::new(),
             slot_serializer: SlotSerializer::new(),
+            async_pool_serializer: AsyncPoolSerializer::new(),
+            opt_pos_cycle_serializer: OptionSerializer::new(CycleInfoSerializer::new()),
+            pos_credits_serializer: DeferredCreditsSerializer::new(),
+            exec_ops_serializer: ExecutedOpsSerializer::new(),
         }
     }
 }
@@ -177,24 +195,36 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                     .serialize(graph, buffer)?;
             }
             BootstrapServerMessage::FinalStatePart {
-                ledger_data,
+                slot,
+                ledger_part,
                 async_pool_part,
                 pos_cycle_part,
                 pos_credits_part,
                 exec_ops_part,
-                slot,
                 final_state_changes,
             } => {
+                // message type
                 self.u32_serializer
                     .serialize(&u32::from(MessageServerTypeId::FinalStatePart), buffer)?;
-                self.vec_u8_serializer.serialize(ledger_data, buffer)?;
-                self.vec_u8_serializer.serialize(async_pool_part, buffer)?;
-                self.vec_u8_serializer.serialize(pos_cycle_part, buffer)?;
-                self.vec_u8_serializer.serialize(pos_credits_part, buffer)?;
-                self.vec_u8_serializer.serialize(exec_ops_part, buffer)?;
+                // slot
                 self.slot_serializer.serialize(slot, buffer)?;
-                self.u32_serializer
-                    .serialize(&(final_state_changes.len() as u32), buffer)?;
+                // ledger
+                self.vec_u8_serializer.serialize(ledger_part, buffer)?;
+                // async pool
+                self.async_pool_serializer
+                    .serialize(async_pool_part, buffer)?;
+                // pos cycle info
+                self.opt_pos_cycle_serializer
+                    .serialize(pos_cycle_part, buffer)?;
+                // pos deferred credits
+                self.pos_credits_serializer
+                    .serialize(pos_credits_part, buffer)?;
+                // executed operations
+                self.exec_ops_serializer.serialize(exec_ops_part, buffer)?;
+                // changes length
+                self.u64_serializer
+                    .serialize(&(final_state_changes.len() as u64), buffer)?;
+                // changes
                 for (slot, state_changes) in final_state_changes {
                     self.slot_serializer.serialize(slot, buffer)?;
                     self.state_changes_serializer
@@ -231,12 +261,16 @@ pub struct BootstrapServerMessageDeserializer {
     time_deserializer: MassaTimeDeserializer,
     version_deserializer: VersionDeserializer,
     peers_deserializer: BootstrapPeersDeserializer,
-    length_state_changes: U32VarIntDeserializer,
+    length_state_changes: U64VarIntDeserializer,
     state_changes_deserializer: StateChangesDeserializer,
     bootstrapable_graph_deserializer: BootstrapableGraphDeserializer,
-    final_state_parts_deserializer: VecU8Deserializer,
-    length_bootstrap_error: U32VarIntDeserializer,
+    ledger_bytes_deserializer: VecU8Deserializer,
+    length_bootstrap_error: U64VarIntDeserializer,
     slot_deserializer: SlotDeserializer,
+    async_pool_deserializer: AsyncPoolDeserializer,
+    opt_pos_cycle_deserializer: OptionDeserializer<CycleInfo, CycleInfoDeserializer>,
+    pos_credits_deserializer: DeferredCreditsDeserializer,
+    exec_ops_deserializer: ExecutedOpsDeserializer,
 }
 
 impl BootstrapServerMessageDeserializer {
@@ -250,18 +284,22 @@ impl BootstrapServerMessageDeserializer {
         max_operations_per_block: u32,
         max_bootstrap_final_state_parts_size: u64,
         max_async_pool_changes: u64,
-        max_data_async_message: u64,
+        max_async_pool_length: u64,
+        max_async_message_data: u64,
         max_ledger_changes_count: u64,
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
         max_function_name_length: u16,
         max_parameters_size: u32,
-        max_bootstrap_error_length: u32,
+        max_bootstrap_error_length: u64,
         max_op_datastore_entry_count: u64,
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
-        max_changes_slot_count: u32,
+        max_changes_slot_count: u64,
+        max_rolls_length: u64,
+        max_production_stats_length: u64,
+        max_credits_length: u64,
     ) -> Self {
         Self {
             message_id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
@@ -274,13 +312,16 @@ impl BootstrapServerMessageDeserializer {
             state_changes_deserializer: StateChangesDeserializer::new(
                 thread_count,
                 max_async_pool_changes,
-                max_data_async_message,
+                max_async_message_data,
                 max_ledger_changes_count,
                 max_datastore_key_length,
                 max_datastore_value_length,
                 max_datastore_entry_count,
+                max_rolls_length,
+                max_production_stats_length,
+                max_credits_length,
             ),
-            length_state_changes: U32VarIntDeserializer::new(
+            length_state_changes: U64VarIntDeserializer::new(
                 Included(0),
                 Included(max_changes_slot_count),
             ),
@@ -296,18 +337,32 @@ impl BootstrapServerMessageDeserializer {
                 max_op_datastore_key_length,
                 max_op_datastore_value_length,
             ),
-            final_state_parts_deserializer: VecU8Deserializer::new(
+            ledger_bytes_deserializer: VecU8Deserializer::new(
                 Included(0),
                 Included(max_bootstrap_final_state_parts_size),
+            ),
+            length_bootstrap_error: U64VarIntDeserializer::new(
+                Included(0),
+                Included(max_bootstrap_error_length),
             ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
                 (Included(0), Excluded(thread_count)),
             ),
-            length_bootstrap_error: U32VarIntDeserializer::new(
-                Included(0),
-                Included(max_bootstrap_error_length),
+            async_pool_deserializer: AsyncPoolDeserializer::new(
+                thread_count,
+                max_async_pool_length,
+                max_async_message_data,
             ),
+            opt_pos_cycle_deserializer: OptionDeserializer::new(CycleInfoDeserializer::new(
+                max_rolls_length,
+                max_production_stats_length,
+            )),
+            pos_credits_deserializer: DeferredCreditsDeserializer::new(
+                thread_count,
+                max_credits_length,
+            ),
+            exec_ops_deserializer: ExecutedOpsDeserializer::new(thread_count),
         }
     }
 }
@@ -322,7 +377,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
-    /// let message_deserializer = BootstrapServerMessageDeserializer::new(16, 10, 100, 100, 1000, 1000, 1000, 1000, 1000, 255, 100000, 10000, 10000, 10000, 100000, 10, 255, 10_000, 1000);
+    /// let message_deserializer = BootstrapServerMessageDeserializer::new(32, 16, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 255, 1000, 1000, 1000, 1000, 1000, 10, 255, 1000, 1000, 10_000, 10_000, 10_000);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),
     ///    version: Version::from_str("TEST.1.10").unwrap(),
@@ -388,23 +443,23 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                     .parse(input)
                 }
                 MessageServerTypeId::FinalStatePart => tuple((
-                    context("Failed ledger_data deserialization", |input| {
-                        self.final_state_parts_deserializer.deserialize(input)
-                    }),
-                    context("Failed async_pool_part deserialization", |input| {
-                        self.final_state_parts_deserializer.deserialize(input)
-                    }),
-                    context("Failed pos_cycle_part deserialization", |input| {
-                        self.final_state_parts_deserializer.deserialize(input)
-                    }),
-                    context("Failed pos_credits_part deserialization", |input| {
-                        self.final_state_parts_deserializer.deserialize(input)
-                    }),
-                    context("Failed exec_ops_part deserialization", |input| {
-                        self.final_state_parts_deserializer.deserialize(input)
-                    }),
                     context("Failed slot deserialization", |input| {
                         self.slot_deserializer.deserialize(input)
+                    }),
+                    context("Failed ledger_data deserialization", |input| {
+                        self.ledger_bytes_deserializer.deserialize(input)
+                    }),
+                    context("Failed async_pool_part deserialization", |input| {
+                        self.async_pool_deserializer.deserialize(input)
+                    }),
+                    context("Failed pos_cycle_part deserialization", |input| {
+                        self.opt_pos_cycle_deserializer.deserialize(input)
+                    }),
+                    context("Failed pos_credits_part deserialization", |input| {
+                        self.pos_credits_deserializer.deserialize(input)
+                    }),
+                    context("Failed exec_ops_part deserialization", |input| {
+                        self.exec_ops_deserializer.deserialize(input)
                     }),
                     context(
                         "Failed final_state_changes deserialization",
@@ -421,21 +476,21 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                 ))
                 .map(
                     |(
-                        ledger_data,
+                        slot,
+                        ledger_part,
                         async_pool_part,
                         pos_cycle_part,
                         pos_credits_part,
                         exec_ops_part,
-                        slot,
                         final_state_changes,
                     )| {
                         BootstrapServerMessage::FinalStatePart {
-                            ledger_data,
+                            slot,
+                            ledger_part,
                             async_pool_part,
                             pos_cycle_part,
                             pos_credits_part,
                             exec_ops_part,
-                            slot,
                             final_state_changes,
                         }
                     },
@@ -472,16 +527,16 @@ pub enum BootstrapClientMessage {
     AskFinalStatePart {
         /// Slot we are attached to for changes
         last_slot: Option<Slot>,
-        /// Last key of the ledger we received from the server
-        last_key: Option<Vec<u8>>,
-        /// Last async message id  of the async message pool we received from the server
-        last_async_message_id: Option<AsyncMessageId>,
+        /// Last received ledger key
+        last_ledger_step: StreamingStep<Vec<u8>>,
+        /// Last received async message id
+        last_pool_step: StreamingStep<AsyncMessageId>,
         /// Last received Proof of Stake cycle
-        last_cycle_step: PoSCycleStreamingStep,
-        /// Last receive Proof of Stake credits slot
-        last_credits_slot: Option<Slot>,
-        /// Last executed operations streaming step
-        last_exec_ops_step: ExecutedOpsStreamingStep,
+        last_cycle_step: StreamingStep<u64>,
+        /// Last received Proof of Stake credits slot
+        last_credits_step: StreamingStep<Slot>,
+        /// Last received executed operation id
+        last_ops_step: StreamingStep<OperationId>,
     },
     /// Bootstrap error
     BootstrapError {
@@ -506,11 +561,11 @@ enum MessageClientTypeId {
 pub struct BootstrapClientMessageSerializer {
     u32_serializer: U32VarIntSerializer,
     slot_serializer: SlotSerializer,
-    async_message_id_serializer: AsyncMessageIdSerializer,
-    key_serializer: KeySerializer,
-    cycle_step_serializer: PoSCycleStreamingStepSerializer,
-    opt_slot_serializer: OptionSerializer<Slot, SlotSerializer>,
-    exec_ops_step_serializer: ExecutedOpsStreamingStepSerializer,
+    ledger_step_serializer: StreamingStepSerializer<Vec<u8>, KeySerializer>,
+    pool_step_serializer: StreamingStepSerializer<AsyncMessageId, AsyncMessageIdSerializer>,
+    cycle_step_serializer: StreamingStepSerializer<u64, U64VarIntSerializer>,
+    credits_step_serializer: StreamingStepSerializer<Slot, SlotSerializer>,
+    ops_step_serializer: StreamingStepSerializer<OperationId, OperationIdSerializer>,
 }
 
 impl BootstrapClientMessageSerializer {
@@ -519,11 +574,11 @@ impl BootstrapClientMessageSerializer {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
             slot_serializer: SlotSerializer::new(),
-            async_message_id_serializer: AsyncMessageIdSerializer::new(),
-            key_serializer: KeySerializer::new(),
-            cycle_step_serializer: PoSCycleStreamingStepSerializer::new(),
-            opt_slot_serializer: OptionSerializer::new(SlotSerializer::new()),
-            exec_ops_step_serializer: ExecutedOpsStreamingStepSerializer::new(),
+            ledger_step_serializer: StreamingStepSerializer::new(KeySerializer::new()),
+            pool_step_serializer: StreamingStepSerializer::new(AsyncMessageIdSerializer::new()),
+            cycle_step_serializer: StreamingStepSerializer::new(U64VarIntSerializer::new()),
+            credits_step_serializer: StreamingStepSerializer::new(SlotSerializer::new()),
+            ops_step_serializer: StreamingStepSerializer::new(OperationIdSerializer::new()),
         }
     }
 }
@@ -564,22 +619,25 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
             }
             BootstrapClientMessage::AskFinalStatePart {
                 last_slot,
-                last_key,
-                last_async_message_id,
+                last_ledger_step,
+                last_pool_step,
                 last_cycle_step,
-                last_credits_slot,
-                last_exec_ops_step,
+                last_credits_step,
+                last_ops_step,
             } => {
                 self.u32_serializer
                     .serialize(&u32::from(MessageClientTypeId::AskFinalStatePart), buffer)?;
-                // If we have a cursor we must have also a slot
-                if let Some(key) = last_key && let Some(slot) = last_slot && let Some(last_async_message_id) = last_async_message_id  {
-                    self.key_serializer.serialize(key, buffer)?;
+                if let Some(slot) = last_slot {
                     self.slot_serializer.serialize(slot, buffer)?;
-                    self.async_message_id_serializer.serialize(last_async_message_id, buffer)?;
-                    self.cycle_step_serializer.serialize(last_cycle_step, buffer)?;
-                    self.opt_slot_serializer.serialize(last_credits_slot, buffer)?;
-                    self.exec_ops_step_serializer.serialize(last_exec_ops_step, buffer)?;
+                    self.ledger_step_serializer
+                        .serialize(last_ledger_step, buffer)?;
+                    self.pool_step_serializer
+                        .serialize(last_pool_step, buffer)?;
+                    self.cycle_step_serializer
+                        .serialize(last_cycle_step, buffer)?;
+                    self.credits_step_serializer
+                        .serialize(last_credits_step, buffer)?;
+                    self.ops_step_serializer.serialize(last_ops_step, buffer)?;
                 }
             }
             BootstrapClientMessage::BootstrapError { error } => {
@@ -605,13 +663,13 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
 /// Deserializer for `BootstrapClientMessage`
 pub struct BootstrapClientMessageDeserializer {
     id_deserializer: U32VarIntDeserializer,
-    slot_deserializer: SlotDeserializer,
-    async_message_id_deserializer: AsyncMessageIdDeserializer,
     length_error_deserializer: U32VarIntDeserializer,
-    key_deserializer: KeyDeserializer,
-    cycle_step_deserializer: PoSCycleStreamingStepDeserializer,
-    opt_slot_deserializer: OptionDeserializer<Slot, SlotDeserializer>,
-    exec_ops_step_serializer: ExecutedOpsStreamingStepDeserializer,
+    slot_deserializer: SlotDeserializer,
+    ledger_step_serializer: StreamingStepDeserializer<Vec<u8>, KeyDeserializer>,
+    pool_step_serializer: StreamingStepDeserializer<AsyncMessageId, AsyncMessageIdDeserializer>,
+    cycle_step_serializer: StreamingStepDeserializer<u64, U64VarIntDeserializer>,
+    credits_step_serializer: StreamingStepDeserializer<Slot, SlotDeserializer>,
+    ops_step_serializer: StreamingStepDeserializer<OperationId, OperationIdDeserializer>,
 }
 
 impl BootstrapClientMessageDeserializer {
@@ -619,19 +677,26 @@ impl BootstrapClientMessageDeserializer {
     pub fn new(thread_count: u8, max_datastore_key_length: u8) -> Self {
         Self {
             id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
+            length_error_deserializer: U32VarIntDeserializer::new(Included(0), Included(100000)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
                 (Included(0), Excluded(thread_count)),
             ),
-            async_message_id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
-            key_deserializer: KeyDeserializer::new(max_datastore_key_length),
-            length_error_deserializer: U32VarIntDeserializer::new(Included(0), Included(100000)),
-            cycle_step_deserializer: PoSCycleStreamingStepDeserializer::new(),
-            opt_slot_deserializer: OptionDeserializer::new(SlotDeserializer::new(
+            ledger_step_serializer: StreamingStepDeserializer::new(KeyDeserializer::new(
+                max_datastore_key_length,
+            )),
+            pool_step_serializer: StreamingStepDeserializer::new(AsyncMessageIdDeserializer::new(
+                thread_count,
+            )),
+            cycle_step_serializer: StreamingStepDeserializer::new(U64VarIntDeserializer::new(
+                Included(0),
+                Included(u64::MAX),
+            )),
+            credits_step_serializer: StreamingStepDeserializer::new(SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
                 (Included(0), Excluded(thread_count)),
             )),
-            exec_ops_step_serializer: ExecutedOpsStreamingStepDeserializer::new(),
+            ops_step_serializer: StreamingStepDeserializer::new(OperationIdDeserializer::new()),
         }
     }
 }
@@ -687,50 +752,50 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                             input,
                             BootstrapClientMessage::AskFinalStatePart {
                                 last_slot: None,
-                                last_key: None,
-                                last_async_message_id: None,
-                                last_cycle_step: PoSCycleStreamingStep::Started,
-                                last_credits_slot: None,
-                                last_exec_ops_step: ExecutedOpsStreamingStep::Started,
+                                last_ledger_step: StreamingStep::Started,
+                                last_pool_step: StreamingStep::Started,
+                                last_cycle_step: StreamingStep::Started,
+                                last_credits_step: StreamingStep::Started,
+                                last_ops_step: StreamingStep::Started,
                             },
                         ))
                     } else {
                         tuple((
-                            context("Faild key deserialization", |input| {
-                                self.key_deserializer.deserialize(input)
-                            }),
-                            context("Failed slot deserialization", |input| {
+                            context("Failed last_slot deserialization", |input| {
                                 self.slot_deserializer.deserialize(input)
                             }),
-                            context("Failed async_message_id deserialization", |input| {
-                                self.async_message_id_deserializer.deserialize(input)
+                            context("Faild last_ledger_step deserialization", |input| {
+                                self.ledger_step_serializer.deserialize(input)
                             }),
-                            context("Failed cycle_step deserialization", |input| {
-                                self.cycle_step_deserializer.deserialize(input)
+                            context("Failed last_pool_step deserialization", |input| {
+                                self.pool_step_serializer.deserialize(input)
                             }),
-                            context("Failed credits_slot deserialization", |input| {
-                                self.opt_slot_deserializer.deserialize(input)
+                            context("Failed last_cycle_step deserialization", |input| {
+                                self.cycle_step_serializer.deserialize(input)
                             }),
-                            context("Failed exec_ops_step deserialization", |input| {
-                                self.exec_ops_step_serializer.deserialize(input)
+                            context("Failed last_credits_step deserialization", |input| {
+                                self.credits_step_serializer.deserialize(input)
+                            }),
+                            context("Failed last_ops_step deserialization", |input| {
+                                self.ops_step_serializer.deserialize(input)
                             }),
                         ))
                         .map(
                             |(
-                                last_key,
                                 last_slot,
-                                last_async_message_id,
+                                last_ledger_step,
+                                last_pool_step,
                                 last_cycle_step,
-                                last_credits_slot,
-                                last_exec_ops_step,
+                                last_credits_step,
+                                last_ops_step,
                             )| {
                                 BootstrapClientMessage::AskFinalStatePart {
                                     last_slot: Some(last_slot),
-                                    last_key: Some(last_key),
-                                    last_async_message_id: Some(last_async_message_id),
+                                    last_ledger_step,
+                                    last_pool_step,
                                     last_cycle_step,
-                                    last_credits_slot,
-                                    last_exec_ops_step, // TODO: update this
+                                    last_credits_step,
+                                    last_ops_step,
                                 }
                             },
                         )
