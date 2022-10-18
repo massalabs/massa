@@ -691,7 +691,6 @@ fn set_bytecode_error() {
 
 #[test]
 #[serial]
-#[ignore]
 fn datastore_manipulations() {
     // setup the period duration and the maximum gas for asynchronous messages execution
     let exec_cfg = ExecutionConfig {
