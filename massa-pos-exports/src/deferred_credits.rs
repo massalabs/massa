@@ -150,6 +150,12 @@ pub struct CreditsSerializer {
     amount_ser: AmountSerializer,
 }
 
+impl Default for CreditsSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CreditsSerializer {
     /// Creates a new `Credits` serializer
     pub fn new() -> Self {

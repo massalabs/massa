@@ -463,7 +463,7 @@ impl PoSFinalState {
                 .cycle_history
                 .back()
                 .map(|info| info.cycle.saturating_add(1));
-            let current_cycle = cycle_info.cycle.clone();
+            let current_cycle = cycle_info.cycle;
             if let Some(next_cycle) = opt_next_cycle && current_cycle != next_cycle {
             panic!("PoS received cycle ({}) should be equal to the next expected cycle ({})", current_cycle, next_cycle);
         }

@@ -122,6 +122,7 @@ pub struct StateChangesDeserializer {
 
 impl StateChangesDeserializer {
     /// Creates a `StateChangesDeserializer`
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         thread_count: u8,
         max_async_pool_changes: u64,

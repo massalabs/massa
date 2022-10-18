@@ -42,6 +42,12 @@ pub struct CycleInfoSerializer {
     production_stats_ser: ProductionStatsSerializer,
 }
 
+impl Default for CycleInfoSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CycleInfoSerializer {
     /// Creates a new `CycleInfo` serializer
     pub fn new() -> Self {
@@ -133,7 +139,7 @@ impl Deserializer<CycleInfo> for CycleInfoDeserializer {
                 complete,
                 roll_counts: roll_counts.into_iter().collect(),
                 rng_seed,
-                production_stats: production_stats,
+                production_stats,
             },
         )
         .parse(buffer)
