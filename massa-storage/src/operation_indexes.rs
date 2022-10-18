@@ -95,4 +95,11 @@ impl OperationIndexes {
     ) -> Option<&PreHashSet<OperationId>> {
         self.index_by_prefix.get(prefix)
     }
+
+    /// Get all operations
+    /// IMPORTANT: This should only be used for debug and test purposes.
+    pub fn get_operations(&self) -> &PreHashMap<OperationId, WrappedOperation> {
+        &self.operations
+    }
+
 }

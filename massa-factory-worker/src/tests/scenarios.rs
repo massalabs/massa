@@ -6,6 +6,7 @@ use massa_models::{
 };
 use massa_signature::KeyPair;
 use std::str::FromStr;
+use std::time::Duration;
 
 /// Creates a basic empty block with the factory.
 #[test]
@@ -68,15 +69,14 @@ use massa_models::block::BlockId;
 use massa_models::denunciation_interest::DenunciationInterest;
 use massa_models::endorsement::{Endorsement, EndorsementHasher, EndorsementSerializer, WrappedEndorsement};
 use massa_models::denunciation::Denunciation;
-use massa_models::operation::WrappedOperation;
 use massa_models::slot::Slot;
 
-///
+/// Send 2 wrapped endorsements and check if a Denunciation op is in storage
 #[test]
 #[serial]
 fn test_denunciation_factory_endorsement_denunciation() {
     let keypair = KeyPair::generate();
-    let mut test_factory = TestFactory::new(&keypair);
+    let test_factory = TestFactory::new(&keypair);
 
     let sender_keypair = KeyPair::generate();
 
@@ -110,7 +110,8 @@ fn test_denunciation_factory_endorsement_denunciation() {
     test_factory.de_items_tx.send(DenunciationInterest::WrappedEndorsement(wrapped_endorsement1.clone())).unwrap();
     test_factory.de_items_tx.send(DenunciationInterest::WrappedEndorsement(wrapped_endorsement2.clone())).unwrap();
 
-    test_factory.wait_until_next_slot();
+    // Wait for denunciation factory to create the Denunciation
+    std::thread::sleep(Duration::from_secs(1));
 
     // Get Operation from storage
     let op_ids_ = test_factory.storage.read_operations();
@@ -127,6 +128,10 @@ fn test_denunciation_factory_endorsement_denunciation() {
             panic!("Should be a Denunciation op and not: {:?}", op.content.op);
         }
     }
+
+    // TODO: Testnet 17: Check Pool & Propagation
+
+    // std::thread::sleep(Duration::from_secs(1));
 
     drop(op_ids_); // release RwLockReadGuard
     // stop everything

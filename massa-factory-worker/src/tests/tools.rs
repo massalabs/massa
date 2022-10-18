@@ -1,10 +1,6 @@
 use parking_lot::RwLock;
-use std::{
-    sync::{mpsc::Receiver, Arc},
-    thread::sleep,
-    time::Duration,
-};
-use crossbeam_channel::unbounded;
+use std::{sync::{mpsc::Receiver, Arc}, thread::sleep, time::Duration};
+use crossbeam_channel::{unbounded, Sender};
 
 use massa_consensus_exports::{commands::ConsensusCommand, test_exports::MockConsensusController};
 use massa_factory_exports::{
@@ -39,12 +35,13 @@ use massa_wallet::test_exports::create_test_wallet;
 pub struct TestFactory {
     consensus_controller: MockConsensusController,
     pool_receiver: PoolEventReceiver,
-    selector_receiver: Receiver<MockSelectorControllerMessage>,
+    selector_receiver: Option<Receiver<MockSelectorControllerMessage>>,
     factory_config: FactoryConfig,
-    factory_manager: Box<dyn FactoryManager>,
+    pub (crate) factory_manager: Box<dyn FactoryManager>,
     genesis_blocks: Vec<(BlockId, u64)>,
-    storage: Storage,
+    pub(crate) storage: Storage,
     keypair: KeyPair,
+    pub(crate) de_items_tx: Sender<DenunciationInterest>,
 }
 
 impl TestFactory {
@@ -80,7 +77,8 @@ impl TestFactory {
             .genesis_timestamp
             .checked_sub(factory_config.t0)
             .unwrap();
-        let (_de_items_tx, de_items_rx) = unbounded::<DenunciationInterest>();
+        let (de_items_tx, de_items_rx) = unbounded::<DenunciationInterest>();
+
         let factory_manager = start_factory(
             factory_config.clone(),
             Arc::new(RwLock::new(create_test_wallet(Some(accounts)))),
@@ -98,12 +96,13 @@ impl TestFactory {
         TestFactory {
             consensus_controller,
             pool_receiver,
-            selector_receiver,
+            selector_receiver: Some(selector_receiver),
             factory_config,
             factory_manager,
             genesis_blocks,
             storage,
             keypair: default_keypair.clone(),
+            de_items_tx
         }
     }
 
@@ -129,6 +128,8 @@ impl TestFactory {
         loop {
             match self
                 .selector_receiver
+                .as_ref()
+                .unwrap()
                 .recv_timeout(Duration::from_millis(100))
             {
                 Ok(MockSelectorControllerMessage::GetProducer {
@@ -227,10 +228,33 @@ impl TestFactory {
             _ => panic!("unexpected message"),
         }
     }
+
+    /*
+    pub fn wait_until_next_slot(&self)
+    {
+        let now = MassaTime::now(0).expect("could not get current time");
+        let next_slot_instant = get_next_slot_instant(
+            self.factory_config.genesis_timestamp,
+            self.factory_config.thread_count,
+            self.factory_config.t0,
+        );
+
+        sleep(next_slot_instant.checked_sub(now).unwrap().to_duration());
+    }
+    */
+
 }
 
 impl Drop for TestFactory {
     fn drop(&mut self) {
+
+        // Need this otherwise factory_manager is stuck while waiting for block & endorsement factory
+        // to join
+        // Note that this will make the 2 threads panic
+        if let Some(selector_receiver) = self.selector_receiver.take() {
+            drop(selector_receiver);
+        }
+
         self.factory_manager.stop();
     }
 }

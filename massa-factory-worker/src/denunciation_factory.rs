@@ -162,9 +162,11 @@ impl DenunciationFactoryWorker {
         }
 
         // Add to operation pool
-        let mut de_storage = self.channels.storage.clone_without_refs();
-        de_storage.store_operations(wrapped_operations.unwrap());
+        self.channels.storage.store_operations(wrapped_operations.unwrap());
+
         // TODO: enable this for testnet 17
+        // let mut de_storage = self.channels.storage.clone_without_refs();
+        // de_storage.store_operations(wrapped_operations.unwrap());
         // self.channels.pool.add_operations(de_storage.clone());
         debug!("[De Factory] Should add Denunciation operations to pool...");
         // TODO: enable this for testnet 17
