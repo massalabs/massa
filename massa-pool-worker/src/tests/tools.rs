@@ -66,7 +66,7 @@ where
     let storage: Storage = Storage::create_root();
 
     let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
-    let (de_items_tx, de_items_rx) = unbounded::<DenunciationInterest>();
+    let (de_items_tx, _de_items_rx) = unbounded::<DenunciationInterest>();
     let (pool_manager, pool_controller) =
         start_pool_controller(cfg, &storage, execution_controller, de_items_tx);
 

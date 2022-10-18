@@ -4,6 +4,7 @@ use std::{
     thread::sleep,
     time::Duration,
 };
+use crossbeam_channel::unbounded;
 
 use massa_consensus_exports::{commands::ConsensusCommand, test_exports::MockConsensusController};
 use massa_factory_exports::{
@@ -13,6 +14,8 @@ use massa_models::{
     address::Address, block::BlockId, config::ENDORSEMENT_COUNT, endorsement::WrappedEndorsement,
     operation::WrappedOperation, prehash::PreHashMap, slot::Slot,
     test_exports::get_next_slot_instant,
+    denunciation_interest::DenunciationInterest,
+    config::GENESIS_KEY
 };
 use massa_pool_exports::test_exports::{
     MockPoolController, MockPoolControllerMessage, PoolEventReceiver,
@@ -77,6 +80,7 @@ impl TestFactory {
             .genesis_timestamp
             .checked_sub(factory_config.t0)
             .unwrap();
+        let (_de_items_tx, de_items_rx) = unbounded::<DenunciationInterest>();
         let factory_manager = start_factory(
             factory_config.clone(),
             Arc::new(RwLock::new(create_test_wallet(Some(accounts)))),
@@ -87,6 +91,8 @@ impl TestFactory {
                 protocol: protocol_command_sender,
                 storage: storage.clone_without_refs(),
             },
+            de_items_rx,
+            GENESIS_KEY.clone()
         );
 
         TestFactory {

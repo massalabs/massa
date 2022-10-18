@@ -6,6 +6,8 @@ use massa_protocol_exports::{
     ProtocolEventReceiver, ProtocolManager,
 };
 use massa_storage::Storage;
+use massa_models::denunciation_interest::DenunciationInterest;
+use crossbeam_channel::unbounded;
 
 pub async fn protocol_test<F, V>(protocol_config: &ProtocolConfig, test: F)
 where
@@ -31,6 +33,9 @@ where
 
     let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
 
+
+    let (de_items_tx, _de_items_rx) = unbounded::<DenunciationInterest>();
+
     // start protocol controller
     let (protocol_command_sender, protocol_event_receiver, protocol_manager): (
         ProtocolCommandSender,
@@ -42,6 +47,7 @@ where
         network_event_receiver,
         pool_controller,
         Storage::create_root(),
+        de_items_tx
     )
     .await
     .expect("could not start protocol controller");
@@ -91,6 +97,7 @@ where
         MockNetworkController::new();
     let (pool_controller, mock_pool_receiver) = MockPoolController::new_with_receiver();
     let storage = Storage::create_root();
+    let (de_items_tx, _de_items_rx) = unbounded::<DenunciationInterest>();
     // start protocol controller
     let (protocol_command_sender, protocol_event_receiver, protocol_manager) =
         start_protocol_controller(
@@ -99,6 +106,7 @@ where
             network_event_receiver,
             pool_controller,
             storage.clone(),
+            de_items_tx
         )
         .await
         .expect("could not start protocol controller");
