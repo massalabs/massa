@@ -109,7 +109,10 @@ impl DeferredCreditsDeserializer {
     /// Creates a new `DeferredCredits` deserializer
     pub fn new(thread_count: u8, max_credits_length: u64) -> DeferredCreditsDeserializer {
         DeferredCreditsDeserializer {
-            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            u64_deserializer: U64VarIntDeserializer::new(
+                Included(u64::MIN),
+                Included(max_credits_length),
+            ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
                 (Included(0), Excluded(thread_count)),
