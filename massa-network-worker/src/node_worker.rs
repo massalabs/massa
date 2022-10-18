@@ -450,7 +450,7 @@ async fn node_sender_handle(
         }
     }
 
-    return exit_reason;
+    exit_reason
 }
 
 async fn send_node_event(
