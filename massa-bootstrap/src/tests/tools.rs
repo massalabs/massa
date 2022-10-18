@@ -199,11 +199,11 @@ pub fn get_random_executed_ops(r_limit: u64) -> ExecutedOps {
     let mut ops = ExecutedOps::default();
     for _ in 0..r_limit {
         ops.insert(
-            OperationId::new(Hash::compute_from(&get_some_random_bytes())),
             Slot {
                 period: 500,
                 thread: 0,
             },
+            OperationId::new(Hash::compute_from(&get_some_random_bytes())),
         );
     }
     ops

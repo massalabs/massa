@@ -113,17 +113,18 @@ impl ExecutedOps {
             StreamingStep::Ongoing(operation_id) => Excluded(operation_id),
             StreamingStep::Finished => return (ops_part, cursor),
         };
-        let mut ops_part_last_slot: Option<Slot> = None;
-        for (&slot, &op_id) in self.ops.range((left_bound, Unbounded)) {
-            // FOLLOW-UP TODO: stream in multiple parts
-            ops_part.insert(slot, op_id);
-            ops_part_last_slot = Some(slot);
-        }
-        if let Some(last_slot) = ops_part_last_slot {
-            (ops_part, StreamingStep::Ongoing(last_slot))
-        } else {
-            (ops_part, StreamingStep::Finished)
-        }
+        // let mut ops_part_last_slot: Option<Slot> = None;
+        // for (&slot, &op_id) in self.ops.range((left_bound, Unbounded)) {
+        //     // FOLLOW-UP TODO: stream in multiple parts
+        //     ops_part.insert(slot, op_id);
+        //     ops_part_last_slot = Some(slot);
+        // }
+        // if let Some(last_slot) = ops_part_last_slot {
+        //     (ops_part, StreamingStep::Ongoing(last_slot))
+        // } else {
+        //     (ops_part, StreamingStep::Finished)
+        // }
+        (self.clone(), StreamingStep::Finished)
     }
 
     /// Set a part of the executed operations.
