@@ -107,9 +107,8 @@ impl ExecutedOps {
     /// A tuple containing the data and the next executed ops streaming step
     pub fn get_executed_ops_part(
         &self,
-        // TODO: use slot as step data
-        cursor: StreamingStep<OperationId>,
-    ) -> (ExecutedOps, StreamingStep<OperationId>) {
+        cursor: StreamingStep<Slot>,
+    ) -> (ExecutedOps, StreamingStep<Slot>) {
         let mut ops_part = ExecutedOps::default();
         let left_bound = match cursor {
             StreamingStep::Started => Unbounded,

@@ -10,7 +10,7 @@ use crate::{
 };
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_ledger_exports::{get_address_from_key, LedgerChanges, LedgerController};
-use massa_models::{operation::OperationId, slot::Slot, streaming_step::StreamingStep};
+use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use std::collections::VecDeque;
 use tracing::debug;
@@ -147,7 +147,7 @@ impl FinalState {
         pool_step: StreamingStep<AsyncMessageId>,
         cycle_step: StreamingStep<u64>,
         credits_step: StreamingStep<Slot>,
-        ops_step: StreamingStep<OperationId>,
+        ops_step: StreamingStep<Slot>,
     ) -> Result<Vec<(Slot, StateChanges)>, FinalStateError> {
         let position_slot = if let Some((first_slot, _)) = self.changes_history.front() {
             // Safe because we checked that there is changes just above.
