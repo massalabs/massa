@@ -6,7 +6,6 @@
 use massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
 use massa_models::{
     operation::{OperationId, OperationIdDeserializer},
-    prehash::PreHashMap,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
 };
@@ -19,7 +18,10 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
-use std::ops::Bound::{Excluded, Included};
+use std::{
+    collections::BTreeMap,
+    ops::Bound::{Excluded, Included, Unbounded},
+};
 
 const EXECUTED_OPS_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
@@ -27,7 +29,7 @@ const EXECUTED_OPS_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExecutedOps {
     /// Map of the executed operations
-    ops: PreHashMap<OperationId, Slot>,
+    ops: BTreeMap<Slot, OperationId>,
     /// Accumulated hash of the executed operations
     pub hash: Hash,
 }
@@ -42,7 +44,7 @@ impl ExecutedOps {
     /// Creates a new `ExecutedOps`
     pub fn new() -> Self {
         Self {
-            ops: PreHashMap::default(),
+            ops: BTreeMap::new(),
             hash: Hash::from_bytes(EXECUTED_OPS_INITIAL_BYTES),
         }
     }
@@ -59,8 +61,8 @@ impl ExecutedOps {
 
     /// extends with another `ExecutedOps`
     pub fn extend(&mut self, other: ExecutedOps) {
-        for (op_id, slot) in other.ops {
-            if self.ops.try_insert(op_id, slot).is_ok() {
+        for (slot, op_id) in other.ops {
+            if self.ops.try_insert(slot, op_id).is_ok() {
                 let hash =
                     Hash::compute_from(&[&op_id.to_bytes()[..], &slot.to_bytes_key()[..]].concat());
                 self.hash ^= hash;
@@ -70,12 +72,14 @@ impl ExecutedOps {
 
     /// check if an operation was executed
     pub fn contains(&self, op_id: &OperationId) -> bool {
-        self.ops.contains_key(op_id)
+        // TODO: impl id contains for new struct
+        // self.ops.contains(op_id)
+        true
     }
 
     /// marks an op as executed
     pub fn insert(&mut self, op_id: OperationId, expiration_slot: Slot) {
-        if self.ops.try_insert(op_id, expiration_slot).is_ok() {
+        if self.ops.try_insert(expiration_slot, op_id).is_ok() {
             let hash = Hash::compute_from(
                 &[&op_id.to_bytes()[..], &expiration_slot.to_bytes_key()[..]].concat(),
             );
@@ -83,14 +87,11 @@ impl ExecutedOps {
         }
     }
 
-    /// Prune all operations that expire strictly before `max_slot`
-    pub fn prune(&mut self, max_slot: Slot) {
-        // TODO use slot-sorted structure for more efficient pruning (this has a linear complexity currently)
-        let (kept, removed): (PreHashMap<OperationId, Slot>, PreHashMap<OperationId, Slot>) = self
-            .ops
-            .iter()
-            .partition(|(_, &last_valid_slot)| last_valid_slot >= max_slot);
-        for (op_id, slot) in removed {
+    /// Prune all operations that expire strictly before `slot`
+    pub fn prune(&mut self, slot: Slot) {
+        let kept = self.ops.split_off(&slot);
+        let removed = std::mem::take(&mut self.ops);
+        for (slot, op_id) in removed {
             let hash =
                 Hash::compute_from(&[&op_id.to_bytes()[..], &slot.to_bytes_key()[..]].concat());
             self.hash ^= hash;
@@ -106,14 +107,16 @@ impl ExecutedOps {
     /// A tuple containing the data and the next executed ops streaming step
     pub fn get_executed_ops_part(
         &self,
+        // TODO: use slot as step data
         cursor: StreamingStep<OperationId>,
     ) -> (ExecutedOps, StreamingStep<OperationId>) {
-        // FOLLOW-UP TODO: stream in multiple parts
-        match cursor {
-            StreamingStep::Started => (), // TODO: when parts start at unbounded left range
-            StreamingStep::Ongoing(_op_id) => (), // TODO: when parts start at op_id left range
-            StreamingStep::Finished => return (ExecutedOps::default(), cursor),
-        }
+        let mut ops_part = ExecutedOps::default();
+        let left_bound = match cursor {
+            StreamingStep::Started => Unbounded,
+            StreamingStep::Ongoing(operation_id) => Excluded(operation_id),
+            StreamingStep::Finished => return (ops_part, cursor),
+        };
+        // TODO: stream parts here
         (self.clone(), StreamingStep::Finished)
     }
 
@@ -123,9 +126,13 @@ impl ExecutedOps {
     ///
     /// # Returns
     /// The next executed ops streaming step
-    pub fn set_executed_ops_part(&mut self, part: ExecutedOps) -> StreamingStep<OperationId> {
+    pub fn set_executed_ops_part(&mut self, part: ExecutedOps) -> StreamingStep<Slot> {
         self.extend(part);
-        StreamingStep::Finished
+        if let Some(slot) = self.ops.last_key_value().map(|(&slot, _)| slot) {
+            StreamingStep::Ongoing(slot)
+        } else {
+            StreamingStep::Finished
+        }
     }
 }
 
@@ -209,7 +216,7 @@ impl Serializer<ExecutedOps> for ExecutedOpsSerializer {
         self.u64_serializer.serialize(&entry_count, buffer)?;
 
         // encode entries
-        for (op_id, slot) in &value.ops {
+        for (slot, op_id) in &value.ops {
             buffer.extend(op_id.to_bytes());
             self.slot_serializer.serialize(slot, buffer)?;
         }
@@ -256,10 +263,10 @@ impl Deserializer<ExecutedOps> for ExecutedOpsDeserializer {
                         self.u64_deserializer.deserialize(input)
                     }),
                     context(
-                        "Failed peration info deserialization",
+                        "Failed operation info deserialization",
                         tuple((
-                            |input| self.operation_id_deserializer.deserialize(input),
                             |input| self.slot_deserializer.deserialize(input),
+                            |input| self.operation_id_deserializer.deserialize(input),
                         )),
                     ),
                 ),
@@ -268,8 +275,8 @@ impl Deserializer<ExecutedOps> for ExecutedOpsDeserializer {
                 }),
             )),
         )
-        .map(|(elements, hash)| ExecutedOps {
-            ops: elements.into_iter().collect(),
+        .map(|(operations, hash)| ExecutedOps {
+            ops: operations.into_iter().collect(),
             hash,
         })
         .parse(buffer)
