@@ -37,7 +37,6 @@ lazy_static::lazy_static! {
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_bootstrap_server() {
     let (bootstrap_config, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
 
@@ -183,6 +182,10 @@ async fn test_bootstrap_server() {
         sent_graph
     };
 
+    let sent_peers = wait_peers().await;
+    // wait for peers and graph
+    let sent_graph = wait_graph().await;
+
     // launch the modifier thread
     let list_changes: Arc<RwLock<Vec<(Slot, StateChanges)>>> = Arc::new(RwLock::new(Vec::new()));
     let list_changes_clone = list_changes.clone();
@@ -205,10 +208,6 @@ async fn test_bootstrap_server() {
             list_changes_write.push((next, changes));
         }
     });
-
-    let sent_peers = wait_peers().await;
-    // wait for peers and graph
-    let sent_graph = wait_graph().await;
 
     // wait for get_state
     let bootstrap_res = get_state_h
