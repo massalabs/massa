@@ -224,8 +224,8 @@ impl Serializer<ExecutedOps> for ExecutedOpsSerializer {
 
         // encode entries
         for (slot, op_id) in &value.ops {
-            buffer.extend(op_id.to_bytes());
             self.slot_serializer.serialize(slot, buffer)?;
+            buffer.extend(op_id.to_bytes());
         }
 
         // encode the hash

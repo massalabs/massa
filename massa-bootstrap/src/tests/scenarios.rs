@@ -151,7 +151,7 @@ async fn test_bootstrap_server() {
     let wait_peers = async move || {
         // wait for bootstrap to ask network for peers, send them
         let response =
-            match wait_network_command(&mut network_cmd_rx, 10000.into(), |cmd| match cmd {
+            match wait_network_command(&mut network_cmd_rx, 10_000.into(), |cmd| match cmd {
                 NetworkCommand::GetBootstrapPeers(resp) => Some(resp),
                 _ => None,
             })
