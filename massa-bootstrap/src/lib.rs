@@ -14,6 +14,9 @@
 #![feature(map_first_last)]
 #![feature(let_chains)]
 
+#[macro_use]
+extern crate fix_hidden_lifetime_bug;
+
 pub use establisher::types::Establisher;
 use massa_final_state::FinalState;
 use massa_graph::BootstrapableGraph;

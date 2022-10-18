@@ -1,4 +1,4 @@
-use massa_consensus_exports::ConsensusCommandSender;
+use massa_graph_2_exports::GraphController;
 use massa_models::block::Block;
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
@@ -14,8 +14,8 @@ pub type ProductionHistory = Vec<Block>;
 pub struct FactoryChannels {
     /// selector controller to get draws
     pub selector: Box<dyn SelectorController>,
-    /// consensus controller
-    pub consensus: ConsensusCommandSender,
+    /// graph controller
+    pub graph: Box<dyn GraphController>,
     /// pool controller
     pub pool: Box<dyn PoolController>,
     /// protocol controller

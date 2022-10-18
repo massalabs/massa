@@ -6,20 +6,19 @@
 extern crate massa_logging;
 use crate::settings::SETTINGS;
 
+use crossbeam_channel::{Receiver, TryRecvError};
 use dialoguer::Password;
 use massa_api::{APIConfig, Private, Public, RpcServer, StopHandle, API};
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager};
-use massa_consensus_exports::ConsensusManager;
-use massa_consensus_exports::{
-    events::ConsensusEvent, settings::ConsensusChannels, ConsensusConfig, ConsensusEventReceiver,
-};
-use massa_consensus_worker::start_consensus_controller;
 use massa_execution_exports::{ExecutionConfig, ExecutionManager, StorageCostsConstants};
 use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
 use massa_final_state::{FinalState, FinalStateConfig};
+use massa_graph_2_exports::events::GraphEvent;
+use massa_graph_2_exports::{GraphChannels, GraphConfig, GraphManager};
+use massa_graph_2_worker::start_graph_worker;
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
@@ -57,21 +56,22 @@ use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::thread::sleep;
+use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
 use tokio::signal;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
-
 mod settings;
 
 async fn launch(
     node_wallet: Arc<RwLock<Wallet>>,
 ) -> (
-    ConsensusEventReceiver,
+    Receiver<GraphEvent>,
     Option<BootstrapManager>,
-    ConsensusManager,
+    Box<dyn GraphManager>,
     Box<dyn ExecutionManager>,
     Box<dyn SelectorManager>,
     Box<dyn PoolManager>,
@@ -355,7 +355,7 @@ async fn launch(
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
     };
-    let (protocol_command_sender, protocol_event_receiver, protocol_manager) =
+    let (protocol_command_sender, _protocol_event_receiver, protocol_manager) =
         start_protocol_controller(
             protocol_config,
             network_command_sender.clone(),
@@ -366,8 +366,48 @@ async fn launch(
         .await
         .expect("could not start protocol controller");
 
-    // init consensus configuration
-    let consensus_config = ConsensusConfig {
+    // // init consensus configuration
+    // let consensus_config = ConsensusConfig {
+    //     genesis_timestamp: *GENESIS_TIMESTAMP,
+    //     end_timestamp: *END_TIMESTAMP,
+    //     thread_count: THREAD_COUNT,
+    //     t0: T0,
+    //     genesis_key: GENESIS_KEY.clone(),
+    //     max_discarded_blocks: SETTINGS.consensus.max_discarded_blocks,
+    //     future_block_processing_max_periods: SETTINGS.consensus.future_block_processing_max_periods,
+    //     max_future_processing_blocks: SETTINGS.consensus.max_future_processing_blocks,
+    //     max_dependency_blocks: SETTINGS.consensus.max_dependency_blocks,
+    //     delta_f0: DELTA_F0,
+    //     operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+    //     periods_per_cycle: PERIODS_PER_CYCLE,
+    //     stats_timespan: SETTINGS.consensus.stats_timespan,
+    //     max_send_wait: SETTINGS.consensus.max_send_wait,
+    //     force_keep_final_periods: SETTINGS.consensus.force_keep_final_periods,
+    //     endorsement_count: ENDORSEMENT_COUNT,
+    //     block_db_prune_interval: SETTINGS.consensus.block_db_prune_interval,
+    //     max_item_return_count: SETTINGS.consensus.max_item_return_count,
+    //     max_gas_per_block: MAX_GAS_PER_BLOCK,
+    //     channel_size: CHANNEL_SIZE,
+    // };
+    // // launch consensus controller
+    // let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
+    //     start_consensus_controller(
+    //         consensus_config.clone(),
+    //         ConsensusChannels {
+    //             execution_controller: execution_controller.clone(),
+    //             protocol_command_sender: protocol_command_sender.clone(),
+    //             protocol_event_receiver,
+    //             pool_command_sender: pool_controller.clone(),
+    //             selector_controller: selector_controller.clone(),
+    //         },
+    //         bootstrap_state.graph,
+    //         shared_storage.clone(),
+    //         bootstrap_state.compensation_millis,
+    //     )
+    //     .await
+    //     .expect("could not start consensus controller");
+
+    let graph_config = GraphConfig {
         genesis_timestamp: *GENESIS_TIMESTAMP,
         end_timestamp: *END_TIMESTAMP,
         thread_count: THREAD_COUNT,
@@ -388,24 +428,24 @@ async fn launch(
         max_item_return_count: SETTINGS.consensus.max_item_return_count,
         max_gas_per_block: MAX_GAS_PER_BLOCK,
         channel_size: CHANNEL_SIZE,
+        clock_compensation_millis: bootstrap_state.compensation_millis,
     };
-    // launch consensus controller
-    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
-        start_consensus_controller(
-            consensus_config.clone(),
-            ConsensusChannels {
-                execution_controller: execution_controller.clone(),
-                protocol_command_sender: protocol_command_sender.clone(),
-                protocol_event_receiver,
-                pool_command_sender: pool_controller.clone(),
-                selector_controller: selector_controller.clone(),
-            },
-            bootstrap_state.graph,
-            shared_storage.clone(),
-            bootstrap_state.compensation_millis,
-        )
-        .await
-        .expect("could not start consensus controller");
+
+    let (graph_event_sender, graph_event_receiver) = crossbeam_channel::bounded(CHANNEL_SIZE);
+    let graph_channels = GraphChannels {
+        execution_controller: execution_controller.clone(),
+        selector_controller: selector_controller.clone(),
+        pool_command_sender: pool_controller.clone(),
+        controller_event_tx: graph_event_sender,
+        protocol_command_sender: protocol_command_sender.clone(),
+    };
+
+    let (graph_controller, graph_manager) = start_graph_worker(
+        graph_config,
+        graph_channels,
+        bootstrap_state.graph,
+        shared_storage.clone(),
+    );
 
     // launch factory
     let factory_config = FactoryConfig {
@@ -419,7 +459,7 @@ async fn launch(
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
-        consensus: consensus_command_sender.clone(),
+        graph: graph_controller.clone(),
         pool: pool_controller.clone(),
         protocol: protocol_command_sender.clone(),
         storage: shared_storage.clone(),
@@ -428,7 +468,7 @@ async fn launch(
 
     // launch bootstrap server
     let bootstrap_manager = start_bootstrap_server(
-        consensus_command_sender.clone(),
+        graph_controller.clone(),
         network_command_sender.clone(),
         final_state.clone(),
         bootstrap_config,
@@ -451,25 +491,26 @@ async fn launch(
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_size: MAX_PARAMETERS_SIZE,
+        thread_count: THREAD_COUNT,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
+        t0: T0,
+        periods_per_cycle: PERIODS_PER_CYCLE,
     };
     // spawn private API
     let (api_private, api_private_stop_rx) = API::<Private>::new(
-        consensus_command_sender.clone(),
         network_command_sender.clone(),
         execution_controller.clone(),
         api_config,
-        consensus_config.clone(),
         node_wallet,
     );
     let api_private_handle = api_private.serve(&SETTINGS.api.bind_private);
 
     // spawn public API
     let api_public = API::<Public>::new(
-        consensus_command_sender.clone(),
+        graph_controller.clone(),
         execution_controller.clone(),
         api_config,
         selector_controller.clone(),
-        consensus_config,
         pool_controller.clone(),
         protocol_command_sender.clone(),
         network_config,
@@ -511,9 +552,9 @@ async fn launch(
             .expect("failed to spawn thread : deadlock-detection");
     }
     (
-        consensus_event_receiver,
+        graph_event_receiver,
         bootstrap_manager,
-        consensus_manager,
+        graph_manager,
         execution_manager,
         selector_manager,
         pool_manager,
@@ -528,7 +569,7 @@ async fn launch(
 
 struct Managers {
     bootstrap_manager: Option<BootstrapManager>,
-    consensus_manager: ConsensusManager,
+    graph_manager: Box<dyn GraphManager>,
     execution_manager: Box<dyn ExecutionManager>,
     selector_manager: Box<dyn SelectorManager>,
     pool_manager: Box<dyn PoolManager>,
@@ -538,11 +579,11 @@ struct Managers {
 }
 
 async fn stop(
-    consensus_event_receiver: ConsensusEventReceiver,
+    _graph_event_receiver: Receiver<GraphEvent>,
     Managers {
         bootstrap_manager,
         mut execution_manager,
-        consensus_manager,
+        mut graph_manager,
         mut selector_manager,
         mut pool_manager,
         protocol_manager,
@@ -569,10 +610,7 @@ async fn stop(
     // stop factory
     factory_manager.stop();
 
-    let protocol_event_receiver = consensus_manager
-        .stop(consensus_event_receiver)
-        .await
-        .expect("consensus shutdown failed");
+    graph_manager.stop();
 
     // stop pool
     pool_manager.stop();
@@ -589,7 +627,7 @@ async fn stop(
 
     // stop protocol controller
     let network_event_receiver = protocol_manager
-        .stop(protocol_event_receiver)
+        .stop()
         .await
         .expect("protocol shutdown failed");
 
@@ -683,9 +721,9 @@ async fn run(args: Args) -> anyhow::Result<()> {
 
     loop {
         let (
-            mut consensus_event_receiver,
+            graph_event_receiver,
             bootstrap_manager,
-            consensus_manager,
+            graph_manager,
             execution_manager,
             selector_manager,
             pool_manager,
@@ -698,43 +736,58 @@ async fn run(args: Args) -> anyhow::Result<()> {
         ) = launch(node_wallet.clone()).await;
 
         // interrupt signal listener
-        let stop_signal = signal::ctrl_c();
-        tokio::pin!(stop_signal);
+        let (tx, rx) = crossbeam_channel::bounded(1);
+        let interrupt_signal_listener = tokio::spawn(async move {
+            signal::ctrl_c().await.unwrap();
+            tx.send(()).unwrap();
+        });
+
         // loop over messages
         let restart = loop {
             massa_trace!("massa-node.main.run.select", {});
-            tokio::select! {
-                evt = consensus_event_receiver.wait_event() => {
-                    massa_trace!("massa-node.main.run.select.consensus_event", {});
-                    match evt {
-                        Ok(ConsensusEvent::NeedSync) => {
-                            warn!("in response to a desynchronization, the node is going to bootstrap again");
-                            break true;
-                        },
-                        Err(err) => {
-                            error!("consensus_event_receiver.wait_event error: {}", err);
-                            break false;
-                        }
+            match graph_event_receiver.try_recv() {
+                Ok(evt) => match evt {
+                    GraphEvent::NeedSync => {
+                        warn!("in response to a desynchronization, the node is going to bootstrap again");
+                        break true;
                     }
                 },
-
-                _ = &mut stop_signal => {
-                    massa_trace!("massa-node.main.run.select.stop", {});
-                    info!("interrupt signal received");
+                Err(TryRecvError::Disconnected) => {
+                    error!("consensus_event_receiver.wait_event disconnected");
                     break false;
                 }
+                _ => {}
+            };
 
-                _ = api_private_stop_rx.recv() => {
+            match api_private_stop_rx.try_recv() {
+                Ok(_) => {
                     info!("stop command received from private API");
                     break false;
                 }
+                Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => {
+                    error!("api_private_stop_rx disconnected");
+                    break false;
+                }
+                _ => {}
             }
+            match rx.try_recv() {
+                Ok(_) => {
+                    info!("interrupt signal received");
+                    break false;
+                }
+                Err(crossbeam_channel::TryRecvError::Disconnected) => {
+                    error!("interrupt_signal_listener disconnected");
+                    break false;
+                }
+                _ => {}
+            }
+            sleep(Duration::from_millis(100));
         };
         stop(
-            consensus_event_receiver,
+            graph_event_receiver,
             Managers {
                 bootstrap_manager,
-                consensus_manager,
+                graph_manager,
                 execution_manager,
                 selector_manager,
                 pool_manager,
@@ -750,6 +803,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
         if !restart {
             break;
         }
+        interrupt_signal_listener.abort();
     }
     Ok(())
 }

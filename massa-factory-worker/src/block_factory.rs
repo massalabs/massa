@@ -143,12 +143,8 @@ impl BlockFactoryWorker {
             return;
         };
         // get best parents and their periods
-        let parents: Vec<(BlockId, u64)> = self
-            .channels
-            .consensus
-            .get_best_parents()
-            .expect("Couldn't get best parents"); // Vec<(parent_id, parent_period)>
-                                                  // generate the local storage object
+        let parents: Vec<(BlockId, u64)> = self.channels.graph.get_best_parents(); // Vec<(parent_id, parent_period)>
+                                                                                   // generate the local storage object
         let mut block_storage = self.channels.storage.clone_without_refs();
 
         // claim block parents in local storage
@@ -235,14 +231,9 @@ impl BlockFactoryWorker {
         );
 
         // send full block to consensus
-        if self
-            .channels
-            .consensus
-            .send_block(block_id, slot, block_storage)
-            .is_err()
-        {
-            warn!("could not send produced block to consensus: channel error");
-        }
+        self.channels
+            .graph
+            .register_block(block_id, slot, block_storage);
     }
 
     /// main run loop of the block creator thread

@@ -8,8 +8,8 @@ use error::ApiError;
 use jsonrpc_core::{BoxFuture, IoHandler, Value};
 use jsonrpc_derive::rpc;
 use jsonrpc_http_server::{CloseHandle, ServerBuilder};
-use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::ExecutionController;
+use massa_graph_2_exports::GraphController;
 use massa_models::api::{
     AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
     EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
@@ -52,8 +52,8 @@ pub use config::APIConfig;
 
 /// Public API component
 pub struct Public {
-    /// link to the consensus component
-    pub consensus_command_sender: ConsensusCommandSender,
+    /// link to the graph component
+    pub graph_controller: Box<dyn GraphController>,
     /// link to the execution component
     pub execution_controller: Box<dyn ExecutionController>,
     /// link to the selector component
@@ -64,8 +64,6 @@ pub struct Public {
     pub protocol_command_sender: ProtocolCommandSender,
     /// Massa storage
     pub storage: Storage,
-    /// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
-    pub consensus_config: ConsensusConfig,
     /// API settings
     pub api_settings: APIConfig,
     /// network setting
@@ -82,14 +80,10 @@ pub struct Public {
 
 /// Private API content
 pub struct Private {
-    /// link to the consensus component
-    pub consensus_command_sender: ConsensusCommandSender,
     /// link to the network component
     pub network_command_sender: NetworkCommandSender,
     /// link to the execution component
     pub execution_controller: Box<dyn ExecutionController>,
-    /// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
-    pub consensus_config: ConsensusConfig,
     /// API settings
     pub api_settings: APIConfig,
     /// stop channel

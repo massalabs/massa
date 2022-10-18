@@ -217,12 +217,13 @@ impl ProtocolManager {
     /// Stop the protocol controller
     pub async fn stop(
         self,
-        protocol_event_receiver: ProtocolEventReceiver,
+        //TODO: FIX
+        //protocol_event_receiver: ProtocolEventReceiver,
         //protocol_pool_event_receiver: ProtocolPoolEventReceiver,
     ) -> Result<NetworkEventReceiver, ProtocolError> {
         info!("stopping protocol controller...");
         drop(self.manager_tx);
-        let _remaining_events = protocol_event_receiver.drain().await;
+        //let _remaining_events = protocol_event_receiver.drain().await;
         let network_event_receiver = self.join_handle.await??;
         info!("protocol controller stopped");
         Ok(network_event_receiver)

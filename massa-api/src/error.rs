@@ -3,6 +3,7 @@
 use displaydoc::Display;
 use massa_consensus_exports::error::ConsensusError;
 use massa_execution_exports::ExecutionError;
+use massa_graph::error::GraphError;
 use massa_hash::MassaHashError;
 use massa_models::error::ModelsError;
 use massa_network_exports::NetworkError;
@@ -24,6 +25,8 @@ pub enum ApiError {
     MassaHashError(#[from] MassaHashError),
     /// consensus error: {0}
     ConsensusError(#[from] Box<ConsensusError>),
+    /// graph error: {0}
+    GraphError(#[from] GraphError),
     /// execution error: {0}
     ExecutionError(#[from] ExecutionError),
     /// network error: {0}

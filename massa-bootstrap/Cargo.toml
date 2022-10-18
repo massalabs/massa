@@ -11,6 +11,7 @@ async-speed-limit = { git = "https://github.com/adrien-zinger/async-speed-limit"
     "default",
     "tokio",
 ] }
+fix-hidden-lifetime-bug = "0.2.5"
 displaydoc = "0.2"
 futures = "0.3"
 num_enum = "0.5"
@@ -28,6 +29,7 @@ massa_async_pool = { path = "../massa-async-pool" }
 massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_final_state = { path = "../massa-final-state" }
 massa_graph = { path = "../massa-graph" }
+massa_graph_2_exports = { path = "../massa-graph-2-exports" }
 massa_hash = { path = "../massa-hash" }
 massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_logging = { path = "../massa-logging" }

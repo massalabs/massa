@@ -7,7 +7,6 @@ use crate::{Endpoints, Private, RpcServer, StopHandle, API};
 use jsonrpc_core::BoxFuture;
 use jsonrpc_http_server::tokio::sync::mpsc;
 
-use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::ExecutionController;
 use massa_models::api::{
     AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
@@ -38,20 +37,16 @@ use std::sync::Arc;
 impl API<Private> {
     /// generate a new private API
     pub fn new(
-        consensus_command_sender: ConsensusCommandSender,
         network_command_sender: NetworkCommandSender,
         execution_controller: Box<dyn ExecutionController>,
         api_settings: APIConfig,
-        consensus_settings: ConsensusConfig,
         node_wallet: Arc<RwLock<Wallet>>,
     ) -> (Self, mpsc::Receiver<()>) {
         let (stop_node_channel, rx) = mpsc::channel(1);
         (
             API(Private {
-                consensus_command_sender,
                 network_command_sender,
                 execution_controller,
-                consensus_config: consensus_settings,
                 api_settings,
                 stop_node_channel,
                 node_wallet,

@@ -18,7 +18,7 @@ pub trait GraphController: Send + Sync {
         end_slot: Option<Slot>,
     ) -> GraphResult<BlockGraphExport>;
 
-    fn get_block_statuses(&self, ids: Vec<BlockId>) -> Vec<BlockGraphStatus>;
+    fn get_block_statuses(&self, ids: &Vec<BlockId>) -> Vec<BlockGraphStatus>;
 
     fn get_cliques(&self) -> Vec<Clique>;
 
@@ -37,6 +37,18 @@ pub trait GraphController: Send + Sync {
     fn register_block_header(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>);
 
     fn mark_invalid_block(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>);
+
+    /// Returns a boxed clone of self.
+    /// Useful to allow cloning `Box<dyn GraphController>`.
+    fn clone_box(&self) -> Box<dyn GraphController>;
+}
+
+/// Allow cloning `Box<dyn GraphController>`
+/// Uses `GraphController::clone_box` internally
+impl Clone for Box<dyn GraphController> {
+    fn clone(&self) -> Box<dyn GraphController> {
+        self.clone_box()
+    }
 }
 
 /// Graph manager used to stop the graph thread

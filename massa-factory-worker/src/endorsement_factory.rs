@@ -162,23 +162,10 @@ impl EndorsementFactoryWorker {
         }
 
         // get consensus block ID for that slot
-        let endorsed_block: BlockId = match self
+        let endorsed_block: BlockId = self
             .channels
-            .consensus
-            .get_latest_blockclique_block_at_slot(slot)
-        {
-            // error getting block ID at target slot
-            Err(_) => {
-                warn!(
-                    "could not get latest blockclique block to create endorsement to be included at slot {}",
-                    slot
-                );
-                return;
-            }
-
-            // latest block found
-            Ok(b_id) => b_id,
-        };
+            .graph
+            .get_latest_blockclique_block_at_slot(slot);
 
         // produce endorsements
         let mut endorsements: Vec<WrappedEndorsement> = Vec::with_capacity(producers_indices.len());

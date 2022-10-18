@@ -5,11 +5,11 @@ use crate::config::APIConfig;
 use crate::error::ApiError;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use jsonrpc_core::BoxFuture;
-use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
-use massa_graph::DiscardReason;
+use massa_graph_2_exports::block_status::DiscardReason;
+use massa_graph_2_exports::GraphController;
 use massa_models::api::{
     BlockGraphStatus, DatastoreEntryInput, DatastoreEntryOutput, OperationInput,
     ReadOnlyBytecodeExecution, ReadOnlyCall, SlotAmount,
@@ -57,11 +57,10 @@ use std::net::{IpAddr, SocketAddr};
 impl API<Public> {
     /// generate a new public API
     pub fn new(
-        consensus_command_sender: ConsensusCommandSender,
+        graph_controller: Box<dyn GraphController>,
         execution_controller: Box<dyn ExecutionController>,
         api_settings: APIConfig,
         selector_controller: Box<dyn SelectorController>,
-        consensus_settings: ConsensusConfig,
         pool_command_sender: Box<dyn PoolController>,
         protocol_command_sender: ProtocolCommandSender,
         network_settings: NetworkConfig,
@@ -72,8 +71,7 @@ impl API<Public> {
         storage: Storage,
     ) -> Self {
         API(Public {
-            consensus_command_sender,
-            consensus_config: consensus_settings,
+            graph_controller,
             api_settings,
             pool_command_sender,
             network_settings,
@@ -293,28 +291,28 @@ impl Endpoints for API<Public> {
 
     fn get_status(&self) -> BoxFuture<Result<NodeStatus, ApiError>> {
         let execution_controller = self.0.execution_controller.clone();
-        let consensus_command_sender = self.0.consensus_command_sender.clone();
+        let graph_controller = self.0.graph_controller.clone();
         let network_command_sender = self.0.network_command_sender.clone();
         let network_config = self.0.network_settings.clone();
         let version = self.0.version;
-        let consensus_settings = self.0.consensus_config.clone();
         let compensation_millis = self.0.compensation_millis;
         let pool_command_sender = self.0.pool_command_sender.clone();
         let node_id = self.0.node_id;
         let config = CompactConfig::default();
+        let api_config = self.0.api_settings.clone();
         let closure = async move || {
             let now = MassaTime::now(compensation_millis)?;
             let last_slot = get_latest_block_slot_at_timestamp(
-                consensus_settings.thread_count,
-                consensus_settings.t0,
-                consensus_settings.genesis_timestamp,
+                api_config.thread_count,
+                api_config.t0,
+                api_config.genesis_timestamp,
                 now,
             )?;
 
             let execution_stats = execution_controller.get_stats();
+            let consensus_stats = graph_controller.get_stats()?;
 
-            let (consensus_stats, network_stats, peers) = tokio::join!(
-                consensus_command_sender.get_stats(),
+            let (network_stats, peers) = tokio::join!(
                 network_command_sender.get_network_stats(),
                 network_command_sender.get_peers()
             );
@@ -341,40 +339,40 @@ impl Endpoints for API<Public> {
                 last_slot,
                 next_slot: last_slot
                     .unwrap_or_else(|| Slot::new(0, 0))
-                    .get_next_slot(consensus_settings.thread_count)?,
+                    .get_next_slot(api_config.thread_count)?,
                 execution_stats,
-                consensus_stats: consensus_stats?,
+                consensus_stats: consensus_stats,
                 network_stats: network_stats?,
                 pool_stats,
                 config,
                 current_cycle: last_slot
                     .unwrap_or_else(|| Slot::new(0, 0))
-                    .get_cycle(consensus_settings.periods_per_cycle),
+                    .get_cycle(api_config.periods_per_cycle),
             })
         };
         Box::pin(closure())
     }
 
     fn get_cliques(&self) -> BoxFuture<Result<Vec<Clique>, ApiError>> {
-        let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let closure = async move || Ok(consensus_command_sender.get_cliques().await?);
+        let graph_controller = self.0.graph_controller.clone();
+        let closure = async move || Ok(graph_controller.get_cliques());
         Box::pin(closure())
     }
 
     fn get_stakers(&self) -> BoxFuture<Result<Vec<(Address, u64)>, ApiError>> {
         let execution_controller = self.0.execution_controller.clone();
-        let cfg = self.0.consensus_config.clone();
+        let api_config = self.0.api_settings.clone();
         let compensation_millis = self.0.compensation_millis;
 
         let closure = async move || {
             let curr_cycle = get_latest_block_slot_at_timestamp(
-                cfg.thread_count,
-                cfg.t0,
-                cfg.genesis_timestamp,
+                api_config.thread_count,
+                api_config.t0,
+                api_config.genesis_timestamp,
                 MassaTime::now(compensation_millis)?,
             )?
             .unwrap_or_else(|| Slot::new(0, 0))
-            .get_cycle(cfg.periods_per_cycle);
+            .get_cycle(api_config.periods_per_cycle);
             let mut staker_vec = execution_controller
                 .get_cycle_active_rolls(curr_cycle)
                 .into_iter()
@@ -415,7 +413,7 @@ impl Endpoints for API<Public> {
         let in_pool = self.0.pool_command_sender.contains_operations(&ops);
 
         let api_cfg = self.0.api_settings;
-        let consensus_command_sender = self.0.consensus_command_sender.clone();
+        let graph_controller = self.0.graph_controller.clone();
         let closure = async move || {
             if ops.len() as u64 > api_cfg.max_arguments {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));
@@ -429,9 +427,7 @@ impl Endpoints for API<Public> {
                     .unique()
                     .cloned()
                     .collect();
-                let involved_block_statuses = consensus_command_sender
-                    .get_block_statuses(&involved_blocks)
-                    .await?;
+                let involved_block_statuses = graph_controller.get_block_statuses(&involved_blocks);
                 let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
                     .into_iter()
                     .zip(involved_block_statuses.into_iter())
@@ -498,7 +494,7 @@ impl Endpoints for API<Public> {
         // ask pool whether it carries the operations
         let in_pool = self.0.pool_command_sender.contains_endorsements(&eds);
 
-        let consensus_command_sender = self.0.consensus_command_sender.clone();
+        let graph_controller = self.0.graph_controller.clone();
         let api_cfg = self.0.api_settings;
         let closure = async move || {
             if eds.len() as u64 > api_cfg.max_arguments {
@@ -513,9 +509,7 @@ impl Endpoints for API<Public> {
                     .unique()
                     .cloned()
                     .collect();
-                let involved_block_statuses = consensus_command_sender
-                    .get_block_statuses(&involved_blocks)
-                    .await?;
+                let involved_block_statuses = graph_controller.get_block_statuses(&involved_blocks);
                 let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
                     .into_iter()
                     .zip(involved_block_statuses.into_iter())
@@ -556,7 +550,7 @@ impl Endpoints for API<Public> {
     /// gets a block. Returns None if not found
     /// only active blocks are returned
     fn get_block(&self, id: BlockId) -> BoxFuture<Result<BlockInfo, ApiError>> {
-        let consensus_command_sender = self.0.consensus_command_sender.clone();
+        let graph_controller = self.0.graph_controller.clone();
         let storage = self.0.storage.clone_without_refs();
         let closure = async move || {
             let block = match storage.read_blocks().get(&id).cloned() {
@@ -566,9 +560,8 @@ impl Endpoints for API<Public> {
                 }
             };
 
-            let graph_status = consensus_command_sender
-                .get_block_statuses(&[id])
-                .await?
+            let graph_status = graph_controller
+                .get_block_statuses(&vec![id])
                 .into_iter()
                 .next()
                 .expect("expected get_block_statuses to return one element");
@@ -597,10 +590,10 @@ impl Endpoints for API<Public> {
         &self,
         slot: Slot,
     ) -> BoxFuture<Result<Option<Block>, ApiError>> {
-        let consensus_command_sender = self.0.consensus_command_sender.clone();
+        let graph_controller = self.0.graph_controller.clone();
         let storage = self.0.storage.clone_without_refs();
         let closure = async move || {
-            let block_id = match consensus_command_sender.get_blockclique_block_at_slot(slot)? {
+            let block_id = match graph_controller.get_blockclique_block_at_slot(slot) {
                 Some(id) => id,
                 None => return Ok(None),
             };
@@ -619,20 +612,18 @@ impl Endpoints for API<Public> {
         &self,
         time: TimeInterval,
     ) -> BoxFuture<Result<Vec<BlockSummary>, ApiError>> {
-        let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let consensus_settings = self.0.consensus_config.clone();
+        let graph_controller = self.0.graph_controller.clone();
+        let api_config = self.0.api_settings.clone();
         let closure = async move || {
             // filter blocks from graph_export
             let (start_slot, end_slot) = time_range_to_slot_range(
-                consensus_settings.thread_count,
-                consensus_settings.t0,
-                consensus_settings.genesis_timestamp,
+                api_config.thread_count,
+                api_config.t0,
+                api_config.genesis_timestamp,
                 time.start,
                 time.end,
             )?;
-            let graph = consensus_command_sender
-                .get_block_graph_status(start_slot, end_slot)
-                .await?;
+            let graph = graph_controller.get_block_graph_status(start_slot, end_slot)?;
             let mut res = Vec::with_capacity(graph.active_blocks.len());
             let blockclique = graph
                 .max_cliques
@@ -740,9 +731,9 @@ impl Endpoints for API<Public> {
         // get future draws from selector
         let selection_draws = {
             let cur_slot = timeslots::get_current_latest_block_slot(
-                self.0.consensus_config.thread_count,
-                self.0.consensus_config.t0,
-                self.0.consensus_config.genesis_timestamp,
+                self.0.api_settings.thread_count,
+                self.0.api_settings.t0,
+                self.0.api_settings.genesis_timestamp,
                 self.0.compensation_millis,
             )
             .expect("could not get latest current slot")
@@ -786,7 +777,7 @@ impl Endpoints for API<Public> {
             res.push(AddressInfo {
                 // general address info
                 address,
-                thread: address.get_thread(self.0.consensus_config.thread_count),
+                thread: address.get_thread(self.0.api_settings.thread_count),
 
                 // final execution info
                 final_balance: execution_infos.final_balance,

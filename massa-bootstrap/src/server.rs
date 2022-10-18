@@ -8,8 +8,8 @@ use std::{
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use massa_async_pool::AsyncMessageId;
-use massa_consensus_exports::ConsensusCommandSender;
 use massa_final_state::{ExecutedOpsStreamingStep, FinalState};
+use massa_graph_2_exports::GraphController;
 use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::{slot::Slot, version::Version};
@@ -52,7 +52,7 @@ impl BootstrapManager {
 /// start a bootstrap server.
 /// Once your node will be ready, you may want other to bootstrap from you.
 pub async fn start_bootstrap_server(
-    consensus_command_sender: ConsensusCommandSender,
+    graph_controller: Box<dyn GraphController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
     bootstrap_config: BootstrapConfig,
@@ -66,7 +66,7 @@ pub async fn start_bootstrap_server(
         let (manager_tx, manager_rx) = mpsc::channel::<()>(1);
         let join_handle = tokio::spawn(async move {
             BootstrapServer {
-                consensus_command_sender,
+                graph_controller,
                 network_command_sender,
                 final_state,
                 establisher,
@@ -91,7 +91,7 @@ pub async fn start_bootstrap_server(
 }
 
 struct BootstrapServer {
-    consensus_command_sender: ConsensusCommandSender,
+    graph_controller: Box<dyn GraphController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
     establisher: Establisher,
@@ -208,14 +208,14 @@ impl BootstrapServer {
                     let compensation_millis = self.compensation_millis;
                     let version = self.version;
                     let data_execution = self.final_state.clone();
-                    let consensus_command_sender = self.consensus_command_sender.clone();
+                    let graph_controller = self.graph_controller.clone();
                     let network_command_sender = self.network_command_sender.clone();
                     let keypair = self.keypair.clone();
                     let config = self.bootstrap_config.clone();
 
                     bootstrap_sessions.push(async move {
                         let mut server = BootstrapServerBinder::new(dplx, keypair, config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes);
-                        match manage_bootstrap(&config, &mut server, data_execution, compensation_millis, version, consensus_command_sender, network_command_sender).await {
+                        match manage_bootstrap(&config, &mut server, data_execution, compensation_millis, version, graph_controller, network_command_sender).await {
                             Ok(_) => {
                                 info!("bootstrapped peer {}", remote_addr)
                             },
@@ -410,13 +410,14 @@ pub async fn send_final_state_stream(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[fix_hidden_lifetime_bug]
 async fn manage_bootstrap(
     bootstrap_config: &BootstrapConfig,
     server: &mut BootstrapServerBinder,
     final_state: Arc<RwLock<FinalState>>,
     compensation_millis: i64,
     version: Version,
-    consensus_command_sender: ConsensusCommandSender,
+    graph_controller: Box<dyn GraphController>,
     network_command_sender: NetworkCommandSender,
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
@@ -519,7 +520,7 @@ async fn manage_bootstrap(
                     match tokio::time::timeout(
                         write_timeout,
                         server.send(BootstrapServerMessage::ConsensusState {
-                            graph: consensus_command_sender.get_bootstrap_state().await?,
+                            graph: graph_controller.get_bootstrap_graph()?,
                         }),
                     )
                     .await

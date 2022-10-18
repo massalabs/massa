@@ -909,6 +909,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "fix-hidden-lifetime-bug"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4ae9c2016a663983d4e40a9ff967d6dcac59819672f0b47f2b17574e99c33c8"
+dependencies = [
+ "fix-hidden-lifetime-bug-proc_macros",
+]
+
+[[package]]
+name = "fix-hidden-lifetime-bug-proc_macros"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4c81935e123ab0741c4c4f0d9b8377e5fb21d3de7e062fa4b1263b1fbcba1ea"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "fixedbitset"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1575,6 +1595,7 @@ name = "massa-node"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "crossbeam-channel",
  "dialoguer",
  "enum-map",
  "lazy_static",
@@ -1588,6 +1609,8 @@ dependencies = [
  "massa_factory_exports",
  "massa_factory_worker",
  "massa_final_state",
+ "massa_graph_2_exports",
+ "massa_graph_2_worker",
  "massa_ledger_exports",
  "massa_ledger_worker",
  "massa_logging",
@@ -1648,6 +1671,7 @@ dependencies = [
  "massa_consensus_exports",
  "massa_execution_exports",
  "massa_graph",
+ "massa_graph_2_exports",
  "massa_hash",
  "massa_models",
  "massa_network_exports",
@@ -1697,12 +1721,14 @@ dependencies = [
  "async-speed-limit",
  "bitvec",
  "displaydoc",
+ "fix-hidden-lifetime-bug",
  "futures 0.3.24",
  "lazy_static",
  "massa_async_pool",
  "massa_consensus_exports",
  "massa_final_state",
  "massa_graph",
+ "massa_graph_2_exports",
  "massa_hash",
  "massa_ledger_exports",
  "massa_ledger_worker",
@@ -1841,6 +1867,7 @@ dependencies = [
  "displaydoc",
  "massa_consensus_exports",
  "massa_execution_exports",
+ "massa_graph_2_exports",
  "massa_hash",
  "massa_ledger_exports",
  "massa_models",

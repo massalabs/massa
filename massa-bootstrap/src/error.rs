@@ -4,6 +4,7 @@ use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use displaydoc::Display;
 use massa_consensus_exports::error::ConsensusError;
 use massa_final_state::FinalStateError;
+use massa_graph::error::GraphError;
 use massa_hash::MassaHashError;
 use massa_network_exports::NetworkError;
 use massa_pos_exports::PosError;
@@ -30,6 +31,8 @@ pub enum BootstrapError {
     UnexpectedConnectionDrop,
     /// `massa_hash` error: {0}
     MassaHashError(#[from] MassaHashError),
+    /// `massa_graph` error: {0}
+    MassaGraphError(#[from] GraphError),
     /// `massa_signature` error {0}
     MassaSignatureError(#[from] massa_signature::MassaSignatureError),
     /// time error: {0}
