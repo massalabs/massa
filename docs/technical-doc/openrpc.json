@@ -437,9 +437,9 @@
             "params": [],
             "result": {
                 "schema": {
-                    "$ref": "#/components/schemas/Stakers"
+                    "$ref": "#/components/schemas/Staker"
                 },
-                "name": "Stakers"
+                "name": "Staker"
             },
             "name": "get_stakers",
             "summary": "Get stakers",
@@ -1730,9 +1730,9 @@
                     }
                 }
             },
-            "Stakers": {
-                "title": "Stakers",
-                "description": "Stakers",
+            "Staker": {
+                "title": "Staker",
+                "description": "A tuple which contains (address, active_rolls)",
                 "type": "object",
                 "additionalProperties": {
                     "type": "object",
@@ -2213,12 +2213,12 @@
                     "$ref": "#/components/schemas/Clique"
                 }
             },
-            "Stakers": {
-                "name": "Stakers",
-                "summary": "Stakers",
-                "description": "A Stakers object",
+            "Staker": {
+                "name": "Staker",
+                "summary": "Staker",
+                "description": "A Staker object. A tuple which contains (address, active_rolls)",
                 "schema": {
-                    "$ref": "#/components/schemas/Stakers"
+                    "$ref": "#/components/schemas/Staker"
                 }
             },
             "OperationInfo": {
