@@ -98,7 +98,7 @@ pub const MAX_BLOCK_SIZE: u32 = 500_000;
 /// Maximum capacity of the asynchronous messages pool
 pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
 /// Maximum data size in async message
-pub const MAX_DATA_ASYNC_MESSAGE: u64 = 1_000_000;
+pub const MAX_ASYNC_MESSAGE_DATA: u64 = 1_000_000;
 /// Maximum operation validity period count
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
@@ -111,6 +111,8 @@ pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 pub const ASYNC_POOL_BOOTSTRAP_PART_SIZE: u64 = 100;
 /// Maximum size of a proof-of-stake rolls part in bootstrap
 pub const MAX_BOOTSTRAP_ROLLS_LENGTH: u64 = 10_000;
+/// Maximum size of a proof-of-stake production stats part in bootstrap
+pub const MAX_BOOTSTRAP_PRODUCTION_STATS: u64 = 10_000;
 /// Maximum size of a proof-of-stake deferred credits part in bootstrap
 pub const MAX_BOOTSTRAP_CREDITS_LENGTH: u64 = 10_000;
 /// Maximum length of a datastore key

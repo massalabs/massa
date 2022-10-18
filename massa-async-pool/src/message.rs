@@ -459,7 +459,7 @@ mod tests {
     use massa_models::{
         address::Address,
         amount::Amount,
-        config::{MAX_DATA_ASYNC_MESSAGE, THREAD_COUNT},
+        config::{MAX_ASYNC_MESSAGE_DATA, THREAD_COUNT},
         slot::Slot,
     };
     use std::str::FromStr;
@@ -487,7 +487,7 @@ mod tests {
             .serialize(&message, &mut serialized)
             .unwrap();
         let message_deserializer =
-            AsyncMessageDeserializer::new(THREAD_COUNT, MAX_DATA_ASYNC_MESSAGE);
+            AsyncMessageDeserializer::new(THREAD_COUNT, MAX_ASYNC_MESSAGE_DATA);
         serialized[1] = 50;
         message_deserializer
             .deserialize::<DeserializeError>(&serialized)

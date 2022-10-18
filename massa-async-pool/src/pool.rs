@@ -300,7 +300,7 @@ fn test_take_batch() {
     let config = AsyncPoolConfig {
         thread_count: 2,
         max_length: 10,
-        max_data_async_message: 1000000,
+        max_async_message_data: 1_000_000,
         bootstrap_part_size: 100,
     };
     let mut pool = AsyncPool::new(config);

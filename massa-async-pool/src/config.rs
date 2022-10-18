@@ -9,8 +9,8 @@ pub struct AsyncPoolConfig {
     pub max_length: u64,
     /// part size (for bootstrap limits)
     pub bootstrap_part_size: u64,
-    /// max data async message (for bootstrap limits)
-    pub max_data_async_message: u64,
+    /// max async message data (for bootstrap limits)
+    pub max_async_message_data: u64,
     /// thread count
     pub thread_count: u8,
 }
