@@ -200,15 +200,15 @@ pub const MAX_ASYNC_GAS: u64 = 1_000_000_000;
 /// Max number of endorsements per message
 pub const MAX_ENDORSEMENTS_PER_MESSAGE: u32 = 1024;
 /// node send channel size
-pub const NODE_SEND_CHANNEL_SIZE: usize = 1024;
+pub const NODE_SEND_CHANNEL_SIZE: usize = 10_000;
 /// max duplex buffer size
 pub const MAX_DUPLEX_BUFFER_SIZE: usize = 1024;
 /// network controller communication channel size
-pub const NETWORK_CONTROLLER_CHANNEL_SIZE: usize = 1024;
+pub const NETWORK_CONTROLLER_CHANNEL_SIZE: usize = 10_000;
 /// network event channel size
-pub const NETWORK_EVENT_CHANNEL_SIZE: usize = 1024;
+pub const NETWORK_EVENT_CHANNEL_SIZE: usize = 10_000;
 /// network node command channel size
-pub const NETWORK_NODE_COMMAND_CHANNEL_SIZE: usize = 1024;
+pub const NETWORK_NODE_COMMAND_CHANNEL_SIZE: usize = 10_000;
 /// network node event channel size
 pub const NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = 10_000;
 
