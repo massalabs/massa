@@ -644,9 +644,10 @@
             ],
             "params": [
                 {
-                    "name": "nodeKey",
-                    "description": "Byte array",
+                    "name": "message",
+                    "description": "Message to be signed in byte array",
                     "schema": {
+                        "format": "byte",
                         "type": "array"
                     },
                     "required": true
@@ -1812,7 +1813,7 @@
                 }
             },
             "PubkeySig": {
-                "description": "Public key signature",
+                "description": "Public key and a signature it has produced used for serialization/deserialization purpose",
                 "required": [
                     "public_key",
                     "signature"
@@ -1820,11 +1821,11 @@
                 "type": "object",
                 "properties": {
                     "public_key": {
-                        "description": "",
+                        "description": "public key",
                         "type": "string"
                     },
                     "signature": {
-                        "description": "",
+                        "description": "signature",
                         "type": "string"
                     }
                 }
