@@ -106,9 +106,10 @@ impl FinalState {
             .apply_changes_unchecked(&changes.async_pool_changes);
         self.pos_state
             .apply_changes(changes.pos_changes.clone(), self.slot, true)
-            .expect("could not settle slot in final state PoS"); //TODO do not panic here: it might just mean that the lookback cycle is not available
-        self.executed_ops.extend(changes.executed_ops.clone());
-        self.executed_ops.prune(self.slot);
+            .expect("could not settle slot in final state proof-of-stake");
+        // TODO do not panic above: it might just mean that the lookback cycle is not available
+        self.executed_ops
+            .apply_changes(changes.executed_ops.clone(), self.slot);
 
         // push history element and limit history size
         if self.config.final_history_length > 0 {

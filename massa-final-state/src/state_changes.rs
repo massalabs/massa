@@ -14,7 +14,7 @@ use nom::{
     IResult, Parser,
 };
 
-use crate::{executed_ops::ExecutedOpsSerializer, ExecutedOps, ExecutedOpsDeserializer};
+use crate::{executed_ops::ExecutedOpsSerializer, ExecutedOpsDeserializer, ExecutedOpsChanges};
 
 /// represents changes that can be applied to the execution state
 #[derive(Default, Debug, Clone)]
@@ -25,8 +25,8 @@ pub struct StateChanges {
     pub async_pool_changes: AsyncPoolChanges,
     /// roll state changes
     pub pos_changes: PoSChanges,
-    /// executed operations: maps the operation ID to its validity slot end - included
-    pub executed_ops: ExecutedOps,
+    /// executed operations changes
+    pub executed_ops: ExecutedOpsChanges,
 }
 
 /// Basic `StateChanges` serializer.

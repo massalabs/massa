@@ -26,6 +26,9 @@ use std::{
 
 const EXECUTED_OPS_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
+/// Speculatives changes for ExecutedOps
+pub type ExecutedOpsChanges = PreHashSet<OperationId>;
+
 /// A structure to list and prune previously executed operations
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExecutedOps {
@@ -76,22 +79,23 @@ impl ExecutedOps {
     }
 
     /// Apply speculative operations changes to the final executed operations state
-    pub fn apply_changes(&mut self, other: PreHashSet<OperationId>, slot: Slot) {
-        self.extend_and_compute_hash(other.iter());
+    pub fn apply_changes(&mut self, changes: ExecutedOpsChanges, slot: Slot) {
+        self.extend_and_compute_hash(changes.iter());
         match self.ops_deque.back_mut() {
             Some((last_slot, ids)) if *last_slot == slot => {
-                ids.extend(other);
+                ids.extend(changes);
             }
             Some((last_slot, _)) => match last_slot.get_next_slot(self.thread_count) {
                 Ok(next_to_last_slot) if next_to_last_slot == slot => {
-                    self.ops_deque.push_back((next_to_last_slot, other));
+                    self.ops_deque.push_back((next_to_last_slot, changes));
                 }
                 _ => panic!("executed ops associated slot must be sequential"),
             },
             None => {
-                self.ops_deque.push_back((slot, other));
+                self.ops_deque.push_back((slot, changes));
             }
         }
+        self.prune(slot);
     }
 
     /// Check if an operation was executed
@@ -184,41 +188,34 @@ impl ExecutedOps {
 
 #[test]
 fn test_executed_ops_xor_computing() {
+    use massa_models::prehash::PreHashSet;
     use massa_models::wrapped::Id;
-    let mut a = ExecutedOps::default();
-    let mut b = ExecutedOps::default();
-    let mut c = ExecutedOps::default();
-    // initialize the three different objects
+
+    // initialize the changes and the executed ops objects
+    let mut change_a = PreHashSet::default();
+    let mut change_b = PreHashSet::default();
+    let mut change_c = PreHashSet::default();
     for i in 0u8..20 {
         if i < 12 {
-            a.insert(
-                Slot {
-                    period: i as u64,
-                    thread: 0,
-                },
-                OperationId::new(Hash::compute_from(&[i])),
-            );
+            change_a.insert(OperationId::new(Hash::compute_from(&[i])));
         }
         if i > 8 {
-            b.insert(
-                Slot {
-                    period: (i as u64),
-                    thread: 0,
-                },
-                OperationId::new(Hash::compute_from(&[i])),
-            );
+            change_b.insert(OperationId::new(Hash::compute_from(&[i])));
         }
-        c.insert(
-            Slot {
-                period: (i as u64),
-                thread: 0,
-            },
-            OperationId::new(Hash::compute_from(&[i])),
-        );
+        change_c.insert(OperationId::new(Hash::compute_from(&[i])));
     }
-    // extend a with b which performs a.hash ^ b.hash
-    a.extend(b);
-    // check that a.hash ^ b.hash = c.hash
+    let slot = Slot {
+        period: 20,
+        thread: 0,
+    };
+    let mut a = ExecutedOps::new(2, 10);
+    let mut c = ExecutedOps::new(2, 10);
+    a.apply_changes(change_a, slot);
+    c.apply_changes(change_c, slot);
+
+    // extend a with change_b which performs a.hash ^ $(change_b)
+    a.extend_and_compute_hash(change_b.iter());
+    // check that a.hash ^ $(change_b) = c.hash
     assert_eq!(a.hash, c.hash);
     // prune every element
     a.prune(Slot {
