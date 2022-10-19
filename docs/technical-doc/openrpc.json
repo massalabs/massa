@@ -265,10 +265,6 @@
         {
             "tags": [
                 {
-                    "name": "removed",
-                    "description": "Removed in TEST.12"
-                },
-                {
                     "name": "public",
                     "description": "Massa public api"
                 }
@@ -2157,7 +2153,11 @@
                     },
                     "key": {
                         "description": "",
-                        "type": "string"
+                        "type": "array",
+                        "items": {
+                            "format": "byte",
+                            "type": "string"
+                        }
                     }
                 }
             },
@@ -2172,6 +2172,7 @@
                     "final_value": {
                         "description": "",
                         "type": "string"
+                        }
                     }
                 }
             },
