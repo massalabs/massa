@@ -775,11 +775,11 @@
             ],
             "params": [
                 {
-                    "name": "SignedOperation",
+                    "name": "OperationInput",
                     "schema": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/SignedOperation"
+                            "$ref": "#/components/schemas/OperationInput"
                         }
                     }
                 }
@@ -788,7 +788,7 @@
                 "schema": {
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/components/schemas/OperationId"
                     }
                 },
                 "name": "Operation(s)"
@@ -1291,6 +1291,38 @@
                     },
                     "signature": {
                         "type": "string"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "OperationId": {
+                "description": "Operation id",
+                "type": "string"
+            },
+            "OperationInput" : {
+                "description": "Operation input",
+                "required": [
+                    "creator_public_key",
+                    "signature",
+                    "serialized_content"
+                ],
+                "type": "object",
+                "properties": {
+                    "creator_public_key": {
+                        "description": "The public key of the creator of the TX",
+                        "type": "string"
+                    },
+                    "signature": {
+                        "$ref": "#/components/schemas/Signature",
+                        "description": "The signature of the operation"
+                    },
+                    "serialized_content": {
+                        "description": "The serialized version of the content `base58` encoded",
+                        "type": "array",
+                        "items": {
+                            "format": "byte",
+                            "type": "string"
+                        }
                     }
                 },
                 "additionalProperties": false
@@ -2220,6 +2252,22 @@
                 "description": "A Staker object. A tuple which contains (address, active_rolls)",
                 "schema": {
                     "$ref": "#/components/schemas/Staker"
+                }
+            },
+            "OperationId": {
+                "name": "OperationId",
+                "summary": "OperationId",
+                "description": "A OperationId object",
+                "schema": {
+                    "$ref": "#/components/schemas/OperationId"
+                }
+            },
+            "OperationInput": {
+                "name": "OperationInput",
+                "summary": "OperationInput",
+                "description": "A OperationInput object",
+                "schema": {
+                    "$ref": "#/components/schemas/OperationInput"
                 }
             },
             "OperationInfo": {
