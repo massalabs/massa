@@ -51,6 +51,7 @@ impl FinalState {
             config.periods_per_cycle,
             config.thread_count,
             config.pos_cycle_history_length,
+            4242,
             selector,
         )
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;

@@ -56,8 +56,8 @@ impl PoSFinalState {
         initial_rolls_path: &PathBuf,
         periods_per_cycle: u64,
         thread_count: u8,
-        bootstrap_part_size: u64,
         cycle_history_length: usize,
+        bootstrap_part_size: u64,
         selector: Box<dyn SelectorController>,
     ) -> Result<Self, PosError> {
         // load get initial rolls from file

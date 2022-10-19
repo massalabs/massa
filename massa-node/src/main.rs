@@ -112,8 +112,8 @@ async fn launch(
         ledger_config: ledger_config.clone(),
         async_pool_config,
         final_history_length: SETTINGS.ledger.final_history_length,
-        pos_cycle_history_length: 42,
-        executed_ops_bootstrap_part_size: 42,
+        pos_cycle_history_length: 4242,
+        executed_ops_bootstrap_part_size: 4242,
         thread_count: THREAD_COUNT,
         periods_per_cycle: PERIODS_PER_CYCLE,
         initial_seed_string: INITIAL_DRAW_SEED.into(),
@@ -197,8 +197,8 @@ async fn launch(
         max_rolls_length: MAX_BOOTSTRAP_ROLLS_LENGTH,
         max_production_stats_length: MAX_BOOTSTRAP_PRODUCTION_STATS,
         max_credits_length: MAX_BOOTSTRAP_CREDITS_LENGTH,
-        max_executed_ops_length: 42,
-        max_ops_changes_length: 42,
+        max_executed_ops_length: 4242,
+        max_ops_changes_length: 4242,
     };
 
     // bootstrap
