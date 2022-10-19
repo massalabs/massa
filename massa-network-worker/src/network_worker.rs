@@ -387,12 +387,14 @@ impl NetworkWorker {
                             mpsc::channel::<NodeCommand>(self.cfg.node_command_channel_size);
                         let node_event_tx_clone = self.event.clone_node_sender();
                         let cfg_copy = self.cfg.clone();
+                        let node_worker_command_tx = node_command_tx.clone();
                         let node_fn_handle = tokio::spawn(async move {
                             let res = NodeWorker::new(
                                 cfg_copy,
                                 new_node_id,
                                 socket_reader,
                                 socket_writer,
+                                node_worker_command_tx,
                                 node_command_rx,
                                 node_event_tx_clone,
                             )
