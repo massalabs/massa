@@ -121,11 +121,6 @@ impl NodeWorker {
                 };
             }
 
-            if let Err(e) = socket_writer.write_half.shutdown().await {
-                let err = format!("{}", e);
-                massa_trace!("node_worker.run_loop.loop.writer_shutdown error: {}", err);
-            }
-
             Ok(())
         });
         tokio::pin!(node_writer_handle);
