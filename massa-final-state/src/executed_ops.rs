@@ -3,7 +3,7 @@
 //! This file defines a structure to list and prune previously executed operations.
 //! Used to detect operation reuse.
 
-use massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
+use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
 use massa_models::{
     operation::{OperationId, OperationIdDeserializer},
     prehash::PreHashSet,
@@ -37,16 +37,19 @@ pub struct ExecutedOps {
     pub hash: Hash,
     /// Number of threads
     thread_count: u8,
+    /// Maximum size of a bootstrap part
+    bootstrap_part_size: u64,
 }
 
 impl ExecutedOps {
     /// Creates a new `ExecutedOps`
-    pub fn new(thread_count: u8) -> Self {
+    pub fn new(thread_count: u8, bootstrap_part_size: u64) -> Self {
         Self {
             ops_deque: VecDeque::new(),
             ops: PreHashSet::default(),
             hash: Hash::from_bytes(EXECUTED_OPS_INITIAL_BYTES),
             thread_count,
+            bootstrap_part_size,
         }
     }
 
@@ -60,10 +63,13 @@ impl ExecutedOps {
         self.ops.is_empty()
     }
 
-    /// Internal function used to insert values into `ops` and update the object hash
-    fn extend_and_compute_hash(&mut self, values: PreHashSet<OperationId>) {
+    /// Internal function used to insert the values of an operation id iter and update the object hash
+    fn extend_and_compute_hash<'a, I>(&mut self, values: I)
+    where
+        I: Iterator<Item = &'a OperationId>,
+    {
         for op_id in values {
-            if self.ops.insert(op_id) {
+            if self.ops.insert(*op_id) {
                 self.hash ^= Hash::compute_from(op_id.to_bytes());
             }
         }
@@ -71,7 +77,7 @@ impl ExecutedOps {
 
     /// Apply speculative operations changes to the final executed operations state
     pub fn apply_changes(&mut self, other: PreHashSet<OperationId>, slot: Slot) {
-        self.extend_and_compute_hash(other);
+        self.extend_and_compute_hash(other.iter());
         match self.ops_deque.back_mut() {
             Some((last_slot, ids)) if *last_slot == slot => {
                 ids.extend(other);
@@ -97,7 +103,7 @@ impl ExecutedOps {
     pub fn prune(&mut self, slot: Slot) {
         let index = match self
             .ops_deque
-            .binary_search_by_key(&slot, |(slot, _ids)| *slot)
+            .binary_search_by_key(&slot, |(slot, _)| *slot)
         {
             Ok(index) => index,
             Err(_) => return,
@@ -126,17 +132,28 @@ impl ExecutedOps {
         VecDeque<(Slot, PreHashSet<OperationId>)>,
         StreamingStep<Slot>,
     ) {
-        let mut ops_part = PreHashSet::default();
+        let mut ops_part = VecDeque::new();
         let left_bound = match cursor {
             StreamingStep::Started => Unbounded,
-            StreamingStep::Ongoing(operation_id) => Excluded(self),
+            StreamingStep::Ongoing(slot) => {
+                match self
+                    .ops_deque
+                    .binary_search_by_key(&slot, |(slot, _)| *slot)
+                {
+                    Ok(index) => Excluded(index),
+                    Err(_) => return (ops_part, StreamingStep::Finished),
+                }
+            }
             StreamingStep::Finished => return (ops_part, cursor),
         };
         let mut ops_part_last_slot: Option<Slot> = None;
-        for (&slot, &op_id) in self.ops_deque.range((left_bound, Unbounded)) {
-            // FOLLOW-UP TODO: stream in multiple parts
-            ops_part.insert(slot, op_id);
-            ops_part_last_slot = Some(slot);
+        for (slot, ids) in self.ops_deque.range((left_bound, Unbounded)) {
+            if self.ops_deque.len() < self.bootstrap_part_size as usize {
+                ops_part.push_back((*slot, *ids));
+                ops_part_last_slot = Some(*slot);
+            } else {
+                break;
+            }
         }
         if let Some(last_slot) = ops_part_last_slot {
             (ops_part, StreamingStep::Ongoing(last_slot))
@@ -151,10 +168,14 @@ impl ExecutedOps {
     ///
     /// # Returns
     /// The next executed ops streaming step
-    pub fn set_executed_ops_part(&mut self, part: ExecutedOps) -> StreamingStep<Slot> {
-        self.extend(part);
-        if let Some(slot) = self.ops.last_key_value().map(|(&slot, _)| slot) {
-            StreamingStep::Ongoing(slot)
+    pub fn set_executed_ops_part(
+        &mut self,
+        part: VecDeque<(Slot, PreHashSet<OperationId>)>,
+    ) -> StreamingStep<Slot> {
+        if let Some(slot) = self.ops_deque.back().map(|(slot, _)| slot) {
+            self.ops_deque.extend(part);
+            self.extend_and_compute_hash(part.iter().flat_map(|(slot, ids)| ids));
+            StreamingStep::Ongoing(*slot)
         } else {
             StreamingStep::Finished
         }
@@ -212,7 +233,6 @@ fn test_executed_ops_xor_computing() {
 pub struct ExecutedOpsSerializer {
     slot_serializer: SlotSerializer,
     u64_serializer: U64VarIntSerializer,
-    hash_serializer: HashSerializer,
 }
 
 impl Default for ExecutedOpsSerializer {
@@ -227,27 +247,30 @@ impl ExecutedOpsSerializer {
         ExecutedOpsSerializer {
             slot_serializer: SlotSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
-            hash_serializer: HashSerializer::new(),
         }
     }
 }
 
-impl Serializer<ExecutedOps> for ExecutedOpsSerializer {
-    fn serialize(&self, value: &ExecutedOps, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        // encode the number of entries
-        let entry_count: u64 = value.ops.len().try_into().map_err(|err| {
-            SerializeError::GeneralError(format!("too many entries in ExecutedOps: {}", err))
-        })?;
-        self.u64_serializer.serialize(&entry_count, buffer)?;
-
-        // encode entries
-        for (slot, op_id) in &value.ops {
+impl Serializer<VecDeque<(Slot, PreHashSet<OperationId>)>> for ExecutedOpsSerializer {
+    fn serialize(
+        &self,
+        value: &VecDeque<(Slot, PreHashSet<OperationId>)>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        // executed ops length
+        self.u64_serializer
+            .serialize(&(value.len() as u64), buffer)?;
+        // executed ops
+        for (slot, ids) in value {
+            // slot
             self.slot_serializer.serialize(slot, buffer)?;
-            buffer.extend(op_id.to_bytes());
+            // slot ids length
+            self.u64_serializer.serialize(&(ids.len() as u64), buffer)?;
+            // slots ids
+            for op_id in ids {
+                buffer.extend(op_id.to_bytes());
+            }
         }
-
-        // encode the hash
-        self.hash_serializer.serialize(&value.hash, buffer)?;
         Ok(())
     }
 }
@@ -275,34 +298,38 @@ impl ExecutedOpsDeserializer {
     }
 }
 
-impl Deserializer<ExecutedOps> for ExecutedOpsDeserializer {
+impl Deserializer<VecDeque<(Slot, PreHashSet<OperationId>)>> for ExecutedOpsDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], ExecutedOps, E> {
+    ) -> IResult<&'a [u8], VecDeque<(Slot, PreHashSet<OperationId>)>, E> {
         context(
-            "Failed ExecutedOps deserialization",
-            tuple((
-                length_count(
-                    context("Failed length deserialization", |input| {
-                        self.u64_deserializer.deserialize(input)
-                    }),
-                    context(
-                        "Failed operation info deserialization",
-                        tuple((
-                            |input| self.slot_deserializer.deserialize(input),
-                            |input| self.operation_id_deserializer.deserialize(input),
-                        )),
-                    ),
-                ),
-                context("Failed hash deserialization", |input| {
-                    self.hash_deserializer.deserialize(input)
+            "ExecutedOps",
+            length_count(
+                context("ExecutedOps length", |input| {
+                    self.u64_deserializer.deserialize(input)
                 }),
-            )),
+                context(
+                    "slot operations",
+                    tuple((
+                        context("slot", |input| self.slot_deserializer.deserialize(input)),
+                        length_count(
+                            context("slot operations length", |input| {
+                                self.u64_deserializer.deserialize(input)
+                            }),
+                            context("operation id", |input| {
+                                self.operation_id_deserializer.deserialize(input)
+                            }),
+                        ),
+                    )),
+                ),
+            ),
         )
-        .map(|(operations, hash)| ExecutedOps {
-            ops: operations.into_iter().collect(),
-            hash,
+        .map(|operations| {
+            operations
+                .into_iter()
+                .map(|(slot, ids)| (slot, ids.into_iter().collect()))
+                .collect()
         })
         .parse(buffer)
     }

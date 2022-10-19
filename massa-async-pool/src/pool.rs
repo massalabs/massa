@@ -164,6 +164,8 @@ impl AsyncPool {
             if pool_part.len() < self.config.bootstrap_part_size as usize {
                 pool_part.insert(*id, message.clone());
                 pool_part_last_id = Some(*id);
+            } else {
+                break;
             }
         }
         if let Some(last_id) = pool_part_last_id {
