@@ -15,3 +15,8 @@ pub mod export_active_block;
 pub use channels::GraphChannels;
 pub use controller_trait::{GraphController, GraphManager};
 pub use settings::GraphConfig;
+
+/// Test utils
+#[cfg(feature = "testing")]
+/// Exports related to tests as Mocks and configurations
+pub mod test_exports;

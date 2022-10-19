@@ -1,14 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::{
-    protocol_controller::ProtocolEventReceiver, ProtocolCommand, ProtocolCommandSender,
-    ProtocolEvent,
-};
+    ProtocolCommand, ProtocolCommandSender};
 use massa_models::{
-    block::{BlockId, WrappedHeader},
-    slot::Slot,
+    block::BlockId
 };
-use massa_storage::Storage;
 use massa_time::MassaTime;
 use tokio::{sync::mpsc, time::sleep};
 
@@ -16,22 +12,17 @@ use tokio::{sync::mpsc, time::sleep};
 /// TODO: Improve doc
 pub struct MockProtocolController {
     protocol_command_rx: mpsc::Receiver<ProtocolCommand>,
-    protocol_event_tx: mpsc::Sender<ProtocolEvent>,
 }
 
 impl MockProtocolController {
     /// Creates a new protocol mock
-    /// TODO: Improve doc
-    pub fn new() -> (Self, ProtocolCommandSender, ProtocolEventReceiver) {
+    pub fn new() -> (Self, ProtocolCommandSender) {
         let (protocol_command_tx, protocol_command_rx) = mpsc::channel::<ProtocolCommand>(256);
-        let (protocol_event_tx, protocol_event_rx) = mpsc::channel::<ProtocolEvent>(256);
         (
             MockProtocolController {
-                protocol_event_tx,
                 protocol_command_rx,
             },
             ProtocolCommandSender(protocol_command_tx),
-            ProtocolEventReceiver(protocol_event_rx),
         )
     }
 
@@ -51,27 +42,6 @@ impl MockProtocolController {
                 _ = &mut timer => return None
             }
         }
-    }
-
-    /// Note: if you care about the operation set, use another method.
-    pub async fn receive_block(&mut self, block_id: BlockId, slot: Slot, storage: Storage) {
-        self.protocol_event_tx
-            .send(ProtocolEvent::ReceivedBlock {
-                block_id,
-                slot,
-                storage,
-            })
-            .await
-            .expect("could not send protocol event");
-    }
-
-    /// Send a receive header to the protocol event channel
-    pub async fn receive_header(&mut self, header: WrappedHeader) {
-        let block_id = header.id;
-        self.protocol_event_tx
-            .send(ProtocolEvent::ReceivedBlockHeader { block_id, header })
-            .await
-            .expect("could not send protocol event");
     }
 
     /// Not implemented

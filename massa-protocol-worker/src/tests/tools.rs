@@ -32,9 +32,8 @@ where
     let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
 
     // start protocol controller
-    let (protocol_command_sender, protocol_event_receiver, protocol_manager): (
+    let (protocol_command_sender, protocol_manager): (
         ProtocolCommandSender,
-        ProtocolEventReceiver,
         ProtocolManager,
     ) = start_protocol_controller(
         *protocol_config,
@@ -62,7 +61,7 @@ where
     .await;
 
     protocol_manager
-        .stop(protocol_event_receiver)
+        .stop()
         .await
         .expect("Failed to shutdown protocol.");
 }

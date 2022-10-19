@@ -1,3 +1,4 @@
+use massa_graph_2_exports::test_exports::MockGraphController;
 use parking_lot::RwLock;
 use std::{
     sync::{mpsc::Receiver, Arc},
@@ -5,7 +6,6 @@ use std::{
     time::Duration,
 };
 
-use massa_consensus_exports::{commands::ConsensusCommand, test_exports::MockConsensusController};
 use massa_factory_exports::{
     test_exports::create_empty_block, FactoryChannels, FactoryConfig, FactoryManager,
 };
@@ -34,7 +34,7 @@ use massa_wallet::test_exports::create_test_wallet;
 /// You can use the method `new` to build all the mocks and make the connections
 /// Then you can use the method `get_next_created_block` that will manage the answers from the mock to the factory depending on the parameters you gave.
 pub struct TestFactory {
-    consensus_controller: MockConsensusController,
+    graph_controller: MockGraphController,
     pool_receiver: PoolEventReceiver,
     selector_receiver: Receiver<MockSelectorControllerMessage>,
     factory_config: FactoryConfig,
@@ -53,13 +53,11 @@ impl TestFactory {
     /// - `TestFactory`: the structure that will be used to manage the tests
     pub fn new(default_keypair: &KeyPair) -> TestFactory {
         let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
-        let (consensus_controller, consensus_command_sender, _consensus_event_receiver) =
-            MockConsensusController::new_with_receiver();
+        let (graph_controller, consensus_command_sender) = MockGraphController::new_with_receiver();
         let (pool_controller, pool_receiver) = MockPoolController::new_with_receiver();
         let mut storage = Storage::create_root();
         let mut factory_config = FactoryConfig::default();
-        let (_protocol_controller, protocol_command_sender, _protocol_event_receiver) =
-            MockProtocolController::new();
+        let (_protocol_controller, protocol_command_sender) = MockProtocolController::new();
         let producer_keypair = default_keypair;
         let producer_address = Address::from_public_key(&producer_keypair.get_public_key());
         let mut accounts = PreHashMap::default();
@@ -82,7 +80,7 @@ impl TestFactory {
             Arc::new(RwLock::new(create_test_wallet(Some(accounts)))),
             FactoryChannels {
                 selector: selector_controller.clone(),
-                consensus: consensus_command_sender,
+                graph: graph_controller,
                 pool: pool_controller.clone(),
                 protocol: protocol_command_sender,
                 storage: storage.clone_without_refs(),
@@ -90,7 +88,7 @@ impl TestFactory {
         );
 
         TestFactory {
-            consensus_controller,
+            graph_controller,
             pool_receiver,
             selector_receiver,
             factory_config,

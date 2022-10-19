@@ -21,7 +21,7 @@ use massa_models::{
 use massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEventReceiver};
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{
-    ProtocolCommand, ProtocolCommandSender, ProtocolConfig, ProtocolError,
+    ProtocolCommand, ProtocolConfig, ProtocolError,
     ProtocolManagementCommand, ProtocolManager,
 };
 
@@ -51,15 +51,14 @@ pub async fn start_protocol_controller(
     config: ProtocolConfig,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
+    protocol_command_receiver: mpsc::Receiver<ProtocolCommand>,
     graph_controller: Box<dyn GraphController>,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
-) -> Result<(ProtocolCommandSender, ProtocolManager), ProtocolError> {
+) -> Result<ProtocolManager, ProtocolError> {
     debug!("starting protocol controller");
 
     // launch worker
-    let (command_tx, controller_command_rx) =
-        mpsc::channel::<ProtocolCommand>(config.controller_channel_size);
     let (manager_tx, controller_manager_rx) = mpsc::channel::<ProtocolManagementCommand>(1);
     let pool_controller = pool_controller.clone();
     let join_handle = tokio::spawn(async move {
@@ -68,7 +67,7 @@ pub async fn start_protocol_controller(
             ProtocolWorkerChannels {
                 network_command_sender,
                 network_event_receiver,
-                controller_command_rx,
+                controller_command_rx: protocol_command_receiver,
                 controller_manager_rx,
             },
             graph_controller,
@@ -89,10 +88,7 @@ pub async fn start_protocol_controller(
         }
     });
     debug!("protocol controller ready");
-    Ok((
-        ProtocolCommandSender(command_tx),
-        ProtocolManager::new(join_handle, manager_tx),
-    ))
+    Ok(ProtocolManager::new(join_handle, manager_tx))
 }
 
 /// Info about a block we've seen

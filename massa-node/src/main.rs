@@ -48,7 +48,7 @@ use massa_pool_exports::{PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
-use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
+use massa_protocol_exports::{ProtocolCommand, ProtocolConfig, ProtocolManager, ProtocolCommandSender};
 use massa_protocol_worker::start_protocol_controller;
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -324,47 +324,8 @@ async fn launch(
     let (pool_manager, pool_controller) =
         start_pool_controller(pool_config, &shared_storage, execution_controller.clone());
 
-    // launch protocol controller
-    let protocol_config = ProtocolConfig {
-        thread_count: THREAD_COUNT,
-        ask_block_timeout: SETTINGS.protocol.ask_block_timeout,
-        max_known_blocks_size: SETTINGS.protocol.max_known_blocks_size,
-        max_node_known_blocks_size: SETTINGS.protocol.max_node_known_blocks_size,
-        max_node_wanted_blocks_size: SETTINGS.protocol.max_node_wanted_blocks_size,
-        max_known_ops_size: SETTINGS.protocol.max_known_ops_size,
-        max_node_known_ops_size: SETTINGS.protocol.max_node_known_ops_size,
-        max_known_endorsements_size: SETTINGS.protocol.max_known_endorsements_size,
-        max_node_known_endorsements_size: SETTINGS.protocol.max_node_known_endorsements_size,
-        max_simultaneous_ask_blocks_per_node: SETTINGS
-            .protocol
-            .max_simultaneous_ask_blocks_per_node,
-        max_send_wait: SETTINGS.protocol.max_send_wait,
-        operation_batch_buffer_capacity: SETTINGS.protocol.operation_batch_buffer_capacity,
-        operation_announcement_buffer_capacity: SETTINGS
-            .protocol
-            .operation_announcement_buffer_capacity,
-        operation_batch_proc_period: SETTINGS.protocol.operation_batch_proc_period,
-        asked_operations_pruning_period: SETTINGS.protocol.asked_operations_pruning_period,
-        operation_announcement_interval: SETTINGS.protocol.operation_announcement_interval,
-        max_operations_per_message: SETTINGS.protocol.max_operations_per_message,
-        max_serialized_operations_size_per_block: MAX_BLOCK_SIZE as usize,
-        controller_channel_size: PROTOCOL_CONTROLLER_CHANNEL_SIZE,
-        event_channel_size: PROTOCOL_EVENT_CHANNEL_SIZE,
-        genesis_timestamp: *GENESIS_TIMESTAMP,
-        t0: T0,
-        max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
-        max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
-    };
-    let (protocol_command_sender, protocol_manager) = start_protocol_controller(
-        protocol_config,
-        network_command_sender.clone(),
-        network_event_receiver,
-        graph_controller.clone(),
-        pool_controller.clone(),
-        shared_storage.clone(),
-    )
-    .await
-    .expect("could not start protocol controller");
+    let (protocol_command_sender, protocol_command_receiver) =
+        mpsc::channel::<ProtocolCommand>(PROTOCOL_CONTROLLER_CHANNEL_SIZE);
 
     let graph_config = GraphConfig {
         genesis_timestamp: *GENESIS_TIMESTAMP,
@@ -396,7 +357,7 @@ async fn launch(
         selector_controller: selector_controller.clone(),
         pool_command_sender: pool_controller.clone(),
         controller_event_tx: graph_event_sender,
-        protocol_command_sender: protocol_command_sender.clone(),
+        protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
     };
 
     let (graph_controller, graph_manager) = start_graph_worker(
@@ -405,6 +366,50 @@ async fn launch(
         bootstrap_state.graph,
         shared_storage.clone(),
     );
+
+    // launch protocol controller
+    let protocol_config = ProtocolConfig {
+        thread_count: THREAD_COUNT,
+        ask_block_timeout: SETTINGS.protocol.ask_block_timeout,
+        max_known_blocks_size: SETTINGS.protocol.max_known_blocks_size,
+        max_node_known_blocks_size: SETTINGS.protocol.max_node_known_blocks_size,
+        max_node_wanted_blocks_size: SETTINGS.protocol.max_node_wanted_blocks_size,
+        max_known_ops_size: SETTINGS.protocol.max_known_ops_size,
+        max_node_known_ops_size: SETTINGS.protocol.max_node_known_ops_size,
+        max_known_endorsements_size: SETTINGS.protocol.max_known_endorsements_size,
+        max_node_known_endorsements_size: SETTINGS.protocol.max_node_known_endorsements_size,
+        max_simultaneous_ask_blocks_per_node: SETTINGS
+            .protocol
+            .max_simultaneous_ask_blocks_per_node,
+        max_send_wait: SETTINGS.protocol.max_send_wait,
+        operation_batch_buffer_capacity: SETTINGS.protocol.operation_batch_buffer_capacity,
+        operation_announcement_buffer_capacity: SETTINGS
+            .protocol
+            .operation_announcement_buffer_capacity,
+        operation_batch_proc_period: SETTINGS.protocol.operation_batch_proc_period,
+        asked_operations_pruning_period: SETTINGS.protocol.asked_operations_pruning_period,
+        operation_announcement_interval: SETTINGS.protocol.operation_announcement_interval,
+        max_operations_per_message: SETTINGS.protocol.max_operations_per_message,
+        max_serialized_operations_size_per_block: MAX_BLOCK_SIZE as usize,
+        controller_channel_size: PROTOCOL_CONTROLLER_CHANNEL_SIZE,
+        event_channel_size: PROTOCOL_EVENT_CHANNEL_SIZE,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
+        t0: T0,
+        max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
+        max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
+    };
+
+    let protocol_manager = start_protocol_controller(
+        protocol_config,
+        network_command_sender.clone(),
+        network_event_receiver,
+        protocol_command_receiver,
+        graph_controller.clone(),
+        pool_controller.clone(),
+        shared_storage.clone(),
+    )
+    .await
+    .expect("could not start protocol controller");
 
     // launch factory
     let factory_config = FactoryConfig {
@@ -420,7 +425,7 @@ async fn launch(
         selector: selector_controller.clone(),
         graph: graph_controller.clone(),
         pool: pool_controller.clone(),
-        protocol: protocol_command_sender.clone(),
+        protocol: ProtocolCommandSender(protocol_command_sender.clone()),
         storage: shared_storage.clone(),
     };
     let factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
@@ -471,7 +476,7 @@ async fn launch(
         api_config,
         selector_controller.clone(),
         pool_controller.clone(),
-        protocol_command_sender.clone(),
+        ProtocolCommandSender(protocol_command_sender.clone()),
         network_config,
         *VERSION,
         network_command_sender.clone(),

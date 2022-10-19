@@ -1838,6 +1838,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "massa_factory_exports",
+ "massa_graph_2_exports",
  "massa_hash",
  "massa_models",
  "massa_pool_exports",
