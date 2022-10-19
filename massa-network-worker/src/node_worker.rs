@@ -6,20 +6,14 @@ use super::{
 };
 use itertools::Itertools;
 use massa_logging::massa_trace;
-use massa_models::{
-    node::NodeId,
-    wrapped::Id,
-};
+use massa_models::{node::NodeId, wrapped::Id};
 use massa_network_exports::{
     ConnectionClosureReason, NetworkConfig, NetworkError, NodeCommand, NodeEvent, NodeEventType,
 };
 use massa_time::MassaTime;
 use tokio::{
     sync::mpsc,
-    sync::mpsc::{
-        error::SendTimeoutError,
-        Sender,
-    },
+    sync::mpsc::{error::SendTimeoutError, Sender},
     time::timeout,
 };
 use tracing::{debug, trace, warn};
