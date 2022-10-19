@@ -315,7 +315,8 @@ async fn node_writer_handle(
     exit_reason
 }
 
-/// Handle socket read function until a message is received then send it via node_event_tx queue
+/// Handle socket read function until a message is received then send it
+// via 'node_event_tx' queue
 async fn node_reader_handle(
     socket_reader: &mut ReadBinder,
     node_event_tx: &mut Sender<NodeEvent>,
@@ -422,7 +423,8 @@ async fn node_reader_handle(
     exit_reason
 }
 
-/// Send a node event via node_event_tx queue - used by node_reader_handle
+/// Send a node event
+// via node_event_tx queue - used by 'node_reader_handle'
 async fn send_node_event(
     node_event_tx: &mut Sender<NodeEvent>,
     event: NodeEvent,
