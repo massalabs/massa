@@ -1,10 +1,10 @@
-use massa_graph::{
+use massa_graph_2_exports::{
+    block_graph_export::BlockGraphExport,
+    block_status::BlockStatus,
+    bootstrapable_graph::BootstrapableGraph,
     error::{GraphError, GraphResult},
     export_active_block::ExportActiveBlock,
-    BootstrapableGraph,
-};
-use massa_graph_2_exports::{
-    block_graph_export::BlockGraphExport, block_status::BlockStatus, GraphController,
+    GraphController,
 };
 use massa_models::{
     api::BlockGraphStatus,

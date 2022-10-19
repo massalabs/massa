@@ -23,7 +23,6 @@ massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_pos_exports = { path = "../massa-pos-exports" }
-massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_graph_2_exports = { path = "../massa-graph-2-exports" }
 massa_pool_exports = { path = "../massa-pool-exports" }
 massa_protocol_exports = { path = "../massa-protocol-exports" }

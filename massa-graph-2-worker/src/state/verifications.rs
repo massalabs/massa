@@ -1,7 +1,9 @@
 use super::GraphState;
 
-use massa_graph::error::{GraphError, GraphResult};
-use massa_graph_2_exports::block_status::{BlockStatus, DiscardReason};
+use massa_graph_2_exports::{
+    block_status::{BlockStatus, DiscardReason},
+    error::GraphError,
+};
 use massa_logging::massa_trace;
 use massa_models::{
     block::{BlockId, WrappedHeader},
@@ -67,7 +69,7 @@ impl GraphState {
         header: &WrappedHeader,
         current_slot: Option<Slot>,
         read_shared_state: &GraphState,
-    ) -> GraphResult<HeaderCheckOutcome> {
+    ) -> Result<HeaderCheckOutcome, GraphError> {
         massa_trace!("consensus.block_graph.check_header", {
             "block_id": block_id
         });
@@ -273,7 +275,7 @@ impl GraphState {
             .filter(|&sibling_h| sibling_h != block_id)
             .try_for_each(|&sibling_h| {
                 incomp.extend(self.get_active_block_and_descendants(&sibling_h)?);
-                GraphResult::<()>::Ok(())
+                Result::<(), GraphError>::Ok(())
             })?;
 
         // grandpa incompatibility test
@@ -375,7 +377,7 @@ impl GraphState {
     pub fn check_endorsements(
         &self,
         header: &WrappedHeader,
-    ) -> GraphResult<EndorsementsCheckOutcome> {
+    ) -> Result<EndorsementsCheckOutcome, GraphError> {
         // check endorsements
         let endorsement_draws = match self
             .channels

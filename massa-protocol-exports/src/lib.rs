@@ -11,8 +11,8 @@ mod settings;
 
 pub use error::ProtocolError;
 pub use protocol_controller::{
-    BlocksResults, ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
-    ProtocolManagementCommand, ProtocolManager,
+    BlocksResults, ProtocolCommand, ProtocolCommandSender, ProtocolManagementCommand,
+    ProtocolManager,
 };
 pub use settings::ProtocolConfig;
 

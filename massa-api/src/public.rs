@@ -310,7 +310,7 @@ impl Endpoints for API<Public> {
             )?;
 
             let execution_stats = execution_controller.get_stats();
-            let consensus_stats = graph_controller.get_stats()?;
+            let graph_stats = graph_controller.get_stats()?;
 
             let (network_stats, peers) = tokio::join!(
                 network_command_sender.get_network_stats(),
@@ -341,7 +341,7 @@ impl Endpoints for API<Public> {
                     .unwrap_or_else(|| Slot::new(0, 0))
                     .get_next_slot(api_config.thread_count)?,
                 execution_stats,
-                consensus_stats: consensus_stats,
+                consensus_stats: graph_stats,
                 network_stats: network_stats?,
                 pool_stats,
                 config,

@@ -1,5 +1,5 @@
 use crate::block_graph_export::BlockGraphExport;
-use massa_graph::{error::GraphResult, BootstrapableGraph};
+use crate::{bootstrapable_graph::BootstrapableGraph, error::GraphResult};
 use massa_models::{
     api::BlockGraphStatus,
     block::{BlockHeader, BlockId},

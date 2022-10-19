@@ -355,16 +355,15 @@ async fn launch(
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
     };
-    let (protocol_command_sender, _protocol_event_receiver, protocol_manager) =
-        start_protocol_controller(
-            protocol_config,
-            network_command_sender.clone(),
-            network_event_receiver,
-            pool_controller.clone(),
-            shared_storage.clone(),
-        )
-        .await
-        .expect("could not start protocol controller");
+    let (protocol_command_sender, protocol_manager) = start_protocol_controller(
+        protocol_config,
+        network_command_sender.clone(),
+        network_event_receiver,
+        pool_controller.clone(),
+        shared_storage.clone(),
+    )
+    .await
+    .expect("could not start protocol controller");
 
     // // init consensus configuration
     // let consensus_config = ConsensusConfig {
@@ -610,6 +609,7 @@ async fn stop(
     // stop factory
     factory_manager.stop();
 
+    // stop graph
     graph_manager.stop();
 
     // stop pool

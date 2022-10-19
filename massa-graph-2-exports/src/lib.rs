@@ -7,7 +7,10 @@ mod settings;
 
 pub mod block_graph_export;
 pub mod block_status;
+pub mod bootstrapable_graph;
+pub mod error;
 pub mod events;
+pub mod export_active_block;
 
 pub use channels::GraphChannels;
 pub use controller_trait::{GraphController, GraphManager};

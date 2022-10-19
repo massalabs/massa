@@ -1,5 +1,7 @@
-use massa_graph::BootstrapableGraph;
-use massa_graph_2_exports::{GraphChannels, GraphConfig, GraphController, GraphManager};
+use massa_graph_2_exports::{
+    bootstrapable_graph::BootstrapableGraph, GraphChannels, GraphConfig, GraphController,
+    GraphManager,
+};
 use massa_models::block::BlockId;
 use massa_models::clique::Clique;
 use massa_models::prehash::PreHashSet;

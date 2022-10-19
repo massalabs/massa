@@ -5,6 +5,7 @@ use crate::checked_operations::CheckedOperations;
 use crate::sig_verifier::verify_sigs_batch;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 
+use massa_graph_2_exports::GraphController;
 use massa_logging::massa_trace;
 
 use massa_models::slot::Slot;
@@ -20,8 +21,8 @@ use massa_models::{
 use massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEventReceiver};
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{
-    ProtocolCommand, ProtocolCommandSender, ProtocolConfig, ProtocolError, ProtocolEvent,
-    ProtocolEventReceiver, ProtocolManagementCommand, ProtocolManager,
+    ProtocolCommand, ProtocolCommandSender, ProtocolConfig, ProtocolError,
+    ProtocolManagementCommand, ProtocolManager,
 };
 
 use massa_models::wrapped::Id;
@@ -32,7 +33,6 @@ use std::mem;
 use std::pin::Pin;
 use tokio::{
     sync::mpsc,
-    sync::mpsc::error::SendTimeoutError,
     time::{sleep, sleep_until, Instant, Sleep},
 };
 use tracing::{debug, error, info, warn};
@@ -51,20 +51,13 @@ pub async fn start_protocol_controller(
     config: ProtocolConfig,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
+    graph_controller: Box<dyn GraphController>,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
-) -> Result<
-    (
-        ProtocolCommandSender,
-        ProtocolEventReceiver,
-        ProtocolManager,
-    ),
-    ProtocolError,
-> {
+) -> Result<(ProtocolCommandSender, ProtocolManager), ProtocolError> {
     debug!("starting protocol controller");
 
     // launch worker
-    let (controller_event_tx, event_rx) = mpsc::channel::<ProtocolEvent>(config.event_channel_size);
     let (command_tx, controller_command_rx) =
         mpsc::channel::<ProtocolCommand>(config.controller_channel_size);
     let (manager_tx, controller_manager_rx) = mpsc::channel::<ProtocolManagementCommand>(1);
@@ -75,10 +68,10 @@ pub async fn start_protocol_controller(
             ProtocolWorkerChannels {
                 network_command_sender,
                 network_event_receiver,
-                controller_event_tx,
                 controller_command_rx,
                 controller_manager_rx,
             },
+            graph_controller,
             pool_controller,
             storage,
         )
@@ -98,7 +91,6 @@ pub async fn start_protocol_controller(
     debug!("protocol controller ready");
     Ok((
         ProtocolCommandSender(command_tx),
-        ProtocolEventReceiver(event_rx),
         ProtocolManager::new(join_handle, manager_tx),
     ))
 }
@@ -132,12 +124,12 @@ impl BlockInfo {
 pub struct ProtocolWorker {
     /// Protocol configuration.
     pub(crate) config: ProtocolConfig,
+    /// Graph controller
+    pub(crate) graph_controller: Box<dyn GraphController>,
     /// Associated network command sender.
     pub(crate) network_command_sender: NetworkCommandSender,
     /// Associated network event receiver.
     network_event_receiver: NetworkEventReceiver,
-    /// Channel to send protocol events to the controller.
-    controller_event_tx: mpsc::Sender<ProtocolEvent>,
     /// Channel to send protocol pool events to the controller.
     pool_controller: Box<dyn PoolController>,
     /// Channel receiving commands from the controller.
@@ -171,8 +163,6 @@ pub struct ProtocolWorkerChannels {
     pub network_command_sender: NetworkCommandSender,
     /// network event receiver
     pub network_event_receiver: NetworkEventReceiver,
-    /// protocol event sender
-    pub controller_event_tx: mpsc::Sender<ProtocolEvent>,
     /// protocol command receiver
     pub controller_command_rx: mpsc::Receiver<ProtocolCommand>,
     /// protocol management command receiver
@@ -193,10 +183,10 @@ impl ProtocolWorker {
         ProtocolWorkerChannels {
             network_command_sender,
             network_event_receiver,
-            controller_event_tx,
             controller_command_rx,
             controller_manager_rx,
         }: ProtocolWorkerChannels,
+        graph_controller: Box<dyn GraphController>,
         pool_controller: Box<dyn PoolController>,
         storage: Storage,
     ) -> ProtocolWorker {
@@ -204,7 +194,7 @@ impl ProtocolWorker {
             config,
             network_command_sender,
             network_event_receiver,
-            controller_event_tx,
+            graph_controller,
             pool_controller,
             controller_command_rx,
             controller_manager_rx,
@@ -221,25 +211,6 @@ impl ProtocolWorker {
             operations_to_announce: Vec::with_capacity(
                 config.operation_announcement_buffer_capacity,
             ),
-        }
-    }
-
-    pub(crate) async fn send_protocol_event(&self, event: ProtocolEvent) {
-        let result = self
-            .controller_event_tx
-            .send_timeout(event, self.config.max_send_wait.to_duration())
-            .await;
-        match result {
-            Ok(()) => {}
-            Err(SendTimeoutError::Closed(event)) => {
-                warn!(
-                    "Failed to send ProtocolEvent due to channel closure: {:?}.",
-                    event
-                );
-            }
-            Err(SendTimeoutError::Timeout(event)) => {
-                warn!("Failed to send ProtocolEvent due to timeout: {:?}.", event);
-            }
         }
     }
 

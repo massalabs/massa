@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use displaydoc::Display;
-use massa_consensus_exports::error::ConsensusError;
 use massa_execution_exports::ExecutionError;
 use massa_graph::error::GraphError;
 use massa_hash::MassaHashError;
@@ -23,8 +22,6 @@ pub enum ApiError {
     ReceiveChannelError(String),
     /// `massa_hash` error: {0}
     MassaHashError(#[from] MassaHashError),
-    /// consensus error: {0}
-    ConsensusError(#[from] Box<ConsensusError>),
     /// graph error: {0}
     GraphError(#[from] GraphError),
     /// execution error: {0}
@@ -58,11 +55,5 @@ impl From<ApiError> for jsonrpc_core::Error {
             message: err.to_string(),
             data: None,
         }
-    }
-}
-
-impl std::convert::From<ConsensusError> for ApiError {
-    fn from(err: ConsensusError) -> Self {
-        ApiError::ConsensusError(Box::new(err))
     }
 }

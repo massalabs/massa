@@ -1,13 +1,9 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    sync::{mpsc, Arc},
-};
-
-use massa_graph::{
+use massa_graph_2_exports::{
+    block_status::BlockStatus,
+    bootstrapable_graph::BootstrapableGraph,
     error::{GraphError, GraphResult},
-    BootstrapableGraph,
+    GraphConfig,
 };
-use massa_graph_2_exports::{block_status::BlockStatus, GraphConfig};
 use massa_hash::Hash;
 use massa_models::{
     active_block::ActiveBlock,
@@ -21,6 +17,10 @@ use massa_models::{
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
+use std::{
+    collections::{HashMap, VecDeque},
+    sync::{mpsc, Arc},
+};
 use tracing::log::info;
 
 use crate::{commands::GraphCommand, state::GraphState};

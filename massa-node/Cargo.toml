@@ -27,8 +27,6 @@ dialoguer = "0.10"
 massa_api = { path = "../massa-api" }
 massa_async_pool = { path = "../massa-async-pool" }
 massa_bootstrap = { path = "../massa-bootstrap" }
-massa_consensus_exports = { path = "../massa-consensus-exports" }
-massa_consensus_worker = { path = "../massa-consensus-worker" }
 massa_execution_exports = { path = "../massa-execution-exports" }
 massa_execution_worker = { path = "../massa-execution-worker" }
 massa_signature = { path = "../massa-signature" }
@@ -59,8 +57,7 @@ beta = []
 deadlock_detection = []
 sandbox = [
     "massa_bootstrap/sandbox",
-    "massa_consensus_exports/sandbox",
-    "massa_consensus_worker/sandbox",
+    "massa_graph_2_worker/sandbox",
     "massa_execution_worker/sandbox",
     "massa_final_state/sandbox",
     "massa_models/sandbox",

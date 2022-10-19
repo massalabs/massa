@@ -2,7 +2,6 @@
 
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use displaydoc::Display;
-use massa_consensus_exports::error::ConsensusError;
 use massa_final_state::FinalStateError;
 use massa_graph::error::GraphError;
 use massa_hash::MassaHashError;
@@ -37,8 +36,6 @@ pub enum BootstrapError {
     MassaSignatureError(#[from] massa_signature::MassaSignatureError),
     /// time error: {0}
     TimeError(#[from] TimeError),
-    /// consensus error: {0}
-    ConsensusError(#[from] ConsensusError),
     /// network error: {0}
     NetworkError(#[from] NetworkError),
     /// final state error: {0}

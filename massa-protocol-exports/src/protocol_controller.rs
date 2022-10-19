@@ -1,53 +1,19 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::collections::VecDeque;
-
 use crate::error::ProtocolError;
 use massa_logging::massa_trace;
 
+use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::{
     block::{BlockId, WrappedHeader},
     endorsement::EndorsementId,
     operation::OperationId,
 };
-use massa_models::{
-    prehash::{PreHashMap, PreHashSet},
-    slot::Slot,
-};
 use massa_network_exports::NetworkEventReceiver;
 use massa_storage::Storage;
 use serde::Serialize;
 use tokio::{sync::mpsc, task::JoinHandle};
-use tracing::{debug, info};
-
-/// Possible types of events that can happen.
-#[allow(clippy::large_enum_variant)]
-#[derive(Debug)]
-pub enum ProtocolEvent {
-    /// A block with a valid signature has been received.
-    ReceivedBlock {
-        /// block ID
-        block_id: BlockId,
-        /// block slot
-        slot: Slot,
-        /// storage instance containing the block and its dependencies (except the parents)
-        storage: Storage,
-    },
-    /// A message to tell the consensus that a block is invalid
-    InvalidBlock {
-        /// block ID
-        block_id: BlockId,
-        /// header
-        header: WrappedHeader,
-    },
-    /// A block header with a valid signature has been received.
-    ReceivedBlockHeader {
-        /// its id
-        block_id: BlockId,
-        /// The header
-        header: WrappedHeader,
-    },
-}
+use tracing::info;
 
 /// block result: map block id to
 /// ```md
@@ -163,36 +129,6 @@ impl ProtocolCommandSender {
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_endorsements command send error".into())
             })
-    }
-}
-
-/// Protocol event receiver
-pub struct ProtocolEventReceiver(pub mpsc::Receiver<ProtocolEvent>);
-
-impl ProtocolEventReceiver {
-    /// Receives the next `ProtocolEvent` from connected Node.
-    /// None is returned when all Sender halves have dropped,
-    /// indicating that no further values can be sent on the channel
-    pub async fn wait_event(&mut self) -> Result<ProtocolEvent, ProtocolError> {
-        massa_trace!("protocol.event_receiver.wait_event", {});
-        self.0.recv().await.ok_or_else(|| {
-            ProtocolError::ChannelError(
-                "DefaultProtocolController wait_event channel recv failed".into(),
-            )
-        })
-    }
-
-    /// drains remaining events and returns them in a `VecDeque`
-    /// note: events are sorted from oldest to newest
-    pub async fn drain(mut self) -> VecDeque<ProtocolEvent> {
-        let mut remaining_events: VecDeque<ProtocolEvent> = VecDeque::new();
-        while let Some(evt) = self.0.recv().await {
-            debug!(
-                "after receiving event from ProtocolEventReceiver.0 in protocol_controller drain"
-            );
-            remaining_events.push_back(evt);
-        }
-        remaining_events
     }
 }
 

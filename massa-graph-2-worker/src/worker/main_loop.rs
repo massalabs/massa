@@ -1,6 +1,6 @@
 use std::{sync::mpsc, time::Instant};
 
-use massa_graph::error::GraphResult;
+use massa_graph_2_exports::error::GraphResult;
 use massa_models::{
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
