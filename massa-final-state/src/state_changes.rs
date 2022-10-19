@@ -2,6 +2,7 @@
 
 //! This file provides structures representing changes to the final state
 
+use crate::{ExecutedOpsChanges, ExecutedOpsChangesDeserializer, ExecutedOpsChangesSerializer};
 use massa_async_pool::{
     AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer,
 };
@@ -13,8 +14,6 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
-
-use crate::{executed_ops::ExecutedOpsSerializer, ExecutedOpsChanges, ExecutedOpsDeserializer};
 
 /// represents changes that can be applied to the execution state
 #[derive(Default, Debug, Clone)]
@@ -34,7 +33,7 @@ pub struct StateChangesSerializer {
     ledger_changes_serializer: LedgerChangesSerializer,
     async_pool_changes_serializer: AsyncPoolChangesSerializer,
     pos_changes_serializer: PoSChangesSerializer,
-    executed_ops_serializer: ExecutedOpsSerializer,
+    ops_changes_serializer: ExecutedOpsChangesSerializer,
 }
 
 impl Default for StateChangesSerializer {
@@ -50,7 +49,7 @@ impl StateChangesSerializer {
             ledger_changes_serializer: LedgerChangesSerializer::new(),
             async_pool_changes_serializer: AsyncPoolChangesSerializer::new(),
             pos_changes_serializer: PoSChangesSerializer::new(),
-            executed_ops_serializer: ExecutedOpsSerializer::new(),
+            ops_changes_serializer: ExecutedOpsChangesSerializer::new(),
         }
     }
 }
@@ -106,7 +105,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
             .serialize(&value.async_pool_changes, buffer)?;
         self.pos_changes_serializer
             .serialize(&value.pos_changes, buffer)?;
-        self.executed_ops_serializer
+        self.ops_changes_serializer
             .serialize(&value.executed_ops, buffer)?;
         Ok(())
     }
@@ -117,7 +116,7 @@ pub struct StateChangesDeserializer {
     ledger_changes_deserializer: LedgerChangesDeserializer,
     async_pool_changes_deserializer: AsyncPoolChangesDeserializer,
     pos_changes_deserializer: PoSChangesDeserializer,
-    executed_ops_deserializer: ExecutedOpsDeserializer,
+    ops_changes_deserializer: ExecutedOpsChangesDeserializer,
 }
 
 impl StateChangesDeserializer {
@@ -134,6 +133,7 @@ impl StateChangesDeserializer {
         max_rolls_length: u64,
         max_production_stats_length: u64,
         max_credits_length: u64,
+        max_ops_changes_length: u64,
     ) -> Self {
         Self {
             ledger_changes_deserializer: LedgerChangesDeserializer::new(
@@ -153,7 +153,7 @@ impl StateChangesDeserializer {
                 max_production_stats_length,
                 max_credits_length,
             ),
-            executed_ops_deserializer: ExecutedOpsDeserializer::new(thread_count),
+            ops_changes_deserializer: ExecutedOpsChangesDeserializer::new(max_ops_changes_length),
         }
     }
 }
@@ -222,8 +222,8 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
                 context("Failed roll_state_changes deserialization", |input| {
                     self.pos_changes_deserializer.deserialize(input)
                 }),
-                context("Failed executed_ops deserialization", |input| {
-                    self.executed_ops_deserializer.deserialize(input)
+                context("Failed executed_ops_changes deserialization", |input| {
+                    self.ops_changes_deserializer.deserialize(input)
                 }),
             )),
         )

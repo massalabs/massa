@@ -3,7 +3,8 @@
 //! This file defines a structure to list and prune previously executed operations.
 //! Used to detect operation reuse.
 
-use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
+use crate::ops_changes::ExecutedOpsChanges;
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::{
     operation::{OperationId, OperationIdDeserializer},
     prehash::PreHashSet,
@@ -25,9 +26,6 @@ use std::{
 };
 
 const EXECUTED_OPS_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
-
-/// Speculatives changes for ExecutedOps
-pub type ExecutedOpsChanges = PreHashSet<OperationId>;
 
 /// A structure to list and prune previously executed operations
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -153,7 +151,7 @@ impl ExecutedOps {
         let mut ops_part_last_slot: Option<Slot> = None;
         for (slot, ids) in self.ops_deque.range((left_bound, Unbounded)) {
             if self.ops_deque.len() < self.bootstrap_part_size as usize {
-                ops_part.push_back((*slot, *ids));
+                ops_part.push_back((*slot, ids.clone()));
                 ops_part_last_slot = Some(*slot);
             } else {
                 break;
@@ -176,9 +174,9 @@ impl ExecutedOps {
         &mut self,
         part: VecDeque<(Slot, PreHashSet<OperationId>)>,
     ) -> StreamingStep<Slot> {
+        self.ops_deque.extend(part.clone());
+        self.extend_and_compute_hash(part.iter().flat_map(|(_, ids)| ids));
         if let Some(slot) = self.ops_deque.back().map(|(slot, _)| slot) {
-            self.ops_deque.extend(part);
-            self.extend_and_compute_hash(part.iter().flat_map(|(slot, ids)| ids));
             StreamingStep::Ongoing(*slot)
         } else {
             StreamingStep::Finished
@@ -276,21 +274,31 @@ impl Serializer<VecDeque<(Slot, PreHashSet<OperationId>)>> for ExecutedOpsSerial
 pub struct ExecutedOpsDeserializer {
     operation_id_deserializer: OperationIdDeserializer,
     slot_deserializer: SlotDeserializer,
-    u64_deserializer: U64VarIntDeserializer,
-    hash_deserializer: HashDeserializer,
+    ops_length_deserializer: U64VarIntDeserializer,
+    slot_ops_length_deserializer: U64VarIntDeserializer,
 }
 
 impl ExecutedOpsDeserializer {
     /// Create a new deserializer for `ExecutedOps`
-    pub fn new(thread_count: u8) -> ExecutedOpsDeserializer {
+    pub fn new(
+        thread_count: u8,
+        max_executed_ops_length: u64,
+        max_operations_per_block: u64,
+    ) -> ExecutedOpsDeserializer {
         ExecutedOpsDeserializer {
             operation_id_deserializer: OperationIdDeserializer::new(),
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
                 (Included(0), Excluded(thread_count)),
             ),
-            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
-            hash_deserializer: HashDeserializer::new(),
+            ops_length_deserializer: U64VarIntDeserializer::new(
+                Included(u64::MIN),
+                Included(max_executed_ops_length),
+            ),
+            slot_ops_length_deserializer: U64VarIntDeserializer::new(
+                Included(u64::MIN),
+                Included(max_operations_per_block),
+            ),
         }
     }
 }
@@ -304,7 +312,7 @@ impl Deserializer<VecDeque<(Slot, PreHashSet<OperationId>)>> for ExecutedOpsDese
             "ExecutedOps",
             length_count(
                 context("ExecutedOps length", |input| {
-                    self.u64_deserializer.deserialize(input)
+                    self.ops_length_deserializer.deserialize(input)
                 }),
                 context(
                     "slot operations",
@@ -312,7 +320,7 @@ impl Deserializer<VecDeque<(Slot, PreHashSet<OperationId>)>> for ExecutedOpsDese
                         context("slot", |input| self.slot_deserializer.deserialize(input)),
                         length_count(
                             context("slot operations length", |input| {
-                                self.u64_deserializer.deserialize(input)
+                                self.slot_ops_length_deserializer.deserialize(input)
                             }),
                             context("operation id", |input| {
                                 self.operation_id_deserializer.deserialize(input)
