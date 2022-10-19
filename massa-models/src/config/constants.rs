@@ -104,7 +104,9 @@ pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
 pub const PERIODS_PER_CYCLE: u64 = 128;
 /// PoS saved cycles: number of cycles saved in `PoSFinalState`
-pub const POS_SAVED_CYCLES: u64 = 4;
+///
+/// 4 for PoS itself and 1 for bootstrap safety
+pub const POS_SAVED_CYCLES: u64 = 5;
 /// Maximum size batch of data in a part of the ledger
 pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 /// Maximum async messages in a batch of the bootstrap of the async pool

@@ -15,6 +15,10 @@ pub struct FinalStateConfig {
     pub async_pool_config: AsyncPoolConfig,
     /// final changes history length
     pub final_history_length: usize,
+    /// number of saved cycle in proof-of-stake
+    pub pos_cycle_history_length: usize,
+    /// size of an executed operations bootstrap part
+    pub executed_ops_bootstrap_part_size: u64,
     /// thread count
     pub thread_count: u8,
     /// periods per cycle

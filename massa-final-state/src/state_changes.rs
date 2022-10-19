@@ -14,7 +14,7 @@ use nom::{
     IResult, Parser,
 };
 
-use crate::{executed_ops::ExecutedOpsSerializer, ExecutedOpsDeserializer, ExecutedOpsChanges};
+use crate::{executed_ops::ExecutedOpsSerializer, ExecutedOpsChanges, ExecutedOpsDeserializer};
 
 /// represents changes that can be applied to the execution state
 #[derive(Default, Debug, Clone)]

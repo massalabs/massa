@@ -43,16 +43,18 @@ pub struct PoSFinalState {
     pub periods_per_cycle: u64,
     /// thread count
     pub thread_count: u8,
+    /// number of saved cycle
+    pub cycle_history_length: usize,
 }
 
 impl PoSFinalState {
     /// create a new `PoSFinalState`
     pub fn new(
-        // FOLLOW-UP TODO: use a config
         initial_seed_string: &String,
         initial_rolls_path: &PathBuf,
         periods_per_cycle: u64,
         thread_count: u8,
+        cycle_history_length: usize,
         selector: Box<dyn SelectorController>,
     ) -> Result<Self, PosError> {
         // load get initial rolls from file
@@ -90,6 +92,7 @@ impl PoSFinalState {
             address_deserializer,
             periods_per_cycle,
             thread_count,
+            cycle_history_length,
         })
     }
 
@@ -209,8 +212,7 @@ impl PoSFinalState {
                     production_stats: Default::default(),
                     complete: false,
                 });
-                // add 1 for the current cycle and 1 for bootstrap safety
-                while self.cycle_history.len() > 6 {
+                while self.cycle_history.len() > self.cycle_history_length {
                     self.cycle_history.pop_front();
                 }
             } else {
@@ -399,8 +401,9 @@ impl PoSFinalState {
         cursor: StreamingStep<u64>,
     ) -> Result<(Option<CycleInfo>, StreamingStep<u64>), ModelsError> {
         let cycle_index = match cursor {
-            // FOLLOW-UP TODO: use the config value for `6`
-            StreamingStep::Started => usize::from(self.cycle_history.len() >= 6),
+            StreamingStep::Started => {
+                usize::from(self.cycle_history.len() >= self.cycle_history_length)
+            }
             StreamingStep::Ongoing(last_cycle) => {
                 if let Some(index) = self.get_cycle_index(last_cycle) {
                     if index == self.cycle_history.len() - 1 {
