@@ -7,7 +7,6 @@ use super::{
 use itertools::Itertools;
 use massa_logging::massa_trace;
 use massa_models::{
-    config::{MAX_ENDORSEMENTS_PER_MESSAGE, NODE_SEND_CHANNEL_SIZE},
     node::NodeId,
     wrapped::Id,
 };
@@ -16,10 +15,9 @@ use massa_network_exports::{
 };
 use massa_time::MassaTime;
 use tokio::{
-    io::AsyncWriteExt,
     sync::mpsc,
     sync::mpsc::{
-        error::{SendTimeoutError, TrySendError},
+        error::SendTimeoutError,
         Sender,
     },
     time::timeout,
@@ -78,7 +76,6 @@ impl NodeWorker {
 
     /// node event loop. Consumes self.
     pub async fn run_loop(mut self) -> Result<ConnectionClosureReason, NetworkError> {
-
         let mut socket_writer = self.socket_writer_opt.take().ok_or_else(|| {
             NetworkError::GeneralProtocolError(
                 "NodeWorker call run_loop more than once".to_string(),
@@ -93,8 +90,9 @@ impl NodeWorker {
                 self.node_id,
                 self.cfg.max_ask_blocks,
                 self.cfg.max_operations_per_message,
-                self.cfg.max_endorsements_per_message
-            ).await
+                self.cfg.max_endorsements_per_message,
+            )
+            .await
         });
         tokio::pin!(node_writer_handle);
         let mut writer_joined = false;
@@ -169,7 +167,6 @@ impl NodeWorker {
             }
         }
 
-
         // Stop the writer handle.
         if !writer_joined {
             debug!(
@@ -177,7 +174,6 @@ impl NodeWorker {
                 self.node_id
             );
             node_writer_handle.abort();
-
         }
 
         // 3- Stop node_reader_handle
@@ -202,9 +198,8 @@ async fn node_writer_handle(
     node_id: NodeId,
     max_ask_blocks: u32,
     max_operations_per_message: u32,
-    max_endorsements_per_message: u32
+    max_endorsements_per_message: u32,
 ) -> ConnectionClosureReason {
-
     let mut exit_reason = ConnectionClosureReason::Normal;
 
     'writer_loop: loop {
@@ -212,15 +207,15 @@ async fn node_writer_handle(
             Some(NodeCommand::Close(r)) => {
                 exit_reason = r;
                 None
-            },
+            }
             Some(NodeCommand::SendPeerList(ip_vec)) => {
                 massa_trace!("node_worker.run_loop. send Message::PeerList", {"peerlist": ip_vec, "node": node_id});
                 Some(vec![Message::PeerList(ip_vec)])
-            },
+            }
             Some(NodeCommand::SendBlockHeader(header)) => {
                 massa_trace!("node_worker.run_loop. send Message::BlockHeader", {"hash": header.id, "node": node_id});
                 Some(vec![Message::BlockHeader(header)])
-            },
+            }
             Some(NodeCommand::AskForBlocks(list)) => {
                 // cut hash list on sub list if exceed max_ask_blocks_per_message
                 massa_trace!("node_worker.run_loop. send Message::AskForBlocks", {"hashlist": list, "node": node_id});
@@ -229,8 +224,7 @@ async fn node_writer_handle(
                     .map(|to_send| Message::AskForBlocks(to_send.to_vec()))
                     .collect();
                 Some(messages)
-
-            },
+            }
             Some(NodeCommand::ReplyForBlocks(list)) => {
                 // cut hash list on sub list if exceed max_ask_blocks_per_message
                 massa_trace!("node_worker.run_loop. send Message::ReplyForBlocks", {"hashlist": list, "node": node_id});
@@ -239,8 +233,7 @@ async fn node_writer_handle(
                     .map(|to_send| Message::ReplyForBlocks(to_send.to_vec()))
                     .collect();
                 Some(messages)
-
-            },
+            }
             Some(NodeCommand::SendOperations(operations)) => {
                 massa_trace!("node_worker.run_loop. send Message::SendOperations", {"node": node_id, "operations": operations});
                 let messages = operations
@@ -248,8 +241,7 @@ async fn node_writer_handle(
                     .map(|to_send| Message::Operations(to_send.to_vec()))
                     .collect();
                 Some(messages)
-
-            },
+            }
             Some(NodeCommand::SendOperationAnnouncements(operation_prefix_ids)) => {
                 massa_trace!("node_worker.run_loop. send Message::OperationsAnnouncement", {"node": node_id, "operation_ids": operation_prefix_ids});
                 let messages = operation_prefix_ids
@@ -257,21 +249,21 @@ async fn node_writer_handle(
                     .chunks(max_operations_per_message as usize)
                     .into_iter()
                     .map(|chunk| chunk.collect())
-                    .map(|chunk| Message::OperationsAnnouncement(chunk))
+                    .map(Message::OperationsAnnouncement)
                     .collect();
                 Some(messages)
             }
             Some(NodeCommand::AskForOperations(operation_prefix_ids)) => {
                 massa_trace!(
-                                "node_worker.run_loop. send Message::AskForOperations",
-                                {"node": node_id, "operation_ids": operation_prefix_ids}
-                            );
+                    "node_worker.run_loop. send Message::AskForOperations",
+                    {"node": node_id, "operation_ids": operation_prefix_ids}
+                );
                 let messages = operation_prefix_ids
                     .into_iter()
                     .chunks(max_operations_per_message as usize)
                     .into_iter()
                     .map(|chunk| chunk.collect())
-                    .map(|chunk| Message::AskForOperations(chunk))
+                    .map(Message::AskForOperations)
                     .collect();
                 Some(messages)
             }
@@ -283,10 +275,8 @@ async fn node_writer_handle(
                     .map(|endos| Message::Endorsements(endos.to_vec()))
                     .collect();
                 Some(messages)
-            },
-            Some(NodeCommand::AskPeerList) => {
-                Some(vec![Message::AskPeerList])
             }
+            Some(NodeCommand::AskPeerList) => Some(vec![Message::AskPeerList]),
             None => {
                 // Note: this should never happen,
                 // since it implies the network worker dropped its node command sender
@@ -303,20 +293,19 @@ async fn node_writer_handle(
         let messages = messages_.unwrap();
 
         for msg in messages.iter() {
-            match timeout(write_timeout.to_duration(), socket_writer.send(msg)).await
-            {
+            match timeout(write_timeout.to_duration(), socket_writer.send(msg)).await {
                 Err(err) => {
                     massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv.send.timeout", {
-                                    "node": node_id,
-                                });
+                        "node": node_id,
+                    });
                     debug!("Node data writing timed out: {}", err);
                     exit_reason = ConnectionClosureReason::Failed;
                     break 'writer_loop;
                 }
                 Ok(Err(err)) => {
                     massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv.send.error", {
-                                    "node": node_id, "err":  format!("{}", err),
-                                });
+                        "node": node_id, "err":  format!("{}", err),
+                    });
                     debug!("Node data writing error: {:?}", err);
                     exit_reason = ConnectionClosureReason::Failed;
                     break 'writer_loop;
@@ -331,7 +320,6 @@ async fn node_writer_handle(
 
     exit_reason
 }
-
 
 /// Handle socket read function until a message is received then send it via node_event_tx queue
 async fn node_reader_handle(
@@ -419,12 +407,18 @@ async fn node_reader_handle(
                 }
             }
             Ok(None) => {
-                massa_trace!("node_worker.run_loop.self.socket_reader.next(). Ok(None) Error", {});
+                massa_trace!(
+                    "node_worker.run_loop.self.socket_reader.next(). Ok(None) Error",
+                    {}
+                );
                 break;
             } // peer closed cleanly
             Err(err) => {
                 // stream error
-                debug!("node_worker.run_loop.self.socket_reader.next(). receive error: {}", err);
+                debug!(
+                    "node_worker.run_loop.self.socket_reader.next(). receive error: {}",
+                    err
+                );
                 exit_reason = ConnectionClosureReason::Failed;
                 break;
             }
