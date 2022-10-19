@@ -45,6 +45,8 @@ pub struct PoSFinalState {
     pub thread_count: u8,
     /// number of saved cycle
     pub cycle_history_length: usize,
+    /// maximum size of a bootstrap part
+    pub bootstrap_part_size: u64,
 }
 
 impl PoSFinalState {
@@ -54,6 +56,7 @@ impl PoSFinalState {
         initial_rolls_path: &PathBuf,
         periods_per_cycle: u64,
         thread_count: u8,
+        bootstrap_part_size: u64,
         cycle_history_length: usize,
         selector: Box<dyn SelectorController>,
     ) -> Result<Self, PosError> {
@@ -93,6 +96,7 @@ impl PoSFinalState {
             periods_per_cycle,
             thread_count,
             cycle_history_length,
+            bootstrap_part_size,
         })
     }
 
@@ -445,9 +449,12 @@ impl PoSFinalState {
         };
         let mut credit_part_last_slot: Option<Slot> = None;
         for (slot, credits) in self.deferred_credits.0.range((left_bound, Unbounded)) {
-            // FOLLOW-UP TODO: stream in multiple parts
-            credits_part.0.insert(*slot, credits.clone());
-            credit_part_last_slot = Some(*slot);
+            if credits_part.0.len() < self.bootstrap_part_size as usize {
+                credits_part.0.insert(*slot, credits.clone());
+                credit_part_last_slot = Some(*slot);
+            } else {
+                break;
+            }
         }
         if let Some(last_slot) = credit_part_last_slot {
             (credits_part, StreamingStep::Ongoing(last_slot))
