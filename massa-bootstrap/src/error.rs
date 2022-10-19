@@ -3,7 +3,7 @@
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use displaydoc::Display;
 use massa_final_state::FinalStateError;
-use massa_graph::error::GraphError;
+use massa_graph_2_exports::error::GraphError;
 use massa_hash::MassaHashError;
 use massa_network_exports::NetworkError;
 use massa_pos_exports::PosError;

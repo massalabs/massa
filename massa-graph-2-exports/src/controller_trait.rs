@@ -1,5 +1,5 @@
 use crate::block_graph_export::BlockGraphExport;
-use crate::{bootstrapable_graph::BootstrapableGraph, error::GraphResult};
+use crate::{bootstrapable_graph::BootstrapableGraph, error::GraphError};
 use massa_models::{
     api::BlockGraphStatus,
     block::{BlockHeader, BlockId},
@@ -16,15 +16,15 @@ pub trait GraphController: Send + Sync {
         &self,
         start_slot: Option<Slot>,
         end_slot: Option<Slot>,
-    ) -> GraphResult<BlockGraphExport>;
+    ) -> Result<BlockGraphExport, GraphError>;
 
     fn get_block_statuses(&self, ids: &Vec<BlockId>) -> Vec<BlockGraphStatus>;
 
     fn get_cliques(&self) -> Vec<Clique>;
 
-    fn get_bootstrap_graph(&self) -> GraphResult<BootstrapableGraph>;
+    fn get_bootstrap_graph(&self) -> Result<BootstrapableGraph, GraphError>;
 
-    fn get_stats(&self) -> GraphResult<ConsensusStats>;
+    fn get_stats(&self) -> Result<ConsensusStats, GraphError>;
 
     fn get_best_parents(&self) -> Vec<(BlockId, u64)>;
 

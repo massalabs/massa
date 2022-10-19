@@ -3,8 +3,10 @@ use std::{
     mem,
 };
 
-use massa_graph::error::{GraphError, GraphResult};
-use massa_graph_2_exports::block_status::{BlockStatus, DiscardReason, HeaderOrBlock};
+use massa_graph_2_exports::{
+    block_status::{BlockStatus, DiscardReason, HeaderOrBlock},
+    error::GraphError,
+};
 use massa_logging::massa_trace;
 use massa_models::{
     active_block::ActiveBlock,
@@ -36,7 +38,7 @@ impl GraphState {
         &mut self,
         mut to_ack: BTreeSet<(Slot, BlockId)>,
         current_slot: Option<Slot>,
-    ) -> GraphResult<()> {
+    ) -> Result<(), GraphError> {
         // order processing by (slot, hash)
         while let Some((_slot, hash)) = to_ack.pop_first() {
             to_ack.extend(self.process(hash, current_slot)?)
@@ -56,7 +58,7 @@ impl GraphState {
         &mut self,
         block_id: BlockId,
         current_slot: Option<Slot>,
-    ) -> GraphResult<BTreeSet<(Slot, BlockId)>> {
+    ) -> Result<BTreeSet<(Slot, BlockId)>, GraphError> {
         // list items to reprocess
         let mut reprocess = BTreeSet::new();
 
@@ -424,7 +426,7 @@ impl GraphState {
     }
 
     /// TODO: Doc
-    pub fn promote_dep_tree(&mut self, hash: BlockId) -> GraphResult<()> {
+    pub fn promote_dep_tree(&mut self, hash: BlockId) -> Result<(), GraphError> {
         let mut to_explore = vec![hash];
         let mut to_promote: PreHashMap<BlockId, (Slot, u64)> = PreHashMap::default();
         while let Some(h) = to_explore.pop() {
@@ -486,7 +488,7 @@ impl GraphState {
         inherited_incomp_count: usize,
         fitness: u64,
         mut storage: Storage,
-    ) -> GraphResult<()> {
+    ) -> Result<(), GraphError> {
         massa_trace!("consensus.block_graph.add_block_to_graph", {
             "block_id": add_block_id
         });
@@ -755,7 +757,7 @@ impl GraphState {
     /// 9. notify protocol of block wish list
     /// 10. note new latest final periods (prune graph if changed)
     /// 11. add stale blocks to stats
-    pub fn block_db_changed(&mut self) -> GraphResult<()> {
+    pub fn block_db_changed(&mut self) -> Result<(), GraphError> {
         let final_block_slots = {
             massa_trace!("consensus.consensus_worker.block_db_changed", {});
 

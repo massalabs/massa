@@ -1,4 +1,4 @@
-use crate::error::{GraphError, GraphResult as Result};
+use crate::error::GraphError;
 use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,

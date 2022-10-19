@@ -7,12 +7,6 @@ use massa_time::TimeError;
 use std::array::TryFromSliceError;
 use thiserror::Error;
 
-/// Result used in the graph
-pub type GraphResult<T, E = GraphError> = core::result::Result<T, E>;
-
-/// Result used in the ledger
-pub type LedgerResult<T, E = LedgerError> = core::result::Result<T, E>;
-
 /// Graph error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]

@@ -1,7 +1,6 @@
 use std::collections::BTreeSet;
 
-use massa_graph::error::GraphResult;
-use massa_graph_2_exports::block_status::BlockStatus;
+use massa_graph_2_exports::{block_status::BlockStatus, error::GraphError};
 use massa_logging::massa_trace;
 use massa_models::{block::BlockId, slot::Slot};
 
@@ -15,7 +14,7 @@ impl GraphState {
     ///
     /// # Returns:
     /// Error if the process of a block returned an error.
-    pub fn slot_tick(&mut self, current_slot: Slot) -> GraphResult<()> {
+    pub fn slot_tick(&mut self, current_slot: Slot) -> Result<(), GraphError> {
         massa_trace!("consensus.consensus_worker.slot_tick", {
             "slot": current_slot
         });

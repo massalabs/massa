@@ -359,52 +359,12 @@ async fn launch(
         protocol_config,
         network_command_sender.clone(),
         network_event_receiver,
+        graph_controller.clone(),
         pool_controller.clone(),
         shared_storage.clone(),
     )
     .await
     .expect("could not start protocol controller");
-
-    // // init consensus configuration
-    // let consensus_config = ConsensusConfig {
-    //     genesis_timestamp: *GENESIS_TIMESTAMP,
-    //     end_timestamp: *END_TIMESTAMP,
-    //     thread_count: THREAD_COUNT,
-    //     t0: T0,
-    //     genesis_key: GENESIS_KEY.clone(),
-    //     max_discarded_blocks: SETTINGS.consensus.max_discarded_blocks,
-    //     future_block_processing_max_periods: SETTINGS.consensus.future_block_processing_max_periods,
-    //     max_future_processing_blocks: SETTINGS.consensus.max_future_processing_blocks,
-    //     max_dependency_blocks: SETTINGS.consensus.max_dependency_blocks,
-    //     delta_f0: DELTA_F0,
-    //     operation_validity_periods: OPERATION_VALIDITY_PERIODS,
-    //     periods_per_cycle: PERIODS_PER_CYCLE,
-    //     stats_timespan: SETTINGS.consensus.stats_timespan,
-    //     max_send_wait: SETTINGS.consensus.max_send_wait,
-    //     force_keep_final_periods: SETTINGS.consensus.force_keep_final_periods,
-    //     endorsement_count: ENDORSEMENT_COUNT,
-    //     block_db_prune_interval: SETTINGS.consensus.block_db_prune_interval,
-    //     max_item_return_count: SETTINGS.consensus.max_item_return_count,
-    //     max_gas_per_block: MAX_GAS_PER_BLOCK,
-    //     channel_size: CHANNEL_SIZE,
-    // };
-    // // launch consensus controller
-    // let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
-    //     start_consensus_controller(
-    //         consensus_config.clone(),
-    //         ConsensusChannels {
-    //             execution_controller: execution_controller.clone(),
-    //             protocol_command_sender: protocol_command_sender.clone(),
-    //             protocol_event_receiver,
-    //             pool_command_sender: pool_controller.clone(),
-    //             selector_controller: selector_controller.clone(),
-    //         },
-    //         bootstrap_state.graph,
-    //         shared_storage.clone(),
-    //         bootstrap_state.compensation_millis,
-    //     )
-    //     .await
-    //     .expect("could not start consensus controller");
 
     let graph_config = GraphConfig {
         genesis_timestamp: *GENESIS_TIMESTAMP,

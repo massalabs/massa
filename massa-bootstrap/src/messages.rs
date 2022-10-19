@@ -6,7 +6,7 @@ use massa_final_state::{
     ExecutedOpsStreamingStepSerializer, StateChanges, StateChangesDeserializer,
     StateChangesSerializer,
 };
-use massa_graph_2_exports::{
+use massa_graph_2_exports::bootstrapable_graph::{
     BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
 };
 use massa_ledger_exports::{KeyDeserializer, KeySerializer};

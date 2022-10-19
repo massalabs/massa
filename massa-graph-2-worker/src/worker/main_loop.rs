@@ -1,6 +1,6 @@
 use std::{sync::mpsc, time::Instant};
 
-use massa_graph_2_exports::error::GraphResult;
+use massa_graph_2_exports::error::GraphError;
 use massa_models::{
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
@@ -26,7 +26,7 @@ impl GraphWorker {
     ///
     /// # Returns:
     /// An error if the command failed
-    fn manage_command(&mut self, command: GraphCommand) -> GraphResult<()> {
+    fn manage_command(&mut self, command: GraphCommand) -> Result<(), GraphError> {
         let mut write_shared_state = self.shared_state.write();
         match command {
             GraphCommand::RegisterBlockHeader(block_id, header) => {

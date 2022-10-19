@@ -1,7 +1,9 @@
 use std::collections::{hash_map::Entry, BTreeSet};
 
-use massa_graph::error::GraphResult;
-use massa_graph_2_exports::block_status::{BlockStatus, DiscardReason, HeaderOrBlock};
+use massa_graph_2_exports::{
+    block_status::{BlockStatus, DiscardReason, HeaderOrBlock},
+    error::GraphError,
+};
 use massa_logging::massa_trace;
 use massa_models::{
     block::{BlockId, WrappedHeader},
@@ -27,7 +29,7 @@ impl GraphState {
         block_id: BlockId,
         header: WrappedHeader,
         current_slot: Option<Slot>,
-    ) -> GraphResult<()> {
+    ) -> Result<(), GraphError> {
         // ignore genesis blocks
         if self.genesis_hashes.contains(&block_id) {
             return Ok(());
@@ -84,7 +86,7 @@ impl GraphState {
         slot: Slot,
         current_slot: Option<Slot>,
         storage: Storage,
-    ) -> GraphResult<()> {
+    ) -> Result<(), GraphError> {
         // ignore genesis blocks
         if self.genesis_hashes.contains(&block_id) {
             return Ok(());

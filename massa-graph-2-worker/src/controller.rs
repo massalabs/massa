@@ -1,10 +1,7 @@
 use massa_graph_2_exports::{
-    block_graph_export::BlockGraphExport,
-    block_status::BlockStatus,
-    bootstrapable_graph::BootstrapableGraph,
-    error::{GraphError, GraphResult},
-    export_active_block::ExportActiveBlock,
-    GraphController,
+    block_graph_export::BlockGraphExport, block_status::BlockStatus,
+    bootstrapable_graph::BootstrapableGraph, error::GraphError,
+    export_active_block::ExportActiveBlock, GraphController,
 };
 use massa_models::{
     api::BlockGraphStatus,
@@ -59,7 +56,7 @@ impl GraphController for GraphControllerImpl {
         &self,
         start_slot: Option<Slot>,
         end_slot: Option<Slot>,
-    ) -> GraphResult<BlockGraphExport> {
+    ) -> Result<BlockGraphExport, GraphError> {
         self.shared_state
             .read()
             .extract_block_graph_part(start_slot, end_slot)
@@ -92,7 +89,7 @@ impl GraphController for GraphControllerImpl {
     ///
     /// # Returns:
     /// A portion of the graph
-    fn get_bootstrap_graph(&self) -> GraphResult<BootstrapableGraph> {
+    fn get_bootstrap_graph(&self) -> Result<BootstrapableGraph, GraphError> {
         let read_shared_state = self.shared_state.read();
         let mut required_final_blocks: PreHashSet<_> =
             read_shared_state.list_required_active_blocks()?;
@@ -126,7 +123,7 @@ impl GraphController for GraphControllerImpl {
     }
 
     /// Get the stats of the consensus
-    fn get_stats(&self) -> GraphResult<ConsensusStats> {
+    fn get_stats(&self) -> Result<ConsensusStats, GraphError> {
         self.shared_state.read().get_stats()
     }
 

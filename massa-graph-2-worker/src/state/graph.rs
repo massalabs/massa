@@ -1,7 +1,9 @@
 use std::collections::VecDeque;
 
-use massa_graph::error::GraphError;
-use massa_graph_2_exports::block_status::{BlockStatus, DiscardReason};
+use massa_graph_2_exports::{
+    block_status::{BlockStatus, DiscardReason},
+    error::GraphError,
+};
 use massa_logging::massa_trace;
 use massa_models::{block::BlockId, clique::Clique, prehash::PreHashSet, slot::Slot};
 

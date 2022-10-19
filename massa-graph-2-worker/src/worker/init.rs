@@ -1,7 +1,5 @@
 use massa_graph_2_exports::{
-    block_status::BlockStatus,
-    bootstrapable_graph::BootstrapableGraph,
-    error::{GraphError, GraphResult},
+    block_status::BlockStatus, bootstrapable_graph::BootstrapableGraph, error::GraphError,
     GraphConfig,
 };
 use massa_hash::Hash;
@@ -35,7 +33,10 @@ use super::GraphWorker;
 ///
 /// # Returns
 /// A genesis block
-pub fn create_genesis_block(cfg: &GraphConfig, thread_number: u8) -> GraphResult<WrappedBlock> {
+pub fn create_genesis_block(
+    cfg: &GraphConfig,
+    thread_number: u8,
+) -> Result<WrappedBlock, GraphError> {
     let keypair = &cfg.genesis_key;
     let header = BlockHeader::new_wrapped(
         BlockHeader {
@@ -77,7 +78,7 @@ impl GraphWorker {
         shared_state: Arc<RwLock<GraphState>>,
         init_graph: Option<BootstrapableGraph>,
         storage: Storage,
-    ) -> GraphResult<Self> {
+    ) -> Result<Self, GraphError> {
         let now = MassaTime::now(config.clock_compensation_millis)
             .expect("Couldn't init timer consensus");
         let previous_slot = get_latest_block_slot_at_timestamp(
@@ -207,7 +208,7 @@ impl GraphWorker {
                             },
                         ))
                     })
-                    .collect::<GraphResult<_>>()?;
+                    .collect::<Result<_, GraphError>>()?;
                 write_shared_state.final_block_stats = final_block_stats;
             }
 
@@ -264,7 +265,7 @@ impl GraphWorker {
     }
 
     /// Internal function used at initialization of the `GraphWorker` to link blocks with their parents
-    fn claim_parent_refs(&mut self) -> GraphResult<()> {
+    fn claim_parent_refs(&mut self) -> Result<(), GraphError> {
         let mut write_shared_state = self.shared_state.write();
         for (_b_id, block_status) in write_shared_state.block_statuses.iter_mut() {
             if let BlockStatus::Active {

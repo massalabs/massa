@@ -1,9 +1,9 @@
 use std::collections::{HashMap, VecDeque};
 
-use massa_graph::error::{GraphError, GraphResult};
 use massa_graph_2_exports::{
     block_graph_export::BlockGraphExport,
     block_status::{BlockStatus, ExportCompiledBlock, HeaderOrBlock},
+    error::GraphError,
     GraphChannels, GraphConfig,
 };
 use massa_models::{
@@ -198,7 +198,7 @@ impl GraphState {
         }
     }
 
-    pub fn list_required_active_blocks(&self) -> GraphResult<PreHashSet<BlockId>> {
+    pub fn list_required_active_blocks(&self) -> Result<PreHashSet<BlockId>, GraphError> {
         // list all active blocks
         let mut retain_active: PreHashSet<BlockId> =
             PreHashSet::<BlockId>::with_capacity(self.active_index.len());
@@ -323,7 +323,7 @@ impl GraphState {
         &self,
         slot_start: Option<Slot>,
         slot_end: Option<Slot>,
-    ) -> GraphResult<BlockGraphExport> {
+    ) -> Result<BlockGraphExport, GraphError> {
         let mut export = BlockGraphExport {
             genesis_blocks: self.genesis_hashes.clone(),
             active_blocks: PreHashMap::with_capacity(self.block_statuses.len()),
@@ -415,7 +415,9 @@ impl GraphState {
     }
 
     /// get the current block wish list, including the operations hash.
-    pub fn get_block_wishlist(&self) -> GraphResult<PreHashMap<BlockId, Option<WrappedHeader>>> {
+    pub fn get_block_wishlist(
+        &self,
+    ) -> Result<PreHashMap<BlockId, Option<WrappedHeader>>, GraphError> {
         let mut wishlist = PreHashMap::<BlockId, Option<WrappedHeader>>::default();
         for block_id in self.waiting_for_dependencies_index.iter() {
             if let Some(BlockStatus::WaitingForDependencies {
@@ -450,7 +452,7 @@ impl GraphState {
     pub fn get_active_block_and_descendants(
         &self,
         block_id: &BlockId,
-    ) -> GraphResult<PreHashSet<BlockId>> {
+    ) -> Result<PreHashSet<BlockId>, GraphError> {
         let mut to_visit = vec![*block_id];
         let mut result = PreHashSet::<BlockId>::default();
         while let Some(visit_h) = to_visit.pop() {
