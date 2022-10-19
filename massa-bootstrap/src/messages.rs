@@ -5,13 +5,15 @@ use massa_async_pool::{
     AsyncPoolDeserializer, AsyncPoolSerializer,
 };
 use massa_final_state::{
-    ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer, StateChanges,
-    StateChangesDeserializer, StateChangesSerializer,
+    ExecutedOpsDeserializer, ExecutedOpsSerializer, StateChanges, StateChangesDeserializer,
+    StateChangesSerializer,
 };
 use massa_graph::{
     BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
 };
 use massa_ledger_exports::{KeyDeserializer, KeySerializer};
+use massa_models::operation::OperationId;
+use massa_models::prehash::PreHashSet;
 use massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
 use massa_models::slot::{Slot, SlotDeserializer, SlotSerializer};
 use massa_models::streaming_step::{
@@ -37,7 +39,7 @@ use nom::{
     IResult,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::convert::TryInto;
 use std::ops::Bound::{Excluded, Included};
 
@@ -75,7 +77,7 @@ pub enum BootstrapServerMessage {
         /// Part of the Proof of Stake `deferred_credits`
         pos_credits_part: DeferredCredits,
         /// Part of the executed operations
-        exec_ops_part: ExecutedOps,
+        exec_ops_part: VecDeque<(Slot, PreHashSet<OperationId>)>,
         /// Ledger change for addresses inferior to `address` of the client message until the actual slot.
         final_state_changes: Vec<(Slot, StateChanges)>,
     },
@@ -295,6 +297,8 @@ impl BootstrapServerMessageDeserializer {
         max_rolls_length: u64,
         max_production_stats_length: u64,
         max_credits_length: u64,
+        max_executed_ops_length: u64,
+        max_ops_changes_length: u64,
     ) -> Self {
         Self {
             message_id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
@@ -315,6 +319,7 @@ impl BootstrapServerMessageDeserializer {
                 max_rolls_length,
                 max_production_stats_length,
                 max_credits_length,
+                max_ops_changes_length,
             ),
             length_state_changes: U64VarIntDeserializer::new(
                 Included(0),
@@ -357,7 +362,11 @@ impl BootstrapServerMessageDeserializer {
                 thread_count,
                 max_credits_length,
             ),
-            exec_ops_deserializer: ExecutedOpsDeserializer::new(thread_count),
+            exec_ops_deserializer: ExecutedOpsDeserializer::new(
+                thread_count,
+                max_executed_ops_length,
+                max_operations_per_block as u64,
+            ),
         }
     }
 }

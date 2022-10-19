@@ -15,7 +15,7 @@ use massa_async_pool::{AsyncMessage, AsyncMessageId};
 use massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
 };
-use massa_final_state::{ExecutedOps, FinalState, StateChanges};
+use massa_final_state::{ExecutedOpsChanges, FinalState, StateChanges};
 use massa_ledger_exports::LedgerChanges;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::{
@@ -43,8 +43,8 @@ pub(crate) struct ExecutionContextSnapshot {
     /// speculative asynchronous pool messages emitted so far in the context
     pub async_pool_changes: Vec<(AsyncMessageId, AsyncMessage)>,
 
-    /// speculative list of operations executed (mapped to their end-of-validity slot)
-    pub executed_ops: ExecutedOps,
+    /// speculative list of operations executed
+    pub executed_ops: ExecutedOpsChanges,
 
     /// speculative roll state changes caused so far in the context
     pub pos_changes: PoSChanges,
@@ -793,9 +793,8 @@ impl ExecutionContext {
     /// # Arguments
     /// * `op_id`: operation ID
     /// * `expiration_slot`: slot until which the operation remains valid (included)
-    pub fn insert_executed_op(&mut self, expiration_slot: Slot, op_id: OperationId) {
-        self.speculative_executed_ops
-            .insert_executed_op(expiration_slot, op_id)
+    pub fn insert_executed_op(&mut self, op_id: OperationId) {
+        self.speculative_executed_ops.insert_executed_op(op_id)
     }
 
     /// gets the cycle information for an address
