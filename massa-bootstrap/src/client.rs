@@ -390,6 +390,8 @@ async fn connect_to_server(
         bootstrap_config.max_rolls_length,
         bootstrap_config.max_production_stats_length,
         bootstrap_config.max_credits_length,
+        bootstrap_config.max_executed_ops_length,
+        bootstrap_config.max_executed_ops_length,
     ))
 }
 

@@ -109,13 +109,15 @@ async fn launch(
         max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
     };
     let final_state_config = FinalStateConfig {
-        final_history_length: SETTINGS.ledger.final_history_length,
-        thread_count: THREAD_COUNT,
         ledger_config: ledger_config.clone(),
+        async_pool_config,
+        final_history_length: SETTINGS.ledger.final_history_length,
+        pos_cycle_history_length: 42,
+        executed_ops_bootstrap_part_size: 42,
+        thread_count: THREAD_COUNT,
         periods_per_cycle: PERIODS_PER_CYCLE,
         initial_seed_string: INITIAL_DRAW_SEED.into(),
         initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
-        async_pool_config,
     };
 
     // Remove current disk ledger if there is one
@@ -195,6 +197,8 @@ async fn launch(
         max_rolls_length: MAX_BOOTSTRAP_ROLLS_LENGTH,
         max_production_stats_length: MAX_BOOTSTRAP_PRODUCTION_STATS,
         max_credits_length: MAX_BOOTSTRAP_CREDITS_LENGTH,
+        max_executed_ops_length: 42,
+        max_ops_changes_length: 42,
     };
 
     // bootstrap
