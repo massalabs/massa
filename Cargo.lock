@@ -1723,6 +1723,7 @@ dependencies = [
  "serde 1.0.145",
  "serde_json",
  "serial_test 0.9.0",
+ "tempfile",
  "thiserror",
  "tokio",
  "tracing",

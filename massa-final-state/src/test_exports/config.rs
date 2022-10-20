@@ -19,32 +19,16 @@ use massa_models::{
 use massa_pos_exports::{PoSConfig, PoSFinalState};
 
 impl FinalState {
-    /// Default value of `FinalState` used for tests
-    pub fn default_with_pos_and_ops(pos: PoSFinalState, ops_config: ExecutedOpsConfig) -> Self {
-        let config = FinalStateConfig::default();
-        let slot = Slot::new(0, config.thread_count.saturating_sub(1));
-
-        // load the initial final ledger from file
-        let ledger = FinalLedger::default();
-
-        // create the async pool
-        let async_pool = AsyncPool::new(config.async_pool_config.clone());
-
-        // create the pos state
-        let pos_state = pos;
-
-        // create a default executed ops
-        let executed_ops = ExecutedOps::new(ops_config);
-
-        // generate the final state
+    /// Create a final stat
+    pub fn create_final_state(pos_state: PoSFinalState, config: FinalStateConfig) -> Self {
         FinalState {
-            slot,
-            ledger: Box::new(ledger),
-            async_pool,
-            config,
-            changes_history: Default::default(), // no changes in history
+            slot: Slot::new(0, 0),
+            ledger: Box::new(FinalLedger::new(config.ledger_config.clone())),
+            async_pool: AsyncPool::new(config.async_pool_config.clone()),
             pos_state,
-            executed_ops,
+            executed_ops: ExecutedOps::new(config.executed_ops_config.clone()),
+            changes_history: Default::default(),
+            config,
         }
     }
 }

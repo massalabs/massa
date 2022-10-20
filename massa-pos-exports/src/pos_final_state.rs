@@ -47,7 +47,7 @@ impl PoSFinalState {
     /// create a new `PoSFinalState`
     pub fn new(
         config: PoSConfig,
-        initial_seed_string: &String,
+        initial_seed_string: &str,
         initial_rolls_path: &PathBuf,
         selector: Box<dyn SelectorController>,
     ) -> Result<Self, PosError> {

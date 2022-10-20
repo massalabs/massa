@@ -8,7 +8,7 @@ use massa_async_pool::{AsyncPoolChanges, Change};
 use massa_consensus_exports::commands::ConsensusCommand;
 use massa_executed_ops::{ExecutedOps, ExecutedOpsConfig};
 use massa_final_state::test_exports::create_final_state;
-use massa_final_state::FinalState;
+use massa_final_state::{FinalState, FinalStateConfig};
 use massa_graph::export_active_block::ExportActiveBlockSerializer;
 use massa_graph::{export_active_block::ExportActiveBlock, BootstrapableGraph};
 use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
@@ -223,7 +223,7 @@ pub fn get_random_executed_ops_changes(r_limit: u64) -> PreHashSet<OperationId> 
 /// generates a random bootstrap state for the final state
 pub fn get_random_final_state_bootstrap(
     pos: PoSFinalState,
-    ops_config: ExecutedOpsConfig,
+    config: FinalStateConfig,
 ) -> FinalState {
     let r_limit: u64 = 50;
 
@@ -240,17 +240,17 @@ pub fn get_random_final_state_bootstrap(
     sorted_ledger.insert(Address::from_bytes(&[255; 32]), get_random_ledger_entry());
 
     let slot = Slot::new(0, 0);
-    let final_ledger = create_final_ledger(Some(sorted_ledger), Default::default());
-    let async_pool = create_async_pool(Default::default(), messages);
+    let final_ledger = create_final_ledger(config.ledger_config.clone(), sorted_ledger);
+    let async_pool = create_async_pool(config.async_pool_config.clone(), messages);
 
     create_final_state(
-        Default::default(),
+        config.clone(),
         slot,
         Box::new(final_ledger),
         async_pool,
         VecDeque::new(),
         get_random_pos_state(r_limit, pos),
-        get_random_executed_ops(r_limit, slot, ops_config),
+        get_random_executed_ops(r_limit, slot, config.executed_ops_config),
     )
 }
 

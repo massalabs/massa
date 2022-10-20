@@ -15,10 +15,22 @@ use crate::{
     get_state, start_bootstrap_server,
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
 };
+use massa_async_pool::AsyncPoolConfig;
 use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
 use massa_executed_ops::ExecutedOpsConfig;
-use massa_final_state::{test_exports::assert_eq_final_state, FinalState, StateChanges};
-use massa_models::{address::Address, config::POS_SAVED_CYCLES, slot::Slot, version::Version};
+use massa_final_state::{
+    test_exports::assert_eq_final_state, FinalState, FinalStateConfig, StateChanges,
+};
+use massa_ledger_exports::LedgerConfig;
+use massa_models::{
+    address::Address,
+    config::{
+        LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH,
+        MAX_DATASTORE_KEY_LENGTH, POS_SAVED_CYCLES,
+    },
+    slot::Slot,
+    version::Version,
+};
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
 use massa_pos_exports::{
     test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,
@@ -29,6 +41,7 @@ use massa_time::MassaTime;
 use parking_lot::RwLock;
 use serial_test::serial;
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+use tempfile::TempDir;
 use tokio::sync::mpsc;
 
 lazy_static::lazy_static! {
@@ -41,6 +54,8 @@ lazy_static::lazy_static! {
 #[tokio::test]
 #[serial]
 async fn test_bootstrap_server() {
+    let thread_count = 2;
+    let periods_per_cycle = 2;
     let (bootstrap_config, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
     let genesis_address = Address::from_public_key(&KeyPair::generate().get_public_key());
@@ -50,19 +65,40 @@ async fn test_bootstrap_server() {
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
 
     // setup configurations
-    let pos_local_config = PoSConfig {
-        periods_per_cycle: 2,
-        thread_count: 2,
-        cycle_history_length: POS_SAVED_CYCLES,
-        credits_bootstrap_part_size: 4242,
-    };
-    let executed_ops_local_config = ExecutedOpsConfig {
-        thread_count: 2,
-        bootstrap_part_size: 4242,
+    let temp_dir = TempDir::new().unwrap();
+    let final_state_local_config = FinalStateConfig {
+        ledger_config: LedgerConfig {
+            thread_count,
+            initial_ledger_path: "".into(),
+            disk_ledger_path: temp_dir.path().to_path_buf(),
+            max_key_length: MAX_DATASTORE_KEY_LENGTH,
+            max_ledger_part_size: LEDGER_PART_SIZE_MESSAGE_BYTES,
+        },
+        async_pool_config: AsyncPoolConfig {
+            thread_count,
+            max_length: MAX_ASYNC_POOL_LENGTH,
+            max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+            bootstrap_part_size: 4242,
+        },
+        pos_config: PoSConfig {
+            periods_per_cycle,
+            thread_count,
+            cycle_history_length: POS_SAVED_CYCLES,
+            credits_bootstrap_part_size: 4242,
+        },
+        executed_ops_config: ExecutedOpsConfig {
+            thread_count,
+            bootstrap_part_size: 4242,
+        },
+        final_history_length: 1000,
+        initial_seed_string: "".into(),
+        initial_rolls_path: "".into(),
+        thread_count,
+        periods_per_cycle,
     };
     let selector_local_config = SelectorConfig {
-        thread_count: 2,
-        periods_per_cycle: 2,
+        thread_count,
+        periods_per_cycle,
         genesis_address,
         ..Default::default()
     };
@@ -78,23 +114,23 @@ async fn test_bootstrap_server() {
     // setup final states
     let final_state_server = Arc::new(RwLock::new(get_random_final_state_bootstrap(
         PoSFinalState::new(
-            pos_local_config.clone(),
-            &"".to_string(),
+            final_state_local_config.pos_config.clone(),
+            "",
             &rolls_path,
             server_selector_controller.clone(),
         )
         .unwrap(),
-        executed_ops_local_config.clone(),
+        final_state_local_config.clone(),
     )));
-    let final_state_client = Arc::new(RwLock::new(FinalState::default_with_pos_and_ops(
+    let final_state_client = Arc::new(RwLock::new(FinalState::create_final_state(
         PoSFinalState::new(
-            pos_local_config.clone(),
-            &"".to_string(),
+            final_state_local_config.pos_config.clone(),
+            "",
             &rolls_path,
             client_selector_controller.clone(),
         )
         .unwrap(),
-        executed_ops_local_config,
+        final_state_local_config,
     )));
     let final_state_client_clone = final_state_client.clone();
     let final_state_server_clone = final_state_server.clone();

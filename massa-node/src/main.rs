@@ -141,7 +141,7 @@ async fn launch(
     }
 
     // Create final ledger
-    let ledger = FinalLedger::new(ledger_config.clone()).expect("could not init final ledger");
+    let ledger = FinalLedger::new(ledger_config.clone());
 
     // launch selector worker
     let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
