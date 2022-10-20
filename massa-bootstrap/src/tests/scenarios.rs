@@ -82,7 +82,7 @@ async fn test_bootstrap_server() {
             server_selector_controller.clone(),
         )
         .unwrap(),
-        executed_ops_local_config,
+        executed_ops_local_config.clone(),
     );
     let final_state = Arc::new(RwLock::new(final_state_bootstrap));
 
@@ -101,7 +101,7 @@ async fn test_bootstrap_server() {
     .unwrap()
     .unwrap();
 
-    let final_state_client = Arc::new(RwLock::new(FinalState::default_with_pos(
+    let final_state_client = Arc::new(RwLock::new(FinalState::default_with_pos_and_ops(
         PoSFinalState::new(
             pos_local_config.clone(),
             &"".to_string(),
@@ -109,6 +109,7 @@ async fn test_bootstrap_server() {
             client_selector_controller.clone(),
         )
         .unwrap(),
+        executed_ops_local_config,
     )));
     let final_state_client_clone = final_state_client.clone();
     let final_state_clone = final_state.clone();

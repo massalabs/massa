@@ -197,10 +197,16 @@ pub fn get_random_async_pool_changes(r_limit: u64) -> AsyncPoolChanges {
     changes
 }
 
-pub fn get_random_executed_ops(r_limit: u64, slot: Slot, config: ExecutedOpsConfig) -> ExecutedOps {
-    let mut executed_ops = ExecutedOps::new(config);
-    let ops_changes = get_random_executed_ops_changes(r_limit);
-    executed_ops.apply_changes(ops_changes, slot);
+pub fn get_random_executed_ops(
+    r_limit: u64,
+    mut slot: Slot,
+    config: ExecutedOpsConfig,
+) -> ExecutedOps {
+    let mut executed_ops = ExecutedOps::new(config.clone());
+    for _ in 0..2 {
+        executed_ops.apply_changes(get_random_executed_ops_changes(r_limit), slot);
+        slot = slot.get_next_slot(config.thread_count).unwrap()
+    }
     executed_ops
 }
 

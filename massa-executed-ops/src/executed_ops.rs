@@ -84,7 +84,10 @@ impl ExecutedOps {
                 Ok(next_to_last_slot) if next_to_last_slot == slot => {
                     self.ops_deque.push_back((next_to_last_slot, changes));
                 }
-                _ => panic!("executed ops associated slot must be sequential"),
+                Ok(next_to_last_slot) => {
+                    panic!("executed ops associated slot must be sequential, expected {:?} but received {:?}", next_to_last_slot, slot)
+                }
+                _ => panic!("get_next_slot overflow"),
             },
             None => {
                 self.ops_deque.push_back((slot, changes));

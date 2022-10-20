@@ -20,7 +20,7 @@ use massa_pos_exports::{PoSConfig, PoSFinalState};
 
 impl FinalState {
     /// Default value of `FinalState` used for tests
-    pub fn default_with_pos(pos: PoSFinalState) -> Self {
+    pub fn default_with_pos_and_ops(pos: PoSFinalState, ops_config: ExecutedOpsConfig) -> Self {
         let config = FinalStateConfig::default();
         let slot = Slot::new(0, config.thread_count.saturating_sub(1));
 
@@ -34,7 +34,7 @@ impl FinalState {
         let pos_state = pos;
 
         // create a default executed ops
-        let executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
+        let executed_ops = ExecutedOps::new(ops_config);
 
         // generate the final state
         FinalState {
