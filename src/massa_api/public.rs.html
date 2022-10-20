@@ -915,6 +915,8 @@
 <span id="915">915</span>
 <span id="916">916</span>
 <span id="917">917</span>
+<span id="918">918</span>
+<span id="919">919</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attribute">#![allow(clippy::too_many_arguments)]
 
@@ -1516,9 +1518,11 @@
     ) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Block&gt;, ApiError&gt;&gt; {
         <span class="kw">let </span>consensus_command_sender = <span class="self">self</span>.<span class="number">0</span>.consensus_command_sender.clone();
         <span class="kw">let </span>storage = <span class="self">self</span>.<span class="number">0</span>.storage.clone_without_refs();
-        <span class="kw">let </span>block_id = consensus_command_sender.get_blockclique_block_at_slot(slot);
         <span class="kw">let </span>closure = <span class="kw">async move </span>|| {
-            <span class="kw">let </span>block_id = <span class="kw">match </span>block_id<span class="question-mark">? </span>{
+            <span class="kw">let </span>block_id_result = consensus_command_sender
+                .get_blockclique_block_at_slot(slot)
+                .<span class="kw">await</span>;
+            <span class="kw">let </span>block_id = <span class="kw">match </span>block_id_result<span class="question-mark">? </span>{
                 <span class="prelude-val">Some</span>(id) =&gt; id,
                 <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
             };

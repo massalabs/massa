@@ -266,6 +266,7 @@
 <span id="266">266</span>
 <span id="267">267</span>
 <span id="268">268</span>
+<span id="269">269</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_graph::{BlockGraphExport, BootstrapableGraph};
@@ -406,19 +407,20 @@
     }
 
     <span class="doccomment">/// get block id of a slot in a blockclique
-    </span><span class="kw">pub fn </span>get_blockclique_block_at_slot(
+    </span><span class="kw">pub async fn </span>get_blockclique_block_at_slot(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         slot: Slot,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;BlockId&gt;, ConsensusError&gt; {
         <span class="kw">let </span>(response_tx, response_rx) = oneshot::channel();
         <span class="self">self</span>.<span class="number">0
-            </span>.blocking_send(ConsensusCommand::GetBlockcliqueBlockAtSlot { slot, response_tx })
-            .map_err(|<span class="kw">_</span>| {
+            </span>.send(ConsensusCommand::GetBlockcliqueBlockAtSlot { slot, response_tx })
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
                 ConsensusError::SendChannelError(
                     <span class="string">&quot;send error consensus command get_blockclique_block_at_slot&quot;</span>.into(),
                 )
             })<span class="question-mark">?</span>;
-        response_rx.blocking_recv().map_err(|<span class="kw">_</span>| {
+        response_rx.<span class="kw">await</span>.map_err(|<span class="kw">_</span>| {
             ConsensusError::ReceiveChannelError(
                 <span class="string">&quot;consensus command get_blockclique_block_at_slot response read error&quot;</span>.to_string(),
             )
