@@ -10,6 +10,7 @@ use massa_models::{
     prehash::PreHashSet,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
+    wrapped::Id,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -68,7 +69,7 @@ impl ExecutedOps {
     {
         for op_id in values {
             if self.ops.insert(*op_id) {
-                self.hash ^= Hash::compute_from(op_id.to_bytes());
+                self.hash ^= *op_id.get_hash();
             }
         }
     }
@@ -110,15 +111,13 @@ impl ExecutedOps {
             Ok(index) => index,
             Err(_) => return,
         };
-        let kept = self.ops_deque.split_off(index);
-        let removed = std::mem::take(&mut self.ops_deque);
+        let removed: Vec<(Slot, PreHashSet<OperationId>)> = self.ops_deque.drain(..index).collect();
         for (_, ids) in removed {
             for op_id in ids {
                 self.ops.remove(&op_id);
-                self.hash ^= Hash::compute_from(op_id.to_bytes());
+                self.hash ^= *op_id.get_hash();
             }
         }
-        self.ops_deque = kept;
     }
 
     /// Get a part of the executed operations.
@@ -189,7 +188,13 @@ fn test_executed_ops_xor_computing() {
     use massa_models::prehash::PreHashSet;
     use massa_models::wrapped::Id;
 
-    // initialize the changes and the executed ops objects
+    // initialize the executed ops and changes
+    let config = ExecutedOpsConfig {
+        thread_count: 2,
+        bootstrap_part_size: 10,
+    };
+    let mut a = ExecutedOps::new(config.clone());
+    let mut c = ExecutedOps::new(config);
     let mut change_a = PreHashSet::default();
     let mut change_b = PreHashSet::default();
     let mut change_c = PreHashSet::default();
@@ -203,27 +208,23 @@ fn test_executed_ops_xor_computing() {
         change_c.insert(OperationId::new(Hash::compute_from(&[i])));
     }
     let slot = Slot {
-        period: 20,
+        period: 0,
         thread: 0,
     };
-    let config = ExecutedOpsConfig {
-        thread_count: 2,
-        bootstrap_part_size: 10,
-    };
-    let mut a = ExecutedOps::new(config.clone());
-    let mut c = ExecutedOps::new(config);
+
+    // apply change_b to a which performs a.hash ^ $(change_b)
     a.apply_changes(change_a, slot);
+    a.apply_changes(change_b, slot);
     c.apply_changes(change_c, slot);
 
-    // extend a with change_b which performs a.hash ^ $(change_b)
-    a.extend_and_compute_hash(change_b.iter());
     // check that a.hash ^ $(change_b) = c.hash
     assert_eq!(a.hash, c.hash);
+
     // prune every element
-    a.prune(Slot {
-        period: 20,
-        thread: 0,
-    });
+    let prune_slot = slot.get_next_slot(2).unwrap();
+    a.apply_changes(PreHashSet::default(), prune_slot);
+    a.prune(prune_slot);
+
     // at this point the hash should have been XORed with itself
     assert_eq!(a.hash, Hash::from_bytes(EXECUTED_OPS_INITIAL_BYTES));
 }
