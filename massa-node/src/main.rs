@@ -15,6 +15,7 @@ use massa_consensus_exports::{
     events::ConsensusEvent, settings::ConsensusChannels, ConsensusConfig, ConsensusEventReceiver,
 };
 use massa_consensus_worker::start_consensus_controller;
+use massa_executed_ops::ExecutedOpsConfig;
 use massa_execution_exports::{ExecutionConfig, ExecutionManager, StorageCostsConstants};
 use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
@@ -44,12 +45,13 @@ use massa_models::config::constants::{
 };
 use massa_models::config::{
     MAX_ASYNC_MESSAGE_DATA, MAX_BOOTSTRAP_PRODUCTION_STATS, POOL_CONTROLLER_CHANNEL_SIZE,
+    POS_SAVED_CYCLES,
 };
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
 use massa_pool_exports::{PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
-use massa_pos_exports::{SelectorConfig, SelectorManager};
+use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 use massa_protocol_worker::start_protocol_controller;
@@ -108,12 +110,22 @@ async fn launch(
         bootstrap_part_size: ASYNC_POOL_BOOTSTRAP_PART_SIZE,
         max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
     };
+    let pos_config = PoSConfig {
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        thread_count: THREAD_COUNT,
+        cycle_history_length: POS_SAVED_CYCLES,
+        credits_bootstrap_part_size: 42,
+    };
+    let executed_ops_config = ExecutedOpsConfig {
+        thread_count: THREAD_COUNT,
+        bootstrap_part_size: 42,
+    };
     let final_state_config = FinalStateConfig {
         ledger_config: ledger_config.clone(),
         async_pool_config,
+        pos_config,
+        executed_ops_config,
         final_history_length: SETTINGS.ledger.final_history_length,
-        pos_cycle_history_length: 4242,
-        executed_ops_bootstrap_part_size: 4242,
         thread_count: THREAD_COUNT,
         periods_per_cycle: PERIODS_PER_CYCLE,
         initial_seed_string: INITIAL_DRAW_SEED.into(),
@@ -197,8 +209,8 @@ async fn launch(
         max_rolls_length: MAX_BOOTSTRAP_ROLLS_LENGTH,
         max_production_stats_length: MAX_BOOTSTRAP_PRODUCTION_STATS,
         max_credits_length: MAX_BOOTSTRAP_CREDITS_LENGTH,
-        max_executed_ops_length: 4242,
-        max_ops_changes_length: 4242,
+        max_executed_ops_length: 42,
+        max_ops_changes_length: 42,
     };
 
     // bootstrap

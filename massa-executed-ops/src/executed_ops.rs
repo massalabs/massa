@@ -3,7 +3,7 @@
 //! This file defines a structure to list and prune previously executed operations.
 //! Used to detect operation reuse.
 
-use crate::ops_changes::ExecutedOpsChanges;
+use crate::{ops_changes::ExecutedOpsChanges, ExecutedOpsConfig};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::{
     operation::{OperationId, OperationIdDeserializer},
@@ -28,29 +28,26 @@ use std::{
 const EXECUTED_OPS_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 /// A structure to list and prune previously executed operations
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct ExecutedOps {
+    /// Exectued operations configuration
+    config: ExecutedOpsConfig,
     /// Executed operations deque associated with a Slot for better pruning complexity
     ops_deque: VecDeque<(Slot, PreHashSet<OperationId>)>,
     /// Executed operations only for better insertion complexity
     ops: PreHashSet<OperationId>,
     /// Accumulated hash of the executed operations
     pub hash: Hash,
-    /// Number of threads
-    thread_count: u8,
-    /// Maximum size of a bootstrap part
-    bootstrap_part_size: u64,
 }
 
 impl ExecutedOps {
     /// Creates a new `ExecutedOps`
-    pub fn new(thread_count: u8, bootstrap_part_size: u64) -> Self {
+    pub fn new(config: ExecutedOpsConfig) -> Self {
         Self {
+            config,
             ops_deque: VecDeque::new(),
             ops: PreHashSet::default(),
             hash: Hash::from_bytes(EXECUTED_OPS_INITIAL_BYTES),
-            thread_count,
-            bootstrap_part_size,
         }
     }
 
@@ -83,7 +80,7 @@ impl ExecutedOps {
             Some((last_slot, ids)) if *last_slot == slot => {
                 ids.extend(changes);
             }
-            Some((last_slot, _)) => match last_slot.get_next_slot(self.thread_count) {
+            Some((last_slot, _)) => match last_slot.get_next_slot(self.config.thread_count) {
                 Ok(next_to_last_slot) if next_to_last_slot == slot => {
                     self.ops_deque.push_back((next_to_last_slot, changes));
                 }
@@ -150,7 +147,7 @@ impl ExecutedOps {
         };
         let mut ops_part_last_slot: Option<Slot> = None;
         for (slot, ids) in self.ops_deque.range((left_bound, Unbounded)) {
-            if self.ops_deque.len() < self.bootstrap_part_size as usize {
+            if self.ops_deque.len() < self.config.bootstrap_part_size as usize {
                 ops_part.push_back((*slot, ids.clone()));
                 ops_part_last_slot = Some(*slot);
             } else {
@@ -206,8 +203,12 @@ fn test_executed_ops_xor_computing() {
         period: 20,
         thread: 0,
     };
-    let mut a = ExecutedOps::new(2, 10);
-    let mut c = ExecutedOps::new(2, 10);
+    let config = ExecutedOpsConfig {
+        thread_count: 2,
+        bootstrap_part_size: 10,
+    };
+    let mut a = ExecutedOps::new(config.clone());
+    let mut c = ExecutedOps::new(config);
     a.apply_changes(change_a, slot);
     c.apply_changes(change_c, slot);
 

@@ -1,5 +1,5 @@
-use crate::DeferredCredits;
 use crate::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
+use crate::{DeferredCredits, PoSConfig};
 use bitvec::vec::BitVec;
 use massa_hash::Hash;
 use massa_models::error::ModelsError;
@@ -21,6 +21,8 @@ use tracing::debug;
 
 /// Final state of PoS
 pub struct PoSFinalState {
+    /// proof-of-stake configuration
+    pub config: PoSConfig,
     /// contiguous cycle history, back = newest
     pub cycle_history: VecDeque<CycleInfo>,
     /// coins to be credited at the end of the slot
@@ -39,25 +41,14 @@ pub struct PoSFinalState {
     pub deferred_credit_length_deserializer: U64VarIntDeserializer,
     /// address deserializer
     pub address_deserializer: AddressDeserializer,
-    /// periods per cycle
-    pub periods_per_cycle: u64,
-    /// thread count
-    pub thread_count: u8,
-    /// number of saved cycle
-    pub cycle_history_length: usize,
-    /// maximum size of a bootstrap part
-    pub bootstrap_part_size: u64,
 }
 
 impl PoSFinalState {
     /// create a new `PoSFinalState`
     pub fn new(
+        config: PoSConfig,
         initial_seed_string: &String,
         initial_rolls_path: &PathBuf,
-        periods_per_cycle: u64,
-        thread_count: u8,
-        cycle_history_length: usize,
-        bootstrap_part_size: u64,
         selector: Box<dyn SelectorController>,
     ) -> Result<Self, PosError> {
         // load get initial rolls from file
@@ -77,13 +68,14 @@ impl PoSFinalState {
             AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
         let slot_deserializer = SlotDeserializer::new(
             (Included(u64::MIN), Included(u64::MAX)),
-            (Included(0), Excluded(thread_count)),
+            (Included(0), Excluded(config.thread_count)),
         );
         let deferred_credit_length_deserializer =
             U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)); // TODO define a max here
         let address_deserializer = AddressDeserializer::new();
 
         Ok(Self {
+            config,
             cycle_history: Default::default(),
             deferred_credits: DeferredCredits::default(),
             selector,
@@ -93,10 +85,6 @@ impl PoSFinalState {
             slot_deserializer,
             deferred_credit_length_deserializer,
             address_deserializer,
-            periods_per_cycle,
-            thread_count,
-            cycle_history_length,
-            bootstrap_part_size,
         })
     }
 
@@ -105,12 +93,13 @@ impl PoSFinalState {
     /// This should be called only if bootstrap did not happen.
     pub fn create_initial_cycle(&mut self) {
         let mut rng_seed = BitVec::with_capacity(
-            self.periods_per_cycle
-                .saturating_mul(self.thread_count as u64)
+            self.config
+                .periods_per_cycle
+                .saturating_mul(self.config.thread_count as u64)
                 .try_into()
                 .unwrap(),
         );
-        for _ in 0..self.thread_count {
+        for _ in 0..self.config.thread_count {
             // assume genesis blocks have a "False" seed bit to avoid passing them around
             rng_seed.push(false);
         }
@@ -192,13 +181,14 @@ impl PoSFinalState {
         feed_selector: bool,
     ) -> PosResult<()> {
         let slots_per_cycle: usize = self
+            .config
             .periods_per_cycle
-            .saturating_mul(self.thread_count as u64)
+            .saturating_mul(self.config.thread_count as u64)
             .try_into()
             .unwrap();
 
         // compute the current cycle from the given slot
-        let cycle = slot.get_cycle(self.periods_per_cycle);
+        let cycle = slot.get_cycle(self.config.periods_per_cycle);
 
         // if cycle C is absent from self.cycle_history:
         // push a new empty CycleInfo at the back of self.cycle_history and set its cycle = C
@@ -216,7 +206,7 @@ impl PoSFinalState {
                     production_stats: Default::default(),
                     complete: false,
                 });
-                while self.cycle_history.len() > self.cycle_history_length {
+                while self.cycle_history.len() > self.config.cycle_history_length {
                     self.cycle_history.pop_front();
                 }
             } else {
@@ -253,7 +243,8 @@ impl PoSFinalState {
             }
 
             // check for completion
-            current.complete = slot.is_last_of_cycle(self.periods_per_cycle, self.thread_count);
+            current.complete =
+                slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count);
             // if the cycle just completed, check that it has the right number of seed bits
             if current.complete && current.rng_seed.len() != slots_per_cycle {
                 panic!("cycle completed with incorrect number of seed bits");
@@ -406,7 +397,7 @@ impl PoSFinalState {
     ) -> Result<(Option<CycleInfo>, StreamingStep<u64>), ModelsError> {
         let cycle_index = match cursor {
             StreamingStep::Started => {
-                usize::from(self.cycle_history.len() >= self.cycle_history_length)
+                usize::from(self.cycle_history.len() >= self.config.cycle_history_length)
             }
             StreamingStep::Ongoing(last_cycle) => {
                 if let Some(index) = self.get_cycle_index(last_cycle) {
@@ -449,7 +440,7 @@ impl PoSFinalState {
         };
         let mut credit_part_last_slot: Option<Slot> = None;
         for (slot, credits) in self.deferred_credits.0.range((left_bound, Unbounded)) {
-            if credits_part.0.len() < self.bootstrap_part_size as usize {
+            if credits_part.0.len() < self.config.credits_bootstrap_part_size as usize {
                 credits_part.0.insert(*slot, credits.clone());
                 credit_part_last_slot = Some(*slot);
             } else {
