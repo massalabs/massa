@@ -126,28 +126,3 @@ pub fn _get_transaction_with_addresses(
     };
     Operation::new_wrapped(content, OperationSerializer::new(), sender_keypair).unwrap()
 }
-
-pub fn _create_executesc(
-    expire_period: u64,
-    fee: u64,
-    max_gas: u64,
-    gas_price: u64,
-) -> WrappedOperation {
-    let keypair = KeyPair::generate();
-
-    let data = vec![42; 7];
-
-    let op = OperationType::ExecuteSC {
-        data,
-        max_gas,
-        gas_price: Amount::from_str(&gas_price.to_string()).unwrap(),
-        datastore: BTreeMap::new(),
-    };
-
-    let content = Operation {
-        fee: Amount::from_str(&fee.to_string()).unwrap(),
-        expire_period,
-        op,
-    };
-    Operation::new_wrapped(content, OperationSerializer::new(), &keypair).unwrap()
-}

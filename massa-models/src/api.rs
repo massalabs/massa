@@ -548,8 +548,6 @@ pub struct EventFilter {
 pub struct ReadOnlyBytecodeExecution {
     /// max available gas
     pub max_gas: u64,
-    /// gas price
-    pub simulated_gas_price: Amount,
     /// byte code
     pub bytecode: Vec<u8>,
     /// caller's address, optional
@@ -563,8 +561,6 @@ pub struct ReadOnlyBytecodeExecution {
 pub struct ReadOnlyCall {
     /// max available gas
     pub max_gas: u64,
-    /// gas price
-    pub simulated_gas_price: Amount,
     /// target address
     pub target_address: Address,
     /// target function

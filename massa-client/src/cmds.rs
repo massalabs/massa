@@ -235,14 +235,14 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "PathToBytecode MaxGas GasPrice Address",),
+        props(args = "PathToBytecode MaxGas Address",),
         message = "execute byte code, address is optional. Nothing is really executed on chain"
     )]
     read_only_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "TargetAddress TargetFunction Parameter MaxGas GasPrice SenderAddress",),
+        props(args = "TargetAddress TargetFunction Parameter MaxGas SenderAddress",),
         message = "call a smart contract function, sender address is optional. Nothing is really executed on chain"
     )]
     read_only_call,
@@ -833,14 +833,10 @@ impl Command {
                 let addr = parameters[0].parse::<Address>()?;
                 let path = parameters[1].parse::<PathBuf>()?;
                 let max_gas = parameters[2].parse::<u64>()?;
-                let gas_price = parameters[3].parse::<Amount>()?;
-                let fee = parameters[4].parse::<Amount>()?;
+                let fee = parameters[3].parse::<Amount>()?;
 
                 if !json {
-                    match gas_price
-                        .checked_mul_u64(max_gas)
-                        .and_then(|x| x.checked_add(fee))
-                    {
+                    match Some(fee) {
                         Some(total) => {
                             if let Ok(addresses_info) =
                                 client.public.get_addresses(vec![addr]).await
@@ -880,7 +876,6 @@ impl Command {
                     OperationType::ExecuteSC {
                         data,
                         max_gas,
-                        gas_price,
                         datastore,
                     },
                     fee,
@@ -898,14 +893,10 @@ impl Command {
                 let target_func = parameters[2].clone();
                 let param = parameters[3].clone().into_bytes();
                 let max_gas = parameters[4].parse::<u64>()?;
-                let gas_price = parameters[5].parse::<Amount>()?;
-                let coins = parameters[6].parse::<Amount>()?;
-                let fee = parameters[7].parse::<Amount>()?;
+                let coins = parameters[5].parse::<Amount>()?;
+                let fee = parameters[6].parse::<Amount>()?;
                 if !json {
-                    match gas_price
-                        .checked_mul_u64(max_gas)
-                        .and_then(|x| x.checked_add(fee))
-                    {
+                    match Some(fee) {
                         Some(total) => {
                             if let Ok(addresses_info) =
                                 client.public.get_addresses(vec![target_addr]).await
@@ -939,7 +930,6 @@ impl Command {
                         param,
                         max_gas,
                         coins,
-                        gas_price,
                     },
                     fee,
                     addr,
@@ -960,14 +950,13 @@ impl Command {
                 }
             }
             Command::read_only_smart_contract => {
-                if parameters.len() != 3 && parameters.len() != 4 {
+                if parameters.len() != 2 && parameters.len() != 3 {
                     bail!("wrong number of parameters");
                 }
 
                 let path = parameters[0].parse::<PathBuf>()?;
                 let max_gas = parameters[1].parse::<u64>()?;
-                let simulated_gas_price = parameters[2].parse::<Amount>()?;
-                let address = if let Some(adr) = parameters.get(3) {
+                let address = if let Some(adr) = parameters.get(2) {
                     Some(adr.parse::<Address>()?)
                 } else {
                     None
@@ -977,7 +966,6 @@ impl Command {
                     .public
                     .execute_read_only_bytecode(ReadOnlyBytecodeExecution {
                         max_gas,
-                        simulated_gas_price,
                         bytecode,
                         address,
                         operation_datastore: None, // TODO - #3072
@@ -989,7 +977,7 @@ impl Command {
                 }
             }
             Command::read_only_call => {
-                if parameters.len() != 5 && parameters.len() != 6 {
+                if parameters.len() != 4 && parameters.len() != 5 {
                     bail!("wrong number of parameters");
                 }
 
@@ -997,8 +985,7 @@ impl Command {
                 let target_function = parameters[1].parse::<String>()?;
                 let parameter = parameters[2].parse::<String>()?.into_bytes();
                 let max_gas = parameters[3].parse::<u64>()?;
-                let simulated_gas_price = parameters[4].parse::<Amount>()?;
-                let caller_address = if let Some(addr) = parameters.get(5) {
+                let caller_address = if let Some(addr) = parameters.get(4) {
                     Some(addr.parse::<Address>()?)
                 } else {
                     None
@@ -1011,7 +998,6 @@ impl Command {
                         target_function,
                         parameter,
                         max_gas,
-                        simulated_gas_price,
                     })
                     .await
                 {

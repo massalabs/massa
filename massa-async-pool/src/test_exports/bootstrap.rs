@@ -33,7 +33,7 @@ pub fn get_random_message() -> AsyncMessage {
         destination: get_random_address(),
         handler: String::from("test"),
         max_gas: 10_000,
-        gas_price: Amount::from_str("100").unwrap(),
+        fee: Amount::from_str("100").unwrap(),
         coins: Amount::from_str("100").unwrap(),
         validity_start: Slot::new(2, 0),
         validity_end: Slot::new(4, 0),
@@ -52,7 +52,7 @@ pub fn assert_eq_async_message(v1: &AsyncMessage, v2: &AsyncMessage) {
     assert_eq!(v1.destination, v2.destination, "destination mismatch");
     assert_eq!(v1.handler, v2.handler, "handler mismatch");
     assert_eq!(v1.max_gas, v2.max_gas, "max_gas mismatch");
-    assert_eq!(v1.gas_price, v2.gas_price, "gas_price mismatch");
+    assert_eq!(v1.fee, v2.fee, "fee mismatch");
     assert_eq!(v1.coins, v2.coins, "coins mismatch");
     assert_eq!(
         v1.validity_start, v2.validity_start,
