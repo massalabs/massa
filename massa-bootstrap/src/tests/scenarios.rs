@@ -240,7 +240,7 @@ async fn test_bootstrap_server() {
         for _ in 0..10 {
             std::thread::sleep(Duration::from_millis(500));
             let mut final_write = final_state_server_clone.write();
-            let next = final_write.slot.get_next_slot(2).unwrap();
+            let next = final_write.slot.get_next_slot(thread_count).unwrap();
             final_write.slot = next;
             let changes = StateChanges {
                 pos_changes: get_random_pos_changes(10),
