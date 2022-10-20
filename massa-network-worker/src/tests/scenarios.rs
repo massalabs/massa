@@ -104,12 +104,14 @@ async fn test_node_worker_shutdown() {
     let keypair = KeyPair::generate();
     let mock_node_id = NodeId(keypair.get_public_key());
 
+    let node_worker_command_tx = node_command_tx.clone();
     let node_fn_handle = tokio::spawn(async move {
         NodeWorker::new(
             network_conf,
             mock_node_id,
             reader,
             writer,
+            node_worker_command_tx,
             node_command_rx,
             node_event_tx,
         )
@@ -179,12 +181,14 @@ async fn test_node_worker_operations_message() {
     // Create transaction.
     let transaction = get_transaction(50, 10);
 
+    let node_worker_command_tx = node_command_tx.clone();
     let node_fn_handle = tokio::spawn(async move {
         NodeWorker::new(
             network_conf,
             mock_node_id,
             reader,
             writer,
+            node_worker_command_tx,
             node_command_rx,
             node_event_tx,
         )
