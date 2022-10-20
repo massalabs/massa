@@ -18,8 +18,10 @@ use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_data;
 use nom::sequence::tuple;
 use nom::{IResult, Parser};
+use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
 use std::ops::Bound::{Excluded, Included};
+use std::str::FromStr;
 
 /// Unique identifier of a message.
 /// Also has the property of ordering by priority (highest first) following the triplet:
@@ -214,8 +216,12 @@ impl AsyncMessage {
     /// Compute the ID of the message for use when choosing which operations to keep in priority (highest score) on pool overflow.
     /// For now, the formula is simply `score = (gas_price * max_gas, rev(emission_slot), rev(emission_index))`
     pub fn compute_id(&self) -> AsyncMessageId {
+        let denom = if self.max_gas > 0 { self.max_gas } else { 1 };
         (
-            std::cmp::Reverse(self.fee.saturating_mul_u64(self.max_gas)),
+            std::cmp::Reverse(
+                Amount::from_str(&Ratio::new(self.fee.to_raw(), denom).to_string())
+                    .unwrap_or_default(),
+            ),
             self.emission_slot,
             self.emission_index,
         )
