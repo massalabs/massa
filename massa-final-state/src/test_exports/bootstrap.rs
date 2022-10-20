@@ -5,11 +5,12 @@
 use std::collections::VecDeque;
 
 use massa_async_pool::AsyncPool;
+use massa_executed_ops::ExecutedOps;
 use massa_ledger_exports::LedgerController;
 use massa_models::slot::Slot;
 use massa_pos_exports::PoSFinalState;
 
-use crate::{ExecutedOps, FinalState, FinalStateConfig, StateChanges};
+use crate::{FinalState, FinalStateConfig, StateChanges};
 
 /// Create a `FinalState` from pre-set values
 pub fn create_final_state(
@@ -44,5 +45,5 @@ pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
         &v2.async_pool,
     );
     massa_pos_exports::test_exports::assert_eq_pos_state(&v1.pos_state, &v2.pos_state);
-    assert_eq!(v1.executed_ops, v2.executed_ops);
+    assert_eq!(v1.executed_ops.ops_deque, v2.executed_ops.ops_deque);
 }

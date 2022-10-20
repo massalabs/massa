@@ -33,7 +33,7 @@ pub struct ExecutedOps {
     /// Exectued operations configuration
     config: ExecutedOpsConfig,
     /// Executed operations deque associated with a Slot for better pruning complexity
-    ops_deque: VecDeque<(Slot, PreHashSet<OperationId>)>,
+    pub ops_deque: VecDeque<(Slot, PreHashSet<OperationId>)>,
     /// Executed operations only for better insertion complexity
     ops: PreHashSet<OperationId>,
     /// Accumulated hash of the executed operations
