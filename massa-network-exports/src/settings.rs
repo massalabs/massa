@@ -42,8 +42,10 @@ pub struct NetworkConfig {
     pub message_timeout: MassaTime,
     /// Every `ask_peer_list_interval` in milliseconds we ask every one for its advertisable peers list.
     pub ask_peer_list_interval: MassaTime,
-    /// Max wait time for sending a Network or Node event.
-    pub max_send_wait: MassaTime,
+    /// Max wait time for sending a Node event.
+    pub max_send_wait_node_event: MassaTime,
+    /// Max wait time for sending a Network event.
+    pub max_send_wait_network_event: MassaTime,
     /// Time after which we forget a node
     pub ban_timeout: MassaTime,
     /// Timeout Duration when we send a `PeerList` in handshake
