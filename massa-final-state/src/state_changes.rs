@@ -27,7 +27,7 @@ pub struct StateChanges {
     /// roll state changes
     pub pos_changes: PoSChanges,
     /// executed operations changes
-    pub executed_ops: ExecutedOpsChanges,
+    pub executed_ops_changes: ExecutedOpsChanges,
 }
 
 /// Basic `StateChanges` serializer.
@@ -108,7 +108,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
         self.pos_changes_serializer
             .serialize(&value.pos_changes, buffer)?;
         self.ops_changes_serializer
-            .serialize(&value.executed_ops, buffer)?;
+            .serialize(&value.executed_ops_changes, buffer)?;
         Ok(())
     }
 }
@@ -234,7 +234,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
                 ledger_changes,
                 async_pool_changes,
                 pos_changes: roll_state_changes,
-                executed_ops,
+                executed_ops_changes: executed_ops,
             },
         )
         .parse(buffer)
@@ -248,6 +248,7 @@ impl StateChanges {
         self.ledger_changes.apply(changes.ledger_changes);
         self.async_pool_changes.extend(changes.async_pool_changes);
         self.pos_changes.extend(changes.pos_changes);
-        self.executed_ops.extend(changes.executed_ops);
+        self.executed_ops_changes
+            .extend(changes.executed_ops_changes);
     }
 }

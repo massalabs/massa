@@ -197,29 +197,28 @@ pub fn get_random_async_pool_changes(r_limit: u64) -> AsyncPoolChanges {
     changes
 }
 
-pub fn get_random_executed_ops(r_limit: u64) -> ExecutedOps {
-    let mut executed_ops = ExecutedOps::new(ExecutedOpsConfig {
-        thread_count: THREAD_COUNT,
-        bootstrap_part_size: 4242,
-    });
-    let mut ops = PreHashSet::default();
-    ops.insert(OperationId::new(Hash::compute_from(
-        &get_some_random_bytes(),
-    )));
-    for _ in 0..r_limit {
-        executed_ops.ops_deque.push_back((
-            Slot {
-                period: 500,
-                thread: 0,
-            },
-            ops,
-        ));
-    }
+pub fn get_random_executed_ops(r_limit: u64, slot: Slot, config: ExecutedOpsConfig) -> ExecutedOps {
+    let mut executed_ops = ExecutedOps::new(config);
+    let ops_changes = get_random_executed_ops_changes(r_limit);
+    executed_ops.apply_changes(ops_changes, slot);
     executed_ops
 }
 
+pub fn get_random_executed_ops_changes(r_limit: u64) -> PreHashSet<OperationId> {
+    let mut ops_changes = PreHashSet::default();
+    for _ in 0..r_limit {
+        ops_changes.insert(OperationId::new(Hash::compute_from(
+            &get_some_random_bytes(),
+        )));
+    }
+    ops_changes
+}
+
 /// generates a random bootstrap state for the final state
-pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
+pub fn get_random_final_state_bootstrap(
+    pos: PoSFinalState,
+    ops_config: ExecutedOpsConfig,
+) -> FinalState {
     let r_limit: u64 = 50;
 
     let mut sorted_ledger = HashMap::new();
@@ -245,7 +244,7 @@ pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
         async_pool,
         VecDeque::new(),
         get_random_pos_state(r_limit, pos),
-        get_random_executed_ops(r_limit),
+        get_random_executed_ops(r_limit, slot, ops_config),
     )
 }
 

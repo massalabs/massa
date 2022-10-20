@@ -93,10 +93,10 @@ async fn stream_final_state(
                                 false,
                             )?;
                         }
-                        if !changes.executed_ops.is_empty() {
+                        if !changes.executed_ops_changes.is_empty() {
                             write_final_state
                                 .executed_ops
-                                .apply_changes(changes.executed_ops.clone(), *changes_slot);
+                                .apply_changes(changes.executed_ops_changes.clone(), *changes_slot);
                         }
                     }
                     write_final_state.slot = slot;

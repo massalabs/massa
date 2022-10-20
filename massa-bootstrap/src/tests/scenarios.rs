@@ -8,7 +8,7 @@ use super::{
     },
 };
 use crate::tests::tools::{
-    get_random_async_pool_changes, get_random_executed_ops, get_random_pos_changes,
+    get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
 };
 use crate::BootstrapConfig;
 use crate::{
@@ -16,10 +16,13 @@ use crate::{
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
 };
 use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
+use massa_executed_ops::ExecutedOpsConfig;
 use massa_final_state::{test_exports::assert_eq_final_state, FinalState, StateChanges};
-use massa_models::{address::Address, slot::Slot, version::Version};
+use massa_models::{address::Address, config::POS_SAVED_CYCLES, slot::Slot, version::Version};
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
-use massa_pos_exports::{test_exports::assert_eq_pos_selection, PoSFinalState, SelectorConfig};
+use massa_pos_exports::{
+    test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,
+};
 use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -61,15 +64,25 @@ async fn test_bootstrap_server() {
 
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
+    let pos_local_config = PoSConfig {
+        periods_per_cycle: 2,
+        thread_count: 2,
+        cycle_history_length: POS_SAVED_CYCLES,
+        credits_bootstrap_part_size: 4242,
+    };
+    let executed_ops_local_config = ExecutedOpsConfig {
+        thread_count: 2,
+        bootstrap_part_size: 4242,
+    };
     let final_state_bootstrap = get_random_final_state_bootstrap(
         PoSFinalState::new(
+            pos_local_config.clone(),
             &"".to_string(),
             &rolls_path,
-            2,
-            2,
             server_selector_controller.clone(),
         )
         .unwrap(),
+        executed_ops_local_config,
     );
     let final_state = Arc::new(RwLock::new(final_state_bootstrap));
 
@@ -90,10 +103,9 @@ async fn test_bootstrap_server() {
 
     let final_state_client = Arc::new(RwLock::new(FinalState::default_with_pos(
         PoSFinalState::new(
+            pos_local_config.clone(),
             &"".to_string(),
             &rolls_path,
-            2,
-            2,
             client_selector_controller.clone(),
         )
         .unwrap(),
@@ -195,7 +207,7 @@ async fn test_bootstrap_server() {
                 pos_changes: get_random_pos_changes(10),
                 ledger_changes: get_random_ledger_changes(10),
                 async_pool_changes: get_random_async_pool_changes(10),
-                executed_ops: get_random_executed_ops(10),
+                executed_ops_changes: get_random_executed_ops_changes(10),
             };
             final_write
                 .changes_history
@@ -235,7 +247,7 @@ async fn test_bootstrap_server() {
                 .apply_changes_unchecked(&change.async_pool_changes);
             final_state_write
                 .executed_ops
-                .extend(change.executed_ops.clone());
+                .apply_changes(change.executed_ops_changes.clone(), *slot);
         }
     }
 

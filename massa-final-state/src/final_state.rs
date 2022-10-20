@@ -107,7 +107,7 @@ impl FinalState {
             .expect("could not settle slot in final state proof-of-stake");
         // TODO do not panic above: it might just mean that the lookback cycle is not available
         self.executed_ops
-            .apply_changes(changes.executed_ops.clone(), self.slot);
+            .apply_changes(changes.executed_ops_changes.clone(), self.slot);
 
         // push history element and limit history size
         if self.config.final_history_length > 0 {
@@ -234,7 +234,7 @@ impl FinalState {
 
             // Get executed operations changes if classic bootstrap finished
             if ops_step.finished() {
-                slot_changes.executed_ops = changes.executed_ops.clone();
+                slot_changes.executed_ops_changes = changes.executed_ops_changes.clone();
             }
 
             // Push the slot changes

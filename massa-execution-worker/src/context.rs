@@ -707,7 +707,7 @@ impl ExecutionContext {
             ledger_changes: self.speculative_ledger.take(),
             async_pool_changes: self.speculative_async_pool.take(),
             pos_changes: self.speculative_roll_state.take(),
-            executed_ops: self.speculative_executed_ops.take(),
+            executed_ops_changes: self.speculative_executed_ops.take(),
         };
         ExecutionOutput {
             slot,
