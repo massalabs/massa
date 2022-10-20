@@ -6,8 +6,9 @@ use bitvec::vec::BitVec;
 use massa_async_pool::test_exports::{create_async_pool, get_random_message};
 use massa_async_pool::{AsyncPoolChanges, Change};
 use massa_consensus_exports::commands::ConsensusCommand;
+use massa_executed_ops::{ExecutedOps, ExecutedOpsConfig};
 use massa_final_state::test_exports::create_final_state;
-use massa_final_state::{ExecutedOps, FinalState};
+use massa_final_state::FinalState;
 use massa_graph::export_active_block::ExportActiveBlockSerializer;
 use massa_graph::{export_active_block::ExportActiveBlock, BootstrapableGraph};
 use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
@@ -19,11 +20,13 @@ use massa_models::config::{
     MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
     MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
     MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
-    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_FUNCTION_NAME_LENGTH,
-    MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH,
+    MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT,
+    MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
     MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
     MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, PERIODS_PER_CYCLE, THREAD_COUNT,
 };
+use massa_models::prehash::PreHashSet;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -195,17 +198,24 @@ pub fn get_random_async_pool_changes(r_limit: u64) -> AsyncPoolChanges {
 }
 
 pub fn get_random_executed_ops(r_limit: u64) -> ExecutedOps {
-    let mut ops = ExecutedOps::default();
+    let mut executed_ops = ExecutedOps::new(ExecutedOpsConfig {
+        thread_count: THREAD_COUNT,
+        bootstrap_part_size: 4242,
+    });
+    let mut ops = PreHashSet::default();
+    ops.insert(OperationId::new(Hash::compute_from(
+        &get_some_random_bytes(),
+    )));
     for _ in 0..r_limit {
-        ops.insert(
+        executed_ops.ops_deque.push_back((
             Slot {
                 period: 500,
                 thread: 0,
             },
-            OperationId::new(Hash::compute_from(&get_some_random_bytes())),
-        );
+            ops,
+        ));
     }
-    ops
+    executed_ops
 }
 
 /// generates a random bootstrap state for the final state
@@ -301,6 +311,8 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
         max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
         max_credits_length: MAX_DEFERRED_CREDITS_LENGTH,
+        max_executed_ops_length: MAX_EXECUTED_OPS_LENGTH,
+        max_ops_changes_length: MAX_EXECUTED_OPS_CHANGES_LENGTH,
     }
 }
 
