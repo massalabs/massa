@@ -5,10 +5,9 @@
 //! the output of a given final slot (the latest executed final slot),
 //! and need to be bootstrapped by nodes joining the network.
 
-use crate::{
-    config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges, ExecutedOps,
-};
+use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
+use massa_executed_ops::ExecutedOps;
 use massa_ledger_exports::{get_address_from_key, LedgerChanges, LedgerController};
 use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_pos_exports::{PoSFinalState, SelectorController};

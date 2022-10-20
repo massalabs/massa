@@ -1701,6 +1701,7 @@ dependencies = [
  "lazy_static",
  "massa_async_pool",
  "massa_consensus_exports",
+ "massa_executed_ops",
  "massa_final_state",
  "massa_graph",
  "massa_hash",
@@ -1790,6 +1791,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa_executed_ops"
+version = "0.1.0"
+dependencies = [
+ "massa_hash",
+ "massa_models",
+ "massa_serialization",
+ "nom 7.1.1",
+]
+
+[[package]]
 name = "massa_execution_exports"
 version = "0.1.0"
 dependencies = [
@@ -1812,6 +1823,7 @@ dependencies = [
  "anyhow",
  "massa-sc-runtime",
  "massa_async_pool",
+ "massa_executed_ops",
  "massa_execution_exports",
  "massa_final_state",
  "massa_hash",
@@ -1889,7 +1901,7 @@ version = "0.1.0"
 dependencies = [
  "displaydoc",
  "massa_async_pool",
- "massa_hash",
+ "massa_executed_ops",
  "massa_ledger_exports",
  "massa_ledger_worker",
  "massa_models",

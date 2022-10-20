@@ -3,7 +3,8 @@
 //! Speculative list of previously executed operations, to prevent reuse.
 
 use crate::active_history::{ActiveHistory, HistorySearchResult};
-use massa_final_state::{ExecutedOpsChanges, FinalState};
+use massa_executed_ops::ExecutedOpsChanges;
+use massa_final_state::FinalState;
 use massa_models::operation::OperationId;
 use parking_lot::RwLock;
 use std::sync::Arc;

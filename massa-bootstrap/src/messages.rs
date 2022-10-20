@@ -4,10 +4,8 @@ use massa_async_pool::{
     AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
     AsyncPoolDeserializer, AsyncPoolSerializer,
 };
-use massa_final_state::{
-    ExecutedOpsDeserializer, ExecutedOpsSerializer, StateChanges, StateChangesDeserializer,
-    StateChangesSerializer,
-};
+use massa_executed_ops::{ExecutedOpsDeserializer, ExecutedOpsSerializer};
+use massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 use massa_graph::{
     BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
 };

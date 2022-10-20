@@ -2,9 +2,11 @@
 
 //! This file provides structures representing changes to the final state
 
-use crate::{ExecutedOpsChanges, ExecutedOpsChangesDeserializer, ExecutedOpsChangesSerializer};
 use massa_async_pool::{
     AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer,
+};
+use massa_executed_ops::{
+    ExecutedOpsChanges, ExecutedOpsChangesDeserializer, ExecutedOpsChangesSerializer,
 };
 use massa_ledger_exports::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
 use massa_pos_exports::{PoSChanges, PoSChangesDeserializer, PoSChangesSerializer};

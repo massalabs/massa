@@ -1,0 +1,11 @@
+[package]
+name = "massa_executed_ops"
+version = "0.1.0"
+authors = ["Massa Labs <info@massa.net>"]
+edition = "2021"
+
+[dependencies]
+nom = "7.1"
+massa_models = { path = "../massa-models" }
+massa_hash = { path = "../massa-hash" }
+massa_serialization = { path = "../massa-serialization" }
