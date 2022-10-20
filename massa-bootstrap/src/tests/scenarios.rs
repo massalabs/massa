@@ -25,8 +25,7 @@ use massa_ledger_exports::LedgerConfig;
 use massa_models::{
     address::Address,
     config::{
-        LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH,
-        MAX_DATASTORE_KEY_LENGTH, POS_SAVED_CYCLES,
+        MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, POS_SAVED_CYCLES,
     },
     slot::Slot,
     version::Version,
@@ -64,7 +63,7 @@ async fn test_bootstrap_server() {
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
 
-    // setup configurations
+    // setup final state local config
     let temp_dir = TempDir::new().unwrap();
     let final_state_local_config = FinalStateConfig {
         ledger_config: LedgerConfig {
@@ -72,30 +71,32 @@ async fn test_bootstrap_server() {
             initial_ledger_path: "".into(),
             disk_ledger_path: temp_dir.path().to_path_buf(),
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
-            max_ledger_part_size: LEDGER_PART_SIZE_MESSAGE_BYTES,
+            max_ledger_part_size: 100_000,
         },
         async_pool_config: AsyncPoolConfig {
             thread_count,
             max_length: MAX_ASYNC_POOL_LENGTH,
             max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
-            bootstrap_part_size: 4242,
+            bootstrap_part_size: 100,
         },
         pos_config: PoSConfig {
             periods_per_cycle,
             thread_count,
             cycle_history_length: POS_SAVED_CYCLES,
-            credits_bootstrap_part_size: 4242,
+            credits_bootstrap_part_size: 100,
         },
         executed_ops_config: ExecutedOpsConfig {
             thread_count,
-            bootstrap_part_size: 4242,
+            bootstrap_part_size: 1,
         },
-        final_history_length: 1000,
+        final_history_length: 100,
         initial_seed_string: "".into(),
         initial_rolls_path: "".into(),
         thread_count,
         periods_per_cycle,
     };
+
+    // setup selector local config
     let selector_local_config = SelectorConfig {
         thread_count,
         periods_per_cycle,

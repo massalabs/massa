@@ -108,7 +108,7 @@ pub const PERIODS_PER_CYCLE: u64 = 128;
 /// 4 for PoS itself and 1 for bootstrap safety
 pub const POS_SAVED_CYCLES: usize = 5;
 /// Maximum size batch of data in a part of the ledger
-pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
+pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1_000_000;
 /// Maximum async messages in a batch of the bootstrap of the async pool
 pub const ASYNC_POOL_BOOTSTRAP_PART_SIZE: u64 = 100;
 /// Maximum proof-of-stake deferred credits in a bootstrap batch
