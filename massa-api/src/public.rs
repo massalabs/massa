@@ -599,9 +599,11 @@ impl Endpoints for API<Public> {
     ) -> BoxFuture<Result<Option<Block>, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let storage = self.0.storage.clone_without_refs();
-        let block_id = consensus_command_sender.get_blockclique_block_at_slot(slot);
         let closure = async move || {
-            let block_id = match block_id? {
+            let block_id_result = consensus_command_sender
+                .get_blockclique_block_at_slot(slot)
+                .await;
+            let block_id = match block_id_result? {
                 Some(id) => id,
                 None => return Ok(None),
             };
