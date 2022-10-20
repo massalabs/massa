@@ -425,17 +425,17 @@
 </span><span class="doccomment">/// Max number of endorsements per message
 </span><span class="kw">pub const </span>MAX_ENDORSEMENTS_PER_MESSAGE: u32 = <span class="number">1024</span>;
 <span class="doccomment">/// node send channel size
-</span><span class="kw">pub const </span>NODE_SEND_CHANNEL_SIZE: usize = <span class="number">1024</span>;
+</span><span class="kw">pub const </span>NODE_SEND_CHANNEL_SIZE: usize = <span class="number">10_000</span>;
 <span class="doccomment">/// max duplex buffer size
 </span><span class="kw">pub const </span>MAX_DUPLEX_BUFFER_SIZE: usize = <span class="number">1024</span>;
 <span class="doccomment">/// network controller communication channel size
-</span><span class="kw">pub const </span>NETWORK_CONTROLLER_CHANNEL_SIZE: usize = <span class="number">1024</span>;
+</span><span class="kw">pub const </span>NETWORK_CONTROLLER_CHANNEL_SIZE: usize = <span class="number">10_000</span>;
 <span class="doccomment">/// network event channel size
-</span><span class="kw">pub const </span>NETWORK_EVENT_CHANNEL_SIZE: usize = <span class="number">1024</span>;
+</span><span class="kw">pub const </span>NETWORK_EVENT_CHANNEL_SIZE: usize = <span class="number">10_000</span>;
 <span class="doccomment">/// network node command channel size
-</span><span class="kw">pub const </span>NETWORK_NODE_COMMAND_CHANNEL_SIZE: usize = <span class="number">1024</span>;
+</span><span class="kw">pub const </span>NETWORK_NODE_COMMAND_CHANNEL_SIZE: usize = <span class="number">10_000</span>;
 <span class="doccomment">/// network node event channel size
-</span><span class="kw">pub const </span>NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = <span class="number">1024</span>;
+</span><span class="kw">pub const </span>NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = <span class="number">10_000</span>;
 
 <span class="comment">// Some checks at compile time that should not be ignored!
 </span><span class="attribute">#[allow(clippy::assertions_on_constants)]

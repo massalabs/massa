@@ -821,6 +821,8 @@
 <span id="821">821</span>
 <span id="822">822</span>
 <span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The network worker actually does the job of managing connections
@@ -924,7 +926,7 @@
 
         <span class="kw">let </span>(node_event_tx, node_event_rx) =
             mpsc::channel::&lt;NodeEvent&gt;(cfg.node_event_channel_size);
-        <span class="kw">let </span>max_wait_event = cfg.max_send_wait.to_duration();
+        <span class="kw">let </span>max_wait_event = cfg.max_send_wait_network_event.to_duration();
         NetworkWorker {
             cfg,
             self_node_id,
@@ -1210,12 +1212,14 @@
                             mpsc::channel::&lt;NodeCommand&gt;(<span class="self">self</span>.cfg.node_command_channel_size);
                         <span class="kw">let </span>node_event_tx_clone = <span class="self">self</span>.event.clone_node_sender();
                         <span class="kw">let </span>cfg_copy = <span class="self">self</span>.cfg.clone();
+                        <span class="kw">let </span>node_worker_command_tx = node_command_tx.clone();
                         <span class="kw">let </span>node_fn_handle = tokio::spawn(<span class="kw">async move </span>{
                             <span class="kw">let </span>res = NodeWorker::new(
                                 cfg_copy,
                                 new_node_id,
                                 socket_reader,
                                 socket_writer,
+                                node_worker_command_tx,
                                 node_command_rx,
                                 node_event_tx_clone,
                             )

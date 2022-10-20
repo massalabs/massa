@@ -209,7 +209,7 @@
 
 <span class="doccomment">/// Used to serialize and send data.
 </span><span class="kw">pub struct </span>WriteBinder {
-    write_half: WriteHalf,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) write_half: WriteHalf,
     message_index: u64,
     max_message_size: u32,
 }

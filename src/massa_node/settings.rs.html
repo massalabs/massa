@@ -202,6 +202,7 @@
 <span id="202">202</span>
 <span id="203">203</span>
 <span id="204">204</span>
+<span id="205">205</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -263,7 +264,8 @@
     <span class="kw">pub </span>peers_file_dump_interval: MassaTime,
     <span class="kw">pub </span>message_timeout: MassaTime,
     <span class="kw">pub </span>ask_peer_list_interval: MassaTime,
-    <span class="kw">pub </span>max_send_wait: MassaTime,
+    <span class="kw">pub </span>max_send_wait_node_event: MassaTime,
+    <span class="kw">pub </span>max_send_wait_network_event: MassaTime,
     <span class="kw">pub </span>ban_timeout: MassaTime,
     <span class="kw">pub </span>peer_list_send_timeout: MassaTime,
     <span class="kw">pub </span>max_in_connection_overflow: usize,

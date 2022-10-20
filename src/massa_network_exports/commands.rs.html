@@ -307,6 +307,8 @@
 <span id="307">307</span>
 <span id="308">308</span>
 <span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Declaration of the public and internal Events and Commands used by
 //! `massa-network` that allow external communication with other nodes.
 //!
@@ -413,6 +415,8 @@
     </span>AskForOperations(OperationPrefixIds),
     <span class="doccomment">/// Endorsements
     </span>SendEndorsements(Vec&lt;WrappedEndorsement&gt;),
+    <span class="doccomment">/// Ask peer list
+    </span>AskPeerList,
 }
 
 <span class="doccomment">/// Event types that node worker can emit

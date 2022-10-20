@@ -252,6 +252,10 @@
 <span id="252">252</span>
 <span id="253">253</span>
 <span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>enum_map::EnumMap;
@@ -296,8 +300,10 @@
     </span><span class="kw">pub </span>message_timeout: MassaTime,
     <span class="doccomment">/// Every `ask_peer_list_interval` in milliseconds we ask every one for its advertisable peers list.
     </span><span class="kw">pub </span>ask_peer_list_interval: MassaTime,
-    <span class="doccomment">/// Max wait time for sending a Network or Node event.
-    </span><span class="kw">pub </span>max_send_wait: MassaTime,
+    <span class="doccomment">/// Max wait time for sending a Node event.
+    </span><span class="kw">pub </span>max_send_wait_node_event: MassaTime,
+    <span class="doccomment">/// Max wait time for sending a Network event.
+    </span><span class="kw">pub </span>max_send_wait_network_event: MassaTime,
     <span class="doccomment">/// Time after which we forget a node
     </span><span class="kw">pub </span>ban_timeout: MassaTime,
     <span class="doccomment">/// Timeout Duration when we send a `PeerList` in handshake
@@ -410,7 +416,8 @@
                 message_timeout: MassaTime::from_millis(<span class="number">5000u64</span>),
                 ask_peer_list_interval: MassaTime::from_millis(<span class="number">50000u64</span>),
                 keypair_file: std::path::PathBuf::new(),
-                max_send_wait: MassaTime::from_millis(<span class="number">100</span>),
+                max_send_wait_node_event: MassaTime::from_millis(<span class="number">100</span>),
+                max_send_wait_network_event: MassaTime::from_millis(<span class="number">100</span>),
                 ban_timeout: MassaTime::from_millis(<span class="number">100_000_000</span>),
                 initial_peers_file: std::path::PathBuf::new(),
                 peer_list_send_timeout: MassaTime::from_millis(<span class="number">500</span>),
@@ -476,7 +483,8 @@
                 message_timeout: MassaTime::from_millis(<span class="number">5000u64</span>),
                 ask_peer_list_interval: MassaTime::from_millis(<span class="number">50000u64</span>),
                 keypair_file: get_temp_keypair_file().path().to_path_buf(),
-                max_send_wait: MassaTime::from_millis(<span class="number">100</span>),
+                max_send_wait_node_event: MassaTime::from_millis(<span class="number">100</span>),
+                max_send_wait_network_event: MassaTime::from_millis(<span class="number">100</span>),
                 ban_timeout: MassaTime::from_millis(<span class="number">100_000_000</span>),
                 initial_peers_file: peers_file.to_path_buf(),
                 peer_list_send_timeout: MassaTime::from_millis(<span class="number">50</span>),
