@@ -96,7 +96,7 @@ impl NodeWorker {
                 &mut self.socket_reader,
                 &mut self.node_event_tx,
                 self.node_id,
-                self.cfg.max_send_wait,
+                self.cfg.max_send_wait_node_event,
             )
             .await
         });

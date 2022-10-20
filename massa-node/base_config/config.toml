@@ -133,8 +133,10 @@
     max_operations_per_message = 1024
     # max number of endorsements per message
     max_endorsements_per_message = 1024
-    # max milliseconds to wait while sending an event before dropping it
-    max_send_wait = 5_000
+    # max milliseconds to wait while sending a node event before dropping it
+    max_send_wait_node_event = 5_000
+    # max milliseconds to wait while sending a network event before dropping it
+    max_send_wait_network_event = 0
     # we forget we banned a node after ban_timeout milliseconds
     ban_timeout = 3600000
     # Timeout duration when in handshake we respond with a PeerList

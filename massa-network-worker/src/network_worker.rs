@@ -101,7 +101,7 @@ impl NetworkWorker {
 
         let (node_event_tx, node_event_rx) =
             mpsc::channel::<NodeEvent>(cfg.node_event_channel_size);
-        let max_wait_event = cfg.max_send_wait.to_duration();
+        let max_wait_event = cfg.max_send_wait_network_event.to_duration();
         NetworkWorker {
             cfg,
             self_node_id,
