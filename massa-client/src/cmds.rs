@@ -827,7 +827,7 @@ impl Command {
                 Ok(Box::new(()))
             }
             Command::send_smart_contract => {
-                if parameters.len() != 5 {
+                if parameters.len() != 4 {
                     bail!("wrong number of parameters");
                 }
                 let addr = parameters[0].parse::<Address>()?;
@@ -885,7 +885,7 @@ impl Command {
                 .await
             }
             Command::call_smart_contract => {
-                if parameters.len() != 8 {
+                if parameters.len() != 7 {
                     bail!("wrong number of parameters");
                 }
                 let addr = parameters[0].parse::<Address>()?;
