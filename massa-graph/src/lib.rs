@@ -4,7 +4,6 @@
 #![warn(unused_crate_dependencies)]
 #![feature(async_closure)]
 #![feature(hash_drain_filter)]
-#![feature(map_first_last)]
 #![feature(int_roundings)]
 
 extern crate massa_logging;

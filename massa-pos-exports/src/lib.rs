@@ -5,7 +5,6 @@
 //! the future cycles
 
 #![warn(missing_docs)]
-#![feature(map_first_last)]
 #![feature(let_chains)]
 
 mod config;

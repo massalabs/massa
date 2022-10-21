@@ -23,6 +23,6 @@ impl std::fmt::Debug for NodeId {
 impl std::str::FromStr for NodeId {
     type Err = ModelsError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(NodeId(PublicKey::from_bs58_check(s)?))
+        Ok(NodeId(PublicKey::from_str(s)?))
     }
 }
