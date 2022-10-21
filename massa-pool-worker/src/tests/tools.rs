@@ -17,7 +17,6 @@ use massa_models::{
 use massa_pool_exports::{PoolConfig, PoolController, PoolManager};
 use massa_signature::{KeyPair, PublicKey};
 use massa_storage::Storage;
-use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::sync::mpsc::Receiver;
 
