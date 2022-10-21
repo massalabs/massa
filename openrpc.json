@@ -13,50 +13,9 @@
     },
     "servers": [
         {
-            "name": "Massa private API",
-            "url": "{protocol}://{hostname}:{port}{path}",
-            "description": "Massa private url",
-            "variables": {
-                "protocol": {
-                    "default": "http",
-                    "description": "Protocol"
-                },
-                "host": {
-                    "default": "localhost",
-                    "description": "Hostname"
-                },
-                "port": {
-                    "default": "33034",
-                    "description": "Port"
-                },
-                "path": {
-                    "default": "/",
-                    "description": "Path"
-                }
-            }
-        },
-        {
             "name": "Massa public API",
-            "url": "{protocol}://{hostname}:{port}{path}",
-            "description": "Massa private url",
-            "variables": {
-                "protocol": {
-                    "default": "http",
-                    "description": "Protocol"
-                },
-                "host": {
-                    "default": "localhost",
-                    "description": "Hostname"
-                },
-                "port": {
-                    "default": "33035",
-                    "description": "Port"
-                },
-                "path": {
-                    "default": "/",
-                    "description": "Path"
-                }
-            }
+            "url": "https://test.massa.net/api/v2",
+            "description": "Massa public url"
         }
     ],
     "methods": [
@@ -1299,7 +1258,7 @@
                 "description": "Operation id",
                 "type": "string"
             },
-            "OperationInput" : {
+            "OperationInput": {
                 "description": "Operation input",
                 "required": [
                     "creator_public_key",
@@ -1858,6 +1817,14 @@
                     }
                 }
             },
+            "PrivateKey": {
+                "description": "`PrivateKey` is used for signature and decryption",
+                "type": "string"
+            },
+            "Signature": {
+                "description": "Signature generated from a message and a `KeyPair`.",
+                "type": "string"
+            },
             "DataStore": {
                 "title": "Datastore",
                 "description": "Datastore",
@@ -2135,7 +2102,6 @@
                             "$ref": "#/components/schemas/ExecutionAddressCycleInfo"
                         }
                     }
-
                 },
                 "additionalProperties": false
             },
@@ -2204,13 +2170,8 @@
                     "final_value": {
                         "description": "",
                         "type": "string"
-                        }
                     }
                 }
-            },
-            "PrivateKey": {
-                "description": "`PrivateKey` is used for signature and decryption",
-                "type": "string"
             }
         },
         "contentDescriptors": {
