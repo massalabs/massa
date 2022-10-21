@@ -25,7 +25,7 @@ use std::str::FromStr;
 
 /// Unique identifier of a message.
 /// Also has the property of ordering by priority (highest first) following the triplet:
-/// `(rev(max_gas*gas_price), emission_slot, emission_index)`
+/// `(rev(Ratio(msg.fee, max(msg.max_gas,1))), emission_slot, emission_index)`
 pub type AsyncMessageId = (std::cmp::Reverse<Amount>, Slot, u64);
 
 #[derive(Clone)]
@@ -67,7 +67,7 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
     ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     ///     handler: String::from("test"),
     ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str("1").unwrap(),
+    ///     fee: Amount::from_str("1").unwrap(),
     ///     coins: Amount::from_str("1").unwrap(),
     ///     validity_start: Slot::new(2, 0),
     ///     validity_end: Slot::new(3, 0),
@@ -132,7 +132,7 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
     ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     ///     handler: String::from("test"),
     ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str("1").unwrap(),
+    ///     fee: Amount::from_str("1").unwrap(),
     ///     coins: Amount::from_str("1").unwrap(),
     ///     validity_start: Slot::new(2, 0),
     ///     validity_end: Slot::new(3, 0),
@@ -192,8 +192,7 @@ pub struct AsyncMessage {
     /// Maximum gas to use when processing the message
     pub max_gas: u64,
 
-    /// Gas price to take into account when executing the message.
-    /// `max_gas * gas_price` are burned by the sender when the message is sent.
+    /// Fee paid by the sender when the message is processed.
     pub fee: Amount,
 
     /// Coins sent from the sender to the target address of the message.
@@ -214,7 +213,6 @@ pub struct AsyncMessage {
 
 impl AsyncMessage {
     /// Compute the ID of the message for use when choosing which operations to keep in priority (highest score) on pool overflow.
-    /// For now, the formula is simply `score = (gas_price * max_gas, rev(emission_slot), rev(emission_index))`
     pub fn compute_id(&self) -> AsyncMessageId {
         let denom = if self.max_gas > 0 { self.max_gas } else { 1 };
         (

@@ -835,9 +835,7 @@ impl Command {
                 let max_gas = parameters[2].parse::<u64>()?;
                 let fee = parameters[3].parse::<Amount>()?;
                 if !json {
-                    if let Ok(addresses_info) =
-                        client.public.get_addresses(vec![addr]).await
-                    {
+                    if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
                         match addresses_info.get(0) {
                             Some(info) => {
                                 if info.candidate_balance < fee {
