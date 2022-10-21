@@ -834,27 +834,19 @@ impl Command {
                 let path = parameters[1].parse::<PathBuf>()?;
                 let max_gas = parameters[2].parse::<u64>()?;
                 let fee = parameters[3].parse::<Amount>()?;
-
                 if !json {
-                    match Some(fee) {
-                        Some(total) => {
-                            if let Ok(addresses_info) =
-                                client.public.get_addresses(vec![addr]).await
-                            {
-                                match addresses_info.get(0) {
-                                    Some(info) => {
-                                        if info.candidate_balance < total {
-                                            client_warning!("this operation may be rejected due to insufficient balance");
-                                        }
-                                    }
-                                    None => {
-                                        client_warning!(format!("address {} not found", addr));
-                                    }
+                    if let Ok(addresses_info) =
+                        client.public.get_addresses(vec![addr]).await
+                    {
+                        match addresses_info.get(0) {
+                            Some(info) => {
+                                if info.candidate_balance < fee {
+                                    client_warning!("this operation may be rejected due to insufficient balance");
                                 }
                             }
-                        }
-                        None => {
-                            client_warning!("the total amount hit the limit overflow, operation will certainly be rejected");
+                            None => {
+                                client_warning!(format!("address {} not found", addr));
+                            }
                         }
                     }
                 };
@@ -896,7 +888,7 @@ impl Command {
                 let coins = parameters[5].parse::<Amount>()?;
                 let fee = parameters[6].parse::<Amount>()?;
                 if !json {
-                    match Some(fee) {
+                    match coins.checked_add(fee) {
                         Some(total) => {
                             if let Ok(addresses_info) =
                                 client.public.get_addresses(vec![target_addr]).await
