@@ -146,6 +146,43 @@ impl SpeculativeRollState {
             .entry(target_slot)
             .or_insert_with(PreHashMap::default);
         credit.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
+        Ok(())
+    }
+
+    /// Try to burn `roll_count` rolls from the seller address.
+    ///
+    /// # Arguments
+    /// * `addr`: address to sell the rolls from
+    /// * `roll_count`: number of rolls to sell
+    pub fn try_burn_rolls(
+        &mut self,
+        addr: &Address,
+        slot: Slot,
+        roll_count: u64,
+        periods_per_cycle: u64,
+        thread_count: u8,
+        roll_price: Amount,
+    ) -> Result<(), ExecutionError> {
+        // fetch the roll count from: current changes > active history > final state
+        let owned_count = self.get_rolls(addr);
+
+        // verify that the seller has enough rolls to sell
+        if owned_count < roll_count {
+            return Err(ExecutionError::RollSellError(format!(
+                "{} tried to sell {} rolls but only has {}",
+                addr, roll_count, owned_count
+            )));
+        }
+
+        // let cur_cycle = slot.get_cycle(periods_per_cycle);
+
+        // remove the rolls
+        let current_rolls = self
+            .added_changes
+            .roll_changes
+            .entry(*addr)
+            .or_insert_with(|| owned_count);
+        *current_rolls = owned_count.saturating_sub(roll_count);
 
         Ok(())
     }

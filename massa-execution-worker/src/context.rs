@@ -639,17 +639,17 @@ impl ExecutionContext {
     /// Try to slash 1 roll from the denounced address.
     ///
     /// # Arguments
-    /// * `denounced_addr`: address to slash the roll from
+    /// * `denounced_addr`: address to slash the roll or deferred credit from
     pub fn try_slash_roll(
         &mut self,
         denounced_addr: &Address,
     ) -> Amount
     {
         const ROLL_COUNT: u64 = 1;
-        let mut sold_rolls = Amount::zero();
+        let mut slashed_coins = Amount::zero();
 
         // First try to slash roll if any
-        if self.speculative_roll_state.try_sell_rolls(
+        if self.speculative_roll_state.try_burn_rolls(
             denounced_addr,
             self.slot,
             ROLL_COUNT,
@@ -659,20 +659,35 @@ impl ExecutionContext {
         ).is_err() {
 
             // if no roll were slashed, that can likely be done from deferred credit
-            let credits = self.speculative_roll_state.get_deferred_credits(&self.slot);
-
-            if credits.contains_key(denounced_addr) {
-                let amount = credits.get(denounced_addr).unwrap();
-                sold_rolls = self.speculative_roll_state.remove_deferred_credits(&self.slot, denounced_addr, amount);
-            } else {
-                warn!("No deferred credit for denounced addr: {}", denounced_addr);
+            let credits = self.speculative_roll_state.get_address_deferred_credits(denounced_addr, self.slot);
+            let amount_to_slash = Amount::from_mantissa_scale(ROLL_COUNT, 2);
+            let mut amount_slashed = Amount::zero();
+            for (slot, amount) in credits.iter() {
+                let amount_to_rm = match amount {
+                    a if a >= &amount_to_slash => amount_to_slash,
+                    a if a < &amount_to_slash => a.clone(),
+                    _ => {
+                        // Should never happen?
+                        debug!("Unable to compute amount from: {}", amount);
+                        Amount::zero() }
+                };
+                self.speculative_roll_state.remove_deferred_credits(slot, denounced_addr, &amount_to_rm);
+                amount_slashed = amount_slashed.saturating_add(amount_to_rm);
+                if amount_slashed >= amount_to_slash {
+                    break;
+                }
             }
 
+            let credits = self.speculative_roll_state.get_address_deferred_credits(denounced_addr, self.slot);
+            println!("credits: {:?}", credits);
+
+            slashed_coins = amount_slashed;
+
         } else {
-            sold_rolls = Amount::from_raw(ROLL_COUNT);
+            slashed_coins = Amount::from_mantissa_scale(ROLL_COUNT, 2);
         }
 
-        sold_rolls
+        slashed_coins
     }
 
     /// Update production statistics of an address.

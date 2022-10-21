@@ -901,7 +901,7 @@ pub fn slash_roll() {
     ).unwrap();
 
     // create the Denunciation operation
-    let sender_keypair = KeyPair::generate();
+    // let sender_keypair = KeyPair::generate();
 
     let slot = Slot::new(7, 1);
     let content = Endorsement {
@@ -912,7 +912,7 @@ pub fn slash_roll() {
     let endorsement1: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
         content.clone(),
         EndorsementSerializer::new(),
-        &sender_keypair,
+        &keypair,
         EndorsementHasher::new(),
     ).unwrap();
 
@@ -924,13 +924,14 @@ pub fn slash_roll() {
     let endorsement2: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
         content2,
         EndorsementSerializer::new(),
-        &sender_keypair,
+        &keypair,
         EndorsementHasher::new(),
     ).unwrap();
 
     let denunciation = Denunciation {
         slot,
-        pub_key: sender_keypair.get_public_key(),
+        // pub_key: sender_keypair.get_public_key(),
+        pub_key: keypair.get_public_key(),
         proof: DenunciationProof::Endorsement(EndorsementDenunciation {
             index: endorsement1.content.index,
             signature_1: endorsement1.signature,
@@ -954,7 +955,7 @@ pub fn slash_roll() {
 
     // create the block containing the roll buy operation
     storage.store_operations(vec![operation.clone(), de_operation.clone()]);
-    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+    let block = create_block(KeyPair::generate(), vec![operation, de_operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
     // set the block as final so the sell and credits are processed
