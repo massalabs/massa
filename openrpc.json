@@ -13,9 +13,9 @@
     },
     "servers": [
         {
-            "name": "Massa public API",
+            "name": "Massa public testnet API",
             "url": "https://test.massa.net/api/v2",
-            "description": "Massa public url"
+            "description": "Massa public testnet url"
         }
     ],
     "methods": [
