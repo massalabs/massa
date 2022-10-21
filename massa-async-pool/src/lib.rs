@@ -16,7 +16,7 @@
 //!
 //! ```json
 //! {
-//!     "sender": "xxxx",  // address that sent the message and spent fee+coins on emission
+//!     "sender": "xxxx",  // address that sent the message and spent fee + coins on emission
 //!     "slot": {"period": 123455, "thread": 11},  // slot at which the message was emitted
 //!     "emission_index": 212,  // index of the message emitted in this slot
 //!     "destination": "xxxx",  // target address

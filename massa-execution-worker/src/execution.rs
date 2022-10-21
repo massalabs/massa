@@ -247,7 +247,7 @@ impl ExecutionState {
                 ));
             }
 
-            // debit the fee and coins from the operation sender
+            // debit the fee from the operation sender
             // fail execution if there are not enough coins
             if let Err(err) =
                 context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
