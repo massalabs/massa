@@ -1399,10 +1399,6 @@
                         "items": {
                             "$ref": "#/components/schemas/OutputEvent"
                         }
-                    },
-                    "gas_cost": {
-                        "description": "optional gas cost (Only when: read only execute bytecode)",
-                        "type": "number"
                     }
                 },
                 "additionalProperties": false
