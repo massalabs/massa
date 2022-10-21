@@ -1037,10 +1037,8 @@ impl ExecutionState {
                 *context_guard!(self) = execution_context;
 
                 // run the bytecode's main function
-                let remaining_gas = massa_sc_runtime::run_main(&bytecode, req.max_gas, &*self.execution_interface)
-                    .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
-
-                remaining_gas
+                massa_sc_runtime::run_main(&bytecode, req.max_gas, &*self.execution_interface)
+                    .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
             }
             ReadOnlyExecutionTarget::FunctionCall {
                 target_addr,
@@ -1056,22 +1054,20 @@ impl ExecutionState {
                 *context_guard!(self) = execution_context;
 
                 // run the target function in the bytecode
-                let remaining_gas = massa_sc_runtime::run_function(
+                massa_sc_runtime::run_function(
                     &bytecode,
                     req.max_gas,
                     &target_func,
                     &parameter,
                     &*self.execution_interface,
                 )
-                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
-
-                remaining_gas
+                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
             }
         };
 
         // return the execution output
         let mut execution_output = context_guard!(self).settle_slot();
-        execution_output.gas_cost = Some(req.max_gas - remaining_gas);
+        execution_output.gas_cost = Some(req.max_gas.saturating_sub(remaining_gas));
         Ok(execution_output)
     }
 
