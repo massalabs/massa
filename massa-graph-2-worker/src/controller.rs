@@ -69,7 +69,7 @@ impl GraphController for GraphControllerImpl {
     ///
     /// # Returns:
     /// A vector of statuses sorted by the order of the block ids
-    fn get_block_statuses(&self, ids: &Vec<BlockId>) -> Vec<BlockGraphStatus> {
+    fn get_block_statuses(&self, ids: &[BlockId]) -> Vec<BlockGraphStatus> {
         let read_shared_state = self.shared_state.read();
         ids.iter()
             .map(|id| read_shared_state.get_block_status(id))

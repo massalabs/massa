@@ -299,7 +299,7 @@ impl Endpoints for API<Public> {
         let pool_command_sender = self.0.pool_command_sender.clone();
         let node_id = self.0.node_id;
         let config = CompactConfig::default();
-        let api_config = self.0.api_settings.clone();
+        let api_config = self.0.api_settings;
         let closure = async move || {
             let now = MassaTime::now(compensation_millis)?;
             let last_slot = get_latest_block_slot_at_timestamp(
@@ -361,7 +361,7 @@ impl Endpoints for API<Public> {
 
     fn get_stakers(&self) -> BoxFuture<Result<Vec<(Address, u64)>, ApiError>> {
         let execution_controller = self.0.execution_controller.clone();
-        let api_config = self.0.api_settings.clone();
+        let api_config = self.0.api_settings;
         let compensation_millis = self.0.compensation_millis;
 
         let closure = async move || {
@@ -561,7 +561,7 @@ impl Endpoints for API<Public> {
             };
 
             let graph_status = graph_controller
-                .get_block_statuses(&vec![id])
+                .get_block_statuses(&[id])
                 .into_iter()
                 .next()
                 .expect("expected get_block_statuses to return one element");
@@ -613,7 +613,7 @@ impl Endpoints for API<Public> {
         time: TimeInterval,
     ) -> BoxFuture<Result<Vec<BlockSummary>, ApiError>> {
         let graph_controller = self.0.graph_controller.clone();
-        let api_config = self.0.api_settings.clone();
+        let api_config = self.0.api_settings;
         let closure = async move || {
             // filter blocks from graph_export
             let (start_slot, end_slot) = time_range_to_slot_range(

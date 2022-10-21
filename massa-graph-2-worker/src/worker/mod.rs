@@ -18,7 +18,7 @@ use crate::controller::GraphControllerImpl;
 use crate::manager::GraphManagerImpl;
 use crate::state::GraphState;
 
-/// The graph worker structure that contains all informations and tools for the graph worker thread.
+/// The graph worker structure that contains all information and tools for the graph worker thread.
 pub struct GraphWorker {
     /// Channel to receive command from the controller
     command_receiver: mpsc::Receiver<GraphCommand>,

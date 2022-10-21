@@ -168,7 +168,7 @@ async fn test_bootstrap_server() {
     // wait for bootstrap to ask consensus for bootstrap graph, send it
     let wait_graph = async move || {
         let response =
-            graph_event_receiver.wait_command(MassaTime::from_millis(1000), |cmd| match cmd {
+            graph_event_receiver.wait_command(MassaTime::from_millis(2000), |cmd| match cmd {
                 MockGraphControllerMessage::GetBootstrapableGraph { response_tx } => {
                     let sent_graph = get_boot_state();
                     response_tx.send(Ok(sent_graph.clone())).unwrap();

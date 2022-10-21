@@ -409,6 +409,7 @@ pub async fn send_final_state_stream(
     Ok(())
 }
 
+#[allow(clippy::manual_async_fn)]
 #[allow(clippy::too_many_arguments)]
 #[fix_hidden_lifetime_bug]
 async fn manage_bootstrap(

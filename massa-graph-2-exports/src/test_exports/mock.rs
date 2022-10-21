@@ -129,13 +129,13 @@ impl GraphController for MockGraphController {
         response_rx.recv().unwrap()
     }
 
-    fn get_block_statuses(&self, ids: &Vec<BlockId>) -> Vec<BlockGraphStatus> {
+    fn get_block_statuses(&self, ids: &[BlockId]) -> Vec<BlockGraphStatus> {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
             .lock()
             .unwrap()
             .send(MockGraphControllerMessage::GetBlockStatuses {
-                block_ids: ids.clone(),
+                block_ids: ids.to_vec(),
                 response_tx,
             })
             .unwrap();

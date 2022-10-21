@@ -67,11 +67,11 @@ impl GraphWorker {
     /// * `command_receiver`: channel to receive commands from controller
     /// * `channels`: channels to communicate with other workers
     /// * `shared_state`: shared state with the controller
-    /// * `init_graph`: Optional graph of blocks to init the worker
+    /// * `init_graph`: Optional graph of blocks to initiate the worker
     /// * `storage`: shared storage
     ///
     /// # Returns:
-    /// A GraphWorker, to interact with it use the `GraphController`
+    /// A `GraphWorker`, to interact with it use the `GraphController`
     pub fn new(
         config: GraphConfig,
         command_receiver: mpsc::Receiver<GraphCommand>,

@@ -18,7 +18,7 @@ pub trait GraphController: Send + Sync {
         end_slot: Option<Slot>,
     ) -> Result<BlockGraphExport, GraphError>;
 
-    fn get_block_statuses(&self, ids: &Vec<BlockId>) -> Vec<BlockGraphStatus>;
+    fn get_block_statuses(&self, ids: &[BlockId]) -> Vec<BlockGraphStatus>;
 
     fn get_cliques(&self) -> Vec<Clique>;
 

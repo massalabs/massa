@@ -1,12 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::mock_network_controller::MockNetworkController;
-use crate::protocol_controller::ProtocolCommandSender;
 use crate::ProtocolConfig;
 use massa_hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::operation::OperationSerializer;
-use massa_models::prehash::PreHashSet;
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
     address::Address,
@@ -16,7 +14,7 @@ use massa_models::{
     operation::{Operation, OperationType, WrappedOperation},
     slot::Slot,
 };
-use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand};
+use massa_network_exports::{AskForBlocksInfo, NetworkCommand};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use std::collections::HashMap;

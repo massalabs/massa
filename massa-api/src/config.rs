@@ -30,7 +30,7 @@ pub struct APIConfig {
     pub max_parameter_size: u32,
     /// thread count
     pub thread_count: u8,
-    /// genesis_timestamp
+    /// `genesis_timestamp`
     pub genesis_timestamp: MassaTime,
     /// t0
     pub t0: MassaTime,
