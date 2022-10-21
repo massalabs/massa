@@ -510,7 +510,7 @@ impl Serializer<OperationType> for OperationTypeSerializer {
     /// let keypair = KeyPair::generate();
     /// let op = OperationType::ExecuteSC {
     ///    data: vec![0x01, 0x02, 0x03],
-    ///    max_gas: 100
+    ///    max_gas: 100,
     ///    datastore: BTreeMap::default(),
     /// };
     /// let mut buffer = Vec::new();
