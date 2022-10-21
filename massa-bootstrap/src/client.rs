@@ -109,6 +109,14 @@ async fn stream_final_state(
                         last_credits_step,
                         last_ops_step,
                     };
+                    debug!(
+                        "client final state bootstrap cursors: {:?}",
+                        next_bootstrap_message
+                    );
+                    debug!(
+                        "client final state slot changes length: {}",
+                        final_state_changes.len()
+                    );
                 }
                 BootstrapServerMessage::FinalStateFinished => {
                     info!("State bootstrap complete");
