@@ -1031,14 +1031,16 @@ impl ExecutionState {
         );
 
         // run the intepreter according to the target type
-        match req.target {
+        let remaining_gas = match req.target {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) => {
                 // set the execution context for execution
                 *context_guard!(self) = execution_context;
 
                 // run the bytecode's main function
-                massa_sc_runtime::run_main(&bytecode, req.max_gas, &*self.execution_interface)
+                let remaining_gas = massa_sc_runtime::run_main(&bytecode, req.max_gas, &*self.execution_interface)
                     .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
+
+                remaining_gas
             }
             ReadOnlyExecutionTarget::FunctionCall {
                 target_addr,
@@ -1054,7 +1056,7 @@ impl ExecutionState {
                 *context_guard!(self) = execution_context;
 
                 // run the target function in the bytecode
-                massa_sc_runtime::run_function(
+                let remaining_gas = massa_sc_runtime::run_function(
                     &bytecode,
                     req.max_gas,
                     &target_func,
@@ -1062,11 +1064,15 @@ impl ExecutionState {
                     &*self.execution_interface,
                 )
                 .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
+
+                remaining_gas
             }
-        }
+        };
 
         // return the execution output
-        Ok(context_guard!(self).settle_slot())
+        let mut execution_output = context_guard!(self).settle_slot();
+        execution_output.gas_cost = Some(req.max_gas - remaining_gas);
+        Ok(execution_output)
     }
 
     /// Gets a balance both at the latest final and candidate executed slots

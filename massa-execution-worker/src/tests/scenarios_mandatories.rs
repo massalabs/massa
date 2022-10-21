@@ -72,6 +72,8 @@ fn test_readonly_execution() {
             ),
         })
         .expect("readonly execution failed");
+
+    assert!(res.gas_cost > Some(0));
     assert_eq!(res.events.take().len(), 1, "wrong number of events");
 
     manager.stop();

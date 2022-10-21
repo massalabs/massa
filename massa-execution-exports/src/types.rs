@@ -47,6 +47,8 @@ pub struct ExecutionOutput {
     pub state_changes: StateChanges,
     /// events emitted by the execution step
     pub events: EventStore,
+    /// optional gas cost (Only when: read only execute bytecode)
+    pub gas_cost: Option<u64>
 }
 
 /// structure describing different types of read-only execution request

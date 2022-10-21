@@ -180,6 +180,7 @@ impl Endpoints for API<Public> {
                     |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
                     |_| ReadOnlyResult::Ok,
                 ),
+                gas_cost: result.as_ref().map_or_else(|_| None, |v| v.gas_cost),
                 output_events: result.map_or_else(|_| Default::default(), |mut v| v.events.take()),
             };
 
@@ -256,6 +257,7 @@ impl Endpoints for API<Public> {
                     |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
                     |_| ReadOnlyResult::Ok,
                 ),
+                gas_cost: result.as_ref().map_or_else(|_| None, |v| v.gas_cost),
                 output_events: result.map_or_else(|_| Default::default(), |mut v| v.events.take()),
             };
 
