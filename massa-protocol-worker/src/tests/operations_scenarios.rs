@@ -3,12 +3,13 @@
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
 use super::tools::{protocol_test, protocol_test_with_storage};
+use massa_graph_2_exports::test_exports::MockGraphControllerMessage;
 use massa_models::prehash::PreHashSet;
 use massa_models::{self, address::Address, amount::Amount, block::BlockId, slot::Slot};
 use massa_network_exports::{BlockInfoReply, NetworkCommand};
 use massa_pool_exports::test_exports::MockPoolControllerMessage;
 use massa_protocol_exports::tests::tools::{self, assert_hash_asked_to_node};
-use massa_protocol_exports::ProtocolEvent;
+use massa_time::MassaTime;
 use serial_test::serial;
 use std::str::FromStr;
 use std::time::Duration;
@@ -20,9 +21,9 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
+                    protocol_graph_event_receiver,
                     mut protocol_pool_event_receiver| {
             // Create 1 node.
             let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
@@ -73,9 +74,9 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
 
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -90,9 +91,9 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
+                    protocol_graph_event_receiver,
                     mut pool_event_receiver| {
             // Create 1 node.
             let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
@@ -119,9 +120,9 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
 
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 pool_event_receiver,
             )
         },
@@ -136,9 +137,9 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
     protocol_test_with_storage(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    protocol_graph_event_receiver,
                     mut pool_event_receiver,
                     mut storage| {
             // Create 2 nodes.
@@ -186,9 +187,9 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
             }
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 pool_event_receiver,
             )
         },
@@ -203,9 +204,9 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
     protocol_test_with_storage(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    protocol_graph_event_receiver,
                     mut pool_event_receiver,
                     mut storage| {
             // Create 1 nodes.
@@ -259,9 +260,9 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             }
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 pool_event_receiver,
             )
         },
@@ -277,9 +278,9 @@ async fn test_protocol_propagates_operations_received_over_the_network_only_to_n
     protocol_test_with_storage(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
+                    protocol_graph_event_receiver,
                     mut pool_event_receiver,
                     _storage| {
             // Create 2 nodes.
@@ -321,9 +322,9 @@ async fn test_protocol_propagates_operations_received_over_the_network_only_to_n
             }
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 pool_event_receiver,
             )
         },
@@ -339,9 +340,9 @@ async fn test_protocol_batches_propagation_of_operations_received_over_the_netwo
     protocol_test_with_storage(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    protocol_graph_event_receiver,
                     mut pool_event_receiver,
                     mut storage| {
             // Create 2 nodes.
@@ -398,9 +399,9 @@ async fn test_protocol_batches_propagation_of_operations_received_over_the_netwo
             }
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 pool_event_receiver,
             )
         },
@@ -416,9 +417,9 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
     protocol_test_with_storage(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    mut protocol_graph_event_receiver,
                     protocol_pool_event_receiver,
                     mut storage| {
             // Create 1 node.
@@ -439,10 +440,12 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 .send_header(nodes[0].id, block.content.header.clone())
                 .await;
 
-            match protocol_event_receiver.wait_event().await.unwrap() {
-                ProtocolEvent::ReceivedBlockHeader { .. } => {}
-                _ => panic!("unexpected protocol event"),
-            };
+            protocol_graph_event_receiver.wait_command(MassaTime::from_millis(1000), |command| {
+                match command {
+                    MockGraphControllerMessage::RegisterBlockHeader { .. } => Some(()),
+                    _ => panic!("unexpected protocol event"),
+                }
+            });
 
             // send wishlist
             protocol_command_sender
@@ -499,9 +502,9 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -518,9 +521,9 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
     protocol_test_with_storage(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    mut protocol_graph_event_receiver,
                     protocol_pool_event_receiver,
                     mut storage| {
             // Create 3 nodes.
@@ -589,13 +592,12 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 .await;
 
             // Wait for the event to be sure that the node is connected.
-            let _ = tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
-                match evt {
-                    evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                    _ => None,
+            protocol_graph_event_receiver.wait_command(MassaTime::from_millis(1000), |command| {
+                match command {
+                    MockGraphControllerMessage::RegisterBlockHeader { .. } => Some(()),
+                    _ => panic!("unexpected protocol event"),
                 }
-            })
-            .await;
+            });
 
             // Send the operation to protocol
             // it should propagate to the node because it isn't in the block.
@@ -622,9 +624,9 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -640,9 +642,9 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
+                    protocol_graph_event_receiver,
                     mut pool_event_receiver| {
             // Create 2 nodes.
             let mut nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
@@ -686,9 +688,9 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
             }
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 pool_event_receiver,
             )
         },
@@ -703,9 +705,9 @@ async fn test_protocol_ask_operations_on_batch_received() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
+                    protocol_graph_event_receiver,
                     protocol_pool_event_receiver| {
             // Create 1 node.
             let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
@@ -738,9 +740,9 @@ async fn test_protocol_ask_operations_on_batch_received() {
 
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -755,9 +757,9 @@ async fn test_protocol_re_ask_operations_to_another_node_on_batch_received_after
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
+                    protocol_graph_event_receiver,
                     protocol_pool_event_receiver| {
             // Create 3 node.
             let mut nodes = tools::create_and_connect_nodes(3, &mut network_controller).await;
@@ -811,9 +813,9 @@ async fn test_protocol_re_ask_operations_to_another_node_on_batch_received_after
             };
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -828,9 +830,9 @@ async fn test_protocol_does_not_re_ask_operations_to_another_node_if_received() 
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
+                    protocol_graph_event_receiver,
                     protocol_pool_event_receiver| {
             // Create 3 node.
             let mut nodes = tools::create_and_connect_nodes(3, &mut network_controller).await;
@@ -886,9 +888,9 @@ async fn test_protocol_does_not_re_ask_operations_to_another_node_if_received() 
 
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -903,9 +905,9 @@ async fn test_protocol_on_ask_operations() {
     protocol_test_with_storage(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
+                    protocol_graph_event_receiver,
                     protocol_pool_event_receiver,
                     mut storage| {
             // Create 1 node.
@@ -950,9 +952,9 @@ async fn test_protocol_on_ask_operations() {
 
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 protocol_pool_event_receiver,
             )
         },

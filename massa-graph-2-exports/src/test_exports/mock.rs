@@ -6,12 +6,20 @@ use std::sync::{
 };
 
 use massa_models::{
-    block::{BlockId, BlockHeader}, api::BlockGraphStatus, slot::Slot, clique::Clique, stats::ConsensusStats, wrapped::Wrapped,
+    api::BlockGraphStatus,
+    block::{BlockHeader, BlockId},
+    clique::Clique,
+    slot::Slot,
+    stats::ConsensusStats,
+    wrapped::Wrapped,
 };
 use massa_storage::Storage;
 use massa_time::MassaTime;
 
-use crate::{GraphController, error::GraphError, block_graph_export::BlockGraphExport, bootstrapable_graph::BootstrapableGraph};
+use crate::{
+    block_graph_export::BlockGraphExport, bootstrapable_graph::BootstrapableGraph,
+    error::GraphError, GraphController,
+};
 
 /// Test tool to mock graph controller responses
 pub struct GraphEventReceiver(pub Receiver<MockGraphControllerMessage>);
@@ -31,38 +39,38 @@ pub enum MockGraphControllerMessage {
         response_tx: mpsc::Sender<Result<BlockGraphExport, GraphError>>,
     },
     GetCliques {
-        response_tx: mpsc::Sender<Vec<Clique>>
+        response_tx: mpsc::Sender<Vec<Clique>>,
     },
     GetBootstrapableGraph {
-        response_tx: mpsc::Sender<Result<BootstrapableGraph, GraphError>>
+        response_tx: mpsc::Sender<Result<BootstrapableGraph, GraphError>>,
     },
     GetStats {
-        response_tx: mpsc::Sender<Result<ConsensusStats, GraphError>>
+        response_tx: mpsc::Sender<Result<ConsensusStats, GraphError>>,
     },
     GetBestParents {
-        response_tx: mpsc::Sender<Vec<(BlockId, u64)>>
+        response_tx: mpsc::Sender<Vec<(BlockId, u64)>>,
     },
     GetBlockcliqueBlockAtSlot {
         slot: Slot,
-        response_tx: mpsc::Sender<Option<BlockId>>
+        response_tx: mpsc::Sender<Option<BlockId>>,
     },
     GetLatestBlockcliqueBlockAtSlot {
         slot: Slot,
-        response_tx: mpsc::Sender<BlockId>
+        response_tx: mpsc::Sender<BlockId>,
     },
     MarkInvalidBlock {
         block_id: BlockId,
-        header: Wrapped<BlockHeader, BlockId>
+        header: Wrapped<BlockHeader, BlockId>,
     },
     RegisterBlock {
         block_id: BlockId,
         slot: Slot,
-        block_storage: Storage
+        block_storage: Storage,
     },
     RegisterBlockHeader {
         block_id: BlockId,
-        header: Wrapped<BlockHeader, BlockId>
-    }
+        header: Wrapped<BlockHeader, BlockId>,
+    },
 }
 
 /// A mocked graph controller that will intercept calls on its methods
@@ -104,17 +112,21 @@ impl GraphEventReceiver {
 /// See the documentation of `GraphController` for details on each function.
 impl GraphController for MockGraphController {
     fn get_block_graph_status(
-            &self,
-            start_slot: Option<Slot>,
-            end_slot: Option<Slot>,
-        ) -> Result<BlockGraphExport, GraphError> {
-            let (response_tx, response_rx) = mpsc::channel();
-            self.0
-                .lock()
-                .unwrap()
-                .send(MockGraphControllerMessage::GetBlockGraphStatuses { start_slot, end_slot, response_tx })
-                .unwrap();
-            response_rx.recv().unwrap()
+        &self,
+        start_slot: Option<Slot>,
+        end_slot: Option<Slot>,
+    ) -> Result<BlockGraphExport, GraphError> {
+        let (response_tx, response_rx) = mpsc::channel();
+        self.0
+            .lock()
+            .unwrap()
+            .send(MockGraphControllerMessage::GetBlockGraphStatuses {
+                start_slot,
+                end_slot,
+                response_tx,
+            })
+            .unwrap();
+        response_rx.recv().unwrap()
     }
 
     fn get_block_statuses(&self, ids: &Vec<BlockId>) -> Vec<BlockGraphStatus> {
@@ -122,7 +134,10 @@ impl GraphController for MockGraphController {
         self.0
             .lock()
             .unwrap()
-            .send(MockGraphControllerMessage::GetBlockStatuses { block_ids: ids.clone(), response_tx })
+            .send(MockGraphControllerMessage::GetBlockStatuses {
+                block_ids: ids.clone(),
+                response_tx,
+            })
             .unwrap();
         response_rx.recv().unwrap()
     }
@@ -174,7 +189,7 @@ impl GraphController for MockGraphController {
             .unwrap()
             .send(MockGraphControllerMessage::GetBlockcliqueBlockAtSlot { slot, response_tx })
             .unwrap();
-        response_rx.recv().unwrap()   
+        response_rx.recv().unwrap()
     }
 
     fn get_latest_blockclique_block_at_slot(&self, slot: Slot) -> BlockId {
@@ -184,7 +199,7 @@ impl GraphController for MockGraphController {
             .unwrap()
             .send(MockGraphControllerMessage::GetLatestBlockcliqueBlockAtSlot { slot, response_tx })
             .unwrap();
-        response_rx.recv().unwrap()   
+        response_rx.recv().unwrap()
     }
 
     fn mark_invalid_block(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>) {
@@ -197,18 +212,22 @@ impl GraphController for MockGraphController {
 
     fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage) {
         self.0
-        .lock()
-        .unwrap()
-        .send(MockGraphControllerMessage::RegisterBlock { block_id, slot, block_storage })
-        .unwrap();
+            .lock()
+            .unwrap()
+            .send(MockGraphControllerMessage::RegisterBlock {
+                block_id,
+                slot,
+                block_storage,
+            })
+            .unwrap();
     }
 
     fn register_block_header(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>) {
         self.0
-        .lock()
-        .unwrap()
-        .send(MockGraphControllerMessage::RegisterBlockHeader{ block_id, header })
-        .unwrap();
+            .lock()
+            .unwrap()
+            .send(MockGraphControllerMessage::RegisterBlockHeader { block_id, header })
+            .unwrap();
     }
 
     fn clone_box(&self) -> Box<dyn GraphController> {

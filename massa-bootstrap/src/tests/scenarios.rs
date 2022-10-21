@@ -4,7 +4,7 @@ use super::{
     mock_establisher,
     tools::{
         bridge_mock_streams, get_boot_state, get_peers, get_random_final_state_bootstrap,
-        get_random_ledger_changes, wait_consensus_command, wait_network_command,
+        get_random_ledger_changes, wait_network_command,
     },
 };
 use crate::tests::tools::{
@@ -15,8 +15,8 @@ use crate::{
     get_state, start_bootstrap_server,
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
 };
-use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
 use massa_final_state::{test_exports::assert_eq_final_state, FinalState, StateChanges};
+use massa_graph_2_exports::test_exports::{MockGraphController, MockGraphControllerMessage};
 use massa_models::{address::Address, slot::Slot, version::Version};
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
 use massa_pos_exports::{test_exports::assert_eq_pos_selection, PoSFinalState, SelectorConfig};
@@ -59,7 +59,7 @@ async fn test_bootstrap_server() {
         })
         .expect("could not start client selector controller");
 
-    let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
+    let (graph_controller, mut graph_event_receiver) = MockGraphController::new_with_receiver();
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
     let final_state_bootstrap = get_random_final_state_bootstrap(
         PoSFinalState::new(
@@ -75,7 +75,7 @@ async fn test_bootstrap_server() {
 
     let (bootstrap_establisher, bootstrap_interface) = mock_establisher::new();
     let bootstrap_manager = start_bootstrap_server(
-        ConsensusCommandSender(consensus_cmd_tx),
+        graph_controller,
         NetworkCommandSender(network_cmd_tx),
         final_state.clone(),
         bootstrap_config.clone(),
@@ -168,18 +168,18 @@ async fn test_bootstrap_server() {
     // wait for bootstrap to ask consensus for bootstrap graph, send it
     let wait_graph = async move || {
         let response =
-            match wait_consensus_command(&mut consensus_cmd_rx, 1000.into(), |cmd| match cmd {
-                ConsensusCommand::GetBootstrapState(resp) => Some(resp),
-                _ => None,
-            })
-            .await
-            {
-                Some(resp) => resp,
-                None => panic!("timeout waiting for get boot graph consensus command"),
-            };
-        let sent_graph = get_boot_state();
-        response.send(Box::new(sent_graph.clone())).await.unwrap();
-        sent_graph
+            graph_event_receiver.wait_command(MassaTime::from_millis(1000), |cmd| match cmd {
+                MockGraphControllerMessage::GetBootstrapableGraph { response_tx } => {
+                    let sent_graph = get_boot_state();
+                    response_tx.send(Ok(sent_graph.clone())).unwrap();
+                    Some(sent_graph)
+                }
+                _ => panic!("timeout waiting for get boot graph consensus command"),
+            });
+        match response {
+            Some(graph) => graph,
+            None => panic!("error waiting for get boot graph consensus command"),
+        }
     };
 
     // launch the modifier thread

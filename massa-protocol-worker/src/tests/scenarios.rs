@@ -3,14 +3,16 @@
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
 use super::tools::{protocol_test, protocol_test_with_storage};
+use massa_graph_2_exports::test_exports::MockGraphControllerMessage;
 use massa_models::block::BlockId;
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_network_exports::{AskForBlocksInfo, NetworkCommand};
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{
-    tests::tools::{create_and_connect_nodes, create_block, wait_protocol_event},
-    BlocksResults, ProtocolEvent,
+    tests::tools::{create_and_connect_nodes, create_block},
+    BlocksResults,
 };
+use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashSet;
 
@@ -22,9 +24,9 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    mut protocol_graph_event_receiver,
                     protocol_pool_event_receiver| {
             let ask_for_block_cmd_filter = |cmd| match cmd {
                 cmd @ NetworkCommand::AskForBlocks { .. } => Some(cmd),
@@ -46,19 +48,15 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
                 .await;
 
             // Check protocol sends header to consensus.
-            let received_hash = match wait_protocol_event(
-                &mut protocol_event_receiver,
-                1000.into(),
-                |evt| match evt {
-                    evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                    _ => None,
-                },
-            )
-            .await
-            {
-                Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
-                _ => panic!("Unexpected or no protocol event."),
-            };
+            let received_hash = protocol_graph_event_receiver
+                .wait_command(MassaTime::from_millis(1000), |command| match command {
+                    MockGraphControllerMessage::RegisterBlockHeader {
+                        block_id,
+                        header: _,
+                    } => Some(block_id),
+                    _ => panic!("unexpected protocol event"),
+                })
+                .unwrap();
 
             // 4. Check that protocol sent the right header to consensus.
             let expected_hash = block.id;
@@ -100,9 +98,9 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
             );
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -117,9 +115,9 @@ async fn test_protocol_sends_blocks_when_asked_for() {
     protocol_test_with_storage(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    protocol_graph_event_receiver,
                     protocol_pool_event_receiver,
                     mut storage| {
             let send_block_info_cmd_filter = |cmd| match cmd {
@@ -186,9 +184,9 @@ async fn test_protocol_sends_blocks_when_asked_for() {
 
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -203,9 +201,9 @@ async fn test_protocol_propagates_block_to_all_nodes_including_those_who_asked_f
     protocol_test_with_storage(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    mut protocol_graph_event_receiver,
                     protocol_pool_event_receiver,
                     mut storage| {
             // Create 4 nodes.
@@ -233,19 +231,15 @@ async fn test_protocol_propagates_block_to_all_nodes_including_those_who_asked_f
             // node[1] asks for that block
 
             // Check protocol sends header to consensus.
-            let (ref_hash, _) = match wait_protocol_event(
-                &mut protocol_event_receiver,
-                1000.into(),
-                |evt| match evt {
-                    evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                    _ => None,
-                },
-            )
-            .await
-            {
-                Some(ProtocolEvent::ReceivedBlockHeader { block_id, header }) => (block_id, header),
-                _ => panic!("Unexpected or no protocol event."),
-            };
+            let ref_hash = protocol_graph_event_receiver
+                .wait_command(MassaTime::from_millis(1000), |command| match command {
+                    MockGraphControllerMessage::RegisterBlockHeader {
+                        block_id,
+                        header: _,
+                    } => Some(block_id),
+                    _ => panic!("unexpected protocol event"),
+                })
+                .unwrap();
 
             storage.store_block(ref_block.clone());
 
@@ -299,9 +293,9 @@ async fn test_protocol_propagates_block_to_all_nodes_including_those_who_asked_f
             }
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -317,9 +311,9 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_onl
     protocol_test_with_storage(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    mut protocol_graph_event_receiver,
                     protocol_pool_event_receiver,
                     mut storage| {
             // Create 4 nodes.
@@ -347,19 +341,15 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_onl
             // node[1] asks for that block
 
             // Check protocol sends header to consensus.
-            let (ref_hash, _) = match wait_protocol_event(
-                &mut protocol_event_receiver,
-                1000.into(),
-                |evt| match evt {
-                    evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                    _ => None,
-                },
-            )
-            .await
-            {
-                Some(ProtocolEvent::ReceivedBlockHeader { block_id, header }) => (block_id, header),
-                _ => panic!("Unexpected or no protocol event."),
-            };
+            let ref_hash = protocol_graph_event_receiver
+                .wait_command(MassaTime::from_millis(1000), |command| match command {
+                    MockGraphControllerMessage::RegisterBlockHeader {
+                        block_id,
+                        header: _,
+                    } => Some(block_id),
+                    _ => panic!("unexpected protocol event"),
+                })
+                .unwrap();
 
             storage.store_block(ref_block.clone());
             // 5. Propagate header.
@@ -438,9 +428,9 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_onl
             }
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -456,9 +446,9 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
+                    protocol_graph_event_receiver,
                     protocol_pool_event_receiver| {
             // Create 1 node.
             let mut nodes = create_and_connect_nodes(1, &mut network_controller).await;
@@ -474,9 +464,9 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
 
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -491,9 +481,9 @@ async fn test_protocol_block_not_found() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
+                    protocol_graph_event_receiver,
                     protocol_pool_event_receiver| {
             // Create 1 node.
             let mut nodes = create_and_connect_nodes(1, &mut network_controller).await;
@@ -529,9 +519,9 @@ async fn test_protocol_block_not_found() {
 
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 protocol_pool_event_receiver,
             )
         },

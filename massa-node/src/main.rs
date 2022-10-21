@@ -48,7 +48,9 @@ use massa_pool_exports::{PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
-use massa_protocol_exports::{ProtocolCommand, ProtocolConfig, ProtocolManager, ProtocolCommandSender};
+use massa_protocol_exports::{
+    ProtocolCommand, ProtocolCommandSender, ProtocolConfig, ProtocolManager,
+};
 use massa_protocol_worker::start_protocol_controller;
 use massa_storage::Storage;
 use massa_time::MassaTime;

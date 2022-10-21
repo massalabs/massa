@@ -162,64 +162,6 @@ pub fn create_block_with_endorsements(
     .unwrap()
 }
 
-/// send a block and assert it has been propagate (or not)
-pub async fn send_and_propagate_block(
-    network_controller: &mut MockNetworkController,
-    block: WrappedBlock,
-    valid: bool,
-    source_node_id: NodeId,
-    protocol_command_sender: &mut ProtocolCommandSender,
-    operations: Vec<WrappedOperation>,
-) {
-    let expected_hash = block.id;
-
-    network_controller
-        .send_header(source_node_id, block.content.header.clone())
-        .await;
-
-    protocol_command_sender
-        .send_wishlist_delta(
-            vec![(block.id, Some(block.content.header.clone()))]
-                .into_iter()
-                .collect(),
-            PreHashSet::<BlockId>::default(),
-        )
-        .unwrap();
-
-    // Send block info to protocol.
-    let info = vec![(
-        block.id,
-        BlockInfoReply::Info(block.content.operations.clone()),
-    )];
-    network_controller
-        .send_block_info(source_node_id, info)
-        .await;
-
-    // Send full ops.
-    let info = vec![(block.id, BlockInfoReply::Operations(operations))];
-    network_controller
-        .send_block_info(source_node_id, info)
-        .await;
-
-    //TODO: Readd
-    // Check protocol sends block to consensus.
-    // let hash = match wait_protocol_event(protocol_event_receiver, 1000.into(), |evt| match evt {
-    //     evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
-    //     _ => None,
-    // })
-    // .await
-    // {
-    //     Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => Some(block_id),
-    //     None => None,
-    //     _ => panic!("Unexpected or no protocol event."),
-    // };
-    // if valid {
-    //     assert_eq!(expected_hash, hash.unwrap());
-    // } else {
-    //     assert!(hash.is_none(), "unexpected protocol event")
-    // }
-}
-
 /// Creates an endorsement for use in protocol tests,
 /// without paying attention to consensus related things.
 pub fn create_endorsement() -> WrappedEndorsement {

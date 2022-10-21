@@ -5,12 +5,14 @@ use crate::settings::BootstrapConfig;
 use bitvec::vec::BitVec;
 use massa_async_pool::test_exports::{create_async_pool, get_random_message};
 use massa_async_pool::{AsyncPoolChanges, Change};
-use massa_consensus_exports::commands::ConsensusCommand;
 use massa_final_state::test_exports::create_final_state;
 use massa_final_state::{ExecutedOps, FinalState};
-use massa_graph::export_active_block::ExportActiveBlockSerializer;
-use massa_graph::{export_active_block::ExportActiveBlock, BootstrapableGraph};
-use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
+use massa_graph_2_exports::{
+    bootstrapable_graph::{
+        BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
+    },
+    export_active_block::{ExportActiveBlock, ExportActiveBlockSerializer},
+};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetUpdateOrDelete};
 use massa_ledger_worker::test_exports::create_final_ledger;
@@ -291,27 +293,6 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         max_ledger_changes_count: MAX_LEDGER_CHANGES_COUNT,
         max_parameters_size: MAX_PARAMETERS_SIZE,
         max_changes_slot_count: 1000,
-    }
-}
-
-pub async fn wait_consensus_command<F, T>(
-    consensus_command_receiver: &mut Receiver<ConsensusCommand>,
-    timeout: MassaTime,
-    filter_map: F,
-) -> Option<T>
-where
-    F: Fn(ConsensusCommand) -> Option<T>,
-{
-    let timer = sleep(timeout.into());
-    tokio::pin!(timer);
-    loop {
-        tokio::select! {
-            cmd = consensus_command_receiver.recv() => match cmd {
-                Some(orig_evt) => if let Some(res_evt) = filter_map(orig_evt) { return Some(res_evt); },
-                _ => panic!("network event channel died")
-            },
-            _ = &mut timer => return None
-        }
     }
 }
 

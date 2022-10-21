@@ -1,8 +1,9 @@
 use super::GraphState;
-use massa_graph_2_exports::error::GraphError;
+use massa_graph_2_exports::{error::GraphError, events::GraphEvent};
 use massa_models::stats::ConsensusStats;
 use massa_time::MassaTime;
 use std::cmp::max;
+use tracing::log::warn;
 
 impl GraphState {
     /// Calculate and return stats about graph

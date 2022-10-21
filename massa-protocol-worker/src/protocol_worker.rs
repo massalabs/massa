@@ -21,8 +21,7 @@ use massa_models::{
 use massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEventReceiver};
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{
-    ProtocolCommand, ProtocolConfig, ProtocolError,
-    ProtocolManagementCommand, ProtocolManager,
+    ProtocolCommand, ProtocolConfig, ProtocolError, ProtocolManagementCommand, ProtocolManager,
 };
 
 use massa_models::wrapped::Id;

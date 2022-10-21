@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use super::tools::protocol_test;
+use super::tools::{protocol_test, send_and_propagate_block};
 use massa_hash::Hash;
 use massa_models::operation::OperationId;
 use massa_models::wrapped::{Id, WrappedContent};
@@ -13,7 +13,6 @@ use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::tests::tools::{
     create_and_connect_nodes, create_block_with_operations, create_operation_with_expire_period,
-    send_and_propagate_block,
 };
 use massa_signature::KeyPair;
 use serial_test::serial;
@@ -25,9 +24,9 @@ async fn test_protocol_does_propagate_operations_received_in_blocks() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    mut protocol_graph_event_receiver,
                     protocol_pool_event_receiver| {
             // Create 2 node.
             let mut nodes = create_and_connect_nodes(2, &mut network_controller).await;
@@ -58,7 +57,7 @@ async fn test_protocol_does_propagate_operations_received_in_blocks() {
                 block,
                 true,
                 creator_node.id,
-                &mut protocol_event_receiver,
+                &mut protocol_graph_event_receiver,
                 &mut protocol_command_sender,
                 vec![op.clone()],
             )
@@ -81,9 +80,9 @@ async fn test_protocol_does_propagate_operations_received_in_blocks() {
             };
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -104,9 +103,9 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    mut protocol_graph_event_receiver,
                     protocol_pool_event_receiver| {
             // Create 1 node.
             let mut nodes = create_and_connect_nodes(1, &mut network_controller).await;
@@ -138,7 +137,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     block,
                     true,
                     creator_node.id,
-                    &mut protocol_event_receiver,
+                    &mut protocol_graph_event_receiver,
                     &mut protocol_command_sender,
                     vec![op.clone()],
                 )
@@ -180,7 +179,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     block,
                     false,
                     creator_node.id,
-                    &mut protocol_event_receiver,
+                    &mut protocol_graph_event_receiver,
                     &mut protocol_command_sender,
                     vec![op.clone()],
                 )
@@ -203,7 +202,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     block,
                     false,
                     creator_node.id,
-                    &mut protocol_event_receiver,
+                    &mut protocol_graph_event_receiver,
                     &mut protocol_command_sender,
                     vec![op.clone()],
                 )
@@ -212,9 +211,9 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
 
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_graph_event_receiver,
                 protocol_pool_event_receiver,
             )
         },

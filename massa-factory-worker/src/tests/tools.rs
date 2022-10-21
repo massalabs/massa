@@ -1,4 +1,6 @@
-use massa_graph_2_exports::test_exports::MockGraphController;
+use massa_graph_2_exports::test_exports::{
+    GraphEventReceiver, MockGraphController, MockGraphControllerMessage,
+};
 use parking_lot::RwLock;
 use std::{
     sync::{mpsc::Receiver, Arc},
@@ -34,7 +36,7 @@ use massa_wallet::test_exports::create_test_wallet;
 /// You can use the method `new` to build all the mocks and make the connections
 /// Then you can use the method `get_next_created_block` that will manage the answers from the mock to the factory depending on the parameters you gave.
 pub struct TestFactory {
-    graph_controller: MockGraphController,
+    graph_event_receiver: GraphEventReceiver,
     pool_receiver: PoolEventReceiver,
     selector_receiver: Receiver<MockSelectorControllerMessage>,
     factory_config: FactoryConfig,
@@ -53,7 +55,7 @@ impl TestFactory {
     /// - `TestFactory`: the structure that will be used to manage the tests
     pub fn new(default_keypair: &KeyPair) -> TestFactory {
         let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
-        let (graph_controller, consensus_command_sender) = MockGraphController::new_with_receiver();
+        let (graph_controller, graph_event_receiver) = MockGraphController::new_with_receiver();
         let (pool_controller, pool_receiver) = MockPoolController::new_with_receiver();
         let mut storage = Storage::create_root();
         let mut factory_config = FactoryConfig::default();
@@ -88,7 +90,7 @@ impl TestFactory {
         );
 
         TestFactory {
-            graph_controller,
+            graph_event_receiver,
             pool_receiver,
             selector_receiver,
             factory_config,
@@ -148,17 +150,16 @@ impl TestFactory {
                 _ => panic!("unexpected message"),
             }
         }
-        match self
-            .consensus_controller
-            .consensus_command_rx
-            .blocking_recv()
-            .unwrap()
-        {
-            ConsensusCommand::GetBestParents { response_tx } => {
-                response_tx.send(self.genesis_blocks.clone()).unwrap();
-            }
-            _ => panic!("unexpected message"),
-        }
+        self.graph_event_receiver
+            .wait_command(MassaTime::from_millis(100), |command| {
+                if let MockGraphControllerMessage::GetBestParents { response_tx } = command {
+                    response_tx.send(self.genesis_blocks.clone()).unwrap();
+                    Some(())
+                } else {
+                    None
+                }
+            })
+            .unwrap();
         self.pool_receiver
             .wait_command(MassaTime::from_millis(100), |command| match command {
                 MockPoolControllerMessage::GetBlockEndorsements {
@@ -201,23 +202,20 @@ impl TestFactory {
                 _ => panic!("unexpected message"),
             })
             .unwrap();
-        match self
-            .consensus_controller
-            .consensus_command_rx
-            .blocking_recv()
+        self.graph_event_receiver
+            .wait_command(MassaTime::from_millis(100), |command| {
+                if let MockGraphControllerMessage::RegisterBlock {
+                    block_id,
+                    block_storage,
+                    slot: _,
+                } = command
+                {
+                    Some((block_id, block_storage))
+                } else {
+                    None
+                }
+            })
             .unwrap()
-        {
-            ConsensusCommand::SendBlock {
-                block_id,
-                block_storage,
-                slot: _,
-                response_tx,
-            } => {
-                response_tx.send(()).unwrap();
-                (block_id, block_storage)
-            }
-            _ => panic!("unexpected message"),
-        }
     }
 }
 
