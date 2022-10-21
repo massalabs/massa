@@ -104,6 +104,8 @@ pub enum NodeCommand {
     AskForOperations(OperationPrefixIds),
     /// Endorsements
     SendEndorsements(Vec<WrappedEndorsement>),
+    /// Ask peer list
+    AskPeerList,
 }
 
 /// Event types that node worker can emit
