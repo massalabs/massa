@@ -5,10 +5,10 @@
 
 use massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
 use massa_models::{
-    error::ModelsError,
     operation::{OperationId, OperationIdDeserializer},
     prehash::PreHashMap,
     slot::{Slot, SlotDeserializer, SlotSerializer},
+    streaming_step::StreamingStep,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -106,20 +106,15 @@ impl ExecutedOps {
     /// A tuple containing the data and the next executed ops streaming step
     pub fn get_executed_ops_part(
         &self,
-        cursor: ExecutedOpsStreamingStep,
-    ) -> Result<(Vec<u8>, ExecutedOpsStreamingStep), ModelsError> {
-        // TODO: stream in multiple parts
+        cursor: StreamingStep<OperationId>,
+    ) -> (ExecutedOps, StreamingStep<OperationId>) {
+        // FOLLOW-UP TODO: stream in multiple parts
         match cursor {
-            ExecutedOpsStreamingStep::Started => (), // TODO: when parts start at unbounded left range
-            ExecutedOpsStreamingStep::Ongoing(_op_id) => (), // TODO: when parts start at op_id left range
-            ExecutedOpsStreamingStep::Finished => {
-                return Ok((Vec::new(), ExecutedOpsStreamingStep::Finished))
-            }
+            StreamingStep::Started => (), // TODO: when parts start at unbounded left range
+            StreamingStep::Ongoing(_op_id) => (), // TODO: when parts start at op_id left range
+            StreamingStep::Finished => return (ExecutedOps::default(), cursor),
         }
-        let mut part = Vec::new();
-        let ops_serializer = ExecutedOpsSerializer::new();
-        ops_serializer.serialize(self, &mut part)?;
-        Ok((part, ExecutedOpsStreamingStep::Finished))
+        (self.clone(), StreamingStep::Finished)
     }
 
     /// Set a part of the executed operations.
@@ -128,23 +123,9 @@ impl ExecutedOps {
     ///
     /// # Returns
     /// The next executed ops streaming step
-    pub fn set_executed_ops_part(
-        &mut self,
-        part: &[u8],
-        thread_count: u8,
-    ) -> Result<ExecutedOpsStreamingStep, ModelsError> {
-        if part.is_empty() {
-            return Ok(ExecutedOpsStreamingStep::Finished);
-        }
-        let ops_deserializer = ExecutedOpsDeserializer::new(thread_count);
-        let (rest, ops) = ops_deserializer.deserialize(part)?;
-        if !rest.is_empty() {
-            return Err(ModelsError::SerializeError(
-                "data is left after set_executed_ops_part deserialization".to_string(),
-            ));
-        }
-        self.extend(ops);
-        Ok(ExecutedOpsStreamingStep::Finished)
+    pub fn set_executed_ops_part(&mut self, part: ExecutedOps) -> StreamingStep<OperationId> {
+        self.extend(part);
+        StreamingStep::Finished
     }
 }
 
@@ -192,99 +173,7 @@ fn test_executed_ops_xor_computing() {
         thread: 0,
     });
     // at this point the hash should have been XORed with itself
-    assert_eq!(a.hash, Hash::from_bytes(&[0; 32]));
-}
-
-/// Executed operations bootstrap streaming steps
-#[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub enum ExecutedOpsStreamingStep {
-    /// Started step, only when launching the streaming
-    Started,
-    /// Ongoing step, as long as there are operations to stream
-    Ongoing(OperationId),
-    /// Finished step, after the last operations where streamed
-    Finished,
-}
-
-/// Executed operations bootstrap streaming steps serializer
-#[derive(Default)]
-pub struct ExecutedOpsStreamingStepSerializer {
-    u64_serializer: U64VarIntSerializer,
-}
-
-impl ExecutedOpsStreamingStepSerializer {
-    /// Creates a new executed operations bootstrap streaming steps serializer
-    pub fn new() -> Self {
-        Self {
-            u64_serializer: U64VarIntSerializer,
-        }
-    }
-}
-
-impl Serializer<ExecutedOpsStreamingStep> for ExecutedOpsStreamingStepSerializer {
-    fn serialize(
-        &self,
-        value: &ExecutedOpsStreamingStep,
-        buffer: &mut Vec<u8>,
-    ) -> Result<(), SerializeError> {
-        match value {
-            ExecutedOpsStreamingStep::Started => self.u64_serializer.serialize(&0u64, buffer)?,
-            ExecutedOpsStreamingStep::Ongoing(op_id) => {
-                self.u64_serializer.serialize(&1u64, buffer)?;
-                buffer.extend(op_id.to_bytes());
-            }
-            ExecutedOpsStreamingStep::Finished => self.u64_serializer.serialize(&2u64, buffer)?,
-        };
-        Ok(())
-    }
-}
-
-/// Executed operations bootstrap streaming steps deserializer
-pub struct ExecutedOpsStreamingStepDeserializer {
-    u64_deserializer: U64VarIntDeserializer,
-    op_id_deserializer: OperationIdDeserializer,
-}
-
-impl Default for ExecutedOpsStreamingStepDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ExecutedOpsStreamingStepDeserializer {
-    /// Creates a new executed operations bootstrap streaming steps deserializer
-    pub fn new() -> Self {
-        Self {
-            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
-            op_id_deserializer: OperationIdDeserializer::new(),
-        }
-    }
-}
-
-impl Deserializer<ExecutedOpsStreamingStep> for ExecutedOpsStreamingStepDeserializer {
-    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
-        &self,
-        buffer: &'a [u8],
-    ) -> IResult<&'a [u8], ExecutedOpsStreamingStep, E> {
-        let (rest, ident) = context("identifier", |input| {
-            self.u64_deserializer.deserialize(input)
-        })
-        .parse(buffer)?;
-        match ident {
-            0u64 => Ok((rest, ExecutedOpsStreamingStep::Started)),
-            1u64 => context("operation_id", |input| {
-                self.op_id_deserializer.deserialize(input)
-            })
-            .map(ExecutedOpsStreamingStep::Ongoing)
-            .parse(rest),
-
-            2u64 => Ok((rest, ExecutedOpsStreamingStep::Finished)),
-            _ => Err(nom::Err::Error(ParseError::from_error_kind(
-                buffer,
-                nom::error::ErrorKind::Digit,
-            ))),
-        }
-    }
+    assert_eq!(a.hash, Hash::from_bytes(EXECUTED_OPS_INITIAL_BYTES));
 }
 
 /// `ExecutedOps` Serializer

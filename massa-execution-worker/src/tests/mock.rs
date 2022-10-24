@@ -6,7 +6,7 @@ use massa_ledger_exports::LedgerEntry;
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerError};
 use massa_ledger_worker::FinalLedger;
 use massa_models::config::{
-    ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, MAX_ASYNC_POOL_LENGTH, MAX_DATA_ASYNC_MESSAGE,
+    ASYNC_POOL_BOOTSTRAP_PART_SIZE, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH,
 };
 use massa_models::{
     address::Address,
@@ -87,8 +87,8 @@ pub fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, Tem
     ledger.load_initial_ledger().unwrap();
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
-        part_size_message_bytes: ASYNC_POOL_PART_SIZE_MESSAGE_BYTES,
-        max_data_async_message: MAX_DATA_ASYNC_MESSAGE,
+        bootstrap_part_size: ASYNC_POOL_BOOTSTRAP_PART_SIZE,
+        max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
         thread_count: THREAD_COUNT,
     };
     let cfg = FinalStateConfig {

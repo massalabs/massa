@@ -5,14 +5,22 @@
 use crate::{
     changes::{AsyncPoolChanges, Change},
     config::AsyncPoolConfig,
-    message::{AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
-    AsyncMessageDeserializer, AsyncMessageSerializer,
+    message::{AsyncMessage, AsyncMessageId},
+    AsyncMessageDeserializer, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
+    AsyncMessageSerializer,
 };
-use massa_models::{error::ModelsError, slot::Slot};
-use massa_serialization::{Deserializer, Serializer};
-use nom::{multi::many0, sequence::tuple};
+use massa_models::{slot::Slot, streaming_step::StreamingStep};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
+use nom::{
+    error::{context, ContextError, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult, Parser,
+};
 use std::collections::BTreeMap;
-use std::ops::Bound::{Excluded, Unbounded};
+use std::ops::Bound::{Excluded, Included, Unbounded};
 
 /// Represents a pool of sorted messages in a deterministic way.
 /// The final asynchronous pool is attached to the output of the latest final slot within the context of massa-final-state.
@@ -130,73 +138,156 @@ impl AsyncPool {
             .collect()
     }
 
-    /// Used for bootstrap
-    /// Take a part of the async pool starting from the next element after `last_id` and with a max length of the constant `ASYNC_POOL_PART_SIZE_MESSAGE_BYTES`.
-    /// Should always follow the same behavior as the `get_ledger_part` from `FinalLedger`method.
-    pub fn get_pool_part(
-        &self,
-        last_id: Option<AsyncMessageId>,
-    ) -> Result<(Vec<u8>, Option<AsyncMessageId>), ModelsError> {
-        let last_id = if let Some(last_id) = last_id {
-            Excluded(last_id)
-        } else if self.messages.first_key_value().is_some() {
-            Unbounded
-        } else {
-            return Ok((Vec::new(), None));
-        };
-        let mut part = Vec::new();
-        let mut next_last_id = None;
-        let id_async_message_serializer = AsyncMessageIdSerializer::new();
-        let async_message_serializer = AsyncMessageSerializer::new();
-        for (id, message) in self.messages.range((last_id, Unbounded)) {
-            if part.len() < self.config.part_size_message_bytes as usize {
-                id_async_message_serializer.serialize(id, &mut part)?;
-                async_message_serializer.serialize(message, &mut part)?;
-                next_last_id = Some(*id);
-            }
-        }
-        Ok((part, next_last_id))
-    }
-
-    /// Set a part of the async pool.
-    /// We deserialize in this function because we insert in the async pool while deserializing.
+    /// Get a part of the async pool.
     /// Used for bootstrap.
     ///
     /// # Arguments
-    /// * data: must be the serialized version provided by `get_pool_part`
+    /// * cursor: current bootstrap state
     ///
     /// # Returns
-    /// The last id of the inserted entry (this is an optimization to easily keep a reference to the last id)
-    pub fn set_pool_part<'a>(
-        &mut self,
-        part: &'a [u8],
-    ) -> Result<Option<AsyncMessageId>, ModelsError> {
-        let async_message_id_deserializer =
-            AsyncMessageIdDeserializer::new(self.config.thread_count);
-        let async_message_deserializer = AsyncMessageDeserializer::new(
-            self.config.thread_count,
-            self.config.max_data_async_message,
-        );
-        let (rest, messages) = many0(|input: &'a [u8]| {
-            if input.is_empty() {
-                return Err(nom::Err::Error(nom::error::Error::new(
-                    input,
-                    nom::error::ErrorKind::LengthValue,
-                )));
+    /// The async pool part and the updated cursor
+    pub fn get_pool_part(
+        &self,
+        cursor: StreamingStep<AsyncMessageId>,
+    ) -> (
+        BTreeMap<AsyncMessageId, AsyncMessage>,
+        StreamingStep<AsyncMessageId>,
+    ) {
+        let mut pool_part = BTreeMap::new();
+        let left_bound = match cursor {
+            StreamingStep::Started => Unbounded,
+            StreamingStep::Ongoing(last_id) => Excluded(last_id),
+            StreamingStep::Finished => return (pool_part, cursor),
+        };
+        let mut pool_part_last_id: Option<AsyncMessageId> = None;
+        for (id, message) in self.messages.range((left_bound, Unbounded)) {
+            if pool_part.len() < self.config.bootstrap_part_size as usize {
+                pool_part.insert(*id, message.clone());
+                pool_part_last_id = Some(*id);
             }
-            tuple((
-                |input| async_message_id_deserializer.deserialize(input),
-                |input| async_message_deserializer.deserialize(input),
-            ))(input)
-        })(part)?;
-        if rest.is_empty() {
-            self.messages.extend(messages);
-            Ok(self.messages.last_key_value().map(|(id, _)| *id))
-        } else {
-            Err(ModelsError::SerializeError(
-                "pool part deserialization has data left".to_string(),
-            ))
         }
+        if let Some(last_id) = pool_part_last_id {
+            (pool_part, StreamingStep::Ongoing(last_id))
+        } else {
+            (pool_part, StreamingStep::Finished)
+        }
+    }
+
+    /// Set a part of the async pool.
+    /// Used for bootstrap.
+    ///
+    /// # Arguments
+    /// * part: the async pool part provided by `get_pool_part`
+    ///
+    /// # Returns
+    /// The updated cursor after the current insert
+    pub fn set_pool_part(
+        &mut self,
+        part: BTreeMap<AsyncMessageId, AsyncMessage>,
+    ) -> StreamingStep<AsyncMessageId> {
+        self.messages.extend(part);
+        if let Some(message_id) = self.messages.last_key_value().map(|(&id, _)| id) {
+            StreamingStep::Ongoing(message_id)
+        } else {
+            StreamingStep::Finished
+        }
+    }
+}
+
+/// Serializer for `AsyncPool`
+pub struct AsyncPoolSerializer {
+    u64_serializer: U64VarIntSerializer,
+    async_message_id_serializer: AsyncMessageIdSerializer,
+    async_message_serializer: AsyncMessageSerializer,
+}
+
+impl Default for AsyncPoolSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl AsyncPoolSerializer {
+    /// Creates a new `AsyncPool` serializer
+    pub fn new() -> Self {
+        Self {
+            u64_serializer: U64VarIntSerializer::new(),
+            async_message_id_serializer: AsyncMessageIdSerializer::new(),
+            async_message_serializer: AsyncMessageSerializer::new(),
+        }
+    }
+}
+
+impl Serializer<BTreeMap<AsyncMessageId, AsyncMessage>> for AsyncPoolSerializer {
+    fn serialize(
+        &self,
+        value: &BTreeMap<AsyncMessageId, AsyncMessage>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        // async pool length
+        self.u64_serializer
+            .serialize(&(value.len() as u64), buffer)?;
+        // async pool
+        for (message_id, message) in value {
+            self.async_message_id_serializer
+                .serialize(message_id, buffer)?;
+            self.async_message_serializer.serialize(message, buffer)?;
+        }
+        Ok(())
+    }
+}
+
+/// Deserializer for `AsyncPool`
+pub struct AsyncPoolDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    async_message_id_deserializer: AsyncMessageIdDeserializer,
+    async_message_deserializer: AsyncMessageDeserializer,
+}
+
+impl AsyncPoolDeserializer {
+    /// Creates a new `AsyncPool` deserializer
+    pub fn new(
+        thread_count: u8,
+        max_async_pool_length: u64,
+        max_async_message_data: u64,
+    ) -> AsyncPoolDeserializer {
+        AsyncPoolDeserializer {
+            u64_deserializer: U64VarIntDeserializer::new(
+                Included(0),
+                Included(max_async_pool_length),
+            ),
+            async_message_id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
+            async_message_deserializer: AsyncMessageDeserializer::new(
+                thread_count,
+                max_async_message_data,
+            ),
+        }
+    }
+}
+
+impl Deserializer<BTreeMap<AsyncMessageId, AsyncMessage>> for AsyncPoolDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], BTreeMap<AsyncMessageId, AsyncMessage>, E> {
+        context(
+            "Failed async_pool_part deserialization",
+            length_count(
+                context("Failed length deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                tuple((
+                    context("Failed async_message_id deserialization", |input| {
+                        self.async_message_id_deserializer.deserialize(input)
+                    }),
+                    context("Failed async_message deserialization", |input| {
+                        self.async_message_deserializer.deserialize(input)
+                    }),
+                )),
+            ),
+        )
+        .map(|vec| vec.into_iter().collect())
+        .parse(buffer)
     }
 }
 
@@ -209,8 +300,8 @@ fn test_take_batch() {
     let config = AsyncPoolConfig {
         thread_count: 2,
         max_length: 10,
-        max_data_async_message: 1000000,
-        part_size_message_bytes: 1_000_000,
+        max_async_message_data: 1_000_000,
+        bootstrap_part_size: 100,
     };
     let mut pool = AsyncPool::new(config);
     let address = Address(Hash::compute_from(b"abc"));

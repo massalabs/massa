@@ -214,6 +214,7 @@ macro_rules! gen_varint {
             #[doc = " Deserializer for "]
             #[doc = $d]
             #[doc = " in a varint form."]
+            #[derive(Clone)]
             pub struct $ds {
                 range: (Bound<$type>, Bound<$type>)
             }

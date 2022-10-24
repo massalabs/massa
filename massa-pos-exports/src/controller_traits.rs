@@ -6,7 +6,6 @@
 use std::collections::BTreeMap;
 
 use crate::PosResult;
-use crate::Selection;
 use massa_hash::Hash;
 use massa_models::address::Address;
 use massa_models::api::IndexedSlot;
@@ -14,6 +13,15 @@ use massa_models::slot::Slot;
 
 #[cfg(feature = "testing")]
 use std::collections::{HashMap, VecDeque};
+
+/// Selections of endorsements and producer
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Selection {
+    /// Chosen endorsements
+    pub endorsements: Vec<Address>,
+    /// Chosen block producer
+    pub producer: Address,
+}
 
 /// interface that communicates with the selector worker thread
 pub trait SelectorController: Send + Sync {

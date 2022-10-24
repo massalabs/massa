@@ -169,7 +169,7 @@ impl Serializer<Hash> for HashSerializer {
 }
 
 /// Deserializer for `Hash`
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct HashDeserializer;
 
 impl HashDeserializer {

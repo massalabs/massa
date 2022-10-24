@@ -1,11 +1,9 @@
-use std::{
-    collections::BTreeMap,
-    ops::Bound::{Excluded, Included},
-    path::PathBuf,
-};
-
+use crate::DeferredCredits;
+use crate::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
 use bitvec::vec::BitVec;
 use massa_hash::Hash;
+use massa_models::error::ModelsError;
+use massa_models::streaming_step::StreamingStep;
 use massa_models::{
     address::{Address, AddressDeserializer},
     amount::{Amount, AmountDeserializer},
@@ -13,15 +11,44 @@ use massa_models::{
     slot::{Slot, SlotDeserializer},
 };
 use massa_serialization::U64VarIntDeserializer;
+use std::collections::VecDeque;
+use std::{
+    collections::BTreeMap,
+    ops::Bound::{Excluded, Included, Unbounded},
+    path::PathBuf,
+};
 use tracing::debug;
 
-use crate::{
-    CycleInfo, PoSChanges, PoSFinalState, PosError, PosResult, ProductionStats, SelectorController,
-};
+/// Final state of PoS
+pub struct PoSFinalState {
+    /// contiguous cycle history, back = newest
+    pub cycle_history: VecDeque<CycleInfo>,
+    /// coins to be credited at the end of the slot
+    pub deferred_credits: DeferredCredits,
+    /// selector controller
+    pub selector: Box<dyn SelectorController>,
+    /// initial rolls, used for negative cycle look back
+    pub initial_rolls: BTreeMap<Address, u64>,
+    /// initial seeds, used for negative cycle look back (cycles -2, -1 in that order)
+    pub initial_seeds: Vec<Hash>,
+    /// amount deserializer
+    pub amount_deserializer: AmountDeserializer,
+    /// slot deserializer
+    pub slot_deserializer: SlotDeserializer,
+    /// deserializer
+    pub deferred_credit_length_deserializer: U64VarIntDeserializer,
+    /// address deserializer
+    pub address_deserializer: AddressDeserializer,
+    /// periods per cycle
+    pub periods_per_cycle: u64,
+    /// thread count
+    pub thread_count: u8,
+}
 
 impl PoSFinalState {
     /// create a new `PoSFinalState`
     pub fn new(
+        // FOLLOW-UP TODO: use a config
         initial_seed_string: &String,
         initial_rolls_path: &PathBuf,
         periods_per_cycle: u64,
@@ -53,7 +80,7 @@ impl PoSFinalState {
 
         Ok(Self {
             cycle_history: Default::default(),
-            deferred_credits: Default::default(),
+            deferred_credits: DeferredCredits::default(),
             selector,
             initial_rolls,
             initial_seeds,
@@ -358,5 +385,110 @@ impl PoSFinalState {
             return None; // in the future
         }
         Some(index)
+    }
+
+    /// Gets a cycle of the Proof of Stake `cycle_history`. Used only in the bootstrap process.
+    ///
+    /// # Arguments:
+    /// `cursor`: indicates the bootstrap state after the previous payload
+    ///
+    /// # Returns
+    /// The PoS cycle and the updated cursor
+    pub fn get_cycle_history_part(
+        &self,
+        cursor: StreamingStep<u64>,
+    ) -> Result<(Option<CycleInfo>, StreamingStep<u64>), ModelsError> {
+        let cycle_index = match cursor {
+            // FOLLOW-UP TODO: use the config value for `6`
+            StreamingStep::Started => usize::from(self.cycle_history.len() >= 6),
+            StreamingStep::Ongoing(last_cycle) => {
+                if let Some(index) = self.get_cycle_index(last_cycle) {
+                    if index == self.cycle_history.len() - 1 {
+                        return Ok((None, StreamingStep::Finished));
+                    }
+                    index.saturating_add(1)
+                } else {
+                    return Err(ModelsError::OutdatedBootstrapCursor);
+                }
+            }
+            StreamingStep::Finished => return Ok((None, cursor)),
+        };
+        let cycle_info = self
+            .cycle_history
+            .get(cycle_index)
+            .expect("a cycle should be available here");
+        Ok((
+            Some(cycle_info.clone()),
+            StreamingStep::Ongoing(cycle_info.cycle),
+        ))
+    }
+
+    /// Gets a part of the Proof of Stake `deferred_credits`. Used only in the bootstrap process.
+    ///
+    /// # Arguments:
+    /// `cursor`: indicates the bootstrap state after the previous payload
+    ///
+    /// # Returns
+    /// The PoS `deferred_credits` part and the updated cursor
+    pub fn get_deferred_credits_part(
+        &self,
+        cursor: StreamingStep<Slot>,
+    ) -> (DeferredCredits, StreamingStep<Slot>) {
+        let mut credits_part = DeferredCredits::default();
+        let left_bound = match cursor {
+            StreamingStep::Started => Unbounded,
+            StreamingStep::Ongoing(last_slot) => Excluded(last_slot),
+            StreamingStep::Finished => return (credits_part, cursor),
+        };
+        let mut credit_part_last_slot: Option<Slot> = None;
+        for (slot, credits) in self.deferred_credits.0.range((left_bound, Unbounded)) {
+            // FOLLOW-UP TODO: stream in multiple parts
+            credits_part.0.insert(*slot, credits.clone());
+            credit_part_last_slot = Some(*slot);
+        }
+        if let Some(last_slot) = credit_part_last_slot {
+            (credits_part, StreamingStep::Ongoing(last_slot))
+        } else {
+            (credits_part, StreamingStep::Finished)
+        }
+    }
+
+    /// Sets a part of the Proof of Stake `cycle_history`. Used only in the bootstrap process.
+    ///
+    /// # Arguments
+    /// `part`: a `CycleInfo` received from `get_pos_state_part` and used to update PoS final state
+    pub fn set_cycle_history_part(&mut self, part: Option<CycleInfo>) -> StreamingStep<u64> {
+        if let Some(cycle_info) = part {
+            let opt_next_cycle = self
+                .cycle_history
+                .back()
+                .map(|info| info.cycle.saturating_add(1));
+            let current_cycle = cycle_info.cycle;
+            if let Some(next_cycle) = opt_next_cycle && current_cycle != next_cycle {
+            panic!("PoS received cycle ({}) should be equal to the next expected cycle ({})", current_cycle, next_cycle);
+        }
+            self.cycle_history.push_back(cycle_info);
+            StreamingStep::Ongoing(current_cycle)
+        } else {
+            StreamingStep::Finished
+        }
+    }
+
+    /// Sets a part of the Proof of Stake `deferred_credits`. Used only in the bootstrap process.
+    ///
+    /// # Arguments
+    /// `part`: `DeferredCredits` from `get_pos_state_part` and used to update PoS final state
+    pub fn set_deferred_credits_part(&mut self, part: DeferredCredits) -> StreamingStep<Slot> {
+        self.deferred_credits.nested_extend(part);
+        if let Some(slot) = self
+            .deferred_credits
+            .0
+            .last_key_value()
+            .map(|(&slot, _)| slot)
+        {
+            StreamingStep::Ongoing(slot)
+        } else {
+            StreamingStep::Finished
+        }
     }
 }

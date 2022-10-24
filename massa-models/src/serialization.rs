@@ -227,6 +227,7 @@ impl Deserializer<IpAddr> for IpAddrDeserializer {
 }
 
 /// Basic `Vec<u8>` serializer
+#[derive(Clone)]
 pub struct VecU8Serializer {
     len_serializer: U64VarIntSerializer,
 }
@@ -268,6 +269,7 @@ impl Serializer<Vec<u8>> for VecU8Serializer {
 }
 
 /// Basic `Vec<u8>` deserializer
+#[derive(Clone)]
 pub struct VecU8Deserializer {
     varint_u64_deserializer: U64VarIntDeserializer,
 }
