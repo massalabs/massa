@@ -105,34 +105,43 @@ async fn test_full_ask_block_workflow() {
                 )
                 .await;
 
-            // Protocol sends expected block to consensus.
-            loop {
-                match protocol_graph_event_receiver.wait_command(
-                    MassaTime::from_millis(100),
-                    |command| match command {
-                        MockGraphControllerMessage::RegisterBlock {
-                            slot,
-                            block_id,
-                            block_storage,
-                        } => {
-                            assert_eq!(slot, block.content.header.content.slot);
-                            assert_eq!(block_id, block.id);
-                            let received_block =
-                                block_storage.read_blocks().get(&block_id).cloned().unwrap();
-                            assert_eq!(received_block.content.operations, block.content.operations);
-                            Some(())
+            let protocol_graph_event_receiver = tokio::task::spawn_blocking(move || {
+                // Protocol sends expected block to consensus.
+                loop {
+                    match protocol_graph_event_receiver.wait_command(
+                        MassaTime::from_millis(100),
+                        |command| match command {
+                            MockGraphControllerMessage::RegisterBlock {
+                                slot,
+                                block_id,
+                                block_storage,
+                            } => {
+                                assert_eq!(slot, block.content.header.content.slot);
+                                assert_eq!(block_id, block.id);
+                                let received_block =
+                                    block_storage.read_blocks().get(&block_id).cloned().unwrap();
+                                assert_eq!(
+                                    received_block.content.operations,
+                                    block.content.operations
+                                );
+                                Some(())
+                            }
+                            _evt => None,
+                        },
+                    ) {
+                        Some(()) => {
+                            break;
                         }
-                        _evt => None,
-                    },
-                ) {
-                    Some(()) => {
-                        break;
-                    }
-                    None => {
-                        continue;
+                        None => {
+                            continue;
+                        }
                     }
                 }
-            }
+                return protocol_graph_event_receiver;
+            })
+            .await
+            .unwrap();
+
             (
                 network_controller,
                 protocol_command_sender,
@@ -219,33 +228,41 @@ async fn test_empty_block() {
             );
 
             // Protocol sends expected block to consensus.
-            loop {
-                match protocol_graph_event_receiver.wait_command(
-                    MassaTime::from_millis(100),
-                    |command| match command {
-                        MockGraphControllerMessage::RegisterBlock {
-                            slot,
-                            block_id,
-                            block_storage,
-                        } => {
-                            assert_eq!(slot, block.content.header.content.slot);
-                            assert_eq!(block_id, block.id);
-                            let received_block =
-                                block_storage.read_blocks().get(&block_id).cloned().unwrap();
-                            assert_eq!(received_block.content.operations, block.content.operations);
-                            Some(())
+            let protocol_graph_event_receiver = tokio::task::spawn_blocking(move || {
+                loop {
+                    match protocol_graph_event_receiver.wait_command(
+                        MassaTime::from_millis(100),
+                        |command| match command {
+                            MockGraphControllerMessage::RegisterBlock {
+                                slot,
+                                block_id,
+                                block_storage,
+                            } => {
+                                assert_eq!(slot, block.content.header.content.slot);
+                                assert_eq!(block_id, block.id);
+                                let received_block =
+                                    block_storage.read_blocks().get(&block_id).cloned().unwrap();
+                                assert_eq!(
+                                    received_block.content.operations,
+                                    block.content.operations
+                                );
+                                Some(())
+                            }
+                            _evt => None,
+                        },
+                    ) {
+                        Some(()) => {
+                            break;
                         }
-                        _evt => None,
-                    },
-                ) {
-                    Some(()) => {
-                        break;
-                    }
-                    None => {
-                        continue;
+                        None => {
+                            continue;
+                        }
                     }
                 }
-            }
+                protocol_graph_event_receiver
+            })
+            .await
+            .unwrap();
             (
                 network_controller,
                 protocol_command_sender,
@@ -299,12 +316,18 @@ async fn test_someone_knows_it() {
                 .send_header(node_c.id, block.content.header.clone())
                 .await;
 
-            protocol_graph_event_receiver.wait_command(MassaTime::from_millis(100), |command| {
-                match command {
-                    MockGraphControllerMessage::RegisterBlockHeader { .. } => Some(()),
-                    _ => panic!("unexpected protocol event"),
-                }
-            });
+            let protocol_graph_event_receiver = tokio::task::spawn_blocking(move || {
+                protocol_graph_event_receiver.wait_command(
+                    MassaTime::from_millis(100),
+                    |command| match command {
+                        MockGraphControllerMessage::RegisterBlockHeader { .. } => Some(()),
+                        _ => panic!("unexpected protocol event"),
+                    },
+                );
+                protocol_graph_event_receiver
+            })
+            .await
+            .unwrap();
 
             // send wishlist
             protocol_command_sender

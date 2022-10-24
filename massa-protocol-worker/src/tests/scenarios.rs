@@ -48,14 +48,20 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
                 .await;
 
             // Check protocol sends header to consensus.
-            let received_hash = protocol_graph_event_receiver
-                .wait_command(MassaTime::from_millis(1000), |command| match command {
-                    MockGraphControllerMessage::RegisterBlockHeader {
-                        block_id,
-                        header: _,
-                    } => Some(block_id),
-                    _ => panic!("unexpected protocol event"),
+            let (protocol_graph_event_receiver, received_hash) =
+                tokio::task::spawn_blocking(move || {
+                    let id = protocol_graph_event_receiver
+                        .wait_command(MassaTime::from_millis(1000), |command| match command {
+                            MockGraphControllerMessage::RegisterBlockHeader {
+                                block_id,
+                                header: _,
+                            } => Some(block_id),
+                            _ => panic!("unexpected protocol event"),
+                        })
+                        .unwrap();
+                    (protocol_graph_event_receiver, id)
                 })
+                .await
                 .unwrap();
 
             // 4. Check that protocol sent the right header to consensus.
@@ -231,14 +237,20 @@ async fn test_protocol_propagates_block_to_all_nodes_including_those_who_asked_f
             // node[1] asks for that block
 
             // Check protocol sends header to consensus.
-            let ref_hash = protocol_graph_event_receiver
-                .wait_command(MassaTime::from_millis(1000), |command| match command {
-                    MockGraphControllerMessage::RegisterBlockHeader {
-                        block_id,
-                        header: _,
-                    } => Some(block_id),
-                    _ => panic!("unexpected protocol event"),
+            let (protocol_graph_event_receiver, ref_hash) =
+                tokio::task::spawn_blocking(move || {
+                    let id = protocol_graph_event_receiver
+                        .wait_command(MassaTime::from_millis(1000), |command| match command {
+                            MockGraphControllerMessage::RegisterBlockHeader {
+                                block_id,
+                                header: _,
+                            } => Some(block_id),
+                            _ => panic!("unexpected protocol event"),
+                        })
+                        .unwrap();
+                    (protocol_graph_event_receiver, id)
                 })
+                .await
                 .unwrap();
 
             storage.store_block(ref_block.clone());
@@ -341,14 +353,20 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_onl
             // node[1] asks for that block
 
             // Check protocol sends header to consensus.
-            let ref_hash = protocol_graph_event_receiver
-                .wait_command(MassaTime::from_millis(1000), |command| match command {
-                    MockGraphControllerMessage::RegisterBlockHeader {
-                        block_id,
-                        header: _,
-                    } => Some(block_id),
-                    _ => panic!("unexpected protocol event"),
+            let (protocol_graph_event_receiver, ref_hash) =
+                tokio::task::spawn_blocking(move || {
+                    let id = protocol_graph_event_receiver
+                        .wait_command(MassaTime::from_millis(1000), |command| match command {
+                            MockGraphControllerMessage::RegisterBlockHeader {
+                                block_id,
+                                header: _,
+                            } => Some(block_id),
+                            _ => panic!("unexpected protocol event"),
+                        })
+                        .unwrap();
+                    (protocol_graph_event_receiver, id)
                 })
+                .await
                 .unwrap();
 
             storage.store_block(ref_block.clone());

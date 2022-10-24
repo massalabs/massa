@@ -441,12 +441,18 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
             // Wait for the event to be sure that the node is connected,
             // and noted as knowing the block and its endorsements.
-            protocol_graph_event_receiver.wait_command(MassaTime::from_millis(1000), |command| {
-                match command {
-                    MockGraphControllerMessage::RegisterBlockHeader { .. } => Some(()),
-                    _ => panic!("Node isn't connected or didn't mark block as known."),
-                }
-            });
+            let protocol_graph_event_receiver = tokio::task::spawn_blocking(move || {
+                protocol_graph_event_receiver.wait_command(
+                    MassaTime::from_millis(1000),
+                    |command| match command {
+                        MockGraphControllerMessage::RegisterBlockHeader { .. } => Some(()),
+                        _ => panic!("Node isn't connected or didn't mark block as known."),
+                    },
+                );
+                protocol_graph_event_receiver
+            })
+            .await
+            .unwrap();
 
             // Send the endorsement to protocol
             // it should not propagate to the node that already knows about it

@@ -564,6 +564,7 @@ impl ProtocolWorker {
                 // Send operations to pool,
                 // before performing the below checks,
                 // and wait for them to have been procesed(i.e. added to storage).
+                println!("AURELIEN: Full ops received");
                 self.on_block_full_operations_received(from_node_id, block_id, operations, op_timer)
                     .await
             }

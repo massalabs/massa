@@ -1,8 +1,6 @@
 use crate::start_protocol_controller;
 use futures::Future;
-use massa_graph_2_exports::test_exports::{
-    GraphEventReceiver, MockGraphController, MockGraphControllerMessage,
-};
+use massa_graph_2_exports::test_exports::{GraphEventReceiver, MockGraphController};
 use massa_models::{
     block::{BlockId, WrappedBlock},
     node::NodeId,
@@ -16,7 +14,6 @@ use massa_protocol_exports::{
     ProtocolManager,
 };
 use massa_storage::Storage;
-use massa_time::MassaTime;
 use tokio::sync::mpsc;
 
 pub async fn protocol_test<F, V>(protocol_config: &ProtocolConfig, test: F)
@@ -148,14 +145,10 @@ where
 pub async fn send_and_propagate_block(
     network_controller: &mut MockNetworkController,
     block: WrappedBlock,
-    valid: bool,
     source_node_id: NodeId,
-    protocol_graph_event_receiver: &mut GraphEventReceiver,
     protocol_command_sender: &mut ProtocolCommandSender,
     operations: Vec<WrappedOperation>,
 ) {
-    let expected_hash = block.id;
-
     network_controller
         .send_header(source_node_id, block.content.header.clone())
         .await;
@@ -183,22 +176,4 @@ pub async fn send_and_propagate_block(
     network_controller
         .send_block_info(source_node_id, info)
         .await;
-
-    // Check protocol sends block to consensus.
-    let hash =
-        protocol_graph_event_receiver.wait_command(MassaTime::from_millis(1000), |command| {
-            match command {
-                MockGraphControllerMessage::RegisterBlock {
-                    block_id,
-                    slot: _,
-                    block_storage: _,
-                } => Some(block_id),
-                _ => panic!("Unexpected or no protocol event."),
-            }
-        });
-    if valid {
-        assert_eq!(expected_hash, hash.unwrap());
-    } else {
-        assert!(hash.is_none(), "unexpected protocol event")
-    }
 }

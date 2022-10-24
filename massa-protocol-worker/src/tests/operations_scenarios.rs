@@ -440,12 +440,18 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 .send_header(nodes[0].id, block.content.header.clone())
                 .await;
 
-            protocol_graph_event_receiver.wait_command(MassaTime::from_millis(1000), |command| {
-                match command {
-                    MockGraphControllerMessage::RegisterBlockHeader { .. } => Some(()),
-                    _ => panic!("unexpected protocol event"),
-                }
-            });
+            let protocol_graph_event_receiver = tokio::task::spawn_blocking(move || {
+                protocol_graph_event_receiver.wait_command(
+                    MassaTime::from_millis(1000),
+                    |command| match command {
+                        MockGraphControllerMessage::RegisterBlockHeader { .. } => Some(()),
+                        _ => panic!("unexpected protocol event"),
+                    },
+                );
+                protocol_graph_event_receiver
+            })
+            .await
+            .unwrap();
 
             // send wishlist
             protocol_command_sender
@@ -592,12 +598,18 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 .await;
 
             // Wait for the event to be sure that the node is connected.
-            protocol_graph_event_receiver.wait_command(MassaTime::from_millis(1000), |command| {
-                match command {
-                    MockGraphControllerMessage::RegisterBlockHeader { .. } => Some(()),
-                    _ => panic!("unexpected protocol event"),
-                }
-            });
+            let protocol_graph_event_receiver = tokio::task::spawn_blocking(move || {
+                protocol_graph_event_receiver.wait_command(
+                    MassaTime::from_millis(1000),
+                    |command| match command {
+                        MockGraphControllerMessage::RegisterBlockHeader { .. } => Some(()),
+                        _ => panic!("unexpected protocol event"),
+                    },
+                );
+                protocol_graph_event_receiver
+            })
+            .await
+            .unwrap();
 
             // Send the operation to protocol
             // it should propagate to the node because it isn't in the block.

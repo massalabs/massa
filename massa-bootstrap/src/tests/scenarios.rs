@@ -165,23 +165,6 @@ async fn test_bootstrap_server() {
         sent_peers
     };
 
-    // wait for bootstrap to ask consensus for bootstrap graph, send it
-    let wait_graph = async move || {
-        let response =
-            graph_event_receiver.wait_command(MassaTime::from_millis(2000), |cmd| match cmd {
-                MockGraphControllerMessage::GetBootstrapableGraph { response_tx } => {
-                    let sent_graph = get_boot_state();
-                    response_tx.send(Ok(sent_graph.clone())).unwrap();
-                    Some(sent_graph)
-                }
-                _ => panic!("timeout waiting for get boot graph consensus command"),
-            });
-        match response {
-            Some(graph) => graph,
-            None => panic!("error waiting for get boot graph consensus command"),
-        }
-    };
-
     // launch the modifier thread
     let list_changes: Arc<RwLock<Vec<(Slot, StateChanges)>>> = Arc::new(RwLock::new(Vec::new()));
     let list_changes_clone = list_changes.clone();
@@ -207,7 +190,23 @@ async fn test_bootstrap_server() {
 
     let sent_peers = wait_peers().await;
     // wait for peers and graph
-    let sent_graph = wait_graph().await;
+    let sent_graph = tokio::task::spawn_blocking(move || {
+        let response =
+            graph_event_receiver.wait_command(MassaTime::from_millis(10000), |cmd| match cmd {
+                MockGraphControllerMessage::GetBootstrapableGraph { response_tx } => {
+                    let sent_graph = get_boot_state();
+                    response_tx.send(Ok(sent_graph.clone())).unwrap();
+                    Some(sent_graph)
+                }
+                _ => panic!("bad command for get boot graph consensus command"),
+            });
+        match response {
+            Some(graph) => graph,
+            None => panic!("error waiting for get boot graph consensus command"),
+        }
+    })
+    .await
+    .unwrap();
 
     // wait for get_state
     let bootstrap_res = get_state_h

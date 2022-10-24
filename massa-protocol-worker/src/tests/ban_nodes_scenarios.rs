@@ -47,20 +47,26 @@ async fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
             tools::assert_banned_nodes(vec![creator_node.id], &mut network_controller).await;
 
             // Check protocol does not send block to consensus.
-            protocol_graph_event_receiver.wait_command(MassaTime::from_millis(1000), |command| {
-                match command {
-                    MockGraphControllerMessage::RegisterBlock { .. } => {
-                        panic!("Protocol unexpectedly sent block.")
-                    }
-                    MockGraphControllerMessage::RegisterBlockHeader { .. } => {
-                        panic!("Protocol unexpectedly sent header.")
-                    }
-                    MockGraphControllerMessage::MarkInvalidBlock { .. } => {
-                        panic!("Protocol unexpectedly sent invalid block.")
-                    }
-                    _ => Some(()),
-                }
-            });
+            let protocol_graph_event_receiver = tokio::task::spawn_blocking(move || {
+                protocol_graph_event_receiver.wait_command(
+                    MassaTime::from_millis(1000),
+                    |command| match command {
+                        MockGraphControllerMessage::RegisterBlock { .. } => {
+                            panic!("Protocol unexpectedly sent block.")
+                        }
+                        MockGraphControllerMessage::RegisterBlockHeader { .. } => {
+                            panic!("Protocol unexpectedly sent header.")
+                        }
+                        MockGraphControllerMessage::MarkInvalidBlock { .. } => {
+                            panic!("Protocol unexpectedly sent invalid block.")
+                        }
+                        _ => Some(()),
+                    },
+                );
+                protocol_graph_event_receiver
+            })
+            .await
+            .unwrap();
             (
                 network_controller,
                 protocol_command_sender,
@@ -153,12 +159,18 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
                 .send_header(to_ban_node.id, block.content.header.clone())
                 .await;
 
-            protocol_graph_event_receiver.wait_command(MassaTime::from_millis(1000), |command| {
-                match command {
-                    MockGraphControllerMessage::RegisterBlockHeader { .. } => Some(()),
-                    _ => panic!("unexpected protocol event"),
-                }
-            });
+            let mut protocol_graph_event_receiver = tokio::task::spawn_blocking(move || {
+                protocol_graph_event_receiver.wait_command(
+                    MassaTime::from_millis(1000),
+                    |command| match command {
+                        MockGraphControllerMessage::RegisterBlockHeader { .. } => Some(()),
+                        _ => panic!("unexpected protocol event"),
+                    },
+                );
+                protocol_graph_event_receiver
+            })
+            .await
+            .unwrap();
 
             // send wishlist
             protocol_command_sender
@@ -202,20 +214,26 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
                 .await;
 
             // Check protocol does not send block to consensus.
-            protocol_graph_event_receiver.wait_command(MassaTime::from_millis(1000), |command| {
-                match command {
-                    MockGraphControllerMessage::RegisterBlock { .. } => {
-                        panic!("Protocol unexpectedly sent block.")
-                    }
-                    MockGraphControllerMessage::RegisterBlockHeader { .. } => {
-                        panic!("Protocol unexpectedly sent header.")
-                    }
-                    MockGraphControllerMessage::MarkInvalidBlock { .. } => {
-                        panic!("Protocol unexpectedly sent invalid block.")
-                    }
-                    _ => Some(()),
-                }
-            });
+            let protocol_graph_event_receiver = tokio::task::spawn_blocking(move || {
+                protocol_graph_event_receiver.wait_command(
+                    MassaTime::from_millis(1000),
+                    |command| match command {
+                        MockGraphControllerMessage::RegisterBlock { .. } => {
+                            panic!("Protocol unexpectedly sent block.")
+                        }
+                        MockGraphControllerMessage::RegisterBlockHeader { .. } => {
+                            panic!("Protocol unexpectedly sent header.")
+                        }
+                        MockGraphControllerMessage::MarkInvalidBlock { .. } => {
+                            panic!("Protocol unexpectedly sent invalid block.")
+                        }
+                        _ => Some(()),
+                    },
+                );
+                protocol_graph_event_receiver
+            })
+            .await
+            .unwrap();
             (
                 network_controller,
                 protocol_command_sender,
@@ -257,14 +275,20 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
                 .await;
 
             // Check protocol sends header to consensus.
-            let received_hash = protocol_graph_event_receiver
-                .wait_command(MassaTime::from_millis(1000), |command| match command {
-                    MockGraphControllerMessage::RegisterBlockHeader {
-                        block_id,
-                        header: _,
-                    } => Some(block_id),
-                    _ => panic!("unexpected protocol event"),
+            let (protocol_graph_event_receiver, received_hash) =
+                tokio::task::spawn_blocking(move || {
+                    let id = protocol_graph_event_receiver
+                        .wait_command(MassaTime::from_millis(1000), |command| match command {
+                            MockGraphControllerMessage::RegisterBlockHeader {
+                                block_id,
+                                header: _,
+                            } => Some(block_id),
+                            _ => panic!("unexpected protocol event"),
+                        })
+                        .unwrap();
+                    (protocol_graph_event_receiver, id)
                 })
+                .await
                 .unwrap();
 
             // 3. Check that protocol sent the right header to consensus.
@@ -427,34 +451,30 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
                     .send_header(creator_node.id, block.content.header.clone())
                     .await;
 
+                let (old_protocol_graph_event_receiver, optional_block_id) =
+                    tokio::task::spawn_blocking(move || {
+                        let id = protocol_graph_event_receiver.wait_command(
+                            MassaTime::from_millis(1000),
+                            |command| match command {
+                                MockGraphControllerMessage::RegisterBlockHeader {
+                                    block_id,
+                                    header: _,
+                                } => Some(block_id),
+                                _ => panic!("unexpected protocol event"),
+                            },
+                        );
+                        (protocol_graph_event_receiver, id)
+                    })
+                    .await
+                    .unwrap();
+                protocol_graph_event_receiver = old_protocol_graph_event_receiver;
                 // Check protocol sends header to consensus (only the 1st time: later, there is caching).
                 if idx == 0 {
-                    let received_hash = protocol_graph_event_receiver
-                        .wait_command(MassaTime::from_millis(1000), |command| match command {
-                            MockGraphControllerMessage::RegisterBlockHeader {
-                                block_id,
-                                header: _,
-                            } => Some(block_id),
-                            _ => panic!("unexpected protocol event"),
-                        })
-                        .unwrap();
+                    let received_hash = optional_block_id.unwrap();
                     // Check that protocol sent the right header to consensus.
                     assert_eq!(expected_hash, received_hash);
                 } else {
-                    assert!(
-                        protocol_graph_event_receiver
-                            .wait_command(MassaTime::from_millis(1000), |command| {
-                                match command {
-                                    MockGraphControllerMessage::RegisterBlockHeader {
-                                        block_id,
-                                        header: _,
-                                    } => Some(block_id),
-                                    _ => None,
-                                }
-                            })
-                            .is_none(),
-                        "caching was ignored"
-                    );
+                    assert!(optional_block_id.is_none(), "caching was ignored");
                 }
             }
 
@@ -539,14 +559,20 @@ async fn test_protocol_removes_banned_node_on_disconnection() {
                 .await;
 
             // Check protocol sends header to consensus.
-            let received_hash = protocol_graph_event_receiver
-                .wait_command(MassaTime::from_millis(1000), |command| match command {
-                    MockGraphControllerMessage::RegisterBlockHeader {
-                        block_id,
-                        header: _,
-                    } => Some(block_id),
-                    _ => panic!("unexpected protocol event"),
+            let (protocol_graph_event_receiver, received_hash) =
+                tokio::task::spawn_blocking(move || {
+                    let id = protocol_graph_event_receiver
+                        .wait_command(MassaTime::from_millis(1000), |command| match command {
+                            MockGraphControllerMessage::RegisterBlockHeader {
+                                block_id,
+                                header: _,
+                            } => Some(block_id),
+                            _ => panic!("unexpected protocol event"),
+                        })
+                        .unwrap();
+                    (protocol_graph_event_receiver, id)
                 })
+                .await
                 .unwrap();
 
             // Check that protocol sent the right header to consensus.

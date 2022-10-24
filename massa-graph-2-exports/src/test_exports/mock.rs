@@ -28,6 +28,7 @@ pub struct GraphEventReceiver(pub Receiver<MockGraphControllerMessage>);
 /// Each variant corresponds to a unique method in `GraphController`,
 /// Some variants wait for a response on their `response_tx` field, if present.
 /// See the documentation of `GraphController` for details on parameters and return values.
+#[derive(Clone, Debug)]
 pub enum MockGraphControllerMessage {
     GetBlockStatuses {
         block_ids: Vec<BlockId>,

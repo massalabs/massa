@@ -31,3 +31,7 @@ futures = "0.3"
 
 massa_signature = { path = "../massa-signature" }
 massa_pool_exports = { path = "../massa-pool-exports", features = ["testing"] }
+
+[features]
+
+testing = ["massa_graph_2_exports/testing", "massa_network_exports/testing", "massa_pool_exports/testing", "massa_protocol_exports/testing"]

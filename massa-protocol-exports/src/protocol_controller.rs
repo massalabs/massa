@@ -75,7 +75,7 @@ impl ProtocolCommandSender {
             "block_id": block_id
         });
         self.0
-            .blocking_send(ProtocolCommand::IntegratedBlock { block_id, storage })
+            .try_send(ProtocolCommand::IntegratedBlock { block_id, storage })
             .map_err(|_| ProtocolError::ChannelError("block_integrated command send error".into()))
     }
 
@@ -85,7 +85,7 @@ impl ProtocolCommandSender {
             "block_id": block_id
         });
         self.0
-            .blocking_send(ProtocolCommand::AttackBlockDetected(block_id))
+            .try_send(ProtocolCommand::AttackBlockDetected(block_id))
             .map_err(|_| {
                 ProtocolError::ChannelError("notify_block_attack command send error".into())
             })
@@ -99,7 +99,7 @@ impl ProtocolCommandSender {
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.send_wishlist_delta", { "new": new, "remove": remove });
         self.0
-            .blocking_send(ProtocolCommand::WishlistDelta { new, remove })
+            .try_send(ProtocolCommand::WishlistDelta { new, remove })
             .map_err(|_| {
                 ProtocolError::ChannelError("send_wishlist_delta command send error".into())
             })
@@ -113,7 +113,7 @@ impl ProtocolCommandSender {
             "operations": operations.get_op_refs()
         });
         self.0
-            .blocking_send(ProtocolCommand::PropagateOperations(operations))
+            .try_send(ProtocolCommand::PropagateOperations(operations))
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_operation command send error".into())
             })
@@ -125,7 +125,7 @@ impl ProtocolCommandSender {
             "endorsements": endorsements.get_endorsement_refs()
         });
         self.0
-            .blocking_send(ProtocolCommand::PropagateEndorsements(endorsements))
+            .try_send(ProtocolCommand::PropagateEndorsements(endorsements))
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_endorsements command send error".into())
             })
