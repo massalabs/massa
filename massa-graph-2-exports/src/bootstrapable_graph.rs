@@ -36,7 +36,7 @@ impl BootstrapableGraphSerializer {
 impl Serializer<BootstrapableGraph> for BootstrapableGraphSerializer {
     /// ## Example
     /// ```rust
-    /// use massa_graph::{BootstrapableGraph, BootstrapableGraphSerializer};
+    /// use massa_graph_2_exports::bootstrapable_graph::{BootstrapableGraph, BootstrapableGraphSerializer};
     /// use massa_serialization::Serializer;
     /// use massa_hash::Hash;
     /// use massa_models::{prehash::PreHashMap, block::BlockId, config::THREAD_COUNT};
@@ -115,7 +115,7 @@ impl BootstrapableGraphDeserializer {
 impl Deserializer<BootstrapableGraph> for BootstrapableGraphDeserializer {
     /// ## Example
     /// ```rust
-    /// use massa_graph::{BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
+    /// use massa_graph_2_exports::bootstrapable_graph::{BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use massa_hash::Hash;
     /// use massa_models::{prehash::PreHashMap, block::BlockId, config::THREAD_COUNT};
