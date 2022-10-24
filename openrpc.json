@@ -3,7 +3,7 @@
     "info": {
         "title": "Massa OpenRPC Specification",
         "version": "TEST.15.1",
-        "description": "Massa OpenRPC Specification document. Find more on https://docs.massa.net/en/latest/technical-doc/api.html",
+        "description": "Massa OpenRPC Specification document. Find more informations on https://docs.massa.net/en/latest/technical-doc/api.html",
         "termsOfService": "https://open-rpc.org",
         "contact": {
             "name": "Massa Team",
