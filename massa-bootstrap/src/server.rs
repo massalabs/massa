@@ -10,7 +10,6 @@ use futures::StreamExt;
 use massa_async_pool::AsyncMessageId;
 use massa_final_state::FinalState;
 use massa_graph_2_exports::GraphController;
-use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::{
     operation::OperationId, slot::Slot, streaming_step::StreamingStep, version::Version,
