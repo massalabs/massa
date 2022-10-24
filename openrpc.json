@@ -417,8 +417,7 @@
             },
             "name": "get_status",
             "summary": "Summary of the current state",
-            "description": "Summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count.",
-            "paramStructure": "by-name"
+            "description": "Summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count."
         },
         {
             "tags": [
