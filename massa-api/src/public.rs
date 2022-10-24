@@ -175,13 +175,16 @@ impl Endpoints for API<Public> {
 
             // map result
             let result = ExecuteReadOnlyResponse {
-                executed_at: result.as_ref().map_or_else(|_| Slot::new(0, 0), |v| v.slot),
+                executed_at: result
+                    .as_ref()
+                    .map_or_else(|_| Slot::new(0, 0), |v| v.out.slot),
                 result: result.as_ref().map_or_else(
                     |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
                     |_| ReadOnlyResult::Ok,
                 ),
-                gas_cost: result.as_ref().map_or_else(|_| None, |v| v.gas_cost),
-                output_events: result.map_or_else(|_| Default::default(), |mut v| v.events.take()),
+                gas_cost: result.as_ref().map_or_else(|_| 0, |v| v.gas_cost),
+                output_events: result
+                    .map_or_else(|_| Default::default(), |mut v| v.out.events.take()),
             };
 
             res.push(result);
@@ -252,13 +255,16 @@ impl Endpoints for API<Public> {
 
             // map result
             let result = ExecuteReadOnlyResponse {
-                executed_at: result.as_ref().map_or_else(|_| Slot::new(0, 0), |v| v.slot),
+                executed_at: result
+                    .as_ref()
+                    .map_or_else(|_| Slot::new(0, 0), |v| v.out.slot),
                 result: result.as_ref().map_or_else(
                     |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
                     |_| ReadOnlyResult::Ok,
                 ),
-                gas_cost: result.as_ref().map_or_else(|_| None, |v| v.gas_cost),
-                output_events: result.map_or_else(|_| Default::default(), |mut v| v.events.take()),
+                gas_cost: result.as_ref().map_or_else(|_| 0, |v| v.gas_cost),
+                output_events: result
+                    .map_or_else(|_| Default::default(), |mut v| v.out.events.take()),
             };
 
             res.push(result);

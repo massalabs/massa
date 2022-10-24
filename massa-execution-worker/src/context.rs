@@ -713,7 +713,6 @@ impl ExecutionContext {
             block_id: std::mem::take(&mut self.opt_block_id),
             state_changes,
             events: std::mem::take(&mut self.events),
-            gas_cost: None
         }
     }
 
