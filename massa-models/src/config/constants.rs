@@ -52,7 +52,7 @@ lazy_static::lazy_static! {
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1667142000000.into())  // Sunday, October 30, 2022 3:00:00 PM UTC
+        Some(1667142000000.into())  // TODO: update timestamp for testnet 17
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
