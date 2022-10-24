@@ -154,7 +154,7 @@ impl GraphController for GraphControllerImpl {
     /// * `slot`: the slot that will give us the thread and the upper bound
     ///
     /// # Returns:
-    /// The block id of the latest block in the thread of the given slot and before this slot if exists
+    /// The block id of the latest block in the thread of the given slot and before this slot
     fn get_latest_blockclique_block_at_slot(&self, slot: Slot) -> BlockId {
         self.shared_state
             .read()

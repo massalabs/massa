@@ -583,6 +583,12 @@ async fn stop(
     // stop factory
     factory_manager.stop();
 
+    // stop protocol controller
+    let network_event_receiver = protocol_manager
+        .stop()
+        .await
+        .expect("protocol shutdown failed");
+
     // stop graph
     graph_manager.stop();
 
@@ -598,12 +604,6 @@ async fn stop(
     // stop pool controller
     // TODO
     //let protocol_pool_event_receiver = pool_manager.stop().await.expect("pool shutdown failed");
-
-    // stop protocol controller
-    let network_event_receiver = protocol_manager
-        .stop()
-        .await
-        .expect("protocol shutdown failed");
 
     // stop network controller
     network_manager
