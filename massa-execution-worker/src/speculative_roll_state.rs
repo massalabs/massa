@@ -157,11 +157,7 @@ impl SpeculativeRollState {
     pub fn try_burn_rolls(
         &mut self,
         addr: &Address,
-        slot: Slot,
         roll_count: u64,
-        periods_per_cycle: u64,
-        thread_count: u8,
-        roll_price: Amount,
     ) -> Result<(), ExecutionError> {
         // fetch the roll count from: current changes > active history > final state
         let owned_count = self.get_rolls(addr);
@@ -173,8 +169,6 @@ impl SpeculativeRollState {
                 addr, roll_count, owned_count
             )));
         }
-
-        // let cur_cycle = slot.get_cycle(periods_per_cycle);
 
         // remove the rolls
         let current_rolls = self
@@ -514,12 +508,54 @@ impl SpeculativeRollState {
         credits
     }
 
-    pub fn remove_deferred_credits(&mut self, slot: &Slot, addr: &Address, amount: &Amount) -> Amount {
-        self
-            .final_state
-            .write()
-            .pos_state
-            .rm_deferred_credits(slot, addr, amount)
-    }
+    /// Remove a given amount from deferred credits and return the removed amount
+    pub fn remove_deferred_credits(&mut self, slot: &Slot, addr: &Address, amount: &Amount) -> Option<Amount> {
 
+        let mut amount_to_rm = *amount;
+        let mut amount_removed = Amount::zero();
+
+        // First try to rm in added_changes
+        let res = self.added_changes.deferred_credits.sub_amount(slot, addr, &amount_to_rm);
+        if let Some(a) = res {
+            amount_removed = amount_removed.checked_add(a)?;
+            amount_to_rm = amount_to_rm.checked_sub(amount_removed)?;
+        }
+
+        // If not found, try to rm from active history
+        let mut hist = self.active_history.write();
+        while amount_removed < *amount {
+            match hist.0.iter_mut().rev().next() {
+                None => break,
+                Some(hist_item) => {
+                    let res = hist_item
+                        .state_changes
+                        .pos_changes
+                        .deferred_credits
+                        .sub_amount(slot, addr, &amount_to_rm);
+
+                    if let Some(a) = res {
+                        amount_removed = amount_removed.checked_add(a)?;
+                        amount_to_rm = amount_to_rm.checked_sub(amount_removed)?;
+                    }
+                }
+            }
+        }
+        drop(hist);
+
+        // At the end, try in final state
+        if amount_removed < *amount {
+            let res = self
+                .final_state
+                .write()
+                .pos_state
+                .rm_deferred_credits(slot, addr, amount);
+
+            if let Some(a) = res {
+                amount_removed = amount_removed.checked_add(a)?;
+                // No need to update amount_to_tm here
+            }
+        }
+
+        Some(amount_removed)
+    }
 }

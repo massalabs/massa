@@ -344,6 +344,7 @@ impl ExecutionState {
         operation: &OperationType,
         seller_addr: Address,
     ) -> Result<(), ExecutionError> {
+
         // process roll sell operations only
         let roll_count = match operation {
             OperationType::RollSell { roll_count } => roll_count,
@@ -627,6 +628,8 @@ impl ExecutionState {
         block_credits: &mut Amount,
     ) -> Result<(), ExecutionError> {
 
+        const ROLL_COUNT: u64 = 1;
+
         // process denunciation operations only
         let denunciation = match operation {
             OperationType::Denunciation { data } => data,
@@ -639,8 +642,11 @@ impl ExecutionState {
             let mut context = context_guard!(self);
 
             let addr_denounced = denunciation.addr();
-            // FIXME / TODO: Add a constant for this? == 1 roll == 100 coins
-            let amount = Amount::from_mantissa_scale(1, 2);
+            let amount = self.config.roll_price
+                .checked_mul_u64(ROLL_COUNT)
+                .ok_or_else(||
+                    ExecutionError::RuntimeError(format!("Unable to multiply roll price by {}", ROLL_COUNT))
+                )?;
 
             // Set call stack
             // This needs to be defined before anything can fail, so that the emitted event contains the right stack
@@ -651,20 +657,21 @@ impl ExecutionState {
                 operation_datastore: None,
             }];
 
-            let roll_slashed = context.try_slash_roll(&addr_denounced);
-
-            if roll_slashed > Amount::zero() {
-                // safe to unwrap as roll_slashed > 0
-                let amount = roll_slashed
-                    .checked_div_u64(2)
-                    .unwrap();
-
-                // Add slashed amount to block reward
-                *block_credits = block_credits.saturating_add(amount);
-            } else {
-                warn!("Unable to slash rolls");
+            let slashed = context.try_slash_roll(&addr_denounced,
+                                                 ROLL_COUNT);
+            match slashed {
+                Ok(slashed_amount) => {
+                    // Add slashed amount / 2 to block reward
+                    let amount = slashed_amount
+                        .checked_div_u64(2)
+                        .ok_or_else(||
+                            ExecutionError::RuntimeError(
+                                format!("Unable to divide slashed amount: {} by 2", slashed_amount))
+                        )?;
+                    *block_credits = block_credits.saturating_add(amount);
+                },
+                Err(e) => warn!("Unable to slash rolls or deferred credits: {}", e),
             }
-
         } else {
             debug!("Invalid denunciation: {:?}", denunciation);
         }

@@ -33,7 +33,7 @@ use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use tracing::{debug, warn};
+use tracing::debug;
 
 /// A snapshot taken from an `ExecutionContext` and that represents its current state.
 /// The `ExecutionContext` state can then be restored later from this snapshot.
@@ -643,51 +643,50 @@ impl ExecutionContext {
     pub fn try_slash_roll(
         &mut self,
         denounced_addr: &Address,
-    ) -> Amount
+        roll_count: u64,
+    ) -> Result<Amount, ExecutionError>
     {
-        const ROLL_COUNT: u64 = 1;
-        let mut slashed_coins = Amount::zero();
+        let slashed_coins;
 
         // First try to slash roll if any
         if self.speculative_roll_state.try_burn_rolls(
             denounced_addr,
-            self.slot,
-            ROLL_COUNT,
-            self.config.periods_per_cycle,
-            self.config.thread_count,
-            self.config.roll_price,
+            roll_count,
         ).is_err() {
 
             // if no roll were slashed, that can likely be done from deferred credit
             let credits = self.speculative_roll_state.get_address_deferred_credits(denounced_addr, self.slot);
-            let amount_to_slash = Amount::from_mantissa_scale(ROLL_COUNT, 2);
+            let amount_to_slash = self.config.roll_price
+                .checked_mul_u64(roll_count)
+                .ok_or_else(||
+                    ExecutionError::RuntimeError(format!("Cannot mult roll price by {}", roll_count))
+                )?;
+
+            // Remove deferred credits starting at self.slot until
             let mut amount_slashed = Amount::zero();
-            for (slot, amount) in credits.iter() {
-                let amount_to_rm = match amount {
-                    a if a >= &amount_to_slash => amount_to_slash,
-                    a if a < &amount_to_slash => a.clone(),
-                    _ => {
-                        // Should never happen?
-                        debug!("Unable to compute amount from: {}", amount);
-                        Amount::zero() }
-                };
-                self.speculative_roll_state.remove_deferred_credits(slot, denounced_addr, &amount_to_rm);
-                amount_slashed = amount_slashed.saturating_add(amount_to_rm);
+            let mut amount_to_rm = amount_to_slash;
+            for (slot, _amount) in credits.iter() {
                 if amount_slashed >= amount_to_slash {
                     break;
                 }
+                let amount_slashed_at_slot_ = self.speculative_roll_state
+                    .remove_deferred_credits(slot, denounced_addr, &amount_to_rm);
+
+                if let Some(amount_slashed_at_slot_) = amount_slashed_at_slot_ {
+                    amount_slashed = amount_slashed.saturating_add(amount_slashed_at_slot_);
+                    amount_to_rm = amount_to_rm.saturating_sub(amount_slashed_at_slot_)
+                }
             }
-
-            let credits = self.speculative_roll_state.get_address_deferred_credits(denounced_addr, self.slot);
-            println!("credits: {:?}", credits);
-
             slashed_coins = amount_slashed;
-
         } else {
-            slashed_coins = Amount::from_mantissa_scale(ROLL_COUNT, 2);
+            slashed_coins = self.config.roll_price
+                .checked_mul_u64(roll_count)
+                .ok_or_else(||
+                    ExecutionError::RuntimeError(format!("Cannot mult roll price by {}", roll_count))
+                )?;
         }
 
-        slashed_coins
+        Ok(slashed_coins)
     }
 
     /// Update production statistics of an address.

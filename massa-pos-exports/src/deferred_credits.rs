@@ -1,3 +1,4 @@
+use std::cmp::min;
 use massa_models::{
     address::{Address, AddressDeserializer},
     amount::{Amount, AmountDeserializer, AmountSerializer},
@@ -54,20 +55,20 @@ impl DeferredCredits {
         }
     }
 
-    /// Remove an amount of deferred credit for the given Slot & Address
-    pub fn sub_amount(&mut self, slot: &Slot, address: &Address, amount: &Amount) -> Amount {
-
-        let mut result = Amount::zero();
+    /// Try to remove a given amount of deferred credit for the given Slot & Address
+    pub fn sub_amount(&mut self, slot: &Slot, address: &Address, amount: &Amount) -> Option<Amount> {
+        let mut result: Option<Amount> = None;
 
         if self.0.contains_key(slot) {
-            // TODO: saturing_sub handle Result
             self.0
                 .entry(*slot)
                 .and_modify(|current_credits| {
                     current_credits
                         .entry(*address)
                         .and_modify(|e| {
-                            result = e.saturating_sub(*amount);
+                            let sub_amount = e.saturating_sub(*amount);
+                            result = Some(min(*e, *amount));
+                            *e = sub_amount;
                         });
                 });
         }

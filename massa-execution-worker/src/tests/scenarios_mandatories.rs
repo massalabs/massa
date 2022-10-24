@@ -894,6 +894,121 @@ pub fn slash_roll() {
         Operation {
             fee: Amount::zero(),
             expire_period: 10,
+            op: OperationType::RollSell { roll_count: 100-1 }, // enough roll to be slashed
+        },
+        OperationSerializer::new(),
+        &keypair,
+    ).unwrap();
+
+    // create the Denunciation operation
+    // let sender_keypair = KeyPair::generate();
+
+    let slot = Slot::new(7, 1);
+    let content = Endorsement {
+        slot,
+        index: 0,
+        endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
+    };
+    let endorsement1: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
+        content.clone(),
+        EndorsementSerializer::new(),
+        &keypair,
+        EndorsementHasher::new(),
+    ).unwrap();
+
+    let content2 = Endorsement {
+        slot,
+        index: 0,
+        endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+    };
+    let endorsement2: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
+        content2,
+        EndorsementSerializer::new(),
+        &keypair,
+        EndorsementHasher::new(),
+    ).unwrap();
+
+    let denunciation = Denunciation {
+        slot,
+        // pub_key: sender_keypair.get_public_key(),
+        pub_key: keypair.get_public_key(),
+        proof: DenunciationProof::Endorsement(EndorsementDenunciation {
+            index: endorsement1.content.index,
+            signature_1: endorsement1.signature,
+            hash_1: *endorsement1.id.get_hash(),
+            signature_2: endorsement2.signature,
+            hash_2: *endorsement2.id.get_hash(),
+        }),
+    };
+
+    assert_eq!(denunciation.is_valid(), true);
+
+    let de_operation = Operation::new_wrapped(
+        Operation {
+            fee: Amount::zero(),
+            expire_period: 10,
+            op: OperationType::Denunciation { data: denunciation },
+        },
+        OperationSerializer::new(),
+        &keypair,
+    ).unwrap();
+
+    // create the block containing the roll buy operation
+    storage.store_operations(vec![operation.clone(), de_operation.clone()]);
+    let block = create_block(KeyPair::generate(), vec![operation, de_operation], Slot::new(1, 0)).unwrap();
+    // store the block in storage
+    storage.store_block(block.clone());
+    // set the block as final so the sell and credits are processed
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+    block_storage.insert(block.id, storage.clone());
+    controller.update_blockclique_status(
+        finalized_blocks,
+        Default::default(),
+        block_storage.clone(),
+    );
+    std::thread::sleep(Duration::from_millis(350));
+    // check roll count of the seller address
+    let sample_read = sample_state.read();
+    assert_eq!(sample_read.pos_state.get_rolls_for(&address), 0);
+
+    // stop the execution controller
+    manager.stop();
+}
+
+#[test]
+#[serial]
+pub fn slash_roll_deferred_credits() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig {
+        t0: 100.into(),
+        periods_per_cycle: 2,
+        thread_count: 2,
+        cursor_delay: 0.into(),
+        ..Default::default()
+    };
+    // get a sample final state
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+    // init the storage
+    let mut storage = Storage::create_root();
+    // start the execution worker
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg.clone(),
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
+    // initialize the execution system with genesis blocks
+    init_execution_worker(&exec_cfg, &storage, controller.clone());
+    // generate the keypair and its corresponding address
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    let address = Address::from_public_key(&keypair.get_public_key());
+    // create the operation
+    let operation = Operation::new_wrapped(
+        Operation {
+            fee: Amount::zero(),
+            expire_period: 10,
             op: OperationType::RollSell { roll_count: 100 },
         },
         OperationSerializer::new(),
@@ -972,7 +1087,6 @@ pub fn slash_roll() {
     // check roll count deferred credits and candidate balance of the seller address
     let sample_read = sample_state.read();
     let mut credits = PreHashMap::default();
-    // credits.insert(address, Amount::from_str("10000").unwrap());
     credits.insert(address, Amount::from_str("9900").unwrap());
     assert_eq!(sample_read.pos_state.get_rolls_for(&address), 0);
     assert_eq!(
