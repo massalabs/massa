@@ -115,6 +115,7 @@ async fn test_full_ask_block_workflow() {
                                 slot,
                                 block_id,
                                 block_storage,
+                                created: _,
                             } => {
                                 assert_eq!(slot, block.content.header.content.slot);
                                 assert_eq!(block_id, block.id);
@@ -237,6 +238,7 @@ async fn test_empty_block() {
                                 slot,
                                 block_id,
                                 block_storage,
+                                created: _,
                             } => {
                                 assert_eq!(slot, block.content.header.content.slot);
                                 assert_eq!(block_id, block.id);

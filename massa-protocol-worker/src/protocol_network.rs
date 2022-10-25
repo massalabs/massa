@@ -516,7 +516,7 @@ impl ProtocolWorker {
 
                     // Send to graph
                     self.graph_controller
-                        .register_block(block_id, slot, block_storage);
+                        .register_block(block_id, slot, block_storage, false);
                 }
             }
             Entry::Vacant(_) => {

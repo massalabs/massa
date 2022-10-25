@@ -233,7 +233,7 @@ impl BlockFactoryWorker {
         // send full block to consensus
         self.channels
             .graph
-            .register_block(block_id, slot, block_storage);
+            .register_block(block_id, slot, block_storage, true);
     }
 
     /// main run loop of the block creator thread

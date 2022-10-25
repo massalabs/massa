@@ -208,6 +208,7 @@ impl TestFactory {
                     block_id,
                     block_storage,
                     slot: _,
+                    created: _,
                 } = command
                 {
                     Some((block_id, block_storage))

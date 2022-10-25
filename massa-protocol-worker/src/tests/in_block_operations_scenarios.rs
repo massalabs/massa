@@ -82,6 +82,7 @@ async fn test_protocol_does_propagate_operations_received_in_blocks() {
                                 block_id,
                                 slot: _,
                                 block_storage: _,
+                                created: _,
                             } => Some(block_id),
                             _ => panic!("Unexpected or no protocol event."),
                         })
@@ -190,6 +191,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                                     block_id,
                                     slot: _,
                                     block_storage: _,
+                                    created: _,
                                 } => Some(block_id),
                                 _ => panic!("Unexpected or no protocol event."),
                             })

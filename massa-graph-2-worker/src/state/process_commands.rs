@@ -10,6 +10,7 @@ use massa_models::{
     slot::Slot,
 };
 use massa_storage::Storage;
+use massa_time::MassaTime;
 use tracing::debug;
 
 use super::GraphState;
@@ -77,6 +78,7 @@ impl GraphState {
     /// * `slot`: the slot of the block
     /// * `current_slot`: the slot when this function is called
     /// * `storage`: Storage containing the whole content of the block
+    /// * `created`: is the block created by the node or received from the network
     ///
     /// # Returns:
     ///  Success or error if the block is invalid or too old
@@ -86,10 +88,17 @@ impl GraphState {
         slot: Slot,
         current_slot: Option<Slot>,
         storage: Storage,
+        created: bool,
     ) -> Result<(), GraphError> {
         // ignore genesis blocks
         if self.genesis_hashes.contains(&block_id) {
             return Ok(());
+        }
+
+        // Block is coming from protocol mark it for desync calculation
+        if !created {
+            let now = MassaTime::now(self.config.clock_compensation_millis)?;
+            self.protocol_blocks.push_back((now, block_id));
         }
 
         debug!("received block {} for slot {}", block_id, slot);

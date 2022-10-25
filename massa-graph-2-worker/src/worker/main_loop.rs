@@ -33,12 +33,13 @@ impl GraphWorker {
                 write_shared_state.register_block_header(block_id, header, self.previous_slot)?;
                 write_shared_state.block_db_changed()
             }
-            GraphCommand::RegisterBlock(block_id, slot, block_storage) => {
+            GraphCommand::RegisterBlock(block_id, slot, block_storage, created) => {
                 write_shared_state.register_block(
                     block_id,
                     slot,
                     self.previous_slot,
                     block_storage,
+                    created,
                 )?;
                 write_shared_state.block_db_changed()
             }

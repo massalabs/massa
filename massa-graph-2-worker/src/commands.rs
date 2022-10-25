@@ -7,7 +7,7 @@ use massa_storage::Storage;
 
 #[allow(clippy::large_enum_variant)]
 pub enum GraphCommand {
-    RegisterBlock(BlockId, Slot, Storage),
+    RegisterBlock(BlockId, Slot, Storage, bool),
     RegisterBlockHeader(BlockId, Wrapped<BlockHeader, BlockId>),
     MarkInvalidBlock(BlockId, Wrapped<BlockHeader, BlockId>),
 }

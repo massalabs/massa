@@ -161,11 +161,12 @@ impl GraphController for GraphControllerImpl {
             .get_latest_blockclique_block_at_slot(&slot)
     }
 
-    fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage) {
+    fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage, created: bool) {
         let _ = self.command_sender.try_send(GraphCommand::RegisterBlock(
             block_id,
             slot,
             block_storage,
+            created,
         ));
     }
 

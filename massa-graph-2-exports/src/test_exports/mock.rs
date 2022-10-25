@@ -67,6 +67,7 @@ pub enum MockGraphControllerMessage {
         block_id: BlockId,
         slot: Slot,
         block_storage: Storage,
+        created: bool,
     },
     RegisterBlockHeader {
         block_id: BlockId,
@@ -211,7 +212,7 @@ impl GraphController for MockGraphController {
             .unwrap();
     }
 
-    fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage) {
+    fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage, created: bool) {
         self.0
             .lock()
             .unwrap()
@@ -219,6 +220,7 @@ impl GraphController for MockGraphController {
                 block_id,
                 slot,
                 block_storage,
+                created,
             })
             .unwrap();
     }
