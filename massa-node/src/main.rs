@@ -360,7 +360,8 @@ async fn launch(
         clock_compensation_millis: bootstrap_state.compensation_millis,
     };
 
-    let (consensus_event_sender, consensus_event_receiver) = crossbeam_channel::bounded(CHANNEL_SIZE);
+    let (consensus_event_sender, consensus_event_receiver) =
+        crossbeam_channel::bounded(CHANNEL_SIZE);
     let consensus_channels = ConsensusChannels {
         execution_controller: execution_controller.clone(),
         selector_controller: selector_controller.clone(),

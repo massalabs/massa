@@ -55,7 +55,8 @@ impl TestFactory {
     /// - `TestFactory`: the structure that will be used to manage the tests
     pub fn new(default_keypair: &KeyPair) -> TestFactory {
         let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
-        let (consensus_controller, consensus_event_receiver) = MockConsensusController::new_with_receiver();
+        let (consensus_controller, consensus_event_receiver) =
+            MockConsensusController::new_with_receiver();
         let (pool_controller, pool_receiver) = MockPoolController::new_with_receiver();
         let mut storage = Storage::create_root();
         let mut factory_config = FactoryConfig::default();

@@ -199,7 +199,12 @@ impl ConsensusController for MockConsensusController {
         self.0
             .lock()
             .unwrap()
-            .send(MockConsensusControllerMessage::GetLatestBlockcliqueBlockAtSlot { slot, response_tx })
+            .send(
+                MockConsensusControllerMessage::GetLatestBlockcliqueBlockAtSlot {
+                    slot,
+                    response_tx,
+                },
+            )
             .unwrap();
         response_rx.recv().unwrap()
     }

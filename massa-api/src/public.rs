@@ -427,7 +427,8 @@ impl Endpoints for API<Public> {
                     .unique()
                     .cloned()
                     .collect();
-                let involved_block_statuses = consensus_controller.get_block_statuses(&involved_blocks);
+                let involved_block_statuses =
+                    consensus_controller.get_block_statuses(&involved_blocks);
                 let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
                     .into_iter()
                     .zip(involved_block_statuses.into_iter())
@@ -509,7 +510,8 @@ impl Endpoints for API<Public> {
                     .unique()
                     .cloned()
                     .collect();
-                let involved_block_statuses = consensus_controller.get_block_statuses(&involved_blocks);
+                let involved_block_statuses =
+                    consensus_controller.get_block_statuses(&involved_blocks);
                 let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
                     .into_iter()
                     .zip(involved_block_statuses.into_iter())

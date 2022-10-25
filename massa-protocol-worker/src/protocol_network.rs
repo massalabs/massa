@@ -468,7 +468,8 @@ impl ProtocolWorker {
                     warn!("Node id {} sent us full operations for block id {} but they exceed max size.", from_node_id, block_id);
                     let _ = self.ban_node(&from_node_id).await;
                     self.block_wishlist.remove(&block_id);
-                    self.consensus_controller.mark_invalid_block(block_id, header);
+                    self.consensus_controller
+                        .mark_invalid_block(block_id, header);
                 } else {
                     if known_operations != block_ids_set {
                         warn!(
@@ -515,6 +516,7 @@ impl ProtocolWorker {
                     block_storage.store_block(wrapped_block);
 
                     // Send to consensus
+                    info!("Send to consensus block for slot: {}", slot);
                     self.consensus_controller
                         .register_block(block_id, slot, block_storage, false);
                 }

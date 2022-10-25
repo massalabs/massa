@@ -15,7 +15,9 @@ use crate::{
     get_state, start_bootstrap_server,
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
 };
-use massa_consensus_exports::test_exports::{MockConsensusController, MockConsensusControllerMessage};
+use massa_consensus_exports::test_exports::{
+    MockConsensusController, MockConsensusControllerMessage,
+};
 use massa_final_state::{test_exports::assert_eq_final_state, FinalState, StateChanges};
 use massa_models::{address::Address, slot::Slot, version::Version};
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
@@ -59,7 +61,8 @@ async fn test_bootstrap_server() {
         })
         .expect("could not start client selector controller");
 
-    let (consensus_controller, mut consensus_event_receiver) = MockConsensusController::new_with_receiver();
+    let (consensus_controller, mut consensus_event_receiver) =
+        MockConsensusController::new_with_receiver();
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
     let final_state_bootstrap = get_random_final_state_bootstrap(
         PoSFinalState::new(

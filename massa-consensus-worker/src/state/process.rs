@@ -425,7 +425,6 @@ impl ConsensusState {
         Ok(reprocess)
     }
 
-    /// TODO: Doc
     pub fn promote_dep_tree(&mut self, hash: BlockId) -> Result<(), ConsensusError> {
         let mut to_explore = vec![hash];
         let mut to_promote: PreHashMap<BlockId, (Slot, u64)> = PreHashMap::default();
@@ -867,14 +866,6 @@ impl ConsensusState {
             // update final periods
             self.save_final_periods = latest_final_periods;
         }
-
-        /*
-        TODO add this again
-        let creator_addr = Address::from_public_key(&b_creator);
-        if self.staking_keys.contains_key(&creator_addr) {
-            warn!("block {} that was produced by our address {} at slot {} became stale. This is probably due to a temporary desynchronization.", b_id, creator_addr, b_slot);
-        }
-        */
 
         Ok(())
     }

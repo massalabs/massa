@@ -60,7 +60,10 @@ impl ConsensusState {
                     })
             {
                 warn!("desynchronization detected because the recent final block history is empty or contains only blocks produced by this node");
-                let _ = self.channels.controller_event_tx.send(ConsensusEvent::NeedSync);
+                let _ = self
+                    .channels
+                    .controller_event_tx
+                    .send(ConsensusEvent::NeedSync);
             }
         }
         // prune stats

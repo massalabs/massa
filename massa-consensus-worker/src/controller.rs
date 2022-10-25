@@ -162,12 +162,14 @@ impl ConsensusController for ConsensusControllerImpl {
     }
 
     fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage, created: bool) {
-        let _ = self.command_sender.try_send(ConsensusCommand::RegisterBlock(
-            block_id,
-            slot,
-            block_storage,
-            created,
-        ));
+        let _ = self
+            .command_sender
+            .try_send(ConsensusCommand::RegisterBlock(
+                block_id,
+                slot,
+                block_storage,
+                created,
+            ));
     }
 
     fn register_block_header(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>) {

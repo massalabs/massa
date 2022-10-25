@@ -114,7 +114,6 @@ impl ConsensusWorker {
     /// Runs in loop forever. This loop must stop every slot to perform operations on stats and graph
     /// but can be stopped anytime by a command received.
     pub fn run(&mut self) {
-        //TODO: Add notify cs periods
         loop {
             match self.wait_slot_or_command(self.next_instant) {
                 WaitingStatus::Ended => {
