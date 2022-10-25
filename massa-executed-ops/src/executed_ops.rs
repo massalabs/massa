@@ -121,8 +121,7 @@ impl ExecutedOps {
     }
 
     /// Get a part of the executed operations.
-    ///
-    /// Solely used by the bootstrap.
+    /// Used exclusively by the bootstrap server.
     ///
     /// # Returns
     /// A tuple containing the data and the next executed ops streaming step
@@ -149,7 +148,7 @@ impl ExecutedOps {
         };
         let mut ops_part_last_slot: Option<Slot> = None;
         for (slot, ids) in self.ops_deque.range((left_bound, Unbounded)) {
-            if self.ops_deque.len() < self.config.bootstrap_part_size as usize {
+            if ops_part.len() < self.config.bootstrap_part_size as usize {
                 ops_part.push_back((*slot, ids.clone()));
                 ops_part_last_slot = Some(*slot);
             } else {
@@ -164,8 +163,8 @@ impl ExecutedOps {
     }
 
     /// Set a part of the executed operations.
-    ///
-    /// Solely used by the bootstrap.
+    /// Used exclusively by the bootstrap client.
+    /// Takes the data returned from `get_executed_ops_part` as input.
     ///
     /// # Returns
     /// The next executed ops streaming step
