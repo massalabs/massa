@@ -98,7 +98,7 @@ impl ProtocolWorker {
                     self.note_header_from_node(&header, &source_node_id).await?
                 {
                     if is_new {
-                        self.graph_controller
+                        self.consensus_controller
                             .register_block_header(block_id, header);
                     }
                     self.update_ask_block(block_ask_timer).await?;
@@ -281,7 +281,7 @@ impl ProtocolWorker {
     /// # Ban
     /// Start compute the operations serialized total size with the operation we know.
     /// Ban the node if the operations contained in the block overflow the max size. We don't
-    /// forward the block to the graph in that case.
+    /// forward the block to the consensus in that case.
     ///
     /// # Parameters:
     /// - `from_node_id`: Node which sent us the information.
@@ -468,7 +468,7 @@ impl ProtocolWorker {
                     warn!("Node id {} sent us full operations for block id {} but they exceed max size.", from_node_id, block_id);
                     let _ = self.ban_node(&from_node_id).await;
                     self.block_wishlist.remove(&block_id);
-                    self.graph_controller.mark_invalid_block(block_id, header);
+                    self.consensus_controller.mark_invalid_block(block_id, header);
                 } else {
                     if known_operations != block_ids_set {
                         warn!(
@@ -514,8 +514,8 @@ impl ProtocolWorker {
                     // add block to local storage and claim ref
                     block_storage.store_block(wrapped_block);
 
-                    // Send to graph
-                    self.graph_controller
+                    // Send to consensus
+                    self.consensus_controller
                         .register_block(block_id, slot, block_storage, false);
                 }
             }

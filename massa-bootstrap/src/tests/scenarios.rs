@@ -15,8 +15,8 @@ use crate::{
     get_state, start_bootstrap_server,
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
 };
+use massa_consensus_exports::test_exports::{MockConsensusController, MockConsensusControllerMessage};
 use massa_final_state::{test_exports::assert_eq_final_state, FinalState, StateChanges};
-use massa_graph_2_exports::test_exports::{MockGraphController, MockGraphControllerMessage};
 use massa_models::{address::Address, slot::Slot, version::Version};
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
 use massa_pos_exports::{test_exports::assert_eq_pos_selection, PoSFinalState, SelectorConfig};
@@ -59,7 +59,7 @@ async fn test_bootstrap_server() {
         })
         .expect("could not start client selector controller");
 
-    let (graph_controller, mut graph_event_receiver) = MockGraphController::new_with_receiver();
+    let (consensus_controller, mut consensus_event_receiver) = MockConsensusController::new_with_receiver();
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
     let final_state_bootstrap = get_random_final_state_bootstrap(
         PoSFinalState::new(
@@ -75,7 +75,7 @@ async fn test_bootstrap_server() {
 
     let (bootstrap_establisher, bootstrap_interface) = mock_establisher::new();
     let bootstrap_manager = start_bootstrap_server(
-        graph_controller,
+        consensus_controller,
         NetworkCommandSender(network_cmd_tx),
         final_state.clone(),
         bootstrap_config.clone(),
@@ -192,8 +192,8 @@ async fn test_bootstrap_server() {
     // wait for peers and graph
     let sent_graph = tokio::task::spawn_blocking(move || {
         let response =
-            graph_event_receiver.wait_command(MassaTime::from_millis(10000), |cmd| match cmd {
-                MockGraphControllerMessage::GetBootstrapableGraph { response_tx } => {
+            consensus_event_receiver.wait_command(MassaTime::from_millis(10000), |cmd| match cmd {
+                MockConsensusControllerMessage::GetBootstrapableGraph { response_tx } => {
                     let sent_graph = get_boot_state();
                     response_tx.send(Ok(sent_graph.clone())).unwrap();
                     Some(sent_graph)

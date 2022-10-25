@@ -11,14 +11,14 @@ use dialoguer::Password;
 use massa_api::{APIConfig, Private, Public, RpcServer, StopHandle, API};
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager};
+use massa_consensus_exports::events::ConsensusEvent;
+use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
+use massa_consensus_worker::start_consensus_worker;
 use massa_execution_exports::{ExecutionConfig, ExecutionManager, StorageCostsConstants};
 use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
 use massa_final_state::{FinalState, FinalStateConfig};
-use massa_graph_2_exports::events::GraphEvent;
-use massa_graph_2_exports::{GraphChannels, GraphConfig, GraphManager};
-use massa_graph_2_worker::start_graph_worker;
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
@@ -73,9 +73,9 @@ mod settings;
 async fn launch(
     node_wallet: Arc<RwLock<Wallet>>,
 ) -> (
-    Receiver<GraphEvent>,
+    Receiver<ConsensusEvent>,
     Option<BootstrapManager>,
-    Box<dyn GraphManager>,
+    Box<dyn ConsensusManager>,
     Box<dyn ExecutionManager>,
     Box<dyn SelectorManager>,
     Box<dyn PoolManager>,
@@ -336,7 +336,7 @@ async fn launch(
     let (protocol_command_sender, protocol_command_receiver) =
         mpsc::channel::<ProtocolCommand>(PROTOCOL_CONTROLLER_CHANNEL_SIZE);
 
-    let graph_config = GraphConfig {
+    let consensus_config = ConsensusConfig {
         genesis_timestamp: *GENESIS_TIMESTAMP,
         end_timestamp: *END_TIMESTAMP,
         thread_count: THREAD_COUNT,
@@ -360,18 +360,18 @@ async fn launch(
         clock_compensation_millis: bootstrap_state.compensation_millis,
     };
 
-    let (graph_event_sender, graph_event_receiver) = crossbeam_channel::bounded(CHANNEL_SIZE);
-    let graph_channels = GraphChannels {
+    let (consensus_event_sender, consensus_event_receiver) = crossbeam_channel::bounded(CHANNEL_SIZE);
+    let consensus_channels = ConsensusChannels {
         execution_controller: execution_controller.clone(),
         selector_controller: selector_controller.clone(),
         pool_command_sender: pool_controller.clone(),
-        controller_event_tx: graph_event_sender,
+        controller_event_tx: consensus_event_sender,
         protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
     };
 
-    let (graph_controller, graph_manager) = start_graph_worker(
-        graph_config,
-        graph_channels,
+    let (consensus_controller, consensus_manager) = start_consensus_worker(
+        consensus_config,
+        consensus_channels,
         bootstrap_state.graph,
         shared_storage.clone(),
     );
@@ -413,7 +413,7 @@ async fn launch(
         network_command_sender.clone(),
         network_event_receiver,
         protocol_command_receiver,
-        graph_controller.clone(),
+        consensus_controller.clone(),
         pool_controller.clone(),
         shared_storage.clone(),
     )
@@ -432,7 +432,7 @@ async fn launch(
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
-        graph: graph_controller.clone(),
+        consensus: consensus_controller.clone(),
         pool: pool_controller.clone(),
         protocol: ProtocolCommandSender(protocol_command_sender.clone()),
         storage: shared_storage.clone(),
@@ -441,7 +441,7 @@ async fn launch(
 
     // launch bootstrap server
     let bootstrap_manager = start_bootstrap_server(
-        graph_controller.clone(),
+        consensus_controller.clone(),
         network_command_sender.clone(),
         final_state.clone(),
         bootstrap_config,
@@ -480,7 +480,7 @@ async fn launch(
 
     // spawn public API
     let api_public = API::<Public>::new(
-        graph_controller.clone(),
+        consensus_controller.clone(),
         execution_controller.clone(),
         api_config,
         selector_controller.clone(),
@@ -525,9 +525,9 @@ async fn launch(
             .expect("failed to spawn thread : deadlock-detection");
     }
     (
-        graph_event_receiver,
+        consensus_event_receiver,
         bootstrap_manager,
-        graph_manager,
+        consensus_manager,
         execution_manager,
         selector_manager,
         pool_manager,
@@ -542,7 +542,7 @@ async fn launch(
 
 struct Managers {
     bootstrap_manager: Option<BootstrapManager>,
-    graph_manager: Box<dyn GraphManager>,
+    consensus_manager: Box<dyn ConsensusManager>,
     execution_manager: Box<dyn ExecutionManager>,
     selector_manager: Box<dyn SelectorManager>,
     pool_manager: Box<dyn PoolManager>,
@@ -552,11 +552,11 @@ struct Managers {
 }
 
 async fn stop(
-    _graph_event_receiver: Receiver<GraphEvent>,
+    _consensus_event_receiver: Receiver<ConsensusEvent>,
     Managers {
         bootstrap_manager,
         mut execution_manager,
-        mut graph_manager,
+        mut consensus_manager,
         mut selector_manager,
         mut pool_manager,
         protocol_manager,
@@ -589,8 +589,8 @@ async fn stop(
         .await
         .expect("protocol shutdown failed");
 
-    // stop graph
-    graph_manager.stop();
+    // stop consensus
+    consensus_manager.stop();
 
     // stop pool
     pool_manager.stop();
@@ -695,9 +695,9 @@ async fn run(args: Args) -> anyhow::Result<()> {
 
     loop {
         let (
-            graph_event_receiver,
+            consensus_event_receiver,
             bootstrap_manager,
-            graph_manager,
+            consensus_manager,
             execution_manager,
             selector_manager,
             pool_manager,
@@ -719,9 +719,9 @@ async fn run(args: Args) -> anyhow::Result<()> {
         // loop over messages
         let restart = loop {
             massa_trace!("massa-node.main.run.select", {});
-            match graph_event_receiver.try_recv() {
+            match consensus_event_receiver.try_recv() {
                 Ok(evt) => match evt {
-                    GraphEvent::NeedSync => {
+                    ConsensusEvent::NeedSync => {
                         warn!("in response to a desynchronization, the node is going to bootstrap again");
                         break true;
                     }
@@ -758,10 +758,10 @@ async fn run(args: Args) -> anyhow::Result<()> {
             sleep(Duration::from_millis(100));
         };
         stop(
-            graph_event_receiver,
+            consensus_event_receiver,
             Managers {
                 bootstrap_manager,
-                graph_manager,
+                consensus_manager,
                 execution_manager,
                 selector_manager,
                 pool_manager,

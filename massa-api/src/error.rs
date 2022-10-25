@@ -1,8 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use displaydoc::Display;
+use massa_consensus_exports::error::ConsensusError;
 use massa_execution_exports::ExecutionError;
-use massa_graph_2_exports::error::GraphError;
 use massa_hash::MassaHashError;
 use massa_models::error::ModelsError;
 use massa_network_exports::NetworkError;
@@ -22,8 +22,8 @@ pub enum ApiError {
     ReceiveChannelError(String),
     /// `massa_hash` error: {0}
     MassaHashError(#[from] MassaHashError),
-    /// graph error: {0}
-    GraphError(#[from] GraphError),
+    /// consensus error: {0}
+    ConsensusError(#[from] ConsensusError),
     /// execution error: {0}
     ExecutionError(#[from] ExecutionError),
     /// network error: {0}

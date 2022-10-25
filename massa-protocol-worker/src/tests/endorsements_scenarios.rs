@@ -3,7 +3,7 @@
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
 use super::tools::protocol_test;
-use massa_graph_2_exports::test_exports::MockGraphControllerMessage;
+use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
 use massa_models::{address::Address, slot::Slot};
 use massa_network_exports::NetworkCommand;
 use massa_pool_exports::test_exports::MockPoolControllerMessage;
@@ -23,7 +23,7 @@ async fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
         async move |mut network_controller,
                     protocol_command_sender,
                     protocol_manager,
-                    protocol_graph_event_receiver,
+                    protocol_consensus_event_receiver,
                     mut pool_event_receiver| {
             // Create 1 node.
             let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
@@ -59,7 +59,7 @@ async fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
                 network_controller,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_graph_event_receiver,
+                protocol_consensus_event_receiver,
                 pool_event_receiver,
             )
         },
@@ -76,7 +76,7 @@ async fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() 
         async move |mut network_controller,
                     protocol_command_sender,
                     protocol_manager,
-                    protocol_graph_event_receiver,
+                    protocol_consensus_event_receiver,
                     mut pool_event_receiver| {
             // Create 1 node.
             let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
@@ -106,7 +106,7 @@ async fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() 
                 network_controller,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_graph_event_receiver,
+                protocol_consensus_event_receiver,
                 pool_event_receiver,
             )
         },
@@ -123,7 +123,7 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
         async move |mut network_controller,
                     protocol_command_sender,
                     protocol_manager,
-                    protocol_graph_event_receiver,
+                    protocol_consensus_event_receiver,
                     mut pool_event_receiver| {
             // Create 2 nodes.
             let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
@@ -173,7 +173,7 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
                 network_controller,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_graph_event_receiver,
+                protocol_consensus_event_receiver,
                 pool_event_receiver,
             )
         },
@@ -190,7 +190,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
         async move |mut network_controller,
                     protocol_command_sender,
                     protocol_manager,
-                    protocol_graph_event_receiver,
+                    protocol_consensus_event_receiver,
                     mut pool_event_receiver| {
             // Create 1 node.
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
@@ -249,7 +249,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 network_controller,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_graph_event_receiver,
+                protocol_consensus_event_receiver,
                 pool_event_receiver,
             )
         },
@@ -267,7 +267,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
         async move |mut network_controller,
                     protocol_command_sender,
                     protocol_manager,
-                    protocol_graph_event_receiver,
+                    protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             // Create 1 node.
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
@@ -321,7 +321,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 network_controller,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_graph_event_receiver,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -340,7 +340,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
         async move |mut network_controller,
                     protocol_command_sender,
                     protocol_manager,
-                    protocol_graph_event_receiver,
+                    protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             // Create 1 node.
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
@@ -395,7 +395,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 network_controller,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_graph_event_receiver,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -413,7 +413,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
         async move |mut network_controller,
                     protocol_command_sender,
                     protocol_manager,
-                    mut protocol_graph_event_receiver,
+                    mut protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             // Create 2 nodes.
             let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
@@ -441,15 +441,15 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
             // Wait for the event to be sure that the node is connected,
             // and noted as knowing the block and its endorsements.
-            let protocol_graph_event_receiver = tokio::task::spawn_blocking(move || {
-                protocol_graph_event_receiver.wait_command(
+            let protocol_consensus_event_receiver = tokio::task::spawn_blocking(move || {
+                protocol_consensus_event_receiver.wait_command(
                     MassaTime::from_millis(1000),
                     |command| match command {
-                        MockGraphControllerMessage::RegisterBlockHeader { .. } => Some(()),
+                        MockConsensusControllerMessage::RegisterBlockHeader { .. } => Some(()),
                         _ => panic!("Node isn't connected or didn't mark block as known."),
                     },
                 );
-                protocol_graph_event_receiver
+                protocol_consensus_event_receiver
             })
             .await
             .unwrap();
@@ -486,7 +486,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 network_controller,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_graph_event_receiver,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -503,7 +503,7 @@ async fn test_protocol_does_not_propagates_endorsements_when_receiving_those_ins
         async move |mut network_controller,
                     protocol_command_sender,
                     protocol_manager,
-                    protocol_graph_event_receiver,
+                    protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             // Create 2 nodes.
             let mut nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
@@ -551,7 +551,7 @@ async fn test_protocol_does_not_propagates_endorsements_when_receiving_those_ins
                 network_controller,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_graph_event_receiver,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },

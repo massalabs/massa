@@ -164,7 +164,7 @@ impl EndorsementFactoryWorker {
         // get consensus block ID for that slot
         let endorsed_block: BlockId = self
             .channels
-            .graph
+            .consensus
             .get_latest_blockclique_block_at_slot(slot);
 
         // produce endorsements

@@ -1,6 +1,6 @@
 use crate::start_protocol_controller;
 use futures::Future;
-use massa_graph_2_exports::test_exports::{GraphEventReceiver, MockGraphController};
+use massa_consensus_exports::test_exports::{ConsensusEventReceiver, MockConsensusController};
 use massa_models::{
     block::{BlockId, WrappedBlock},
     node::NodeId,
@@ -22,7 +22,7 @@ where
         MockNetworkController,
         ProtocolCommandSender,
         ProtocolManager,
-        GraphEventReceiver,
+        ConsensusEventReceiver,
         PoolEventReceiver,
     ) -> V,
     V: Future<
@@ -30,7 +30,7 @@ where
             MockNetworkController,
             ProtocolCommandSender,
             ProtocolManager,
-            GraphEventReceiver,
+            ConsensusEventReceiver,
             PoolEventReceiver,
         ),
     >,
@@ -39,7 +39,7 @@ where
         MockNetworkController::new();
 
     let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
-    let (graph_controller, graph_event_receiver) = MockGraphController::new_with_receiver();
+    let (consensus_controller, consensus_event_receiver) = MockConsensusController::new_with_receiver();
     // start protocol controller
     let (protocol_command_sender, protocol_command_receiver) =
         mpsc::channel(protocol_config.controller_channel_size);
@@ -49,7 +49,7 @@ where
         network_command_sender,
         network_event_receiver,
         protocol_command_receiver,
-        graph_controller,
+        consensus_controller,
         pool_controller,
         Storage::create_root(),
     )
@@ -61,13 +61,13 @@ where
         _network_controller,
         _protocol_command_sender,
         protocol_manager,
-        _graph_event_receiver,
+        _consensus_event_receiver,
         _pool_event_receiver,
     ) = test(
         network_controller,
         protocol_command_sender,
         protocol_manager,
-        graph_event_receiver,
+        consensus_event_receiver,
         pool_event_receiver,
     )
     .await;
@@ -84,7 +84,7 @@ where
         MockNetworkController,
         ProtocolCommandSender,
         ProtocolManager,
-        GraphEventReceiver,
+        ConsensusEventReceiver,
         PoolEventReceiver,
         Storage,
     ) -> V,
@@ -93,7 +93,7 @@ where
             MockNetworkController,
             ProtocolCommandSender,
             ProtocolManager,
-            GraphEventReceiver,
+            ConsensusEventReceiver,
             PoolEventReceiver,
         ),
     >,
@@ -101,7 +101,7 @@ where
     let (network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
     let (pool_controller, mock_pool_receiver) = MockPoolController::new_with_receiver();
-    let (graph_controller, mock_graph_receiver) = MockGraphController::new_with_receiver();
+    let (consensus_controller, mock_consensus_receiver) = MockConsensusController::new_with_receiver();
     let storage = Storage::create_root();
     // start protocol controller
     let (protocol_command_sender, protocol_command_receiver) =
@@ -111,7 +111,7 @@ where
         network_command_sender,
         network_event_receiver,
         protocol_command_receiver,
-        graph_controller,
+        consensus_controller,
         pool_controller,
         storage.clone(),
     )
@@ -123,13 +123,13 @@ where
         _network_controller,
         _protocol_command_sender,
         protocol_manager,
-        _graph_event_receiver,
+        _consensus_event_receiver,
         _protocol_pool_event_receiver,
     ) = test(
         network_controller,
         protocol_command_sender,
         protocol_manager,
-        mock_graph_receiver,
+        mock_consensus_receiver,
         mock_pool_receiver,
         storage,
     )

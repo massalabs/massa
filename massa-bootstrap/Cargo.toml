@@ -27,7 +27,7 @@ tracing = "0.1"
 # custom modules
 massa_async_pool = { path = "../massa-async-pool" }
 massa_final_state = { path = "../massa-final-state" }
-massa_graph_2_exports = { path = "../massa-graph-2-exports" }
+massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_hash = { path = "../massa-hash" }
 massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_logging = { path = "../massa-logging" }
@@ -56,7 +56,7 @@ massa_pos_exports = { path = "../massa-pos-exports", features = ["testing"] }
 testing = [
     "massa_final_state/testing",
     "massa_ledger_worker/testing",
-    "massa_graph_2_exports/testing",
+    "massa_consensus_exports/testing",
     "massa_async_pool/testing",
 ]
 sandbox = [

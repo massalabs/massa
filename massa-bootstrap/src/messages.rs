@@ -4,12 +4,12 @@ use massa_async_pool::{
     AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
     AsyncPoolDeserializer, AsyncPoolSerializer,
 };
+use massa_consensus_exports::bootstrapable_graph::{
+    BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
+};
 use massa_final_state::{
     ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer, StateChanges,
     StateChangesDeserializer, StateChangesSerializer,
-};
-use massa_graph_2_exports::bootstrapable_graph::{
-    BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
 };
 use massa_ledger_exports::{KeyDeserializer, KeySerializer};
 use massa_models::operation::{OperationId, OperationIdDeserializer, OperationIdSerializer};

@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::tools::{protocol_test, send_and_propagate_block};
-use massa_graph_2_exports::test_exports::MockGraphControllerMessage;
+use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
 use massa_hash::Hash;
 use massa_models::operation::OperationId;
 use massa_models::wrapped::{Id, WrappedContent};
@@ -28,7 +28,7 @@ async fn test_protocol_does_propagate_operations_received_in_blocks() {
         async move |mut network_controller,
                     mut protocol_command_sender,
                     protocol_manager,
-                    mut protocol_graph_event_receiver,
+                    mut protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             // Create 2 node.
             let mut nodes = create_and_connect_nodes(2, &mut network_controller).await;
@@ -65,20 +65,20 @@ async fn test_protocol_does_propagate_operations_received_in_blocks() {
             .await;
 
             // Check protocol sends block to consensus.
-            let (protocol_graph_event_receiver, expected_hash) =
+            let (protocol_consensus_event_receiver, expected_hash) =
                 tokio::task::spawn_blocking(move || {
-                    let header_id = protocol_graph_event_receiver
+                    let header_id = protocol_consensus_event_receiver
                         .wait_command(MassaTime::from_millis(1000), |command| match command {
-                            MockGraphControllerMessage::RegisterBlockHeader {
+                            MockConsensusControllerMessage::RegisterBlockHeader {
                                 block_id,
                                 header: _,
                             } => Some(block_id),
                             _ => panic!("Unexpected or no protocol event."),
                         })
                         .unwrap();
-                    let id = protocol_graph_event_receiver
+                    let id = protocol_consensus_event_receiver
                         .wait_command(MassaTime::from_millis(1000), |command| match command {
-                            MockGraphControllerMessage::RegisterBlock {
+                            MockConsensusControllerMessage::RegisterBlock {
                                 block_id,
                                 slot: _,
                                 block_storage: _,
@@ -88,7 +88,7 @@ async fn test_protocol_does_propagate_operations_received_in_blocks() {
                         })
                         .unwrap();
                     assert_eq!(header_id, id);
-                    (protocol_graph_event_receiver, id)
+                    (protocol_consensus_event_receiver, id)
                 })
                 .await
                 .unwrap();
@@ -113,7 +113,7 @@ async fn test_protocol_does_propagate_operations_received_in_blocks() {
                 network_controller,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_graph_event_receiver,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -136,7 +136,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
         async move |mut network_controller,
                     mut protocol_command_sender,
                     protocol_manager,
-                    mut protocol_graph_event_receiver,
+                    mut protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             // Create 1 node.
             let mut nodes = create_and_connect_nodes(1, &mut network_controller).await;
@@ -174,20 +174,20 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 .await;
 
                 // Check protocol sends block to consensus.
-                let (new_protocol_graph_event_receiver, expected_hash) =
+                let (new_protocol_consensus_event_receiver, expected_hash) =
                     tokio::task::spawn_blocking(move || {
-                        let header_id = protocol_graph_event_receiver
+                        let header_id = protocol_consensus_event_receiver
                             .wait_command(MassaTime::from_millis(1000), |command| match command {
-                                MockGraphControllerMessage::RegisterBlockHeader {
+                                MockConsensusControllerMessage::RegisterBlockHeader {
                                     block_id,
                                     header: _,
                                 } => Some(block_id),
                                 _ => panic!("Unexpected or no protocol event."),
                             })
                             .unwrap();
-                        let id = protocol_graph_event_receiver
+                        let id = protocol_consensus_event_receiver
                             .wait_command(MassaTime::from_millis(1000), |command| match command {
-                                MockGraphControllerMessage::RegisterBlock {
+                                MockConsensusControllerMessage::RegisterBlock {
                                     block_id,
                                     slot: _,
                                     block_storage: _,
@@ -197,11 +197,11 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                             })
                             .unwrap();
                         assert_eq!(header_id, id);
-                        (protocol_graph_event_receiver, id)
+                        (protocol_consensus_event_receiver, id)
                     })
                     .await
                     .unwrap();
-                protocol_graph_event_receiver = new_protocol_graph_event_receiver;
+                protocol_consensus_event_receiver = new_protocol_consensus_event_receiver;
                 assert_eq!(expected_hash, block_id);
             }
 
@@ -245,23 +245,23 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 .await;
 
                 // Check protocol didn't send block to consensus.
-                let (new_protocol_graph_event_receiver, optional_expected_hash) =
+                let (new_protocol_consensus_event_receiver, optional_expected_hash) =
                     tokio::task::spawn_blocking(move || {
-                        let id = protocol_graph_event_receiver.wait_command(
+                        let id = protocol_consensus_event_receiver.wait_command(
                             MassaTime::from_millis(1000),
                             |command| match command {
-                                MockGraphControllerMessage::RegisterBlockHeader {
+                                MockConsensusControllerMessage::RegisterBlockHeader {
                                     block_id,
                                     header: _,
                                 } => Some(block_id),
                                 _ => None,
                             },
                         );
-                        (protocol_graph_event_receiver, id)
+                        (protocol_consensus_event_receiver, id)
                     })
                     .await
                     .unwrap();
-                protocol_graph_event_receiver = new_protocol_graph_event_receiver;
+                protocol_consensus_event_receiver = new_protocol_consensus_event_receiver;
                 assert!(
                     optional_expected_hash.is_none(),
                     "Block sent to consensus but shouldn't."
@@ -289,23 +289,23 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 .await;
 
                 // Check protocol didn't send block to consensus.
-                let (new_protocol_graph_event_receiver, optional_expected_hash) =
+                let (new_protocol_consensus_event_receiver, optional_expected_hash) =
                     tokio::task::spawn_blocking(move || {
-                        let id = protocol_graph_event_receiver.wait_command(
+                        let id = protocol_consensus_event_receiver.wait_command(
                             MassaTime::from_millis(1000),
                             |command| match command {
-                                MockGraphControllerMessage::RegisterBlockHeader {
+                                MockConsensusControllerMessage::RegisterBlockHeader {
                                     block_id,
                                     header: _,
                                 } => Some(block_id),
                                 _ => None,
                             },
                         );
-                        (protocol_graph_event_receiver, id)
+                        (protocol_consensus_event_receiver, id)
                     })
                     .await
                     .unwrap();
-                protocol_graph_event_receiver = new_protocol_graph_event_receiver;
+                protocol_consensus_event_receiver = new_protocol_consensus_event_receiver;
                 assert!(
                     optional_expected_hash.is_none(),
                     "Block sent to consensus but shouldn't."
@@ -316,7 +316,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 network_controller,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_graph_event_receiver,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },

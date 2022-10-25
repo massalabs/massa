@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::tools::protocol_test;
-use massa_graph_2_exports::test_exports::MockGraphControllerMessage;
+use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
 use massa_models::prehash::PreHashSet;
 use massa_models::{block::BlockId, slot::Slot};
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand};
@@ -21,7 +21,7 @@ async fn test_full_ask_block_workflow() {
         async move |mut network_controller,
                     mut protocol_command_sender,
                     protocol_manager,
-                    mut protocol_graph_event_receiver,
+                    mut protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
@@ -105,13 +105,13 @@ async fn test_full_ask_block_workflow() {
                 )
                 .await;
 
-            let protocol_graph_event_receiver = tokio::task::spawn_blocking(move || {
+            let protocol_consensus_event_receiver = tokio::task::spawn_blocking(move || {
                 // Protocol sends expected block to consensus.
                 loop {
-                    match protocol_graph_event_receiver.wait_command(
+                    match protocol_consensus_event_receiver.wait_command(
                         MassaTime::from_millis(100),
                         |command| match command {
-                            MockGraphControllerMessage::RegisterBlock {
+                            MockConsensusControllerMessage::RegisterBlock {
                                 slot,
                                 block_id,
                                 block_storage,
@@ -138,7 +138,7 @@ async fn test_full_ask_block_workflow() {
                         }
                     }
                 }
-                return protocol_graph_event_receiver;
+                return protocol_consensus_event_receiver;
             })
             .await
             .unwrap();
@@ -147,7 +147,7 @@ async fn test_full_ask_block_workflow() {
                 network_controller,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_graph_event_receiver,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -166,7 +166,7 @@ async fn test_empty_block() {
         async move |mut network_controller,
                     mut protocol_command_sender,
                     protocol_manager,
-                    mut protocol_graph_event_receiver,
+                    mut protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
@@ -229,12 +229,12 @@ async fn test_empty_block() {
             );
 
             // Protocol sends expected block to consensus.
-            let protocol_graph_event_receiver = tokio::task::spawn_blocking(move || {
+            let protocol_consensus_event_receiver = tokio::task::spawn_blocking(move || {
                 loop {
-                    match protocol_graph_event_receiver.wait_command(
+                    match protocol_consensus_event_receiver.wait_command(
                         MassaTime::from_millis(100),
                         |command| match command {
-                            MockGraphControllerMessage::RegisterBlock {
+                            MockConsensusControllerMessage::RegisterBlock {
                                 slot,
                                 block_id,
                                 block_storage,
@@ -261,7 +261,7 @@ async fn test_empty_block() {
                         }
                     }
                 }
-                protocol_graph_event_receiver
+                protocol_consensus_event_receiver
             })
             .await
             .unwrap();
@@ -269,7 +269,7 @@ async fn test_empty_block() {
                 network_controller,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_graph_event_receiver,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -287,7 +287,7 @@ async fn test_someone_knows_it() {
         async move |mut network_controller,
                     mut protocol_command_sender,
                     protocol_manager,
-                    mut protocol_graph_event_receiver,
+                    mut protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
@@ -318,15 +318,15 @@ async fn test_someone_knows_it() {
                 .send_header(node_c.id, block.content.header.clone())
                 .await;
 
-            let protocol_graph_event_receiver = tokio::task::spawn_blocking(move || {
-                protocol_graph_event_receiver.wait_command(
+            let protocol_consensus_event_receiver = tokio::task::spawn_blocking(move || {
+                protocol_consensus_event_receiver.wait_command(
                     MassaTime::from_millis(100),
                     |command| match command {
-                        MockGraphControllerMessage::RegisterBlockHeader { .. } => Some(()),
+                        MockConsensusControllerMessage::RegisterBlockHeader { .. } => Some(()),
                         _ => panic!("unexpected protocol event"),
                     },
                 );
-                protocol_graph_event_receiver
+                protocol_consensus_event_receiver
             })
             .await
             .unwrap();
@@ -378,7 +378,7 @@ async fn test_someone_knows_it() {
                 network_controller,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_graph_event_receiver,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -396,7 +396,7 @@ async fn test_dont_want_it_anymore() {
         async move |mut network_controller,
                     mut protocol_command_sender,
                     protocol_manager,
-                    protocol_graph_event_receiver,
+                    protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
@@ -452,7 +452,7 @@ async fn test_dont_want_it_anymore() {
                 network_controller,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_graph_event_receiver,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -471,7 +471,7 @@ async fn test_no_one_has_it() {
         async move |mut network_controller,
                     mut protocol_command_sender,
                     protocol_manager,
-                    protocol_graph_event_receiver,
+                    protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
@@ -533,7 +533,7 @@ async fn test_no_one_has_it() {
                 network_controller,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_graph_event_receiver,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -551,7 +551,7 @@ async fn test_multiple_blocks_without_a_priori() {
         async move |mut network_controller,
                     mut protocol_command_sender,
                     protocol_manager,
-                    protocol_graph_event_receiver,
+                    protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
@@ -606,7 +606,7 @@ async fn test_multiple_blocks_without_a_priori() {
                 network_controller,
                 protocol_command_sender,
                 protocol_manager,
-                protocol_graph_event_receiver,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },

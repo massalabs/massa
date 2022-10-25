@@ -8,8 +8,8 @@ use error::ApiError;
 use jsonrpc_core::{BoxFuture, IoHandler, Value};
 use jsonrpc_derive::rpc;
 use jsonrpc_http_server::{CloseHandle, ServerBuilder};
+use massa_consensus_exports::ConsensusController;
 use massa_execution_exports::ExecutionController;
-use massa_graph_2_exports::GraphController;
 use massa_models::api::{
     AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
     EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
@@ -52,8 +52,8 @@ pub use config::APIConfig;
 
 /// Public API component
 pub struct Public {
-    /// link to the graph component
-    pub graph_controller: Box<dyn GraphController>,
+    /// link to the consensus component
+    pub consensus_controller: Box<dyn ConsensusController>,
     /// link to the execution component
     pub execution_controller: Box<dyn ExecutionController>,
     /// link to the selector component

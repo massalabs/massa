@@ -5,7 +5,7 @@ use crate::checked_operations::CheckedOperations;
 use crate::sig_verifier::verify_sigs_batch;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 
-use massa_graph_2_exports::GraphController;
+use massa_consensus_exports::ConsensusController;
 use massa_logging::massa_trace;
 
 use massa_models::slot::Slot;
@@ -51,7 +51,7 @@ pub async fn start_protocol_controller(
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
     protocol_command_receiver: mpsc::Receiver<ProtocolCommand>,
-    graph_controller: Box<dyn GraphController>,
+    consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
 ) -> Result<ProtocolManager, ProtocolError> {
@@ -69,7 +69,7 @@ pub async fn start_protocol_controller(
                 controller_command_rx: protocol_command_receiver,
                 controller_manager_rx,
             },
-            graph_controller,
+            consensus_controller,
             pool_controller,
             storage,
         )
@@ -119,8 +119,8 @@ impl BlockInfo {
 pub struct ProtocolWorker {
     /// Protocol configuration.
     pub(crate) config: ProtocolConfig,
-    /// Graph controller
-    pub(crate) graph_controller: Box<dyn GraphController>,
+    /// Consensus controller
+    pub(crate) consensus_controller: Box<dyn ConsensusController>,
     /// Associated network command sender.
     pub(crate) network_command_sender: NetworkCommandSender,
     /// Associated network event receiver.
@@ -181,7 +181,7 @@ impl ProtocolWorker {
             controller_command_rx,
             controller_manager_rx,
         }: ProtocolWorkerChannels,
-        graph_controller: Box<dyn GraphController>,
+        consensus_controller: Box<dyn ConsensusController>,
         pool_controller: Box<dyn PoolController>,
         storage: Storage,
     ) -> ProtocolWorker {
@@ -189,7 +189,7 @@ impl ProtocolWorker {
             config,
             network_command_sender,
             network_event_receiver,
-            graph_controller,
+            consensus_controller,
             pool_controller,
             controller_command_rx,
             controller_manager_rx,
