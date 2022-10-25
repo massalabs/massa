@@ -122,14 +122,18 @@ pub struct StateChangesDeserializer {
 
 impl StateChangesDeserializer {
     /// Creates a `StateChangesDeserializer`
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         thread_count: u8,
         max_async_pool_changes: u64,
-        max_data_async_message: u64,
+        max_async_message_data: u64,
         max_ledger_changes_count: u64,
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
+        max_rolls_length: u64,
+        max_production_stats_length: u64,
+        max_credits_length: u64,
     ) -> Self {
         Self {
             ledger_changes_deserializer: LedgerChangesDeserializer::new(
@@ -141,9 +145,14 @@ impl StateChangesDeserializer {
             async_pool_changes_deserializer: AsyncPoolChangesDeserializer::new(
                 thread_count,
                 max_async_pool_changes,
-                max_data_async_message,
+                max_async_message_data,
             ),
-            pos_changes_deserializer: PoSChangesDeserializer::new(thread_count),
+            pos_changes_deserializer: PoSChangesDeserializer::new(
+                thread_count,
+                max_rolls_length,
+                max_production_stats_length,
+                max_credits_length,
+            ),
             executed_ops_deserializer: ExecutedOpsDeserializer::new(thread_count),
         }
     }
@@ -192,7 +201,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// state_changes.ledger_changes = ledger_changes;
     /// let mut serialized = Vec::new();
     /// StateChangesSerializer::new().serialize(&state_changes, &mut serialized).unwrap();
-    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(32, 255, 255, 255, 255, 255, 255).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(32, 255, 255, 255, 255, 255, 255, 255, 255, 255).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(state_changes_deser.ledger_changes, state_changes.ledger_changes);
     /// assert_eq!(state_changes_deser.async_pool_changes, state_changes.async_pool_changes);
