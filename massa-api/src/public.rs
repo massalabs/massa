@@ -379,7 +379,9 @@ impl Endpoints for API<Public> {
                 .get_cycle_active_rolls(curr_cycle)
                 .into_iter()
                 .collect::<Vec<(Address, u64)>>();
-            staker_vec.sort_by_key(|(_, rolls)| *rolls);
+            staker_vec.sort_by(|&(_, roll_counts_a), &(_, roll_counts_b)| {
+                roll_counts_b.cmp(&roll_counts_a)
+            });
             Ok(staker_vec)
         };
         Box::pin(closure())
