@@ -165,9 +165,9 @@ async fn bootstrap_from_server(
             massa_trace!("bootstrap.lib.bootstrap_from_server: No error sent at connection", {});
         }
         Ok(Err(e)) => return Err(e),
-        Ok(Ok(BootstrapServerMessage::BootstrapError{error: _})) => {
+        Ok(Ok(BootstrapServerMessage::BootstrapError{error: err})) => {
             return Err(BootstrapError::ReceivedError(
-                "Bootstrap cancelled on this server because there is no slots available on this server. Will try to bootstrap to another node soon.".to_string()
+               err
             ))
         }
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedServerMessage(msg))

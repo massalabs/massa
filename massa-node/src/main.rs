@@ -155,6 +155,7 @@ async fn launch(
 
     let bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
+        bootstrap_whitelist_file: SETTINGS.bootstrap.bootstrap_whitelist_file.clone(),
         bind: SETTINGS.bootstrap.bind,
         connect_timeout: SETTINGS.bootstrap.connect_timeout,
         read_timeout: SETTINGS.bootstrap.read_timeout,
