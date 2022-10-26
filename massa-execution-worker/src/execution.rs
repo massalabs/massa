@@ -652,8 +652,8 @@ impl ExecutionState {
             // This needs to be defined before anything can fail, so that the emitted event contains the right stack
             context.stack = vec![ExecutionStackElement {
                 address: addr_denounced,
-                coins: amount,
-                owned_addresses: vec![],
+                coins: Default::default(),
+                owned_addresses: vec![addr_denounced],
                 operation_datastore: None,
             }];
 

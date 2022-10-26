@@ -921,7 +921,7 @@ impl ProtocolWorker {
         }
 
 
-        if let Err(e) = self.de_factory_sender.send(
+        if let Err(e) = self.de_factory_sender.try_send(
             DenunciationInterest::WrappedHeader(header.clone())) {
             debug!("Unable to send BlockHeader to DenunciationFactory: {}", e);
         }
@@ -1031,7 +1031,7 @@ impl ProtocolWorker {
                 .collect::<Vec<WrappedOperation>>();
 
             if !de_interest_ops.is_empty() {
-                if let Err(e) = self.de_factory_sender.send(
+                if let Err(e) = self.de_factory_sender.try_send(
                     DenunciationInterest::WrappedOperations(de_interest_ops)) {
                     debug!("Unable to send Operations to DenunciationFactory: {}", e);
                 }

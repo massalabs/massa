@@ -522,25 +522,28 @@ impl SpeculativeRollState {
         }
 
         // If not found, try to rm from active history
-        let mut hist = self.active_history.write();
-        while amount_removed < *amount {
-            match hist.0.iter_mut().rev().next() {
-                None => break,
-                Some(hist_item) => {
-                    let res = hist_item
-                        .state_changes
-                        .pos_changes
-                        .deferred_credits
-                        .sub_amount(slot, addr, &amount_to_rm);
+        // Early test to avoid locking active history
+        if amount_removed < *amount {
+            let mut hist = self.active_history.write();
+            while amount_removed < *amount {
+                match hist.0.iter_mut().rev().next() {
+                    None => break,
+                    Some(hist_item) => {
+                        let res = hist_item
+                            .state_changes
+                            .pos_changes
+                            .deferred_credits
+                            .sub_amount(slot, addr, &amount_to_rm);
 
-                    if let Some(a) = res {
-                        amount_removed = amount_removed.checked_add(a)?;
-                        amount_to_rm = amount_to_rm.checked_sub(amount_removed)?;
+                        if let Some(a) = res {
+                            amount_removed = amount_removed.checked_add(a)?;
+                            amount_to_rm = amount_to_rm.checked_sub(amount_removed)?;
+                        }
                     }
                 }
             }
+            drop(hist);
         }
-        drop(hist);
 
         // At the end, try in final state
         if amount_removed < *amount {
