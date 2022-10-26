@@ -199,7 +199,6 @@ impl BlockFactoryWorker {
         // TODO: add doc about why we stole those
         let ops = op_storage.read_operations();
         let mut new_ops: Vec<WrappedOperation> = Vec::new();
-        let new_ops_ref = &mut new_ops;
         let op_ids: Vec<OperationId> = op_ids_
             .into_iter()
             .map(|op_id| {
@@ -218,7 +217,7 @@ impl BlockFactoryWorker {
                                                block_producer_keypair).unwrap();
 
                         let op_id_ = wrapped_op.id;
-                        new_ops_ref.push(wrapped_op);
+                        new_ops.push(wrapped_op);
                         op_id_
                     },
                     _ => op_id,
