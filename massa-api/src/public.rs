@@ -3,7 +3,7 @@
 
 use crate::config::APIConfig;
 use crate::error::ApiError;
-use crate::{Endpoints, Public, RpcServer, StopHandle, API};
+use crate::{Endpoints, Public, RpcServer, StopHandle, API, Value, serde_json};
 use jsonrpc_core::BoxFuture;
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::{
@@ -422,7 +422,7 @@ impl Endpoints for API<Public> {
         // ask pool whether it carries the operations
         let in_pool = self.0.pool_command_sender.contains_operations(&ops);
 
-        let api_cfg = self.0.api_settings;
+        let api_cfg = self.0.api_settings.clone();
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let closure = async move || {
             if ops.len() as u64 > api_cfg.max_arguments {
@@ -507,7 +507,7 @@ impl Endpoints for API<Public> {
         let in_pool = self.0.pool_command_sender.contains_endorsements(&eds);
 
         let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let api_cfg = self.0.api_settings;
+        let api_cfg = self.0.api_settings.clone();
         let closure = async move || {
             if eds.len() as u64 > api_cfg.max_arguments {
                 return Err(ApiError::BadRequest("too many arguments".into()));
@@ -846,7 +846,7 @@ impl Endpoints for API<Public> {
     ) -> BoxFuture<Result<Vec<OperationId>, ApiError>> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
         let mut protocol_sender = self.0.protocol_command_sender.clone();
-        let api_cfg = self.0.api_settings;
+        let api_cfg = self.0.api_settings.clone();
         let mut to_send = self.0.storage.clone_without_refs();
         let closure = async move || {
             if ops.len() as u64 > api_cfg.max_arguments {
@@ -923,5 +923,16 @@ impl Endpoints for API<Public> {
 
     fn node_remove_from_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
         crate::wrong_api::<()>()
+    }
+
+    fn get_openrpc_spec(&self) -> BoxFuture<Result<Value, ApiError>> {
+        let openrpc_spec_path = self.0.api_settings.openrpc_spec_path.clone();
+        let closure = async move || {
+        std::fs::read_to_string(openrpc_spec_path)
+        .map_err(|e| ApiError::InternalServerError(e.to_string()))
+        .and_then(|openrpc_str| serde_json::from_str(&openrpc_str).map_err(|e| ApiError::InternalServerError(e.to_string())))
+        };
+
+        Box::pin(closure())
     }
 }

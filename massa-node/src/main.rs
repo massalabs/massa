@@ -453,6 +453,7 @@ async fn launch(
         bind_public: SETTINGS.api.bind_public,
         draw_lookahead_period_count: SETTINGS.api.draw_lookahead_period_count,
         max_arguments: SETTINGS.api.max_arguments,
+        openrpc_spec_path: SETTINGS.api.openrpc_spec_path.clone(),
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
@@ -465,7 +466,7 @@ async fn launch(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
         execution_controller.clone(),
-        api_config,
+        api_config.clone(),
         consensus_config.clone(),
         node_wallet,
     );

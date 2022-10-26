@@ -46,6 +46,8 @@ pub enum ApiError {
     WrongAPI,
     /// Bad request: {0}
     BadRequest(String),
+    /// Internal server error: {0}
+    InternalServerError(String),
 }
 
 impl From<ApiError> for jsonrpc_core::Error {
@@ -53,6 +55,7 @@ impl From<ApiError> for jsonrpc_core::Error {
         // JSON-RPC Server errors codes must be between -32099 to -32000
         let code = match err {
             ApiError::BadRequest(_) => -32000,
+            ApiError::InternalServerError(_) => -32001,
             ApiError::NotFound => -32004,
             ApiError::SendChannelError(_) => -32006,
             ApiError::ReceiveChannelError(_) => -32007,
