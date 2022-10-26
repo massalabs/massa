@@ -859,6 +859,8 @@ impl Endpoints for API<Public> {
                 api_cfg.max_op_datastore_entry_count,
                 api_cfg.max_op_datastore_key_length,
                 api_cfg.max_op_datastore_value_length,
+                api_cfg.thread_count,
+                api_cfg.endorsement_count,
             ));
             let verified_ops = ops
                 .into_iter()

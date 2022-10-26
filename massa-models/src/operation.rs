@@ -298,6 +298,8 @@ impl OperationDeserializer {
         max_op_datastore_entry_count: u64,
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
+        thread_count: u8,
+        endorsement_count: u32,
     ) -> Self {
         Self {
             expire_period_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
@@ -312,6 +314,8 @@ impl OperationDeserializer {
                 max_op_datastore_entry_count,
                 max_op_datastore_key_length,
                 max_op_datastore_value_length,
+                thread_count,
+                endorsement_count
             ),
         }
     }
@@ -337,7 +341,7 @@ impl Deserializer<Operation> for OperationDeserializer {
     /// };
     /// let mut buffer = Vec::new();
     /// OperationSerializer::new().serialize(&operation, &mut buffer).unwrap();
-    /// let (rest, deserialized_operation) = OperationDeserializer::new(10000, 10000, 10000, 100, 255, 10_000).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, deserialized_operation) = OperationDeserializer::new(10000, 10000, 10000, 100, 255, 10_000, 32, 16).deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// assert_eq!(deserialized_operation.fee, operation.fee);
     /// assert_eq!(deserialized_operation.expire_period, operation.expire_period);
@@ -627,6 +631,8 @@ impl OperationTypeDeserializer {
         max_op_datastore_entry_count: u64,
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
+        thread_count: u8,
+        endorsement_count: u32,
     ) -> Self {
         Self {
             id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
@@ -655,8 +661,7 @@ impl OperationTypeDeserializer {
                 max_op_datastore_value_length,
             ),
             denunciation_deserializer: DenunciationDeserializer::new(
-                // FIXME
-                32, 16,
+                thread_count, endorsement_count,
             ),
         }
     }
@@ -680,7 +685,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
     /// };
     /// let mut buffer = Vec::new();
     /// OperationTypeSerializer::new().serialize(&op, &mut buffer).unwrap();
-    /// let (rest, op_deserialized) = OperationTypeDeserializer::new(10000, 10000, 10000, 10, 255, 10_000).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, op_deserialized) = OperationTypeDeserializer::new(10000, 10000, 10000, 10, 255, 10_000, 32, 16).deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// match op_deserialized {
     ///    OperationType::ExecuteSC {
@@ -1257,6 +1262,8 @@ impl OperationsDeserializer {
         max_op_datastore_entry_count: u64,
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
+        thread_count: u8,
+        endorsement_count: u32
     ) -> Self {
         Self {
             length_deserializer: U32VarIntDeserializer::new(
@@ -1270,6 +1277,8 @@ impl OperationsDeserializer {
                 max_op_datastore_entry_count,
                 max_op_datastore_key_length,
                 max_op_datastore_value_length,
+                thread_count,
+                endorsement_count,
             )),
         }
     }
@@ -1297,7 +1306,7 @@ impl Deserializer<Vec<WrappedOperation>> for OperationsDeserializer {
     /// let operations = vec![op_wrapped.clone(), op_wrapped.clone()];
     /// let mut buffer = Vec::new();
     /// OperationsSerializer::new().serialize(&operations, &mut buffer).unwrap();
-    /// let (rest, deserialized_operations) = OperationsDeserializer::new(10000, 10000, 10000, 10000, 10, 255, 10_000).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, deserialized_operations) = OperationsDeserializer::new(10000, 10000, 10000, 10000, 10, 255, 10_000, 32, 16).deserialize::<DeserializeError>(&buffer).unwrap();
     /// for (operation1, operation2) in deserialized_operations.iter().zip(operations.iter()) {
     ///     assert_eq!(operation1.id, operation2.id);
     ///     assert_eq!(operation1.signature, operation2.signature);
@@ -1326,11 +1335,7 @@ impl Deserializer<Vec<WrappedOperation>> for OperationsDeserializer {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::{
-        MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-        MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-        MAX_PARAMETERS_SIZE,
-    };
+    use crate::config::{ENDORSEMENT_COUNT, MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, THREAD_COUNT};
 
     use super::*;
     use crate::denunciation::{DenunciationProof, EndorsementDenunciation};
@@ -1339,6 +1344,7 @@ mod tests {
     use massa_signature::KeyPair;
     use serial_test::serial;
     use std::collections::BTreeMap;
+    use crate::denunciation::DenunciationProof::Endorsement;
 
     #[test]
     #[serial]
@@ -1361,6 +1367,8 @@ mod tests {
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            THREAD_COUNT,
+            ENDORSEMENT_COUNT
         )
         .deserialize::<DeserializeError>(&ser_type)
         .unwrap();
@@ -1384,6 +1392,8 @@ mod tests {
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            THREAD_COUNT,
+            ENDORSEMENT_COUNT
         )
         .deserialize::<DeserializeError>(&ser_content)
         .unwrap();
@@ -1405,6 +1415,8 @@ mod tests {
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                 MAX_OPERATION_DATASTORE_KEY_LENGTH,
                 MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+                THREAD_COUNT,
+                ENDORSEMENT_COUNT
             ))
             .deserialize::<DeserializeError>(&ser_op)
             .unwrap();
@@ -1438,6 +1450,8 @@ mod tests {
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            THREAD_COUNT,
+            ENDORSEMENT_COUNT
         )
         .deserialize::<DeserializeError>(&ser_type)
         .unwrap();
@@ -1460,6 +1474,8 @@ mod tests {
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            THREAD_COUNT,
+            ENDORSEMENT_COUNT
         )
         .deserialize::<DeserializeError>(&ser_content)
         .unwrap();
@@ -1480,6 +1496,8 @@ mod tests {
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                 MAX_OPERATION_DATASTORE_KEY_LENGTH,
                 MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+                THREAD_COUNT,
+                ENDORSEMENT_COUNT
             ))
             .deserialize::<DeserializeError>(&ser_op)
             .unwrap();
@@ -1515,6 +1533,8 @@ mod tests {
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            THREAD_COUNT,
+            ENDORSEMENT_COUNT
         )
         .deserialize::<DeserializeError>(&ser_type)
         .unwrap();
@@ -1537,6 +1557,8 @@ mod tests {
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            THREAD_COUNT,
+            ENDORSEMENT_COUNT
         )
         .deserialize::<DeserializeError>(&ser_content)
         .unwrap();
@@ -1557,6 +1579,8 @@ mod tests {
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                 MAX_OPERATION_DATASTORE_KEY_LENGTH,
                 MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+                THREAD_COUNT,
+                ENDORSEMENT_COUNT
             ))
             .deserialize::<DeserializeError>(&ser_op)
             .unwrap();
@@ -1609,6 +1633,8 @@ mod tests {
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            THREAD_COUNT,
+            ENDORSEMENT_COUNT
         )
         .deserialize::<DeserializeError>(&ser_type)
         .unwrap();
@@ -1632,6 +1658,8 @@ mod tests {
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            THREAD_COUNT,
+            ENDORSEMENT_COUNT
         )
         .deserialize::<DeserializeError>(&ser_content)
         .unwrap();
@@ -1652,6 +1680,8 @@ mod tests {
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                 MAX_OPERATION_DATASTORE_KEY_LENGTH,
                 MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+                THREAD_COUNT,
+                ENDORSEMENT_COUNT
             ))
             .deserialize::<DeserializeError>(&ser_op)
             .unwrap();

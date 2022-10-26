@@ -30,4 +30,8 @@ pub struct APIConfig {
     pub max_function_name_length: u16,
     /// max parameter size
     pub max_parameter_size: u32,
+    /// thread count
+    pub thread_count: u8,
+    /// endorsement count
+    pub endorsement_count: u32,
 }

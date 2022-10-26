@@ -484,6 +484,8 @@ async fn launch(
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_size: MAX_PARAMETERS_SIZE,
+        thread_count: THREAD_COUNT,
+        endorsement_count: ENDORSEMENT_COUNT
     };
     // spawn private API
     let (api_private, api_private_stop_rx) = API::<Private>::new(

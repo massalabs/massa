@@ -303,6 +303,8 @@ impl MessageDeserializer {
                 max_op_datastore_entry_count,
                 max_op_datastore_key_length,
                 max_op_datastore_value_length,
+                thread_count,
+                endorsement_count
             ),
             hash_deserializer: HashDeserializer::new(),
             block_header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new(

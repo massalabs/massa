@@ -218,6 +218,8 @@ impl ExportActiveBlockDeserializer {
                 max_op_datastore_entry_count,
                 max_op_datastore_key_length,
                 max_op_datastore_value_length,
+                thread_count,
+                endorsement_count
             )),
             operation_count_serializer: U32VarIntDeserializer::new(
                 Included(0),
