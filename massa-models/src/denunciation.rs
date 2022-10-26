@@ -38,6 +38,10 @@ pub struct EndorsementDenunciation {
 }
 
 impl EndorsementDenunciation {
+
+    /// Check if endorsement denunciation is valid
+    /// A valid endorsement denunciation is when we saw an endorsement at the same slot & index
+    /// AND with 2 != hash (otherwise we could produce denunciation with only 1 endorsement)
     fn is_valid(&self, public_key: PublicKey) -> bool {
         let to_verif = [
             (self.hash_1, self.signature_1, public_key),
@@ -70,6 +74,8 @@ pub struct BlockDenunciation {
 }
 
 impl BlockDenunciation {
+
+    /// Check if block denunciation is valid
     fn is_valid(&self, public_key: PublicKey) -> bool {
         let to_verif = [
             (self.hash_1, self.signature_1, public_key),
@@ -239,7 +245,7 @@ impl Serializer<Denunciation> for DenunciationSerializer {
         self.slot_serializer.serialize(&value.slot, buffer)?;
         buffer.extend(value.pub_key.to_bytes());
         let denunciation_kind = value.is_for_block() as u8;
-        buffer.extend([denunciation_kind]);
+        buffer.push(denunciation_kind);
 
         match value.proof.as_ref() {
             DenunciationProof::Endorsement(ed) => {
