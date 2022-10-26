@@ -139,8 +139,12 @@ impl DenunciationFactoryWorker {
                         wrapped_endos.iter()
                             .take(2)
                             .tuples()
-                            .map(|(we1, we2)| {
-                                Denunciation::from((we1, we2))
+                            .filter_map(|(we1, we2)| {
+                                let de = Denunciation::from((we1, we2));
+                                match de {
+                                    de if de.is_valid() => Some(de),
+                                    _ => None,
+                                }
                             })
                             .collect::<Vec<Denunciation>>()
                     );
@@ -228,8 +232,12 @@ impl DenunciationFactoryWorker {
                         wrapped_headers.iter()
                             .take(2)
                             .tuples()
-                            .map(|(wh1, wh2)| {
-                                Denunciation::from((wh1, wh2))
+                            .filter_map(|(wh1, wh2)| {
+                                let de = Denunciation::from((wh1, wh2));
+                                match de {
+                                    de if de.is_valid() => Some(de),
+                                    _ => None,
+                                }
                             })
                             .collect::<Vec<Denunciation>>()
                     );
