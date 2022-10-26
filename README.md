@@ -8,7 +8,7 @@ mass adoption.
 [![Bors enabled](https://bors.tech/images/badge_small.svg)](https://app.bors.tech/repositories/39543)
 [![Coverage Status](https://coveralls.io/repos/github/massalabs/massa/badge.svg?branch=main)](https://coveralls.io/github/massalabs/massa?branch=main)
 [![Docs](https://img.shields.io/static/v1?label=docs&message=massa&color=blue)](https://massalabs.github.io/massa/massa_node/)
-[![OpenRPC Playground](https://img.shields.io/static/v1?label=openrpc-playground&message=massa&color=blue)](https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercontent.com/massalabs/massa-docs/main/technical-doc/openrpc.json&uiSchema\[appBar\]\[ui:input\]=false&uiSchema\[appBar\]\[ui:inputPlaceholder\]=Enter+Massa+JSON-RPC+server+URL&uiSchema\[appBar\]\[ui:logoUrl\]=https://massa.net/favicons/favicon.ico&uiSchema\[appBar\]\[ui:splitView\]=false&uiSchema\[appBar\]\[ui:darkMode\]=false&uiSchema\[appBar\]\[ui:title\]=Massa&uiSchema\[appBar\]\[ui:examplesDropdown\]=false&uiSchema\[methods\]\[ui:defaultExpanded\]=false&uiSchema\[methods\]\[ui:methodPlugins\]=false&uiSchema\[params\]\[ui:defaultExpanded\]=false)
+[![OpenRPC Playground](https://img.shields.io/static/v1?label=explore-openrpc-specification&message=massa&color=blue)](https://playground.open-rpc.org/?schemaUrl=https://test.massa.net/api/v2&schema=https://raw.githubusercontent.com/massalabs/massa/main/openrpc.json&uiSchema\[appBar\]\[ui:input\]=false&uiSchema\[appBar\]\[ui:inputPlaceholder\]=Enter+Massa+JSON-RPC+server+URL&uiSchema\[appBar\]\[ui:logoUrl\]=https://massa.net/favicons/favicon.ico&uiSchema\[appBar\]\[ui:splitView\]=false&uiSchema\[appBar\]\[ui:darkMode\]=false&uiSchema\[appBar\]\[ui:title\]=Massa&uiSchema\[appBar\]\[ui:examplesDropdown\]=false&uiSchema\[methods\]\[ui:defaultExpanded\]=false&uiSchema\[methods\]\[ui:methodPlugins\]=true&uiSchema\[params\]\[ui:defaultExpanded\]=false)
 [![Open in Gitpod](https://shields.io/badge/Gitpod-contribute-brightgreen?logo=gitpod&style=flat)](https://gitpod.io/#https://github.com/massalabs/massa)
 
 ## Introduction
@@ -24,6 +24,9 @@ An easy-to-read blog post introduction with videos is written
 
 We are now releasing the **Massa testnet** in this GitHub repository,
 with its explorer available at <https://massa.net/testnet>.
+
+You can interact with Massa JSON-RPC public API on [OpenRPC Playground](https://playground.open-rpc.org/?schemaUrl=https://test.massa.net/api/v2&schema=https://raw.githubusercontent.com/massalabs/massa/main/openrpc.json&uiSchema\[appBar\]\[ui:input\]=false&uiSchema\[appBar\]\[ui:inputPlaceholder\]=Enter+Massa+JSON-RPC+server+URL&uiSchema\[appBar\]\[ui:logoUrl\]=https://massa.net/favicons/favicon.ico&uiSchema\[appBar\]\[ui:splitView\]=false&uiSchema\[appBar\]\[ui:darkMode\]=false&uiSchema\[appBar\]\[ui:title\]=Massa&uiSchema\[appBar\]\[ui:examplesDropdown\]=false&uiSchema\[methods\]\[ui:defaultExpanded\]=false&uiSchema\[methods\]\[ui:methodPlugins\]=true&uiSchema\[params\]\[ui:defaultExpanded\]=false)which is an equivalent of SwaggerUI for OpenAPI specifications.
+
 
 ## Testnet Incentives
 
