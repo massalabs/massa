@@ -525,8 +525,9 @@ impl SpeculativeRollState {
         // Early test to avoid locking active history
         if amount_removed < *amount {
             let mut hist = self.active_history.write();
+            let mut hist_iter = hist.0.iter_mut().rev();
             while amount_removed < *amount {
-                match hist.0.iter_mut().rev().next() {
+                match hist_iter.next() {
                     None => break,
                     Some(hist_item) => {
                         let res = hist_item
