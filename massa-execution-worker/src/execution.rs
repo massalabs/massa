@@ -15,7 +15,7 @@ use crate::stats::ExecutionStatsCounter;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
-    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
@@ -1009,7 +1009,7 @@ impl ExecutionState {
     pub(crate) fn execute_readonly_request(
         &self,
         req: ReadOnlyExecutionRequest,
-    ) -> Result<ExecutionOutput, ExecutionError> {
+    ) -> Result<ReadOnlyExecutionOutput, ExecutionError> {
         // TODO ensure that speculative things are reset after every execution ends (incl. on error and readonly)
         // otherwise, on prod stats accumulation etc... from the API we might be counting the remainder of this speculative execution
 
@@ -1031,14 +1031,14 @@ impl ExecutionState {
         );
 
         // run the intepreter according to the target type
-        match req.target {
+        let remaining_gas = match req.target {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) => {
                 // set the execution context for execution
                 *context_guard!(self) = execution_context;
 
                 // run the bytecode's main function
                 massa_sc_runtime::run_main(&bytecode, req.max_gas, &*self.execution_interface)
-                    .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
+                    .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
             }
             ReadOnlyExecutionTarget::FunctionCall {
                 target_addr,
@@ -1061,12 +1061,16 @@ impl ExecutionState {
                     &parameter,
                     &*self.execution_interface,
                 )
-                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
+                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
             }
-        }
+        };
 
         // return the execution output
-        Ok(context_guard!(self).settle_slot())
+        let execution_output = context_guard!(self).settle_slot();
+        Ok(ReadOnlyExecutionOutput {
+            out: execution_output,
+            gas_cost: req.max_gas.saturating_sub(remaining_gas),
+        })
     }
 
     /// Gets a balance both at the latest final and candidate executed slots
