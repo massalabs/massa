@@ -509,24 +509,23 @@ impl SpeculativeRollState {
     }
 
     /// Remove a given amount from deferred credits and return the removed amount
-    pub fn remove_deferred_credits(&mut self, slot: &Slot, addr: &Address, amount: &Amount) -> Option<Amount> {
+    pub fn remove_deferred_credits(&mut self, slot: &Slot, addr: &Address, amount: &Amount) -> Amount {
 
+        let amount_zero = Amount::zero();
         let mut amount_to_rm = *amount;
-        let mut amount_removed = Amount::zero();
 
         // First try to rm in added_changes
         let res = self.added_changes.deferred_credits.sub_amount(slot, addr, &amount_to_rm);
         if let Some(a) = res {
-            amount_removed = amount_removed.checked_add(a)?;
-            amount_to_rm = amount_to_rm.checked_sub(amount_removed)?;
+            amount_to_rm = amount_to_rm.saturating_sub(a);
         }
 
         // If not found, try to rm from active history
         // Early test to avoid locking active history
-        if amount_removed < *amount {
+        if amount_to_rm > amount_zero {
             let mut hist = self.active_history.write();
             let mut hist_iter = hist.0.iter_mut().rev();
-            while amount_removed < *amount {
+            while amount_to_rm > amount_zero {
                 match hist_iter.next() {
                     None => break,
                     Some(hist_item) => {
@@ -537,8 +536,7 @@ impl SpeculativeRollState {
                             .sub_amount(slot, addr, &amount_to_rm);
 
                         if let Some(a) = res {
-                            amount_removed = amount_removed.checked_add(a)?;
-                            amount_to_rm = amount_to_rm.checked_sub(amount_removed)?;
+                            amount_to_rm = amount_to_rm.saturating_sub(a);
                         }
                     }
                 }
@@ -547,7 +545,7 @@ impl SpeculativeRollState {
         }
 
         // At the end, try in final state
-        if amount_removed < *amount {
+        if amount_to_rm > amount_zero {
             let res = self
                 .final_state
                 .write()
@@ -555,11 +553,10 @@ impl SpeculativeRollState {
                 .rm_deferred_credits(slot, addr, amount);
 
             if let Some(a) = res {
-                amount_removed = amount_removed.checked_add(a)?;
-                // No need to update amount_to_tm here
+                amount_to_rm = amount_to_rm.saturating_sub(a)
             }
         }
 
-        Some(amount_removed)
+        amount.saturating_sub(amount_to_rm)
     }
 }

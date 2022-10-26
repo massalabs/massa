@@ -663,21 +663,16 @@ impl ExecutionContext {
                 )?;
 
             // Remove deferred credits starting at self.slot until
-            let mut amount_slashed = Amount::zero();
             let mut amount_to_rm = amount_to_slash;
             for (slot, _amount) in credits.iter() {
-                if amount_slashed >= amount_to_slash {
+                if amount_to_rm == Amount::zero() {
                     break;
                 }
-                let amount_slashed_at_slot_ = self.speculative_roll_state
+                let amount_slashed_at_slot = self.speculative_roll_state
                     .remove_deferred_credits(slot, denounced_addr, &amount_to_rm);
-
-                if let Some(amount_slashed_at_slot_) = amount_slashed_at_slot_ {
-                    amount_slashed = amount_slashed.saturating_add(amount_slashed_at_slot_);
-                    amount_to_rm = amount_to_rm.saturating_sub(amount_slashed_at_slot_)
-                }
+                amount_to_rm = amount_to_rm.saturating_sub(amount_slashed_at_slot)
             }
-            slashed_coins = amount_slashed;
+            slashed_coins = amount_to_slash.saturating_sub(amount_to_rm);
         } else {
             slashed_coins = self.config.roll_price
                 .checked_mul_u64(roll_count)
