@@ -1024,10 +1024,10 @@ impl ProtocolWorker {
             // send Operation(Denunciation) to DenunciationFactory
             let de_interest_ops = new_operations
                 .iter()
-                .filter(|(_, wrapped_op)| {
-                    matches!(wrapped_op.content.op, OperationType::Denunciation { .. })
+                .filter_map(|(_, wrapped_op)| match wrapped_op.content.op {
+                    OperationType::Denunciation { .. } => { Some(wrapped_op.clone()) }
+                    _ => None,
                 })
-                .map(|(_, wrapped_op)| wrapped_op.clone())
                 .collect::<Vec<WrappedOperation>>();
 
             if !de_interest_ops.is_empty() {
