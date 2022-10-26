@@ -271,9 +271,9 @@ impl BlockFactoryWorker {
             block_id, slot, block_producer_addr
         );
 
-        // Send new operations (stolen denunciations) to pool
+        // Store new operations (stolen denunciations)
         self.channels.storage.store_operations(new_ops.clone());
-        // And now propage them
+        // And now propagate them
         let mut new_ops_storage = self.channels.storage.clone_without_refs();
         new_ops_storage.store_operations(new_ops);
         if let Err(err) = self.channels.protocol.propagate_operations_sync(new_ops_storage) {
