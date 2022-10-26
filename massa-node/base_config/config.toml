@@ -167,6 +167,8 @@
         ["54.36.174.177:31245", "P1gEdBVEbRFbBxBtrjcTDDK9JPbJFDay27uiJRE3vmbFAFDKNh7"],
         ["51.75.60.228:31245", "P13Ykon8Zo73PTKMruLViMMtE2rEG646JQ4sCcee2DnopmVM3P5"]
     ]
+    # Path to the bootstrap whitelist file. This whitelist define IPs that can bootstrap on your node even if there is no slots available.
+    bootstrap_whitelist_file = "base_config/bootstrap_whitelist.json"
     # [optionnal] port on which to listen for incoming bootstrap requests
     bind = "[::]:31245"
     # timeout to establish a bootstrap connection

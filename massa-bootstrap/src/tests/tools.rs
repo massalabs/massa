@@ -270,6 +270,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         read_error_timeout: 200.into(),
         write_error_timeout: 200.into(),
         bootstrap_list: vec![(SocketAddr::new(BASE_BOOTSTRAP_IP, 16), bootstrap_public_key)],
+        bootstrap_whitelist_file: std::path::PathBuf::new(),
         enable_clock_synchronization: true,
         cache_duration: 10000.into(),
         max_simultaneous_bootstraps: 2,

@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map, HashMap},
+    collections::{hash_map, HashMap, HashSet},
     net::{IpAddr, SocketAddr},
     sync::Arc,
     time::{Duration, Instant},
@@ -64,6 +64,10 @@ pub async fn start_bootstrap_server(
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
     if let Some(bind) = bootstrap_config.bind {
         let (manager_tx, manager_rx) = mpsc::channel::<()>(1);
+        let whitelist = serde_json::from_str::<HashSet<IpAddr>>(
+            &std::fs::read_to_string(&bootstrap_config.bootstrap_whitelist_file)?).map_err(|_| BootstrapError::GeneralError(String::from("Failed to parse bootstrap whitelist")))?
+            .into_iter()
+            .map(|ip|  ip.to_canonical()).collect();
         let join_handle = tokio::spawn(async move {
             BootstrapServer {
                 consensus_command_sender,
@@ -75,6 +79,7 @@ pub async fn start_bootstrap_server(
                 keypair,
                 compensation_millis,
                 version,
+                whitelist,
                 ip_hist_map: HashMap::with_capacity(bootstrap_config.ip_list_max_size),
                 bootstrap_config,
             }
@@ -101,6 +106,7 @@ struct BootstrapServer {
     bootstrap_config: BootstrapConfig,
     compensation_millis: i64,
     version: Version,
+    whitelist: HashSet<IpAddr>,
     ip_hist_map: HashMap<IpAddr, Instant>,
 }
 
@@ -149,7 +155,8 @@ impl BootstrapServer {
                 }
 
                 // listener
-                Ok((dplx, remote_addr)) = listener.accept() => if bootstrap_sessions.len() < self.bootstrap_config.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))? {
+                Ok((dplx, remote_addr)) = listener.accept() => 
+                if (bootstrap_sessions.len() < self.bootstrap_config.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))?) || self.whitelist.contains(&remote_addr.ip().to_canonical()) {
 
                     massa_trace!("bootstrap.lib.run.select.accept", {"remote_addr": remote_addr});
                     let now = Instant::now();
@@ -167,13 +174,13 @@ impl BootstrapServer {
                     // check IP's bootstrap attempt history
                     match self.ip_hist_map.entry(remote_addr.ip()) {
                         hash_map::Entry::Occupied(mut occ) => {
-                            if now.duration_since(*occ.get()) <= per_ip_min_interval {
+                            if now.duration_since(*occ.get()) <= per_ip_min_interval && !self.whitelist.contains(&remote_addr.ip().to_canonical()) {
                                 let mut server = BootstrapServerBinder::new(dplx, self.keypair.clone(), self.bootstrap_config.max_bytes_read_write, self.bootstrap_config.max_bootstrap_message_size, self.bootstrap_config.thread_count, self.bootstrap_config.max_datastore_key_length, self.bootstrap_config.randomness_size_bytes);
                                 let _ = match tokio::time::timeout(self.bootstrap_config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
                                     error:
                                     format!("Your last bootstrap on this server was {:#?} ago and you have to wait {:#?} before retrying.", occ.get().elapsed(), per_ip_min_interval.saturating_sub(occ.get().elapsed()))
                                 })).await {
-                                    Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error no available slots send timed out").into()),
+                                    Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error too early retry bootstrap send timed out").into()),
                                     Ok(Err(e)) => Err(e),
                                     Ok(Ok(_)) => Ok(()),
                                 };

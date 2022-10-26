@@ -10,6 +10,8 @@ use std::net::SocketAddr;
 pub struct BootstrapConfig {
     /// Ip address of our bootstrap nodes and their public key.
     pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
+    /// Path to the bootstrap whitelist file. This whitelist define IPs that can bootstrap on your node, even if there is no slots.
+    pub bootstrap_whitelist_file: std::path::PathBuf,
     /// Port to listen if we choose to allow other nodes to use us as bootstrap node.
     pub bind: Option<SocketAddr>,
     /// connection timeout
