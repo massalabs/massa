@@ -44,6 +44,7 @@ use massa_models::config::constants::{
     OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, POOL_CONTROLLER_CHANNEL_SIZE,
     POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE,
     PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE, T0, THREAD_COUNT, VERSION,
+    DENUNCIATION_EXPIRE_CYCLE_DELTA
 };
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
@@ -445,6 +446,7 @@ async fn launch(
         max_block_size: MAX_BLOCK_SIZE as u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
         periods_per_cycle: PERIODS_PER_CYCLE,
+        denunciation_expire_cycle_delta: DENUNCIATION_EXPIRE_CYCLE_DELTA
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),

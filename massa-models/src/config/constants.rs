@@ -216,6 +216,13 @@ pub const NETWORK_NODE_COMMAND_CHANNEL_SIZE: usize = 10_000;
 /// network node event channel size
 pub const NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = 10_000;
 
+//
+// Constants for denunciation factory
+//
+
+/// denunciation expiration as cycle delta
+pub const DENUNCIATION_EXPIRE_CYCLE_DELTA: u64 = 3;
+
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]
 const _: () = {

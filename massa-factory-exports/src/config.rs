@@ -29,5 +29,8 @@ pub struct FactoryConfig {
     pub max_block_gas: u64,
 
     /// cycle duration in periods
-    pub periods_per_cycle: u64
+    pub periods_per_cycle: u64,
+
+    /// denunciation expiration as cycle delta
+    pub denunciation_expire_cycle_delta: u64,
 }

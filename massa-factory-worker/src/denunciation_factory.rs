@@ -21,7 +21,7 @@ use massa_models::denunciation::DenunciationProof;
 use massa_models::denunciation_interest::DenunciationInterest;
 use massa_models::timeslots::get_closest_slot_to_timestamp;
 
-const DENUNCIATION_EXPIRE_CYCLE_DELTA_EXPIRE_COUNT: u64 = 3;
+// const DENUNCIATION_EXPIRE_CYCLE_DELTA_EXPIRE_COUNT: u64 = 3;
 const ENDORSEMENT_DENUNCIATION_CACHE_MAX_SIZE: usize = 4096;
 const ENDORSEMENT_BY_CACHE_MAX_SIZE: usize = 4096;
 const BLOCK_HEADER_DENUNCIATION_CACHE_MAX_SIZE: usize = 4096;
@@ -36,6 +36,7 @@ pub(crate) struct DenunciationFactoryWorker {
     items_of_interest_receiver: Receiver<DenunciationInterest>,
     genesis_key: KeyPair,
 
+    // TODO doc
     endorsements_by_slot_index: HashMap<(Slot, u32), Vec<WrappedEndorsement>>,
     block_header_by_slot: HashMap<Slot, Vec<WrappedHeader>>,
 
@@ -279,7 +280,8 @@ impl DenunciationFactoryWorker {
                 if let OperationType::Denunciation { data: de } = &wop.content.op {
                     let next_slot = self.get_next_slot();
                     if !is_expired_for_denunciation(&de.slot, &next_slot,
-                                                         &self.last_cs_final_periods, self.cfg.periods_per_cycle) {
+                                                         &self.last_cs_final_periods,
+                                                    self.cfg.periods_per_cycle, self.cfg.denunciation_expire_cycle_delta) {
                         match de.proof.as_ref() {
                             DenunciationProof::Endorsement(ed) => {
                                 self.seen_endorsement_denunciation.insert((de.slot, ed.index));
@@ -300,19 +302,23 @@ impl DenunciationFactoryWorker {
 
         self.endorsements_by_slot_index.retain(|(slot, _index), _| {
             !is_expired_for_denunciation(slot, &next_slot,
-                                         &self.last_cs_final_periods, self.cfg.periods_per_cycle)
+                                         &self.last_cs_final_periods, self.cfg.periods_per_cycle,
+                                         self.cfg.denunciation_expire_cycle_delta)
         });
         self.block_header_by_slot.retain(|slot, _| {
             !is_expired_for_denunciation(slot, &next_slot,
-                                         &self.last_cs_final_periods, self.cfg.periods_per_cycle)
+                                         &self.last_cs_final_periods, self.cfg.periods_per_cycle,
+                                         self.cfg.denunciation_expire_cycle_delta)
         });
         self.seen_endorsement_denunciation.retain(|(slot, _index)| {
             !is_expired_for_denunciation(slot, &next_slot,
-                                         &self.last_cs_final_periods, self.cfg.periods_per_cycle)
+                                         &self.last_cs_final_periods, self.cfg.periods_per_cycle,
+                                         self.cfg.denunciation_expire_cycle_delta)
         });
         self.seen_block_header_denunciation.retain(|slot| {
             !is_expired_for_denunciation(slot, &next_slot,
-                                         &self.last_cs_final_periods, self.cfg.periods_per_cycle)
+                                         &self.last_cs_final_periods, self.cfg.periods_per_cycle,
+                                         self.cfg.denunciation_expire_cycle_delta)
         });
     }
 
@@ -355,8 +361,9 @@ impl DenunciationFactoryWorker {
 
 /// Return true if denunciation slot is expired (either final or in tool old cycle)
 fn is_expired_for_denunciation(denunciation_slot: &Slot, next_slot: &Slot,
-                               last_cs_final_periods: &[u64], periods_per_cycle: u64) -> bool {
-
+                               last_cs_final_periods: &[u64], periods_per_cycle: u64,
+                               denunciation_expire_cycle_delta: u64) -> bool
+{
     // Slot is final => cannot be Denounced anymore
     if denunciation_slot.period <= last_cs_final_periods[denunciation_slot.thread as usize] {
         return true;
@@ -367,7 +374,7 @@ fn is_expired_for_denunciation(denunciation_slot: &Slot, next_slot: &Slot,
     let cycle = denunciation_slot.get_cycle(periods_per_cycle);
     let next_cycle = next_slot.get_cycle(periods_per_cycle);
 
-    if (next_cycle - cycle) > DENUNCIATION_EXPIRE_CYCLE_DELTA_EXPIRE_COUNT {
+    if (next_cycle - cycle) > denunciation_expire_cycle_delta {
         return true;
     }
 
