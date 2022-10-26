@@ -2164,7 +2164,6 @@ version = "0.1.0"
 dependencies = [
  "jsonrpc-core-client",
  "massa_models",
- "massa_signature",
  "serde 1.0.145",
  "tokio",
 ]

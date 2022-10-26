@@ -105,7 +105,7 @@ impl Endpoints for API<Public> {
         crate::wrong_api::<PubkeySig>()
     }
 
-    fn add_staking_secret_keys(&self, _: Vec<KeyPair>) -> BoxFuture<Result<(), ApiError>> {
+    fn add_staking_secret_keys(&self, _: Vec<String>) -> BoxFuture<Result<(), ApiError>> {
         crate::wrong_api::<()>()
     }
 
@@ -114,8 +114,7 @@ impl Endpoints for API<Public> {
         reqs: Vec<ReadOnlyBytecodeExecution>,
     ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
         if reqs.len() as u64 > self.0.api_settings.max_arguments {
-            let closure =
-                async move || Err(ApiError::TooManyArguments("too many arguments".into()));
+            let closure = async move || Err(ApiError::BadRequest("too many arguments".into()));
             return Box::pin(closure());
         }
 
@@ -200,8 +199,7 @@ impl Endpoints for API<Public> {
         reqs: Vec<ReadOnlyCall>,
     ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
         if reqs.len() as u64 > self.0.api_settings.max_arguments {
-            let closure =
-                async move || Err(ApiError::TooManyArguments("too many arguments".into()));
+            let closure = async move || Err(ApiError::BadRequest("too many arguments".into()));
             return Box::pin(closure());
         }
 
@@ -428,7 +426,7 @@ impl Endpoints for API<Public> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let closure = async move || {
             if ops.len() as u64 > api_cfg.max_arguments {
-                return Err(ApiError::TooManyArguments("too many arguments".into()));
+                return Err(ApiError::BadRequest("too many arguments".into()));
             }
 
             // check finality by cross-referencing Consensus and looking for final blocks that contain the op
@@ -512,7 +510,7 @@ impl Endpoints for API<Public> {
         let api_cfg = self.0.api_settings;
         let closure = async move || {
             if eds.len() as u64 > api_cfg.max_arguments {
-                return Err(ApiError::TooManyArguments("too many arguments".into()));
+                return Err(ApiError::BadRequest("too many arguments".into()));
             }
 
             // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
@@ -852,7 +850,7 @@ impl Endpoints for API<Public> {
         let mut to_send = self.0.storage.clone_without_refs();
         let closure = async move || {
             if ops.len() as u64 > api_cfg.max_arguments {
-                return Err(ApiError::TooManyArguments("too many arguments".into()));
+                return Err(ApiError::BadRequest("too many arguments".into()));
             }
             let operation_deserializer = WrappedDeserializer::new(OperationDeserializer::new(
                 api_cfg.max_datastore_value_length,

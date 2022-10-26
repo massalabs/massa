@@ -33,7 +33,6 @@ use massa_network_exports::{NetworkCommandSender, NetworkConfig};
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolCommandSender;
-use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
@@ -159,10 +158,10 @@ pub trait Endpoints {
     #[rpc(name = "node_sign_message")]
     fn node_sign_message(&self, _: Vec<u8>) -> BoxFuture<Result<PubkeySig, ApiError>>;
 
-    /// Add a vector of new keys for the node to use to stake.
+    /// Add a vector of new secret(private) keys for the node to use to stake.
     /// No confirmation to expect.
     #[rpc(name = "add_staking_secret_keys")]
-    fn add_staking_secret_keys(&self, _: Vec<KeyPair>) -> BoxFuture<Result<(), ApiError>>;
+    fn add_staking_secret_keys(&self, _: Vec<String>) -> BoxFuture<Result<(), ApiError>>;
 
     /// Execute bytecode in read-only mode.
     #[rpc(name = "execute_read_only_bytecode")]
