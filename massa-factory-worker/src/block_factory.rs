@@ -270,7 +270,7 @@ impl BlockFactoryWorker {
             block_id, slot, block_producer_addr
         );
 
-        // Store new operations (stolen denunciations)
+        // Store new operations (stolen denunciations, not known yet by other nodes)
         self.channels.storage.store_operations(new_ops.clone());
         // And now propagate them
         let mut new_ops_storage = self.channels.storage.clone_without_refs();
