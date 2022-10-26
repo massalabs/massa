@@ -29,18 +29,31 @@ const BLOCK_HEADER_BY_CACHE_MAX_SIZE: usize = 4096;
 
 /// Structure gathering all elements needed by the factory thread
 pub(crate) struct DenunciationFactoryWorker {
+
+    /// cfg
     cfg: FactoryConfig,
+
+    /// Access to pool, selector, storage, ...
     channels: FactoryChannels,
+
+    /// Queue to receive stop event
     factory_receiver: Receiver<()>,
 
+    /// Queue to receive DenunciationInterest
     items_of_interest_receiver: Receiver<DenunciationInterest>,
+
+    /// Key to generate wrapped operation
     genesis_key: KeyPair,
 
-    // TODO doc
+    /// Internal storage for potential future endorsement denunciation production
     endorsements_by_slot_index: HashMap<(Slot, u32), Vec<WrappedEndorsement>>,
+    /// Internal storage for potential future block denunciation production
     block_header_by_slot: HashMap<Slot, Vec<WrappedHeader>>,
 
+    /// Cache to avoid processing several time the same endorsement denunciation
     seen_endorsement_denunciation: HashSet<(Slot, u32)>,
+
+    /// Cache to avoid processing several time the same block denunciation
     seen_block_header_denunciation: HashSet<Slot>,
 
     /// last consensus final periods, per thread
