@@ -103,7 +103,7 @@ impl ExecutedOps {
     }
 
     /// Prune all operations that expire strictly before `slot`
-    pub fn prune(&mut self, slot: Slot) {
+    fn prune(&mut self, slot: Slot) {
         let index = match self
             .ops_deque
             .binary_search_by_key(&slot, |(slot, _)| *slot)

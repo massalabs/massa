@@ -16,7 +16,7 @@ mod pos_changes;
 mod pos_final_state;
 mod settings;
 
-pub use config::*;
+pub use config::PoSConfig;
 pub use controller_traits::{Selection, SelectorController, SelectorManager};
 pub use cycle_info::*;
 pub use deferred_credits::*;
