@@ -865,6 +865,12 @@ fn events_from_switching_blockclique() {
 #[test]
 #[serial]
 pub fn slash_roll() {
+
+    // Generate a block with 2 operations
+    // * 1st: sell 99 rolls (out of 100 rolls initially available -> 1 roll remains available)
+    // * 2st: create a valid Denunciation op
+    // Check that 1 roll has been slashed as a result of the Denunciation op execution
+
     // setup the period duration
     let exec_cfg = ExecutionConfig {
         t0: 100.into(),
@@ -901,7 +907,9 @@ pub fn slash_roll() {
     ).unwrap();
 
     // create the Denunciation operation
-    // let sender_keypair = KeyPair::generate();
+    // Here we simulate someone creating 2 endorsements (same slot, same index) but endorsing 2 !=
+    // blocks (in order for instance to maximise its profits)
+    // As this is not wished (for the sake of the POS), this is going to be denounced
 
     let slot = Slot::new(7, 1);
     let content = Endorsement {
@@ -980,6 +988,13 @@ pub fn slash_roll() {
 #[test]
 #[serial]
 pub fn slash_roll_deferred_credits() {
+
+    // Generate a block with 2 operations
+    // * 1st: sell 100 rolls (out of 100 rolls initially available -> so 0 roll remains available)
+    // * 2st: create a valid Denunciation op
+    // Check that 100 coins (== 1 roll) from deferred credits have been slashed as a result of
+    // the Denunciation op execution
+
     // setup the period duration
     let exec_cfg = ExecutionConfig {
         t0: 100.into(),
@@ -1016,7 +1031,9 @@ pub fn slash_roll_deferred_credits() {
     ).unwrap();
 
     // create the Denunciation operation
-    // let sender_keypair = KeyPair::generate();
+    // Here we simulate someone creating 2 endorsements (same slot, same index) but endorsing 2 !=
+    // blocks (in order for instance to maximise its profits)
+    // As this is not wished (for the sake of the POS), this is going to be denounced
 
     let slot = Slot::new(7, 1);
     let content = Endorsement {
@@ -1045,7 +1062,6 @@ pub fn slash_roll_deferred_credits() {
 
     let denunciation = Denunciation {
         slot,
-        // pub_key: sender_keypair.get_public_key(),
         pub_key: keypair.get_public_key(),
         proof: DenunciationProof::Endorsement(EndorsementDenunciation {
             index: endorsement1.content.index,
