@@ -22,7 +22,7 @@ use nom::{
     IResult, Parser,
 };
 use std::{
-    collections::VecDeque,
+    collections::{BTreeMap, VecDeque},
     ops::Bound::{Excluded, Included, Unbounded},
 };
 
@@ -34,7 +34,7 @@ pub struct ExecutedOps {
     /// Exectued operations configuration
     config: ExecutedOpsConfig,
     /// Executed operations deque associated with a Slot for better pruning complexity
-    pub ops_deque: VecDeque<(Slot, PreHashSet<OperationId>)>,
+    pub sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
     /// Executed operations only for better insertion complexity
     ops: PreHashSet<OperationId>,
     /// Accumulated hash of the executed operations
@@ -46,7 +46,7 @@ impl ExecutedOps {
     pub fn new(config: ExecutedOpsConfig) -> Self {
         Self {
             config,
-            ops_deque: VecDeque::new(),
+            sorted_ops: BTreeMap::new(),
             ops: PreHashSet::default(),
             hash: Hash::from_bytes(EXECUTED_OPS_INITIAL_BYTES),
         }
@@ -76,23 +76,18 @@ impl ExecutedOps {
 
     /// Apply speculative operations changes to the final executed operations state
     pub fn apply_changes(&mut self, changes: ExecutedOpsChanges, slot: Slot) {
-        self.extend_and_compute_hash(changes.iter());
-        match self.ops_deque.back_mut() {
-            Some((last_slot, ids)) if *last_slot == slot => {
-                ids.extend(changes);
-            }
-            Some((last_slot, _)) => match last_slot.get_next_slot(self.config.thread_count) {
-                Ok(next_to_last_slot) if next_to_last_slot == slot => {
-                    self.ops_deque.push_back((next_to_last_slot, changes));
-                }
-                Ok(next_to_last_slot) => {
-                    panic!("executed ops associated slot must be sequential, expected {:?} but received {:?}", next_to_last_slot, slot)
-                }
-                _ => panic!("get_next_slot overflow"),
-            },
-            None => {
-                self.ops_deque.push_back((slot, changes));
-            }
+        self.extend_and_compute_hash(changes.keys());
+        for (op_id, slot) in changes {
+            self.sorted_ops
+                .entry(slot)
+                .and_modify(|ids| {
+                    ids.insert(op_id);
+                })
+                .or_insert_with(|| {
+                    let mut new = PreHashSet::default();
+                    new.insert(op_id);
+                    new
+                });
         }
         self.prune(slot);
     }
@@ -105,13 +100,14 @@ impl ExecutedOps {
     /// Prune all operations that expire strictly before `slot`
     fn prune(&mut self, slot: Slot) {
         let index = match self
-            .ops_deque
+            .sorted_ops
             .binary_search_by_key(&slot, |(slot, _)| *slot)
         {
             Ok(index) => index,
             Err(_) => return,
         };
-        let removed: Vec<(Slot, PreHashSet<OperationId>)> = self.ops_deque.drain(..index).collect();
+        let removed: Vec<(Slot, PreHashSet<OperationId>)> =
+            self.sorted_ops.drain(..index).collect();
         for (_, ids) in removed {
             for op_id in ids {
                 self.ops.remove(&op_id);
@@ -137,7 +133,7 @@ impl ExecutedOps {
             StreamingStep::Started => Unbounded,
             StreamingStep::Ongoing(slot) => {
                 match self
-                    .ops_deque
+                    .sorted_ops
                     .binary_search_by_key(&slot, |(slot, _)| *slot)
                 {
                     Ok(index) => Excluded(index),
@@ -147,7 +143,7 @@ impl ExecutedOps {
             StreamingStep::Finished => return (ops_part, cursor),
         };
         let mut ops_part_last_slot: Option<Slot> = None;
-        for (slot, ids) in self.ops_deque.range((left_bound, Unbounded)) {
+        for (slot, ids) in self.sorted_ops.range((left_bound, Unbounded)) {
             if ops_part.len() < self.config.bootstrap_part_size as usize {
                 ops_part.push_back((*slot, ids.clone()));
                 ops_part_last_slot = Some(*slot);
@@ -172,9 +168,9 @@ impl ExecutedOps {
         &mut self,
         part: VecDeque<(Slot, PreHashSet<OperationId>)>,
     ) -> StreamingStep<Slot> {
-        self.ops_deque.extend(part.clone());
+        self.sorted_ops.extend(part.clone());
         self.extend_and_compute_hash(part.iter().flat_map(|(_, ids)| ids));
-        if let Some(slot) = self.ops_deque.back().map(|(slot, _)| slot) {
+        if let Some(slot) = self.sorted_ops.back().map(|(slot, _)| slot) {
             StreamingStep::Ongoing(*slot)
         } else {
             StreamingStep::Finished
