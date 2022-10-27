@@ -99,21 +99,15 @@ impl ExecutedOps {
 
     /// Prune all operations that expire strictly before `slot`
     fn prune(&mut self, slot: Slot) {
-        let index = match self
-            .sorted_ops
-            .binary_search_by_key(&slot, |(slot, _)| *slot)
-        {
-            Ok(index) => index,
-            Err(_) => return,
-        };
-        let removed: Vec<(Slot, PreHashSet<OperationId>)> =
-            self.sorted_ops.drain(..index).collect();
+        let kept = self.sorted_ops.split_off(&slot);
+        let removed = std::mem::take(&mut self.sorted_ops);
         for (_, ids) in removed {
             for op_id in ids {
                 self.ops.remove(&op_id);
                 self.hash ^= *op_id.get_hash();
             }
         }
+        self.sorted_ops = kept;
     }
 
     /// Get a part of the executed operations.
