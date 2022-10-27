@@ -642,11 +642,6 @@ impl ExecutionState {
             let mut context = context_guard!(self);
 
             let addr_denounced = denunciation.addr();
-            let amount = self.config.roll_price
-                .checked_mul_u64(ROLL_COUNT)
-                .ok_or_else(||
-                    ExecutionError::RuntimeError(format!("Unable to multiply roll price by {}", ROLL_COUNT))
-                )?;
 
             // Set call stack
             // This needs to be defined before anything can fail, so that the emitted event contains the right stack
