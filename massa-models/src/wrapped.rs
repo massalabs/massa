@@ -14,7 +14,10 @@ use nom::{
 };
 use serde::{Deserialize, Serialize};
 
+/// Trait that define how to hash content for wrapped structure
 pub trait Hasher {
+
+    /// Compute hash
     fn compute_from(&self, public_key: &[u8; 32], content: &[u8]) -> Option<Hash> {
         let mut hash_data = Vec::with_capacity(public_key.len() + content.len());
         hash_data.extend(public_key);
