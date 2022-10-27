@@ -202,10 +202,7 @@ pub fn get_random_executed_ops(
     config: ExecutedOpsConfig,
 ) -> ExecutedOps {
     let mut executed_ops = ExecutedOps::new(config.clone());
-    for _ in 0..2 {
-        executed_ops.apply_changes(get_random_executed_ops_changes(r_limit), slot);
-        slot = slot.get_next_slot(config.thread_count).unwrap();
-    }
+    executed_ops.apply_changes(get_random_executed_ops_changes(r_limit), slot);
     executed_ops
 }
 

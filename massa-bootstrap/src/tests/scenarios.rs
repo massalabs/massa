@@ -87,7 +87,7 @@ async fn test_bootstrap_server() {
         },
         executed_ops_config: ExecutedOpsConfig {
             thread_count,
-            bootstrap_part_size: 1,
+            bootstrap_part_size: 10,
         },
         final_history_length: 100,
         initial_seed_string: "".into(),

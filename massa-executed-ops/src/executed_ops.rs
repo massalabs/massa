@@ -36,7 +36,7 @@ pub struct ExecutedOps {
     /// Executed operations deque associated with a Slot for better pruning complexity
     pub sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
     /// Executed operations only for better insertion complexity
-    ops: PreHashSet<OperationId>,
+    pub ops: PreHashSet<OperationId>,
     /// Accumulated hash of the executed operations
     pub hash: Hash,
 }
@@ -166,11 +166,13 @@ fn test_executed_ops_xor_computing() {
     use massa_models::prehash::PreHashMap;
     use massa_models::wrapped::Id;
 
-    // initialize the executed ops and changes
+    // initialize the executed ops config
     let config = ExecutedOpsConfig {
         thread_count: 2,
         bootstrap_part_size: 10,
     };
+
+    // initialize the executed ops and executed ops changes
     let mut a = ExecutedOps::new(config.clone());
     let mut c = ExecutedOps::new(config);
     let mut change_a = PreHashMap::default();
@@ -189,6 +191,7 @@ fn test_executed_ops_xor_computing() {
         }
         change_c.insert(OperationId::new(Hash::compute_from(&[i])), expiration_slot);
     }
+
     // apply change_b to a which performs a.hash ^ $(change_b)
     let apply_slot = Slot {
         period: 0,
@@ -199,7 +202,7 @@ fn test_executed_ops_xor_computing() {
     c.apply_changes(change_c, apply_slot);
 
     // check that a.hash ^ $(change_b) = c.hash
-    assert_eq!(a.hash, c.hash);
+    assert_eq!(a.hash, c.hash, "'a' and 'c' hashes are not equal");
 
     // prune every element
     let prune_slot = Slot {
@@ -210,7 +213,11 @@ fn test_executed_ops_xor_computing() {
     a.prune(prune_slot);
 
     // at this point the hash should have been XORed with itself
-    assert_eq!(a.hash, Hash::from_bytes(EXECUTED_OPS_INITIAL_BYTES));
+    assert_eq!(
+        a.hash,
+        Hash::from_bytes(EXECUTED_OPS_INITIAL_BYTES),
+        "'a' was not reset to its initial value"
+    );
 }
 
 /// `ExecutedOps` Serializer
