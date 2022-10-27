@@ -177,33 +177,35 @@ fn test_executed_ops_xor_computing() {
     let mut change_b = PreHashMap::default();
     let mut change_c = PreHashMap::default();
     for i in 0u8..20 {
-        let slot = Slot {
+        let expiration_slot = Slot {
             period: i as u64,
             thread: 0,
         };
         if i < 12 {
-            change_a.insert(OperationId::new(Hash::compute_from(&[i])), slot);
+            change_a.insert(OperationId::new(Hash::compute_from(&[i])), expiration_slot);
         }
         if i > 8 {
-            change_b.insert(OperationId::new(Hash::compute_from(&[i])), slot);
+            change_b.insert(OperationId::new(Hash::compute_from(&[i])), expiration_slot);
         }
-        change_c.insert(OperationId::new(Hash::compute_from(&[i])), slot);
+        change_c.insert(OperationId::new(Hash::compute_from(&[i])), expiration_slot);
     }
-    let slot = Slot {
+    // apply change_b to a which performs a.hash ^ $(change_b)
+    let apply_slot = Slot {
         period: 0,
         thread: 0,
     };
-
-    // apply change_b to a which performs a.hash ^ $(change_b)
-    a.apply_changes(change_a, slot);
-    a.apply_changes(change_b, slot);
-    c.apply_changes(change_c, slot);
+    a.apply_changes(change_a, apply_slot);
+    a.apply_changes(change_b, apply_slot);
+    c.apply_changes(change_c, apply_slot);
 
     // check that a.hash ^ $(change_b) = c.hash
     assert_eq!(a.hash, c.hash);
 
     // prune every element
-    let prune_slot = slot.get_next_slot(2).unwrap();
+    let prune_slot = Slot {
+        period: 20,
+        thread: 0,
+    };
     a.apply_changes(PreHashMap::default(), prune_slot);
     a.prune(prune_slot);
 

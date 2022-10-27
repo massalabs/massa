@@ -37,7 +37,7 @@ use nom::{
     IResult,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use std::collections::{BTreeMap};
+use std::collections::BTreeMap;
 use std::convert::TryInto;
 use std::ops::Bound::{Excluded, Included};
 
