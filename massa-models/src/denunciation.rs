@@ -334,8 +334,19 @@ impl Deserializer<Denunciation> for DenunciationDeserializer {
             ))
         })?;
 
-        let (rem2, proof): (_, DenunciationProof) = match de_kind {
-            DenunciationKind::Block => context(
+        let (rem2, idx) = match de_kind {
+            DenunciationKind::Endorsement => {
+                context(
+                    "Failed Endorsement Denunciation deser",
+                    context("Failed index deser", | input| {
+                        self.index_deserializer.deserialize(input)
+                    }),
+                ).parse(rem)?
+            },
+            _ => (rem, 0),
+        };
+
+        let (rem3, (sig1, hash1, sig2, hash2)) = context(
                 "Failed Block Denunciation deser",
                 tuple((
                     context("Failed signature 1 deser", |input| {
@@ -351,38 +362,10 @@ impl Deserializer<Denunciation> for DenunciationDeserializer {
                         self.hash_deserializer.deserialize(input)
                     }),
                 )),
-            )
-            .map(|(sig1, hash1, sig2, hash2)| {
-                let bd = BlockDenunciation {
-                    signature_1: sig1,
-                    hash_1: hash1,
-                    signature_2: sig2,
-                    hash_2: hash2,
-                };
-                DenunciationProof::Block(bd)
-            })
-            .parse(rem)?,
-            DenunciationKind::Endorsement => context(
-                "Failed Endorsement Denunciation deser",
-                tuple((
-                    context("Failed index deser", |input| {
-                        self.index_deserializer.deserialize(input)
-                    }),
-                    context("Failed signature 1 deser", |input| {
-                        self.sig_deserializer.deserialize(input)
-                    }),
-                    context("Failed hash 1 deser", |input| {
-                        self.hash_deserializer.deserialize(input)
-                    }),
-                    context("Failed signature 2 deser", |input| {
-                        self.sig_deserializer.deserialize(input)
-                    }),
-                    context("Failed hash 2 deser", |input| {
-                        self.hash_deserializer.deserialize(input)
-                    }),
-                )),
-            )
-            .map(|(idx, sig1, hash1, sig2, hash2)| {
+        ).parse(rem2)?;
+
+        let proof= match de_kind {
+            DenunciationKind::Endorsement => {
                 let ed = EndorsementDenunciation {
                     index: idx,
                     signature_1: sig1,
@@ -391,11 +374,19 @@ impl Deserializer<Denunciation> for DenunciationDeserializer {
                     hash_2: hash2,
                 };
                 DenunciationProof::Endorsement(ed)
-            })
-            .parse(rem)?,
+            },
+            DenunciationKind::Block => {
+                let bd = BlockDenunciation {
+                    signature_1: sig1,
+                    hash_1: hash1,
+                    signature_2: sig2,
+                    hash_2: hash2,
+                };
+                DenunciationProof::Block(bd)
+            }
         };
 
-        Ok((rem2, Denunciation { slot, pub_key, proof }))
+        Ok((rem3, Denunciation { slot, pub_key, proof }))
     }
 }
 
