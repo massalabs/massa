@@ -199,6 +199,7 @@ impl BlockFactoryWorker {
         // TODO: add doc about why we stole those
         let ops = op_storage.read_operations();
         let mut new_ops: Vec<WrappedOperation> = Vec::new();
+        let mut ops_to_clean: PreHashSet<OperationId> = Default::default();
         let op_ids: Vec<OperationId> = op_ids_
             .into_iter()
             .map(|op_id| {
@@ -218,6 +219,7 @@ impl BlockFactoryWorker {
 
                         let op_id_ = wrapped_op.id;
                         new_ops.push(wrapped_op);
+                        ops_to_clean.insert(op_id);
                         op_id_
                     },
                     _ => op_id,
@@ -278,6 +280,8 @@ impl BlockFactoryWorker {
         if let Err(err) = self.channels.protocol.propagate_operations_sync(new_ops_storage) {
             warn!("could not propagate new denunciation operations to protocol: {}", err);
         }
+        // Cleanup storage
+        self.channels.storage.drop_operation_refs(&ops_to_clean);
 
         // send full block to consensus
         if self
