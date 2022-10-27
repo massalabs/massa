@@ -929,8 +929,8 @@ impl Endpoints for API<Public> {
         let openrpc_spec_path = self.0.api_settings.openrpc_spec_path.clone();
         let closure = async move || {
         std::fs::read_to_string(openrpc_spec_path)
-        .map_err(|e| ApiError::InternalServerError(e.to_string()))
-        .and_then(|openrpc_str| serde_json::from_str(&openrpc_str).map_err(|e| ApiError::InternalServerError(e.to_string())))
+        .map_err(|e| ApiError::InternalServerError(format!("failed to read OpenRPC specification: {}", e.to_string())))
+        .and_then(|openrpc_str| serde_json::from_str(&openrpc_str).map_err(|e| ApiError::InternalServerError(format!("failed to parse OpenRPC specification: {}", e.to_string()))))
         };
 
         Box::pin(closure())
