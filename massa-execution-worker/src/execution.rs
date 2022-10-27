@@ -260,7 +260,10 @@ impl ExecutionState {
             // from here, the op is considered as executed (fees transferred)
 
             // add operation to executed ops list
-            context.insert_executed_op(operation_id);
+            context.insert_executed_op(
+                operation_id,
+                Slot::new(operation.content.expire_period, op_thread),
+            );
 
             // save a snapshot of the context to revert any further changes on error
             context_snapshot = context.get_snapshot();

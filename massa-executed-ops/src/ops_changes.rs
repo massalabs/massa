@@ -2,7 +2,8 @@
 
 use massa_models::{
     operation::{OperationId, OperationIdDeserializer, OperationIdSerializer},
-    prehash::PreHashSet,
+    prehash::PreHashMap,
+    slot::Slot,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -15,7 +16,7 @@ use nom::{
 use std::ops::Bound::Included;
 
 /// Speculatives changes for ExecutedOps
-pub type ExecutedOpsChanges = PreHashSet<OperationId>;
+pub type ExecutedOpsChanges = PreHashMap<OperationId, Slot>;
 
 /// `ExecutedOps` Serializer
 pub struct ExecutedOpsChangesSerializer {
