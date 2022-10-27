@@ -64,10 +64,15 @@ pub async fn start_bootstrap_server(
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
     if let Some(bind) = bootstrap_config.bind {
         let (manager_tx, manager_rx) = mpsc::channel::<()>(1);
-        let whitelist = serde_json::from_str::<HashSet<IpAddr>>(
-            &std::fs::read_to_string(&bootstrap_config.bootstrap_whitelist_file)?).map_err(|_| BootstrapError::GeneralError(String::from("Failed to parse bootstrap whitelist")))?
-            .into_iter()
-            .map(|ip|  ip.to_canonical()).collect();
+        let whitelist = serde_json::from_str::<HashSet<IpAddr>>(&std::fs::read_to_string(
+            &bootstrap_config.bootstrap_whitelist_file,
+        )?)
+        .map_err(|_| {
+            BootstrapError::GeneralError(String::from("Failed to parse bootstrap whitelist"))
+        })?
+        .into_iter()
+        .map(|ip| ip.to_canonical())
+        .collect();
         let join_handle = tokio::spawn(async move {
             BootstrapServer {
                 consensus_command_sender,
@@ -155,7 +160,7 @@ impl BootstrapServer {
                 }
 
                 // listener
-                Ok((dplx, remote_addr)) = listener.accept() => 
+                Ok((dplx, remote_addr)) = listener.accept() =>
                 if (bootstrap_sessions.len() < self.bootstrap_config.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))?) || self.whitelist.contains(&remote_addr.ip().to_canonical()) {
 
                     massa_trace!("bootstrap.lib.run.select.accept", {"remote_addr": remote_addr});
