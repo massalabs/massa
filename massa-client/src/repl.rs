@@ -44,6 +44,56 @@ macro_rules! massa_fancy_ascii_art_logo {
     };
 }
 
+fn group_parameters(parameters: Vec<String>) -> Vec<String> {
+    let mut new_parameters = Vec::new();
+    let mut has_opening_simple_quote = false;
+    let mut temp_simple_quote = String::new();
+    let mut has_opening_double_quote = false;
+    let mut temp_double_quote = String::new();
+    for param in parameters {
+        let mut chars = param.chars();
+        match chars.next() {
+            Some('\'') if !has_opening_double_quote => {
+                has_opening_simple_quote = true;
+                temp_simple_quote = param.clone();
+                temp_simple_quote.remove(0);
+            }
+            Some('"') if !has_opening_simple_quote => {
+                has_opening_double_quote = true;
+                temp_double_quote = param.clone();
+                temp_double_quote.remove(0);
+            }
+            Some(_) if has_opening_simple_quote => {
+                temp_simple_quote.push(' ');
+                temp_simple_quote.push_str(&param);
+            }
+            Some(_) if has_opening_double_quote => {
+                temp_double_quote.push(' ');
+                temp_double_quote.push_str(&param);
+            }
+            Some(_) => new_parameters.push(param.clone()),
+            None => continue,
+        };
+        match chars.last() {
+            Some('\'') if has_opening_simple_quote => {
+                has_opening_simple_quote = false;
+                let mut to_add = temp_simple_quote.clone();
+                to_add.pop();
+                new_parameters.push(to_add);
+            }
+            Some('"') if has_opening_double_quote => {
+                has_opening_double_quote = false;
+                let mut to_add = temp_double_quote.clone();
+                to_add.pop();
+                new_parameters.push(to_add);
+            }
+            Some(_) => continue,
+            None => continue,
+        }
+    }
+    new_parameters
+}
+
 pub(crate) async fn run(client: &Client, wallet: &mut Wallet) {
     massa_fancy_ascii_art_logo!();
     println!("Use 'exit' to quit the prompt");
@@ -61,7 +111,8 @@ pub(crate) async fn run(client: &Client, wallet: &mut Wallet) {
             .interact_text()
         {
             // User input parsing
-            let input: Vec<String> = input.split_whitespace().map(|x| x.to_string()).collect();
+            let input: Vec<String> =
+                group_parameters(input.split_whitespace().map(|x| x.to_string()).collect());
             let cmd: Result<Command, ParseError> = input[0].parse();
             let parameters = input[1..].to_vec();
             // Print result of evaluated command
