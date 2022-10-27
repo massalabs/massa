@@ -37,7 +37,7 @@ use nom::{
     IResult,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap};
 use std::convert::TryInto;
 use std::ops::Bound::{Excluded, Included};
 
@@ -75,7 +75,7 @@ pub enum BootstrapServerMessage {
         /// Part of the Proof of Stake `deferred_credits`
         pos_credits_part: DeferredCredits,
         /// Part of the executed operations
-        exec_ops_part: VecDeque<(Slot, PreHashSet<OperationId>)>,
+        exec_ops_part: BTreeMap<Slot, PreHashSet<OperationId>>,
         /// Ledger change for addresses inferior to `address` of the client message until the actual slot.
         final_state_changes: Vec<(Slot, StateChanges)>,
     },

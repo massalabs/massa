@@ -22,7 +22,7 @@ use nom::{
     IResult, Parser,
 };
 use std::{
-    collections::{BTreeMap, VecDeque},
+    collections::BTreeMap,
     ops::Bound::{Excluded, Included, Unbounded},
 };
 
@@ -118,11 +118,8 @@ impl ExecutedOps {
     pub fn get_executed_ops_part(
         &self,
         cursor: StreamingStep<Slot>,
-    ) -> (
-        VecDeque<(Slot, PreHashSet<OperationId>)>,
-        StreamingStep<Slot>,
-    ) {
-        let mut ops_part = VecDeque::new();
+    ) -> (BTreeMap<Slot, PreHashSet<OperationId>>, StreamingStep<Slot>) {
+        let mut ops_part = BTreeMap::new();
         let left_bound = match cursor {
             StreamingStep::Started => Unbounded,
             StreamingStep::Ongoing(slot) => Excluded(slot),
@@ -131,7 +128,7 @@ impl ExecutedOps {
         let mut ops_part_last_slot: Option<Slot> = None;
         for (slot, ids) in self.sorted_ops.range((left_bound, Unbounded)) {
             if ops_part.len() < self.config.bootstrap_part_size as usize {
-                ops_part.push_back((*slot, ids.clone()));
+                ops_part.insert(*slot, ids.clone());
                 ops_part_last_slot = Some(*slot);
             } else {
                 break;
@@ -152,7 +149,7 @@ impl ExecutedOps {
     /// The next executed ops streaming step
     pub fn set_executed_ops_part(
         &mut self,
-        part: VecDeque<(Slot, PreHashSet<OperationId>)>,
+        part: BTreeMap<Slot, PreHashSet<OperationId>>,
     ) -> StreamingStep<Slot> {
         self.sorted_ops.extend(part.clone());
         self.extend_and_compute_hash(part.iter().flat_map(|(_, ids)| ids));
@@ -236,10 +233,10 @@ impl ExecutedOpsSerializer {
     }
 }
 
-impl Serializer<VecDeque<(Slot, PreHashSet<OperationId>)>> for ExecutedOpsSerializer {
+impl Serializer<BTreeMap<Slot, PreHashSet<OperationId>>> for ExecutedOpsSerializer {
     fn serialize(
         &self,
-        value: &VecDeque<(Slot, PreHashSet<OperationId>)>,
+        value: &BTreeMap<Slot, PreHashSet<OperationId>>,
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
         // executed ops length
@@ -293,11 +290,11 @@ impl ExecutedOpsDeserializer {
     }
 }
 
-impl Deserializer<VecDeque<(Slot, PreHashSet<OperationId>)>> for ExecutedOpsDeserializer {
+impl Deserializer<BTreeMap<Slot, PreHashSet<OperationId>>> for ExecutedOpsDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], VecDeque<(Slot, PreHashSet<OperationId>)>, E> {
+    ) -> IResult<&'a [u8], BTreeMap<Slot, PreHashSet<OperationId>>, E> {
         context(
             "ExecutedOps",
             length_count(
