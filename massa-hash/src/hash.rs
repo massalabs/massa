@@ -317,18 +317,6 @@ impl FromStr for Hash {
     }
 }
 
-///
-pub trait Hasher<T> {
-    /// Serialize a value `T` into a buffer of `u8`.
-    ///
-    /// ## Parameters
-    /// * value: the value to be serialized.
-    ///
-    /// ## Returns
-    /// A Result with the serialized data.
-    fn hash(&self, value: &T, public_key: &[u8], content: &[u8]) -> Result<Hash, SerializeError>;
-}
-
 #[cfg(test)]
 mod tests {
     use serial_test::serial;

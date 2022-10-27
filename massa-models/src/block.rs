@@ -2,14 +2,14 @@
 
 use crate::endorsement::{EndorsementId, EndorsementSerializer, EndorsementSerializerLW};
 use crate::prehash::PreHashed;
-use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
+use crate::wrapped::{Hasher, Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
 use crate::{
     endorsement::{Endorsement, EndorsementDeserializerLW, WrappedEndorsement},
     error::ModelsError,
     operation::{OperationId, OperationIdsDeserializer, OperationIdsSerializer, WrappedOperation},
     slot::{Slot, SlotDeserializer, SlotSerializer},
 };
-use massa_hash::{Hash, HashDeserializer, Hasher};
+use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
@@ -106,6 +106,8 @@ pub struct Block {
     pub operations: Vec<OperationId>,
 }
 
+impl Hasher for Block {}
+
 /// Wrapped Block
 pub type WrappedBlock = Wrapped<Block, BlockId>;
 
@@ -147,7 +149,6 @@ impl WrappedContent for Block {
         _signature_deserializer: &massa_signature::SignatureDeserializer,
         _creator_public_key_deserializer: &massa_signature::PublicKeyDeserializer,
         content_deserializer: &DC,
-        _content_hasher: Option<&dyn Hasher<Self>>,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Wrapped<Self, U>, E> {
         let (rest, content) = content_deserializer.deserialize(buffer)?;
@@ -164,6 +165,7 @@ impl WrappedContent for Block {
         ))
     }
 }
+
 /// Serializer for `Block`
 pub struct BlockSerializer {
     header_serializer: WrappedSerializer,
@@ -405,6 +407,8 @@ pub struct BlockHeader {
     /// endorsements
     pub endorsements: Vec<WrappedEndorsement>,
 }
+
+impl Hasher for BlockHeader {}
 
 // NOTE: TODO
 // impl Signable<BlockId> for BlockHeader {

@@ -3,7 +3,7 @@
 use crate::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
 use crate::denunciation::{Denunciation, DenunciationDeserializer, DenunciationSerializer};
 use crate::prehash::{PreHashSet, PreHashed};
-use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
+use crate::wrapped::{Hasher, Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
 use crate::{
     address::{Address, AddressDeserializer},
     amount::{Amount, AmountDeserializer, AmountSerializer},
@@ -222,6 +222,8 @@ impl std::fmt::Display for Operation {
         Ok(())
     }
 }
+
+impl Hasher for Operation {}
 
 /// signed operation
 pub type WrappedOperation = Wrapped<Operation, OperationId>;

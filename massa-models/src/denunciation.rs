@@ -400,7 +400,7 @@ mod tests {
 
     // use massa_serialization::DeserializeError;
     use crate::block::{BlockHeader, BlockHeaderSerializer, BlockId};
-    use crate::endorsement::{Endorsement, EndorsementHasher, EndorsementSerializer, EndorsementSerializerLW, WrappedEndorsement};
+    use crate::endorsement::{Endorsement, EndorsementSerializer, EndorsementSerializerLW, WrappedEndorsement};
     use crate::wrapped::{Id, Wrapped, WrappedContent};
     use massa_signature::KeyPair;
     use crate::config::THREAD_COUNT;
@@ -416,11 +416,10 @@ mod tests {
             index: 0,
             endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
         };
-        let endorsement1: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
+        let endorsement1: WrappedEndorsement = Endorsement::new_wrapped(
             content.clone(),
             EndorsementSerializer::new(),
             &sender_keypair,
-            EndorsementHasher::new(),
         )
         .unwrap();
 
@@ -429,11 +428,10 @@ mod tests {
             index: 0,
             endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
         };
-        let endorsement2: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
+        let endorsement2: WrappedEndorsement = Endorsement::new_wrapped(
             content2,
             EndorsementSerializer::new(),
             &sender_keypair,
-            EndorsementHasher::new(),
         )
         .unwrap();
 
@@ -466,17 +464,15 @@ mod tests {
             index: 1,
             endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
         };
-        let endorsement1: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
+        let endorsement1: WrappedEndorsement = Endorsement::new_wrapped(
             content.clone(),
             EndorsementSerializer::new(),
             &sender_keypair,
-            EndorsementHasher::new(),
         ).unwrap();
-        let endorsement2: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
+        let endorsement2: WrappedEndorsement = Endorsement::new_wrapped(
             content.clone(),
             EndorsementSerializer::new(),
             &sender_keypair,
-            EndorsementHasher::new(),
         ).unwrap();
 
         // Here we create a Denunciation that report the same block - this is invalid
@@ -509,11 +505,10 @@ mod tests {
             index: 0,
             endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
         };
-        let endorsement1: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
+        let endorsement1: WrappedEndorsement = Endorsement::new_wrapped(
             content.clone(),
             EndorsementSerializer::new(),
             &sender_keypair,
-            EndorsementHasher::new(),
         )
         .unwrap();
 
@@ -522,11 +517,10 @@ mod tests {
             index: 0,
             endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
         };
-        let endorsement2: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
+        let endorsement2: WrappedEndorsement = Endorsement::new_wrapped(
             content2,
             EndorsementSerializer::new(),
             &sender_keypair,
-            EndorsementHasher::new(),
         )
         .unwrap();
 

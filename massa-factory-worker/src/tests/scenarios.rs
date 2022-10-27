@@ -68,7 +68,7 @@ use massa_hash::Hash;
 use massa_models::block::{BlockHeader, BlockHeaderSerializer, BlockId};
 use massa_models::config::THREAD_COUNT;
 use massa_models::denunciation_interest::DenunciationInterest;
-use massa_models::endorsement::{Endorsement, EndorsementHasher, EndorsementSerializer, EndorsementSerializerLW, WrappedEndorsement};
+use massa_models::endorsement::{Endorsement, EndorsementSerializer, EndorsementSerializerLW, WrappedEndorsement};
 use massa_models::denunciation::Denunciation;
 use massa_models::slot::Slot;
 use massa_models::wrapped::Wrapped;
@@ -88,11 +88,10 @@ fn test_denunciation_factory_endorsement_denunciation() {
         index: 0,
         endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
     };
-    let wrapped_endorsement1: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
+    let wrapped_endorsement1: WrappedEndorsement = Endorsement::new_wrapped(
         endorsement1,
         EndorsementSerializer::new(),
         &sender_keypair,
-        EndorsementHasher::new(),
     )
         .unwrap();
 
@@ -101,11 +100,10 @@ fn test_denunciation_factory_endorsement_denunciation() {
         index: 0,
         endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
     };
-    let wrapped_endorsement2: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
+    let wrapped_endorsement2: WrappedEndorsement = Endorsement::new_wrapped(
         endorsement2,
         EndorsementSerializer::new(),
         &sender_keypair,
-        EndorsementHasher::new(),
     )
         .unwrap();
 

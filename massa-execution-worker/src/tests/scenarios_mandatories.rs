@@ -25,7 +25,7 @@ use std::{
 };
 use massa_hash::Hash;
 use massa_models::denunciation::{Denunciation, DenunciationProof, EndorsementDenunciation};
-use massa_models::endorsement::{Endorsement, EndorsementHasher, EndorsementSerializer, WrappedEndorsement};
+use massa_models::endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement};
 use massa_models::wrapped::Id;
 
 #[test]
@@ -917,11 +917,10 @@ pub fn slash_roll() {
         index: 0,
         endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
     };
-    let endorsement1: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
+    let endorsement1: WrappedEndorsement = Endorsement::new_wrapped(
         content.clone(),
         EndorsementSerializer::new(),
         &keypair,
-        EndorsementHasher::new(),
     ).unwrap();
 
     let content2 = Endorsement {
@@ -929,11 +928,10 @@ pub fn slash_roll() {
         index: 0,
         endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
     };
-    let endorsement2: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
+    let endorsement2: WrappedEndorsement = Endorsement::new_wrapped(
         content2,
         EndorsementSerializer::new(),
         &keypair,
-        EndorsementHasher::new(),
     ).unwrap();
 
     let denunciation = Denunciation {
@@ -1057,11 +1055,10 @@ pub fn slash_roll_deferred_credits() {
         index: 0,
         endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
     };
-    let endorsement1: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
+    let endorsement1: WrappedEndorsement = Endorsement::new_wrapped(
         content.clone(),
         EndorsementSerializer::new(),
         &keypair,
-        EndorsementHasher::new(),
     ).unwrap();
 
     let content2 = Endorsement {
@@ -1069,11 +1066,10 @@ pub fn slash_roll_deferred_credits() {
         index: 0,
         endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
     };
-    let endorsement2: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
+    let endorsement2: WrappedEndorsement = Endorsement::new_wrapped(
         content2,
         EndorsementSerializer::new(),
         &keypair,
-        EndorsementHasher::new(),
     ).unwrap();
 
     let denunciation = Denunciation {

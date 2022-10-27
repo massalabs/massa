@@ -2,9 +2,9 @@
 
 use crate::prehash::PreHashed;
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
-use crate::wrapped::{Id, Wrapped, WrappedContent};
+use crate::wrapped::{Hasher, Id, Wrapped, WrappedContent};
 use crate::{block::BlockId, error::ModelsError};
-use massa_hash::{Hash, HashDeserializer, Hasher};
+use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
@@ -17,7 +17,8 @@ use nom::{
 };
 use serde::{Deserialize, Serialize};
 use std::ops::Bound::{Excluded, Included};
-use std::{fmt::Display, str::FromStr};
+use std::{fmt::Display, mem, str::FromStr};
+use std::mem::size_of_val;
 
 /// Endorsement ID size in bytes
 pub const ENDORSEMENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
@@ -321,6 +322,7 @@ impl Deserializer<Endorsement> for EndorsementDeserializerLW {
     }
 }
 
+/*
 /// Hasher for `Endorsement`
 pub struct EndorsementHasher {}
 
@@ -347,6 +349,24 @@ impl Hasher<Endorsement> for EndorsementHasher {
         hash_data.extend(buffer);
         hash_data.extend(value.index.to_ne_bytes());
         Ok(Hash::compute_from(&hash_data))
+    }
+}
+*/
+
+impl Hasher for Endorsement {
+    fn compute_from(&self, public_key: &[u8; 32], content: &[u8]) -> Option<Hash> {
+
+        let slot_ser = SlotSerializer::new();
+        let mut buffer = Vec::new();
+        slot_ser.serialize(&self.slot, &mut buffer).ok()?;
+
+        let mut hash_data = Vec::with_capacity(public_key.len() + content.len()
+            + buffer.len() + size_of_val(&self.index));
+        hash_data.extend(public_key);
+        hash_data.extend(content);
+        hash_data.extend(buffer);
+        hash_data.extend(self.index.to_ne_bytes());
+        Some(Hash::compute_from(&hash_data))
     }
 }
 
@@ -411,39 +431,5 @@ mod tests {
                 .unwrap();
         // Test only endorsement index as with the lw ser. we only process this field
         assert_eq!(res_endorsement.content.index, endorsement.content.index);
-    }
-
-    #[test]
-    fn test_wrapped_endorsement_with_hasher() {
-        let sender_keypair = KeyPair::generate();
-        let content = Endorsement {
-            slot: Slot::new(11, 3),
-            index: 0,
-            endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
-        };
-        let endorsement: WrappedEndorsement = Endorsement::new_wrapped_with_hasher(
-            content,
-            EndorsementSerializer::new(),
-            &sender_keypair,
-            EndorsementHasher::new(),
-        )
-        .unwrap();
-
-        let mut ser_endorsement: Vec<u8> = Vec::new();
-        let serializer = WrappedSerializer::new();
-        serializer
-            .serialize(&endorsement, &mut ser_endorsement)
-            .unwrap();
-
-        let wrapped_deser = WrappedDeserializer::new(EndorsementDeserializer::new(32, 1));
-        let h = EndorsementHasher::new();
-        let (_rem, res_endorsement) = wrapped_deser
-            .deserialize_with2::<'_, nom::error::Error<&'_ [u8]>, EndorsementId, _>(
-                &h,
-                &ser_endorsement,
-            )
-            .unwrap();
-
-        assert_eq!(res_endorsement, endorsement);
     }
 }
