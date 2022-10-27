@@ -217,77 +217,69 @@ impl DenunciationFactoryWorker {
             return;
         }
 
-        let mut denunciations: Vec<Denunciation> = Vec::with_capacity(1);
-
-        match self.block_header_by_slot.entry(key) {
+        let denunciation_: Option<Denunciation> = match self.block_header_by_slot.entry(key) {
             Entry::Occupied(mut eo) => {
                 let wrapped_headers = eo.get_mut();
 
                 // Store at max 2 WrappedHeader's
                 if wrapped_headers.len() == 1 {
-
                     wrapped_headers.push(wrapped_header);
 
-                    denunciations.extend(
-                        wrapped_headers.iter()
-                            .take(2)
-                            .tuples()
-                            .filter_map(|(wh1, wh2)| {
-                                let de = Denunciation::from((wh1, wh2));
-                                match de {
-                                    de if de.is_valid() => Some(de),
-                                    _ => None,
-                                }
-                            })
-                            .collect::<Vec<Denunciation>>()
-                    );
+                    // safe to unwrap as we just checked the vec len
+                    let wh1 = wrapped_headers.get(0).unwrap();
+                    let wh2 = wrapped_headers.get(1).unwrap();
+                    Some(Denunciation::from((wh1, wh2)))
                 } else {
                     debug!("[De Factory][WrappedHeader] len: {}", wrapped_headers.len());
+                    None
                 }
             }
             Entry::Vacant(ev) => {
                 ev.insert(vec![wrapped_header]);
+                None
             }
-        }
+        };
 
-        // Create Operation from our denunciations
-        let wrapped_operations: Result<Vec<WrappedOperation>, _> = denunciations
-            .iter()
-            .map(|de| {
-                let op = Operation {
-                    // Note: we do not care about fee & expire_period
-                    //       as Denunciation will be 'stolen' by the block creator
-                    fee: Default::default(),
-                    expire_period: 0,
-                    op: OperationType::Denunciation { data: de.clone() },
-                };
-                Operation::new_wrapped(op,
-                                       OperationSerializer::new(),
-                                       &self.genesis_key)
-            })
-            .collect();
+        if let Some(denunciation) = denunciation_ {
 
-        if let Err(e) = wrapped_operations {
-            // Should never happen
-            panic!("Cannot build wrapped operations for new denunciations: {}", e);
-        }
+            // Create Operation from our denunciation
+            let op = Operation {
+                // Note: we do not care about fee & expire_period
+                //       as Denunciation will be 'stolen' by the block creator
+                fee: Default::default(),
+                expire_period: 0,
+                op: OperationType::Denunciation { data: denunciation },
+            };
+            let wrapped_operation = Operation::new_wrapped(op,
+                                   OperationSerializer::new(),
+                                   &self.genesis_key
+            );
 
-        // Add to operation pool
-        self.channels.storage.store_operations(wrapped_operations.unwrap());
+            if let Err(e) = wrapped_operation {
+                // Should never happen
+                panic!("Cannot build wrapped operations for new denunciations: {}", e);
+            }
 
-        // TODO: enable this for testnet 17
-        // let mut de_storage = self.channels.storage.clone_without_refs();
-        // de_storage.store_operations(wrapped_operations.unwrap());
-        // self.channels.pool.add_operations(de_storage.clone());
-        debug!("[De Factory] Should add Denunciation operations to pool...");
-        // TODO: enable this for testnet 17
-        // And now send them to ProtocolWorker (for propagation)
-        /*
+            // safe to unwrap
+            let wrapped_operations = vec![wrapped_operation.unwrap()];
+
+            // Add to operation pool
+            self.channels.storage.store_operations(wrapped_operations);
+
+            // TODO: enable this for testnet 17
+            // let mut de_storage = self.channels.storage.clone_without_refs();
+            // de_storage.store_operations(wrapped_operations.unwrap());
+            // self.channels.pool.add_operations(de_storage.clone());
+            debug!("[De Factory] Should add Denunciation operations to pool...");
+            // TODO: enable this for testnet 17
+            // And now send them to ProtocolWorker (for propagation)
+            /*
         if let Err(err) = self.channels.protocol.propagate_operations_sync(de_storage) {
             warn!("could not propagate denunciations to protocol: {}", err);
         }
         */
-        debug!("[De Factory] Should propagate Denunciation operations...");
+            debug!("[De Factory] Should propagate Denunciation operations...");
+        }
 
         self.cleanup_cache();
     }
