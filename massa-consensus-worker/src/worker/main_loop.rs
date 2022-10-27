@@ -138,8 +138,10 @@ impl ConsensusWorker {
                     if last_prune.elapsed().as_millis()
                         > self.config.block_db_prune_interval.to_millis() as u128
                     {
-                        info!("AURELIEN: Pruning block DB");
-                        self.shared_state.write().prune().expect("Error while pruning");
+                        self.shared_state
+                            .write()
+                            .prune()
+                            .expect("Error while pruning");
                         last_prune = Instant::now();
                     }
                     self.previous_slot = Some(self.next_slot);
