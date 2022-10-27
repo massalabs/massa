@@ -21,6 +21,7 @@ use massa_time::MassaTime;
 mod graph;
 mod process;
 mod process_commands;
+mod prune;
 mod stats;
 mod tick;
 mod verifications;

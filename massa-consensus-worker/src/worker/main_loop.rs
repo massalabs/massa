@@ -114,6 +114,7 @@ impl ConsensusWorker {
     /// Runs in loop forever. This loop must stop every slot to perform operations on stats and graph
     /// but can be stopped anytime by a command received.
     pub fn run(&mut self) {
+        let mut last_prune = Instant::now();
         loop {
             match self.wait_slot_or_command(self.next_instant) {
                 WaitingStatus::Ended => {
@@ -134,6 +135,13 @@ impl ConsensusWorker {
                             warn!("Error while processing block tick: {}", err);
                         }
                     };
+                    if last_prune.elapsed().as_millis()
+                        > self.config.block_db_prune_interval.to_millis() as u128
+                    {
+                        info!("AURELIEN: Pruning block DB");
+                        self.shared_state.write().prune().expect("Error while pruning");
+                        last_prune = Instant::now();
+                    }
                     self.previous_slot = Some(self.next_slot);
                     (self.next_slot, self.next_instant) = self.get_next_slot(Some(self.next_slot));
                 }
