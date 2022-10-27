@@ -320,7 +320,7 @@ impl Deserializer<Denunciation> for DenunciationDeserializer {
                 context("Failed pub_key deserialization", |input| {
                     self.pub_key_deserializer.deserialize(input)
                 }),
-                context("Failed slot deserialization", |input| {
+                context("Failed denunciation kind deserialization", |input| {
                     take(1usize)(input)
                 }),
             )),
