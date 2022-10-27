@@ -22,7 +22,7 @@ use tar::Archive;
 use glob::glob;
 use fs_extra::dir::{remove, copy, CopyOptions};
 
-const TAG: &str = "TEST.15.0"; // git tag
+const TAG: &str = "TEST.16.0"; // git tag
 const ARCHIVE_MAX_SIZE: u64 = 1048576; // Maximum archive file size to download in bytes (here: 1Mb)
 // const ARCHIVE_MAX_SIZE: u64 = 2; // Maximum archive file size to download in bytes (DEBUG)
 // Destination path for wasm file & src files (relative to repo root)
@@ -116,8 +116,8 @@ fn main() -> Result<(), std::io::Error> {
         }
     }
 
+    /*
     // Copy sources files
-
     let pattern_src_2 = format!("{}/massa_unit_tests/massa/*", extract_folder);
     let path_dst_base = Path::new(PATH_DST_BASE_2);
 
@@ -150,6 +150,7 @@ fn main() -> Result<(), std::io::Error> {
             }
         }
     }
+    */
 
     Ok(())
 }
