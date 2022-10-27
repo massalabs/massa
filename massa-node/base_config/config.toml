@@ -13,6 +13,8 @@
     bind_public = "0.0.0.0:33035"
     # max number of arguments per RPC call
     max_arguments = 128
+    # Path to the openrpc specification file used in `rpc.discover` method.
+    openrpc_spec_path = "base_config/openrpc.json"
 
 [execution]
     # max number of generated events kept in RAM

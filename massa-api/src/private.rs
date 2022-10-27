@@ -2,7 +2,7 @@
 
 use crate::config::APIConfig;
 use crate::error::ApiError;
-use crate::{Endpoints, Private, RpcServer, StopHandle, API};
+use crate::{Endpoints, Private, RpcServer, StopHandle, Value, API};
 
 use jsonrpc_core::BoxFuture;
 use jsonrpc_http_server::tokio::sync::mpsc;
@@ -234,5 +234,9 @@ impl Endpoints for API<Private> {
         let network_command_sender = self.0.network_command_sender.clone();
         let closure = async move || Ok(network_command_sender.remove_from_whitelist(ips).await?);
         Box::pin(closure())
+    }
+
+    fn get_openrpc_spec(&self) -> BoxFuture<Result<Value, ApiError>> {
+        crate::wrong_api::<Value>()
     }
 }
