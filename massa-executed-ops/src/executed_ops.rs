@@ -166,7 +166,7 @@ impl ExecutedOps {
 
 #[test]
 fn test_executed_ops_xor_computing() {
-    use massa_models::prehash::PreHashSet;
+    use massa_models::prehash::PreHashMap;
     use massa_models::wrapped::Id;
 
     // initialize the executed ops and changes
@@ -176,17 +176,21 @@ fn test_executed_ops_xor_computing() {
     };
     let mut a = ExecutedOps::new(config.clone());
     let mut c = ExecutedOps::new(config);
-    let mut change_a = PreHashSet::default();
-    let mut change_b = PreHashSet::default();
-    let mut change_c = PreHashSet::default();
+    let mut change_a = PreHashMap::default();
+    let mut change_b = PreHashMap::default();
+    let mut change_c = PreHashMap::default();
     for i in 0u8..20 {
+        let slot = Slot {
+            period: i as u64,
+            thread: 0,
+        };
         if i < 12 {
-            change_a.insert(OperationId::new(Hash::compute_from(&[i])));
+            change_a.insert(OperationId::new(Hash::compute_from(&[i])), slot);
         }
         if i > 8 {
-            change_b.insert(OperationId::new(Hash::compute_from(&[i])));
+            change_b.insert(OperationId::new(Hash::compute_from(&[i])), slot);
         }
-        change_c.insert(OperationId::new(Hash::compute_from(&[i])));
+        change_c.insert(OperationId::new(Hash::compute_from(&[i])), slot);
     }
     let slot = Slot {
         period: 0,
@@ -203,7 +207,7 @@ fn test_executed_ops_xor_computing() {
 
     // prune every element
     let prune_slot = slot.get_next_slot(2).unwrap();
-    a.apply_changes(PreHashSet::default(), prune_slot);
+    a.apply_changes(PreHashMap::default(), prune_slot);
     a.prune(prune_slot);
 
     // at this point the hash should have been XORed with itself
