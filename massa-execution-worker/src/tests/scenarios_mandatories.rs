@@ -963,7 +963,16 @@ pub fn slash_roll() {
 
     // create the block containing the roll buy operation
     storage.store_operations(vec![operation.clone(), de_operation.clone()]);
-    let block = create_block(KeyPair::generate(), vec![operation, de_operation], Slot::new(1, 0)).unwrap();
+
+    let block_creator_keypair = KeyPair::generate();
+    let block_creator_addr = Address::from_public_key(&block_creator_keypair.get_public_key());
+    let block_creator_balance_initial = sample_state
+        .read()
+        .ledger
+        .get_balance(&block_creator_addr)
+        .unwrap_or_default();
+
+    let block = create_block(block_creator_keypair.clone(), vec![operation, de_operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
     // set the block as final so the sell and credits are processed
@@ -980,6 +989,13 @@ pub fn slash_roll() {
     // check roll count of the seller address
     let sample_read = sample_state.read();
     assert_eq!(sample_read.pos_state.get_rolls_for(&address), 0);
+    // Check that block creator get some reward
+    assert!(sample_state
+        .read()
+        .ledger
+        .get_balance(&block_creator_addr)
+        .unwrap() > block_creator_balance_initial
+    );
 
     // stop the execution controller
     manager.stop();
@@ -1086,7 +1102,17 @@ pub fn slash_roll_deferred_credits() {
 
     // create the block containing the roll buy operation
     storage.store_operations(vec![operation.clone(), de_operation.clone()]);
-    let block = create_block(KeyPair::generate(), vec![operation, de_operation], Slot::new(1, 0)).unwrap();
+
+
+    let block_creator_keypair = KeyPair::generate();
+    let block_creator_addr = Address::from_public_key(&block_creator_keypair.get_public_key());
+    let block_creator_balance_initial = sample_state
+        .read()
+        .ledger
+        .get_balance(&block_creator_addr)
+        .unwrap_or_default();
+
+    let block = create_block(block_creator_keypair, vec![operation, de_operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
     // set the block as final so the sell and credits are processed
@@ -1110,6 +1136,13 @@ pub fn slash_roll_deferred_credits() {
             .pos_state
             .get_deferred_credits_at(&Slot::new(7, 1)),
         credits
+    );
+    // Check that block creator get some reward
+    assert!(sample_state
+        .read()
+        .ledger
+        .get_balance(&block_creator_addr)
+        .unwrap() > block_creator_balance_initial
     );
 
     // stop the execution controller
