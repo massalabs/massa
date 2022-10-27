@@ -18,6 +18,8 @@ use crate::address::Address;
 use crate::block::WrappedHeader;
 use crate::endorsement::WrappedEndorsement;
 use crate::wrapped::Id;
+use num_enum::{IntoPrimitive, TryFromPrimitive};
+use std::convert::TryFrom;
 
 /// Denunciation ID size in bytes
 pub const DENUNCIATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
@@ -267,6 +269,15 @@ impl Serializer<Denunciation> for DenunciationSerializer {
     }
 }
 
+
+#[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u8)]
+enum DenunciationKind {
+    Endorsement,
+    Block,
+}
+
+
 /// Deserializer for Denunciation
 pub struct DenunciationDeserializer {
     slot_deserializer: SlotDeserializer,
@@ -309,16 +320,22 @@ impl Deserializer<Denunciation> for DenunciationDeserializer {
                 context("Failed pub_key deserialization", |input| {
                     self.pub_key_deserializer.deserialize(input)
                 }),
-                context("Failed slot deserialization", |input| take(1usize)(input)),
+                context("Failed slot deserialization", |input| {
+                    take(1usize)(input)
+                }),
             )),
         )
         .parse(buffer)?;
 
-        // TODO: rework this
-        let is_for_block_ = matches!(is_for_block, [1]);
+        let de_kind = DenunciationKind::try_from(is_for_block[0]).map_err(|_| {
+            nom::Err::Error(ParseError::from_error_kind(
+                buffer,
+                nom::error::ErrorKind::Eof
+            ))
+        })?;
 
-        let (rem2, proof): (_, DenunciationProof) = match is_for_block_ {
-            true => context(
+        let (rem2, proof): (_, DenunciationProof) = match de_kind {
+            DenunciationKind::Block => context(
                 "Failed Block Denunciation deser",
                 tuple((
                     context("Failed signature 1 deser", |input| {
@@ -345,7 +362,7 @@ impl Deserializer<Denunciation> for DenunciationDeserializer {
                 DenunciationProof::Block(bd)
             })
             .parse(rem)?,
-            false => context(
+            DenunciationKind::Endorsement => context(
                 "Failed Endorsement Denunciation deser",
                 tuple((
                     context("Failed index deser", |input| {

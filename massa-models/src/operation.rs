@@ -1344,7 +1344,6 @@ mod tests {
     use massa_signature::KeyPair;
     use serial_test::serial;
     use std::collections::BTreeMap;
-    use crate::denunciation::DenunciationProof::Endorsement;
 
     #[test]
     #[serial]
