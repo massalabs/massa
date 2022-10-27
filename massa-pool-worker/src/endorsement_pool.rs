@@ -84,7 +84,7 @@ impl EndorsementPool {
         // Send to Denunciation factory
         let de_interest = DenunciationInterest::Final(self.last_cs_final_periods.clone());
         self.de_items_tx
-            .send(de_interest)
+            .try_send(de_interest)
             .expect("Unable to send consensus final periods");
     }
 
