@@ -5,7 +5,7 @@
 #![warn(unused_crate_dependencies)]
 use crate::error::ApiError::WrongAPI;
 use error::ApiError;
-use jsonrpc_core::{BoxFuture, IoHandler, serde_json, Value};
+use jsonrpc_core::{serde_json, BoxFuture, IoHandler, Value};
 use jsonrpc_derive::rpc;
 use jsonrpc_http_server::{CloseHandle, ServerBuilder};
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
@@ -291,9 +291,7 @@ pub trait Endpoints {
 
     /// Get OpenRPC specification.
     #[rpc(name = "rpc.discover")]
-    fn get_openrpc_spec(
-        &self
-    ) -> BoxFuture<Result<Value, ApiError>>;
+    fn get_openrpc_spec(&self) -> BoxFuture<Result<Value, ApiError>>;
 }
 
 fn wrong_api<T>() -> BoxFuture<Result<T, ApiError>> {

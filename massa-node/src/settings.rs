@@ -115,7 +115,7 @@ pub struct APISettings {
     pub bind_private: SocketAddr,
     pub bind_public: SocketAddr,
     pub max_arguments: u64,
-    pub openrpc_spec_path: PathBuf
+    pub openrpc_spec_path: PathBuf,
 }
 
 #[derive(Debug, Deserialize, Clone)]

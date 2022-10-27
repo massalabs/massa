@@ -29,5 +29,5 @@ pub struct APIConfig {
     /// max function name length
     pub max_function_name_length: u16,
     /// max parameter size
-    pub max_parameter_size: u32
+    pub max_parameter_size: u32,
 }

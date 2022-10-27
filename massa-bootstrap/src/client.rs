@@ -162,15 +162,16 @@ async fn bootstrap_from_server(
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     match tokio::time::timeout(cfg.read_error_timeout.into(), client.next()).await {
         Err(_) => {
-            massa_trace!("bootstrap.lib.bootstrap_from_server: No error sent at connection", {});
+            massa_trace!(
+                "bootstrap.lib.bootstrap_from_server: No error sent at connection",
+                {}
+            );
         }
         Ok(Err(e)) => return Err(e),
-        Ok(Ok(BootstrapServerMessage::BootstrapError{error: err})) => {
-            return Err(BootstrapError::ReceivedError(
-               err
-            ))
+        Ok(Ok(BootstrapServerMessage::BootstrapError { error: err })) => {
+            return Err(BootstrapError::ReceivedError(err))
         }
-        Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedServerMessage(msg))
+        Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
     };
 
     // handshake

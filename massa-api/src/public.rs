@@ -3,7 +3,7 @@
 
 use crate::config::APIConfig;
 use crate::error::ApiError;
-use crate::{Endpoints, Public, RpcServer, StopHandle, API, Value, serde_json};
+use crate::{serde_json, Endpoints, Public, RpcServer, StopHandle, Value, API};
 use jsonrpc_core::BoxFuture;
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::{
@@ -928,9 +928,21 @@ impl Endpoints for API<Public> {
     fn get_openrpc_spec(&self) -> BoxFuture<Result<Value, ApiError>> {
         let openrpc_spec_path = self.0.api_settings.openrpc_spec_path.clone();
         let closure = async move || {
-        std::fs::read_to_string(openrpc_spec_path)
-        .map_err(|e| ApiError::InternalServerError(format!("failed to read OpenRPC specification: {}", e.to_string())))
-        .and_then(|openrpc_str| serde_json::from_str(&openrpc_str).map_err(|e| ApiError::InternalServerError(format!("failed to parse OpenRPC specification: {}", e.to_string()))))
+            std::fs::read_to_string(openrpc_spec_path)
+                .map_err(|e| {
+                    ApiError::InternalServerError(format!(
+                        "failed to read OpenRPC specification: {}",
+                        e
+                    ))
+                })
+                .and_then(|openrpc_str| {
+                    serde_json::from_str(&openrpc_str).map_err(|e| {
+                        ApiError::InternalServerError(format!(
+                            "failed to parse OpenRPC specification: {}",
+                            e
+                        ))
+                    })
+                })
         };
 
         Box::pin(closure())

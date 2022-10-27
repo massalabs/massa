@@ -2,7 +2,7 @@
 
 use crate::config::APIConfig;
 use crate::error::ApiError;
-use crate::{Endpoints, Private, RpcServer, StopHandle, API, Value};
+use crate::{Endpoints, Private, RpcServer, StopHandle, Value, API};
 
 use jsonrpc_core::BoxFuture;
 use jsonrpc_http_server::tokio::sync::mpsc;
