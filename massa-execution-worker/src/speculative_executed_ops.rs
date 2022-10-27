@@ -5,7 +5,7 @@
 use crate::active_history::{ActiveHistory, HistorySearchResult};
 use massa_executed_ops::ExecutedOpsChanges;
 use massa_final_state::FinalState;
-use massa_models::operation::OperationId;
+use massa_models::{operation::OperationId, slot::Slot};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -58,7 +58,7 @@ impl SpeculativeExecutedOps {
     /// Checks if an operation was executed previously
     pub fn is_op_executed(&self, op_id: &OperationId) -> bool {
         // check in the curent changes
-        if self.executed_ops.contains(op_id) {
+        if self.executed_ops.contains_key(op_id) {
             return true;
         }
 

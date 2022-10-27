@@ -1234,7 +1234,12 @@ impl ExecutionState {
                 if hist_item.slot.thread != thread {
                     continue;
                 }
-                ops.retain(|op_id| !hist_item.state_changes.executed_ops_changes.contains(op_id));
+                ops.retain(|op_id| {
+                    !hist_item
+                        .state_changes
+                        .executed_ops_changes
+                        .contains_key(op_id)
+                });
                 if ops.is_empty() {
                     return ops;
                 }

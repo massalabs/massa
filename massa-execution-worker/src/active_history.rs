@@ -50,7 +50,7 @@ impl ActiveHistory {
             if history_element
                 .state_changes
                 .executed_ops_changes
-                .contains(op_id)
+                .contains_key(op_id)
             {
                 return HistorySearchResult::Present(());
             }

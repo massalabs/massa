@@ -68,7 +68,7 @@ pub struct ExecutedOpsChangesDeserializer {
 
 impl ExecutedOpsChangesDeserializer {
     /// Create a new deserializer for `ExecutedOps`
-    pub fn new(max_ops_changes_length: u64, thread_count: u8) -> ExecutedOpsChangesDeserializer {
+    pub fn new(thread_count: u8, max_ops_changes_length: u64) -> ExecutedOpsChangesDeserializer {
         ExecutedOpsChangesDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(
                 Included(u64::MIN),

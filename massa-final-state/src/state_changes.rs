@@ -155,7 +155,10 @@ impl StateChangesDeserializer {
                 max_production_stats_length,
                 max_credits_length,
             ),
-            ops_changes_deserializer: ExecutedOpsChangesDeserializer::new(max_ops_changes_length),
+            ops_changes_deserializer: ExecutedOpsChangesDeserializer::new(
+                thread_count,
+                max_ops_changes_length,
+            ),
         }
     }
 }

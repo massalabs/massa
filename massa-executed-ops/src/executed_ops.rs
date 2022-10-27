@@ -125,15 +125,7 @@ impl ExecutedOps {
         let mut ops_part = VecDeque::new();
         let left_bound = match cursor {
             StreamingStep::Started => Unbounded,
-            StreamingStep::Ongoing(slot) => {
-                match self
-                    .sorted_ops
-                    .binary_search_by_key(&slot, |(slot, _)| *slot)
-                {
-                    Ok(index) => Excluded(index),
-                    Err(_) => return (ops_part, StreamingStep::Finished),
-                }
-            }
+            StreamingStep::Ongoing(slot) => Excluded(slot),
             StreamingStep::Finished => return (ops_part, cursor),
         };
         let mut ops_part_last_slot: Option<Slot> = None;
@@ -164,7 +156,7 @@ impl ExecutedOps {
     ) -> StreamingStep<Slot> {
         self.sorted_ops.extend(part.clone());
         self.extend_and_compute_hash(part.iter().flat_map(|(_, ids)| ids));
-        if let Some(slot) = self.sorted_ops.back().map(|(slot, _)| slot) {
+        if let Some(slot) = self.sorted_ops.last_key_value().map(|(slot, _)| slot) {
             StreamingStep::Ongoing(*slot)
         } else {
             StreamingStep::Finished
