@@ -173,8 +173,15 @@ impl<T: ToString> History<T> for CommandHistory {
             self.history.pop_back();
         }
         let string_value = val.to_string();
-        CommandHistory::write_to_saved_history(&string_value);
-        self.history.push_front(string_value);
+        if let Some(last_command) = self.history.iter().next() {
+            if last_command != &string_value {
+                CommandHistory::write_to_saved_history(&string_value);
+                self.history.push_front(string_value);
+            }
+        } else {
+            CommandHistory::write_to_saved_history(&string_value);
+            self.history.push_front(string_value);
+        }
     }
 }
 
