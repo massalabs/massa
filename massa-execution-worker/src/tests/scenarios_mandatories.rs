@@ -159,27 +159,29 @@ fn test_nested_call_gas_usage() {
     std::thread::sleep(Duration::from_millis(10));
 
     // length of the sub contract test.wasm
-    let bytecode_sub_contract_len = 5297;
-    assert_eq!(
-        sample_state
+    let bytecode_sub_contract_len = 3715;
+
+    let balance = sample_state
             .read()
             .ledger
             .get_balance(&Address::from_public_key(&keypair.get_public_key()))
-            .unwrap(),
-        Amount::from_str("300000")
-            .unwrap()
-            // Gas fee
-            .saturating_sub(Amount::from_str("100000").unwrap())
-            // Storage cost base
-            .saturating_sub(exec_cfg.storage_costs_constants.ledger_entry_base_cost)
-            // Storage cost bytecode
-            .saturating_sub(
-                exec_cfg
-                    .storage_costs_constants
-                    .ledger_cost_per_byte
-                    .saturating_mul_u64(bytecode_sub_contract_len)
-            )
-    );
+            .unwrap();
+
+    let exec_cost = exec_cfg
+            .storage_costs_constants
+            .ledger_cost_per_byte
+            .saturating_mul_u64(bytecode_sub_contract_len);
+
+    let balance_expected = Amount::from_str("300000")
+        .unwrap()
+        // Gas fee
+        .saturating_sub(Amount::from_str("100000").unwrap())
+        // Storage cost base
+        .saturating_sub(exec_cfg.storage_costs_constants.ledger_entry_base_cost)
+        // Storage cost bytecode
+        .saturating_sub(exec_cost);
+
+    assert_eq!(balance, balance_expected);
     // retrieve events emitted by smart contracts
     let events = controller.get_filtered_sc_output_event(EventFilter {
         start: Some(Slot::new(0, 1)),
@@ -275,6 +277,7 @@ fn send_and_receive_async_message() {
     // load send_message bytecode
     // you can check the source code of the following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/send_message.wasm");
+
     // create the block contaning the smart contract execution operation
     let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
     storage.store_operations(vec![operation.clone()]);
@@ -301,6 +304,9 @@ fn send_and_receive_async_message() {
         end: Some(Slot::new(20, 1)),
         ..Default::default()
     });
+
+    println!("events: {:?}", events);
+
     // match the events
     assert!(events.len() == 1, "One event was expected");
     assert_eq!(events[0].data, "message received: hello my good friend!");
