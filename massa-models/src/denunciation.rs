@@ -377,11 +377,14 @@ mod tests {
     use crate::endorsement::{Endorsement, EndorsementSerializer, EndorsementSerializerLW, WrappedEndorsement};
     use crate::wrapped::{Id, Wrapped, WrappedContent};
     use massa_signature::KeyPair;
-    use crate::config::THREAD_COUNT;
+    use crate::config::{ENDORSEMENT_COUNT, THREAD_COUNT};
 
     #[test]
     #[serial]
     fn test_endorsement_denunciation() {
+
+        // Create an endorsement denunciation and check if it is valid
+
         let sender_keypair = KeyPair::generate();
 
         let slot = Slot::new(3, 7);
@@ -429,6 +432,9 @@ mod tests {
     #[serial]
     fn test_invalid_endorsement_denunciation() {
 
+        // Create an invalid endorsement denunciation (trying to denounce the very same endorsement)
+        // and check that it is not valid
+
         let sender_keypair = KeyPair::generate();
 
         let slot = Slot::new(3, 7);
@@ -471,6 +477,10 @@ mod tests {
     #[test]
     #[serial]
     fn test_endorsement_denunciation_ser_deser() {
+
+        // Create an endorsement denunciation, then serialize it and deserialize
+        // and finally compare
+
         let sender_keypair = KeyPair::generate();
 
         let slot = Slot::new(3, 7);
@@ -516,7 +526,7 @@ mod tests {
         let serializer = DenunciationSerializer::new();
         serializer.serialize(&denunciation, &mut ser).unwrap();
 
-        let deserializer = DenunciationDeserializer::new(32, 16);
+        let deserializer = DenunciationDeserializer::new(THREAD_COUNT, ENDORSEMENT_COUNT);
         let (_, res_denunciation) = deserializer.deserialize::<DeserializeError>(&ser).unwrap();
 
         assert_eq!(denunciation, res_denunciation);
@@ -525,6 +535,9 @@ mod tests {
     #[test]
     #[serial]
     fn test_block_denunciation() {
+
+        // Create a block denunciation and check if it is valid
+        // + ser & deserialize test
 
         let keypair = KeyPair::generate();
 
@@ -602,7 +615,7 @@ mod tests {
         let serializer = DenunciationSerializer::new();
         serializer.serialize(&denunciation, &mut ser).unwrap();
 
-        let deserializer = DenunciationDeserializer::new(32, 16);
+        let deserializer = DenunciationDeserializer::new(THREAD_COUNT, ENDORSEMENT_COUNT);
         let (_, res_denunciation) = deserializer.deserialize::<DeserializeError>(&ser).unwrap();
 
         assert_eq!(denunciation, res_denunciation);
