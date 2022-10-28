@@ -21,9 +21,6 @@ use crate::wrapped::Id;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryFrom;
 
-/// Denunciation ID size in bytes
-pub const DENUNCIATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
-
 /// Denunciation proof for endorsements
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct EndorsementDenunciation {
@@ -130,7 +127,7 @@ impl Display for DenunciationProof {
 pub struct Denunciation {
     /// Slot of denounced objects (either endorsements or blocks)
     pub slot: Slot,
-    /// TODO
+    /// Public key of endorsements/blocks creator
     pub pub_key: PublicKey,
     /// Proof (so everyone can verify that the denunciation is valid)
     pub proof: DenunciationProof,
@@ -151,12 +148,6 @@ impl Denunciation {
     pub fn is_for_block(&self) -> bool {
         matches!(self.proof.as_ref(), DenunciationProof::Block(_))
     }
-
-    /*
-    fn is_for_endorsement(&self) -> bool {
-        matches!(self.proof.as_ref(), DenunciationProof::Endorsement(_))
-    }
-    */
 
     /// Address of the denounced
     pub fn addr(&self) -> Address {
@@ -206,14 +197,14 @@ impl Display for Denunciation {
     }
 }
 
-/// Serializer for ``
+/// Serializer for `Denunciation`
 pub struct DenunciationSerializer {
     u32_serializer: U32VarIntSerializer,
     slot_serializer: SlotSerializer,
 }
 
 impl DenunciationSerializer {
-    /// Creates a new ``
+    /// Creates a new `DenunciationSerializer`
     pub fn new() -> Self {
         DenunciationSerializer {
             u32_serializer: U32VarIntSerializer::new(),
@@ -229,20 +220,6 @@ impl Default for DenunciationSerializer {
 }
 
 impl Serializer<Denunciation> for DenunciationSerializer {
-    /// ## Example:
-    /// ```rust
-    /// use massa_models::{slot::Slot, block::BlockId, endorsement::{Endorsement, EndorsementSerializerLW}};
-    /// use massa_serialization::Serializer;
-    /// use massa_hash::Hash;
-    ///
-    /// let endorsement = Endorsement {
-    ///   slot: Slot::new(1, 2),
-    ///   index: 0,
-    ///   endorsed_block: BlockId(Hash::compute_from("test".as_bytes()))
-    /// };
-    /// let mut buffer = Vec::new();
-    /// EndorsementSerializerLW::new().serialize(&endorsement, &mut buffer).unwrap();
-    /// ```
     fn serialize(&self, value: &Denunciation, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.slot_serializer.serialize(&value.slot, buffer)?;
         buffer.extend(value.pub_key.to_bytes());
@@ -269,14 +246,13 @@ impl Serializer<Denunciation> for DenunciationSerializer {
     }
 }
 
-
+/// Denunciation kind - only used for Denunciation deserialization
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u8)]
 enum DenunciationKind {
     Endorsement,
     Block,
 }
-
 
 /// Deserializer for Denunciation
 pub struct DenunciationDeserializer {
@@ -288,7 +264,7 @@ pub struct DenunciationDeserializer {
 }
 
 impl DenunciationDeserializer {
-    /// Creates a new Denunciation deserializer
+    /// Creates a new `DenunciationDeserializer`
     pub fn new(thread_count: u8, endorsement_count: u32) -> Self {
         Self {
             slot_deserializer: SlotDeserializer::new(
@@ -392,13 +368,11 @@ impl Deserializer<Denunciation> for DenunciationDeserializer {
 
 #[cfg(test)]
 mod tests {
-    // use crate::wrapped::{WrappedDeserializer, WrappedSerializer};
 
     use super::*;
     use massa_serialization::DeserializeError;
     use serial_test::serial;
 
-    // use massa_serialization::DeserializeError;
     use crate::block::{BlockHeader, BlockHeaderSerializer, BlockId};
     use crate::endorsement::{Endorsement, EndorsementSerializer, EndorsementSerializerLW, WrappedEndorsement};
     use crate::wrapped::{Id, Wrapped, WrappedContent};

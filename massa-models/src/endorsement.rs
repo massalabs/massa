@@ -17,7 +17,7 @@ use nom::{
 };
 use serde::{Deserialize, Serialize};
 use std::ops::Bound::{Excluded, Included};
-use std::{fmt::Display, mem, str::FromStr};
+use std::{fmt::Display, str::FromStr};
 use std::mem::size_of_val;
 
 /// Endorsement ID size in bytes
@@ -321,37 +321,6 @@ impl Deserializer<Endorsement> for EndorsementDeserializerLW {
         .parse(buffer)
     }
 }
-
-/*
-/// Hasher for `Endorsement`
-pub struct EndorsementHasher {}
-
-impl EndorsementHasher {
-    /// Creates a new
-    pub const fn new() -> Self {
-        Self {}
-    }
-}
-
-impl Hasher<Endorsement> for EndorsementHasher {
-    fn hash(
-        &self,
-        value: &Endorsement,
-        public_key: &[u8],
-        content: &[u8],
-    ) -> Result<Hash, SerializeError> {
-        let mut hash_data = Vec::new();
-        hash_data.extend(public_key);
-        hash_data.extend(content);
-        let slot_ser = SlotSerializer::new();
-        let mut buffer = Vec::new();
-        slot_ser.serialize(&value.slot, &mut buffer)?;
-        hash_data.extend(buffer);
-        hash_data.extend(value.index.to_ne_bytes());
-        Ok(Hash::compute_from(&hash_data))
-    }
-}
-*/
 
 impl Hasher for Endorsement {
     fn compute_from(&self, public_key: &[u8; 32], content: &[u8]) -> Option<Hash> {

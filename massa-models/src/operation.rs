@@ -284,7 +284,7 @@ impl Serializer<Operation> for OperationSerializer {
     }
 }
 
-/// Serializer for `Operation`
+/// Deserializer for `Operation`
 pub struct OperationDeserializer {
     expire_period_deserializer: U64VarIntDeserializer,
     amount_deserializer: AmountDeserializer,
