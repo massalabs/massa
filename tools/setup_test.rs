@@ -22,7 +22,7 @@ use tar::Archive;
 use glob::glob;
 // use fs_extra::dir::{remove, copy, CopyOptions};
 
-const TAG: &str = "TEST.16.2"; // git tag
+const TAG: &str = "TEST.16.3"; // git tag
 const ARCHIVE_MAX_SIZE: u64 = 1048576; // Maximum archive file size to download in bytes (here: 1Mb)
 // const ARCHIVE_MAX_SIZE: u64 = 2; // Maximum archive file size to download in bytes (DEBUG)
 // Destination path for wasm file & src files (relative to repo root)
