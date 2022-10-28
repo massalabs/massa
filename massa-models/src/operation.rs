@@ -1593,10 +1593,11 @@ mod tests {
     #[test]
     #[serial]
     fn test_denunciation() {
-        let sender_keypair = KeyPair::generate();
 
-        // let target_keypair = KeyPair::generate();
-        // let target_addr = Address::from_public_key(&target_keypair.get_public_key());
+        // Create a valid Denunciation operation
+        // Ser / Deserialize and check
+
+        let sender_keypair = KeyPair::generate();
 
         // Dummy hash & signature (no point in using a real endorsement/block here)
         let de_keypair = KeyPair::generate();

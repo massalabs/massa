@@ -138,7 +138,7 @@ fn test_denunciation_factory_endorsement_denunciation() {
     drop(test_factory);
 }
 
-/// Send block header and check if a Denunciation op is in storage
+/// Send 2 block headers and check if a Denunciation op is in storage
 #[test]
 #[serial]
 fn test_denunciation_factory_block_header_denunciation() {
