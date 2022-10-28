@@ -31,9 +31,9 @@ const EXECUTED_OPS_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 /// A structure to list and prune previously executed operations
 #[derive(Debug, Clone)]
 pub struct ExecutedOps {
-    /// Exectued operations configuration
+    /// Executed operations configuration
     config: ExecutedOpsConfig,
-    /// Executed operations deque associated with a Slot for better pruning complexity
+    /// Executed operations btreemap with slot as index for better pruning complexity
     pub sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
     /// Executed operations only for better insertion complexity
     pub ops: PreHashSet<OperationId>,
