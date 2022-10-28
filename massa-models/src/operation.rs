@@ -200,7 +200,7 @@ enum OperationTypeId {
 }
 
 /// the operation as sent in the network
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Operation {
     /// the fee they have decided for this operation
     pub fee: Amount,
@@ -377,7 +377,7 @@ impl Deserializer<Operation> for OperationDeserializer {
 }
 
 /// Type specific operation content
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum OperationType {
     /// transfer coins from sender to recipient
     Transaction {
@@ -1322,7 +1322,8 @@ mod tests {
         )
         .deserialize::<DeserializeError>(&ser_type)
         .unwrap();
-        assert_eq!(format!("{}", res_type), format!("{}", op));
+
+        assert_eq!(res_type, op);
 
         let content = Operation {
             fee: Amount::from_str("20").unwrap(),
@@ -1344,7 +1345,8 @@ mod tests {
         )
         .deserialize::<DeserializeError>(&ser_content)
         .unwrap();
-        assert_eq!(format!("{}", res_content), format!("{}", content));
+        assert_eq!(res_content, content);
+
         let op_serializer = OperationSerializer::new();
 
         let op = Operation::new_wrapped(content, op_serializer, &sender_keypair).unwrap();
@@ -1364,7 +1366,7 @@ mod tests {
             ))
             .deserialize::<DeserializeError>(&ser_op)
             .unwrap();
-        assert_eq!(format!("{}", res_op), format!("{}", op));
+        assert_eq!(res_op, op);
 
         assert_eq!(op.get_validity_range(10), 40..=50);
     }
@@ -1397,7 +1399,7 @@ mod tests {
         )
         .deserialize::<DeserializeError>(&ser_type)
         .unwrap();
-        assert_eq!(format!("{}", res_type), format!("{}", op));
+        assert_eq!(res_type, op);
 
         let content = Operation {
             fee: Amount::from_str("20").unwrap(),
@@ -1419,7 +1421,7 @@ mod tests {
         )
         .deserialize::<DeserializeError>(&ser_content)
         .unwrap();
-        assert_eq!(format!("{}", res_content), format!("{}", content));
+        assert_eq!(res_content, content);
         let op_serializer = OperationSerializer::new();
 
         let op = Operation::new_wrapped(content, op_serializer, &sender_keypair).unwrap();
@@ -1439,7 +1441,7 @@ mod tests {
             ))
             .deserialize::<DeserializeError>(&ser_op)
             .unwrap();
-        assert_eq!(format!("{}", res_op), format!("{}", op));
+        assert_eq!(res_op, op);
 
         assert_eq!(op.get_validity_range(10), 40..=50);
     }
@@ -1474,7 +1476,7 @@ mod tests {
         )
         .deserialize::<DeserializeError>(&ser_type)
         .unwrap();
-        assert_eq!(format!("{}", res_type), format!("{}", op));
+        assert_eq!(res_type, op);
 
         let content = Operation {
             fee: Amount::from_str("20").unwrap(),
@@ -1496,7 +1498,7 @@ mod tests {
         )
         .deserialize::<DeserializeError>(&ser_content)
         .unwrap();
-        assert_eq!(format!("{}", res_content), format!("{}", content));
+        assert_eq!(res_content, content);
         let op_serializer = OperationSerializer::new();
 
         let op = Operation::new_wrapped(content, op_serializer, &sender_keypair).unwrap();
@@ -1516,7 +1518,7 @@ mod tests {
             ))
             .deserialize::<DeserializeError>(&ser_op)
             .unwrap();
-        assert_eq!(format!("{}", res_op), format!("{}", op));
+        assert_eq!(res_op, op);
 
         assert_eq!(op.get_validity_range(10), 40..=50);
     }
