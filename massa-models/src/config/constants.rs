@@ -98,25 +98,33 @@ pub const MAX_BLOCK_SIZE: u32 = 500_000;
 /// Maximum capacity of the asynchronous messages pool
 pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
 /// Maximum data size in async message
-pub const MAX_DATA_ASYNC_MESSAGE: u64 = 1_000_000;
+pub const MAX_ASYNC_MESSAGE_DATA: u64 = 1_000_000;
 /// Maximum operation validity period count
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
 pub const PERIODS_PER_CYCLE: u64 = 128;
 /// PoS saved cycles: number of cycles saved in `PoSFinalState`
-pub const POS_SAVED_CYCLES: u64 = 4;
+///
+/// 4 for PoS itself and 1 for bootstrap safety
+pub const POS_SAVED_CYCLES: usize = 5;
 /// Maximum size batch of data in a part of the ledger
-pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
+pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1_000_000;
 /// Maximum async messages in a batch of the bootstrap of the async pool
-pub const ASYNC_POOL_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
-/// Maximum deferred credits in a bootstrap batch
-pub const DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
-/// Maximum cycle info in a bootstrap batch
-pub const CYCLE_INFO_SIZE_MESSAGE_BYTES: u64 = 1000000;
-/// Maximum rolls in a bootstrap batch
-pub const ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
-/// Maximum production stats in a bootstrap batch
-pub const PRODUCTION_STATS_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
+pub const ASYNC_POOL_BOOTSTRAP_PART_SIZE: u64 = 100;
+/// Maximum proof-of-stake deferred credits in a bootstrap batch
+pub const DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE: u64 = 100;
+/// Maximum executed ops per slot in a bootstrap batch
+pub const EXECUTED_OPS_BOOTSTRAP_PART_SIZE: u64 = 10;
+/// Maximum size of proof-of-stake rolls
+pub const MAX_ROLLS_COUNT_LENGTH: u64 = 10_000;
+/// Maximum size of proof-of-stake production stats
+pub const MAX_PRODUCTION_STATS_LENGTH: u64 = 10_000;
+/// Maximum size proof-of-stake deferred credits
+pub const MAX_DEFERRED_CREDITS_LENGTH: u64 = 10_000;
+/// Maximum size of executed ops
+pub const MAX_EXECUTED_OPS_LENGTH: u64 = 1_000;
+/// Maximum size of executed ops changes
+pub const MAX_EXECUTED_OPS_CHANGES_LENGTH: u64 = 1_000;
 /// Maximum length of a datastore key
 pub const MAX_DATASTORE_KEY_LENGTH: u8 = 255;
 /// Maximum length of an operation datastore key
@@ -144,12 +152,6 @@ pub const MAX_FUNCTION_NAME_LENGTH: u16 = u16::MAX;
 pub const MAX_PARAMETERS_SIZE: u32 = 10_000_000;
 /// Maximum length of `rng_seed` in thread cycle
 pub const MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COUNT as u64) as u32;
-/// Maximum length of `rolls_update` in thread cycle
-pub const MAX_ROLLS_UPDATE_LENGTH: u64 = u64::MAX;
-/// Maximum length of `rolls_counts` in thread cycle
-pub const MAX_ROLLS_COUNTS_LENGTH: u64 = u64::MAX;
-/// Maximum length of `production_stats` in thread cycle
-pub const MAX_PRODUCTION_STATS_LENGTH: u64 = u64::MAX;
 // ***********************
 // Bootstrap constants
 //
@@ -177,7 +179,7 @@ pub const IP_LIST_MAX_SIZE: usize = 10000;
 /// Size of the random bytes array used for the bootstrap, safe to import
 pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 /// Max size of the printed error
-pub const MAX_BOOTSTRAP_ERROR_LENGTH: u32 = 10000;
+pub const MAX_BOOTSTRAP_ERROR_LENGTH: u64 = 10000;
 
 /// Protocol controller channel size
 pub const PROTOCOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
@@ -202,17 +204,17 @@ pub const MAX_ASYNC_GAS: u64 = 1_000_000_000;
 /// Max number of endorsements per message
 pub const MAX_ENDORSEMENTS_PER_MESSAGE: u32 = 1024;
 /// node send channel size
-pub const NODE_SEND_CHANNEL_SIZE: usize = 1024;
+pub const NODE_SEND_CHANNEL_SIZE: usize = 10_000;
 /// max duplex buffer size
 pub const MAX_DUPLEX_BUFFER_SIZE: usize = 1024;
 /// network controller communication channel size
-pub const NETWORK_CONTROLLER_CHANNEL_SIZE: usize = 1024;
+pub const NETWORK_CONTROLLER_CHANNEL_SIZE: usize = 10_000;
 /// network event channel size
-pub const NETWORK_EVENT_CHANNEL_SIZE: usize = 1024;
+pub const NETWORK_EVENT_CHANNEL_SIZE: usize = 10_000;
 /// network node command channel size
-pub const NETWORK_NODE_COMMAND_CHANNEL_SIZE: usize = 1024;
+pub const NETWORK_NODE_COMMAND_CHANNEL_SIZE: usize = 10_000;
 /// network node event channel size
-pub const NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = 1024;
+pub const NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = 10_000;
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]

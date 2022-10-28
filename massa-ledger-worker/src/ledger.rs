@@ -12,6 +12,7 @@ use massa_models::{
     amount::{Amount, AmountDeserializer},
     error::ModelsError,
     slot::Slot,
+    streaming_step::StreamingStep,
 };
 use massa_serialization::{DeserializeError, Deserializer};
 use nom::AsBytes;
@@ -32,7 +33,7 @@ pub struct FinalLedger {
 
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
-    pub fn new(config: LedgerConfig) -> Result<Self, LedgerError> {
+    pub fn new(config: LedgerConfig) -> Self {
         // create and initialize the disk ledger
         let sorted_ledger = LedgerDB::new(
             config.disk_ledger_path.clone(),
@@ -42,10 +43,10 @@ impl FinalLedger {
         );
 
         // generate the final ledger
-        Ok(FinalLedger {
+        FinalLedger {
             sorted_ledger,
             config,
-        })
+        }
     }
 }
 
@@ -168,8 +169,8 @@ impl LedgerController for FinalLedger {
     /// A tuple containing the data and the last returned key
     fn get_ledger_part(
         &self,
-        last_key: &Option<Vec<u8>>,
-    ) -> Result<(Vec<u8>, Option<Vec<u8>>), ModelsError> {
+        last_key: StreamingStep<Vec<u8>>,
+    ) -> Result<(Vec<u8>, StreamingStep<Vec<u8>>), ModelsError> {
         self.sorted_ledger.get_ledger_part(last_key)
     }
 
@@ -179,7 +180,7 @@ impl LedgerController for FinalLedger {
     ///
     /// # Returns
     /// The last key inserted
-    fn set_ledger_part(&self, data: Vec<u8>) -> Result<Option<Vec<u8>>, ModelsError> {
+    fn set_ledger_part(&self, data: Vec<u8>) -> Result<StreamingStep<Vec<u8>>, ModelsError> {
         self.sorted_ledger.set_ledger_part(data.as_bytes())
     }
 

@@ -10,6 +10,8 @@ use std::net::SocketAddr;
 pub struct BootstrapConfig {
     /// Ip address of our bootstrap nodes and their public key.
     pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
+    /// Path to the bootstrap whitelist file. This whitelist define IPs that can bootstrap on your node, even if there is no slots.
+    pub bootstrap_whitelist_file: std::path::PathBuf,
     /// Port to listen if we choose to allow other nodes to use us as bootstrap node.
     pub bind: Option<SocketAddr>,
     /// connection timeout
@@ -54,12 +56,10 @@ pub struct BootstrapConfig {
     pub max_advertise_length: u32,
     /// max bootstrap blocks length
     pub max_bootstrap_blocks_length: u32,
-    /// max operations per blocks
-    pub max_operations_per_blocks: u32,
-    /// max bootstrap async pool changes
-    pub max_bootstrap_async_pool_changes: u64,
+    /// max operations per block
+    pub max_operations_per_block: u32,
     /// max bootstrap error length
-    pub max_bootstrap_error_length: u32,
+    pub max_bootstrap_error_length: u64,
     /// max bootstrap final state parts size
     pub max_bootstrap_final_state_parts_size: u64,
     /// max datastore entry count
@@ -72,14 +72,28 @@ pub struct BootstrapConfig {
     pub max_op_datastore_key_length: u8,
     /// max op datastore value length
     pub max_op_datastore_value_length: u64,
+    /// max async pool changes
+    pub max_async_pool_changes: u64,
+    /// max async pool length
+    pub max_async_pool_length: u64,
     /// max data async message
-    pub max_data_async_message: u64,
+    pub max_async_message_data: u64,
     /// max function name length
     pub max_function_name_length: u16,
     /// max parameters size
     pub max_parameters_size: u32,
     /// max ledger changes
     pub max_ledger_changes_count: u64,
-    /// maximum of slot in state changes
-    pub max_changes_slot_count: u32,
+    /// max slot count in state changes
+    pub max_changes_slot_count: u64,
+    /// max rolls in proof-of-stake and state changes
+    pub max_rolls_length: u64,
+    /// max production stats in proof-of-stake and state changes
+    pub max_production_stats_length: u64,
+    /// max credits in proof-of-stake and state changes
+    pub max_credits_length: u64,
+    /// max executed ops
+    pub max_executed_ops_length: u64,
+    /// max executed ops changes
+    pub max_ops_changes_length: u64,
 }

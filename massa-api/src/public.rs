@@ -3,7 +3,7 @@
 
 use crate::config::APIConfig;
 use crate::error::ApiError;
-use crate::{Endpoints, Public, RpcServer, StopHandle, API};
+use crate::{serde_json, Endpoints, Public, RpcServer, StopHandle, Value, API};
 use jsonrpc_core::BoxFuture;
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::{
@@ -105,7 +105,7 @@ impl Endpoints for API<Public> {
         crate::wrong_api::<PubkeySig>()
     }
 
-    fn add_staking_secret_keys(&self, _: Vec<KeyPair>) -> BoxFuture<Result<(), ApiError>> {
+    fn add_staking_secret_keys(&self, _: Vec<String>) -> BoxFuture<Result<(), ApiError>> {
         crate::wrong_api::<()>()
     }
 
@@ -114,8 +114,7 @@ impl Endpoints for API<Public> {
         reqs: Vec<ReadOnlyBytecodeExecution>,
     ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
         if reqs.len() as u64 > self.0.api_settings.max_arguments {
-            let closure =
-                async move || Err(ApiError::TooManyArguments("too many arguments".into()));
+            let closure = async move || Err(ApiError::BadRequest("too many arguments".into()));
             return Box::pin(closure());
         }
 
@@ -175,12 +174,16 @@ impl Endpoints for API<Public> {
 
             // map result
             let result = ExecuteReadOnlyResponse {
-                executed_at: result.as_ref().map_or_else(|_| Slot::new(0, 0), |v| v.slot),
+                executed_at: result
+                    .as_ref()
+                    .map_or_else(|_| Slot::new(0, 0), |v| v.out.slot),
                 result: result.as_ref().map_or_else(
                     |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
                     |_| ReadOnlyResult::Ok,
                 ),
-                output_events: result.map_or_else(|_| Default::default(), |mut v| v.events.take()),
+                gas_cost: result.as_ref().map_or_else(|_| 0, |v| v.gas_cost),
+                output_events: result
+                    .map_or_else(|_| Default::default(), |mut v| v.out.events.take()),
             };
 
             res.push(result);
@@ -196,8 +199,7 @@ impl Endpoints for API<Public> {
         reqs: Vec<ReadOnlyCall>,
     ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
         if reqs.len() as u64 > self.0.api_settings.max_arguments {
-            let closure =
-                async move || Err(ApiError::TooManyArguments("too many arguments".into()));
+            let closure = async move || Err(ApiError::BadRequest("too many arguments".into()));
             return Box::pin(closure());
         }
 
@@ -251,12 +253,16 @@ impl Endpoints for API<Public> {
 
             // map result
             let result = ExecuteReadOnlyResponse {
-                executed_at: result.as_ref().map_or_else(|_| Slot::new(0, 0), |v| v.slot),
+                executed_at: result
+                    .as_ref()
+                    .map_or_else(|_| Slot::new(0, 0), |v| v.out.slot),
                 result: result.as_ref().map_or_else(
                     |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
                     |_| ReadOnlyResult::Ok,
                 ),
-                output_events: result.map_or_else(|_| Default::default(), |mut v| v.events.take()),
+                gas_cost: result.as_ref().map_or_else(|_| 0, |v| v.gas_cost),
+                output_events: result
+                    .map_or_else(|_| Default::default(), |mut v| v.out.events.take()),
             };
 
             res.push(result);
@@ -379,7 +385,9 @@ impl Endpoints for API<Public> {
                 .get_cycle_active_rolls(curr_cycle)
                 .into_iter()
                 .collect::<Vec<(Address, u64)>>();
-            staker_vec.sort_by_key(|(_, rolls)| *rolls);
+            staker_vec.sort_by(|&(_, roll_counts_a), &(_, roll_counts_b)| {
+                roll_counts_b.cmp(&roll_counts_a)
+            });
             Ok(staker_vec)
         };
         Box::pin(closure())
@@ -414,11 +422,11 @@ impl Endpoints for API<Public> {
         // ask pool whether it carries the operations
         let in_pool = self.0.pool_command_sender.contains_operations(&ops);
 
-        let api_cfg = self.0.api_settings;
+        let api_cfg = self.0.api_settings.clone();
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let closure = async move || {
             if ops.len() as u64 > api_cfg.max_arguments {
-                return Err(ApiError::TooManyArguments("too many arguments".into()));
+                return Err(ApiError::BadRequest("too many arguments".into()));
             }
 
             // check finality by cross-referencing Consensus and looking for final blocks that contain the op
@@ -499,10 +507,10 @@ impl Endpoints for API<Public> {
         let in_pool = self.0.pool_command_sender.contains_endorsements(&eds);
 
         let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let api_cfg = self.0.api_settings;
+        let api_cfg = self.0.api_settings.clone();
         let closure = async move || {
             if eds.len() as u64 > api_cfg.max_arguments {
-                return Err(ApiError::TooManyArguments("too many arguments".into()));
+                return Err(ApiError::BadRequest("too many arguments".into()));
             }
 
             // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
@@ -600,7 +608,10 @@ impl Endpoints for API<Public> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let storage = self.0.storage.clone_without_refs();
         let closure = async move || {
-            let block_id = match consensus_command_sender.get_blockclique_block_at_slot(slot)? {
+            let block_id_result = consensus_command_sender
+                .get_blockclique_block_at_slot(slot)
+                .await;
+            let block_id = match block_id_result? {
                 Some(id) => id,
                 None => return Ok(None),
             };
@@ -835,11 +846,11 @@ impl Endpoints for API<Public> {
     ) -> BoxFuture<Result<Vec<OperationId>, ApiError>> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
         let mut protocol_sender = self.0.protocol_command_sender.clone();
-        let api_cfg = self.0.api_settings;
+        let api_cfg = self.0.api_settings.clone();
         let mut to_send = self.0.storage.clone_without_refs();
         let closure = async move || {
             if ops.len() as u64 > api_cfg.max_arguments {
-                return Err(ApiError::TooManyArguments("too many arguments".into()));
+                return Err(ApiError::BadRequest("too many arguments".into()));
             }
             let operation_deserializer = WrappedDeserializer::new(OperationDeserializer::new(
                 api_cfg.max_datastore_value_length,
@@ -912,5 +923,28 @@ impl Endpoints for API<Public> {
 
     fn node_remove_from_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
         crate::wrong_api::<()>()
+    }
+
+    fn get_openrpc_spec(&self) -> BoxFuture<Result<Value, ApiError>> {
+        let openrpc_spec_path = self.0.api_settings.openrpc_spec_path.clone();
+        let closure = async move || {
+            std::fs::read_to_string(openrpc_spec_path)
+                .map_err(|e| {
+                    ApiError::InternalServerError(format!(
+                        "failed to read OpenRPC specification: {}",
+                        e
+                    ))
+                })
+                .and_then(|openrpc_str| {
+                    serde_json::from_str(&openrpc_str).map_err(|e| {
+                        ApiError::InternalServerError(format!(
+                            "failed to parse OpenRPC specification: {}",
+                            e
+                        ))
+                    })
+                })
+        };
+
+        Box::pin(closure())
     }
 }

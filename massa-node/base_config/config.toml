@@ -13,6 +13,8 @@
     bind_public = "0.0.0.0:33035"
     # max number of arguments per RPC call
     max_arguments = 128
+    # Path to the openrpc specification file used in `rpc.discover` method.
+    openrpc_spec_path = "base_config/openrpc.json"
 
 [execution]
     # max number of generated events kept in RAM
@@ -43,7 +45,7 @@
     # max number of blocks waiting for dependencies
     max_dependency_blocks = 2048
     # number of final periods that must be kept at all times (increase to more resilience to short network disconnections, high values will increase RAM usage.)
-    force_keep_final_periods = 20
+    force_keep_final_periods = 10
 
     # max milliseconds to wait while sending an event before dropping it
     max_send_wait = 0
@@ -133,8 +135,10 @@
     max_operations_per_message = 1024
     # max number of endorsements per message
     max_endorsements_per_message = 1024
-    # max milliseconds to wait while sending an event before dropping it
-    max_send_wait = 0
+    # max milliseconds to wait while sending a node event before dropping it
+    max_send_wait_node_event = 5_000
+    # max milliseconds to wait while sending a network event before dropping it
+    max_send_wait_network_event = 0
     # we forget we banned a node after ban_timeout milliseconds
     ban_timeout = 3600000
     # Timeout duration when in handshake we respond with a PeerList
@@ -165,6 +169,8 @@
         ["54.36.174.177:31245", "P1gEdBVEbRFbBxBtrjcTDDK9JPbJFDay27uiJRE3vmbFAFDKNh7"],
         ["51.75.60.228:31245", "P13Ykon8Zo73PTKMruLViMMtE2rEG646JQ4sCcee2DnopmVM3P5"]
     ]
+    # Path to the bootstrap whitelist file. This whitelist define IPs that can bootstrap on your node even if there is no slots available.
+    bootstrap_whitelist_file = "base_config/bootstrap_whitelist.json"
     # [optionnal] port on which to listen for incoming bootstrap requests
     bind = "[::]:31245"
     # timeout to establish a bootstrap connection

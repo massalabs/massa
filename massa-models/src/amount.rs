@@ -223,6 +223,7 @@ impl FromStr for Amount {
 }
 
 /// Serializer for amount
+#[derive(Clone)]
 pub struct AmountSerializer {
     u64_serializer: U64VarIntSerializer,
 }
@@ -261,6 +262,7 @@ impl Serializer<Amount> for AmountSerializer {
 }
 
 /// Deserializer for amount
+#[derive(Clone)]
 pub struct AmountDeserializer {
     u64_deserializer: U64VarIntDeserializer,
 }

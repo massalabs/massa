@@ -2,10 +2,11 @@
 
 use jsonrpc_core::serde::Deserialize;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 
 /// API settings.
 /// the API settings
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct APIConfig {
     /// when looking for next draw we want to look at max `draw_lookahead_period_count`
     pub draw_lookahead_period_count: u64,
@@ -15,6 +16,8 @@ pub struct APIConfig {
     pub bind_public: SocketAddr,
     /// max argument count
     pub max_arguments: u64,
+    /// openrpc specification path
+    pub openrpc_spec_path: PathBuf,
     /// max datastore value length
     pub max_datastore_value_length: u64,
     /// max op datastore entry

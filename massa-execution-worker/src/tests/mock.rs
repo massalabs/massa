@@ -1,13 +1,9 @@
-use massa_async_pool::AsyncPoolConfig;
 use massa_execution_exports::ExecutionError;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerEntry;
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerError};
 use massa_ledger_worker::FinalLedger;
-use massa_models::config::{
-    ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, MAX_ASYNC_POOL_LENGTH, MAX_DATA_ASYNC_MESSAGE,
-};
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -83,17 +79,14 @@ pub fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, Tem
 {
     let (rolls_file, ledger) = get_initials();
     let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&ledger);
-    let mut ledger = FinalLedger::new(ledger_config.clone()).expect("could not init final ledger");
+    let mut ledger = FinalLedger::new(ledger_config.clone());
     ledger.load_initial_ledger().unwrap();
-    let async_pool_config = AsyncPoolConfig {
-        max_length: MAX_ASYNC_POOL_LENGTH,
-        part_size_message_bytes: ASYNC_POOL_PART_SIZE_MESSAGE_BYTES,
-        max_data_async_message: MAX_DATA_ASYNC_MESSAGE,
-        thread_count: THREAD_COUNT,
-    };
+    let default_config = FinalStateConfig::default();
     let cfg = FinalStateConfig {
         ledger_config,
-        async_pool_config,
+        async_pool_config: default_config.async_pool_config,
+        pos_config: default_config.pos_config,
+        executed_ops_config: default_config.executed_ops_config,
         final_history_length: 128,
         thread_count: THREAD_COUNT,
         initial_rolls_path: rolls_file.path().to_path_buf(),
