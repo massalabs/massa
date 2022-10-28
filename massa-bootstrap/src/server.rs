@@ -254,12 +254,14 @@ impl BootstrapServer {
 pub async fn send_final_state_stream(
     server: &mut BootstrapServerBinder,
     final_state: Arc<RwLock<FinalState>>,
+    consensus_controller: Box<dyn ConsensusController>,
     mut last_slot: Option<Slot>,
     mut last_ledger_step: StreamingStep<Vec<u8>>,
     mut last_pool_step: StreamingStep<AsyncMessageId>,
     mut last_cycle_step: StreamingStep<u64>,
     mut last_credits_step: StreamingStep<Slot>,
     mut last_ops_step: StreamingStep<OperationId>,
+    mut last_consensus_step: StreamingStep<Slot>,
     write_timeout: Duration,
 ) -> Result<(), BootstrapError> {
     loop {
@@ -332,17 +334,30 @@ pub async fn send_final_state_stream(
             current_slot = final_state_read.slot;
         }
 
-        if !last_ledger_step.finished()
-            || !last_pool_step.finished()
-            || !last_cycle_step.finished()
-            || !last_credits_step.finished()
-            || !last_ops_step.finished()
-            || !final_state_changes.is_empty()
+        // Setup final state global cursor
+        let final_state_global_step = if last_ledger_step.finished()
+            || last_pool_step.finished()
+            || last_cycle_step.finished()
+            || last_credits_step.finished()
+            || last_ops_step.finished()
+            || final_state_changes.is_empty()
         {
+            StreamingStep::Finished(Some(current_slot))
+        } else {
+            StreamingStep::Ongoing(current_slot)
+        };
+
+        // Stream consensus blocks
+        let (consensus_part, new_consensus_step) = consensus_controller
+            .get_bootstrap_part(last_consensus_step, final_state_global_step)?;
+        last_consensus_step = new_consensus_step;
+
+        // IMPORTANT NOTE: take it back here on monday, update sent data and break condition
+        if let StreamingStep::Ongoing(slot) = final_state_global_step {
             match tokio::time::timeout(
                 write_timeout,
                 server.send(BootstrapServerMessage::FinalStatePart {
-                    slot: current_slot,
+                    slot,
                     ledger_part,
                     async_pool_part,
                     pos_cycle_part,
@@ -481,12 +496,15 @@ async fn manage_bootstrap(
                     send_final_state_stream(
                         server,
                         final_state.clone(),
+                        consensus_controller.clone(),
                         last_slot,
                         last_ledger_step,
                         last_pool_step,
                         last_cycle_step,
                         last_credits_step,
                         last_ops_step,
+                        // IMPORTANT TODO: update message
+                        StreamingStep::Started,
                         write_timeout,
                     )
                     .await?;
