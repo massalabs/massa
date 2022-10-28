@@ -636,7 +636,7 @@ impl ExecutionContext {
         )
     }
 
-    /// Try to slash 1 roll from the denounced address.
+    /// Try to slash 1 roll from the denounced address. If roll slashing fails, try to slash the equivalent amount of deferred credits
     ///
     /// # Arguments
     /// * `denounced_addr`: address to slash the roll or deferred credit from
