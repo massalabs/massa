@@ -11,9 +11,7 @@ use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::ConsensusCommandSender;
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
-use massa_models::{
-    operation::OperationId, slot::Slot, streaming_step::StreamingStep, version::Version,
-};
+use massa_models::{slot::Slot, streaming_step::StreamingStep, version::Version};
 use massa_network_exports::NetworkCommandSender;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -271,7 +269,7 @@ pub async fn send_final_state_stream(
     mut last_pool_step: StreamingStep<AsyncMessageId>,
     mut last_cycle_step: StreamingStep<u64>,
     mut last_credits_step: StreamingStep<Slot>,
-    mut last_ops_step: StreamingStep<OperationId>,
+    mut last_ops_step: StreamingStep<Slot>,
     write_timeout: Duration,
 ) -> Result<(), BootstrapError> {
     loop {

@@ -5,12 +5,11 @@
 //! the output of a given final slot (the latest executed final slot),
 //! and need to be bootstrapped by nodes joining the network.
 
-use crate::{
-    config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges, ExecutedOps,
-};
+use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
+use massa_executed_ops::ExecutedOps;
 use massa_ledger_exports::{get_address_from_key, LedgerChanges, LedgerController};
-use massa_models::{operation::OperationId, slot::Slot, streaming_step::StreamingStep};
+use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use std::collections::VecDeque;
 use tracing::debug;
@@ -46,10 +45,9 @@ impl FinalState {
     ) -> Result<Self, FinalStateError> {
         // create the pos state
         let pos_state = PoSFinalState::new(
+            config.pos_config.clone(),
             &config.initial_seed_string,
             &config.initial_rolls_path,
-            config.periods_per_cycle,
-            config.thread_count,
             selector,
         )
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
@@ -61,7 +59,7 @@ impl FinalState {
         let async_pool = AsyncPool::new(config.async_pool_config.clone());
 
         // create a default executed ops
-        let executed_ops = ExecutedOps::default();
+        let executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
 
         // generate the final state
         Ok(FinalState {
@@ -106,9 +104,10 @@ impl FinalState {
             .apply_changes_unchecked(&changes.async_pool_changes);
         self.pos_state
             .apply_changes(changes.pos_changes.clone(), self.slot, true)
-            .expect("could not settle slot in final state PoS"); //TODO do not panic here: it might just mean that the lookback cycle is not available
-        self.executed_ops.extend(changes.executed_ops.clone());
-        self.executed_ops.prune(self.slot);
+            .expect("could not settle slot in final state proof-of-stake");
+        // TODO do not panic above: it might just mean that the lookback cycle is not available
+        self.executed_ops
+            .apply_changes(changes.executed_ops_changes.clone(), self.slot);
 
         // push history element and limit history size
         if self.config.final_history_length > 0 {
@@ -147,7 +146,7 @@ impl FinalState {
         pool_step: StreamingStep<AsyncMessageId>,
         cycle_step: StreamingStep<u64>,
         credits_step: StreamingStep<Slot>,
-        ops_step: StreamingStep<OperationId>,
+        ops_step: StreamingStep<Slot>,
     ) -> Result<Vec<(Slot, StateChanges)>, FinalStateError> {
         let position_slot = if let Some((first_slot, _)) = self.changes_history.front() {
             // Safe because we checked that there is changes just above.
@@ -235,7 +234,7 @@ impl FinalState {
 
             // Get executed operations changes if classic bootstrap finished
             if ops_step.finished() {
-                slot_changes.executed_ops = changes.executed_ops.clone();
+                slot_changes.executed_ops_changes = changes.executed_ops_changes.clone();
             }
 
             // Push the slot changes

@@ -92,4 +92,8 @@ pub struct BootstrapConfig {
     pub max_production_stats_length: u64,
     /// max credits in proof-of-stake and state changes
     pub max_credits_length: u64,
+    /// max executed ops
+    pub max_executed_ops_length: u64,
+    /// max executed ops changes
+    pub max_ops_changes_length: u64,
 }

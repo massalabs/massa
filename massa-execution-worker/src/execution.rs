@@ -140,8 +140,9 @@ impl ExecutionState {
         // count stats
         if exec_out.block_id.is_some() {
             self.stats_counter.register_final_blocks(1);
-            self.stats_counter
-                .register_final_executed_operations(exec_out.state_changes.executed_ops.len());
+            self.stats_counter.register_final_executed_operations(
+                exec_out.state_changes.executed_ops_changes.len(),
+            );
         }
 
         // apply state changes to the final ledger
@@ -1237,7 +1238,12 @@ impl ExecutionState {
                 if hist_item.slot.thread != thread {
                     continue;
                 }
-                ops.retain(|op_id| !hist_item.state_changes.executed_ops.contains(op_id));
+                ops.retain(|op_id| {
+                    !hist_item
+                        .state_changes
+                        .executed_ops_changes
+                        .contains_key(op_id)
+                });
                 if ops.is_empty() {
                     return ops;
                 }

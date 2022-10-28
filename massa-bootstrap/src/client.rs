@@ -93,10 +93,10 @@ async fn stream_final_state(
                                 false,
                             )?;
                         }
-                        if !changes.executed_ops.is_empty() {
+                        if !changes.executed_ops_changes.is_empty() {
                             write_final_state
                                 .executed_ops
-                                .extend(changes.executed_ops.clone());
+                                .apply_changes(changes.executed_ops_changes.clone(), *changes_slot);
                         }
                     }
                     write_final_state.slot = slot;
@@ -109,13 +109,17 @@ async fn stream_final_state(
                         last_credits_step,
                         last_ops_step,
                     };
+                    debug!(
+                        "client final state bootstrap cursors: {:?}",
+                        next_bootstrap_message
+                    );
+                    debug!(
+                        "client final state slot changes length: {}",
+                        final_state_changes.len()
+                    );
                 }
                 BootstrapServerMessage::FinalStateFinished => {
                     info!("State bootstrap complete");
-                    // Prune executed operations
-                    let mut write_final_state = global_bootstrap_state.final_state.write();
-                    let slot = write_final_state.slot;
-                    write_final_state.executed_ops.prune(slot);
                     // Set next bootstrap message
                     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
                     return Ok(());
@@ -395,6 +399,8 @@ async fn connect_to_server(
         bootstrap_config.max_rolls_length,
         bootstrap_config.max_production_stats_length,
         bootstrap_config.max_credits_length,
+        bootstrap_config.max_executed_ops_length,
+        bootstrap_config.max_ops_changes_length,
     ))
 }
 

@@ -6,8 +6,9 @@ use bitvec::vec::BitVec;
 use massa_async_pool::test_exports::{create_async_pool, get_random_message};
 use massa_async_pool::{AsyncPoolChanges, Change};
 use massa_consensus_exports::commands::ConsensusCommand;
+use massa_executed_ops::{ExecutedOps, ExecutedOpsConfig};
 use massa_final_state::test_exports::create_final_state;
-use massa_final_state::{ExecutedOps, FinalState};
+use massa_final_state::{FinalState, FinalStateConfig};
 use massa_graph::export_active_block::ExportActiveBlockSerializer;
 use massa_graph::{export_active_block::ExportActiveBlock, BootstrapableGraph};
 use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
@@ -17,13 +18,13 @@ use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH,
     MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
-    MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CREDITS_LENGTH, MAX_BOOTSTRAP_ERROR_LENGTH,
-    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_ROLLS_LENGTH,
-    MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
-    MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK,
-    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
-    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
-    PERIODS_PER_CYCLE, THREAD_COUNT,
+    MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+    MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
+    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH,
+    MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT,
+    MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
+    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, PERIODS_PER_CYCLE, THREAD_COUNT,
 };
 use massa_models::{
     address::Address,
@@ -195,22 +196,35 @@ pub fn get_random_async_pool_changes(r_limit: u64) -> AsyncPoolChanges {
     changes
 }
 
-pub fn get_random_executed_ops(r_limit: u64) -> ExecutedOps {
-    let mut ops = ExecutedOps::default();
-    for _ in 0..r_limit {
-        ops.insert(
+pub fn get_random_executed_ops(
+    _r_limit: u64,
+    slot: Slot,
+    config: ExecutedOpsConfig,
+) -> ExecutedOps {
+    let mut executed_ops = ExecutedOps::new(config.clone());
+    executed_ops.apply_changes(get_random_executed_ops_changes(10), slot);
+    executed_ops
+}
+
+pub fn get_random_executed_ops_changes(r_limit: u64) -> PreHashMap<OperationId, Slot> {
+    let mut ops_changes = PreHashMap::default();
+    for i in 0..r_limit {
+        ops_changes.insert(
             OperationId::new(Hash::compute_from(&get_some_random_bytes())),
             Slot {
-                period: 500,
+                period: i + 10,
                 thread: 0,
             },
         );
     }
-    ops
+    ops_changes
 }
 
 /// generates a random bootstrap state for the final state
-pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
+pub fn get_random_final_state_bootstrap(
+    pos: PoSFinalState,
+    config: FinalStateConfig,
+) -> FinalState {
     let r_limit: u64 = 50;
 
     let mut sorted_ledger = HashMap::new();
@@ -226,17 +240,17 @@ pub fn get_random_final_state_bootstrap(pos: PoSFinalState) -> FinalState {
     sorted_ledger.insert(Address::from_bytes(&[255; 32]), get_random_ledger_entry());
 
     let slot = Slot::new(0, 0);
-    let final_ledger = create_final_ledger(Some(sorted_ledger), Default::default());
-    let async_pool = create_async_pool(Default::default(), messages);
+    let final_ledger = create_final_ledger(config.ledger_config.clone(), sorted_ledger);
+    let async_pool = create_async_pool(config.async_pool_config.clone(), messages);
 
     create_final_state(
-        Default::default(),
+        config.clone(),
         slot,
         Box::new(final_ledger),
         async_pool,
         VecDeque::new(),
         get_random_pos_state(r_limit, pos),
-        get_random_executed_ops(r_limit),
+        get_random_executed_ops(r_limit, slot, config.executed_ops_config),
     )
 }
 
@@ -302,9 +316,11 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         max_ledger_changes_count: MAX_LEDGER_CHANGES_COUNT,
         max_parameters_size: MAX_PARAMETERS_SIZE,
         max_changes_slot_count: 1000,
-        max_rolls_length: MAX_BOOTSTRAP_ROLLS_LENGTH,
+        max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
         max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
-        max_credits_length: MAX_BOOTSTRAP_CREDITS_LENGTH,
+        max_credits_length: MAX_DEFERRED_CREDITS_LENGTH,
+        max_executed_ops_length: MAX_EXECUTED_OPS_LENGTH,
+        max_ops_changes_length: MAX_EXECUTED_OPS_CHANGES_LENGTH,
     }
 }
 
