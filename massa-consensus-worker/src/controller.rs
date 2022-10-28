@@ -10,6 +10,7 @@ use massa_models::{
     prehash::PreHashSet,
     slot::Slot,
     stats::ConsensusStats,
+    streaming_step::StreamingStep,
     wrapped::Wrapped,
 };
 use massa_storage::Storage;
@@ -89,7 +90,11 @@ impl ConsensusController for ConsensusControllerImpl {
     ///
     /// # Returns:
     /// A portion of the graph
-    fn get_bootstrap_graph(&self) -> Result<BootstrapableGraph, ConsensusError> {
+    fn get_bootstrap_part(
+        &self,
+        mut cursor: StreamingStep<Slot>,
+        execution_cursor: StreamingStep<Slot>,
+    ) -> Result<(BootstrapableGraph, StreamingStep<Slot>), ConsensusError> {
         let read_shared_state = self.shared_state.read();
         let mut required_final_blocks: PreHashSet<_> =
             read_shared_state.list_required_active_blocks()?;
@@ -111,6 +116,16 @@ impl ConsensusController for ConsensusControllerImpl {
                 read_shared_state.block_statuses.get(b_id)
             {
                 final_blocks.push(ExportActiveBlock::from_active_block(a_block, storage));
+                cursor = StreamingStep::Ongoing(a_block.slot);
+                // IMPORTANT TODO: use a config param
+                if final_blocks.len() > 10_000 {
+                    break;
+                }
+                if let StreamingStep::Finished(Some(slot)) = execution_cursor {
+                    if slot == a_block.slot {
+                        break;
+                    }
+                }
             } else {
                 return Err(ConsensusError::ContainerInconsistency(format!(
                     "block {} was expected to be active but wasn't on bootstrap graph export",
@@ -119,7 +134,7 @@ impl ConsensusController for ConsensusControllerImpl {
             }
         }
 
-        Ok(BootstrapableGraph { final_blocks })
+        Ok((BootstrapableGraph { final_blocks }, cursor))
     }
 
     /// Get the stats of the consensus

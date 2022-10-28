@@ -1,5 +1,6 @@
 use crate::block_graph_export::BlockGraphExport;
 use crate::{bootstrapable_graph::BootstrapableGraph, error::ConsensusError};
+use massa_models::streaming_step::StreamingStep;
 use massa_models::{
     api::BlockGraphStatus,
     block::{BlockHeader, BlockId},
@@ -45,7 +46,11 @@ pub trait ConsensusController: Send + Sync {
     ///
     /// # Returns
     /// The graph to bootstrap from
-    fn get_bootstrap_graph(&self) -> Result<BootstrapableGraph, ConsensusError>;
+    fn get_bootstrap_part(
+        &self,
+        cursor: StreamingStep<Slot>,
+        execution_cursor: StreamingStep<Slot>,
+    ) -> Result<(BootstrapableGraph, StreamingStep<Slot>), ConsensusError>;
 
     /// Get the stats of the consensus
     ///
