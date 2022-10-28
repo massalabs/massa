@@ -116,41 +116,5 @@ fn main() -> Result<(), std::io::Error> {
         }
     }
 
-    /*
-    // Copy sources files
-    let pattern_src_2 = format!("{}/massa_unit_tests/massa/*", extract_folder);
-    let path_dst_base = Path::new(PATH_DST_BASE_2);
-
-    for entry in glob(&pattern_src_2).expect("Failed to read glob pattern (src)") {
-        match entry {
-            Ok(path) => {
-
-                let path_folder_name = match path.file_name() {
-                    Some(fdname) => fdname,
-                    None => { println!("Unable to extract folder name from: {:?}", path); continue },
-                };
-
-                // rm folder first
-                let folder_rm_res = remove(path_dst_base.join(path_folder_name));
-                if folder_rm_res.is_err() {
-                    println!("Remove error: {:?}, skipping...", folder_rm_res);
-                    continue;
-                }
-
-                // now copy folder with ts files
-                let options = CopyOptions::new(); // Initialize default values for CopyOptions
-                println!("{:?} -> {:?}", path.display(), path_dst_base.display());
-                let folder_copy_res = copy(path, path_dst_base, &options);
-                if folder_copy_res.is_err() {
-                    println!("Copy error: {:?}", folder_copy_res);
-                }
-            },
-            Err(e) => {
-                println!("{:?}", e);
-            }
-        }
-    }
-    */
-
     Ok(())
 }
