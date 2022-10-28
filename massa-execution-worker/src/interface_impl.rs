@@ -534,7 +534,7 @@ impl Interface for InterfaceImpl {
     /// This random number generator is unsafe:
     /// it can be both predicted and manipulated before the execution
     fn unsafe_random_f64(&self) -> Result<f64> {
-        let distr = rand::distributions::Uniform::new_inclusive(f64::MIN, f64::MAX);
+        let distr = rand::distributions::Uniform::new(0f64, 1f64);
         Ok(context_guard!(self).unsafe_rng.sample(distr))
     }
 

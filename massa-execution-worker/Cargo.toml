@@ -21,7 +21,7 @@ massa_execution_exports = { path = "../massa-execution-exports" }
 massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
 massa_hash = { path = "../massa-hash" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", tag = "v0.8.1" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", tag = "v0.8.2" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_ledger_exports = { path = "../massa-ledger-exports" }
@@ -32,14 +32,9 @@ massa_final_state = { path = "../massa-final-state" }
 serial_test = "0.9"
 tempfile = "3.2"
 # custom modules with testing enabled
-massa_execution_exports = { path = "../massa-execution-exports", features = [
-    "testing",
-] }
-massa_pos_exports = { path = "../massa-pos-exports", features = ["testing"] }
-massa_pos_worker = { path = "../massa-pos-worker", features = ["testing"] }
-massa_ledger_worker = { path = "../massa-ledger-worker", features = [
-    "testing",
-] }
+massa_pos_worker = { path = "../massa-pos-worker" }
+massa_ledger_worker = { path = "../massa-ledger-worker" }
 
 [features]
 sandbox = ["massa_async_pool/sandbox"]
+testing = ["massa_execution_exports/testing", "massa_ledger_exports/testing", "massa_pos_exports/testing", "massa_pos_worker/testing", "massa_ledger_worker/testing", "massa_final_state/testing"]
