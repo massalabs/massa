@@ -56,7 +56,7 @@ impl DeferredCredits {
     }
 
     /// Try to remove a given amount of deferred credit for the given Slot & Address
-    pub fn sub_amount(&mut self, slot: &Slot, address: &Address, amount: &Amount) -> Option<Amount> {
+    pub fn slash_amount(&mut self, slot: &Slot, address: &Address, amount: &Amount) -> Option<Amount> {
         let mut result: Option<Amount> = None;
 
         if self.0.contains_key(slot) {

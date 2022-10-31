@@ -495,7 +495,7 @@ impl PoSFinalState {
 
     /// Remove a given amount from deferred credits and return the removed amount
     pub fn rm_deferred_credits(&mut self, slot: &Slot, addr: &Address, amount: &Amount) -> Option<Amount> {
-        self.deferred_credits.sub_amount(slot, addr, amount)
+        self.deferred_credits.slash_amount(slot, addr, amount)
     }
 
 }

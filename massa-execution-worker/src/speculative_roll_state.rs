@@ -515,7 +515,7 @@ impl SpeculativeRollState {
         let mut amount_to_rm = amount;
 
         // First try to rm in added_changes
-        let res = self.added_changes.deferred_credits.sub_amount(slot, addr, &amount_to_rm);
+        let res = self.added_changes.deferred_credits.slash_amount(slot, addr, &amount_to_rm);
         if let Some(a) = res {
             amount_to_rm = amount_to_rm.saturating_sub(a);
         }
@@ -533,7 +533,7 @@ impl SpeculativeRollState {
                             .state_changes
                             .pos_changes
                             .deferred_credits
-                            .sub_amount(slot, addr, &amount_to_rm);
+                            .slash_amount(slot, addr, &amount_to_rm);
 
                         if let Some(a) = res {
                             amount_to_rm = amount_to_rm.saturating_sub(a);
