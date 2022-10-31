@@ -508,10 +508,10 @@ impl SpeculativeRollState {
     }
 
     /// Remove a given amount from deferred credits and return the removed amount
-    pub fn remove_deferred_credits(&mut self, slot: &Slot, addr: &Address, amount: &Amount) -> Amount {
+    pub fn remove_deferred_credits(&mut self, slot: &Slot, addr: &Address, amount: Amount) -> Amount {
 
         let amount_zero = Amount::zero();
-        let mut amount_to_rm = *amount;
+        let mut amount_to_rm = amount;
 
         // First try to rm in added_changes
         let res = self.added_changes.deferred_credits.sub_amount(slot, addr, &amount_to_rm);
@@ -549,7 +549,7 @@ impl SpeculativeRollState {
                 .final_state
                 .write()
                 .pos_state
-                .rm_deferred_credits(slot, addr, amount);
+                .rm_deferred_credits(slot, addr, &amount_to_rm);
 
             if let Some(a) = res {
                 amount_to_rm = amount_to_rm.saturating_sub(a)

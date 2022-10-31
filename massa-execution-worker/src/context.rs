@@ -689,7 +689,7 @@ impl ExecutionContext {
                     break;
                 }
                 let amount_slashed_at_slot = self.speculative_roll_state
-                    .remove_deferred_credits(slot, denounced_addr, &amount_to_rm);
+                    .remove_deferred_credits(slot, denounced_addr, amount_to_rm);
                 amount_to_rm = amount_to_rm.saturating_sub(amount_slashed_at_slot)
             }
             slashed_coins = amount_to_slash.saturating_sub(amount_to_rm);
