@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::cmp::min;
 use crate::active_history::ActiveHistory;
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
@@ -149,36 +150,34 @@ impl SpeculativeRollState {
         Ok(())
     }
 
-    /// Try to burn `roll_count` rolls from the seller address.
+    /// Try to slash `roll_count` rolls from the seller address. If not enough roll, slash
+    /// the available amount and return the value.
     ///
     /// # Arguments
     /// * `addr`: address to sell the rolls from
     /// * `roll_count`: number of rolls to sell
-    pub fn try_burn_rolls(
+    pub fn try_slash_rolls(
         &mut self,
         addr: &Address,
         roll_count: u64,
-    ) -> Result<(), ExecutionError> {
-        // fetch the roll count from: current changes > active history > final state
-        let owned_count = self.get_rolls(addr);
+    ) -> Result<u64, ExecutionError> {
 
-        // verify that the seller has enough rolls to sell
-        if owned_count < roll_count {
-            return Err(ExecutionError::RollSellError(format!(
-                "{} tried to sell {} rolls but only has {}",
-                addr, roll_count, owned_count
-            )));
-        }
+        // fetch the roll count
+        let owned_count = self.get_rolls(addr);
+        let roll_to_rm = min(roll_count, owned_count);
 
         // remove the rolls
         let current_rolls = self
             .added_changes
             .roll_changes
-            .entry(*addr)
-            .or_insert_with(|| owned_count);
-        *current_rolls = owned_count.saturating_sub(roll_count);
+            .get_mut(addr)
+            .ok_or_else(||
+                ExecutionError::RuntimeError(
+                    format!("Cannot get roll changes for addr: {}", addr))
+            )?;
 
-        Ok(())
+        *current_rolls = current_rolls.saturating_sub(roll_to_rm);
+        Ok(roll_to_rm)
     }
 
     /// Update production statistics of an address.

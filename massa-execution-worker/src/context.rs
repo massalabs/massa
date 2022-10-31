@@ -636,35 +636,55 @@ impl ExecutionContext {
         )
     }
 
-    /// Try to slash 1 roll from the denounced address. If roll slashing fails, try to slash the equivalent amount of deferred credits
+    /// Try to slash `roll_count` roll(s) from the denounced address. If roll slashing fails, try to slash the equivalent amount of deferred credits
     ///
     /// # Arguments
     /// * `denounced_addr`: address to slash the roll or deferred credit from
+    /// * `roll_count`: roll count to slash
     pub fn try_slash_roll(
         &mut self,
         denounced_addr: &Address,
         roll_count: u64,
     ) -> Result<Amount, ExecutionError>
     {
-        let slashed_coins;
+        // try to slash as many roll as available
+        let slashed_rolls = self
+            .speculative_roll_state
+            .try_slash_rolls(denounced_addr, roll_count);
 
-        // First try to slash roll if any
-        if self.speculative_roll_state.try_burn_rolls(
-            denounced_addr,
-            roll_count,
-        ).is_err() {
+        // convert slashed rolls to coins (as deferred credits => coins)
+        let mut slashed_coins = self.config.roll_price
+            .checked_mul_u64(slashed_rolls.unwrap_or_default())
+            .ok_or_else(||
+                ExecutionError::RuntimeError(format!("Cannot mult roll price by {}", roll_count))
+            )?;
+
+        // what remains to slash (then will try to slash as many deferred credits as avail/what remains to be slashed)
+        let amount_to_slash = self.config.roll_price
+            .checked_mul_u64(roll_count)
+            .ok_or_else(||
+                ExecutionError::RuntimeError(format!("Cannot mult roll price by {}", roll_count))
+            )?
+            .saturating_sub(slashed_coins);
+
+        if amount_to_slash > Amount::zero() {
 
             // if no roll were slashed, that can likely be done from deferred credit
-            let credits = self.speculative_roll_state.get_address_deferred_credits(denounced_addr, self.slot);
-            let amount_to_slash = self.config.roll_price
-                .checked_mul_u64(roll_count)
-                .ok_or_else(||
-                    ExecutionError::RuntimeError(format!("Cannot mult roll price by {}", roll_count))
-                )?;
+            let credits = self.speculative_roll_state
+                .get_address_deferred_credits(denounced_addr, self.slot);
 
             // Remove deferred credits starting at self.slot until
             let mut amount_to_rm = amount_to_slash;
             for (slot, _amount) in credits.iter() {
+
+                if *slot == self.slot {
+                    // Note: deferred credits are credited at the beginning of the slot execution
+                    // (before the block is executed)
+                    // This means that if there is a deferred credit for the current slot,
+                    // we cannot slash it because it was already credited.
+                    continue;
+                }
+
                 if amount_to_rm == Amount::zero() {
                     break;
                 }
@@ -673,12 +693,6 @@ impl ExecutionContext {
                 amount_to_rm = amount_to_rm.saturating_sub(amount_slashed_at_slot)
             }
             slashed_coins = amount_to_slash.saturating_sub(amount_to_rm);
-        } else {
-            slashed_coins = self.config.roll_price
-                .checked_mul_u64(roll_count)
-                .ok_or_else(||
-                    ExecutionError::RuntimeError(format!("Cannot mult roll price by {}", roll_count))
-                )?;
         }
 
         Ok(slashed_coins)
