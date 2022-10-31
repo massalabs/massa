@@ -21,7 +21,6 @@ use massa_models::denunciation::DenunciationProof;
 use massa_models::denunciation_interest::DenunciationInterest;
 use massa_models::timeslots::get_closest_slot_to_timestamp;
 
-// const DENUNCIATION_EXPIRE_CYCLE_DELTA_EXPIRE_COUNT: u64 = 3;
 const ENDORSEMENT_DENUNCIATION_CACHE_MAX_SIZE: usize = 4096;
 const ENDORSEMENT_BY_CACHE_MAX_SIZE: usize = 4096;
 const BLOCK_HEADER_DENUNCIATION_CACHE_MAX_SIZE: usize = 4096;
@@ -377,7 +376,7 @@ fn is_expired_for_denunciation(denunciation_slot: &Slot, next_slot: &Slot,
                                last_cs_final_periods: &[u64], periods_per_cycle: u64,
                                denunciation_expire_cycle_delta: u64) -> bool
 {
-    // Slot is final => cannot be Denounced anymore
+    // Slot is final -> cannot be Denounced anymore
     if denunciation_slot.period <= last_cs_final_periods[denunciation_slot.thread as usize] {
         return true;
     }

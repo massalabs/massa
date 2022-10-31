@@ -42,7 +42,8 @@ impl Default for ExecutionConfig {
             max_bytecode_size: MAX_BYTECODE_LENGTH,
             max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
             storage_costs_constants,
-            slash_roll_count: SLASH_ROLL_COUNT
+            slash_roll_count: SLASH_ROLL_COUNT,
+            denunciation_expire_cycle_delta: DENUNCIATION_EXPIRE_CYCLE_DELTA,
         }
     }
 }

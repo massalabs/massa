@@ -61,5 +61,7 @@ pub struct ExecutionConfig {
     /// Storage cost constants
     pub storage_costs_constants: StorageCostsConstants,
     /// roll count to slash for denunciation op
-    pub slash_roll_count: u64
+    pub slash_roll_count: u64,
+    /// denunciation expiration as cycle delta
+    pub denunciation_expire_cycle_delta: u64,
 }

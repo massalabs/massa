@@ -629,15 +629,21 @@ impl ExecutionState {
         block_credits: &mut Amount,
     ) -> Result<(), ExecutionError> {
 
-        // const ROLL_COUNT: u64 = 1;
-
         // process denunciation operations only
         let denunciation = match operation {
             OperationType::Denunciation { data } => data,
             _ => panic!("unexpected operation type"),
         };
 
-        if denunciation.is_valid() {
+        // Check denunciation operation in the context of the block
+        let cycle = denunciation.slot.get_cycle(self.config.periods_per_cycle);
+        let next_cycle = self.active_cursor.get_cycle(self.config.periods_per_cycle);
+
+        let is_valid = denunciation.is_valid() &&
+            denunciation.slot > self.final_cursor &&
+            next_cycle.saturating_sub(cycle) <= self.config.denunciation_expire_cycle_delta;
+
+        if is_valid {
 
             // acquire write access to the context
             let mut context = context_guard!(self);
