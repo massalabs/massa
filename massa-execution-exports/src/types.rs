@@ -49,6 +49,15 @@ pub struct ExecutionOutput {
     pub events: EventStore,
 }
 
+/// structure describing the output of a read only execution
+#[derive(Debug, Clone)]
+pub struct ReadOnlyExecutionOutput {
+    /// Output of a single execution
+    pub out: ExecutionOutput,
+    /// Gas cost for this execution
+    pub gas_cost: u64,
+}
+
 /// structure describing different types of read-only execution request
 #[derive(Debug, Clone)]
 pub struct ReadOnlyExecutionRequest {

@@ -86,7 +86,6 @@
 //! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
 //! See `test_exports/mod.rs` for details.
 
-#![feature(map_first_last)]
 #![feature(btree_drain_filter)]
 #![feature(drain_filter)]
 
@@ -103,7 +102,7 @@ pub use message::{
     AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncMessageIdDeserializer,
     AsyncMessageIdSerializer, AsyncMessageSerializer,
 };
-pub use pool::AsyncPool;
+pub use pool::{AsyncPool, AsyncPoolDeserializer, AsyncPoolSerializer};
 
 #[cfg(test)]
 mod tests;

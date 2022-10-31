@@ -17,7 +17,7 @@ use tracing::warn;
 
 /// Used to serialize and send data.
 pub struct WriteBinder {
-    write_half: WriteHalf,
+    pub(crate) write_half: WriteHalf,
     message_index: u64,
     max_message_size: u32,
 }

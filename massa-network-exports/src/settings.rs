@@ -42,8 +42,10 @@ pub struct NetworkConfig {
     pub message_timeout: MassaTime,
     /// Every `ask_peer_list_interval` in milliseconds we ask every one for its advertisable peers list.
     pub ask_peer_list_interval: MassaTime,
-    /// Max wait time for sending a Network or Node event.
-    pub max_send_wait: MassaTime,
+    /// Max wait time for sending a Node event.
+    pub max_send_wait_node_event: MassaTime,
+    /// Max wait time for sending a Network event.
+    pub max_send_wait_network_event: MassaTime,
     /// Time after which we forget a node
     pub ban_timeout: MassaTime,
     /// Timeout Duration when we send a `PeerList` in handshake
@@ -156,7 +158,8 @@ pub mod tests {
                 message_timeout: MassaTime::from_millis(5000u64),
                 ask_peer_list_interval: MassaTime::from_millis(50000u64),
                 keypair_file: std::path::PathBuf::new(),
-                max_send_wait: MassaTime::from_millis(100),
+                max_send_wait_node_event: MassaTime::from_millis(100),
+                max_send_wait_network_event: MassaTime::from_millis(100),
                 ban_timeout: MassaTime::from_millis(100_000_000),
                 initial_peers_file: std::path::PathBuf::new(),
                 peer_list_send_timeout: MassaTime::from_millis(500),
@@ -222,7 +225,8 @@ pub mod tests {
                 message_timeout: MassaTime::from_millis(5000u64),
                 ask_peer_list_interval: MassaTime::from_millis(50000u64),
                 keypair_file: get_temp_keypair_file().path().to_path_buf(),
-                max_send_wait: MassaTime::from_millis(100),
+                max_send_wait_node_event: MassaTime::from_millis(100),
+                max_send_wait_network_event: MassaTime::from_millis(100),
                 ban_timeout: MassaTime::from_millis(100_000_000),
                 initial_peers_file: peers_file.to_path_buf(),
                 peer_list_send_timeout: MassaTime::from_millis(50),

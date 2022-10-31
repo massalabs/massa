@@ -11,7 +11,6 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 #![feature(ip)]
-#![feature(map_first_last)]
 #![feature(let_chains)]
 
 pub use establisher::types::Establisher;
@@ -29,6 +28,7 @@ mod messages;
 mod server;
 mod server_binder;
 mod settings;
+mod tools;
 pub use client::get_state;
 pub use establisher::types;
 pub use messages::{

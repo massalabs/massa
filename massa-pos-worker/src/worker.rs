@@ -17,6 +17,7 @@ use std::collections::VecDeque;
 use std::sync::mpsc::sync_channel;
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
+use std::thread;
 use std::thread::JoinHandle;
 
 /// Structure gathering all elements needed by the selector thread
@@ -38,14 +39,17 @@ impl SelectorThread {
         cache: DrawCachePtr,
         cfg: SelectorConfig,
     ) -> JoinHandle<PosResult<()>> {
-        std::thread::spawn(|| {
-            let this = Self {
-                input_mpsc,
-                cache,
-                cfg,
-            };
-            this.run()
-        })
+        let thread_builder = thread::Builder::new().name("selector".into());
+        thread_builder
+            .spawn(|| {
+                let this = Self {
+                    input_mpsc,
+                    cache,
+                    cfg,
+                };
+                this.run()
+            })
+            .expect("failed to spawn thread : selector")
     }
 
     /// process the result of a draw

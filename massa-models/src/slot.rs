@@ -63,6 +63,7 @@ impl Serializer<Slot> for SlotSerializer {
 }
 
 /// Basic `Slot` Deserializer
+#[derive(Clone)]
 pub struct SlotDeserializer {
     period_deserializer: U64VarIntDeserializer,
     range_thread: (Bound<u8>, Bound<u8>),

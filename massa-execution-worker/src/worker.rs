@@ -10,8 +10,8 @@ use crate::execution::ExecutionState;
 use crate::request_queue::RequestQueue;
 use crate::slot_sequencer::SlotSequencer;
 use massa_execution_exports::{
-    ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
-    ReadOnlyExecutionRequest,
+    ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager,
+    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
 use massa_final_state::FinalState;
 use massa_models::block::BlockId;
@@ -21,6 +21,7 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::sync::Arc;
+use std::thread;
 use tracing::debug;
 
 /// Structure gathering all elements needed by the execution thread
@@ -34,7 +35,7 @@ pub(crate) struct ExecutionThread {
     // Execution state (see execution.rs) to which execution requests are sent
     execution_state: Arc<RwLock<ExecutionState>>,
     /// queue for read-only requests and response MPSCs to send back their outputs
-    readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
+    readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ReadOnlyExecutionOutput>,
     /// Selector controller
     selector: Box<dyn SelectorController>,
 }
@@ -71,7 +72,7 @@ impl ExecutionThread {
     /// Cancel those that are in excess if there are too many.
     fn update_readonly_requests(
         &mut self,
-        new_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
+        new_requests: RequestQueue<ReadOnlyExecutionRequest, ReadOnlyExecutionOutput>,
     ) {
         // Append incoming readonly requests to our readonly request queue
         // Excess requests are cancelled
@@ -261,10 +262,12 @@ pub fn start_execution_worker(
 
     // launch the execution thread
     let input_data_clone = input_data.clone();
-    let thread_handle = std::thread::spawn(move || {
-        ExecutionThread::new(config, input_data_clone, execution_state, selector).main_loop();
-    });
-
+    let thread_builder = thread::Builder::new().name("execution".into());
+    let thread_handle = thread_builder
+        .spawn(move || {
+            ExecutionThread::new(config, input_data_clone, execution_state, selector).main_loop();
+        })
+        .expect("failed to spawn thread : execution");
     // create a manager
     let manager = ExecutionManagerImpl {
         input_data,

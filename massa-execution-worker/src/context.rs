@@ -12,10 +12,11 @@ use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
 use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 use massa_async_pool::{AsyncMessage, AsyncMessageId};
+use massa_executed_ops::ExecutedOpsChanges;
 use massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
 };
-use massa_final_state::{ExecutedOps, FinalState, StateChanges};
+use massa_final_state::{FinalState, StateChanges};
 use massa_ledger_exports::LedgerChanges;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::{
@@ -43,8 +44,8 @@ pub(crate) struct ExecutionContextSnapshot {
     /// speculative asynchronous pool messages emitted so far in the context
     pub async_pool_changes: Vec<(AsyncMessageId, AsyncMessage)>,
 
-    /// speculative list of operations executed (mapped to their end-of-validity slot)
-    pub executed_ops: ExecutedOps,
+    /// speculative list of operations executed
+    pub executed_ops: ExecutedOpsChanges,
 
     /// speculative roll state changes caused so far in the context
     pub pos_changes: PoSChanges,
@@ -706,7 +707,7 @@ impl ExecutionContext {
             ledger_changes: self.speculative_ledger.take(),
             async_pool_changes: self.speculative_async_pool.take(),
             pos_changes: self.speculative_roll_state.take(),
-            executed_ops: self.speculative_executed_ops.take(),
+            executed_ops_changes: self.speculative_executed_ops.take(),
         };
         ExecutionOutput {
             slot,

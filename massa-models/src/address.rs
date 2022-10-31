@@ -246,7 +246,7 @@ impl Address {
 }
 
 /// Deserializer for `Address`
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct AddressDeserializer {
     hash_deserializer: HashDeserializer,
 }

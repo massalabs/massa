@@ -5,7 +5,7 @@
 use massa_hash::Hash;
 use massa_protocol_exports::ProtocolError;
 use massa_signature::{verify_signature_batch, PublicKey, Signature};
-use rayon::prelude::*;
+use rayon::{prelude::ParallelIterator, slice::ParallelSlice};
 
 /// Limit for small batch optimization
 const SMALL_BATCH_LIMIT: usize = 2;
