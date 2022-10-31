@@ -287,6 +287,9 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         bootstrap_whitelist_file: std::path::PathBuf::from(
             "../massa-node/base_config/bootstrap_whitelist.json",
         ),
+        bootstrap_blacklist_file: std::path::PathBuf::from(
+            "../massa-node/base_config/bootstrap_blacklist.json",
+        ),
         enable_clock_synchronization: true,
         cache_duration: 10000.into(),
         max_simultaneous_bootstraps: 2,

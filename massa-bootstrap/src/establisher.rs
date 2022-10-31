@@ -15,7 +15,11 @@ pub mod types {
 /// Connection types
 pub mod types {
     use massa_time::MassaTime;
-    use std::{io, net::SocketAddr};
+    use std::{
+        collections::HashSet,
+        io,
+        net::{IpAddr, SocketAddr},
+    };
     use tokio::{
         net::{TcpListener, TcpStream},
         time::timeout,
@@ -29,15 +33,37 @@ pub mod types {
     /// connection establisher
     pub type Establisher = DefaultEstablisher;
 
+    fn normalize_ip(ip: IpAddr) -> IpAddr {
+        match ip {
+            IpAddr::V4(ip) => ip.to_ipv6_mapped(),
+            IpAddr::V6(ip) => ip,
+        }
+        .to_canonical()
+    }
+
     /// The listener we are using
     #[derive(Debug)]
     pub struct DefaultListener(TcpListener);
 
     impl DefaultListener {
         /// Accepts a new incoming connection from this listener.
-        pub async fn accept(&mut self) -> io::Result<(Duplex, SocketAddr)> {
+        pub async fn accept(
+            &mut self,
+            whitelist: &Option<HashSet<IpAddr>>,
+            blacklist: &Option<HashSet<IpAddr>>,
+        ) -> io::Result<(Duplex, SocketAddr)> {
             // accept
             let (sock, mut remote_addr) = self.0.accept().await?;
+            let ip = normalize_ip(remote_addr.ip());
+            if let Some(blacklist) = blacklist && blacklist.contains(&ip) {
+                return Err(io::Error::new(io::ErrorKind::Other, "IP is blacklisted"));
+            }
+            if let Some(whitelist) = whitelist && !whitelist.contains(&ip) {
+                return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "A whitelist exist and the IP is not whitelisted",
+                ));
+            }
             // normalize address
             remote_addr.set_ip(remote_addr.ip().to_canonical());
             Ok((sock, remote_addr))

@@ -168,6 +168,7 @@ async fn launch(
     let bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
         bootstrap_whitelist_file: SETTINGS.bootstrap.bootstrap_whitelist_file.clone(),
+        bootstrap_blacklist_file: SETTINGS.bootstrap.bootstrap_blacklist_file.clone(),
         bind: SETTINGS.bootstrap.bind,
         connect_timeout: SETTINGS.bootstrap.connect_timeout,
         read_timeout: SETTINGS.bootstrap.read_timeout,
@@ -221,7 +222,7 @@ async fn launch(
         res = get_state(
             &bootstrap_config,
             final_state.clone(),
-            massa_bootstrap::types::Establisher::new(),
+            massa_bootstrap::types::Establisher::default(),
             *VERSION,
             *GENESIS_TIMESTAMP,
             *END_TIMESTAMP,
