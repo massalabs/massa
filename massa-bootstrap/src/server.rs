@@ -22,6 +22,7 @@ use crate::{
     error::BootstrapError,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
+    tools::normalize_ip,
     BootstrapConfig, Establisher,
 };
 
@@ -41,14 +42,6 @@ impl BootstrapManager {
         let _ = self.join_handle.await?;
         Ok(())
     }
-}
-
-fn normalize_ip(ip: IpAddr) -> IpAddr {
-    match ip {
-        IpAddr::V4(ip) => ip.to_ipv6_mapped(),
-        IpAddr::V6(ip) => ip,
-    }
-    .to_canonical()
 }
 
 #[allow(clippy::too_many_arguments)]

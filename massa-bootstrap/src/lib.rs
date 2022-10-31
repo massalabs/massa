@@ -28,6 +28,7 @@ mod messages;
 mod server;
 mod server_binder;
 mod settings;
+mod tools;
 pub use client::get_state;
 pub use establisher::types;
 pub use messages::{

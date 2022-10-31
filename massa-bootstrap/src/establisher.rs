@@ -14,6 +14,7 @@ pub mod types {
 #[cfg(not(test))]
 /// Connection types
 pub mod types {
+    use crate::tools::normalize_ip;
     use massa_time::MassaTime;
     use std::{
         collections::HashSet,
@@ -32,14 +33,6 @@ pub mod types {
     pub type Connector = DefaultConnector;
     /// connection establisher
     pub type Establisher = DefaultEstablisher;
-
-    fn normalize_ip(ip: IpAddr) -> IpAddr {
-        match ip {
-            IpAddr::V4(ip) => ip.to_ipv6_mapped(),
-            IpAddr::V6(ip) => ip,
-        }
-        .to_canonical()
-    }
 
     /// The listener we are using
     #[derive(Debug)]
@@ -61,7 +54,7 @@ pub mod types {
             if let Some(whitelist) = whitelist && !whitelist.contains(&ip) {
                 return Err(io::Error::new(
                     io::ErrorKind::Other,
-                    "A whitelist exist and the IP is not whitelisted",
+                    "A whitelist exists and the IP is not whitelisted",
                 ));
             }
             // normalize address
