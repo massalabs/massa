@@ -40,7 +40,7 @@ pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;
 pub struct OperationId(Hash);
 
 /// Left part of the operation id hash stored in a vector of size [`OPERATION_ID_PREFIX_SIZE_BYTES`]
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct OperationPrefixId([u8; OPERATION_ID_PREFIX_SIZE_BYTES]);
 
 impl std::fmt::Display for OperationId {

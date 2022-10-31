@@ -104,3 +104,4 @@ truncate_history
 bool
 slot_sequencer
 verifier
+desynchronized

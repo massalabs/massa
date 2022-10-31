@@ -22,4 +22,6 @@ pub struct PoolConfig {
     pub max_endorsements_pool_size_per_thread: usize,
     /// max number of endorsements per block
     pub max_block_endorsement_count: u32,
+    /// operations and endorsements communication channels size
+    pub channels_size: usize,
 }

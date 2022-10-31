@@ -1,9 +1,9 @@
 {
     "openrpc": "1.2.4",
     "info": {
-        "title": "Massa OpenRPC",
-        "version": "TEST.15.0",
-        "description": "Massa OpenRPC spec",
+        "title": "Massa OpenRPC Specification",
+        "version": "TEST.15.1",
+        "description": "Massa OpenRPC Specification document",
         "termsOfService": "https://open-rpc.org",
         "contact": {
             "name": "Massa Team",

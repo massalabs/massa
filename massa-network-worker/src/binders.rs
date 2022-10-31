@@ -4,7 +4,6 @@
 use crate::messages::{MessageDeserializer, MessageSerializer};
 
 use super::messages::Message;
-use async_speed_limit::{clock::StandardClock, Limiter, Resource};
 use massa_models::{
     error::ModelsError,
     serialization::{DeserializeMinBEInt, SerializeMinBEInt},
@@ -18,7 +17,7 @@ use tracing::warn;
 
 /// Used to serialize and send data.
 pub struct WriteBinder {
-    write_half: Resource<WriteHalf, StandardClock>,
+    write_half: WriteHalf,
     message_index: u64,
     max_message_size: u32,
 }
@@ -29,9 +28,9 @@ impl WriteBinder {
     /// # Argument
     /// * `write_half`: writer half.
     /// * `limit`: limit max bytes per second write
-    pub fn new(write_half: WriteHalf, limit: f64, max_message_size: u32) -> Self {
+    pub fn new(write_half: WriteHalf, _limit: f64, max_message_size: u32) -> Self {
         WriteBinder {
-            write_half: <Limiter>::new(limit).limit(write_half),
+            write_half,
             message_index: 0,
             max_message_size,
         }
@@ -65,7 +64,7 @@ impl WriteBinder {
 
 /// Used to receive and deserialize data.
 pub struct ReadBinder {
-    read_half: Resource<ReadHalf, StandardClock>,
+    read_half: ReadHalf,
     message_index: u64,
     buf: Vec<u8>,
     cursor: usize,
@@ -82,12 +81,12 @@ impl ReadBinder {
     /// * `limit`: limit max bytes per second read.
     pub fn new(
         read_half: ReadHalf,
-        limit: f64,
+        _limit: f64,
         max_message_size: u32,
         message_deserializer: MessageDeserializer,
     ) -> Self {
         ReadBinder {
-            read_half: <Limiter>::new(limit).limit(read_half),
+            read_half,
             message_index: 0,
             buf: Vec::new(),
             cursor: 0,

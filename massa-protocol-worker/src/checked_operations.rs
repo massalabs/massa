@@ -1,49 +1,50 @@
-use massa_models::{
-    operation::{OperationId, OperationPrefixId},
-    prehash::{PreHashMap, PreHashSet},
-};
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-/// The structure store the previously checked operations.
-/// Manage the relation between `OperationPrefixId` and `OperationId`
-/// note: we could think about replace `Vec<OperationId>` with `Vec<OperationSuffixId>`
-///       if the execution time CPU is equivalent
-#[derive(Default)]
-pub(crate) struct CheckedOperations(PreHashMap<OperationPrefixId, OperationId>);
+//! Cache of previously successfully checked operations and their prefix IDs
+
+use massa_models::operation::{OperationId, OperationPrefixId};
+
+use crate::cache::LinearHashCacheSet;
+
+/// Checked operations cache.
+/// Note: prefix and ID caches are expected to get durably desynchronized in case of prefix collision.
+#[derive(Debug, Clone)]
+pub struct CheckedOperations {
+    /// Linear cache of operation IDs
+    op_ids: LinearHashCacheSet<OperationId>,
+    /// Linear cache and counter of operation ID prefixes
+    op_prefixes: LinearHashCacheSet<OperationPrefixId>,
+}
 
 impl CheckedOperations {
-    /// Insert in the adapter an operation `id`.
-    ///
-    /// If the set did not have this value present, `true` is returned.
-    ///
-    /// If the set did have this value present, `false` is returned.
-    pub fn insert(&mut self, id: &OperationId) -> bool {
-        let prefix = id.prefix();
-        self.0.insert(prefix, *id).is_none()
+    /// Create a new checked operations cache
+    pub fn new(capacity: usize) -> Self {
+        CheckedOperations {
+            op_ids: LinearHashCacheSet::new(capacity),
+            op_prefixes: LinearHashCacheSet::new(capacity),
+        }
     }
 
-    pub fn extend(&mut self, ids: &PreHashSet<OperationId>) {
-        ids.iter().for_each(|id| {
+    /// Insert an operation ID and its deduced prefix
+    pub fn insert(&mut self, operation_id: OperationId) {
+        self.op_ids.try_insert(operation_id);
+        self.op_prefixes.try_insert(operation_id.prefix());
+    }
+
+    /// Check if the cache contains a given operation ID
+    pub fn contains_id(&self, operation_id: &OperationId) -> bool {
+        self.op_ids.contains(operation_id)
+    }
+
+    /// Check if the cache contains a given operation ID prefix
+    pub fn contains_prefix(&self, prefix: &OperationPrefixId) -> bool {
+        self.op_prefixes.contains(prefix)
+    }
+
+    /// Extend with new IDs
+    pub fn extend<I: IntoIterator<Item = OperationId>>(&mut self, iter: I) {
+        iter.into_iter().for_each(|id| {
             self.insert(id);
         });
-    }
-
-    /// Get a operation id matching with the given `prefix` or None if there is none.
-    pub fn get(&self, prefix: &OperationPrefixId) -> Option<&OperationId> {
-        self.0.get(prefix)
-    }
-
-    /// Clear the content of the adapter.
-    pub fn clear(&mut self) -> PreHashSet<OperationId> {
-        self.0.drain().map(|(_, id)| id).collect()
-    }
-
-    /// Returns the number of prefix keys in the adapter.
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    #[inline(always)]
-    pub fn contains(&self, prefix: &OperationPrefixId) -> bool {
-        self.0.contains_key(prefix)
     }
 }

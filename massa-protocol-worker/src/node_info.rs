@@ -6,11 +6,13 @@
 //! Same as for wanted/known blocks, we remember here in cache which node asked
 //! for operations and which operations he seem to already know.
 
-use massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet};
-use massa_models::{block::BlockId, endorsement::EndorsementId, operation::OperationId};
+use massa_models::operation::OperationPrefixId;
+use massa_models::prehash::{CapacityAllocator, PreHashMap};
+use massa_models::{block::BlockId, endorsement::EndorsementId};
 use massa_protocol_exports::ProtocolConfig;
-use std::collections::VecDeque;
 use tokio::time::Instant;
+
+use crate::cache::LinearHashCacheSet;
 
 /// Information about a node we are connected to,
 /// essentially our view of its state.
@@ -23,14 +25,10 @@ pub(crate) struct NodeInfo {
     pub asked_blocks: PreHashMap<BlockId, Instant>,
     /// Instant when the node was added
     pub connection_instant: Instant,
-    /// all known operations
-    known_operations: PreHashSet<OperationId>,
-    /// Same as `known_operations` but sorted for a premature optimization :-)
-    known_operations_queue: VecDeque<OperationId>,
+    /// all known operations (prefix-based)
+    known_operations: LinearHashCacheSet<OperationPrefixId>,
     /// all known endorsements
-    known_endorsements: PreHashSet<EndorsementId>,
-    /// Same as `known_endorsements` but sorted for a premature optimization :-)
-    known_endorsements_queue: VecDeque<EndorsementId>,
+    known_endorsements: LinearHashCacheSet<EndorsementId>,
 }
 
 impl NodeInfo {
@@ -40,16 +38,8 @@ impl NodeInfo {
             known_blocks: PreHashMap::with_capacity(pool_settings.max_node_known_blocks_size),
             asked_blocks: Default::default(),
             connection_instant: Instant::now(),
-            known_operations: PreHashSet::<OperationId>::with_capacity(
-                pool_settings.max_node_known_ops_size.saturating_add(1),
-            ),
-            known_operations_queue: VecDeque::with_capacity(
-                pool_settings.max_node_known_ops_size.saturating_add(1),
-            ),
-            known_endorsements: PreHashSet::<EndorsementId>::with_capacity(
-                pool_settings.max_node_known_endorsements_size,
-            ),
-            known_endorsements_queue: VecDeque::with_capacity(
+            known_operations: LinearHashCacheSet::new(pool_settings.max_node_known_ops_size),
+            known_endorsements: LinearHashCacheSet::new(
                 pool_settings.max_node_known_endorsements_size,
             ),
         }
@@ -97,41 +87,22 @@ impl NodeInfo {
         self.remove_excess_known_blocks(max_node_known_blocks_size);
     }
 
-    pub fn insert_known_endorsements(
+    pub fn insert_known_endorsements<I: IntoIterator<Item = EndorsementId>>(
         &mut self,
-        endorsements: Vec<EndorsementId>,
-        max_endorsements_nb: usize,
+        endorsements: I,
     ) {
-        for endorsement_id in endorsements.into_iter() {
-            if self.known_endorsements.insert(endorsement_id) {
-                self.known_endorsements_queue.push_front(endorsement_id);
-                if self.known_endorsements_queue.len() > max_endorsements_nb {
-                    if let Some(r) = self.known_endorsements_queue.pop_back() {
-                        self.known_endorsements.remove(&r);
-                    }
-                }
-            }
-        }
+        self.known_endorsements.try_extend(endorsements);
     }
 
     pub fn knows_endorsement(&self, endorsement_id: &EndorsementId) -> bool {
         self.known_endorsements.contains(endorsement_id)
     }
 
-    pub fn insert_known_ops(&mut self, ops: &[OperationId], max_ops_nb: usize) {
-        for operation_id in ops.iter() {
-            if self.known_operations.insert(*operation_id) {
-                self.known_operations_queue.push_back(*operation_id);
-                while self.known_operations_queue.len() > max_ops_nb {
-                    if let Some(op_id) = self.known_operations_queue.pop_front() {
-                        self.known_operations.remove(&op_id);
-                    }
-                }
-            }
-        }
+    pub fn insert_known_ops<I: IntoIterator<Item = OperationPrefixId>>(&mut self, ops: I) {
+        self.known_operations.try_extend(ops);
     }
 
-    pub fn knows_op(&self, op: &OperationId) -> bool {
+    pub fn knows_op(&self, op: &OperationPrefixId) -> bool {
         self.known_operations.contains(op)
     }
 }

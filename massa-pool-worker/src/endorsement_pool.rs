@@ -50,7 +50,7 @@ impl EndorsementPool {
     }
 
     /// notify of new final CS periods
-    pub fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
+    pub(crate) fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
         // update internal final CS period counter
         self.last_cs_final_periods = final_cs_periods.to_vec();
 
@@ -75,7 +75,7 @@ impl EndorsementPool {
     }
 
     /// Add a list of endorsements to the pool
-    pub fn add_endorsements(&mut self, mut endorsement_storage: Storage) {
+    pub(crate) fn add_endorsements(&mut self, mut endorsement_storage: Storage) {
         let items = endorsement_storage
             .get_endorsement_refs()
             .iter()

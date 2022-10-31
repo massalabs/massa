@@ -65,7 +65,7 @@ impl OperationPool {
     }
 
     /// notify of new final slot
-    pub fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
+    pub(crate) fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
         // update internal final slot counter
         self.last_cs_final_periods = final_cs_periods.to_vec();
 
@@ -98,7 +98,7 @@ impl OperationPool {
     }
 
     /// Add a list of operations to the pool
-    pub fn add_operations(&mut self, mut ops_storage: Storage) {
+    pub(crate) fn add_operations(&mut self, mut ops_storage: Storage) {
         let items = ops_storage
             .get_op_refs()
             .iter()

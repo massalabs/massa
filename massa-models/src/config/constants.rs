@@ -45,7 +45,7 @@ lazy_static::lazy_static! {
                 .saturating_add(MassaTime::from_millis(1000 * 10))
         )
     } else {
-        1664978400000.into()  // Wednesday, October 5, 2022 2:00:00 PM UTC
+        1665405000000.into()  //
     };
 
     /// TESTNET: time when the blockclique is ended.
@@ -64,7 +64,7 @@ lazy_static::lazy_static! {
         if cfg!(feature = "sandbox") {
             "SAND.0.0"
         } else {
-            "TEST.15.0"
+            "TEST.15.1"
         }
         .parse()
         .unwrap()
@@ -179,12 +179,13 @@ pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 /// Max size of the printed error
 pub const MAX_BOOTSTRAP_ERROR_LENGTH: u32 = 10000;
 
-// Protocol constants
-
-/// Controller channel size
+/// Protocol controller channel size
 pub const PROTOCOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
-/// Event channel size
+/// Protocol event channel size
 pub const PROTOCOL_EVENT_CHANNEL_SIZE: usize = 1024;
+/// Pool controller channel size
+pub const POOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
+
 // ***********************
 // Constants used for execution module (injected from ConsensusConfig)
 //
