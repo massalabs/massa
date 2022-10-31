@@ -234,7 +234,7 @@ impl ExecutionState {
 
         // compute fee from (op.max_gas * op.gas_price + op.fee)
         let op_fees = operation.get_total_fee();
-        let new_block_credits = block_credits.saturating_add(op_fees);
+        let mut new_block_credits = block_credits.saturating_add(op_fees);
 
         let context_snapshot;
         {
@@ -286,9 +286,6 @@ impl ExecutionState {
         // update block gas
         *remaining_block_gas = new_remaining_block_gas;
 
-        // update block credits
-        *block_credits = new_block_credits;
-
         // Call the execution process specific to the operation type.
         let execution_result = match &operation.content.op {
             OperationType::ExecuteSC { .. } => {
@@ -307,9 +304,13 @@ impl ExecutionState {
                 self.execute_transaction_op(&operation.content.op, sender_addr)
             }
             OperationType::Denunciation { .. } => {
-                self.execute_denunciation_op(&operation.content.op, sender_addr, block_credits)
+                self.execute_denunciation_op(&operation.content.op, sender_addr, &mut new_block_credits)
             }
         };
+
+        // update block credits
+        *block_credits = new_block_credits;
+
 
         {
             // lock execution context
