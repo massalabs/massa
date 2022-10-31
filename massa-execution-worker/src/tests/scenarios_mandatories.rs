@@ -162,15 +162,15 @@ fn test_nested_call_gas_usage() {
     let bytecode_sub_contract_len = 3715;
 
     let balance = sample_state
-            .read()
-            .ledger
-            .get_balance(&Address::from_public_key(&keypair.get_public_key()))
-            .unwrap();
+        .read()
+        .ledger
+        .get_balance(&Address::from_public_key(&keypair.get_public_key()))
+        .unwrap();
 
     let exec_cost = exec_cfg
-            .storage_costs_constants
-            .ledger_cost_per_byte
-            .saturating_mul_u64(bytecode_sub_contract_len);
+        .storage_costs_constants
+        .ledger_cost_per_byte
+        .saturating_mul_u64(bytecode_sub_contract_len);
 
     let balance_expected = Amount::from_str("300000")
         .unwrap()
