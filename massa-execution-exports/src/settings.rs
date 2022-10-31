@@ -60,4 +60,6 @@ pub struct ExecutionConfig {
     pub max_datastore_value_size: u64,
     /// Storage cost constants
     pub storage_costs_constants: StorageCostsConstants,
+    /// roll count to slash for denunciation op
+    pub slash_roll_count: u64
 }

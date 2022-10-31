@@ -628,7 +628,7 @@ impl ExecutionState {
         block_credits: &mut Amount,
     ) -> Result<(), ExecutionError> {
 
-        const ROLL_COUNT: u64 = 1;
+        // const ROLL_COUNT: u64 = 1;
 
         // process denunciation operations only
         let denunciation = match operation {
@@ -653,7 +653,7 @@ impl ExecutionState {
             }];
 
             let slashed = context.try_slash_roll(&addr_denounced,
-                                                 ROLL_COUNT);
+                                                 self.config.slash_roll_count);
             match slashed {
                 Ok(slashed_amount) => {
                     // Add slashed amount / 2 to block reward

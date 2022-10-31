@@ -44,7 +44,7 @@ use massa_models::config::constants::{
     OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, POOL_CONTROLLER_CHANNEL_SIZE,
     POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE,
     PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE, T0, THREAD_COUNT, VERSION,
-    DENUNCIATION_EXPIRE_CYCLE_DELTA
+    DENUNCIATION_EXPIRE_CYCLE_DELTA, SLASH_ROLL_COUNT
 };
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
@@ -328,6 +328,7 @@ async fn launch(
         max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
         storage_costs_constants,
+        slash_roll_count: SLASH_ROLL_COUNT
     };
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,
