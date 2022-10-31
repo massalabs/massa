@@ -8,24 +8,39 @@ use super::{
     },
 };
 use crate::tests::tools::{
-    get_random_async_pool_changes, get_random_executed_ops, get_random_pos_changes,
+    get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
 };
 use crate::BootstrapConfig;
 use crate::{
     get_state, start_bootstrap_server,
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
 };
+use massa_async_pool::AsyncPoolConfig;
 use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
-use massa_final_state::{test_exports::assert_eq_final_state, FinalState, StateChanges};
-use massa_models::{address::Address, slot::Slot, version::Version};
+use massa_executed_ops::ExecutedOpsConfig;
+use massa_final_state::{
+    test_exports::assert_eq_final_state, FinalState, FinalStateConfig, StateChanges,
+};
+use massa_ledger_exports::LedgerConfig;
+use massa_models::{
+    address::Address,
+    config::{
+        MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, POS_SAVED_CYCLES,
+    },
+    slot::Slot,
+    version::Version,
+};
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
-use massa_pos_exports::{test_exports::assert_eq_pos_selection, PoSFinalState, SelectorConfig};
+use massa_pos_exports::{
+    test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,
+};
 use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use serial_test::serial;
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+use tempfile::TempDir;
 use tokio::sync::mpsc;
 
 lazy_static::lazy_static! {
@@ -38,46 +53,95 @@ lazy_static::lazy_static! {
 #[tokio::test]
 #[serial]
 async fn test_bootstrap_server() {
+    let thread_count = 2;
+    let periods_per_cycle = 2;
     let (bootstrap_config, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
     let genesis_address = Address::from_public_key(&KeyPair::generate().get_public_key());
-    let (mut server_selector_manager, server_selector_controller) =
-        start_selector_worker(SelectorConfig {
-            thread_count: 2,
-            periods_per_cycle: 2,
-            genesis_address,
-            ..Default::default()
-        })
-        .expect("could not start server selector controller");
-    let (mut client_selector_manager, client_selector_controller) =
-        start_selector_worker(SelectorConfig {
-            thread_count: 2,
-            periods_per_cycle: 2,
-            genesis_address,
-            ..Default::default()
-        })
-        .expect("could not start client selector controller");
 
+    // init the communication channels
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
-    let final_state_bootstrap = get_random_final_state_bootstrap(
+
+    // setup final state local config
+    let temp_dir = TempDir::new().unwrap();
+    let final_state_local_config = FinalStateConfig {
+        ledger_config: LedgerConfig {
+            thread_count,
+            initial_ledger_path: "".into(),
+            disk_ledger_path: temp_dir.path().to_path_buf(),
+            max_key_length: MAX_DATASTORE_KEY_LENGTH,
+            max_ledger_part_size: 100_000,
+        },
+        async_pool_config: AsyncPoolConfig {
+            thread_count,
+            max_length: MAX_ASYNC_POOL_LENGTH,
+            max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+            bootstrap_part_size: 100,
+        },
+        pos_config: PoSConfig {
+            periods_per_cycle,
+            thread_count,
+            cycle_history_length: POS_SAVED_CYCLES,
+            credits_bootstrap_part_size: 100,
+        },
+        executed_ops_config: ExecutedOpsConfig {
+            thread_count,
+            bootstrap_part_size: 10,
+        },
+        final_history_length: 100,
+        initial_seed_string: "".into(),
+        initial_rolls_path: "".into(),
+        thread_count,
+        periods_per_cycle,
+    };
+
+    // setup selector local config
+    let selector_local_config = SelectorConfig {
+        thread_count,
+        periods_per_cycle,
+        genesis_address,
+        ..Default::default()
+    };
+
+    // start proof-of-stake selectors
+    let (mut server_selector_manager, server_selector_controller) =
+        start_selector_worker(selector_local_config.clone())
+            .expect("could not start server selector controller");
+    let (mut client_selector_manager, client_selector_controller) =
+        start_selector_worker(selector_local_config)
+            .expect("could not start client selector controller");
+
+    // setup final states
+    let final_state_server = Arc::new(RwLock::new(get_random_final_state_bootstrap(
         PoSFinalState::new(
-            &"".to_string(),
+            final_state_local_config.pos_config.clone(),
+            "",
             &rolls_path,
-            2,
-            2,
             server_selector_controller.clone(),
         )
         .unwrap(),
-    );
-    let final_state = Arc::new(RwLock::new(final_state_bootstrap));
+        final_state_local_config.clone(),
+    )));
+    let final_state_client = Arc::new(RwLock::new(FinalState::create_final_state(
+        PoSFinalState::new(
+            final_state_local_config.pos_config.clone(),
+            "",
+            &rolls_path,
+            client_selector_controller.clone(),
+        )
+        .unwrap(),
+        final_state_local_config,
+    )));
+    let final_state_client_clone = final_state_client.clone();
+    let final_state_server_clone = final_state_server.clone();
 
+    // start bootstrap server
     let (bootstrap_establisher, bootstrap_interface) = mock_establisher::new();
     let bootstrap_manager = start_bootstrap_server(
         ConsensusCommandSender(consensus_cmd_tx),
         NetworkCommandSender(network_cmd_tx),
-        final_state.clone(),
+        final_state_server.clone(),
         bootstrap_config.clone(),
         bootstrap_establisher,
         keypair.clone(),
@@ -87,19 +151,6 @@ async fn test_bootstrap_server() {
     .await
     .unwrap()
     .unwrap();
-
-    let final_state_client = Arc::new(RwLock::new(FinalState::default_with_pos(
-        PoSFinalState::new(
-            &"".to_string(),
-            &rolls_path,
-            2,
-            2,
-            client_selector_controller.clone(),
-        )
-        .unwrap(),
-    )));
-    let final_state_client_clone = final_state_client.clone();
-    let final_state_clone = final_state.clone();
 
     // launch the get_state process
     let (remote_establisher, mut remote_interface) = mock_establisher::new();
@@ -151,7 +202,7 @@ async fn test_bootstrap_server() {
     let wait_peers = async move || {
         // wait for bootstrap to ask network for peers, send them
         let response =
-            match wait_network_command(&mut network_cmd_rx, 10000.into(), |cmd| match cmd {
+            match wait_network_command(&mut network_cmd_rx, 10_000.into(), |cmd| match cmd {
                 NetworkCommand::GetBootstrapPeers(resp) => Some(resp),
                 _ => None,
             })
@@ -188,14 +239,14 @@ async fn test_bootstrap_server() {
     std::thread::spawn(move || {
         for _ in 0..10 {
             std::thread::sleep(Duration::from_millis(500));
-            let mut final_write = final_state_clone.write();
-            let next = final_write.slot.get_next_slot(2).unwrap();
+            let mut final_write = final_state_server_clone.write();
+            let next = final_write.slot.get_next_slot(thread_count).unwrap();
             final_write.slot = next;
             let changes = StateChanges {
                 pos_changes: get_random_pos_changes(10),
                 ledger_changes: get_random_ledger_changes(10),
                 async_pool_changes: get_random_async_pool_changes(10),
-                executed_ops: get_random_executed_ops(10),
+                executed_ops_changes: get_random_executed_ops_changes(10),
             };
             final_write
                 .changes_history
@@ -205,8 +256,8 @@ async fn test_bootstrap_server() {
         }
     });
 
-    let sent_peers = wait_peers().await;
     // wait for peers and graph
+    let sent_peers = wait_peers().await;
     let sent_graph = wait_graph().await;
 
     // wait for get_state
@@ -219,31 +270,31 @@ async fn test_bootstrap_server() {
 
     // apply the changes to the server state before matching with the client
     {
-        let mut final_state_write = final_state.write();
+        let mut final_state_server_write = final_state_server.write();
         let list_changes_read = list_changes.read().clone();
         // note: skip the first change to match the update loop behaviour
         for (slot, change) in list_changes_read.iter().skip(1) {
-            final_state_write
+            final_state_server_write
                 .pos_state
                 .apply_changes(change.pos_changes.clone(), *slot, false)
                 .unwrap();
-            final_state_write
+            final_state_server_write
                 .ledger
                 .apply_changes(change.ledger_changes.clone(), *slot);
-            final_state_write
+            final_state_server_write
                 .async_pool
                 .apply_changes_unchecked(&change.async_pool_changes);
-            final_state_write
+            final_state_server_write
                 .executed_ops
-                .extend(change.executed_ops.clone());
+                .apply_changes(change.executed_ops_changes.clone(), *slot);
         }
     }
 
     // check final states
-    assert_eq_final_state(&final_state.read(), &final_state_client.read());
+    assert_eq_final_state(&final_state_server.read(), &final_state_client.read());
 
     // compute initial draws
-    final_state.write().compute_initial_draws().unwrap();
+    final_state_server.write().compute_initial_draws().unwrap();
     final_state_client.write().compute_initial_draws().unwrap();
 
     // check selection draw

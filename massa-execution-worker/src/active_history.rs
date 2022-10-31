@@ -47,7 +47,11 @@ impl ActiveHistory {
     /// Returns a `HistorySearchResult`.
     pub fn fetch_executed_op(&self, op_id: &OperationId) -> HistorySearchResult<()> {
         for history_element in self.0.iter().rev() {
-            if history_element.state_changes.executed_ops.contains(op_id) {
+            if history_element
+                .state_changes
+                .executed_ops_changes
+                .contains_key(op_id)
+            {
                 return HistorySearchResult::Present(());
             }
         }

@@ -41,13 +41,11 @@
 
 mod config;
 mod error;
-mod executed_ops;
 mod final_state;
 mod state_changes;
 
 pub use config::FinalStateConfig;
 pub use error::FinalStateError;
-pub use executed_ops::*;
 pub use final_state::FinalState;
 pub use state_changes::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 

@@ -26,6 +26,7 @@ use std::ops::Bound::{Excluded, Included};
 /// `(rev(max_gas*gas_price), emission_slot, emission_index)`
 pub type AsyncMessageId = (std::cmp::Reverse<Amount>, Slot, u64);
 
+#[derive(Clone)]
 pub struct AsyncMessageIdSerializer {
     amount_serializer: AmountSerializer,
     slot_serializer: SlotSerializer,
@@ -87,6 +88,7 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
     }
 }
 
+#[derive(Clone)]
 pub struct AsyncMessageIdDeserializer {
     amount_deserializer: AmountDeserializer,
     slot_deserializer: SlotDeserializer,
@@ -309,7 +311,7 @@ pub struct AsyncMessageDeserializer {
 }
 
 impl AsyncMessageDeserializer {
-    pub fn new(thread_count: u8, max_data_async_message: u64) -> Self {
+    pub fn new(thread_count: u8, max_async_message_data: u64) -> Self {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
@@ -326,7 +328,7 @@ impl AsyncMessageDeserializer {
             max_gas_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             data_deserializer: VecU8Deserializer::new(
                 Included(0),
-                Included(max_data_async_message),
+                Included(max_async_message_data),
             ),
             address_deserializer: AddressDeserializer::new(),
         }
@@ -457,7 +459,7 @@ mod tests {
     use massa_models::{
         address::Address,
         amount::Amount,
-        config::{MAX_DATA_ASYNC_MESSAGE, THREAD_COUNT},
+        config::{MAX_ASYNC_MESSAGE_DATA, THREAD_COUNT},
         slot::Slot,
     };
     use std::str::FromStr;
@@ -485,7 +487,7 @@ mod tests {
             .serialize(&message, &mut serialized)
             .unwrap();
         let message_deserializer =
-            AsyncMessageDeserializer::new(THREAD_COUNT, MAX_DATA_ASYNC_MESSAGE);
+            AsyncMessageDeserializer::new(THREAD_COUNT, MAX_ASYNC_MESSAGE_DATA);
         serialized[1] = 50;
         message_deserializer
             .deserialize::<DeserializeError>(&serialized)

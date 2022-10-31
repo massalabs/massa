@@ -13,6 +13,8 @@
     bind_public = "0.0.0.0:33035"
     # max number of arguments per RPC call
     max_arguments = 128
+    # Path to the openrpc specification file used in `rpc.discover` method.
+    openrpc_spec_path = "base_config/openrpc.json"
 
 [execution]
     # max number of generated events kept in RAM
@@ -167,6 +169,10 @@
         ["54.36.174.177:31245", "P1gEdBVEbRFbBxBtrjcTDDK9JPbJFDay27uiJRE3vmbFAFDKNh7"],
         ["51.75.60.228:31245", "P13Ykon8Zo73PTKMruLViMMtE2rEG646JQ4sCcee2DnopmVM3P5"]
     ]
+    # Path to the bootstrap whitelist file. This whitelist define IPs that can bootstrap on your node.
+    bootstrap_whitelist_file = "base_config/bootstrap_whitelist.json"
+    # Path to the bootstrap blacklist file. This whitelist define IPs that will not be able to bootstrap on your node. This list is optional.
+    bootstrap_blacklist_file = "base_config/bootstrap_blacklist.json"
     # [optionnal] port on which to listen for incoming bootstrap requests
     bind = "[::]:31245"
     # timeout to establish a bootstrap connection

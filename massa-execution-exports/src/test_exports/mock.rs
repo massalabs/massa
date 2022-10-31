@@ -3,7 +3,7 @@
 //! This file defines utilities to mock the crate for testing purposes
 
 use crate::{
-    ExecutionAddressInfo, ExecutionController, ExecutionError, ExecutionOutput,
+    ExecutionAddressInfo, ExecutionController, ExecutionError, ReadOnlyExecutionOutput,
     ReadOnlyExecutionRequest,
 };
 use massa_ledger_exports::LedgerEntry;
@@ -65,7 +65,7 @@ pub enum MockExecutionControllerMessage {
         /// read only execution request
         req: ReadOnlyExecutionRequest,
         /// response channel
-        response_tx: mpsc::Sender<Result<ExecutionOutput, ExecutionError>>,
+        response_tx: mpsc::Sender<Result<ReadOnlyExecutionOutput, ExecutionError>>,
     },
     /// Not executed operation among call
     UnexecutedOpsAmong {
@@ -188,7 +188,7 @@ impl ExecutionController for MockExecutionController {
     fn execute_readonly_request(
         &self,
         req: ReadOnlyExecutionRequest,
-    ) -> Result<ExecutionOutput, ExecutionError> {
+    ) -> Result<ReadOnlyExecutionOutput, ExecutionError> {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
             .lock()

@@ -117,7 +117,7 @@ pub struct AsyncPoolChangesDeserializer {
 }
 
 impl AsyncPoolChangesDeserializer {
-    pub fn new(thread_count: u8, max_async_pool_changes: u64, max_data_async_message: u64) -> Self {
+    pub fn new(thread_count: u8, max_async_pool_changes: u64, max_async_message_data: u64) -> Self {
         Self {
             async_pool_changes_length: U64VarIntDeserializer::new(
                 Included(u64::MIN),
@@ -126,7 +126,7 @@ impl AsyncPoolChangesDeserializer {
             id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
             message_deserializer: AsyncMessageDeserializer::new(
                 thread_count,
-                max_data_async_message,
+                max_async_message_data,
             ),
         }
     }

@@ -72,7 +72,9 @@ fn test_readonly_execution() {
             ),
         })
         .expect("readonly execution failed");
-    assert_eq!(res.events.take().len(), 1, "wrong number of events");
+
+    assert!(res.gas_cost > 0);
+    assert_eq!(res.out.events.take().len(), 1, "wrong number of events");
 
     manager.stop();
 }
@@ -157,27 +159,29 @@ fn test_nested_call_gas_usage() {
     std::thread::sleep(Duration::from_millis(10));
 
     // length of the sub contract test.wasm
-    let bytecode_sub_contract_len = 5297;
-    assert_eq!(
-        sample_state
-            .read()
-            .ledger
-            .get_balance(&Address::from_public_key(&keypair.get_public_key()))
-            .unwrap(),
-        Amount::from_str("300000")
-            .unwrap()
-            // Gas fee
-            .saturating_sub(Amount::from_str("100000").unwrap())
-            // Storage cost base
-            .saturating_sub(exec_cfg.storage_costs_constants.ledger_entry_base_cost)
-            // Storage cost bytecode
-            .saturating_sub(
-                exec_cfg
-                    .storage_costs_constants
-                    .ledger_cost_per_byte
-                    .saturating_mul_u64(bytecode_sub_contract_len)
-            )
-    );
+    let bytecode_sub_contract_len = 3715;
+
+    let balance = sample_state
+        .read()
+        .ledger
+        .get_balance(&Address::from_public_key(&keypair.get_public_key()))
+        .unwrap();
+
+    let exec_cost = exec_cfg
+        .storage_costs_constants
+        .ledger_cost_per_byte
+        .saturating_mul_u64(bytecode_sub_contract_len);
+
+    let balance_expected = Amount::from_str("300000")
+        .unwrap()
+        // Gas fee
+        .saturating_sub(Amount::from_str("100000").unwrap())
+        // Storage cost base
+        .saturating_sub(exec_cfg.storage_costs_constants.ledger_entry_base_cost)
+        // Storage cost bytecode
+        .saturating_sub(exec_cost);
+
+    assert_eq!(balance, balance_expected);
     // retrieve events emitted by smart contracts
     let events = controller.get_filtered_sc_output_event(EventFilter {
         start: Some(Slot::new(0, 1)),
@@ -273,6 +277,7 @@ fn send_and_receive_async_message() {
     // load send_message bytecode
     // you can check the source code of the following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/send_message.wasm");
+
     // create the block contaning the smart contract execution operation
     let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
     storage.store_operations(vec![operation.clone()]);
@@ -299,6 +304,9 @@ fn send_and_receive_async_message() {
         end: Some(Slot::new(20, 1)),
         ..Default::default()
     });
+
+    println!("events: {:?}", events);
+
     // match the events
     assert!(events.len() == 1, "One event was expected");
     assert_eq!(events[0].data, "message received: hello my good friend!");
@@ -927,4 +935,74 @@ fn create_call_sc_operation(
         sender_keypair,
     )?;
     Ok(op)
+}
+
+#[test]
+#[serial]
+fn sc_builtins() {
+    // setup the period duration and the maximum gas for asynchronous messages execution
+    let exec_cfg = ExecutionConfig {
+        t0: 100.into(),
+        max_async_gas: 100_000,
+        cursor_delay: 0.into(),
+        ..ExecutionConfig::default()
+    };
+    // get a sample final state
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+    // init the storage
+    let mut storage = Storage::create_root();
+    // start the execution worker
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg.clone(),
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
+    // initialize the execution system with genesis blocks
+    init_execution_worker(&exec_cfg, &storage, controller.clone());
+    // keypair associated to thread 0
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    // load bytecode
+    // you can check the source code of the following wasm file in massa-sc-examples
+    let bytecode = include_bytes!("./wasm/use_builtins.wasm");
+    // create the block contaning the erroneous smart contract execution operation
+    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    storage.store_operations(vec![operation.clone()]);
+    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+    // store the block in storage
+    storage.store_block(block.clone());
+    // set our block as a final block
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+    block_storage.insert(block.id, storage.clone());
+    controller.update_blockclique_status(
+        finalized_blocks,
+        Default::default(),
+        block_storage.clone(),
+    );
+    std::thread::sleep(Duration::from_millis(10));
+
+    // retrieve the event emitted by the execution error
+    let events = controller.get_filtered_sc_output_event(EventFilter::default());
+    // match the events
+    assert!(!events.is_empty(), "One event was expected");
+    assert!(events[0].data.contains("massa_execution_error"));
+    assert!(events[0]
+        .data
+        .contains("runtime error when executing operation"));
+    assert!(events[0]
+        .data
+        .contains("abord with date and rnd at use_builtins.ts:0 col: 0"));
+
+    assert_eq!(
+        sample_state
+            .read()
+            .ledger
+            .get_balance(&Address::from_public_key(&keypair.get_public_key()))
+            .unwrap(),
+        Amount::from_str("200000").unwrap()
+    );
+    // stop the execution controller
+    manager.stop();
 }
