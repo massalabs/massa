@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-async-pool/src/pool.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>pool.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><a class="sidebar-logo" href="../../massa_async_pool/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_async_pool/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-async-pool/src/pool.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>pool.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_async_pool/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -240,6 +240,99 @@
 <span id="240">240</span>
 <span id="241">241</span>
 <span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
@@ -247,14 +340,22 @@
 </span><span class="kw">use crate</span>::{
     changes::{AsyncPoolChanges, Change},
     config::AsyncPoolConfig,
-    message::{AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
-    AsyncMessageDeserializer, AsyncMessageSerializer,
+    message::{AsyncMessage, AsyncMessageId},
+    AsyncMessageDeserializer, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
+    AsyncMessageSerializer,
 };
-<span class="kw">use </span>massa_models::{error::ModelsError, slot::Slot};
-<span class="kw">use </span>massa_serialization::{Deserializer, Serializer};
-<span class="kw">use </span>nom::{multi::many0, sequence::tuple};
+<span class="kw">use </span>massa_models::{slot::Slot, streaming_step::StreamingStep};
+<span class="kw">use </span>massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
+<span class="kw">use </span>nom::{
+    error::{context, ContextError, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult, Parser,
+};
 <span class="kw">use </span>std::collections::BTreeMap;
-<span class="kw">use </span>std::ops::Bound::{Excluded, Unbounded};
+<span class="kw">use </span>std::ops::Bound::{Excluded, Included, Unbounded};
 
 <span class="doccomment">/// Represents a pool of sorted messages in a deterministic way.
 /// The final asynchronous pool is attached to the output of the latest final slot within the context of massa-final-state.
@@ -372,73 +473,158 @@
             .collect()
     }
 
-    <span class="doccomment">/// Used for bootstrap
-    /// Take a part of the async pool starting from the next element after `last_id` and with a max length of the constant `ASYNC_POOL_PART_SIZE_MESSAGE_BYTES`.
-    /// Should always follow the same behavior as the `get_ledger_part` from `FinalLedger`method.
-    </span><span class="kw">pub fn </span>get_pool_part(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        last_id: <span class="prelude-ty">Option</span>&lt;AsyncMessageId&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;AsyncMessageId&gt;), ModelsError&gt; {
-        <span class="kw">let </span>last_id = <span class="kw">if let </span><span class="prelude-val">Some</span>(last_id) = last_id {
-            Excluded(last_id)
-        } <span class="kw">else if </span><span class="self">self</span>.messages.first_key_value().is_some() {
-            Unbounded
-        } <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">Ok</span>((Vec::new(), <span class="prelude-val">None</span>));
-        };
-        <span class="kw">let </span><span class="kw-2">mut </span>part = Vec::new();
-        <span class="kw">let </span><span class="kw-2">mut </span>next_last_id = <span class="prelude-val">None</span>;
-        <span class="kw">let </span>id_async_message_serializer = AsyncMessageIdSerializer::new();
-        <span class="kw">let </span>async_message_serializer = AsyncMessageSerializer::new();
-        <span class="kw">for </span>(id, message) <span class="kw">in </span><span class="self">self</span>.messages.range((last_id, Unbounded)) {
-            <span class="kw">if </span>part.len() &lt; <span class="self">self</span>.config.part_size_message_bytes <span class="kw">as </span>usize {
-                id_async_message_serializer.serialize(id, <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
-                async_message_serializer.serialize(message, <span class="kw-2">&amp;mut </span>part)<span class="question-mark">?</span>;
-                next_last_id = <span class="prelude-val">Some</span>(<span class="kw-2">*</span>id);
-            }
-        }
-        <span class="prelude-val">Ok</span>((part, next_last_id))
-    }
-
-    <span class="doccomment">/// Set a part of the async pool.
-    /// We deserialize in this function because we insert in the async pool while deserializing.
+    <span class="doccomment">/// Get a part of the async pool.
     /// Used for bootstrap.
     ///
     /// # Arguments
-    /// * data: must be the serialized version provided by `get_pool_part`
+    /// * cursor: current bootstrap state
     ///
     /// # Returns
-    /// The last id of the inserted entry (this is an optimization to easily keep a reference to the last id)
-    </span><span class="kw">pub fn </span>set_pool_part&lt;<span class="lifetime">&#39;a</span>&gt;(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        part: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;AsyncMessageId&gt;, ModelsError&gt; {
-        <span class="kw">let </span>async_message_id_deserializer =
-            AsyncMessageIdDeserializer::new(<span class="self">self</span>.config.thread_count);
-        <span class="kw">let </span>async_message_deserializer = AsyncMessageDeserializer::new(
-            <span class="self">self</span>.config.thread_count,
-            <span class="self">self</span>.config.max_data_async_message,
-        );
-        <span class="kw">let </span>(rest, messages) = many0(|input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
-            <span class="kw">if </span>input.is_empty() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(nom::error::Error::new(
-                    input,
-                    nom::error::ErrorKind::LengthValue,
-                )));
+    /// The async pool part and the updated cursor
+    </span><span class="kw">pub fn </span>get_pool_part(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        cursor: StreamingStep&lt;AsyncMessageId&gt;,
+    ) -&gt; (
+        BTreeMap&lt;AsyncMessageId, AsyncMessage&gt;,
+        StreamingStep&lt;AsyncMessageId&gt;,
+    ) {
+        <span class="kw">let </span><span class="kw-2">mut </span>pool_part = BTreeMap::new();
+        <span class="kw">let </span>left_bound = <span class="kw">match </span>cursor {
+            StreamingStep::Started =&gt; Unbounded,
+            StreamingStep::Ongoing(last_id) =&gt; Excluded(last_id),
+            StreamingStep::Finished =&gt; <span class="kw">return </span>(pool_part, cursor),
+        };
+        <span class="kw">let </span><span class="kw-2">mut </span>pool_part_last_id: <span class="prelude-ty">Option</span>&lt;AsyncMessageId&gt; = <span class="prelude-val">None</span>;
+        <span class="kw">for </span>(id, message) <span class="kw">in </span><span class="self">self</span>.messages.range((left_bound, Unbounded)) {
+            <span class="kw">if </span>pool_part.len() &lt; <span class="self">self</span>.config.bootstrap_part_size <span class="kw">as </span>usize {
+                pool_part.insert(<span class="kw-2">*</span>id, message.clone());
+                pool_part_last_id = <span class="prelude-val">Some</span>(<span class="kw-2">*</span>id);
+            } <span class="kw">else </span>{
+                <span class="kw">break</span>;
             }
-            tuple((
-                |input| async_message_id_deserializer.deserialize(input),
-                |input| async_message_deserializer.deserialize(input),
-            ))(input)
-        })(part)<span class="question-mark">?</span>;
-        <span class="kw">if </span>rest.is_empty() {
-            <span class="self">self</span>.messages.extend(messages);
-            <span class="prelude-val">Ok</span>(<span class="self">self</span>.messages.last_key_value().map(|(id, <span class="kw">_</span>)| <span class="kw-2">*</span>id))
-        } <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(ModelsError::SerializeError(
-                <span class="string">&quot;pool part deserialization has data left&quot;</span>.to_string(),
-            ))
         }
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(last_id) = pool_part_last_id {
+            (pool_part, StreamingStep::Ongoing(last_id))
+        } <span class="kw">else </span>{
+            (pool_part, StreamingStep::Finished)
+        }
+    }
+
+    <span class="doccomment">/// Set a part of the async pool.
+    /// Used for bootstrap.
+    ///
+    /// # Arguments
+    /// * part: the async pool part provided by `get_pool_part`
+    ///
+    /// # Returns
+    /// The updated cursor after the current insert
+    </span><span class="kw">pub fn </span>set_pool_part(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        part: BTreeMap&lt;AsyncMessageId, AsyncMessage&gt;,
+    ) -&gt; StreamingStep&lt;AsyncMessageId&gt; {
+        <span class="self">self</span>.messages.extend(part);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(message_id) = <span class="self">self</span>.messages.last_key_value().map(|(<span class="kw-2">&amp;</span>id, <span class="kw">_</span>)| id) {
+            StreamingStep::Ongoing(message_id)
+        } <span class="kw">else </span>{
+            StreamingStep::Finished
+        }
+    }
+}
+
+<span class="doccomment">/// Serializer for `AsyncPool`
+</span><span class="kw">pub struct </span>AsyncPoolSerializer {
+    u64_serializer: U64VarIntSerializer,
+    async_message_id_serializer: AsyncMessageIdSerializer,
+    async_message_serializer: AsyncMessageSerializer,
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>AsyncPoolSerializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
+    }
+}
+
+<span class="kw">impl </span>AsyncPoolSerializer {
+    <span class="doccomment">/// Creates a new `AsyncPool` serializer
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u64_serializer: U64VarIntSerializer::new(),
+            async_message_id_serializer: AsyncMessageIdSerializer::new(),
+            async_message_serializer: AsyncMessageSerializer::new(),
+        }
+    }
+}
+
+<span class="kw">impl </span>Serializer&lt;BTreeMap&lt;AsyncMessageId, AsyncMessage&gt;&gt; <span class="kw">for </span>AsyncPoolSerializer {
+    <span class="kw">fn </span>serialize(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        value: <span class="kw-2">&amp;</span>BTreeMap&lt;AsyncMessageId, AsyncMessage&gt;,
+        buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="comment">// async pool length
+        </span><span class="self">self</span>.u64_serializer
+            .serialize(<span class="kw-2">&amp;</span>(value.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
+        <span class="comment">// async pool
+        </span><span class="kw">for </span>(message_id, message) <span class="kw">in </span>value {
+            <span class="self">self</span>.async_message_id_serializer
+                .serialize(message_id, buffer)<span class="question-mark">?</span>;
+            <span class="self">self</span>.async_message_serializer.serialize(message, buffer)<span class="question-mark">?</span>;
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
+<span class="doccomment">/// Deserializer for `AsyncPool`
+</span><span class="kw">pub struct </span>AsyncPoolDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    async_message_id_deserializer: AsyncMessageIdDeserializer,
+    async_message_deserializer: AsyncMessageDeserializer,
+}
+
+<span class="kw">impl </span>AsyncPoolDeserializer {
+    <span class="doccomment">/// Creates a new `AsyncPool` deserializer
+    </span><span class="kw">pub fn </span>new(
+        thread_count: u8,
+        max_async_pool_length: u64,
+        max_async_message_data: u64,
+    ) -&gt; AsyncPoolDeserializer {
+        AsyncPoolDeserializer {
+            u64_deserializer: U64VarIntDeserializer::new(
+                Included(<span class="number">0</span>),
+                Included(max_async_pool_length),
+            ),
+            async_message_id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
+            async_message_deserializer: AsyncMessageDeserializer::new(
+                thread_count,
+                max_async_message_data,
+            ),
+        }
+    }
+}
+
+<span class="kw">impl </span>Deserializer&lt;BTreeMap&lt;AsyncMessageId, AsyncMessage&gt;&gt; <span class="kw">for </span>AsyncPoolDeserializer {
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BTreeMap&lt;AsyncMessageId, AsyncMessage&gt;, E&gt; {
+        context(
+            <span class="string">&quot;Failed async_pool_part deserialization&quot;</span>,
+            length_count(
+                context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.u64_deserializer.deserialize(input)
+                }),
+                tuple((
+                    context(<span class="string">&quot;Failed async_message_id deserialization&quot;</span>, |input| {
+                        <span class="self">self</span>.async_message_id_deserializer.deserialize(input)
+                    }),
+                    context(<span class="string">&quot;Failed async_message deserialization&quot;</span>, |input| {
+                        <span class="self">self</span>.async_message_deserializer.deserialize(input)
+                    }),
+                )),
+            ),
+        )
+        .map(|vec| vec.into_iter().collect())
+        .parse(buffer)
     }
 }
 
@@ -451,8 +637,8 @@
     <span class="kw">let </span>config = AsyncPoolConfig {
         thread_count: <span class="number">2</span>,
         max_length: <span class="number">10</span>,
-        max_data_async_message: <span class="number">1000000</span>,
-        part_size_message_bytes: <span class="number">1_000_000</span>,
+        max_async_message_data: <span class="number">1_000_000</span>,
+        bootstrap_part_size: <span class="number">100</span>,
     };
     <span class="kw">let </span><span class="kw-2">mut </span>pool = AsyncPool::new(config);
     <span class="kw">let </span>address = Address(Hash::compute_from(<span class="string">b&quot;abc&quot;</span>));
@@ -483,4 +669,4 @@
     <span class="macro">assert_eq!</span>(pool.messages.len(), <span class="number">6</span>);
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_async_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (7fcf850d7 2022-10-23)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_async_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (77e57db38 2022-10-30)" ></div></body></html>

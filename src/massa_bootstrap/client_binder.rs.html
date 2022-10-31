@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/client_binder.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client_binder.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><a class="sidebar-logo" href="../../massa_bootstrap/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/client_binder.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client_binder.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -242,6 +242,30 @@
 <span id="242">242</span>
 <span id="243">243</span>
 <span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
@@ -275,20 +299,26 @@
     max_operations_per_block: u32,
     thread_count: u8,
     randomness_size_bytes: usize,
-    max_bootstrap_async_pool_changes: u64,
-    max_bootstrap_error_length: u32,
+    max_bootstrap_error_length: u64,
     max_bootstrap_final_state_parts_size: u64,
     max_datastore_entry_count: u64,
     max_datastore_key_length: u8,
     max_datastore_value_length: u64,
-    max_data_async_message: u64,
+    max_async_pool_changes: u64,
+    max_async_pool_length: u64,
+    max_async_message_data: u64,
     max_function_name_length: u16,
     max_parameters_size: u32,
     max_ledger_changes_count: u64,
     max_op_datastore_entry_count: u64,
     max_op_datastore_key_length: u8,
     max_op_datastore_value_length: u64,
-    max_changes_slot_count: u32,
+    max_changes_slot_count: u64,
+    max_rolls_length: u64,
+    max_production_stats_length: u64,
+    max_credits_length: u64,
+    max_executed_ops_length: u64,
+    max_ops_changes_length: u64,
 }
 
 <span class="kw">impl </span>BootstrapClientBinder {
@@ -309,20 +339,26 @@
         max_operations_per_block: u32,
         thread_count: u8,
         randomness_size_bytes: usize,
-        max_bootstrap_async_pool_changes: u64,
-        max_bootstrap_error_length: u32,
+        max_bootstrap_error_length: u64,
         max_bootstrap_final_state_parts_size: u64,
         max_datastore_entry_count: u64,
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
-        max_data_async_message: u64,
+        max_async_pool_changes: u64,
+        max_async_pool_length: u64,
+        max_async_message_data: u64,
         max_function_name_length: u16,
         max_parameters_size: u32,
         max_ledger_changes_count: u64,
         max_op_datastore_entry_count: u64,
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
-        max_changes_slot_count: u32,
+        max_changes_slot_count: u64,
+        max_rolls_length: u64,
+        max_production_stats_length: u64,
+        max_credits_length: u64,
+        max_executed_ops_length: u64,
+        max_ops_changes_length: u64,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapClientBinder {
@@ -338,13 +374,14 @@
             max_operations_per_block,
             thread_count,
             randomness_size_bytes,
-            max_bootstrap_async_pool_changes,
             max_bootstrap_error_length,
             max_bootstrap_final_state_parts_size,
             max_datastore_entry_count,
             max_datastore_key_length,
             max_datastore_value_length,
-            max_data_async_message,
+            max_async_pool_changes,
+            max_async_pool_length,
+            max_async_message_data,
             max_function_name_length,
             max_parameters_size,
             max_ledger_changes_count,
@@ -352,6 +389,11 @@
             max_op_datastore_key_length,
             max_op_datastore_value_length,
             max_changes_slot_count,
+            max_rolls_length,
+            max_production_stats_length,
+            max_credits_length,
+            max_executed_ops_length,
+            max_ops_changes_length,
         }
     }
 }
@@ -402,8 +444,9 @@
             <span class="self">self</span>.max_bootstrap_blocks,
             <span class="self">self</span>.max_operations_per_block,
             <span class="self">self</span>.max_bootstrap_final_state_parts_size,
-            <span class="self">self</span>.max_bootstrap_async_pool_changes,
-            <span class="self">self</span>.max_data_async_message,
+            <span class="self">self</span>.max_async_pool_changes,
+            <span class="self">self</span>.max_async_pool_length,
+            <span class="self">self</span>.max_async_message_data,
             <span class="self">self</span>.max_ledger_changes_count,
             <span class="self">self</span>.max_datastore_key_length,
             <span class="self">self</span>.max_datastore_value_length,
@@ -415,6 +458,11 @@
             <span class="self">self</span>.max_op_datastore_key_length,
             <span class="self">self</span>.max_op_datastore_value_length,
             <span class="self">self</span>.max_changes_slot_count,
+            <span class="self">self</span>.max_rolls_length,
+            <span class="self">self</span>.max_production_stats_length,
+            <span class="self">self</span>.max_credits_length,
+            <span class="self">self</span>.max_executed_ops_length,
+            <span class="self">self</span>.max_ops_changes_length,
         );
         <span class="kw">let </span>message = {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(prev_message) = <span class="self">self</span>.prev_message {
@@ -487,4 +535,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (7fcf850d7 2022-10-23)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (77e57db38 2022-10-30)" ></div></body></html>

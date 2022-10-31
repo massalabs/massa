@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-final-state/src/final_state.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>final_state.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><a class="sidebar-logo" href="../../massa_final_state/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_final_state/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-final-state/src/final_state.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>final_state.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_final_state/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -283,6 +283,29 @@
 <span id="283">283</span>
 <span id="284">284</span>
 <span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -290,14 +313,12 @@
 //! the output of a given final slot (the latest executed final slot),
 //! and need to be bootstrapped by nodes joining the network.
 
-</span><span class="kw">use crate</span>::{
-    config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges, ExecutedOps,
-    ExecutedOpsStreamingStep,
-};
+</span><span class="kw">use crate</span>::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 <span class="kw">use </span>massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
-<span class="kw">use </span>massa_ledger_exports::{LedgerChanges, LedgerController};
-<span class="kw">use </span>massa_models::{address::Address, slot::Slot};
-<span class="kw">use </span>massa_pos_exports::{PoSCycleStreamingStep, PoSFinalState, SelectorController};
+<span class="kw">use </span>massa_executed_ops::ExecutedOps;
+<span class="kw">use </span>massa_ledger_exports::{get_address_from_key, LedgerChanges, LedgerController};
+<span class="kw">use </span>massa_models::{slot::Slot, streaming_step::StreamingStep};
+<span class="kw">use </span>massa_pos_exports::{PoSFinalState, SelectorController};
 <span class="kw">use </span>std::collections::VecDeque;
 <span class="kw">use </span>tracing::debug;
 
@@ -332,10 +353,9 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, FinalStateError&gt; {
         <span class="comment">// create the pos state
         </span><span class="kw">let </span>pos_state = PoSFinalState::new(
+            config.pos_config.clone(),
             <span class="kw-2">&amp;</span>config.initial_seed_string,
             <span class="kw-2">&amp;</span>config.initial_rolls_path,
-            config.periods_per_cycle,
-            config.thread_count,
             selector,
         )
         .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;PoS final state init error: {}&quot;</span>, err)))<span class="question-mark">?</span>;
@@ -347,7 +367,7 @@
         </span><span class="kw">let </span>async_pool = AsyncPool::new(config.async_pool_config.clone());
 
         <span class="comment">// create a default executed ops
-        </span><span class="kw">let </span>executed_ops = ExecutedOps::default();
+        </span><span class="kw">let </span>executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
 
         <span class="comment">// generate the final state
         </span><span class="prelude-val">Ok</span>(FinalState {
@@ -392,9 +412,10 @@
             .apply_changes_unchecked(<span class="kw-2">&amp;</span>changes.async_pool_changes);
         <span class="self">self</span>.pos_state
             .apply_changes(changes.pos_changes.clone(), <span class="self">self</span>.slot, <span class="bool-val">true</span>)
-            .expect(<span class="string">&quot;could not settle slot in final state PoS&quot;</span>); <span class="comment">//TODO do not panic here: it might just mean that the lookback cycle is not available
-        </span><span class="self">self</span>.executed_ops.extend(changes.executed_ops.clone());
-        <span class="self">self</span>.executed_ops.prune(<span class="self">self</span>.slot);
+            .expect(<span class="string">&quot;could not settle slot in final state proof-of-stake&quot;</span>);
+        <span class="comment">// TODO do not panic above: it might just mean that the lookback cycle is not available
+        </span><span class="self">self</span>.executed_ops
+            .apply_changes(changes.executed_ops_changes.clone(), <span class="self">self</span>.slot);
 
         <span class="comment">// push history element and limit history size
         </span><span class="kw">if </span><span class="self">self</span>.config.final_history_length &gt; <span class="number">0 </span>{
@@ -415,33 +436,41 @@
         );
     }
 
-    <span class="doccomment">/// Used for bootstrap
-    /// Take a part of the final state changes (ledger and async pool) using a `Slot`, a `Address` and a `AsyncMessageId`.
-    /// Every ledgers changes that are after `last_slot` and before or equal of `last_address` must be returned.
-    /// Every async pool changes that are after `last_slot` and before or equal of `last_id_async_pool` must be returned.
+    <span class="doccomment">/// Used for bootstrap.
     ///
-    /// Error case: When the `last_slot` is too old for `self.changes_history`
+    /// Retrieves every:
+    /// * ledger change that is after `slot` and before or equal to `ledger_step` key
+    /// * ledger change if main bootstrap process is finished
+    /// * async pool change that is after `slot` and before or equal to `pool_step` message id
+    /// * proof-of-stake change if main bootstrap process is finished
+    /// * proof-of-stake change if main bootstrap process is finished
+    /// * executed ops change if main bootstrap process is finished
+    ///
+    /// Produces an error when the `slot` is too old for `self.changes_history`
     </span><span class="kw">pub fn </span>get_state_changes_part(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        last_slot: Slot,
-        last_address: <span class="prelude-ty">Option</span>&lt;Address&gt;,
-        last_id_async_pool: <span class="prelude-ty">Option</span>&lt;AsyncMessageId&gt;,
-        last_pos_step_cursor: PoSCycleStreamingStep,
-        last_exec_ops_cursor: ExecutedOpsStreamingStep,
+        slot: Slot,
+        ledger_step: StreamingStep&lt;Vec&lt;u8&gt;&gt;,
+        pool_step: StreamingStep&lt;AsyncMessageId&gt;,
+        cycle_step: StreamingStep&lt;u64&gt;,
+        credits_step: StreamingStep&lt;Slot&gt;,
+        ops_step: StreamingStep&lt;Slot&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(Slot, StateChanges)&gt;, FinalStateError&gt; {
         <span class="kw">let </span>position_slot = <span class="kw">if let </span><span class="prelude-val">Some</span>((first_slot, <span class="kw">_</span>)) = <span class="self">self</span>.changes_history.front() {
             <span class="comment">// Safe because we checked that there is changes just above.
-            </span><span class="kw">let </span>index = last_slot
+            </span><span class="kw">let </span>index = slot
                 .slots_since(first_slot, <span class="self">self</span>.config.thread_count)
                 .map_err(|<span class="kw">_</span>| {
-                    FinalStateError::LedgerError(<span class="string">&quot;Last slot is overflowing history.&quot;</span>.to_string())
+                    FinalStateError::LedgerError(
+                        <span class="string">&quot;get_state_changes_part given slot is overflowing history.&quot;</span>.to_string(),
+                    )
                 })<span class="question-mark">?
                 </span>.saturating_add(<span class="number">1</span>);
 
-            <span class="comment">// Check if `last_slot` isn&#39;t in the future
+            <span class="comment">// Check if the `slot` index isn&#39;t in the future
             </span><span class="kw">if </span><span class="self">self</span>.changes_history.len() <span class="kw">as </span>u64 &lt;= index {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(FinalStateError::LedgerError(
-                    <span class="string">&quot;Last slot is overflowing history.&quot;</span>.to_string(),
+                    <span class="string">&quot;slot index is overflowing history.&quot;</span>.to_string(),
                 ));
             }
             index
@@ -452,51 +481,68 @@
         <span class="kw">for </span>(slot, changes) <span class="kw">in </span><span class="self">self</span>.changes_history.range((position_slot <span class="kw">as </span>usize)..) {
             <span class="kw">let </span><span class="kw-2">mut </span>slot_changes = StateChanges::default();
 
-            <span class="comment">// Get ledger change that concern address &lt;= last_address.
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = last_address {
-                <span class="kw">let </span>ledger_changes: LedgerChanges = LedgerChanges(
-                    changes
-                        .ledger_changes
-                        .<span class="number">0
-                        </span>.iter()
-                        .filter_map(|(address, change)| {
-                            <span class="kw">if </span><span class="kw-2">*</span>address &lt;= addr {
-                                <span class="prelude-val">Some</span>((<span class="kw-2">*</span>address, change.clone()))
-                            } <span class="kw">else </span>{
-                                <span class="prelude-val">None
-                            </span>}
-                        })
-                        .collect(),
-                );
-                slot_changes.ledger_changes.<span class="number">0 </span>= ledger_changes.<span class="number">0</span>;
+            <span class="comment">// Get ledger change that concern address &lt;= ledger_step
+            </span><span class="kw">match </span>ledger_step.clone() {
+                StreamingStep::Ongoing(key) =&gt; {
+                    <span class="kw">let </span>addr = get_address_from_key(<span class="kw-2">&amp;</span>key).ok_or_else(|| {
+                        FinalStateError::LedgerError(
+                            <span class="string">&quot;Invalid key in ledger streaming step&quot;</span>.to_string(),
+                        )
+                    })<span class="question-mark">?</span>;
+                    <span class="kw">let </span>ledger_changes: LedgerChanges = LedgerChanges(
+                        changes
+                            .ledger_changes
+                            .<span class="number">0
+                            </span>.iter()
+                            .filter_map(|(address, change)| {
+                                <span class="kw">if </span><span class="kw-2">*</span>address &lt;= addr {
+                                    <span class="prelude-val">Some</span>((<span class="kw-2">*</span>address, change.clone()))
+                                } <span class="kw">else </span>{
+                                    <span class="prelude-val">None
+                                </span>}
+                            })
+                            .collect(),
+                    );
+                    slot_changes.ledger_changes = ledger_changes;
+                }
+                StreamingStep::Finished =&gt; {
+                    slot_changes.ledger_changes = changes.ledger_changes.clone();
+                }
+                <span class="kw">_ </span>=&gt; (),
             }
 
-            <span class="comment">// Get async pool changes that concern ids &lt;= last_id_async_pool
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_id) = last_id_async_pool {
-                <span class="kw">let </span>async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(
-                    changes
-                        .async_pool_changes
-                        .<span class="number">0
-                        </span>.iter()
-                        .filter_map(|change| <span class="kw">match </span>change {
-                            Change::Add(id, <span class="kw">_</span>) <span class="kw">if </span>id &lt;= <span class="kw-2">&amp;</span>last_id =&gt; <span class="prelude-val">Some</span>(change.clone()),
-                            Change::Delete(id) <span class="kw">if </span>id &lt;= <span class="kw-2">&amp;</span>last_id =&gt; <span class="prelude-val">Some</span>(change.clone()),
-                            Change::Add(..) =&gt; <span class="prelude-val">None</span>,
-                            Change::Delete(..) =&gt; <span class="prelude-val">None</span>,
-                        })
-                        .collect(),
-                );
-                slot_changes.async_pool_changes = async_pool_changes;
+            <span class="comment">// Get async pool changes that concern ids &lt;= pool_step
+            </span><span class="kw">match </span>pool_step {
+                StreamingStep::Ongoing(last_id) =&gt; {
+                    <span class="kw">let </span>async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(
+                        changes
+                            .async_pool_changes
+                            .<span class="number">0
+                            </span>.iter()
+                            .filter_map(|change| <span class="kw">match </span>change {
+                                Change::Add(id, <span class="kw">_</span>) <span class="kw">if </span>id &lt;= <span class="kw-2">&amp;</span>last_id =&gt; <span class="prelude-val">Some</span>(change.clone()),
+                                Change::Delete(id) <span class="kw">if </span>id &lt;= <span class="kw-2">&amp;</span>last_id =&gt; <span class="prelude-val">Some</span>(change.clone()),
+                                Change::Add(..) =&gt; <span class="prelude-val">None</span>,
+                                Change::Delete(..) =&gt; <span class="prelude-val">None</span>,
+                            })
+                            .collect(),
+                    );
+                    slot_changes.async_pool_changes = async_pool_changes;
+                }
+                StreamingStep::Finished =&gt; {
+                    slot_changes.async_pool_changes = changes.async_pool_changes.clone();
+                }
+                <span class="kw">_ </span>=&gt; (),
             }
 
             <span class="comment">// Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
-            </span><span class="kw">if </span>last_pos_step_cursor == PoSCycleStreamingStep::Finished {
+            </span><span class="kw">if </span>cycle_step.finished() &amp;&amp; credits_step.finished() {
                 slot_changes.pos_changes = changes.pos_changes.clone();
             }
 
             <span class="comment">// Get executed operations changes if classic bootstrap finished
-            </span><span class="kw">if </span>last_exec_ops_cursor == ExecutedOpsStreamingStep::Finished {
-                slot_changes.executed_ops = changes.executed_ops.clone();
+            </span><span class="kw">if </span>ops_step.finished() {
+                slot_changes.executed_ops_changes = changes.executed_ops_changes.clone();
             }
 
             <span class="comment">// Push the slot changes
@@ -569,4 +615,4 @@
     </span>}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (7fcf850d7 2022-10-23)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (77e57db38 2022-10-30)" ></div></body></html>

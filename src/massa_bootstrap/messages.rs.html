@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/messages.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>messages.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><a class="sidebar-logo" href="../../massa_bootstrap/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/messages.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>messages.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -755,32 +755,97 @@
 <span id="755">755</span>
 <span id="756">756</span>
 <span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
+<span id="781">781</span>
+<span id="782">782</span>
+<span id="783">783</span>
+<span id="784">784</span>
+<span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
+<span id="789">789</span>
+<span id="790">790</span>
+<span id="791">791</span>
+<span id="792">792</span>
+<span id="793">793</span>
+<span id="794">794</span>
+<span id="795">795</span>
+<span id="796">796</span>
+<span id="797">797</span>
+<span id="798">798</span>
+<span id="799">799</span>
+<span id="800">800</span>
+<span id="801">801</span>
+<span id="802">802</span>
+<span id="803">803</span>
+<span id="804">804</span>
+<span id="805">805</span>
+<span id="806">806</span>
+<span id="807">807</span>
+<span id="808">808</span>
+<span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
+<span id="817">817</span>
+<span id="818">818</span>
+<span id="819">819</span>
+<span id="820">820</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>massa_async_pool::{AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer};
-<span class="kw">use </span>massa_final_state::{
-    ExecutedOpsStreamingStep, ExecutedOpsStreamingStepDeserializer,
-    ExecutedOpsStreamingStepSerializer, StateChanges, StateChangesDeserializer,
-    StateChangesSerializer,
+</span><span class="kw">use </span>massa_async_pool::{
+    AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
+    AsyncPoolDeserializer, AsyncPoolSerializer,
 };
+<span class="kw">use </span>massa_executed_ops::{ExecutedOpsDeserializer, ExecutedOpsSerializer};
+<span class="kw">use </span>massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 <span class="kw">use </span>massa_graph::{
     BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
 };
 <span class="kw">use </span>massa_ledger_exports::{KeyDeserializer, KeySerializer};
+<span class="kw">use </span>massa_models::operation::OperationId;
+<span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
-<span class="kw">use </span>massa_models::slot::SlotDeserializer;
-<span class="kw">use </span>massa_models::{
-    slot::Slot,
-    slot::SlotSerializer,
-    version::{Version, VersionDeserializer, VersionSerializer},
+<span class="kw">use </span>massa_models::slot::{Slot, SlotDeserializer, SlotSerializer};
+<span class="kw">use </span>massa_models::streaming_step::{
+    StreamingStep, StreamingStepDeserializer, StreamingStepSerializer,
 };
+<span class="kw">use </span>massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 <span class="kw">use </span>massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
 <span class="kw">use </span>massa_pos_exports::{
-    PoSCycleStreamingStep, PoSCycleStreamingStepDeserializer, PoSCycleStreamingStepSerializer,
+    CycleInfo, CycleInfoDeserializer, CycleInfoSerializer, DeferredCredits,
+    DeferredCreditsDeserializer, DeferredCreditsSerializer,
 };
 <span class="kw">use </span>massa_serialization::{
     Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
-    U32VarIntDeserializer, U32VarIntSerializer,
+    U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 <span class="kw">use </span>massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 <span class="kw">use </span>nom::error::context;
@@ -792,6 +857,7 @@
     IResult,
 };
 <span class="kw">use </span>num_enum::{IntoPrimitive, TryFromPrimitive};
+<span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::convert::TryInto;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 
@@ -818,18 +884,18 @@
     },
     <span class="doccomment">/// Part of the final state
     </span>FinalStatePart {
-        <span class="doccomment">/// Part of the execution ledger sent in a serialized way
-        </span>ledger_data: Vec&lt;u8&gt;,
-        <span class="doccomment">/// Part of the async pool
-        </span>async_pool_part: Vec&lt;u8&gt;,
-        <span class="doccomment">/// Part of the Proof of Stake `cycle_history`
-        </span>pos_cycle_part: Vec&lt;u8&gt;,
-        <span class="doccomment">/// Part of the Proof of Stake `deferred_credits`
-        </span>pos_credits_part: Vec&lt;u8&gt;,
-        <span class="doccomment">/// Part of the executed operations
-        </span>exec_ops_part: Vec&lt;u8&gt;,
         <span class="doccomment">/// Slot the state changes are attached to
         </span>slot: Slot,
+        <span class="doccomment">/// Part of the execution ledger sent in a serialized way
+        </span>ledger_part: Vec&lt;u8&gt;,
+        <span class="doccomment">/// Part of the async pool
+        </span>async_pool_part: BTreeMap&lt;AsyncMessageId, AsyncMessage&gt;,
+        <span class="doccomment">/// Part of the Proof of Stake `cycle_history`
+        </span>pos_cycle_part: <span class="prelude-ty">Option</span>&lt;CycleInfo&gt;,
+        <span class="doccomment">/// Part of the Proof of Stake `deferred_credits`
+        </span>pos_credits_part: DeferredCredits,
+        <span class="doccomment">/// Part of the executed operations
+        </span>exec_ops_part: BTreeMap&lt;Slot, PreHashSet&lt;OperationId&gt;&gt;,
         <span class="doccomment">/// Ledger change for addresses inferior to `address` of the client message until the actual slot.
         </span>final_state_changes: Vec&lt;(Slot, StateChanges)&gt;,
     },
@@ -859,6 +925,7 @@
 <span class="doccomment">/// Serializer for `BootstrapServerMessage`
 </span><span class="kw">pub struct </span>BootstrapServerMessageSerializer {
     u32_serializer: U32VarIntSerializer,
+    u64_serializer: U64VarIntSerializer,
     time_serializer: MassaTimeSerializer,
     version_serializer: VersionSerializer,
     peers_serializer: BootstrapPeersSerializer,
@@ -866,6 +933,10 @@
     bootstrapable_graph_serializer: BootstrapableGraphSerializer,
     vec_u8_serializer: VecU8Serializer,
     slot_serializer: SlotSerializer,
+    async_pool_serializer: AsyncPoolSerializer,
+    opt_pos_cycle_serializer: OptionSerializer&lt;CycleInfo, CycleInfoSerializer&gt;,
+    pos_credits_serializer: DeferredCreditsSerializer,
+    exec_ops_serializer: ExecutedOpsSerializer,
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>BootstrapServerMessageSerializer {
@@ -879,6 +950,7 @@
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             u32_serializer: U32VarIntSerializer::new(),
+            u64_serializer: U64VarIntSerializer::new(),
             time_serializer: MassaTimeSerializer::new(),
             version_serializer: VersionSerializer::new(),
             peers_serializer: BootstrapPeersSerializer::new(),
@@ -886,6 +958,10 @@
             bootstrapable_graph_serializer: BootstrapableGraphSerializer::new(),
             vec_u8_serializer: VecU8Serializer::new(),
             slot_serializer: SlotSerializer::new(),
+            async_pool_serializer: AsyncPoolSerializer::new(),
+            opt_pos_cycle_serializer: OptionSerializer::new(CycleInfoSerializer::new()),
+            pos_credits_serializer: DeferredCreditsSerializer::new(),
+            exec_ops_serializer: ExecutedOpsSerializer::new(),
         }
     }
 }
@@ -934,25 +1010,37 @@
                     .serialize(graph, buffer)<span class="question-mark">?</span>;
             }
             BootstrapServerMessage::FinalStatePart {
-                ledger_data,
+                slot,
+                ledger_part,
                 async_pool_part,
                 pos_cycle_part,
                 pos_credits_part,
                 exec_ops_part,
-                slot,
                 final_state_changes,
             } =&gt; {
-                <span class="self">self</span>.u32_serializer
+                <span class="comment">// message type
+                </span><span class="self">self</span>.u32_serializer
                     .serialize(<span class="kw-2">&amp;</span>u32::from(MessageServerTypeId::FinalStatePart), buffer)<span class="question-mark">?</span>;
-                <span class="self">self</span>.vec_u8_serializer.serialize(ledger_data, buffer)<span class="question-mark">?</span>;
-                <span class="self">self</span>.vec_u8_serializer.serialize(async_pool_part, buffer)<span class="question-mark">?</span>;
-                <span class="self">self</span>.vec_u8_serializer.serialize(pos_cycle_part, buffer)<span class="question-mark">?</span>;
-                <span class="self">self</span>.vec_u8_serializer.serialize(pos_credits_part, buffer)<span class="question-mark">?</span>;
-                <span class="self">self</span>.vec_u8_serializer.serialize(exec_ops_part, buffer)<span class="question-mark">?</span>;
-                <span class="self">self</span>.slot_serializer.serialize(slot, buffer)<span class="question-mark">?</span>;
-                <span class="self">self</span>.u32_serializer
-                    .serialize(<span class="kw-2">&amp;</span>(final_state_changes.len() <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
-                <span class="kw">for </span>(slot, state_changes) <span class="kw">in </span>final_state_changes {
+                <span class="comment">// slot
+                </span><span class="self">self</span>.slot_serializer.serialize(slot, buffer)<span class="question-mark">?</span>;
+                <span class="comment">// ledger
+                </span><span class="self">self</span>.vec_u8_serializer.serialize(ledger_part, buffer)<span class="question-mark">?</span>;
+                <span class="comment">// async pool
+                </span><span class="self">self</span>.async_pool_serializer
+                    .serialize(async_pool_part, buffer)<span class="question-mark">?</span>;
+                <span class="comment">// pos cycle info
+                </span><span class="self">self</span>.opt_pos_cycle_serializer
+                    .serialize(pos_cycle_part, buffer)<span class="question-mark">?</span>;
+                <span class="comment">// pos deferred credits
+                </span><span class="self">self</span>.pos_credits_serializer
+                    .serialize(pos_credits_part, buffer)<span class="question-mark">?</span>;
+                <span class="comment">// executed operations
+                </span><span class="self">self</span>.exec_ops_serializer.serialize(exec_ops_part, buffer)<span class="question-mark">?</span>;
+                <span class="comment">// changes length
+                </span><span class="self">self</span>.u64_serializer
+                    .serialize(<span class="kw-2">&amp;</span>(final_state_changes.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
+                <span class="comment">// changes
+                </span><span class="kw">for </span>(slot, state_changes) <span class="kw">in </span>final_state_changes {
                     <span class="self">self</span>.slot_serializer.serialize(slot, buffer)<span class="question-mark">?</span>;
                     <span class="self">self</span>.state_changes_serializer
                         .serialize(state_changes, buffer)<span class="question-mark">?</span>;
@@ -988,12 +1076,16 @@
     time_deserializer: MassaTimeDeserializer,
     version_deserializer: VersionDeserializer,
     peers_deserializer: BootstrapPeersDeserializer,
-    length_state_changes: U32VarIntDeserializer,
+    length_state_changes: U64VarIntDeserializer,
     state_changes_deserializer: StateChangesDeserializer,
     bootstrapable_graph_deserializer: BootstrapableGraphDeserializer,
-    final_state_parts_deserializer: VecU8Deserializer,
-    length_bootstrap_error: U32VarIntDeserializer,
+    ledger_bytes_deserializer: VecU8Deserializer,
+    length_bootstrap_error: U64VarIntDeserializer,
     slot_deserializer: SlotDeserializer,
+    async_pool_deserializer: AsyncPoolDeserializer,
+    opt_pos_cycle_deserializer: OptionDeserializer&lt;CycleInfo, CycleInfoDeserializer&gt;,
+    pos_credits_deserializer: DeferredCreditsDeserializer,
+    exec_ops_deserializer: ExecutedOpsDeserializer,
 }
 
 <span class="kw">impl </span>BootstrapServerMessageDeserializer {
@@ -1007,18 +1099,24 @@
         max_operations_per_block: u32,
         max_bootstrap_final_state_parts_size: u64,
         max_async_pool_changes: u64,
-        max_data_async_message: u64,
+        max_async_pool_length: u64,
+        max_async_message_data: u64,
         max_ledger_changes_count: u64,
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
         max_function_name_length: u16,
         max_parameters_size: u32,
-        max_bootstrap_error_length: u32,
+        max_bootstrap_error_length: u64,
         max_op_datastore_entry_count: u64,
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
-        max_changes_slot_count: u32,
+        max_changes_slot_count: u64,
+        max_rolls_length: u64,
+        max_production_stats_length: u64,
+        max_credits_length: u64,
+        max_executed_ops_length: u64,
+        max_ops_changes_length: u64,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             message_id_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u32::MAX)),
@@ -1031,13 +1129,17 @@
             state_changes_deserializer: StateChangesDeserializer::new(
                 thread_count,
                 max_async_pool_changes,
-                max_data_async_message,
+                max_async_message_data,
                 max_ledger_changes_count,
                 max_datastore_key_length,
                 max_datastore_value_length,
                 max_datastore_entry_count,
+                max_rolls_length,
+                max_production_stats_length,
+                max_credits_length,
+                max_ops_changes_length,
             ),
-            length_state_changes: U32VarIntDeserializer::new(
+            length_state_changes: U64VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
                 Included(max_changes_slot_count),
             ),
@@ -1053,17 +1155,35 @@
                 max_op_datastore_key_length,
                 max_op_datastore_value_length,
             ),
-            final_state_parts_deserializer: VecU8Deserializer::new(
+            ledger_bytes_deserializer: VecU8Deserializer::new(
                 Included(<span class="number">0</span>),
                 Included(max_bootstrap_final_state_parts_size),
+            ),
+            length_bootstrap_error: U64VarIntDeserializer::new(
+                Included(<span class="number">0</span>),
+                Included(max_bootstrap_error_length),
             ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
                 (Included(<span class="number">0</span>), Excluded(thread_count)),
             ),
-            length_bootstrap_error: U32VarIntDeserializer::new(
-                Included(<span class="number">0</span>),
-                Included(max_bootstrap_error_length),
+            async_pool_deserializer: AsyncPoolDeserializer::new(
+                thread_count,
+                max_async_pool_length,
+                max_async_message_data,
+            ),
+            opt_pos_cycle_deserializer: OptionDeserializer::new(CycleInfoDeserializer::new(
+                max_rolls_length,
+                max_production_stats_length,
+            )),
+            pos_credits_deserializer: DeferredCreditsDeserializer::new(
+                thread_count,
+                max_credits_length,
+            ),
+            exec_ops_deserializer: ExecutedOpsDeserializer::new(
+                thread_count,
+                max_executed_ops_length,
+                max_operations_per_block <span class="kw">as </span>u64,
             ),
         }
     }
@@ -1079,7 +1199,7 @@
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
-    /// let message_deserializer = BootstrapServerMessageDeserializer::new(16, 10, 100, 100, 1000, 1000, 1000, 1000, 1000, 255, 100000, 10000, 10000, 10000, 100000, 10, 255, 10_000, 1000);
+    /// let message_deserializer = BootstrapServerMessageDeserializer::new(32, 16, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 255, 1000, 1000, 1000, 1000, 1000, 10, 255, 1000, 1000, 10_000, 10_000, 10_000, 10, 10_000);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),
     ///    version: Version::from_str(&quot;TEST.1.10&quot;).unwrap(),
@@ -1145,23 +1265,23 @@
                     .parse(input)
                 }
                 MessageServerTypeId::FinalStatePart =&gt; tuple((
-                    context(<span class="string">&quot;Failed ledger_data deserialization&quot;</span>, |input| {
-                        <span class="self">self</span>.final_state_parts_deserializer.deserialize(input)
-                    }),
-                    context(<span class="string">&quot;Failed async_pool_part deserialization&quot;</span>, |input| {
-                        <span class="self">self</span>.final_state_parts_deserializer.deserialize(input)
-                    }),
-                    context(<span class="string">&quot;Failed pos_cycle_part deserialization&quot;</span>, |input| {
-                        <span class="self">self</span>.final_state_parts_deserializer.deserialize(input)
-                    }),
-                    context(<span class="string">&quot;Failed pos_credits_part deserialization&quot;</span>, |input| {
-                        <span class="self">self</span>.final_state_parts_deserializer.deserialize(input)
-                    }),
-                    context(<span class="string">&quot;Failed exec_ops_part deserialization&quot;</span>, |input| {
-                        <span class="self">self</span>.final_state_parts_deserializer.deserialize(input)
-                    }),
                     context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
                         <span class="self">self</span>.slot_deserializer.deserialize(input)
+                    }),
+                    context(<span class="string">&quot;Failed ledger_data deserialization&quot;</span>, |input| {
+                        <span class="self">self</span>.ledger_bytes_deserializer.deserialize(input)
+                    }),
+                    context(<span class="string">&quot;Failed async_pool_part deserialization&quot;</span>, |input| {
+                        <span class="self">self</span>.async_pool_deserializer.deserialize(input)
+                    }),
+                    context(<span class="string">&quot;Failed pos_cycle_part deserialization&quot;</span>, |input| {
+                        <span class="self">self</span>.opt_pos_cycle_deserializer.deserialize(input)
+                    }),
+                    context(<span class="string">&quot;Failed pos_credits_part deserialization&quot;</span>, |input| {
+                        <span class="self">self</span>.pos_credits_deserializer.deserialize(input)
+                    }),
+                    context(<span class="string">&quot;Failed exec_ops_part deserialization&quot;</span>, |input| {
+                        <span class="self">self</span>.exec_ops_deserializer.deserialize(input)
                     }),
                     context(
                         <span class="string">&quot;Failed final_state_changes deserialization&quot;</span>,
@@ -1178,21 +1298,21 @@
                 ))
                 .map(
                     |(
-                        ledger_data,
+                        slot,
+                        ledger_part,
                         async_pool_part,
                         pos_cycle_part,
                         pos_credits_part,
                         exec_ops_part,
-                        slot,
                         final_state_changes,
                     )| {
                         BootstrapServerMessage::FinalStatePart {
-                            ledger_data,
+                            slot,
+                            ledger_part,
                             async_pool_part,
                             pos_cycle_part,
                             pos_credits_part,
                             exec_ops_part,
-                            slot,
                             final_state_changes,
                         }
                     },
@@ -1229,16 +1349,16 @@
     </span>AskFinalStatePart {
         <span class="doccomment">/// Slot we are attached to for changes
         </span>last_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
-        <span class="doccomment">/// Last key of the ledger we received from the server
-        </span>last_key: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
-        <span class="doccomment">/// Last async message id  of the async message pool we received from the server
-        </span>last_async_message_id: <span class="prelude-ty">Option</span>&lt;AsyncMessageId&gt;,
+        <span class="doccomment">/// Last received ledger key
+        </span>last_ledger_step: StreamingStep&lt;Vec&lt;u8&gt;&gt;,
+        <span class="doccomment">/// Last received async message id
+        </span>last_pool_step: StreamingStep&lt;AsyncMessageId&gt;,
         <span class="doccomment">/// Last received Proof of Stake cycle
-        </span>last_cycle_step: PoSCycleStreamingStep,
-        <span class="doccomment">/// Last receive Proof of Stake credits slot
-        </span>last_credits_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
-        <span class="doccomment">/// Last executed operations streaming step
-        </span>last_exec_ops_step: ExecutedOpsStreamingStep,
+        </span>last_cycle_step: StreamingStep&lt;u64&gt;,
+        <span class="doccomment">/// Last received Proof of Stake credits slot
+        </span>last_credits_step: StreamingStep&lt;Slot&gt;,
+        <span class="doccomment">/// Last received executed operation associated slot
+        </span>last_ops_step: StreamingStep&lt;Slot&gt;,
     },
     <span class="doccomment">/// Bootstrap error
     </span>BootstrapError {
@@ -1263,11 +1383,10 @@
 </span><span class="kw">pub struct </span>BootstrapClientMessageSerializer {
     u32_serializer: U32VarIntSerializer,
     slot_serializer: SlotSerializer,
-    async_message_id_serializer: AsyncMessageIdSerializer,
-    key_serializer: KeySerializer,
-    cycle_step_serializer: PoSCycleStreamingStepSerializer,
-    opt_slot_serializer: OptionSerializer&lt;Slot, SlotSerializer&gt;,
-    exec_ops_step_serializer: ExecutedOpsStreamingStepSerializer,
+    ledger_step_serializer: StreamingStepSerializer&lt;Vec&lt;u8&gt;, KeySerializer&gt;,
+    pool_step_serializer: StreamingStepSerializer&lt;AsyncMessageId, AsyncMessageIdSerializer&gt;,
+    cycle_step_serializer: StreamingStepSerializer&lt;u64, U64VarIntSerializer&gt;,
+    slot_step_serializer: StreamingStepSerializer&lt;Slot, SlotSerializer&gt;,
 }
 
 <span class="kw">impl </span>BootstrapClientMessageSerializer {
@@ -1276,11 +1395,10 @@
         <span class="self">Self </span>{
             u32_serializer: U32VarIntSerializer::new(),
             slot_serializer: SlotSerializer::new(),
-            async_message_id_serializer: AsyncMessageIdSerializer::new(),
-            key_serializer: KeySerializer::new(),
-            cycle_step_serializer: PoSCycleStreamingStepSerializer::new(),
-            opt_slot_serializer: OptionSerializer::new(SlotSerializer::new()),
-            exec_ops_step_serializer: ExecutedOpsStreamingStepSerializer::new(),
+            ledger_step_serializer: StreamingStepSerializer::new(KeySerializer::new()),
+            pool_step_serializer: StreamingStepSerializer::new(AsyncMessageIdSerializer::new()),
+            cycle_step_serializer: StreamingStepSerializer::new(U64VarIntSerializer::new()),
+            slot_step_serializer: StreamingStepSerializer::new(SlotSerializer::new()),
         }
     }
 }
@@ -1321,22 +1439,25 @@
             }
             BootstrapClientMessage::AskFinalStatePart {
                 last_slot,
-                last_key,
-                last_async_message_id,
+                last_ledger_step,
+                last_pool_step,
                 last_cycle_step,
-                last_credits_slot,
-                last_exec_ops_step,
+                last_credits_step,
+                last_ops_step,
             } =&gt; {
                 <span class="self">self</span>.u32_serializer
                     .serialize(<span class="kw-2">&amp;</span>u32::from(MessageClientTypeId::AskFinalStatePart), buffer)<span class="question-mark">?</span>;
-                <span class="comment">// If we have a cursor we must have also a slot
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(key) = last_key &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(slot) = last_slot &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(last_async_message_id) = last_async_message_id  {
-                    <span class="self">self</span>.key_serializer.serialize(key, buffer)<span class="question-mark">?</span>;
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot {
                     <span class="self">self</span>.slot_serializer.serialize(slot, buffer)<span class="question-mark">?</span>;
-                    <span class="self">self</span>.async_message_id_serializer.serialize(last_async_message_id, buffer)<span class="question-mark">?</span>;
-                    <span class="self">self</span>.cycle_step_serializer.serialize(last_cycle_step, buffer)<span class="question-mark">?</span>;
-                    <span class="self">self</span>.opt_slot_serializer.serialize(last_credits_slot, buffer)<span class="question-mark">?</span>;
-                    <span class="self">self</span>.exec_ops_step_serializer.serialize(last_exec_ops_step, buffer)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.ledger_step_serializer
+                        .serialize(last_ledger_step, buffer)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.pool_step_serializer
+                        .serialize(last_pool_step, buffer)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.cycle_step_serializer
+                        .serialize(last_cycle_step, buffer)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.slot_step_serializer
+                        .serialize(last_credits_step, buffer)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.slot_step_serializer.serialize(last_ops_step, buffer)<span class="question-mark">?</span>;
                 }
             }
             BootstrapClientMessage::BootstrapError { error } =&gt; {
@@ -1362,13 +1483,12 @@
 <span class="doccomment">/// Deserializer for `BootstrapClientMessage`
 </span><span class="kw">pub struct </span>BootstrapClientMessageDeserializer {
     id_deserializer: U32VarIntDeserializer,
-    slot_deserializer: SlotDeserializer,
-    async_message_id_deserializer: AsyncMessageIdDeserializer,
     length_error_deserializer: U32VarIntDeserializer,
-    key_deserializer: KeyDeserializer,
-    cycle_step_deserializer: PoSCycleStreamingStepDeserializer,
-    opt_slot_deserializer: OptionDeserializer&lt;Slot, SlotDeserializer&gt;,
-    exec_ops_step_serializer: ExecutedOpsStreamingStepDeserializer,
+    slot_deserializer: SlotDeserializer,
+    ledger_step_deserializer: StreamingStepDeserializer&lt;Vec&lt;u8&gt;, KeyDeserializer&gt;,
+    pool_step_deserializer: StreamingStepDeserializer&lt;AsyncMessageId, AsyncMessageIdDeserializer&gt;,
+    cycle_step_deserializer: StreamingStepDeserializer&lt;u64, U64VarIntDeserializer&gt;,
+    slot_step_deserializer: StreamingStepDeserializer&lt;Slot, SlotDeserializer&gt;,
 }
 
 <span class="kw">impl </span>BootstrapClientMessageDeserializer {
@@ -1376,19 +1496,25 @@
     </span><span class="kw">pub fn </span>new(thread_count: u8, max_datastore_key_length: u8) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             id_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u32::MAX)),
+            length_error_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(<span class="number">100000</span>)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
                 (Included(<span class="number">0</span>), Excluded(thread_count)),
             ),
-            async_message_id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
-            key_deserializer: KeyDeserializer::new(max_datastore_key_length),
-            length_error_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(<span class="number">100000</span>)),
-            cycle_step_deserializer: PoSCycleStreamingStepDeserializer::new(),
-            opt_slot_deserializer: OptionDeserializer::new(SlotDeserializer::new(
+            ledger_step_deserializer: StreamingStepDeserializer::new(KeyDeserializer::new(
+                max_datastore_key_length,
+            )),
+            pool_step_deserializer: StreamingStepDeserializer::new(
+                AsyncMessageIdDeserializer::new(thread_count),
+            ),
+            cycle_step_deserializer: StreamingStepDeserializer::new(U64VarIntDeserializer::new(
+                Included(<span class="number">0</span>),
+                Included(u64::MAX),
+            )),
+            slot_step_deserializer: StreamingStepDeserializer::new(SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
                 (Included(<span class="number">0</span>), Excluded(thread_count)),
             )),
-            exec_ops_step_serializer: ExecutedOpsStreamingStepDeserializer::new(),
         }
     }
 }
@@ -1444,51 +1570,51 @@
                             input,
                             BootstrapClientMessage::AskFinalStatePart {
                                 last_slot: <span class="prelude-val">None</span>,
-                                last_key: <span class="prelude-val">None</span>,
-                                last_async_message_id: <span class="prelude-val">None</span>,
-                                last_cycle_step: PoSCycleStreamingStep::Started,
-                                last_credits_slot: <span class="prelude-val">None</span>,
-                                last_exec_ops_step: ExecutedOpsStreamingStep::Started,
+                                last_ledger_step: StreamingStep::Started,
+                                last_pool_step: StreamingStep::Started,
+                                last_cycle_step: StreamingStep::Started,
+                                last_credits_step: StreamingStep::Started,
+                                last_ops_step: StreamingStep::Started,
                             },
                         ))
                     } <span class="kw">else </span>{
                         tuple((
-                            context(<span class="string">&quot;Faild key deserialization&quot;</span>, |input| {
-                                <span class="self">self</span>.key_deserializer.deserialize(input)
-                            }),
-                            context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
+                            context(<span class="string">&quot;Failed last_slot deserialization&quot;</span>, |input| {
                                 <span class="self">self</span>.slot_deserializer.deserialize(input)
                             }),
-                            context(<span class="string">&quot;Failed async_message_id deserialization&quot;</span>, |input| {
-                                <span class="self">self</span>.async_message_id_deserializer.deserialize(input)
+                            context(<span class="string">&quot;Faild last_ledger_step deserialization&quot;</span>, |input| {
+                                <span class="self">self</span>.ledger_step_deserializer.deserialize(input)
                             }),
-                            context(<span class="string">&quot;Failed cycle_step deserialization&quot;</span>, |input| {
+                            context(<span class="string">&quot;Failed last_pool_step deserialization&quot;</span>, |input| {
+                                <span class="self">self</span>.pool_step_deserializer.deserialize(input)
+                            }),
+                            context(<span class="string">&quot;Failed last_cycle_step deserialization&quot;</span>, |input| {
                                 <span class="self">self</span>.cycle_step_deserializer.deserialize(input)
                             }),
-                            context(<span class="string">&quot;Failed credits_slot deserialization&quot;</span>, |input| {
-                                <span class="self">self</span>.opt_slot_deserializer.deserialize(input)
+                            context(<span class="string">&quot;Failed last_credits_step deserialization&quot;</span>, |input| {
+                                <span class="self">self</span>.slot_step_deserializer.deserialize(input)
                             }),
-                            context(<span class="string">&quot;Failed exec_ops_step deserialization&quot;</span>, |input| {
-                                <span class="self">self</span>.exec_ops_step_serializer.deserialize(input)
+                            context(<span class="string">&quot;Failed last_ops_step deserialization&quot;</span>, |input| {
+                                <span class="self">self</span>.slot_step_deserializer.deserialize(input)
                             }),
                         ))
                         .map(
                             |(
-                                last_key,
                                 last_slot,
-                                last_async_message_id,
+                                last_ledger_step,
+                                last_pool_step,
                                 last_cycle_step,
-                                last_credits_slot,
-                                last_exec_ops_step,
+                                last_credits_step,
+                                last_ops_step,
                             )| {
                                 BootstrapClientMessage::AskFinalStatePart {
                                     last_slot: <span class="prelude-val">Some</span>(last_slot),
-                                    last_key: <span class="prelude-val">Some</span>(last_key),
-                                    last_async_message_id: <span class="prelude-val">Some</span>(last_async_message_id),
+                                    last_ledger_step,
+                                    last_pool_step,
                                     last_cycle_step,
-                                    last_credits_slot,
-                                    last_exec_ops_step, <span class="comment">// TODO: update this
-                                </span>}
+                                    last_credits_step,
+                                    last_ops_step,
+                                }
                             },
                         )
                         .parse(input)
@@ -1513,4 +1639,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (7fcf850d7 2022-10-23)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (77e57db38 2022-10-30)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-client/src/repl.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>repl.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><a class="sidebar-logo" href="../../massa_client/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_client/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-client/src/repl.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>repl.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_client/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -325,6 +325,64 @@
 <span id="325">325</span>
 <span id="326">326</span>
 <span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::cmds::{Command, ExtendedWallet};
@@ -371,6 +429,56 @@
     };
 }
 
+<span class="kw">fn </span>group_parameters(parameters: Vec&lt;String&gt;) -&gt; Vec&lt;String&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>new_parameters = Vec::new();
+    <span class="kw">let </span><span class="kw-2">mut </span>has_opening_simple_quote = <span class="bool-val">false</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>temp_simple_quote = String::new();
+    <span class="kw">let </span><span class="kw-2">mut </span>has_opening_double_quote = <span class="bool-val">false</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>temp_double_quote = String::new();
+    <span class="kw">for </span>param <span class="kw">in </span>parameters {
+        <span class="kw">let </span><span class="kw-2">mut </span>chars = param.chars();
+        <span class="kw">match </span>chars.next() {
+            <span class="prelude-val">Some</span>(<span class="string">&#39;\&#39;&#39;</span>) <span class="kw">if </span>!has_opening_double_quote =&gt; {
+                has_opening_simple_quote = <span class="bool-val">true</span>;
+                temp_simple_quote = param.clone();
+                temp_simple_quote.remove(<span class="number">0</span>);
+            }
+            <span class="prelude-val">Some</span>(<span class="string">&#39;&quot;&#39;</span>) <span class="kw">if </span>!has_opening_simple_quote =&gt; {
+                has_opening_double_quote = <span class="bool-val">true</span>;
+                temp_double_quote = param.clone();
+                temp_double_quote.remove(<span class="number">0</span>);
+            }
+            <span class="prelude-val">Some</span>(<span class="kw">_</span>) <span class="kw">if </span>has_opening_simple_quote =&gt; {
+                temp_simple_quote.push(<span class="string">&#39; &#39;</span>);
+                temp_simple_quote.push_str(<span class="kw-2">&amp;</span>param);
+            }
+            <span class="prelude-val">Some</span>(<span class="kw">_</span>) <span class="kw">if </span>has_opening_double_quote =&gt; {
+                temp_double_quote.push(<span class="string">&#39; &#39;</span>);
+                temp_double_quote.push_str(<span class="kw-2">&amp;</span>param);
+            }
+            <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; new_parameters.push(param.clone()),
+            <span class="prelude-val">None </span>=&gt; <span class="kw">continue</span>,
+        };
+        <span class="kw">match </span>chars.last() {
+            <span class="prelude-val">Some</span>(<span class="string">&#39;\&#39;&#39;</span>) <span class="kw">if </span>has_opening_simple_quote =&gt; {
+                has_opening_simple_quote = <span class="bool-val">false</span>;
+                <span class="kw">let </span><span class="kw-2">mut </span>to_add = temp_simple_quote.clone();
+                to_add.pop();
+                new_parameters.push(to_add);
+            }
+            <span class="prelude-val">Some</span>(<span class="string">&#39;&quot;&#39;</span>) <span class="kw">if </span>has_opening_double_quote =&gt; {
+                has_opening_double_quote = <span class="bool-val">false</span>;
+                <span class="kw">let </span><span class="kw-2">mut </span>to_add = temp_double_quote.clone();
+                to_add.pop();
+                new_parameters.push(to_add);
+            }
+            <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; <span class="kw">continue</span>,
+            <span class="prelude-val">None </span>=&gt; <span class="kw">continue</span>,
+        }
+    }
+    new_parameters
+}
+
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>run(client: <span class="kw-2">&amp;</span>Client, wallet: <span class="kw-2">&amp;mut </span>Wallet) {
     <span class="macro">massa_fancy_ascii_art_logo!</span>();
     <span class="macro">println!</span>(<span class="string">&quot;Use &#39;exit&#39; to quit the prompt&quot;</span>);
@@ -388,7 +496,8 @@
             .interact_text()
         {
             <span class="comment">// User input parsing
-            </span><span class="kw">let </span>input: Vec&lt;String&gt; = input.split_whitespace().map(|x| x.to_string()).collect();
+            </span><span class="kw">let </span>input: Vec&lt;String&gt; =
+                group_parameters(input.split_whitespace().map(|x| x.to_string()).collect());
             <span class="kw">let </span>cmd: <span class="prelude-ty">Result</span>&lt;Command, ParseError&gt; = input[<span class="number">0</span>].parse();
             <span class="kw">let </span>parameters = input[<span class="number">1</span>..].to_vec();
             <span class="comment">// Print result of evaluated command
@@ -449,8 +558,15 @@
             <span class="self">self</span>.history.pop_back();
         }
         <span class="kw">let </span>string_value = val.to_string();
-        CommandHistory::write_to_saved_history(<span class="kw-2">&amp;</span>string_value);
-        <span class="self">self</span>.history.push_front(string_value);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(last_command) = <span class="self">self</span>.history.iter().next() {
+            <span class="kw">if </span>last_command != <span class="kw-2">&amp;</span>string_value {
+                CommandHistory::write_to_saved_history(<span class="kw-2">&amp;</span>string_value);
+                <span class="self">self</span>.history.push_front(string_value);
+            }
+        } <span class="kw">else </span>{
+            CommandHistory::write_to_saved_history(<span class="kw-2">&amp;</span>string_value);
+            <span class="self">self</span>.history.push_front(string_value);
+        }
     }
 }
 
@@ -653,4 +769,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (7fcf850d7 2022-10-23)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (77e57db38 2022-10-30)" ></div></body></html>

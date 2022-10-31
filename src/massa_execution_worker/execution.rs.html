@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/execution.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>execution.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/execution.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>execution.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -1259,6 +1259,16 @@
 <span id="1259">1259</span>
 <span id="1260">1260</span>
 <span id="1261">1261</span>
+<span id="1262">1262</span>
+<span id="1263">1263</span>
+<span id="1264">1264</span>
+<span id="1265">1265</span>
+<span id="1266">1266</span>
+<span id="1267">1267</span>
+<span id="1268">1268</span>
+<span id="1269">1269</span>
+<span id="1270">1270</span>
+<span id="1271">1271</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1276,7 +1286,7 @@
 <span class="kw">use </span>massa_async_pool::AsyncMessage;
 <span class="kw">use </span>massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
-    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
@@ -1401,8 +1411,9 @@
         <span class="comment">// count stats
         </span><span class="kw">if </span>exec_out.block_id.is_some() {
             <span class="self">self</span>.stats_counter.register_final_blocks(<span class="number">1</span>);
-            <span class="self">self</span>.stats_counter
-                .register_final_executed_operations(exec_out.state_changes.executed_ops.len());
+            <span class="self">self</span>.stats_counter.register_final_executed_operations(
+                exec_out.state_changes.executed_ops_changes.len(),
+            );
         }
 
         <span class="comment">// apply state changes to the final ledger
@@ -2270,7 +2281,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>execute_readonly_request(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         req: ReadOnlyExecutionRequest,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionOutput, ExecutionError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ReadOnlyExecutionOutput, ExecutionError&gt; {
         <span class="comment">// TODO ensure that speculative things are reset after every execution ends (incl. on error and readonly)
         // otherwise, on prod stats accumulation etc... from the API we might be counting the remainder of this speculative execution
 
@@ -2292,15 +2303,15 @@
         );
 
         <span class="comment">// run the intepreter according to the target type
-        </span><span class="kw">match </span>req.target {
+        </span><span class="kw">let </span>remaining_gas = <span class="kw">match </span>req.target {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) =&gt; {
                 <span class="comment">// set the execution context for execution
                 </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
 
                 <span class="comment">// run the bytecode&#39;s main function
                 </span>massa_sc_runtime::run_main(<span class="kw-2">&amp;</span>bytecode, req.max_gas, <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface)
-                    .map_err(|err| ExecutionError::RuntimeError(err.to_string()))<span class="question-mark">?</span>;
-            }
+                    .map_err(|err| ExecutionError::RuntimeError(err.to_string()))<span class="question-mark">?
+            </span>}
             ReadOnlyExecutionTarget::FunctionCall {
                 target_addr,
                 target_func,
@@ -2322,12 +2333,16 @@
                     <span class="kw-2">&amp;</span>parameter,
                     <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
                 )
-                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))<span class="question-mark">?</span>;
-            }
-        }
+                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))<span class="question-mark">?
+            </span>}
+        };
 
         <span class="comment">// return the execution output
-        </span><span class="prelude-val">Ok</span>(<span class="macro">context_guard!</span>(<span class="self">self</span>).settle_slot())
+        </span><span class="kw">let </span>execution_output = <span class="macro">context_guard!</span>(<span class="self">self</span>).settle_slot();
+        <span class="prelude-val">Ok</span>(ReadOnlyExecutionOutput {
+            out: execution_output,
+            gas_cost: req.max_gas.saturating_sub(remaining_gas),
+        })
     }
 
     <span class="doccomment">/// Gets a balance both at the latest final and candidate executed slots
@@ -2494,7 +2509,12 @@
                 <span class="kw">if </span>hist_item.slot.thread != thread {
                     <span class="kw">continue</span>;
                 }
-                ops.retain(|op_id| !hist_item.state_changes.executed_ops.contains(op_id));
+                ops.retain(|op_id| {
+                    !hist_item
+                        .state_changes
+                        .executed_ops_changes
+                        .contains_key(op_id)
+                });
                 <span class="kw">if </span>ops.is_empty() {
                     <span class="kw">return </span>ops;
                 }
@@ -2521,4 +2541,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (7fcf850d7 2022-10-23)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (77e57db38 2022-10-30)" ></div></body></html>

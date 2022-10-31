@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/client.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><a class="sidebar-logo" href="../../massa_bootstrap/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/client.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -487,17 +487,13 @@
 <span id="487">487</span>
 <span id="488">488</span>
 <span id="489">489</span>
-<span id="490">490</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{net::SocketAddr, sync::Arc, time::Duration};
 
-<span class="kw">use </span>massa_final_state::{ExecutedOpsStreamingStep, FinalState};
-<span class="kw">use </span>massa_ledger_exports::get_address_from_key;
+<span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_logging::massa_trace;
-<span class="kw">use </span>massa_models::version::Version;
-<span class="kw">use </span>massa_pos_exports::PoSCycleStreamingStep;
+<span class="kw">use </span>massa_models::{streaming_step::StreamingStep, version::Version};
 <span class="kw">use </span>massa_signature::PublicKey;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>nom::AsBytes;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>rand::{
     prelude::{SliceRandom, StdRng},
@@ -551,28 +547,27 @@
             };
             <span class="kw">match </span>msg {
                 BootstrapServerMessage::FinalStatePart {
-                    ledger_data,
+                    slot,
+                    ledger_part,
                     async_pool_part,
                     pos_cycle_part,
                     pos_credits_part,
                     exec_ops_part,
-                    slot,
                     final_state_changes,
                 } =&gt; {
                     <span class="kw">let </span><span class="kw-2">mut </span>write_final_state = global_bootstrap_state.final_state.write();
-                    <span class="kw">let </span>last_key = write_final_state.ledger.set_ledger_part(ledger_data)<span class="question-mark">?</span>;
-                    <span class="kw">let </span>last_last_async_id = write_final_state
-                        .async_pool
-                        .set_pool_part(async_pool_part.as_bytes())<span class="question-mark">?</span>;
+                    <span class="kw">let </span>last_ledger_step = write_final_state.ledger.set_ledger_part(ledger_part)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>last_pool_step =
+                        write_final_state.async_pool.set_pool_part(async_pool_part);
                     <span class="kw">let </span>last_cycle_step = write_final_state
                         .pos_state
-                        .set_cycle_history_part(pos_cycle_part.as_bytes())<span class="question-mark">?</span>;
-                    <span class="kw">let </span>last_credits_slot = write_final_state
+                        .set_cycle_history_part(pos_cycle_part);
+                    <span class="kw">let </span>last_credits_step = write_final_state
                         .pos_state
-                        .set_deferred_credits_part(pos_credits_part.as_bytes())<span class="question-mark">?</span>;
-                    <span class="kw">let </span>last_exec_ops_step = write_final_state
+                        .set_deferred_credits_part(pos_credits_part);
+                    <span class="kw">let </span>last_ops_step = write_final_state
                         .executed_ops
-                        .set_executed_ops_part(exec_ops_part.as_bytes(), cfg.thread_count)<span class="question-mark">?</span>;
+                        .set_executed_ops_part(exec_ops_part);
                     <span class="kw">for </span>(changes_slot, changes) <span class="kw">in </span>final_state_changes.iter() {
                         write_final_state
                             .ledger
@@ -587,37 +582,33 @@
                                 <span class="bool-val">false</span>,
                             )<span class="question-mark">?</span>;
                         }
-                        <span class="kw">if </span>!changes.executed_ops.is_empty() {
+                        <span class="kw">if </span>!changes.executed_ops_changes.is_empty() {
                             write_final_state
                                 .executed_ops
-                                .extend(changes.executed_ops.clone());
+                                .apply_changes(changes.executed_ops_changes.clone(), <span class="kw-2">*</span>changes_slot);
                         }
                     }
                     write_final_state.slot = slot;
-                    <span class="kw">if let </span>BootstrapClientMessage::AskFinalStatePart {
-                        last_key: old_key,
-                        last_async_message_id: old_message_id,
-                        ..
-                    } = <span class="kw-2">&amp;</span>next_bootstrap_message
-                    {
-                        <span class="macro">debug!</span>(<span class="string">&quot;Received ledger batch from {:#?} to {:#?}, an async pool batch from {:#?} to {:#?} a batch of ledger changes of size {:#?} and a batch of async pool changes of size {:#?}. for slot: {:#?}&quot;</span>, old_key.clone().map(|key| get_address_from_key(<span class="kw-2">&amp;</span>key)), last_key.clone().map(|key| get_address_from_key(<span class="kw-2">&amp;</span>key)), old_message_id, last_last_async_id, final_state_changes.iter().map(|(<span class="kw">_</span>, elem)| elem.ledger_changes.<span class="number">0</span>.len()).sum::&lt;usize&gt;(), final_state_changes.iter().map(|(<span class="kw">_</span>, elem)| elem.async_pool_changes.<span class="number">0</span>.len()).sum::&lt;usize&gt;(), slot);
-                    }
                     <span class="comment">// Set new message in case of disconnection
                     </span><span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::AskFinalStatePart {
                         last_slot: <span class="prelude-val">Some</span>(slot),
-                        last_key,
-                        last_async_message_id: last_last_async_id,
+                        last_ledger_step,
+                        last_pool_step,
                         last_cycle_step,
-                        last_credits_slot,
-                        last_exec_ops_step,
+                        last_credits_step,
+                        last_ops_step,
                     };
+                    <span class="macro">debug!</span>(
+                        <span class="string">&quot;client final state bootstrap cursors: {:?}&quot;</span>,
+                        next_bootstrap_message
+                    );
+                    <span class="macro">debug!</span>(
+                        <span class="string">&quot;client final state slot changes length: {}&quot;</span>,
+                        final_state_changes.len()
+                    );
                 }
                 BootstrapServerMessage::FinalStateFinished =&gt; {
                     <span class="macro">info!</span>(<span class="string">&quot;State bootstrap complete&quot;</span>);
-                    <span class="comment">// Prune executed operations
-                    </span><span class="kw">let </span><span class="kw-2">mut </span>write_final_state = global_bootstrap_state.final_state.write();
-                    <span class="kw">let </span>slot = write_final_state.slot;
-                    write_final_state.executed_ops.prune(slot);
                     <span class="comment">// Set next bootstrap message
                     </span><span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
@@ -626,11 +617,11 @@
                     <span class="macro">info!</span>(<span class="string">&quot;Slot is too old retry bootstrap from scratch&quot;</span>);
                     <span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::AskFinalStatePart {
                         last_slot: <span class="prelude-val">None</span>,
-                        last_key: <span class="prelude-val">None</span>,
-                        last_async_message_id: <span class="prelude-val">None</span>,
-                        last_cycle_step: PoSCycleStreamingStep::Started,
-                        last_credits_slot: <span class="prelude-val">None</span>,
-                        last_exec_ops_step: ExecutedOpsStreamingStep::Started,
+                        last_ledger_step: StreamingStep::Started,
+                        last_pool_step: StreamingStep::Started,
+                        last_cycle_step: StreamingStep::Started,
+                        last_credits_step: StreamingStep::Started,
+                        last_ops_step: StreamingStep::Started,
                     };
                     <span class="macro">panic!</span>(<span class="string">&quot;Bootstrap failed, try to bootstrap again.&quot;</span>);
                 }
@@ -664,15 +655,16 @@
     // client.next() is not cancel-safe but we drop the whole client object if cancelled =&gt; it&#39;s OK
     </span><span class="kw">match </span>tokio::time::timeout(cfg.read_error_timeout.into(), client.next()).<span class="kw">await </span>{
         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.bootstrap_from_server: No error sent at connection&quot;</span>, {});
+            <span class="macro">massa_trace!</span>(
+                <span class="string">&quot;bootstrap.lib.bootstrap_from_server: No error sent at connection&quot;</span>,
+                {}
+            );
         }
         <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(e),
-        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(BootstrapServerMessage::BootstrapError{error: <span class="kw">_</span>})) =&gt; {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::ReceivedError(
-                <span class="string">&quot;Bootstrap cancelled on this server because there is no slots available on this server. Will try to bootstrap to another node soon.&quot;</span>.to_string()
-            ))
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(BootstrapServerMessage::BootstrapError { error: err })) =&gt; {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::ReceivedError(err))
         }
-        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(msg)) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::UnexpectedServerMessage(msg))
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(msg)) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::UnexpectedServerMessage(msg)),
     };
 
     <span class="comment">// handshake
@@ -875,16 +867,17 @@
         bootstrap_config.endorsement_count,
         bootstrap_config.max_advertise_length,
         bootstrap_config.max_bootstrap_blocks_length,
-        bootstrap_config.max_operations_per_blocks,
+        bootstrap_config.max_operations_per_block,
         bootstrap_config.thread_count,
         bootstrap_config.randomness_size_bytes,
-        bootstrap_config.max_bootstrap_async_pool_changes,
         bootstrap_config.max_bootstrap_error_length,
         bootstrap_config.max_bootstrap_final_state_parts_size,
         bootstrap_config.max_datastore_entry_count,
         bootstrap_config.max_datastore_key_length,
         bootstrap_config.max_datastore_value_length,
-        bootstrap_config.max_data_async_message,
+        bootstrap_config.max_async_pool_changes,
+        bootstrap_config.max_async_pool_length,
+        bootstrap_config.max_async_message_data,
         bootstrap_config.max_function_name_length,
         bootstrap_config.max_parameters_size,
         bootstrap_config.max_ledger_changes_count,
@@ -892,6 +885,11 @@
         bootstrap_config.max_op_datastore_key_length,
         bootstrap_config.max_op_datastore_value_length,
         bootstrap_config.max_changes_slot_count,
+        bootstrap_config.max_rolls_length,
+        bootstrap_config.max_production_stats_length,
+        bootstrap_config.max_credits_length,
+        bootstrap_config.max_executed_ops_length,
+        bootstrap_config.max_ops_changes_length,
     ))
 }
 
@@ -937,11 +935,11 @@
     <span class="kw">let </span><span class="kw-2">mut </span>next_bootstrap_message: BootstrapClientMessage =
         BootstrapClientMessage::AskFinalStatePart {
             last_slot: <span class="prelude-val">None</span>,
-            last_key: <span class="prelude-val">None</span>,
-            last_async_message_id: <span class="prelude-val">None</span>,
-            last_cycle_step: PoSCycleStreamingStep::Started,
-            last_credits_slot: <span class="prelude-val">None</span>,
-            last_exec_ops_step: ExecutedOpsStreamingStep::Started,
+            last_ledger_step: StreamingStep::Started,
+            last_pool_step: StreamingStep::Started,
+            last_cycle_step: StreamingStep::Started,
+            last_credits_step: StreamingStep::Started,
+            last_ops_step: StreamingStep::Started,
         };
     <span class="kw">let </span><span class="kw-2">mut </span>global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
     <span class="kw">loop </span>{
@@ -979,4 +977,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (7fcf850d7 2022-10-23)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (77e57db38 2022-10-30)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/config/constants.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>constants.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><a class="sidebar-logo" href="../../../massa_models/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../massa_models/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/config/constants.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>constants.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../massa_models/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -221,6 +221,8 @@
 <span id="221">221</span>
 <span id="222">222</span>
 <span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -268,14 +270,14 @@
                 .saturating_add(MassaTime::from_millis(<span class="number">1000 </span>* <span class="number">10</span>))
         )
     } <span class="kw">else </span>{
-        <span class="number">1665405000000</span>.into()  <span class="comment">// Monday, October 10, 2022 12:30:00 PM UTC
+        <span class="number">1667260800000</span>.into()  <span class="comment">// Tuesday, November 01, 2022 00:00:01 AM UTC
     </span>};
 
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.
     </span><span class="kw">pub static </span><span class="kw-2">ref </span>END_TIMESTAMP: <span class="prelude-ty">Option</span>&lt;MassaTime&gt; = <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;sandbox&quot;</span>) {
         <span class="prelude-val">None
     </span>} <span class="kw">else </span>{
-        <span class="prelude-val">Some</span>(<span class="number">1667142000000</span>.into())  <span class="comment">// Sunday, October 30, 2022 3:00:00 PM UTC
+        <span class="prelude-val">Some</span>(<span class="number">1669827600000</span>.into())  <span class="comment">// Wednesday, November 30, 2022 5:00:00 PM UTC
     </span>};
     <span class="doccomment">/// `KeyPair` to sign genesis blocks.
     </span><span class="kw">pub static </span><span class="kw-2">ref </span>GENESIS_KEY: KeyPair = KeyPair::from_str(<span class="string">&quot;S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8&quot;</span>)
@@ -287,7 +289,7 @@
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;sandbox&quot;</span>) {
             <span class="string">&quot;SAND.0.0&quot;
         </span>} <span class="kw">else </span>{
-            <span class="string">&quot;TEST.15.1&quot;
+            <span class="string">&quot;TEST.16.0&quot;
         </span>}
         .parse()
         .unwrap()
@@ -321,25 +323,33 @@
 <span class="doccomment">/// Maximum capacity of the asynchronous messages pool
 </span><span class="kw">pub const </span>MAX_ASYNC_POOL_LENGTH: u64 = <span class="number">10_000</span>;
 <span class="doccomment">/// Maximum data size in async message
-</span><span class="kw">pub const </span>MAX_DATA_ASYNC_MESSAGE: u64 = <span class="number">1_000_000</span>;
+</span><span class="kw">pub const </span>MAX_ASYNC_MESSAGE_DATA: u64 = <span class="number">1_000_000</span>;
 <span class="doccomment">/// Maximum operation validity period count
 </span><span class="kw">pub const </span>OPERATION_VALIDITY_PERIODS: u64 = <span class="number">10</span>;
 <span class="doccomment">/// cycle duration in periods
 </span><span class="kw">pub const </span>PERIODS_PER_CYCLE: u64 = <span class="number">128</span>;
 <span class="doccomment">/// PoS saved cycles: number of cycles saved in `PoSFinalState`
-</span><span class="kw">pub const </span>POS_SAVED_CYCLES: u64 = <span class="number">4</span>;
+///
+/// 4 for PoS itself and 1 for bootstrap safety
+</span><span class="kw">pub const </span>POS_SAVED_CYCLES: usize = <span class="number">5</span>;
 <span class="doccomment">/// Maximum size batch of data in a part of the ledger
-</span><span class="kw">pub const </span>LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = <span class="number">1000000</span>;
+</span><span class="kw">pub const </span>LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = <span class="number">1_000_000</span>;
 <span class="doccomment">/// Maximum async messages in a batch of the bootstrap of the async pool
-</span><span class="kw">pub const </span>ASYNC_POOL_PART_SIZE_MESSAGE_BYTES: u64 = <span class="number">1000000</span>;
-<span class="doccomment">/// Maximum deferred credits in a bootstrap batch
-</span><span class="kw">pub const </span>DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES: u64 = <span class="number">1000000</span>;
-<span class="doccomment">/// Maximum cycle info in a bootstrap batch
-</span><span class="kw">pub const </span>CYCLE_INFO_SIZE_MESSAGE_BYTES: u64 = <span class="number">1000000</span>;
-<span class="doccomment">/// Maximum rolls in a bootstrap batch
-</span><span class="kw">pub const </span>ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES: u64 = <span class="number">1000000</span>;
-<span class="doccomment">/// Maximum production stats in a bootstrap batch
-</span><span class="kw">pub const </span>PRODUCTION_STATS_PART_SIZE_MESSAGE_BYTES: u64 = <span class="number">1000000</span>;
+</span><span class="kw">pub const </span>ASYNC_POOL_BOOTSTRAP_PART_SIZE: u64 = <span class="number">100</span>;
+<span class="doccomment">/// Maximum proof-of-stake deferred credits in a bootstrap batch
+</span><span class="kw">pub const </span>DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE: u64 = <span class="number">100</span>;
+<span class="doccomment">/// Maximum executed ops per slot in a bootstrap batch
+</span><span class="kw">pub const </span>EXECUTED_OPS_BOOTSTRAP_PART_SIZE: u64 = <span class="number">10</span>;
+<span class="doccomment">/// Maximum size of proof-of-stake rolls
+</span><span class="kw">pub const </span>MAX_ROLLS_COUNT_LENGTH: u64 = <span class="number">10_000</span>;
+<span class="doccomment">/// Maximum size of proof-of-stake production stats
+</span><span class="kw">pub const </span>MAX_PRODUCTION_STATS_LENGTH: u64 = <span class="number">10_000</span>;
+<span class="doccomment">/// Maximum size proof-of-stake deferred credits
+</span><span class="kw">pub const </span>MAX_DEFERRED_CREDITS_LENGTH: u64 = <span class="number">10_000</span>;
+<span class="doccomment">/// Maximum size of executed ops
+</span><span class="kw">pub const </span>MAX_EXECUTED_OPS_LENGTH: u64 = <span class="number">1_000</span>;
+<span class="doccomment">/// Maximum size of executed ops changes
+</span><span class="kw">pub const </span>MAX_EXECUTED_OPS_CHANGES_LENGTH: u64 = <span class="number">1_000</span>;
 <span class="doccomment">/// Maximum length of a datastore key
 </span><span class="kw">pub const </span>MAX_DATASTORE_KEY_LENGTH: u8 = <span class="number">255</span>;
 <span class="doccomment">/// Maximum length of an operation datastore key
@@ -367,12 +377,6 @@
 </span><span class="kw">pub const </span>MAX_PARAMETERS_SIZE: u32 = <span class="number">10_000_000</span>;
 <span class="doccomment">/// Maximum length of `rng_seed` in thread cycle
 </span><span class="kw">pub const </span>MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COUNT <span class="kw">as </span>u64) <span class="kw">as </span>u32;
-<span class="doccomment">/// Maximum length of `rolls_update` in thread cycle
-</span><span class="kw">pub const </span>MAX_ROLLS_UPDATE_LENGTH: u64 = u64::MAX;
-<span class="doccomment">/// Maximum length of `rolls_counts` in thread cycle
-</span><span class="kw">pub const </span>MAX_ROLLS_COUNTS_LENGTH: u64 = u64::MAX;
-<span class="doccomment">/// Maximum length of `production_stats` in thread cycle
-</span><span class="kw">pub const </span>MAX_PRODUCTION_STATS_LENGTH: u64 = u64::MAX;
 <span class="comment">// ***********************
 // Bootstrap constants
 //
@@ -400,7 +404,7 @@
 <span class="doccomment">/// Size of the random bytes array used for the bootstrap, safe to import
 </span><span class="kw">pub const </span>BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = <span class="number">32</span>;
 <span class="doccomment">/// Max size of the printed error
-</span><span class="kw">pub const </span>MAX_BOOTSTRAP_ERROR_LENGTH: u32 = <span class="number">10000</span>;
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_ERROR_LENGTH: u64 = <span class="number">10000</span>;
 
 <span class="doccomment">/// Protocol controller channel size
 </span><span class="kw">pub const </span>PROTOCOL_CONTROLLER_CHANNEL_SIZE: usize = <span class="number">1024</span>;
@@ -445,4 +449,4 @@
     <span class="macro">assert!</span>((T0).to_millis() % (THREAD_COUNT <span class="kw">as </span>u64) == <span class="number">0</span>);
 };
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (7fcf850d7 2022-10-23)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (77e57db38 2022-10-30)" ></div></body></html>

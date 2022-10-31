@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-node/src/main.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>main.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><a class="sidebar-logo" href="../../massa_node/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_node/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-node/src/main.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>main.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_node/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -754,6 +754,29 @@
 <span id="754">754</span>
 <span id="755">755</span>
 <span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attribute">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -771,6 +794,7 @@
     events::ConsensusEvent, settings::ConsensusChannels, ConsensusConfig, ConsensusEventReceiver,
 };
 <span class="kw">use </span>massa_consensus_worker::start_consensus_controller;
+<span class="kw">use </span>massa_executed_ops::ExecutedOpsConfig;
 <span class="kw">use </span>massa_execution_exports::{ExecutionConfig, ExecutionManager, StorageCostsConstants};
 <span class="kw">use </span>massa_execution_worker::start_execution_worker;
 <span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
@@ -781,29 +805,30 @@
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_models::config::constants::{
-    ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
-    CHANNEL_SIZE, DELTA_F0, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY, GENESIS_TIMESTAMP,
-    INITIAL_DRAW_SEED, LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_SIZE,
-    LEDGER_ENTRY_DATASTORE_BASE_SIZE, LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH,
-    MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
+    ASYNC_POOL_BOOTSTRAP_PART_SIZE, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE,
+    DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE, DELTA_F0, ENDORSEMENT_COUNT, END_TIMESTAMP,
+    EXECUTED_OPS_BOOTSTRAP_PART_SIZE, GENESIS_KEY, GENESIS_TIMESTAMP, INITIAL_DRAW_SEED,
+    LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE,
+    LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
+    MAX_ASYNC_GAS, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BYTECODE_LENGTH,
     MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
-    MAX_DATA_ASYNC_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
-    MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT, MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK,
-    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
-    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, NETWORK_CONTROLLER_CHANNEL_SIZE,
+    MAX_DEFERRED_CREDITS_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_EXECUTED_OPS_CHANGES_LENGTH,
+    MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT,
+    MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
+    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, NETWORK_CONTROLLER_CHANNEL_SIZE,
     NETWORK_EVENT_CHANNEL_SIZE, NETWORK_NODE_COMMAND_CHANNEL_SIZE, NETWORK_NODE_EVENT_CHANNEL_SIZE,
-    OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
-    PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE, T0, THREAD_COUNT,
-    VERSION,
+    OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, POOL_CONTROLLER_CHANNEL_SIZE,
+    POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE,
+    PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE, T0, THREAD_COUNT, VERSION,
 };
-<span class="kw">use </span>massa_models::config::POOL_CONTROLLER_CHANNEL_SIZE;
 <span class="kw">use </span>massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 <span class="kw">use </span>massa_network_worker::start_network_controller;
 <span class="kw">use </span>massa_pool_exports::{PoolConfig, PoolManager};
 <span class="kw">use </span>massa_pool_worker::start_pool_controller;
-<span class="kw">use </span>massa_pos_exports::{SelectorConfig, SelectorManager};
+<span class="kw">use </span>massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
 <span class="kw">use </span>massa_pos_worker::start_selector_worker;
 <span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 <span class="kw">use </span>massa_protocol_worker::start_protocol_controller;
@@ -859,17 +884,29 @@
     <span class="kw">let </span>async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
         thread_count: THREAD_COUNT,
-        part_size_message_bytes: ASYNC_POOL_PART_SIZE_MESSAGE_BYTES,
-        max_data_async_message: MAX_DATA_ASYNC_MESSAGE,
+        bootstrap_part_size: ASYNC_POOL_BOOTSTRAP_PART_SIZE,
+        max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+    };
+    <span class="kw">let </span>pos_config = PoSConfig {
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        thread_count: THREAD_COUNT,
+        cycle_history_length: POS_SAVED_CYCLES,
+        credits_bootstrap_part_size: DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE,
+    };
+    <span class="kw">let </span>executed_ops_config = ExecutedOpsConfig {
+        thread_count: THREAD_COUNT,
+        bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
     };
     <span class="kw">let </span>final_state_config = FinalStateConfig {
+        ledger_config: ledger_config.clone(),
+        async_pool_config,
+        pos_config,
+        executed_ops_config,
         final_history_length: SETTINGS.ledger.final_history_length,
         thread_count: THREAD_COUNT,
-        ledger_config: ledger_config.clone(),
         periods_per_cycle: PERIODS_PER_CYCLE,
         initial_seed_string: INITIAL_DRAW_SEED.into(),
         initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
-        async_pool_config,
     };
 
     <span class="comment">// Remove current disk ledger if there is one
@@ -880,7 +917,7 @@
     }
 
     <span class="comment">// Create final ledger
-    </span><span class="kw">let </span>ledger = FinalLedger::new(ledger_config.clone()).expect(<span class="string">&quot;could not init final ledger&quot;</span>);
+    </span><span class="kw">let </span>ledger = FinalLedger::new(ledger_config.clone());
 
     <span class="comment">// launch selector worker
     </span><span class="kw">let </span>(selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
@@ -909,6 +946,8 @@
 
     <span class="kw">let </span>bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
+        bootstrap_whitelist_file: SETTINGS.bootstrap.bootstrap_whitelist_file.clone(),
+        bootstrap_blacklist_file: SETTINGS.bootstrap.bootstrap_blacklist_file.clone(),
         bind: SETTINGS.bootstrap.bind,
         connect_timeout: SETTINGS.bootstrap.connect_timeout,
         read_timeout: SETTINGS.bootstrap.read_timeout,
@@ -930,12 +969,13 @@
         periods_per_cycle: PERIODS_PER_CYCLE,
         endorsement_count: ENDORSEMENT_COUNT,
         max_advertise_length: MAX_ADVERTISE_LENGTH,
-        max_bootstrap_async_pool_changes: MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
         max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
         max_bootstrap_final_state_parts_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-        max_data_async_message: MAX_DATA_ASYNC_MESSAGE,
-        max_operations_per_blocks: MAX_OPERATIONS_PER_BLOCK,
+        max_async_pool_changes: MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
+        max_async_pool_length: MAX_ASYNC_POOL_LENGTH,
+        max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
@@ -944,7 +984,12 @@
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-        max_changes_slot_count: SETTINGS.ledger.final_history_length <span class="kw">as </span>u32,
+        max_changes_slot_count: SETTINGS.ledger.final_history_length <span class="kw">as </span>u64,
+        max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+        max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+        max_credits_length: MAX_DEFERRED_CREDITS_LENGTH,
+        max_executed_ops_length: MAX_EXECUTED_OPS_LENGTH,
+        max_ops_changes_length: MAX_EXECUTED_OPS_CHANGES_LENGTH,
     };
 
     <span class="comment">// bootstrap
@@ -956,7 +1001,7 @@
         res = get_state(
             <span class="kw-2">&amp;</span>bootstrap_config,
             final_state.clone(),
-            massa_bootstrap::types::Establisher::new(),
+            massa_bootstrap::types::Establisher::default(),
             <span class="kw-2">*</span>VERSION,
             <span class="kw-2">*</span>GENESIS_TIMESTAMP,
             <span class="kw-2">*</span>END_TIMESTAMP,
@@ -1202,6 +1247,7 @@
         bind_public: SETTINGS.api.bind_public,
         draw_lookahead_period_count: SETTINGS.api.draw_lookahead_period_count,
         max_arguments: SETTINGS.api.max_arguments,
+        openrpc_spec_path: SETTINGS.api.openrpc_spec_path.clone(),
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
@@ -1214,7 +1260,7 @@
         consensus_command_sender.clone(),
         network_command_sender.clone(),
         execution_controller.clone(),
-        api_config,
+        api_config.clone(),
         consensus_config.clone(),
         node_wallet,
     );
@@ -1511,4 +1557,4 @@
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (7fcf850d7 2022-10-23)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (77e57db38 2022-10-30)" ></div></body></html>
