@@ -200,7 +200,9 @@ enum OperationTypeId {
 }
 
 /// the operation as sent in the network
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+// Only for unit test, otherwise, comparison should be made between OperationId
+#[cfg_attr(test, derive(PartialEq))]
 pub struct Operation {
     /// the fee they have decided for this operation
     pub fee: Amount,
