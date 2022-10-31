@@ -508,6 +508,7 @@ impl SpeculativeRollState {
     }
 
     /// Remove a given amount from deferred credits and return the removed amount
+    /// if it cannot slash everything, it will still try to slash as much as it can
     pub fn remove_deferred_credits(&mut self, slot: &Slot, addr: &Address, amount: Amount) -> Amount {
 
         let amount_zero = Amount::zero();
