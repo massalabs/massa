@@ -359,7 +359,7 @@ pub async fn send_final_state_stream(
         {
             match tokio::time::timeout(
                 write_timeout,
-                server.send(BootstrapServerMessage::FinalStateFinished),
+                server.send(BootstrapServerMessage::BootstrapFinished),
             )
             .await
             {
@@ -379,7 +379,7 @@ pub async fn send_final_state_stream(
             StreamingStep::Ongoing(slot) | StreamingStep::Finished(Some(slot)) => {
                 match tokio::time::timeout(
                     write_timeout,
-                    server.send(BootstrapServerMessage::FinalStatePart {
+                    server.send(BootstrapServerMessage::BootstrapPart {
                         slot,
                         ledger_part,
                         async_pool_part,
@@ -492,7 +492,7 @@ async fn manage_bootstrap(
                         Ok(Ok(_)) => Ok(()),
                     }?;
                 }
-                BootstrapClientMessage::AskFinalStatePart {
+                BootstrapClientMessage::AskBootstrapPart {
                     last_slot,
                     last_ledger_step,
                     last_pool_step,

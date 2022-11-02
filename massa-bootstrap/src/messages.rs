@@ -62,8 +62,8 @@ pub enum BootstrapServerMessage {
         /// Server peers
         peers: BootstrapPeers,
     },
-    /// Part of the final state
-    FinalStatePart {
+    /// Part of final state and consensus
+    BootstrapPart {
         /// Slot the state changes are attached to
         slot: Slot,
         /// Part of the execution ledger sent in a serialized way
@@ -81,8 +81,8 @@ pub enum BootstrapServerMessage {
         // Part of the consensus graph
         // consensus_part: BootstrapableGraph,
     },
-    /// Message sent when there is no state part left
-    FinalStateFinished,
+    /// Message sent when the final state and consensus bootstrap are finished
+    BootstrapFinished,
     /// Slot sent to get state changes is too old
     SlotTooOld,
     /// Bootstrap error
@@ -191,7 +191,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
             //     self.bootstrapable_graph_serializer
             //         .serialize(graph, buffer)?;
             // }
-            BootstrapServerMessage::FinalStatePart {
+            BootstrapServerMessage::BootstrapPart {
                 slot,
                 ledger_part,
                 async_pool_part,
@@ -231,7 +231,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 // self.bootstrapable_graph_serializer
                 //     .serialize(graph, buffer)?;
             }
-            BootstrapServerMessage::FinalStateFinished => {
+            BootstrapServerMessage::BootstrapFinished => {
                 self.u32_serializer
                     .serialize(&u32::from(MessageServerTypeId::FinalStateFinished), buffer)?;
             }
@@ -487,7 +487,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                         exec_ops_part,
                         final_state_changes,
                     )| {
-                        BootstrapServerMessage::FinalStatePart {
+                        BootstrapServerMessage::BootstrapPart {
                             slot,
                             ledger_part,
                             async_pool_part,
@@ -500,7 +500,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                 )
                 .parse(input),
                 MessageServerTypeId::FinalStateFinished => {
-                    Ok((input, BootstrapServerMessage::FinalStateFinished))
+                    Ok((input, BootstrapServerMessage::BootstrapFinished))
                 }
                 MessageServerTypeId::SlotTooOld => Ok((input, BootstrapServerMessage::SlotTooOld)),
                 MessageServerTypeId::BootstrapError => context(
@@ -524,8 +524,8 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
 pub enum BootstrapClientMessage {
     /// Ask for bootstrap peers
     AskBootstrapPeers,
-    /// Ask for a part of the final state
-    AskFinalStatePart {
+    /// Ask for a final state and consensus part
+    AskBootstrapPart {
         /// Slot we are attached to for changes
         last_slot: Option<Slot>,
         /// Last received ledger key
@@ -620,7 +620,7 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
             //     self.u32_serializer
             //         .serialize(&u32::from(MessageClientTypeId::AskConsensusState), buffer)?;
             // }
-            BootstrapClientMessage::AskFinalStatePart {
+            BootstrapClientMessage::AskBootstrapPart {
                 last_slot,
                 last_ledger_step,
                 last_pool_step,
@@ -753,7 +753,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                     if input.is_empty() {
                         Ok((
                             input,
-                            BootstrapClientMessage::AskFinalStatePart {
+                            BootstrapClientMessage::AskBootstrapPart {
                                 last_slot: None,
                                 last_ledger_step: StreamingStep::Started,
                                 last_pool_step: StreamingStep::Started,
@@ -792,7 +792,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                                 last_credits_step,
                                 last_ops_step,
                             )| {
-                                BootstrapClientMessage::AskFinalStatePart {
+                                BootstrapClientMessage::AskBootstrapPart {
                                     last_slot: Some(last_slot),
                                     last_ledger_step,
                                     last_pool_step,

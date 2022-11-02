@@ -23,13 +23,13 @@ use crate::{
 /// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
-async fn stream_final_state(
+async fn stream_final_state_and_consensus(
     cfg: &BootstrapConfig,
     client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
 ) -> Result<(), BootstrapError> {
-    if let BootstrapClientMessage::AskFinalStatePart { .. } = &next_bootstrap_message {
+    if let BootstrapClientMessage::AskBootstrapPart { .. } = &next_bootstrap_message {
         match tokio::time::timeout(
             cfg.write_timeout.into(),
             client.send(next_bootstrap_message),
@@ -57,7 +57,7 @@ async fn stream_final_state(
                 Ok(Ok(msg)) => msg,
             };
             match msg {
-                BootstrapServerMessage::FinalStatePart {
+                BootstrapServerMessage::BootstrapPart {
                     slot,
                     ledger_part,
                     async_pool_part,
@@ -101,7 +101,7 @@ async fn stream_final_state(
                     }
                     write_final_state.slot = slot;
                     // Set new message in case of disconnection
-                    *next_bootstrap_message = BootstrapClientMessage::AskFinalStatePart {
+                    *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
                         last_slot: Some(slot),
                         last_ledger_step,
                         last_pool_step,
@@ -110,7 +110,7 @@ async fn stream_final_state(
                         last_ops_step,
                     };
                 }
-                BootstrapServerMessage::FinalStateFinished => {
+                BootstrapServerMessage::BootstrapFinished => {
                     info!("State bootstrap complete");
                     // Prune executed operations
                     let mut write_final_state = global_bootstrap_state.final_state.write();
@@ -122,7 +122,7 @@ async fn stream_final_state(
                 }
                 BootstrapServerMessage::SlotTooOld => {
                     info!("Slot is too old retry bootstrap from scratch");
-                    *next_bootstrap_message = BootstrapClientMessage::AskFinalStatePart {
+                    *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
                         last_slot: None,
                         last_ledger_step: StreamingStep::Started,
                         last_pool_step: StreamingStep::Started,
@@ -263,9 +263,14 @@ async fn bootstrap_from_server(
     // Loop to ask data to the server depending on the last message we sent
     loop {
         match next_bootstrap_message {
-            BootstrapClientMessage::AskFinalStatePart { .. } => {
-                stream_final_state(cfg, client, next_bootstrap_message, global_bootstrap_state)
-                    .await?;
+            BootstrapClientMessage::AskBootstrapPart { .. } => {
+                stream_final_state_and_consensus(
+                    cfg,
+                    client,
+                    next_bootstrap_message,
+                    global_bootstrap_state,
+                )
+                .await?;
             }
             BootstrapClientMessage::AskBootstrapPeers => {
                 let peers = match send_client_message(
@@ -437,7 +442,7 @@ pub async fn get_state(
     let mut shuffled_list = bootstrap_config.bootstrap_list.clone();
     shuffled_list.shuffle(&mut StdRng::from_entropy());
     let mut next_bootstrap_message: BootstrapClientMessage =
-        BootstrapClientMessage::AskFinalStatePart {
+        BootstrapClientMessage::AskBootstrapPart {
             last_slot: None,
             last_ledger_step: StreamingStep::Started,
             last_pool_step: StreamingStep::Started,
