@@ -115,17 +115,18 @@ impl ConsensusController for ConsensusControllerImpl {
             if let Some(BlockStatus::Active { a_block, storage }) =
                 read_shared_state.block_statuses.get(b_id)
             {
-                final_blocks.push(ExportActiveBlock::from_active_block(a_block, storage));
-                cursor = StreamingStep::Ongoing(a_block.slot);
-                // IMPORTANT TODO: use a config param
-                if final_blocks.len() > 10_000 {
+                // IMPORTANT TODO: use a config parameter
+                if final_blocks.len() > 100 {
                     break;
                 }
+                final_blocks.push(ExportActiveBlock::from_active_block(a_block, storage));
                 if let StreamingStep::Finished(Some(slot)) = execution_cursor {
                     if slot == a_block.slot {
+                        cursor = StreamingStep::Finished(Some(a_block.slot));
                         break;
                     }
                 }
+                cursor = StreamingStep::Ongoing(a_block.slot);
             } else {
                 return Err(ConsensusError::ContainerInconsistency(format!(
                     "block {} was expected to be active but wasn't on bootstrap graph export",
