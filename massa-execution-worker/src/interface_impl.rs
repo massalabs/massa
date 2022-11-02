@@ -528,6 +528,16 @@ impl Interface for InterfaceImpl {
         Ok(context_guard!(self).unsafe_rng.sample(distr))
     }
 
+    /// Returns a pseudo-random deterministic `f64` number
+    ///
+    /// # Warning
+    /// This random number generator is unsafe:
+    /// it can be both predicted and manipulated before the execution
+    fn unsafe_random_f64(&self) -> Result<f64> {
+        let distr = rand::distributions::Uniform::new(0f64, 1f64);
+        Ok(context_guard!(self).unsafe_rng.sample(distr))
+    }
+
     /// Adds an asynchronous message to the context speculative asynchronous pool
     ///
     /// # Arguments

@@ -22,3 +22,6 @@ docs/_build
 massa.iml
 ledger
 docs/venv
+# tools
+massa_unit_tests_*.tar.gz
+extract_massa_unit_tests_src_*

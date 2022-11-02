@@ -7,7 +7,7 @@ use crate::execution::ExecutionState;
 use crate::request_queue::{RequestQueue, RequestWithResponseSender};
 use massa_execution_exports::{
     ExecutionAddressInfo, ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager,
-    ExecutionOutput, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
@@ -33,7 +33,7 @@ pub(crate) struct ExecutionInputData {
     /// storage instances for previously unprocessed blocks
     pub block_storage: PreHashMap<BlockId, Storage>,
     /// queue for read-only execution requests and response MPSCs to send back their outputs
-    pub readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
+    pub readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ReadOnlyExecutionOutput>,
 }
 
 impl Display for ExecutionInputData {
@@ -179,7 +179,7 @@ impl ExecutionController for ExecutionControllerImpl {
     fn execute_readonly_request(
         &self,
         req: ReadOnlyExecutionRequest,
-    ) -> Result<ExecutionOutput, ExecutionError> {
+    ) -> Result<ReadOnlyExecutionOutput, ExecutionError> {
         let resp_rx = {
             let mut input_data = self.input_data.1.lock();
 
@@ -192,7 +192,7 @@ impl ExecutionController for ExecutionControllerImpl {
 
             // prepare the channel to send back the result of the read-only execution
             let (resp_tx, resp_rx) =
-                std::sync::mpsc::channel::<Result<ExecutionOutput, ExecutionError>>();
+                std::sync::mpsc::channel::<Result<ReadOnlyExecutionOutput, ExecutionError>>();
 
             // append the request to the queue of input read-only requests
             input_data
