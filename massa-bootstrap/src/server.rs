@@ -297,7 +297,7 @@ impl BootstrapServer {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn send_final_state_stream(
+pub async fn stream_bootstrap_information(
     server: &mut BootstrapServerBinder,
     final_state: Arc<RwLock<FinalState>>,
     consensus_controller: Box<dyn ConsensusController>,
@@ -382,11 +382,11 @@ pub async fn send_final_state_stream(
 
         // Setup final state global cursor
         let final_state_global_step = if last_ledger_step.finished()
-            || last_pool_step.finished()
-            || last_cycle_step.finished()
-            || last_credits_step.finished()
-            || last_ops_step.finished()
-            || final_state_changes.is_empty()
+            && last_pool_step.finished()
+            && last_cycle_step.finished()
+            && last_credits_step.finished()
+            && last_ops_step.finished()
+            && final_state_changes.is_empty()
         {
             StreamingStep::Finished(Some(current_slot))
         } else {
@@ -398,11 +398,8 @@ pub async fn send_final_state_stream(
             .get_bootstrap_part(last_consensus_step, final_state_global_step)?;
         last_consensus_step = new_consensus_step;
 
-        // If the final state bootstrap is finished and (consensus slot == final state slot) exit
-        if let StreamingStep::Finished(Some(final_state_slot)) = final_state_global_step
-            && let StreamingStep::Ongoing(consensus_slot) = new_consensus_step
-            && consensus_slot == final_state_slot
-        {
+        // If the consensus streaming is finished (also meaning that consensus slot == final state slot) exit
+        if final_state_global_step.finished() && new_consensus_step.finished() {
             match tokio::time::timeout(
                 write_timeout,
                 server.send(BootstrapServerMessage::BootstrapFinished),
@@ -548,7 +545,7 @@ async fn manage_bootstrap(
                     last_ops_step,
                     last_consensus_step,
                 } => {
-                    send_final_state_stream(
+                    stream_bootstrap_information(
                         server,
                         final_state.clone(),
                         consensus_controller.clone(),
