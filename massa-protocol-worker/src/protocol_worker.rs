@@ -8,7 +8,7 @@ use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use massa_logging::massa_trace;
 
 use massa_models::slot::Slot;
-use massa_models::timeslots::get_block_slot_timestamp;
+use massa_models::timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp};
 use massa_models::{
     block::{BlockId, WrappedHeader},
     endorsement::{EndorsementId, WrappedEndorsement},
@@ -387,8 +387,45 @@ impl ProtocolWorker {
             "protocol.protocol_worker.note_operations_to_announce.begin",
             { "operations": operations }
         );
+
+        let now = MassaTime::now(self.config.clock_compensation_millis)
+            .expect("could not get current time");
+        // get closest slot according to the current absolute time
+        let mut next_slot = get_closest_slot_to_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            now,
+        );
+        // Note: need to reset thread as we build the op slot 'op_valid_until_slot` thread set to 0
+        next_slot.thread = 0;
+
+        let mut operations_: Vec<OperationId> = Vec::new();
+        if !operations.is_empty() {
+            let op_indexes = self.storage.read_operations();
+            operations_ = operations
+                .iter()
+                .filter_map(|op_id| {
+                    let op = op_indexes.get(op_id)?;
+                    // XXX: should we extract the thread from op.creator_address?
+                    let op_valid_until_slot = Slot::new(op.content.expire_period, 0);
+                    if op_valid_until_slot < next_slot {
+                        debug!(
+                            "Filtering too old op ({}); valid until slot {} while next slot is {}",
+                            op, op_valid_until_slot, next_slot
+                        );
+                        None
+                    } else {
+                        Some(op_id)
+                    }
+                })
+                .cloned()
+                .collect();
+            drop(op_indexes);
+        }
+
         // Add the operations to a list for announcement at the next interval.
-        self.operations_to_announce.extend_from_slice(operations);
+        self.operations_to_announce.extend(operations_);
 
         // If the buffer is full,
         // announce operations immediately,

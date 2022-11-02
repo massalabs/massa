@@ -55,4 +55,6 @@ pub struct ProtocolConfig {
     pub max_operations_propagation_time: MassaTime,
     /// max time we propagate endorsements
     pub max_endorsements_propagation_time: MassaTime,
+    /// clock compensation in relative milliseconds
+    pub clock_compensation_millis: i64,
 }

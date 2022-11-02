@@ -377,6 +377,7 @@ async fn launch(
         t0: T0,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
+        clock_compensation_millis: bootstrap_state.compensation_millis,
     };
     let (protocol_command_sender, protocol_event_receiver, protocol_manager) =
         start_protocol_controller(
