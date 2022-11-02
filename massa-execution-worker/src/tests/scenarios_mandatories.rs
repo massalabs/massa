@@ -458,6 +458,10 @@ pub fn roll_buy() {
 #[test]
 #[serial]
 pub fn roll_sell() {
+
+    // Try to sell 10 rolls (operation 1) then 1 rolls (operation 2)
+    // Check for resulting roll count + resulting deferred credits
+
     // setup the period duration
     let exec_cfg = ExecutionConfig {
         t0: 100.into(),
@@ -482,8 +486,8 @@ pub fn roll_sell() {
     // generate the keypair and its corresponding address
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
-    // create the operation
-    let operation = Operation::new_wrapped(
+    // create operation 1
+    let operation1 = Operation::new_wrapped(
         Operation {
             fee: Amount::zero(),
             expire_period: 10,
@@ -493,9 +497,19 @@ pub fn roll_sell() {
         &keypair,
     )
     .unwrap();
+    let operation2 = Operation::new_wrapped(
+        Operation {
+            fee: Amount::zero(),
+            expire_period: 10,
+            op: OperationType::RollSell { roll_count: 1 },
+        },
+        OperationSerializer::new(),
+        &keypair,
+    )
+        .unwrap();
     // create the block containing the roll buy operation
-    storage.store_operations(vec![operation.clone()]);
-    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+    storage.store_operations(vec![operation1.clone(), operation2.clone()]);
+    let block = create_block(KeyPair::generate(), vec![operation1, operation2], Slot::new(1, 0)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
     // set the block as final so the sell and credits are processed
@@ -512,8 +526,9 @@ pub fn roll_sell() {
     // check roll count deferred credits and candidate balance of the seller address
     let sample_read = sample_state.read();
     let mut credits = PreHashMap::default();
-    credits.insert(address, Amount::from_str("1000").unwrap());
-    assert_eq!(sample_read.pos_state.get_rolls_for(&address), 90);
+    credits.insert(address, Amount::from_str("1100").unwrap());
+
+    assert_eq!(sample_read.pos_state.get_rolls_for(&address), 89);
     assert_eq!(
         sample_read
             .pos_state

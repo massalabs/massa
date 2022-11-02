@@ -118,16 +118,8 @@ impl SpeculativeRollState {
             )));
         }
 
-        let cur_cycle = slot.get_cycle(periods_per_cycle);
-
-        // remove the rolls
-        self
-            .added_changes
-            .roll_changes
-            .entry(*seller_addr)
-            .insert_entry(owned_count.saturating_sub(roll_count));
-
         // compute deferred credit slot
+        let cur_cycle = slot.get_cycle(periods_per_cycle);
         let target_slot = Slot::new_last_of_cycle(
             cur_cycle
                 .checked_add(3)
@@ -135,16 +127,41 @@ impl SpeculativeRollState {
             periods_per_cycle,
             thread_count,
         )
-        .expect("unexepected slot overflot in try_sell_rolls");
+        .expect("unexpected slot overflow in try_sell_rolls");
 
-        // add deferred reimbursement corresponding to the sold rolls value
+        // Note 1: Deferred credits are stored as absolute value
+        // Note 2: Deferred credits are credited at the beginning of the slot execution
+        // (before the block is executed)
+        // So we retrieve deferred credits from the next slot
+        let next_slot = slot.get_next_slot(slot.thread)
+            .expect("Unable to compute next slot");
+        let deferred_credits = self.get_address_deferred_credits(&seller_addr, next_slot);
+        let deferred_credits_amount = deferred_credits
+            .into_iter()
+            .map(|(_slot, amount)| {
+                amount
+            })
+            .last()
+            .unwrap_or_default();
+
+        // Remove the rolls
+        self
+            .added_changes
+            .roll_changes
+            .entry(*seller_addr)
+            .insert_entry(owned_count.saturating_sub(roll_count));
+
+        // Add deferred credits (reimbursement) corresponding to the sold rolls value
         let credit = self
             .added_changes
             .deferred_credits
             .0
             .entry(target_slot)
             .or_insert_with(PreHashMap::default);
-        credit.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
+
+        credit.insert(*seller_addr, deferred_credits_amount.saturating_add(
+            roll_price.saturating_mul_u64(roll_count)
+        ));
 
         Ok(())
     }
