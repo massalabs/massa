@@ -71,7 +71,6 @@ impl BootstrapClientBinder {
 #[tokio::test]
 #[serial]
 async fn test_binders() {
-    dbg!("A");
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
     let (client, server) = duplex(1000000);
     let mut server = BootstrapServerBinder::new(
@@ -158,14 +157,12 @@ async fn test_binders() {
 
     server_thread.await.unwrap();
     client_thread.await.unwrap();
-    dbg!("B");
 }
 
 /// The server and the client will handshake and then send message only from server to client
 #[tokio::test]
 #[serial]
 async fn test_binders_double_send_server_works() {
-    dbg!("A");
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
 
     let (client, server) = duplex(1000000);
@@ -238,14 +235,12 @@ async fn test_binders_double_send_server_works() {
 
     server_thread.await.unwrap();
     client_thread.await.unwrap();
-    dbg!("B");
 }
 
 /// The server and the client will handshake and then send message in both ways but the client will try to send two messages without answer
 #[tokio::test]
 #[serial]
 async fn test_binders_try_double_send_client_works() {
-    dbg!(1);
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
 
     let (client, server) = duplex(1000000);
@@ -290,8 +285,6 @@ async fn test_binders_try_double_send_client_works() {
 
         server.send(test_peers_message.clone()).await.unwrap();
     });
-
-    dbg!(2);
 
     let client_thread = tokio::spawn(async move {
         // Test message 1
@@ -332,10 +325,6 @@ async fn test_binders_try_double_send_client_works() {
         }
     });
 
-    dbg!(3);
-
     server_thread.await.unwrap();
     client_thread.await.unwrap();
-
-    dbg!(4);
 }
