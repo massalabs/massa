@@ -138,10 +138,8 @@ impl SpeculativeRollState {
         let deferred_credits = self.get_address_deferred_credits(&seller_addr, next_slot);
         let deferred_credits_amount = deferred_credits
             .into_iter()
-            .map(|(_slot, amount)| {
-                amount
-            })
             .last()
+            .map(|(_slot, amount)| amount)
             .unwrap_or_default();
 
         // Remove the rolls

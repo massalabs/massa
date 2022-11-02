@@ -473,6 +473,7 @@ pub fn roll_sell() {
     // get a sample final state
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
 
+
     // init the storage
     let mut storage = Storage::create_root();
     // start the execution worker
@@ -486,12 +487,18 @@ pub fn roll_sell() {
     // generate the keypair and its corresponding address
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
+
+    // get roll count
+    let roll_count_initial = sample_state.read().pos_state.get_rolls_for(&address);
+    let roll_sell_1 = 10;
+    let roll_sell_2 = 1;
+
     // create operation 1
     let operation1 = Operation::new_wrapped(
         Operation {
             fee: Amount::zero(),
             expire_period: 10,
-            op: OperationType::RollSell { roll_count: 10 },
+            op: OperationType::RollSell { roll_count: roll_sell_1 },
         },
         OperationSerializer::new(),
         &keypair,
@@ -501,7 +508,7 @@ pub fn roll_sell() {
         Operation {
             fee: Amount::zero(),
             expire_period: 10,
-            op: OperationType::RollSell { roll_count: 1 },
+            op: OperationType::RollSell { roll_count: roll_sell_2 },
         },
         OperationSerializer::new(),
         &keypair,
@@ -526,9 +533,11 @@ pub fn roll_sell() {
     // check roll count deferred credits and candidate balance of the seller address
     let sample_read = sample_state.read();
     let mut credits = PreHashMap::default();
-    credits.insert(address, Amount::from_str("1100").unwrap());
+    let roll_remaining = roll_count_initial - roll_sell_1 - roll_sell_2;
+    let roll_sold = roll_sell_1 + roll_sell_2;
+    credits.insert(address, exec_cfg.roll_price.saturating_mul_u64(roll_sold));
 
-    assert_eq!(sample_read.pos_state.get_rolls_for(&address), 89);
+    assert_eq!(sample_read.pos_state.get_rolls_for(&address), roll_remaining);
     assert_eq!(
         sample_read
             .pos_state
