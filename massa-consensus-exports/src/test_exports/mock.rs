@@ -11,6 +11,7 @@ use massa_models::{
     clique::Clique,
     slot::Slot,
     stats::ConsensusStats,
+    streaming_step::StreamingStep,
     wrapped::Wrapped,
 };
 use massa_storage::Storage;
@@ -43,7 +44,10 @@ pub enum MockConsensusControllerMessage {
         response_tx: mpsc::Sender<Vec<Clique>>,
     },
     GetBootstrapableGraph {
-        response_tx: mpsc::Sender<Result<BootstrapableGraph, ConsensusError>>,
+        cursor: StreamingStep<Slot>,
+        execution_cursor: StreamingStep<Slot>,
+        response_tx:
+            mpsc::Sender<Result<(BootstrapableGraph, StreamingStep<Slot>), ConsensusError>>,
     },
     GetStats {
         response_tx: mpsc::Sender<Result<ConsensusStats, ConsensusError>>,
@@ -154,12 +158,20 @@ impl ConsensusController for MockConsensusController {
         response_rx.recv().unwrap()
     }
 
-    fn get_bootstrap_graph(&self) -> Result<BootstrapableGraph, ConsensusError> {
+    fn get_bootstrap_part(
+        &self,
+        cursor: StreamingStep<Slot>,
+        execution_cursor: StreamingStep<Slot>,
+    ) -> Result<(BootstrapableGraph, StreamingStep<Slot>), ConsensusError> {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
             .lock()
             .unwrap()
-            .send(MockConsensusControllerMessage::GetBootstrapableGraph { response_tx })
+            .send(MockConsensusControllerMessage::GetBootstrapableGraph {
+                cursor,
+                execution_cursor,
+                response_tx,
+            })
             .unwrap();
         response_rx.recv().unwrap()
     }
