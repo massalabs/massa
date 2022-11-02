@@ -352,32 +352,11 @@ pub async fn send_final_state_stream(
             .get_bootstrap_part(last_consensus_step, final_state_global_step)?;
         last_consensus_step = new_consensus_step;
 
-        // IMPORTANT NOTE: take it back here on monday, update sent data and break condition
-        if let StreamingStep::Ongoing(slot) = final_state_global_step {
-            match tokio::time::timeout(
-                write_timeout,
-                server.send(BootstrapServerMessage::FinalStatePart {
-                    slot,
-                    ledger_part,
-                    async_pool_part,
-                    pos_cycle_part,
-                    pos_credits_part,
-                    exec_ops_part,
-                    final_state_changes,
-                }),
-            )
-            .await
-            {
-                Err(_) => Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "bootstrap ask ledger part send timed out",
-                )
-                .into()),
-                Ok(Err(e)) => Err(e),
-                Ok(Ok(_)) => Ok(()),
-            }?;
-        } else {
-            // There is no ledger data nor async pool data.
+        // If the final state bootstrap is finished and (consensus slot == final state slot) exit
+        if let StreamingStep::Finished(Some(final_state_slot)) = final_state_global_step
+            && let StreamingStep::Ongoing(consensus_slot) = new_consensus_step
+            && consensus_slot == final_state_slot
+        {
             match tokio::time::timeout(
                 write_timeout,
                 server.send(BootstrapServerMessage::FinalStateFinished),
@@ -394,6 +373,35 @@ pub async fn send_final_state_stream(
             }?;
             break;
         }
+
+        // At this point we know that consensus, final state or both are not finished
+        match final_state_global_step {
+            StreamingStep::Ongoing(slot) | StreamingStep::Finished(Some(slot)) => {
+                match tokio::time::timeout(
+                    write_timeout,
+                    server.send(BootstrapServerMessage::FinalStatePart {
+                        slot,
+                        ledger_part,
+                        async_pool_part,
+                        pos_cycle_part,
+                        pos_credits_part,
+                        exec_ops_part,
+                        final_state_changes,
+                    }),
+                )
+                .await
+                {
+                    Err(_) => Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        "bootstrap ask ledger part send timed out",
+                    )
+                    .into()),
+                    Ok(Err(e)) => Err(e),
+                    Ok(Ok(_)) => Ok(()),
+                }?;
+            }
+            _ => (),
+        };
     }
     Ok(())
 }
