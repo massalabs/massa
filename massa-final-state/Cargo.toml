@@ -12,8 +12,8 @@ tracing = "0.1"
 # custom modules
 massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_ledger_worker = { path = "../massa-ledger-worker", optional = true }
+massa_executed_ops = { path = "../massa-executed-ops" }
 massa_models = { path = "../massa-models" }
-massa_hash = { path = "../massa-hash" }
 massa_async_pool = { path = "../massa-async-pool" }
 massa_serialization = { path = "../massa-serialization" }
 massa_pos_exports = { path = "../massa-pos-exports" }

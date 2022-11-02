@@ -33,7 +33,7 @@ pub struct FinalLedger {
 
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
-    pub fn new(config: LedgerConfig) -> Result<Self, LedgerError> {
+    pub fn new(config: LedgerConfig) -> Self {
         // create and initialize the disk ledger
         let sorted_ledger = LedgerDB::new(
             config.disk_ledger_path.clone(),
@@ -43,10 +43,10 @@ impl FinalLedger {
         );
 
         // generate the final ledger
-        Ok(FinalLedger {
+        FinalLedger {
             sorted_ledger,
             config,
-        })
+        }
     }
 }
 

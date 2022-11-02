@@ -3,7 +3,7 @@
 
 use crate::config::APIConfig;
 use crate::error::ApiError;
-use crate::{Endpoints, Public, RpcServer, StopHandle, API};
+use crate::{serde_json, Endpoints, Public, RpcServer, StopHandle, Value, API};
 use jsonrpc_core::BoxFuture;
 use massa_consensus_exports::block_status::DiscardReason;
 use massa_consensus_exports::ConsensusController;
@@ -103,7 +103,7 @@ impl Endpoints for API<Public> {
         crate::wrong_api::<PubkeySig>()
     }
 
-    fn add_staking_secret_keys(&self, _: Vec<KeyPair>) -> BoxFuture<Result<(), ApiError>> {
+    fn add_staking_secret_keys(&self, _: Vec<String>) -> BoxFuture<Result<(), ApiError>> {
         crate::wrong_api::<()>()
     }
 
@@ -112,8 +112,7 @@ impl Endpoints for API<Public> {
         reqs: Vec<ReadOnlyBytecodeExecution>,
     ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
         if reqs.len() as u64 > self.0.api_settings.max_arguments {
-            let closure =
-                async move || Err(ApiError::TooManyArguments("too many arguments".into()));
+            let closure = async move || Err(ApiError::BadRequest("too many arguments".into()));
             return Box::pin(closure());
         }
 
@@ -173,12 +172,16 @@ impl Endpoints for API<Public> {
 
             // map result
             let result = ExecuteReadOnlyResponse {
-                executed_at: result.as_ref().map_or_else(|_| Slot::new(0, 0), |v| v.slot),
+                executed_at: result
+                    .as_ref()
+                    .map_or_else(|_| Slot::new(0, 0), |v| v.out.slot),
                 result: result.as_ref().map_or_else(
                     |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
                     |_| ReadOnlyResult::Ok,
                 ),
-                output_events: result.map_or_else(|_| Default::default(), |mut v| v.events.take()),
+                gas_cost: result.as_ref().map_or_else(|_| 0, |v| v.gas_cost),
+                output_events: result
+                    .map_or_else(|_| Default::default(), |mut v| v.out.events.take()),
             };
 
             res.push(result);
@@ -194,8 +197,7 @@ impl Endpoints for API<Public> {
         reqs: Vec<ReadOnlyCall>,
     ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
         if reqs.len() as u64 > self.0.api_settings.max_arguments {
-            let closure =
-                async move || Err(ApiError::TooManyArguments("too many arguments".into()));
+            let closure = async move || Err(ApiError::BadRequest("too many arguments".into()));
             return Box::pin(closure());
         }
 
@@ -249,12 +251,16 @@ impl Endpoints for API<Public> {
 
             // map result
             let result = ExecuteReadOnlyResponse {
-                executed_at: result.as_ref().map_or_else(|_| Slot::new(0, 0), |v| v.slot),
+                executed_at: result
+                    .as_ref()
+                    .map_or_else(|_| Slot::new(0, 0), |v| v.out.slot),
                 result: result.as_ref().map_or_else(
                     |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
                     |_| ReadOnlyResult::Ok,
                 ),
-                output_events: result.map_or_else(|_| Default::default(), |mut v| v.events.take()),
+                gas_cost: result.as_ref().map_or_else(|_| 0, |v| v.gas_cost),
+                output_events: result
+                    .map_or_else(|_| Default::default(), |mut v| v.out.events.take()),
             };
 
             res.push(result);
@@ -299,7 +305,7 @@ impl Endpoints for API<Public> {
         let pool_command_sender = self.0.pool_command_sender.clone();
         let node_id = self.0.node_id;
         let config = CompactConfig::default();
-        let api_config = self.0.api_settings;
+        let api_config = self.0.api_settings.clone();
         let closure = async move || {
             let now = MassaTime::now(compensation_millis)?;
             let last_slot = get_latest_block_slot_at_timestamp(
@@ -361,7 +367,7 @@ impl Endpoints for API<Public> {
 
     fn get_stakers(&self) -> BoxFuture<Result<Vec<(Address, u64)>, ApiError>> {
         let execution_controller = self.0.execution_controller.clone();
-        let api_config = self.0.api_settings;
+        let api_config = self.0.api_settings.clone();
         let compensation_millis = self.0.compensation_millis;
 
         let closure = async move || {
@@ -377,7 +383,9 @@ impl Endpoints for API<Public> {
                 .get_cycle_active_rolls(curr_cycle)
                 .into_iter()
                 .collect::<Vec<(Address, u64)>>();
-            staker_vec.sort_by_key(|(_, rolls)| *rolls);
+            staker_vec.sort_by(|&(_, roll_counts_a), &(_, roll_counts_b)| {
+                roll_counts_b.cmp(&roll_counts_a)
+            });
             Ok(staker_vec)
         };
         Box::pin(closure())
@@ -412,11 +420,11 @@ impl Endpoints for API<Public> {
         // ask pool whether it carries the operations
         let in_pool = self.0.pool_command_sender.contains_operations(&ops);
 
-        let api_cfg = self.0.api_settings;
+        let api_cfg = self.0.api_settings.clone();
         let consensus_controller = self.0.consensus_controller.clone();
         let closure = async move || {
             if ops.len() as u64 > api_cfg.max_arguments {
-                return Err(ApiError::TooManyArguments("too many arguments".into()));
+                return Err(ApiError::BadRequest("too many arguments".into()));
             }
 
             // check finality by cross-referencing Consensus and looking for final blocks that contain the op
@@ -496,10 +504,10 @@ impl Endpoints for API<Public> {
         let in_pool = self.0.pool_command_sender.contains_endorsements(&eds);
 
         let consensus_controller = self.0.consensus_controller.clone();
-        let api_cfg = self.0.api_settings;
+        let api_cfg = self.0.api_settings.clone();
         let closure = async move || {
             if eds.len() as u64 > api_cfg.max_arguments {
-                return Err(ApiError::TooManyArguments("too many arguments".into()));
+                return Err(ApiError::BadRequest("too many arguments".into()));
             }
 
             // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
@@ -615,7 +623,7 @@ impl Endpoints for API<Public> {
         time: TimeInterval,
     ) -> BoxFuture<Result<Vec<BlockSummary>, ApiError>> {
         let consensus_controller = self.0.consensus_controller.clone();
-        let api_config = self.0.api_settings;
+        let api_config = self.0.api_settings.clone();
         let closure = async move || {
             // filter blocks from graph_export
             let (start_slot, end_slot) = time_range_to_slot_range(
@@ -828,11 +836,11 @@ impl Endpoints for API<Public> {
     ) -> BoxFuture<Result<Vec<OperationId>, ApiError>> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
         let mut protocol_sender = self.0.protocol_command_sender.clone();
-        let api_cfg = self.0.api_settings;
+        let api_cfg = self.0.api_settings.clone();
         let mut to_send = self.0.storage.clone_without_refs();
         let closure = async move || {
             if ops.len() as u64 > api_cfg.max_arguments {
-                return Err(ApiError::TooManyArguments("too many arguments".into()));
+                return Err(ApiError::BadRequest("too many arguments".into()));
             }
             let operation_deserializer = WrappedDeserializer::new(OperationDeserializer::new(
                 api_cfg.max_datastore_value_length,
@@ -905,5 +913,28 @@ impl Endpoints for API<Public> {
 
     fn node_remove_from_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
         crate::wrong_api::<()>()
+    }
+
+    fn get_openrpc_spec(&self) -> BoxFuture<Result<Value, ApiError>> {
+        let openrpc_spec_path = self.0.api_settings.openrpc_spec_path.clone();
+        let closure = async move || {
+            std::fs::read_to_string(openrpc_spec_path)
+                .map_err(|e| {
+                    ApiError::InternalServerError(format!(
+                        "failed to read OpenRPC specification: {}",
+                        e
+                    ))
+                })
+                .and_then(|openrpc_str| {
+                    serde_json::from_str(&openrpc_str).map_err(|e| {
+                        ApiError::InternalServerError(format!(
+                            "failed to parse OpenRPC specification: {}",
+                            e
+                        ))
+                    })
+                })
+        };
+
+        Box::pin(closure())
     }
 }

@@ -2,10 +2,9 @@
 
 //! This module exports generic traits representing interfaces for interacting with the Execution worker
 
-use crate::types::ExecutionOutput;
 use crate::types::ReadOnlyExecutionRequest;
-use crate::ExecutionAddressInfo;
 use crate::ExecutionError;
+use crate::{ExecutionAddressInfo, ReadOnlyExecutionOutput};
 use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::api::EventFilter;
@@ -79,7 +78,7 @@ pub trait ExecutionController: Send + Sync {
     fn execute_readonly_request(
         &self,
         req: ReadOnlyExecutionRequest,
-    ) -> Result<ExecutionOutput, ExecutionError>;
+    ) -> Result<ReadOnlyExecutionOutput, ExecutionError>;
 
     /// List which operations inside the provided list were not executed
     fn unexecuted_ops_among(

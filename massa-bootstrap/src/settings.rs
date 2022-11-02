@@ -10,6 +10,10 @@ use std::net::SocketAddr;
 pub struct BootstrapConfig {
     /// Ip address of our bootstrap nodes and their public key.
     pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
+    /// Path to the bootstrap whitelist file. This whitelist define IPs that can bootstrap on your node.
+    pub bootstrap_whitelist_file: std::path::PathBuf,
+    /// Path to the bootstrap blacklist file. This whitelist define IPs that will not be able to bootstrap on your node. This list is optional.
+    pub bootstrap_blacklist_file: std::path::PathBuf,
     /// Port to listen if we choose to allow other nodes to use us as bootstrap node.
     pub bind: Option<SocketAddr>,
     /// connection timeout
@@ -90,4 +94,8 @@ pub struct BootstrapConfig {
     pub max_production_stats_length: u64,
     /// max credits in proof-of-stake and state changes
     pub max_credits_length: u64,
+    /// max executed ops
+    pub max_executed_ops_length: u64,
+    /// max executed ops changes
+    pub max_ops_changes_length: u64,
 }

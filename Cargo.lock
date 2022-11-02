@@ -1604,6 +1604,7 @@ dependencies = [
  "massa_bootstrap",
  "massa_consensus_exports",
  "massa_consensus_worker",
+ "massa_executed_ops",
  "massa_execution_exports",
  "massa_execution_worker",
  "massa_factory_exports",
@@ -1638,7 +1639,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.6.9"
-source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.8.1#5f3e84123509ec51490a091ca8243b88d4b330fc"
+source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.8.2#46ca849403abe0f0e41da1b10c65a4d652f8b3a0"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -1722,6 +1723,7 @@ dependencies = [
  "lazy_static",
  "massa_async_pool",
  "massa_consensus_exports",
+ "massa_executed_ops",
  "massa_final_state",
  "massa_hash",
  "massa_ledger_exports",
@@ -1741,6 +1743,7 @@ dependencies = [
  "serde 1.0.145",
  "serde_json",
  "serial_test 0.9.0",
+ "tempfile",
  "thiserror",
  "tokio",
  "tracing",
@@ -1804,6 +1807,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa_executed_ops"
+version = "0.1.0"
+dependencies = [
+ "massa_hash",
+ "massa_models",
+ "massa_serialization",
+ "nom 7.1.1",
+]
+
+[[package]]
 name = "massa_execution_exports"
 version = "0.1.0"
 dependencies = [
@@ -1826,6 +1839,7 @@ dependencies = [
  "anyhow",
  "massa-sc-runtime",
  "massa_async_pool",
+ "massa_executed_ops",
  "massa_execution_exports",
  "massa_final_state",
  "massa_hash",
@@ -1903,7 +1917,7 @@ version = "0.1.0"
 dependencies = [
  "displaydoc",
  "massa_async_pool",
- "massa_hash",
+ "massa_executed_ops",
  "massa_ledger_exports",
  "massa_ledger_worker",
  "massa_models",
@@ -2158,7 +2172,6 @@ version = "0.1.0"
 dependencies = [
  "jsonrpc-core-client",
  "massa_models",
- "massa_signature",
  "serde 1.0.145",
  "tokio",
 ]

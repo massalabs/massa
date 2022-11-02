@@ -20,7 +20,7 @@ use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::{
     address::Address, block::BlockId, endorsement::EndorsementId, operation::OperationId,
 };
-use massa_signature::KeyPair;
+
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::net::{IpAddr, SocketAddr};
@@ -99,10 +99,10 @@ impl RpcClient {
             .await
     }
 
-    /// Add a vector of new keypair for the node to use to stake.
+    /// Add a vector of new secret keys for the node to use to stake.
     /// No confirmation to expect.
-    pub async fn add_staking_secret_keys(&self, keypairs: Vec<KeyPair>) -> RpcResult<()> {
-        self.call_method("add_staking_secret_keys", "()", vec![keypairs])
+    pub async fn add_staking_secret_keys(&self, secret_keys: Vec<String>) -> RpcResult<()> {
+        self.call_method("add_staking_secret_keys", "()", vec![secret_keys])
             .await
     }
 
