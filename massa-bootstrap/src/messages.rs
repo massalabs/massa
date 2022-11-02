@@ -62,11 +62,6 @@ pub enum BootstrapServerMessage {
         /// Server peers
         peers: BootstrapPeers,
     },
-    /// Consensus state
-    ConsensusState {
-        /// block graph
-        graph: BootstrapableGraph,
-    },
     /// Part of the final state
     FinalStatePart {
         /// Slot the state changes are attached to
@@ -83,6 +78,8 @@ pub enum BootstrapServerMessage {
         exec_ops_part: ExecutedOps,
         /// Ledger change for addresses inferior to `address` of the client message until the actual slot.
         final_state_changes: Vec<(Slot, StateChanges)>,
+        // Part of the consensus graph
+        // consensus_part: BootstrapableGraph,
     },
     /// Message sent when there is no state part left
     FinalStateFinished,
@@ -97,14 +94,14 @@ pub enum BootstrapServerMessage {
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u32)]
+// IMPORTANT TODO: double check impact of these changes
 enum MessageServerTypeId {
     BootstrapTime = 0u32,
     Peers = 1u32,
-    ConsensusState = 2u32,
-    FinalStatePart = 3u32,
-    FinalStateFinished = 4u32,
-    SlotTooOld = 5u32,
-    BootstrapError = 6u32,
+    FinalStatePart = 2u32,
+    FinalStateFinished = 3u32,
+    SlotTooOld = 4u32,
+    BootstrapError = 5u32,
 }
 
 /// Serializer for `BootstrapServerMessage`
@@ -188,12 +185,12 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                     .serialize(&u32::from(MessageServerTypeId::Peers), buffer)?;
                 self.peers_serializer.serialize(peers, buffer)?;
             }
-            BootstrapServerMessage::ConsensusState { graph } => {
-                self.u32_serializer
-                    .serialize(&u32::from(MessageServerTypeId::ConsensusState), buffer)?;
-                self.bootstrapable_graph_serializer
-                    .serialize(graph, buffer)?;
-            }
+            // BootstrapServerMessage::ConsensusState { graph } => {
+            //     self.u32_serializer
+            //         .serialize(&u32::from(MessageServerTypeId::ConsensusState), buffer)?;
+            //     self.bootstrapable_graph_serializer
+            //         .serialize(graph, buffer)?;
+            // }
             BootstrapServerMessage::FinalStatePart {
                 slot,
                 ledger_part,
@@ -230,6 +227,9 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                     self.state_changes_serializer
                         .serialize(state_changes, buffer)?;
                 }
+                // consensus
+                // self.bootstrapable_graph_serializer
+                //     .serialize(graph, buffer)?;
             }
             BootstrapServerMessage::FinalStateFinished => {
                 self.u32_serializer
@@ -435,13 +435,13 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                 })
                 .map(|peers| BootstrapServerMessage::BootstrapPeers { peers })
                 .parse(input),
-                MessageServerTypeId::ConsensusState => {
-                    context("Failed graph deserialization", |input| {
-                        self.bootstrapable_graph_deserializer.deserialize(input)
-                    })
-                    .map(|graph| BootstrapServerMessage::ConsensusState { graph })
-                    .parse(input)
-                }
+                // MessageServerTypeId::ConsensusState => {
+                //     context("Failed graph deserialization", |input| {
+                //         self.bootstrapable_graph_deserializer.deserialize(input)
+                //     })
+                //     .map(|graph| BootstrapServerMessage::ConsensusState { graph })
+                //     .parse(input)
+                // }
                 MessageServerTypeId::FinalStatePart => tuple((
                     context("Failed slot deserialization", |input| {
                         self.slot_deserializer.deserialize(input)
@@ -473,6 +473,9 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                             )),
                         ),
                     ),
+                    // context("Failed consensus_part deserialization", |input| {
+                    //     self.bootstrapable_graph_deserializer.deserialize(input)
+                    // }),
                 ))
                 .map(
                     |(
@@ -521,8 +524,6 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
 pub enum BootstrapClientMessage {
     /// Ask for bootstrap peers
     AskBootstrapPeers,
-    /// Ask for consensus state
-    AskConsensusState,
     /// Ask for a part of the final state
     AskFinalStatePart {
         /// Slot we are attached to for changes
@@ -537,6 +538,8 @@ pub enum BootstrapClientMessage {
         last_credits_step: StreamingStep<Slot>,
         /// Last received executed operation id
         last_ops_step: StreamingStep<OperationId>,
+        // Last received consensus block slot
+        // last_consensus_step: StreamingStep<Slot>,
     },
     /// Bootstrap error
     BootstrapError {
@@ -549,12 +552,12 @@ pub enum BootstrapClientMessage {
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u32)]
+// IMPORTANT TODO: double check impact of these changes
 enum MessageClientTypeId {
     AskBootstrapPeers = 0u32,
-    AskConsensusState = 1u32,
-    AskFinalStatePart = 2u32,
-    BootstrapError = 3u32,
-    BootstrapSuccess = 4u32,
+    AskFinalStatePart = 1u32,
+    BootstrapError = 2u32,
+    BootstrapSuccess = 3u32,
 }
 
 /// Serializer for `BootstrapClientMessage`
@@ -613,10 +616,10 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                 self.u32_serializer
                     .serialize(&u32::from(MessageClientTypeId::AskBootstrapPeers), buffer)?;
             }
-            BootstrapClientMessage::AskConsensusState => {
-                self.u32_serializer
-                    .serialize(&u32::from(MessageClientTypeId::AskConsensusState), buffer)?;
-            }
+            // BootstrapClientMessage::AskConsensusState => {
+            //     self.u32_serializer
+            //         .serialize(&u32::from(MessageClientTypeId::AskConsensusState), buffer)?;
+            // }
             BootstrapClientMessage::AskFinalStatePart {
                 last_slot,
                 last_ledger_step,
@@ -743,9 +746,9 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                 MessageClientTypeId::AskBootstrapPeers => {
                     Ok((input, BootstrapClientMessage::AskBootstrapPeers))
                 }
-                MessageClientTypeId::AskConsensusState => {
-                    Ok((input, BootstrapClientMessage::AskConsensusState))
-                }
+                // MessageClientTypeId::AskConsensusState => {
+                //     Ok((input, BootstrapClientMessage::AskConsensusState))
+                // }
                 MessageClientTypeId::AskFinalStatePart => {
                     if input.is_empty() {
                         Ok((

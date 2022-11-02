@@ -408,7 +408,6 @@ pub async fn send_final_state_stream(
 
 #[allow(clippy::manual_async_fn)]
 #[allow(clippy::too_many_arguments)]
-#[fix_hidden_lifetime_bug]
 async fn manage_bootstrap(
     bootstrap_config: &BootstrapConfig,
     server: &mut BootstrapServerBinder,
@@ -516,24 +515,6 @@ async fn manage_bootstrap(
                         write_timeout,
                     )
                     .await?;
-                }
-                BootstrapClientMessage::AskConsensusState => {
-                    match tokio::time::timeout(
-                        write_timeout,
-                        server.send(BootstrapServerMessage::ConsensusState {
-                            graph: consensus_controller.get_bootstrap_graph()?,
-                        }),
-                    )
-                    .await
-                    {
-                        Err(_) => Err(std::io::Error::new(
-                            std::io::ErrorKind::TimedOut,
-                            "bootstrap consensus state send timed out",
-                        )
-                        .into()),
-                        Ok(Err(e)) => Err(e),
-                        Ok(Ok(_)) => Ok(()),
-                    }?;
                 }
                 BootstrapClientMessage::BootstrapSuccess => break Ok(()),
                 BootstrapClientMessage::BootstrapError { error } => {

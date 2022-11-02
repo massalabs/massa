@@ -284,32 +284,32 @@ async fn bootstrap_from_server(
                     other => return Err(BootstrapError::UnexpectedServerMessage(other)),
                 };
                 global_bootstrap_state.peers = Some(peers);
-                *next_bootstrap_message = BootstrapClientMessage::AskConsensusState;
-            }
-            BootstrapClientMessage::AskConsensusState => {
-                let state = match send_client_message(
-                    next_bootstrap_message,
-                    client,
-                    write_timeout,
-                    cfg.read_timeout.into(),
-                    "ask consensus state timed out",
-                )
-                .await?
-                {
-                    BootstrapServerMessage::ConsensusState { graph } => graph,
-                    BootstrapServerMessage::BootstrapError { error } => {
-                        return Err(BootstrapError::ReceivedError(error))
-                    }
-                    other => return Err(BootstrapError::UnexpectedServerMessage(other)),
-                };
-                global_bootstrap_state.graph = Some(state);
                 *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
+            // BootstrapClientMessage::AskConsensusState => {
+            //     let state = match send_client_message(
+            //         next_bootstrap_message,
+            //         client,
+            //         write_timeout,
+            //         cfg.read_timeout.into(),
+            //         "ask consensus state timed out",
+            //     )
+            //     .await?
+            //     {
+            //         BootstrapServerMessage::ConsensusState { graph } => graph,
+            //         BootstrapServerMessage::BootstrapError { error } => {
+            //             return Err(BootstrapError::ReceivedError(error))
+            //         }
+            //         other => return Err(BootstrapError::UnexpectedServerMessage(other)),
+            //     };
+            //     global_bootstrap_state.graph = Some(state);
+            //     *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
+            // }
             BootstrapClientMessage::BootstrapSuccess => {
-                if global_bootstrap_state.graph.is_none() {
-                    *next_bootstrap_message = BootstrapClientMessage::AskConsensusState;
-                    continue;
-                }
+                // if global_bootstrap_state.graph.is_none() {
+                //     *next_bootstrap_message = BootstrapClientMessage::AskConsensusState;
+                //     continue;
+                // }
                 if global_bootstrap_state.peers.is_none() {
                     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
                     continue;
