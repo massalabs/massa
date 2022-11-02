@@ -121,12 +121,11 @@ impl SpeculativeRollState {
         let cur_cycle = slot.get_cycle(periods_per_cycle);
 
         // remove the rolls
-        let current_rolls = self
+        self
             .added_changes
             .roll_changes
             .entry(*seller_addr)
-            .or_insert_with(|| owned_count);
-        *current_rolls = owned_count.saturating_sub(roll_count);
+            .insert_entry(owned_count.saturating_sub(roll_count));
 
         // compute deferred credit slot
         let target_slot = Slot::new_last_of_cycle(
