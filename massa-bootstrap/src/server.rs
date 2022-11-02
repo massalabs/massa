@@ -387,6 +387,7 @@ pub async fn send_final_state_stream(
                         pos_credits_part,
                         exec_ops_part,
                         final_state_changes,
+                        consensus_part,
                     }),
                 )
                 .await
@@ -499,6 +500,7 @@ async fn manage_bootstrap(
                     last_cycle_step,
                     last_credits_step,
                     last_ops_step,
+                    last_consensus_step,
                 } => {
                     send_final_state_stream(
                         server,
@@ -510,8 +512,7 @@ async fn manage_bootstrap(
                         last_cycle_step,
                         last_credits_step,
                         last_ops_step,
-                        // IMPORTANT TODO: update message
-                        StreamingStep::Started,
+                        last_consensus_step,
                         write_timeout,
                     )
                     .await?;

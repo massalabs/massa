@@ -65,7 +65,9 @@ async fn stream_final_state_and_consensus(
                     pos_credits_part,
                     exec_ops_part,
                     final_state_changes,
+                    consensus_part,
                 } => {
+                    // Set final state
                     let mut write_final_state = global_bootstrap_state.final_state.write();
                     let last_ledger_step = write_final_state.ledger.set_ledger_part(ledger_part)?;
                     let last_pool_step =
@@ -100,6 +102,18 @@ async fn stream_final_state_and_consensus(
                         }
                     }
                     write_final_state.slot = slot;
+
+                    // Set consensus
+                    let mut last_consensus_step = StreamingStep::Started;
+                    if let Some(graph) = global_bootstrap_state.graph.as_mut() {
+                        graph.final_blocks.extend(consensus_part.final_blocks);
+                        if let Some(active_block) = graph.final_blocks.last() {
+                            last_consensus_step = StreamingStep::Ongoing(
+                                active_block.block.content.header.content.slot,
+                            );
+                        }
+                    }
+
                     // Set new message in case of disconnection
                     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
                         last_slot: Some(slot),
@@ -108,6 +122,7 @@ async fn stream_final_state_and_consensus(
                         last_cycle_step,
                         last_credits_step,
                         last_ops_step,
+                        last_consensus_step,
                     };
                 }
                 BootstrapServerMessage::BootstrapFinished => {
@@ -129,6 +144,7 @@ async fn stream_final_state_and_consensus(
                         last_cycle_step: StreamingStep::Started,
                         last_credits_step: StreamingStep::Started,
                         last_ops_step: StreamingStep::Started,
+                        last_consensus_step: StreamingStep::Started,
                     };
                     panic!("Bootstrap failed, try to bootstrap again.");
                 }
@@ -449,6 +465,7 @@ pub async fn get_state(
             last_cycle_step: StreamingStep::Started,
             last_credits_step: StreamingStep::Started,
             last_ops_step: StreamingStep::Started,
+            last_consensus_step: StreamingStep::Started,
         };
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
     loop {
