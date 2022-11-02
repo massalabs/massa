@@ -7,6 +7,7 @@
 #![warn(missing_docs)]
 #![feature(let_chains)]
 
+mod config;
 mod controller_traits;
 mod cycle_info;
 mod deferred_credits;
@@ -15,6 +16,7 @@ mod pos_changes;
 mod pos_final_state;
 mod settings;
 
+pub use config::PoSConfig;
 pub use controller_traits::{Selection, SelectorController, SelectorManager};
 pub use cycle_info::*;
 pub use deferred_credits::*;

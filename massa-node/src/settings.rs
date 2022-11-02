@@ -49,9 +49,9 @@ pub struct NetworkSettings {
     pub protocol_port: u16,
     pub connect_timeout: MassaTime,
     pub wakeup_interval: MassaTime,
-    pub initial_peers_file: std::path::PathBuf,
-    pub peers_file: std::path::PathBuf,
-    pub keypair_file: std::path::PathBuf,
+    pub initial_peers_file: PathBuf,
+    pub peers_file: PathBuf,
+    pub keypair_file: PathBuf,
     pub peer_types_config: EnumMap<PeerType, PeerTypeConnectionConfig>,
     pub max_in_connections_per_ip: usize,
     pub max_idle_peers: usize,
@@ -73,6 +73,8 @@ pub struct NetworkSettings {
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapSettings {
     pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
+    pub bootstrap_whitelist_file: std::path::PathBuf,
+    pub bootstrap_blacklist_file: std::path::PathBuf,
     pub bind: Option<SocketAddr>,
     pub connect_timeout: MassaTime,
     pub read_timeout: MassaTime,
@@ -114,6 +116,7 @@ pub struct APISettings {
     pub bind_private: SocketAddr,
     pub bind_public: SocketAddr,
     pub max_arguments: u64,
+    pub openrpc_spec_path: PathBuf,
 }
 
 #[derive(Debug, Deserialize, Clone)]

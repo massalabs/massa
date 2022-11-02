@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
+use crate::types::Duplex;
 use crate::BootstrapConfig;
 use crate::{
     client_binder::BootstrapClientBinder, server_binder::BootstrapServerBinder,
@@ -9,16 +10,16 @@ use crate::{
 use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH,
     MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
-    MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CREDITS_LENGTH, MAX_BOOTSTRAP_ERROR_LENGTH,
-    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE,
-    MAX_BOOTSTRAP_PRODUCTION_STATS, MAX_BOOTSTRAP_ROLLS_LENGTH, MAX_DATASTORE_ENTRY_COUNT,
-    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH,
-    MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+    MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+    MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
+    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH,
+    MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT,
+    MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
     MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
-    THREAD_COUNT,
+    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, THREAD_COUNT,
 };
 use massa_models::version::Version;
-use massa_signature::KeyPair;
+use massa_signature::{KeyPair, PublicKey};
 use serial_test::serial;
 use tokio::io::duplex;
 
@@ -27,6 +28,43 @@ lazy_static::lazy_static! {
         let keypair = KeyPair::generate();
         (get_bootstrap_config(keypair.get_public_key()), keypair)
     };
+}
+
+impl BootstrapClientBinder {
+    pub fn test_default(client_duplex: Duplex, remote_pubkey: PublicKey) -> Self {
+        BootstrapClientBinder::new(
+            client_duplex,
+            remote_pubkey,
+            f64::INFINITY,
+            MAX_BOOTSTRAP_MESSAGE_SIZE,
+            ENDORSEMENT_COUNT,
+            MAX_ADVERTISE_LENGTH,
+            MAX_BOOTSTRAP_BLOCKS,
+            MAX_OPERATIONS_PER_BLOCK,
+            THREAD_COUNT,
+            BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
+            MAX_BOOTSTRAP_ERROR_LENGTH,
+            MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+            MAX_DATASTORE_ENTRY_COUNT,
+            MAX_DATASTORE_KEY_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
+            MAX_ASYNC_POOL_LENGTH,
+            MAX_ASYNC_MESSAGE_DATA,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+            MAX_LEDGER_CHANGES_COUNT,
+            MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+            MAX_OPERATION_DATASTORE_KEY_LENGTH,
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            1000,
+            MAX_ROLLS_COUNT_LENGTH,
+            MAX_PRODUCTION_STATS_LENGTH,
+            MAX_DEFERRED_CREDITS_LENGTH,
+            MAX_EXECUTED_OPS_LENGTH,
+            MAX_EXECUTED_OPS_CHANGES_LENGTH,
+        )
+    }
 }
 
 /// The server and the client will handshake and then send message in both ways in order
@@ -45,36 +83,8 @@ async fn test_binders() {
         MAX_DATASTORE_KEY_LENGTH,
         BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
     );
-    let mut client = BootstrapClientBinder::new(
-        client,
-        bootstrap_config.bootstrap_list[0].1,
-        f64::INFINITY,
-        MAX_BOOTSTRAP_MESSAGE_SIZE,
-        ENDORSEMENT_COUNT,
-        MAX_ADVERTISE_LENGTH,
-        MAX_BOOTSTRAP_BLOCKS,
-        MAX_OPERATIONS_PER_BLOCK,
-        THREAD_COUNT,
-        BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
-        MAX_BOOTSTRAP_ERROR_LENGTH,
-        MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-        MAX_DATASTORE_ENTRY_COUNT,
-        MAX_DATASTORE_KEY_LENGTH,
-        MAX_DATASTORE_VALUE_LENGTH,
-        MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
-        MAX_ASYNC_POOL_LENGTH,
-        MAX_ASYNC_MESSAGE_DATA,
-        MAX_FUNCTION_NAME_LENGTH,
-        MAX_PARAMETERS_SIZE,
-        MAX_LEDGER_CHANGES_COUNT,
-        MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-        MAX_OPERATION_DATASTORE_KEY_LENGTH,
-        MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-        1000,
-        MAX_BOOTSTRAP_ROLLS_LENGTH,
-        MAX_BOOTSTRAP_PRODUCTION_STATS,
-        MAX_BOOTSTRAP_CREDITS_LENGTH,
-    );
+    let mut client =
+        BootstrapClientBinder::test_default(client, bootstrap_config.bootstrap_list[0].1);
 
     let server_thread = tokio::spawn(async move {
         // Test message 1
@@ -168,36 +178,8 @@ async fn test_binders_double_send_server_works() {
         MAX_DATASTORE_KEY_LENGTH,
         BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
     );
-    let mut client = BootstrapClientBinder::new(
-        client,
-        bootstrap_config.bootstrap_list[0].1,
-        f64::INFINITY,
-        MAX_BOOTSTRAP_MESSAGE_SIZE,
-        ENDORSEMENT_COUNT,
-        MAX_ADVERTISE_LENGTH,
-        MAX_BOOTSTRAP_BLOCKS,
-        MAX_OPERATIONS_PER_BLOCK,
-        THREAD_COUNT,
-        BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
-        MAX_BOOTSTRAP_ERROR_LENGTH,
-        MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-        MAX_DATASTORE_ENTRY_COUNT,
-        MAX_DATASTORE_KEY_LENGTH,
-        MAX_DATASTORE_VALUE_LENGTH,
-        MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
-        MAX_ASYNC_POOL_LENGTH,
-        MAX_ASYNC_MESSAGE_DATA,
-        MAX_FUNCTION_NAME_LENGTH,
-        MAX_PARAMETERS_SIZE,
-        MAX_LEDGER_CHANGES_COUNT,
-        MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-        MAX_OPERATION_DATASTORE_KEY_LENGTH,
-        MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-        1000,
-        MAX_BOOTSTRAP_ROLLS_LENGTH,
-        MAX_BOOTSTRAP_PRODUCTION_STATS,
-        MAX_BOOTSTRAP_CREDITS_LENGTH,
-    );
+    let mut client =
+        BootstrapClientBinder::test_default(client, bootstrap_config.bootstrap_list[0].1);
 
     let server_thread = tokio::spawn(async move {
         // Test message 1
@@ -259,7 +241,6 @@ async fn test_binders_double_send_server_works() {
     dbg!("B");
 }
 
-
 /// The server and the client will handshake and then send message in both ways but the client will try to send two messages without answer
 #[tokio::test]
 #[serial]
@@ -277,36 +258,8 @@ async fn test_binders_try_double_send_client_works() {
         MAX_DATASTORE_KEY_LENGTH,
         BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
     );
-    let mut client = BootstrapClientBinder::new(
-        client,
-        bootstrap_config.bootstrap_list[0].1,
-        f64::INFINITY,
-        MAX_BOOTSTRAP_MESSAGE_SIZE,
-        ENDORSEMENT_COUNT,
-        MAX_ADVERTISE_LENGTH,
-        MAX_BOOTSTRAP_BLOCKS,
-        MAX_OPERATIONS_PER_BLOCK,
-        THREAD_COUNT,
-        BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
-        MAX_BOOTSTRAP_ERROR_LENGTH,
-        MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-        MAX_DATASTORE_ENTRY_COUNT,
-        MAX_DATASTORE_KEY_LENGTH,
-        MAX_DATASTORE_VALUE_LENGTH,
-        MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
-        MAX_ASYNC_POOL_LENGTH,
-        MAX_ASYNC_MESSAGE_DATA,
-        MAX_FUNCTION_NAME_LENGTH,
-        MAX_PARAMETERS_SIZE,
-        MAX_LEDGER_CHANGES_COUNT,
-        MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-        MAX_OPERATION_DATASTORE_KEY_LENGTH,
-        MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-        1000,
-        MAX_BOOTSTRAP_ROLLS_LENGTH,
-        MAX_BOOTSTRAP_PRODUCTION_STATS,
-        MAX_BOOTSTRAP_CREDITS_LENGTH,
-    );
+    let mut client =
+        BootstrapClientBinder::test_default(client, bootstrap_config.bootstrap_list[0].1);
 
     let server_thread = tokio::spawn(async move {
         // Test message 1

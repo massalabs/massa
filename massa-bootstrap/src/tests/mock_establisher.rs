@@ -2,8 +2,9 @@
 
 use massa_models::config::{CHANNEL_SIZE, MAX_DUPLEX_BUFFER_SIZE};
 use massa_time::MassaTime;
+use std::collections::HashSet;
 use std::io;
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use tokio::io::DuplexStream;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
@@ -35,7 +36,11 @@ pub struct MockListener {
 }
 
 impl MockListener {
-    pub async fn accept(&mut self) -> std::io::Result<(Duplex, SocketAddr)> {
+    pub async fn accept(
+        &mut self,
+        _whitelist: &Option<HashSet<IpAddr>>,
+        _blacklist: &Option<HashSet<IpAddr>>,
+    ) -> std::io::Result<(Duplex, SocketAddr)> {
         let (addr, sender) = self.connection_listener_rx.recv().await.ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::Other,

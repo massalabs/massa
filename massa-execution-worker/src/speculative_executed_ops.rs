@@ -3,7 +3,8 @@
 //! Speculative list of previously executed operations, to prevent reuse.
 
 use crate::active_history::{ActiveHistory, HistorySearchResult};
-use massa_final_state::{ExecutedOps, FinalState};
+use massa_executed_ops::ExecutedOpsChanges;
+use massa_final_state::FinalState;
 use massa_models::{operation::OperationId, slot::Slot};
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -18,7 +19,7 @@ pub(crate) struct SpeculativeExecutedOps {
     active_history: Arc<RwLock<ActiveHistory>>,
 
     /// executed operations: maps the operation ID to its validity slot end - included
-    executed_ops: ExecutedOps,
+    executed_ops: ExecutedOpsChanges,
 }
 
 impl SpeculativeExecutedOps {
@@ -40,24 +41,24 @@ impl SpeculativeExecutedOps {
 
     /// Returns the set of operation IDs caused to the `SpeculativeExecutedOps` since its creation,
     /// and resets their local value to nothing
-    pub fn take(&mut self) -> ExecutedOps {
+    pub fn take(&mut self) -> ExecutedOpsChanges {
         std::mem::take(&mut self.executed_ops)
     }
 
     /// Takes a snapshot (clone) of the changes caused to the `SpeculativeExecutedOps` since its creation
-    pub fn get_snapshot(&self) -> ExecutedOps {
+    pub fn get_snapshot(&self) -> ExecutedOpsChanges {
         self.executed_ops.clone()
     }
 
     /// Resets the `SpeculativeRollState` to a snapshot (see `get_snapshot` method)
-    pub fn reset_to_snapshot(&mut self, snapshot: ExecutedOps) {
+    pub fn reset_to_snapshot(&mut self, snapshot: ExecutedOpsChanges) {
         self.executed_ops = snapshot;
     }
 
     /// Checks if an operation was executed previously
     pub fn is_op_executed(&self, op_id: &OperationId) -> bool {
         // check in the curent changes
-        if self.executed_ops.contains(op_id) {
+        if self.executed_ops.contains_key(op_id) {
             return true;
         }
 

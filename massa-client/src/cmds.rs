@@ -481,8 +481,11 @@ impl Command {
             }
 
             Command::node_add_staking_secret_keys => {
-                let keypairs = parse_vec::<KeyPair>(parameters)?;
-                match client.private.add_staking_secret_keys(keypairs).await {
+                match client
+                    .private
+                    .add_staking_secret_keys(parameters.to_vec())
+                    .await
+                {
                     Ok(()) => {
                         if !json {
                             println!("Keys successfully added!")
