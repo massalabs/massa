@@ -398,6 +398,10 @@ pub async fn stream_bootstrap_information(
             .get_bootstrap_part(last_consensus_step, final_state_global_step)?;
         last_consensus_step = new_consensus_step;
 
+        debug!("EXECUTION CURSOR: {:?}", final_state_global_step);
+        debug!("CONSENSUS CURSOR: {:?}", new_consensus_step);
+        debug!("CONSENSUS PART LENGTH: {:?}", consensus_part.len());
+
         // If the consensus streaming is finished (also meaning that consensus slot == final state slot) exit
         if final_state_global_step.finished() && new_consensus_step.finished() {
             match tokio::time::timeout(
