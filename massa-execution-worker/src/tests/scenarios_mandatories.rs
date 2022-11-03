@@ -472,6 +472,8 @@ pub fn roll_sell() {
         ..Default::default()
     };
     // turn off roll selling on missed block opportunities
+    // otherwise balance will be credited with those sold roll (and we need to check the balance for
+    // if the deferred credits are reimbursed
     exec_cfg.max_miss_ratio = Ratio::new(1, 1);
 
     // get a sample final state

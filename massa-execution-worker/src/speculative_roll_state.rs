@@ -235,7 +235,7 @@ impl SpeculativeRollState {
                         self.added_changes
                             .roll_changes
                             .entry(addr)
-                            .or_insert_with(|| 0);
+                            .insert_entry(0);
                     }
                 }
             }
