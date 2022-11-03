@@ -985,7 +985,6 @@
                 "title": "CallSC",
                 "description": "Call Smart Contract",
                 "required": [
-                    "gas_price",
                     "max_gas",
                     "param",
                     "coins",
@@ -1010,10 +1009,6 @@
                         "type": "number"
                     },
                     "coins": {
-                        "description": "Amount",
-                        "type": "number"
-                    },
-                    "gas_price": {
                         "description": "Amount",
                         "type": "number"
                     }
@@ -1407,7 +1402,6 @@
                 "description": "Execute Smart Contract",
                 "required": [
                     "data",
-                    "gas_price",
                     "max_gas"
                 ],
                 "type": "object",
@@ -1422,10 +1416,6 @@
                     "max_gas": {
                         "description": "Maximum amount of gas that the execution of the contract is allowed to cost.",
                         "type": "number"
-                    },
-                    "gas_price": {
-                        "description": "Represent an Amount in coins, price per unit of gas that the caller is willing to pay for the execution.",
-                        "type": "string"
                     }
                 },
                 "additionalProperties": false
