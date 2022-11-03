@@ -5,7 +5,7 @@ use massa_ledger_exports::{
 use massa_models::{
     address::Address, amount::Amount, operation::OperationId, prehash::PreHashMap, slot::Slot,
 };
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::VecDeque;
 
 #[derive(Default)]
 /// History of the outputs of recently executed slots.

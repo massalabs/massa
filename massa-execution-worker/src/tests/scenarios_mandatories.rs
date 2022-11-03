@@ -547,7 +547,10 @@ pub fn roll_sell() {
     let mut credits = PreHashMap::default();
     let roll_remaining = roll_count_initial - roll_sell_1 - roll_sell_2;
     let roll_sold = roll_sell_1 + roll_sell_2;
-    credits.insert(address, exec_cfg.roll_price.saturating_mul_u64(roll_sold));
+    credits.insert(address, exec_cfg.roll_price
+        .checked_mul_u64(roll_sold)
+        .unwrap()
+    );
 
     assert_eq!(sample_read.pos_state.get_rolls_for(&address), roll_remaining);
     assert_eq!(
