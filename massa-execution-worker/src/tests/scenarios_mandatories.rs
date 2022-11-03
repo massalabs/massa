@@ -473,7 +473,6 @@ pub fn roll_sell() {
     // get a sample final state
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
 
-
     // init the storage
     let mut storage = Storage::create_root();
     // start the execution worker
@@ -488,7 +487,14 @@ pub fn roll_sell() {
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
 
-    // get roll count
+    // get initial balance
+    let balance_initial = sample_state
+        .read()
+        .ledger
+        .get_balance(&address)
+        .unwrap();
+
+    // get initial roll count
     let roll_count_initial = sample_state.read().pos_state.get_rolls_for(&address);
     let roll_sell_1 = 10;
     let roll_sell_2 = 1;
@@ -529,7 +535,7 @@ pub fn roll_sell() {
         Default::default(),
         block_storage.clone(),
     );
-    std::thread::sleep(Duration::from_millis(350));
+    std::thread::sleep(Duration::from_millis(500));
     // check roll count deferred credits and candidate balance of the seller address
     let sample_read = sample_state.read();
     let mut credits = PreHashMap::default();
@@ -544,6 +550,30 @@ pub fn roll_sell() {
             .get_deferred_credits_at(&Slot::new(7, 1)),
         credits
     );
+
+    // Check that deferred credit are reimbursed
+    let credits = PreHashMap::default();
+    assert_eq!(
+        sample_read
+            .pos_state
+            .get_deferred_credits_at(&Slot::new(8, 1)),
+        credits
+    );
+    // Now check balance
+    assert_eq!(
+        sample_state
+            .read()
+            .ledger
+            .get_balance(&address)
+            .unwrap(),
+        // sold roll to coin amount + initial balance
+        exec_cfg.roll_price
+            .checked_mul_u64(roll_sell_1 + roll_sell_2)
+            .unwrap()
+            .checked_add(balance_initial)
+            .unwrap()
+    );
+
     // stop the execution controller
     manager.stop();
 }
