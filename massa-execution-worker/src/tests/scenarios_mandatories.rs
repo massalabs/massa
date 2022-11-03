@@ -23,6 +23,7 @@ use serial_test::serial;
 use std::{
     cmp::Reverse, collections::BTreeMap, collections::HashMap, str::FromStr, time::Duration,
 };
+use num::rational::Ratio;
 
 #[test]
 #[serial]
@@ -463,13 +464,16 @@ pub fn roll_sell() {
     // Check for resulting roll count + resulting deferred credits
 
     // setup the period duration
-    let exec_cfg = ExecutionConfig {
+    let mut exec_cfg = ExecutionConfig {
         t0: 100.into(),
         periods_per_cycle: 2,
         thread_count: 2,
         cursor_delay: 0.into(),
         ..Default::default()
     };
+    // turn off roll selling on missed block opportunities
+    exec_cfg.max_miss_ratio = Ratio::new(1, 1);
+
     // get a sample final state
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
 
@@ -535,7 +539,7 @@ pub fn roll_sell() {
         Default::default(),
         block_storage.clone(),
     );
-    std::thread::sleep(Duration::from_millis(500));
+    std::thread::sleep(Duration::from_millis(1000));
     // check roll count deferred credits and candidate balance of the seller address
     let sample_read = sample_state.read();
     let mut credits = PreHashMap::default();
@@ -559,20 +563,17 @@ pub fn roll_sell() {
             .get_deferred_credits_at(&Slot::new(8, 1)),
         credits
     );
+
     // Now check balance
-    assert_eq!(
-        sample_state
-            .read()
-            .ledger
-            .get_balance(&address)
-            .unwrap(),
-        // sold roll to coin amount + initial balance
-        exec_cfg.roll_price
-            .checked_mul_u64(roll_sell_1 + roll_sell_2)
-            .unwrap()
-            .checked_add(balance_initial)
-            .unwrap()
-    );
+    let balances = controller
+        .get_final_and_candidate_balance(&[address]);
+    let candidate_balance = balances.get(0).unwrap().1.unwrap();
+
+    assert_eq!(candidate_balance, exec_cfg.roll_price
+        .checked_mul_u64(roll_sell_1 + roll_sell_2)
+        .unwrap()
+        .checked_add(balance_initial)
+        .unwrap());
 
     // stop the execution controller
     manager.stop();
