@@ -16,8 +16,9 @@ use crate::{
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
 };
 use massa_async_pool::AsyncPoolConfig;
-use massa_consensus_exports::test_exports::{
-    MockConsensusController, MockConsensusControllerMessage,
+use massa_consensus_exports::{
+    bootstrapable_graph::BootstrapableGraph,
+    test_exports::{MockConsensusController, MockConsensusControllerMessage},
 };
 use massa_executed_ops::ExecutedOpsConfig;
 use massa_final_state::{
@@ -27,7 +28,7 @@ use massa_ledger_exports::LedgerConfig;
 use massa_models::config::{
     MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, POS_SAVED_CYCLES,
 };
-use massa_models::{address::Address, slot::Slot, version::Version};
+use massa_models::{address::Address, slot::Slot, streaming_step::StreamingStep, version::Version};
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
 use massa_pos_exports::{
     test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,
@@ -215,6 +216,8 @@ async fn test_bootstrap_server() {
     };
 
     // intercept consensus parts being asked
+    let sent_graph = get_boot_state();
+    let sent_graph_clone = sent_graph.clone();
     std::thread::spawn(move || loop {
         consensus_event_receiver.wait_command(MassaTime::from_millis(10_000), |cmd| match &cmd {
             MockConsensusControllerMessage::GetBootstrapableGraph {
@@ -222,11 +225,28 @@ async fn test_bootstrap_server() {
                 response_tx,
                 ..
             } => {
-                let sent_graph = get_boot_state();
-                response_tx
-                    .send(Ok((sent_graph.clone(), *execution_cursor)))
-                    .unwrap();
-                Some(sent_graph)
+                // send the consensus blocks only on the first call
+                // give an empty answer for the following ones
+                if execution_cursor
+                    == &StreamingStep::Ongoing(Slot {
+                        period: 0,
+                        thread: 1,
+                    })
+                {
+                    response_tx
+                        .send(Ok((sent_graph_clone.clone(), *execution_cursor)))
+                        .unwrap();
+                } else {
+                    response_tx
+                        .send(Ok((
+                            BootstrapableGraph {
+                                final_blocks: Vec::new(),
+                            },
+                            *execution_cursor,
+                        )))
+                        .unwrap();
+                }
+                Some(())
             }
             _ => None,
         });
@@ -307,7 +327,7 @@ async fn test_bootstrap_server() {
     );
 
     // check graphs
-    // assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());
+    assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());
 
     // stop bootstrap server
     bootstrap_manager

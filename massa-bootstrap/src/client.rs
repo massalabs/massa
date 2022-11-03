@@ -112,6 +112,10 @@ async fn stream_final_state_and_consensus(
                                 active_block.block.content.header.content.slot,
                             );
                         }
+                    } else if let Some(active_block) = consensus_part.final_blocks.last() {
+                        global_bootstrap_state.graph = Some(consensus_part.clone());
+                        last_consensus_step =
+                            StreamingStep::Ongoing(active_block.block.content.header.content.slot);
                     }
 
                     // Set new message in case of disconnection
@@ -312,34 +316,16 @@ async fn bootstrap_from_server(
                 global_bootstrap_state.peers = Some(peers);
                 *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
-            // BootstrapClientMessage::AskConsensusState => {
-            //     let state = match send_client_message(
-            //         next_bootstrap_message,
-            //         client,
-            //         write_timeout,
-            //         cfg.read_timeout.into(),
-            //         "ask consensus state timed out",
-            //     )
-            //     .await?
-            //     {
-            //         BootstrapServerMessage::ConsensusState { graph } => graph,
-            //         BootstrapServerMessage::BootstrapError { error } => {
-            //             return Err(BootstrapError::ReceivedError(error))
-            //         }
-            //         other => return Err(BootstrapError::UnexpectedServerMessage(other)),
-            //     };
-            //     global_bootstrap_state.graph = Some(state);
-            //     *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
-            // }
             BootstrapClientMessage::BootstrapSuccess => {
+                // TODO: double check that this is useless
                 // if global_bootstrap_state.graph.is_none() {
                 //     *next_bootstrap_message = BootstrapClientMessage::AskConsensusState;
                 //     continue;
                 // }
-                if global_bootstrap_state.peers.is_none() {
-                    *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
-                    continue;
-                }
+                // if global_bootstrap_state.peers.is_none() {
+                //     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
+                //     continue;
+                // }
                 match tokio::time::timeout(write_timeout, client.send(next_bootstrap_message)).await
                 {
                     Err(_) => Err(std::io::Error::new(
