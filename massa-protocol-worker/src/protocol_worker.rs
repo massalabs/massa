@@ -981,7 +981,7 @@ impl ProtocolWorker {
                         match expire_period_timestamp {
                             Ok(slot_timestamp) => {
                                 slot_timestamp
-                                    .saturating_add(self.config.max_endorsements_propagation_time)
+                                    .saturating_add(self.config.max_operations_propagation_time)
                                     < now
                             }
                             Err(_) => true,
