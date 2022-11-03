@@ -400,7 +400,7 @@ pub async fn stream_bootstrap_information(
 
         debug!("EXECUTION CURSOR: {:?}", final_state_global_step);
         debug!("CONSENSUS CURSOR: {:?}", new_consensus_step);
-        debug!("CONSENSUS PART LENGTH: {:?}", consensus_part.len());
+        debug!("CONSENSUS PART LENGTH: {:?}", consensus_part.final_blocks.len());
 
         // If the consensus streaming is finished (also meaning that consensus slot == final state slot) exit
         if final_state_global_step.finished() && new_consensus_step.finished() {
