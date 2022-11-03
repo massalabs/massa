@@ -143,6 +143,7 @@ impl ActiveHistory {
         })
     }
 
+    /*
     /// Traverse the whole history and return every deferred credit of `addr` _after_ `slot` (included).
     ///
     /// # Arguments
@@ -167,16 +168,18 @@ impl ActiveHistory {
             })
             .collect()
     }
+    */
 
-    /// Traverse the whole history and return every deferred credit _at_ `slot`
+    /// Return deferred credits in active history _at_ `slot`
     ///
     /// # Arguments
     /// * `slot`: slot _at_ which we fetch the credits
     pub fn fetch_all_deferred_credits_at(&self, slot: &Slot) -> PreHashMap<Address, Amount> {
         self.0
             .iter()
-            .filter_map(|output| {
-                output
+            .rev()
+            .find_map(|exc_out| {
+                exc_out
                     .state_changes
                     .pos_changes
                     .deferred_credits
@@ -184,8 +187,7 @@ impl ActiveHistory {
                     .get(slot)
                     .cloned()
             })
-            .flatten()
-            .collect()
+            .unwrap_or_default()
     }
 
     /// Gets the index of a slot in history
