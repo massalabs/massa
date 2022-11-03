@@ -1867,17 +1867,12 @@
                 "description": "Read only bytecode execution",
                 "required": [
                     "max_gas",
-                    "simulated_gas_price",
                     "bytecode"
                 ],
                 "type": "object",
                 "properties": {
                     "max_gas": {
                         "description": "Max available gas",
-                        "type": "number"
-                    },
-                    "simulated_gas_price": {
-                        "description": "Gas price",
                         "type": "number"
                     },
                     "bytecode": {
@@ -1901,7 +1896,6 @@
                 "required": [
                     "max_gas",
                     "parameter",
-                    "simulated_gas_price",
                     "target_address",
                     "target_function"
                 ],
@@ -1909,10 +1903,6 @@
                 "properties": {
                     "max_gas": {
                         "description": "Max available gas",
-                        "type": "number"
-                    },
-                    "simulated_gas_price": {
-                        "description": "Gas price",
                         "type": "number"
                     },
                     "target_address": {
