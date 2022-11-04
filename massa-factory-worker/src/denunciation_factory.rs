@@ -11,7 +11,7 @@ use std::{
 };
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
-use tracing::debug;
+use tracing::{warn, debug};
 use massa_models::endorsement::WrappedEndorsement;
 use itertools::Itertools;
 use massa_models::operation::{Operation, OperationSerializer, OperationType, WrappedOperation};
@@ -179,21 +179,18 @@ impl DenunciationFactoryWorker {
         }
 
         // Add to operation pool
-        self.channels.storage.store_operations(wrapped_operations.unwrap());
+        // self.channels.storage.store_operations(wrapped_operations.unwrap());
+        let mut de_storage = self.channels.storage.clone_without_refs();
+        debug!("[De Factory] Adding 1 denunciation operation ({:?}) to pool", wrapped_operations);
+        de_storage.store_operations(wrapped_operations.unwrap());
+        self.channels.pool.add_operations(de_storage.clone());
 
-        // TODO: enable this for testnet 17
-        // let mut de_storage = self.channels.storage.clone_without_refs();
-        // de_storage.store_operations(wrapped_operations.unwrap());
-        // self.channels.pool.add_operations(de_storage.clone());
-        debug!("[De Factory] Should add Denunciation operations to pool...");
-        // TODO: enable this for testnet 17
         // And now send them to ProtocolWorker (for propagation)
-        /*
         if let Err(err) = self.channels.protocol.propagate_operations_sync(de_storage) {
             warn!("could not propagate denunciations to protocol: {}", err);
+        } else {
+            debug!("[De Factory] Sent denunciation operation for propagation");
         }
-        */
-        debug!("[De Factory] Should propagate Denunciation operations...");
 
         self.cleanup_cache();
     }
