@@ -47,9 +47,35 @@ impl InterfaceImpl {
     }
 
     #[cfg(feature = "gas_calibration")]
+    /// Used to create an default interface to run SC in a test environment
     pub fn new_default() -> InterfaceImpl {
+        use std::path::PathBuf;
+
+        use massa_final_state::{FinalState, FinalStateConfig};
+        use massa_pos_exports::{PoSFinalState, SelectorConfig};
+        use massa_pos_worker::start_selector_worker;
+        use parking_lot::RwLock;
+
         let config = ExecutionConfig::default();
-        let context = Arc::new(Mutex::new(ExecutionContext::new(config)));
+        let final_state_config = FinalStateConfig::default();
+        let pos_selector_config = SelectorConfig::default();
+        let (_selector_manager, selector_controller) = start_selector_worker(pos_selector_config)
+            .expect("could not start client selector controller");
+        let pos_final_state = PoSFinalState::new(
+            final_state_config.pos_config.clone(),
+            "",
+            &PathBuf::from(""),
+            selector_controller.clone(),
+        )
+        .unwrap();
+        let context = Arc::new(Mutex::new(ExecutionContext::new(
+            config.clone(),
+            Arc::new(RwLock::new(FinalState::create_final_state(
+                pos_final_state,
+                FinalStateConfig::default(),
+            ))),
+            Default::default(),
+        )));
         InterfaceImpl::new(config, context)
     }
 }

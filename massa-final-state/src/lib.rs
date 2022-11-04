@@ -52,5 +52,5 @@ pub use state_changes::{StateChanges, StateChangesDeserializer, StateChangesSeri
 #[cfg(test)]
 mod tests;
 
-#[cfg(any(test, feature = "testing"))]
+#[cfg(any(feature = "testing", feature = "gas_calibration"))]
 pub mod test_exports;

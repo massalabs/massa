@@ -195,11 +195,6 @@ impl LedgerController for FinalLedger {
         self.sorted_ledger.get_every_address()
     }
 
-    #[cfg(not(feature = "testing"))]
-    fn get_every_address(&self) -> std::collections::BTreeMap<Address, Amount> {
-        unimplemented!("This function is only available in testing mode")
-    }
-
     /// Get the entire datastore for a given address.
     ///
     /// IMPORTANT: This should only be used for debug purposes.
@@ -211,11 +206,4 @@ impl LedgerController for FinalLedger {
         self.sorted_ledger.get_entire_datastore(addr)
     }
 
-    #[cfg(not(feature = "testing"))]
-    fn get_entire_datastore(
-        &self,
-        _addr: &Address,
-    ) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>> {
-        unimplemented!("This function is only available in testing mode")
-    }
 }
