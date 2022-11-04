@@ -93,7 +93,7 @@ impl ConsensusController for ConsensusControllerImpl {
     fn get_bootstrap_part(
         &self,
         mut cursor: StreamingStep<Slot>,
-        execution_cursor: StreamingStep<Slot>,
+        _execution_cursor: StreamingStep<Slot>,
     ) -> Result<(BootstrapableGraph, StreamingStep<Slot>), ConsensusError> {
         if cursor.finished() {
             return Ok((
@@ -105,8 +105,7 @@ impl ConsensusController for ConsensusControllerImpl {
         }
 
         let read_shared_state = self.shared_state.read();
-        let mut required_final_blocks: Vec<_> =
-            read_shared_state.list_required_active_blocks()?;
+        let mut required_final_blocks: Vec<_> = read_shared_state.list_required_active_blocks()?;
         required_final_blocks.retain(|b_id| {
             if let Some(BlockStatus::Active { a_block, .. }) =
                 read_shared_state.block_statuses.get(b_id)
@@ -134,12 +133,12 @@ impl ConsensusController for ConsensusControllerImpl {
                     break;
                 }
                 final_blocks.push(ExportActiveBlock::from_active_block(a_block, storage));
-                if let StreamingStep::Finished(Some(slot)) = execution_cursor {
-                    if slot == a_block.slot {
-                        cursor = StreamingStep::Finished(Some(a_block.slot));
-                        break;
-                    }
-                }
+                // if let StreamingStep::Finished(Some(slot)) = execution_cursor {
+                //     if slot == a_block.slot {
+                //         cursor = StreamingStep::Finished(Some(a_block.slot));
+                //         break;
+                //     }
+                // }
                 cursor = StreamingStep::Ongoing(a_block.slot);
             } else {
                 return Err(ConsensusError::ContainerInconsistency(format!(
@@ -149,9 +148,10 @@ impl ConsensusController for ConsensusControllerImpl {
             }
         }
 
-        // if final_blocks.is_empty() {
-        //     cursor = StreamingStep::Finished(None);
-        // }
+        if final_blocks.is_empty() {
+            debug!("CONSENSUS previous to last cursor: {:?}", cursor);
+            cursor = StreamingStep::Finished(None);
+        }
 
         debug!("CONSENSUS get_bootstrap_part END");
 
