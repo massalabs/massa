@@ -29,7 +29,7 @@ macro_rules! context_guard {
 
 /// an implementation of the Interface trait (see massa-sc-runtime crate)
 #[derive(Clone)]
-pub(crate) struct InterfaceImpl {
+pub struct InterfaceImpl {
     /// execution configuration
     config: ExecutionConfig,
     /// thread-safe shared access to the execution context (see context.rs)
@@ -44,6 +44,13 @@ impl InterfaceImpl {
     /// * `context`: thread-safe shared access to the current execution context (see context.rs)
     pub fn new(config: ExecutionConfig, context: Arc<Mutex<ExecutionContext>>) -> InterfaceImpl {
         InterfaceImpl { config, context }
+    }
+
+    #[cfg(feature = "gas_calibration")]
+    pub fn new_default() -> InterfaceImpl {
+        let config = ExecutionConfig::default();
+        let context = Arc::new(Mutex::new(ExecutionContext::new(config)));
+        InterfaceImpl::new(config, context)
     }
 }
 

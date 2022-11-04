@@ -59,5 +59,5 @@ pub use types::{
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 
-#[cfg(feature = "testing")]
+#[cfg(any(feature = "testing", feature = "gas_calibration"))]
 pub mod test_exports;

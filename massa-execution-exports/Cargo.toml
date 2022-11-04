@@ -21,4 +21,5 @@ parking_lot = { version = "0.12", features = ["deadlock_detection"], optional = 
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
+gas_calibration = ["massa_ledger_exports/testing", "parking_lot"]
 testing = ["massa_models/testing", "massa_ledger_exports/testing", "parking_lot"]

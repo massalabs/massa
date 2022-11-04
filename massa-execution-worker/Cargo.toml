@@ -37,4 +37,5 @@ massa_ledger_worker = { path = "../massa-ledger-worker" }
 
 [features]
 sandbox = ["massa_async_pool/sandbox"]
+gas_calibration = ["massa_execution_exports/gas_calibration"]
 testing = ["massa_execution_exports/testing", "massa_ledger_exports/testing", "massa_pos_exports/testing", "massa_pos_worker/testing", "massa_ledger_worker/testing", "massa_final_state/testing"]
