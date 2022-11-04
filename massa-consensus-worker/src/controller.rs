@@ -111,6 +111,9 @@ impl ConsensusController for ConsensusControllerImpl {
         });
         let mut final_blocks: Vec<ExportActiveBlock> =
             Vec::with_capacity(required_final_blocks.len());
+
+        debug!("CONSENSUS get_bootstrap_part START");
+
         for b_id in &required_final_blocks {
             if let Some(BlockStatus::Active { a_block, storage }) =
                 read_shared_state.block_statuses.get(b_id)
@@ -120,12 +123,12 @@ impl ConsensusController for ConsensusControllerImpl {
                     break;
                 }
                 final_blocks.push(ExportActiveBlock::from_active_block(a_block, storage));
-                if let StreamingStep::Finished(Some(slot)) = execution_cursor {
-                    if slot == a_block.slot {
-                        cursor = StreamingStep::Finished(Some(a_block.slot));
-                        break;
-                    }
-                }
+                // if let StreamingStep::Finished(Some(slot)) = execution_cursor {
+                //     if slot == a_block.slot {
+                //         cursor = StreamingStep::Finished(Some(a_block.slot));
+                //         break;
+                //     }
+                // }
                 cursor = StreamingStep::Ongoing(a_block.slot);
             } else {
                 return Err(ConsensusError::ContainerInconsistency(format!(
@@ -134,6 +137,12 @@ impl ConsensusController for ConsensusControllerImpl {
                 )));
             }
         }
+
+        if final_blocks.is_empty() {
+            cursor = StreamingStep::Finished(None);
+        }
+
+        debug!("CONSENSUS get_bootstrap_part END");
 
         Ok((BootstrapableGraph { final_blocks }, cursor))
     }
