@@ -96,6 +96,15 @@ impl ConsensusController for ConsensusControllerImpl {
         mut cursor: StreamingStep<Slot>,
         execution_cursor: StreamingStep<Slot>,
     ) -> Result<(BootstrapableGraph, StreamingStep<Slot>), ConsensusError> {
+        if cursor.finished() {
+            return Ok((
+                BootstrapableGraph {
+                    final_blocks: Vec::new(),
+                },
+                StreamingStep::Finished(None),
+            ));
+        }
+
         let read_shared_state = self.shared_state.read();
         let mut required_final_blocks: PreHashSet<_> =
             read_shared_state.list_required_active_blocks()?;
@@ -123,9 +132,9 @@ impl ConsensusController for ConsensusControllerImpl {
                 read_shared_state.block_statuses.get(b_id)
             {
                 // IMPORTANT TODO: use a config parameter
-                if final_blocks.len() >= 100 {
-                    break;
-                }
+                // if final_blocks.len() >= 100 {
+                //     break;
+                // }
                 final_blocks.push(ExportActiveBlock::from_active_block(a_block, storage));
                 // if let StreamingStep::Finished(Some(slot)) = execution_cursor {
                 //     if slot == a_block.slot {
@@ -142,13 +151,16 @@ impl ConsensusController for ConsensusControllerImpl {
             }
         }
 
-        if final_blocks.is_empty() {
-            cursor = StreamingStep::Finished(None);
-        }
+        // if final_blocks.is_empty() {
+        //     cursor = StreamingStep::Finished(None);
+        // }
 
         debug!("CONSENSUS get_bootstrap_part END");
 
-        Ok((BootstrapableGraph { final_blocks }, cursor))
+        Ok((
+            BootstrapableGraph { final_blocks },
+            StreamingStep::Finished(None),
+        ))
     }
 
     /// Get the stats of the consensus
