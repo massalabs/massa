@@ -48,15 +48,22 @@ impl InterfaceImpl {
 
     #[cfg(feature = "gas_calibration")]
     /// Used to create an default interface to run SC in a test environment
-    pub fn new_default() -> InterfaceImpl {
+    pub fn new_default(sender_addr: Address) -> InterfaceImpl {
 
         let config = ExecutionConfig::default();
         let (final_state, _tempfile, _tempdir) = crate::tests::get_sample_state().unwrap();
-        let context = Arc::new(Mutex::new(ExecutionContext::new(
+        let mut execution_context = ExecutionContext::new(
             config.clone(),
             final_state,
             Default::default(),
-        )));
+        );
+        execution_context.stack = vec![ExecutionStackElement {
+            address: sender_addr,
+            coins: Amount::zero(),
+            owned_addresses: vec![sender_addr],
+            operation_datastore: None,
+        }];
+        let context = Arc::new(Mutex::new(execution_context));
         InterfaceImpl::new(config, context)
     }
 }
