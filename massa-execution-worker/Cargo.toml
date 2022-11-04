@@ -25,6 +25,7 @@ massa_hash = { path = "../massa-hash" }
 massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", tag = "v0.8.2" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
+massa_ledger_worker = { path = "../massa-ledger-worker", optional = true }
 massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_pos_worker = { path = "../massa-pos-worker", optional = true }
 massa_pos_exports = { path = "../massa-pos-exports" }
@@ -39,5 +40,5 @@ massa_ledger_worker = { path = "../massa-ledger-worker" }
 
 [features]
 sandbox = ["massa_async_pool/sandbox"]
-gas_calibration = ["massa_execution_exports/gas_calibration", "massa_final_state/testing", "massa_pos_worker", "tempfile"]
+gas_calibration = ["massa_execution_exports/gas_calibration", "massa_final_state/testing", "massa_pos_worker", "massa_ledger_worker", "tempfile"]
 testing = ["massa_execution_exports/testing", "massa_ledger_exports/testing", "massa_pos_exports/testing", "massa_pos_worker/testing", "massa_ledger_worker/testing", "massa_final_state/testing"]
