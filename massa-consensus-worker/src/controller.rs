@@ -104,8 +104,11 @@ impl ConsensusController for ConsensusControllerImpl {
                 read_shared_state.block_statuses.get(b_id)
             {
                 if a_block.is_final {
-                    // filter only final actives
-                    return true;
+                    match cursor {
+                        StreamingStep::Started => return true,
+                        StreamingStep::Ongoing(slot) if a_block.slot > slot => return true,
+                        _ => return false,
+                    }
                 }
             }
             false
@@ -120,7 +123,7 @@ impl ConsensusController for ConsensusControllerImpl {
                 read_shared_state.block_statuses.get(b_id)
             {
                 // IMPORTANT TODO: use a config parameter
-                if final_blocks.len() > 100 {
+                if final_blocks.len() >= 100 {
                     break;
                 }
                 final_blocks.push(ExportActiveBlock::from_active_block(a_block, storage));
