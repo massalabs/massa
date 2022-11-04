@@ -199,10 +199,10 @@ impl ConsensusState {
         }
     }
 
-    pub fn list_required_active_blocks(&self) -> Result<PreHashSet<BlockId>, ConsensusError> {
+    pub fn list_required_active_blocks(&self) -> Result<Vec<BlockId>, ConsensusError> {
         // list all active blocks
-        let mut retain_active: PreHashSet<BlockId> =
-            PreHashSet::<BlockId>::with_capacity(self.active_index.len());
+        let mut retain_active: Vec<BlockId> =
+            Vec::with_capacity(self.active_index.len());
 
         let latest_final_blocks: Vec<BlockId> = self
             .latest_final_blocks_periods
@@ -224,7 +224,7 @@ impl ConsensusState {
                     || latest_final_blocks.contains(block_id)
                 {
                     retain_active.extend(active_block.parents.iter().map(|(p, _)| *p));
-                    retain_active.insert(*block_id);
+                    retain_active.push(*block_id);
                 }
             }
         }
@@ -247,7 +247,7 @@ impl ConsensusState {
                 };
 
                 // retain block
-                retain_active.insert(current_block_id);
+                retain_active.push(current_block_id);
 
                 // stop traversing when reaching a block with period number low enough
                 // so that any of its operations will have their validity period expired at the latest final block in thread
@@ -307,7 +307,7 @@ impl ConsensusState {
                     if c_block.slot.period < earliest_retained_periods[thread as usize] {
                         break;
                     }
-                    retain_active.insert(cursor);
+                    retain_active.push(cursor);
                     if c_block.parents.is_empty() {
                         // genesis
                         break;

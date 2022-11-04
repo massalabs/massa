@@ -7,7 +7,6 @@ use massa_models::{
     api::BlockGraphStatus,
     block::{BlockHeader, BlockId},
     clique::Clique,
-    prehash::PreHashSet,
     slot::Slot,
     stats::ConsensusStats,
     streaming_step::StreamingStep,
@@ -106,7 +105,7 @@ impl ConsensusController for ConsensusControllerImpl {
         }
 
         let read_shared_state = self.shared_state.read();
-        let mut required_final_blocks: PreHashSet<_> =
+        let mut required_final_blocks: Vec<_> =
             read_shared_state.list_required_active_blocks()?;
         required_final_blocks.retain(|b_id| {
             if let Some(BlockStatus::Active { a_block, .. }) =
@@ -122,8 +121,7 @@ impl ConsensusController for ConsensusControllerImpl {
             }
             false
         });
-        let mut final_blocks: Vec<ExportActiveBlock> =
-            Vec::with_capacity(required_final_blocks.len());
+        let mut final_blocks: Vec<ExportActiveBlock> = Vec::new();
 
         debug!("CONSENSUS get_bootstrap_part START");
 
@@ -132,16 +130,16 @@ impl ConsensusController for ConsensusControllerImpl {
                 read_shared_state.block_statuses.get(b_id)
             {
                 // IMPORTANT TODO: use a config parameter
-                // if final_blocks.len() >= 100 {
-                //     break;
-                // }
+                if final_blocks.len() >= 100 {
+                    break;
+                }
                 final_blocks.push(ExportActiveBlock::from_active_block(a_block, storage));
-                // if let StreamingStep::Finished(Some(slot)) = execution_cursor {
-                //     if slot == a_block.slot {
-                //         cursor = StreamingStep::Finished(Some(a_block.slot));
-                //         break;
-                //     }
-                // }
+                if let StreamingStep::Finished(Some(slot)) = execution_cursor {
+                    if slot == a_block.slot {
+                        cursor = StreamingStep::Finished(Some(a_block.slot));
+                        break;
+                    }
+                }
                 cursor = StreamingStep::Ongoing(a_block.slot);
             } else {
                 return Err(ConsensusError::ContainerInconsistency(format!(
@@ -157,10 +155,7 @@ impl ConsensusController for ConsensusControllerImpl {
 
         debug!("CONSENSUS get_bootstrap_part END");
 
-        Ok((
-            BootstrapableGraph { final_blocks },
-            StreamingStep::Finished(None),
-        ))
+        Ok((BootstrapableGraph { final_blocks }, cursor))
     }
 
     /// Get the stats of the consensus

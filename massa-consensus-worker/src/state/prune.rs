@@ -3,7 +3,12 @@ use massa_consensus_exports::{
     error::ConsensusError,
 };
 use massa_logging::massa_trace;
-use massa_models::{active_block::ActiveBlock, block::BlockId, prehash::PreHashMap, slot::Slot};
+use massa_models::{
+    active_block::ActiveBlock,
+    block::BlockId,
+    prehash::{PreHashMap, PreHashSet},
+    slot::Slot,
+};
 use tracing::debug;
 
 use super::ConsensusState;
@@ -12,7 +17,8 @@ impl ConsensusState {
     /// prune active blocks and return final blocks, return discarded final blocks
     fn prune_active(&mut self) -> Result<PreHashMap<BlockId, ActiveBlock>, ConsensusError> {
         // list required active blocks
-        let mut retain_active = self.list_required_active_blocks()?;
+        let mut retain_active: PreHashSet<BlockId> =
+            self.list_required_active_blocks()?.into_iter().collect();
 
         // retain extra history according to the config
         // this is useful to avoid desync on temporary connection loss
