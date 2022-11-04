@@ -72,7 +72,7 @@ impl InterfaceImpl {
             config.clone(),
             Arc::new(RwLock::new(FinalState::create_final_state(
                 pos_final_state,
-                FinalStateConfig::default(),
+                final_state_config,
             ))),
             Default::default(),
         )));
