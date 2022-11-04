@@ -49,22 +49,32 @@ impl InterfaceImpl {
     #[cfg(feature = "gas_calibration")]
     /// Used to create an default interface to run SC in a test environment
     pub fn new_default() -> InterfaceImpl {
-        use std::path::PathBuf;
+        use std::collections::BTreeMap;
 
         use massa_final_state::{FinalState, FinalStateConfig};
         use massa_pos_exports::{PoSFinalState, SelectorConfig};
         use massa_pos_worker::start_selector_worker;
         use parking_lot::RwLock;
+        use tempfile::NamedTempFile;
+        use std::io::Seek;
 
         let config = ExecutionConfig::default();
         let final_state_config = FinalStateConfig::default();
         let pos_selector_config = SelectorConfig::default();
         let (_selector_manager, selector_controller) = start_selector_worker(pos_selector_config)
             .expect("could not start client selector controller");
+        let rolls_file_named = NamedTempFile::new().expect("cannot create temp file");
+        let rolls: BTreeMap<Address, u64> = BTreeMap::default();
+        serde_json::to_writer_pretty(rolls_file_named.as_file(), &rolls)
+            .expect("unable to write ledger file");
+        rolls_file_named
+            .as_file()
+            .seek(std::io::SeekFrom::Start(0))
+            .expect("could not seek file");
         let pos_final_state = PoSFinalState::new(
             final_state_config.pos_config.clone(),
             "",
-            &PathBuf::from(""),
+            &rolls_file_named.path().to_path_buf(),
             selector_controller.clone(),
         )
         .unwrap();

@@ -14,6 +14,7 @@ parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 tracing = "0.1"
 serde_json = "1.0"
 num = { version = "0.4", features = ["serde"] }
+tempfile = { version = "3.3", optional = true }    # use with gas_calibration feature
 # custom modules
 massa_async_pool = { path = "../massa-async-pool" }
 massa_executed_ops = { path = "../massa-executed-ops" }
@@ -38,5 +39,5 @@ massa_ledger_worker = { path = "../massa-ledger-worker" }
 
 [features]
 sandbox = ["massa_async_pool/sandbox"]
-gas_calibration = ["massa_execution_exports/gas_calibration", "massa_final_state/testing", "massa_pos_worker"]
+gas_calibration = ["massa_execution_exports/gas_calibration", "massa_final_state/testing", "massa_pos_worker", "tempfile"]
 testing = ["massa_execution_exports/testing", "massa_ledger_exports/testing", "massa_pos_exports/testing", "massa_pos_worker/testing", "massa_ledger_worker/testing", "massa_final_state/testing"]
