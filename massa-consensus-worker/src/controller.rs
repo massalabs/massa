@@ -88,6 +88,10 @@ impl ConsensusController for ConsensusControllerImpl {
     /// Get a part of the graph to send to a node so that he can setup his graph.
     /// Used for bootstrap.
     ///
+    /// # Arguments:
+    /// * `cursor`: streaming cursor containing the current state of bootstrap and what blocks have been to the client already
+    /// * `execution_cursor`: streaming cursor of the final state to ensure that last slot of the bootstrap info corresponds
+    ///
     /// # Returns:
     /// A portion of the graph
     fn get_bootstrap_part(
