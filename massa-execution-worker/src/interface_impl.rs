@@ -20,6 +20,9 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tracing::debug;
 
+#[cfg(feature = "gas_calibration")]
+use massa_models::datastore::Datastore;
+
 /// helper for locking the context mutex
 macro_rules! context_guard {
     ($self:ident) => {
@@ -48,8 +51,9 @@ impl InterfaceImpl {
 
     #[cfg(feature = "gas_calibration")]
     /// Used to create an default interface to run SC in a test environment
-    pub fn new_default(sender_addr: Address) -> InterfaceImpl {
+    pub fn new_default(sender_addr: Address, operation_datastore: Option<Datastore>) -> InterfaceImpl {
         use massa_ledger_exports::{SetUpdateOrDelete, LedgerEntry};
+
         let config = ExecutionConfig::default();
         let (final_state, _tempfile, _tempdir) = crate::tests::get_sample_state().unwrap();
         let mut execution_context = ExecutionContext::new(
@@ -61,7 +65,7 @@ impl InterfaceImpl {
             address: sender_addr,
             coins: Amount::zero(),
             owned_addresses: vec![sender_addr],
-            operation_datastore: None,
+            operation_datastore,
         }];
         execution_context.speculative_ledger.added_changes.0.insert(sender_addr, SetUpdateOrDelete::Set(LedgerEntry {
             balance: Amount::from_mantissa_scale(1, 0),
