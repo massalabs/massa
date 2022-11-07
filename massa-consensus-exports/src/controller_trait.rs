@@ -48,9 +48,9 @@ pub trait ConsensusController: Send + Sync {
     /// The graph to bootstrap from
     fn get_bootstrap_part(
         &self,
-        cursor: StreamingStep<Slot>,
+        cursor: StreamingStep<Vec<BlockId>>,
         execution_cursor: StreamingStep<Slot>,
-    ) -> Result<(BootstrapableGraph, StreamingStep<Slot>), ConsensusError>;
+    ) -> Result<(BootstrapableGraph, StreamingStep<Vec<BlockId>>), ConsensusError>;
 
     /// Get the stats of the consensus
     ///

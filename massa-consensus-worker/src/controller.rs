@@ -7,6 +7,7 @@ use massa_models::{
     api::BlockGraphStatus,
     block::{BlockHeader, BlockId},
     clique::Clique,
+    prehash::PreHashSet,
     slot::Slot,
     stats::ConsensusStats,
     streaming_step::StreamingStep,
@@ -92,35 +93,32 @@ impl ConsensusController for ConsensusControllerImpl {
     /// A portion of the graph
     fn get_bootstrap_part(
         &self,
-        mut cursor: StreamingStep<Slot>,
+        mut cursor: StreamingStep<Vec<BlockId>>,
         _execution_cursor: StreamingStep<Slot>,
-    ) -> Result<(BootstrapableGraph, StreamingStep<Slot>), ConsensusError> {
+    ) -> Result<(BootstrapableGraph, StreamingStep<Vec<BlockId>>), ConsensusError> {
+        let mut final_blocks: Vec<ExportActiveBlock> = Vec::new();
         if cursor.finished() {
-            return Ok((
-                BootstrapableGraph {
-                    final_blocks: Vec::new(),
-                },
-                StreamingStep::Finished(None),
-            ));
+            return Ok((BootstrapableGraph { final_blocks }, cursor));
         }
 
         let read_shared_state = self.shared_state.read();
-        let mut required_final_blocks: Vec<_> = read_shared_state.list_required_active_blocks()?;
+        let mut required_final_blocks: PreHashSet<_> =
+            read_shared_state.list_required_active_blocks()?;
         required_final_blocks.retain(|b_id| {
             if let Some(BlockStatus::Active { a_block, .. }) =
                 read_shared_state.block_statuses.get(b_id)
             {
                 if a_block.is_final {
-                    match cursor {
-                        StreamingStep::Started => return true,
-                        StreamingStep::Ongoing(slot) if a_block.slot > slot => return true,
-                        _ => return false,
-                    }
+                    return true;
+                    //     match cursor {
+                    //         StreamingStep::Started => return true,
+                    //         StreamingStep::Ongoing(slot) if a_block.slot > slot => return true,
+                    //         _ => return false,
+                    //     }
                 }
             }
             false
         });
-        let mut final_blocks: Vec<ExportActiveBlock> = Vec::new();
 
         debug!("CONSENSUS get_bootstrap_part START");
 
@@ -129,9 +127,9 @@ impl ConsensusController for ConsensusControllerImpl {
                 read_shared_state.block_statuses.get(b_id)
             {
                 // IMPORTANT TODO: use a config parameter
-                if final_blocks.len() >= 100 {
-                    break;
-                }
+                // if final_blocks.len() >= 100 {
+                //     break;
+                // }
                 final_blocks.push(ExportActiveBlock::from_active_block(a_block, storage));
                 // if let StreamingStep::Finished(Some(slot)) = execution_cursor {
                 //     if slot == a_block.slot {
@@ -139,7 +137,7 @@ impl ConsensusController for ConsensusControllerImpl {
                 //         break;
                 //     }
                 // }
-                cursor = StreamingStep::Ongoing(a_block.slot);
+                // cursor = StreamingStep::Ongoing(a_block.slot);
             } else {
                 return Err(ConsensusError::ContainerInconsistency(format!(
                     "block {} was expected to be active but wasn't on bootstrap graph export",

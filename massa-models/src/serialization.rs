@@ -7,7 +7,7 @@ use massa_serialization::{
     U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::bytes::complete::take;
-use nom::multi::length_data;
+use nom::multi::{length_count, length_data};
 use nom::sequence::preceded;
 use nom::{branch::alt, Parser, ToUsize};
 use nom::{
@@ -15,6 +15,7 @@ use nom::{
     IResult,
 };
 use std::convert::TryInto;
+use std::marker::PhantomData;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::ops::Bound;
 use Bound::Included;
@@ -306,6 +307,94 @@ impl Deserializer<Vec<u8>> for VecU8Deserializer {
             length_data(|input| self.varint_u64_deserializer.deserialize(input))(input)
         })
         .map(|res| res.to_vec())
+        .parse(buffer)
+    }
+}
+
+/// Basic `Vec<_>` serializer
+#[derive(Clone)]
+pub struct VecSerializer<T, ST>
+where
+    ST: Serializer<T>,
+{
+    len_serializer: U64VarIntSerializer,
+    data_serializer: ST,
+    phantom_t: PhantomData<T>,
+}
+
+impl<T, ST> VecSerializer<T, ST>
+where
+    ST: Serializer<T>,
+{
+    /// Creates a new `VecSerializer`
+    pub fn new(data_serializer: ST) -> Self {
+        Self {
+            len_serializer: U64VarIntSerializer::new(),
+            data_serializer,
+            phantom_t: PhantomData,
+        }
+    }
+}
+
+impl<T, ST> Serializer<Vec<T>> for VecSerializer<T, ST>
+where
+    ST: Serializer<T>,
+{
+    fn serialize(&self, value: &Vec<T>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.len_serializer
+            .serialize(&(value.len() as u64), buffer)?;
+        for elem in value {
+            self.data_serializer.serialize(elem, buffer)?;
+        }
+        Ok(())
+    }
+}
+
+/// Basic `Vec<_>` deserializer
+#[derive(Clone)]
+pub struct VecDeserializer<T, ST>
+where
+    ST: Deserializer<T> + Clone,
+{
+    varint_u64_deserializer: U64VarIntDeserializer,
+    data_deserializer: ST,
+    phantom_t: PhantomData<T>,
+}
+
+impl<T, ST> VecDeserializer<T, ST>
+where
+    ST: Deserializer<T> + Clone,
+{
+    /// Creates a new `VecDeserializer`
+    pub const fn new(
+        data_deserializer: ST,
+        min_length: Bound<u64>,
+        max_length: Bound<u64>,
+    ) -> Self {
+        Self {
+            varint_u64_deserializer: U64VarIntDeserializer::new(min_length, max_length),
+            data_deserializer,
+            phantom_t: PhantomData,
+        }
+    }
+}
+
+impl<T, ST> Deserializer<Vec<T>> for VecDeserializer<T, ST>
+where
+    ST: Deserializer<T> + Clone,
+{
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Vec<T>, E> {
+        context("Failed Vec<_> deserialization", |input| {
+            length_count(
+                context("length", |input| {
+                    self.varint_u64_deserializer.deserialize(input)
+                }),
+                context("data", |input| self.data_deserializer.deserialize(input)),
+            )(input)
+        })
         .parse(buffer)
     }
 }

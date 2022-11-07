@@ -10,9 +10,12 @@ use massa_consensus_exports::bootstrapable_graph::{
 use massa_executed_ops::{ExecutedOpsDeserializer, ExecutedOpsSerializer};
 use massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 use massa_ledger_exports::{KeyDeserializer, KeySerializer};
+use massa_models::block::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
-use massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
+use massa_models::serialization::{
+    VecDeserializer, VecSerializer, VecU8Deserializer, VecU8Serializer,
+};
 use massa_models::slot::{Slot, SlotDeserializer, SlotSerializer};
 use massa_models::streaming_step::{
     StreamingStep, StreamingStepDeserializer, StreamingStepSerializer,
@@ -89,7 +92,6 @@ pub enum BootstrapServerMessage {
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u32)]
-// IMPORTANT TODO: double check impact of these changes
 enum MessageServerTypeId {
     BootstrapTime = 0u32,
     Peers = 1u32,
@@ -531,7 +533,7 @@ pub enum BootstrapClientMessage {
         /// Last received executed operation associated slot
         last_ops_step: StreamingStep<Slot>,
         /// Last received consensus block slot
-        last_consensus_step: StreamingStep<Slot>,
+        last_consensus_step: StreamingStep<Vec<BlockId>>,
     },
     /// Bootstrap error
     BootstrapError {
@@ -544,7 +546,6 @@ pub enum BootstrapClientMessage {
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u32)]
-// IMPORTANT TODO: double check impact of these changes
 enum MessageClientTypeId {
     AskBootstrapPeers = 0u32,
     AskFinalStatePart = 1u32,
@@ -560,6 +561,8 @@ pub struct BootstrapClientMessageSerializer {
     pool_step_serializer: StreamingStepSerializer<AsyncMessageId, AsyncMessageIdSerializer>,
     cycle_step_serializer: StreamingStepSerializer<u64, U64VarIntSerializer>,
     slot_step_serializer: StreamingStepSerializer<Slot, SlotSerializer>,
+    block_ids_step_serializer:
+        StreamingStepSerializer<Vec<BlockId>, VecSerializer<BlockId, BlockIdSerializer>>,
 }
 
 impl BootstrapClientMessageSerializer {
@@ -572,6 +575,9 @@ impl BootstrapClientMessageSerializer {
             pool_step_serializer: StreamingStepSerializer::new(AsyncMessageIdSerializer::new()),
             cycle_step_serializer: StreamingStepSerializer::new(U64VarIntSerializer::new()),
             slot_step_serializer: StreamingStepSerializer::new(SlotSerializer::new()),
+            block_ids_step_serializer: StreamingStepSerializer::new(VecSerializer::new(
+                BlockIdSerializer::new(),
+            )),
         }
     }
 }
@@ -628,7 +634,7 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                     self.slot_step_serializer
                         .serialize(last_credits_step, buffer)?;
                     self.slot_step_serializer.serialize(last_ops_step, buffer)?;
-                    self.slot_step_serializer
+                    self.block_ids_step_serializer
                         .serialize(last_consensus_step, buffer)?;
                 }
             }
@@ -661,6 +667,8 @@ pub struct BootstrapClientMessageDeserializer {
     pool_step_deserializer: StreamingStepDeserializer<AsyncMessageId, AsyncMessageIdDeserializer>,
     cycle_step_deserializer: StreamingStepDeserializer<u64, U64VarIntDeserializer>,
     slot_step_deserializer: StreamingStepDeserializer<Slot, SlotDeserializer>,
+    block_ids_step_deserializer:
+        StreamingStepDeserializer<Vec<BlockId>, VecDeserializer<BlockId, BlockIdDeserializer>>,
 }
 
 impl BootstrapClientMessageDeserializer {
@@ -686,6 +694,12 @@ impl BootstrapClientMessageDeserializer {
             slot_step_deserializer: StreamingStepDeserializer::new(SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
                 (Included(0), Excluded(thread_count)),
+            )),
+            // IMPORTANT TODO: take max_length from config
+            block_ids_step_deserializer: StreamingStepDeserializer::new(VecDeserializer::new(
+                BlockIdDeserializer::new(),
+                Included(0),
+                Included(42_000),
             )),
         }
     }
@@ -771,7 +785,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                                 self.slot_step_deserializer.deserialize(input)
                             }),
                             context("Failed last_consensus_step deserialization", |input| {
-                                self.slot_step_deserializer.deserialize(input)
+                                self.block_ids_step_deserializer.deserialize(input)
                             }),
                         ))
                         .map(

@@ -44,10 +44,10 @@ pub enum MockConsensusControllerMessage {
         response_tx: mpsc::Sender<Vec<Clique>>,
     },
     GetBootstrapableGraph {
-        cursor: StreamingStep<Slot>,
+        cursor: StreamingStep<Vec<BlockId>>,
         execution_cursor: StreamingStep<Slot>,
         response_tx:
-            mpsc::Sender<Result<(BootstrapableGraph, StreamingStep<Slot>), ConsensusError>>,
+            mpsc::Sender<Result<(BootstrapableGraph, StreamingStep<Vec<BlockId>>), ConsensusError>>,
     },
     GetStats {
         response_tx: mpsc::Sender<Result<ConsensusStats, ConsensusError>>,
@@ -160,9 +160,9 @@ impl ConsensusController for MockConsensusController {
 
     fn get_bootstrap_part(
         &self,
-        cursor: StreamingStep<Slot>,
+        cursor: StreamingStep<Vec<BlockId>>,
         execution_cursor: StreamingStep<Slot>,
-    ) -> Result<(BootstrapableGraph, StreamingStep<Slot>), ConsensusError> {
+    ) -> Result<(BootstrapableGraph, StreamingStep<Vec<BlockId>>), ConsensusError> {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
             .lock()

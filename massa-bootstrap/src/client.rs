@@ -107,15 +107,14 @@ async fn stream_final_state_and_consensus(
                     let mut last_consensus_step = StreamingStep::Started;
                     if let Some(graph) = global_bootstrap_state.graph.as_mut() {
                         graph.final_blocks.extend(consensus_part.final_blocks);
-                        if let Some(active_block) = graph.final_blocks.last() {
-                            last_consensus_step = StreamingStep::Ongoing(
-                                active_block.block.content.header.content.slot,
-                            );
+                        if let Some(_active_block) = graph.final_blocks.last() {
+                            // IMPORTANT TODO: properly compute this
+                            last_consensus_step = StreamingStep::Ongoing(Vec::new());
                         }
-                    } else if let Some(active_block) = consensus_part.final_blocks.last() {
+                    } else if let Some(_active_block) = consensus_part.final_blocks.last() {
                         global_bootstrap_state.graph = Some(consensus_part.clone());
-                        last_consensus_step =
-                            StreamingStep::Ongoing(active_block.block.content.header.content.slot);
+                        // IMPORTANT TODO: properly compute this
+                        last_consensus_step = StreamingStep::Ongoing(Vec::new());
                     }
 
                     // Set new message in case of disconnection
