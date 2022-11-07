@@ -101,12 +101,15 @@ impl ConsensusController for ConsensusControllerImpl {
         let required_final_blocks: PreHashSet<BlockId> =
             read_shared_state.list_required_active_blocks()?;
 
-        let difference = match cursor {
-            StreamingStep::Started => required_final_blocks,
-            StreamingStep::Ongoing(ref cursor_ids) => required_final_blocks
-                .difference(cursor_ids)
-                .cloned()
-                .collect(),
+        let (difference, previous_ids) = match cursor {
+            StreamingStep::Started => (required_final_blocks, PreHashSet::default()),
+            StreamingStep::Ongoing(ref cursor_ids) => (
+                required_final_blocks
+                    .difference(cursor_ids)
+                    .cloned()
+                    .collect(),
+                cursor_ids.clone(),
+            ),
             StreamingStep::Finished(_) => return Ok((BootstrapableGraph { final_blocks }, cursor)),
         };
 
@@ -114,22 +117,25 @@ impl ConsensusController for ConsensusControllerImpl {
             if let Some(BlockStatus::Active { a_block, storage }) =
                 read_shared_state.block_statuses.get(b_id)
             {
-                // IMPORTANT TODO: use a config parameter for this raw value
-                if a_block.is_final && final_blocks.len() >= 100 {
-                    break;
-                }
-                final_blocks.push(ExportActiveBlock::from_active_block(a_block, storage));
-                retrieved_ids.insert(*b_id);
                 if let StreamingStep::Finished(Some(slot)) = execution_cursor {
-                    if slot == a_block.slot {
-                        cursor = StreamingStep::Finished(None);
-                        break;
+                    if a_block.slot > slot {
+                        continue;
                     }
+                }
+                // IMPORTANT TODO: use a config parameter for this raw value
+                if a_block.is_final && final_blocks.len() < 100 {
+                    final_blocks.push(ExportActiveBlock::from_active_block(a_block, storage));
+                    retrieved_ids.insert(*b_id);
+                } else {
+                    break;
                 }
             }
         }
 
-        if !cursor.finished() {
+        if final_blocks.is_empty() {
+            cursor = StreamingStep::Finished(None);
+        } else {
+            retrieved_ids.extend(previous_ids);
             cursor = StreamingStep::Ongoing(retrieved_ids);
         }
 

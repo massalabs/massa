@@ -4,7 +4,10 @@ use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::ConsensusController;
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
-use massa_models::{block::BlockId, slot::Slot, streaming_step::StreamingStep, version::Version, prehash::PreHashSet};
+use massa_models::{
+    block::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
+    version::Version,
+};
 use massa_network_exports::NetworkCommandSender;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;

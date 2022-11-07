@@ -753,9 +753,6 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                 MessageClientTypeId::AskBootstrapPeers => {
                     Ok((input, BootstrapClientMessage::AskBootstrapPeers))
                 }
-                // MessageClientTypeId::AskConsensusState => {
-                //     Ok((input, BootstrapClientMessage::AskConsensusState))
-                // }
                 MessageClientTypeId::AskFinalStatePart => {
                     if input.is_empty() {
                         Ok((

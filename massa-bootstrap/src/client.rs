@@ -316,7 +316,7 @@ async fn bootstrap_from_server(
                 *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess => {
-                // TODO: double check that this is useless
+                // IMPORTANT TODO: double check that this really has no use
                 // if global_bootstrap_state.graph.is_none() {
                 //     *next_bootstrap_message = BootstrapClientMessage::AskConsensusState;
                 //     continue;
