@@ -93,9 +93,9 @@ impl ConsensusController for ConsensusControllerImpl {
     /// A portion of the graph
     fn get_bootstrap_part(
         &self,
-        mut cursor: StreamingStep<Vec<BlockId>>,
+        mut cursor: StreamingStep<PreHashSet<BlockId>>,
         _execution_cursor: StreamingStep<Slot>,
-    ) -> Result<(BootstrapableGraph, StreamingStep<Vec<BlockId>>), ConsensusError> {
+    ) -> Result<(BootstrapableGraph, StreamingStep<PreHashSet<BlockId>>), ConsensusError> {
         let mut final_blocks: Vec<ExportActiveBlock> = Vec::new();
         if cursor.finished() {
             return Ok((BootstrapableGraph { final_blocks }, cursor));

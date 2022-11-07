@@ -4,7 +4,7 @@ use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::ConsensusController;
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
-use massa_models::{block::BlockId, slot::Slot, streaming_step::StreamingStep, version::Version};
+use massa_models::{block::BlockId, slot::Slot, streaming_step::StreamingStep, version::Version, prehash::PreHashSet};
 use massa_network_exports::NetworkCommandSender;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -307,7 +307,7 @@ pub async fn stream_bootstrap_information(
     mut last_cycle_step: StreamingStep<u64>,
     mut last_credits_step: StreamingStep<Slot>,
     mut last_ops_step: StreamingStep<Slot>,
-    mut last_consensus_step: StreamingStep<Vec<BlockId>>,
+    mut last_consensus_step: StreamingStep<PreHashSet<BlockId>>,
     write_timeout: Duration,
 ) -> Result<(), BootstrapError> {
     loop {

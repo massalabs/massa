@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::ModelsError;
+use crate::prehash::{PreHashSet, PreHashed};
 use bitvec::prelude::BitVec;
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
@@ -395,6 +396,97 @@ where
                 context("data", |input| self.data_deserializer.deserialize(input)),
             )(input)
         })
+        .parse(buffer)
+    }
+}
+
+/// Basic `PreHashSet<_>` serializer
+#[derive(Clone)]
+pub struct PreHashSetSerializer<T, ST>
+where
+    ST: Serializer<T>,
+{
+    len_serializer: U64VarIntSerializer,
+    data_serializer: ST,
+    phantom_t: PhantomData<T>,
+}
+
+impl<T, ST> PreHashSetSerializer<T, ST>
+where
+    ST: Serializer<T>,
+{
+    /// Creates a new `PreHashSetSerializer`
+    pub fn new(data_serializer: ST) -> Self {
+        Self {
+            len_serializer: U64VarIntSerializer::new(),
+            data_serializer,
+            phantom_t: PhantomData,
+        }
+    }
+}
+
+impl<T, ST> Serializer<PreHashSet<T>> for PreHashSetSerializer<T, ST>
+where
+    ST: Serializer<T>,
+    T: PreHashed,
+{
+    fn serialize(&self, value: &PreHashSet<T>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.len_serializer
+            .serialize(&(value.len() as u64), buffer)?;
+        for elem in value {
+            self.data_serializer.serialize(elem, buffer)?;
+        }
+        Ok(())
+    }
+}
+
+/// Basic `PreHashSet<_>` deserializer
+#[derive(Clone)]
+pub struct PreHashSetDeserializer<T, ST>
+where
+    ST: Deserializer<T> + Clone,
+{
+    varint_u64_deserializer: U64VarIntDeserializer,
+    data_deserializer: ST,
+    phantom_t: PhantomData<T>,
+}
+
+impl<T, ST> PreHashSetDeserializer<T, ST>
+where
+    ST: Deserializer<T> + Clone,
+{
+    /// Creates a new `PreHashSetDeserializer`
+    pub const fn new(
+        data_deserializer: ST,
+        min_length: Bound<u64>,
+        max_length: Bound<u64>,
+    ) -> Self {
+        Self {
+            varint_u64_deserializer: U64VarIntDeserializer::new(min_length, max_length),
+            data_deserializer,
+            phantom_t: PhantomData,
+        }
+    }
+}
+
+impl<T, ST> Deserializer<PreHashSet<T>> for PreHashSetDeserializer<T, ST>
+where
+    ST: Deserializer<T> + Clone,
+    T: PreHashed + std::cmp::Eq + std::hash::Hash,
+{
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], PreHashSet<T>, E> {
+        context("Failed PreHashSet<_> deserialization", |input| {
+            length_count(
+                context("length", |input| {
+                    self.varint_u64_deserializer.deserialize(input)
+                }),
+                context("data", |input| self.data_deserializer.deserialize(input)),
+            )(input)
+        })
+        .map(|vec| vec.into_iter().collect())
         .parse(buffer)
     }
 }

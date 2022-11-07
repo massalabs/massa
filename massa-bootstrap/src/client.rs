@@ -2,7 +2,7 @@ use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
-use massa_models::{streaming_step::StreamingStep, version::Version};
+use massa_models::{prehash::PreHashSet, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
@@ -109,12 +109,12 @@ async fn stream_final_state_and_consensus(
                         graph.final_blocks.extend(consensus_part.final_blocks);
                         if let Some(_active_block) = graph.final_blocks.last() {
                             // IMPORTANT TODO: properly compute this
-                            last_consensus_step = StreamingStep::Ongoing(Vec::new());
+                            last_consensus_step = StreamingStep::Ongoing(PreHashSet::default());
                         }
                     } else if let Some(_active_block) = consensus_part.final_blocks.last() {
                         global_bootstrap_state.graph = Some(consensus_part.clone());
                         // IMPORTANT TODO: properly compute this
-                        last_consensus_step = StreamingStep::Ongoing(Vec::new());
+                        last_consensus_step = StreamingStep::Ongoing(PreHashSet::default());
                     }
 
                     // Set new message in case of disconnection

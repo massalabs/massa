@@ -14,7 +14,7 @@ use massa_models::block::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
 use massa_models::serialization::{
-    VecDeserializer, VecSerializer, VecU8Deserializer, VecU8Serializer,
+    PreHashSetDeserializer, PreHashSetSerializer, VecU8Deserializer, VecU8Serializer,
 };
 use massa_models::slot::{Slot, SlotDeserializer, SlotSerializer};
 use massa_models::streaming_step::{
@@ -533,7 +533,7 @@ pub enum BootstrapClientMessage {
         /// Last received executed operation associated slot
         last_ops_step: StreamingStep<Slot>,
         /// Last received consensus block slot
-        last_consensus_step: StreamingStep<Vec<BlockId>>,
+        last_consensus_step: StreamingStep<PreHashSet<BlockId>>,
     },
     /// Bootstrap error
     BootstrapError {
@@ -561,8 +561,10 @@ pub struct BootstrapClientMessageSerializer {
     pool_step_serializer: StreamingStepSerializer<AsyncMessageId, AsyncMessageIdSerializer>,
     cycle_step_serializer: StreamingStepSerializer<u64, U64VarIntSerializer>,
     slot_step_serializer: StreamingStepSerializer<Slot, SlotSerializer>,
-    block_ids_step_serializer:
-        StreamingStepSerializer<Vec<BlockId>, VecSerializer<BlockId, BlockIdSerializer>>,
+    block_ids_step_serializer: StreamingStepSerializer<
+        PreHashSet<BlockId>,
+        PreHashSetSerializer<BlockId, BlockIdSerializer>,
+    >,
 }
 
 impl BootstrapClientMessageSerializer {
@@ -575,7 +577,7 @@ impl BootstrapClientMessageSerializer {
             pool_step_serializer: StreamingStepSerializer::new(AsyncMessageIdSerializer::new()),
             cycle_step_serializer: StreamingStepSerializer::new(U64VarIntSerializer::new()),
             slot_step_serializer: StreamingStepSerializer::new(SlotSerializer::new()),
-            block_ids_step_serializer: StreamingStepSerializer::new(VecSerializer::new(
+            block_ids_step_serializer: StreamingStepSerializer::new(PreHashSetSerializer::new(
                 BlockIdSerializer::new(),
             )),
         }
@@ -667,8 +669,10 @@ pub struct BootstrapClientMessageDeserializer {
     pool_step_deserializer: StreamingStepDeserializer<AsyncMessageId, AsyncMessageIdDeserializer>,
     cycle_step_deserializer: StreamingStepDeserializer<u64, U64VarIntDeserializer>,
     slot_step_deserializer: StreamingStepDeserializer<Slot, SlotDeserializer>,
-    block_ids_step_deserializer:
-        StreamingStepDeserializer<Vec<BlockId>, VecDeserializer<BlockId, BlockIdDeserializer>>,
+    block_ids_step_deserializer: StreamingStepDeserializer<
+        PreHashSet<BlockId>,
+        PreHashSetDeserializer<BlockId, BlockIdDeserializer>,
+    >,
 }
 
 impl BootstrapClientMessageDeserializer {
@@ -696,11 +700,13 @@ impl BootstrapClientMessageDeserializer {
                 (Included(0), Excluded(thread_count)),
             )),
             // IMPORTANT TODO: take max_length from config
-            block_ids_step_deserializer: StreamingStepDeserializer::new(VecDeserializer::new(
-                BlockIdDeserializer::new(),
-                Included(0),
-                Included(42_000),
-            )),
+            block_ids_step_deserializer: StreamingStepDeserializer::new(
+                PreHashSetDeserializer::new(
+                    BlockIdDeserializer::new(),
+                    Included(0),
+                    Included(42_000),
+                ),
+            ),
         }
     }
 }
