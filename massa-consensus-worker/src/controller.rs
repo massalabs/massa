@@ -16,7 +16,6 @@ use massa_models::{
 use massa_storage::Storage;
 use parking_lot::RwLock;
 use std::sync::{mpsc::SyncSender, Arc};
-use tracing::debug;
 
 use crate::{commands::ConsensusCommand, state::ConsensusState};
 
@@ -94,64 +93,45 @@ impl ConsensusController for ConsensusControllerImpl {
     fn get_bootstrap_part(
         &self,
         mut cursor: StreamingStep<PreHashSet<BlockId>>,
-        _execution_cursor: StreamingStep<Slot>,
+        execution_cursor: StreamingStep<Slot>,
     ) -> Result<(BootstrapableGraph, StreamingStep<PreHashSet<BlockId>>), ConsensusError> {
         let mut final_blocks: Vec<ExportActiveBlock> = Vec::new();
-        if cursor.finished() {
-            return Ok((BootstrapableGraph { final_blocks }, cursor));
-        }
-
+        let mut retrieved_ids: PreHashSet<BlockId> = PreHashSet::default();
         let read_shared_state = self.shared_state.read();
-        let mut required_final_blocks: PreHashSet<_> =
+        let required_final_blocks: PreHashSet<BlockId> =
             read_shared_state.list_required_active_blocks()?;
-        required_final_blocks.retain(|b_id| {
-            if let Some(BlockStatus::Active { a_block, .. }) =
-                read_shared_state.block_statuses.get(b_id)
-            {
-                if a_block.is_final {
-                    return true;
-                    //     match cursor {
-                    //         StreamingStep::Started => return true,
-                    //         StreamingStep::Ongoing(slot) if a_block.slot > slot => return true,
-                    //         _ => return false,
-                    //     }
-                }
-            }
-            false
-        });
 
-        debug!("CONSENSUS get_bootstrap_part START");
+        let difference = match cursor {
+            StreamingStep::Started => required_final_blocks,
+            StreamingStep::Ongoing(ref cursor_ids) => required_final_blocks
+                .difference(cursor_ids)
+                .cloned()
+                .collect(),
+            StreamingStep::Finished(_) => return Ok((BootstrapableGraph { final_blocks }, cursor)),
+        };
 
-        for b_id in &required_final_blocks {
+        for b_id in &difference {
             if let Some(BlockStatus::Active { a_block, storage }) =
                 read_shared_state.block_statuses.get(b_id)
             {
-                // IMPORTANT TODO: use a config parameter
-                // if final_blocks.len() >= 100 {
-                //     break;
-                // }
+                // IMPORTANT TODO: use a config parameter for this raw value
+                if a_block.is_final && final_blocks.len() >= 100 {
+                    break;
+                }
                 final_blocks.push(ExportActiveBlock::from_active_block(a_block, storage));
-                // if let StreamingStep::Finished(Some(slot)) = execution_cursor {
-                //     if slot == a_block.slot {
-                //         cursor = StreamingStep::Finished(Some(a_block.slot));
-                //         break;
-                //     }
-                // }
-                // cursor = StreamingStep::Ongoing(a_block.slot);
-            } else {
-                return Err(ConsensusError::ContainerInconsistency(format!(
-                    "block {} was expected to be active but wasn't on bootstrap graph export",
-                    b_id
-                )));
+                retrieved_ids.insert(*b_id);
+                if let StreamingStep::Finished(Some(slot)) = execution_cursor {
+                    if slot == a_block.slot {
+                        cursor = StreamingStep::Finished(None);
+                        break;
+                    }
+                }
             }
         }
 
-        if final_blocks.is_empty() {
-            debug!("CONSENSUS previous to last cursor: {:?}", cursor);
-            cursor = StreamingStep::Finished(None);
+        if !cursor.finished() {
+            cursor = StreamingStep::Ongoing(retrieved_ids);
         }
-
-        debug!("CONSENSUS get_bootstrap_part END");
 
         Ok((BootstrapableGraph { final_blocks }, cursor))
     }
