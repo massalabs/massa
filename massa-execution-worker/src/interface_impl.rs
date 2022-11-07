@@ -49,7 +49,7 @@ impl InterfaceImpl {
     #[cfg(feature = "gas_calibration")]
     /// Used to create an default interface to run SC in a test environment
     pub fn new_default(sender_addr: Address) -> InterfaceImpl {
-
+        use massa_ledger_exports::{SetUpdateOrDelete, LedgerEntry};
         let config = ExecutionConfig::default();
         let (final_state, _tempfile, _tempdir) = crate::tests::get_sample_state().unwrap();
         let mut execution_context = ExecutionContext::new(
@@ -63,6 +63,10 @@ impl InterfaceImpl {
             owned_addresses: vec![sender_addr],
             operation_datastore: None,
         }];
+        execution_context.speculative_ledger.added_changes.0.insert(sender_addr, SetUpdateOrDelete::Set(LedgerEntry {
+            balance: Amount::from_mantissa_scale(1, 0),
+            ..Default::default()
+        }));
         let context = Arc::new(Mutex::new(execution_context));
         InterfaceImpl::new(config, context)
     }
