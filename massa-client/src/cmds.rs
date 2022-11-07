@@ -219,7 +219,7 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "SenderAddress PathToBytecode MaxGas GasPrice Fee",),
+        props(args = "SenderAddress PathToBytecode MaxGas Fee",),
         message = "create and send an operation containing byte code"
     )]
     send_smart_contract,
@@ -227,7 +227,7 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(
-            args = "SenderAddress TargetAddress FunctionName Parameter MaxGas GasPrice Coins Fee",
+            args = "SenderAddress TargetAddress FunctionName Parameter MaxGas Coins Fee",
         ),
         message = "create and send an operation to call a function of a smart contract"
     )]
