@@ -320,15 +320,6 @@ async fn bootstrap_from_server(
                 *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess => {
-                // IMPORTANT TODO: double check that this really has no use
-                // if global_bootstrap_state.graph.is_none() {
-                //     *next_bootstrap_message = BootstrapClientMessage::AskConsensusState;
-                //     continue;
-                // }
-                // if global_bootstrap_state.peers.is_none() {
-                //     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
-                //     continue;
-                // }
                 match tokio::time::timeout(write_timeout, client.send(next_bootstrap_message)).await
                 {
                     Err(_) => Err(std::io::Error::new(
