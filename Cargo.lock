@@ -1630,7 +1630,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.6.9"
-source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.8.2#46ca849403abe0f0e41da1b10c65a4d652f8b3a0"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=feature/gas_calibration_middleware#209a22f07d851222d2a04bc64dadecadfd9d785e"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -1640,6 +1640,7 @@ dependencies = [
  "loupe",
  "parking_lot",
  "rand 0.8.5",
+ "regex",
  "serde",
  "serde_json",
  "serial_test 0.8.0",
@@ -1647,6 +1648,7 @@ dependencies = [
  "wasmer-compiler-singlepass",
  "wasmer-engine-universal",
  "wasmer-middlewares",
+ "wasmer-types",
 ]
 
 [[package]]
