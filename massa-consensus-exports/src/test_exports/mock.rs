@@ -9,10 +9,11 @@ use massa_models::{
     api::BlockGraphStatus,
     block::{BlockHeader, BlockId},
     clique::Clique,
+    prehash::PreHashSet,
     slot::Slot,
     stats::ConsensusStats,
     streaming_step::StreamingStep,
-    wrapped::Wrapped, prehash::PreHashSet,
+    wrapped::Wrapped,
 };
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -46,8 +47,9 @@ pub enum MockConsensusControllerMessage {
     GetBootstrapableGraph {
         cursor: StreamingStep<PreHashSet<BlockId>>,
         execution_cursor: StreamingStep<Slot>,
-        response_tx:
-            mpsc::Sender<Result<(BootstrapableGraph, StreamingStep<PreHashSet<BlockId>>), ConsensusError>>,
+        response_tx: mpsc::Sender<
+            Result<(BootstrapableGraph, StreamingStep<PreHashSet<BlockId>>), ConsensusError>,
+        >,
     },
     GetStats {
         response_tx: mpsc::Sender<Result<ConsensusStats, ConsensusError>>,

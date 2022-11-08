@@ -134,7 +134,9 @@ impl ConsensusController for ConsensusControllerImpl {
                     }
                 }
                 if a_block.is_final {
-                    final_blocks.push(ExportActiveBlock::from_active_block(a_block, storage));
+                    let mut export = ExportActiveBlock::from_active_block(a_block, storage);
+                    export.operations = Vec::new();
+                    final_blocks.push(export);
                     retrieved_ids.insert(*b_id);
                 } else {
                     debug!("BOOT: one non-final block avoided");
