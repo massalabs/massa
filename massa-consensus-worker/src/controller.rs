@@ -16,7 +16,6 @@ use massa_models::{
 use massa_storage::Storage;
 use parking_lot::RwLock;
 use std::sync::{mpsc::SyncSender, Arc};
-use tracing::debug;
 
 use crate::{commands::ConsensusCommand, state::ConsensusState};
 
@@ -103,17 +102,13 @@ impl ConsensusController for ConsensusControllerImpl {
         let mut final_blocks: Vec<ExportActiveBlock> = Vec::new();
         let mut retrieved_ids: PreHashSet<BlockId> = PreHashSet::default();
         let read_shared_state = self.shared_state.read();
-        let required_final_blocks: PreHashSet<BlockId> =
+        let required_blocks: PreHashSet<BlockId> =
             read_shared_state.list_required_active_blocks()?;
-        debug!("BOOT: required len {}", required_final_blocks.len());
 
         let (difference, previous_ids) = match cursor {
-            StreamingStep::Started => (required_final_blocks, PreHashSet::default()),
+            StreamingStep::Started => (required_blocks, PreHashSet::default()),
             StreamingStep::Ongoing(ref cursor_ids) => (
-                required_final_blocks
-                    .difference(cursor_ids)
-                    .cloned()
-                    .collect(),
+                required_blocks.difference(cursor_ids).cloned().collect(),
                 cursor_ids.clone(),
             ),
             StreamingStep::Finished(_) => return Ok((BootstrapableGraph { final_blocks }, cursor)),
@@ -129,7 +124,6 @@ impl ConsensusController for ConsensusControllerImpl {
                 }
                 if let StreamingStep::Finished(Some(slot)) = execution_cursor {
                     if a_block.slot > slot {
-                        debug!("BOOT: one block after the execution cursor avoided");
                         continue;
                     }
                 }
@@ -138,8 +132,6 @@ impl ConsensusController for ConsensusControllerImpl {
                     export.operations = Vec::new();
                     final_blocks.push(export);
                     retrieved_ids.insert(*b_id);
-                } else {
-                    debug!("BOOT: one non-final block avoided");
                 }
             }
         }
