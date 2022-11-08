@@ -114,14 +114,10 @@ impl ProtocolWorker {
             }
             NetworkEvent::ReceivedOperations { node, operations } => {
                 massa_trace!(OPS, { "node": node, "operations": operations});
-                if operations
-                    .iter()
-                    .find(|operation| {
-                        operation.serialized_size()
-                            > self.config.max_serialized_operations_size_per_block
-                    })
-                    .is_some()
-                {
+                if operations.iter().any(|operation| {
+                    operation.serialized_size()
+                        > self.config.max_serialized_operations_size_per_block
+                }) {
                     warn!(
                         "Node id {} sent us an operation which exceed max block size.",
                         node
