@@ -401,12 +401,18 @@ pub async fn stream_bootstrap_information(
             .get_bootstrap_part(last_consensus_step, final_state_global_step)?;
         last_consensus_step = new_consensus_step.clone();
 
-        debug!("EXECUTION CURSOR: {:?}", final_state_global_step);
-        debug!("CONSENSUS CURSOR: {:?}", new_consensus_step);
+        // Logs for an easier diagnostic if needed
         debug!(
-            "CONSENSUS PART LENGTH: {:?}",
-            consensus_part.final_blocks.len()
+            "Final state bootstrap cursor: {:?}",
+            final_state_global_step
         );
+        debug!(
+            "Consensus blocks bootstrap cursor: {:?}",
+            new_consensus_step
+        );
+        if let StreamingStep::Ongoing(ids) = &new_consensus_step {
+            debug!("Consensus bootstrap cursor length: {}", ids.len());
+        }
 
         // If the consensus streaming is finished (also meaning that consensus slot == final state slot) exit
         if final_state_global_step.finished() && new_consensus_step.finished() {
