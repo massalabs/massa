@@ -21,16 +21,14 @@ use nom::{IResult, Parser};
 use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
 use std::ops::Bound::{Excluded, Included};
-use std::str::FromStr;
 
 /// Unique identifier of a message.
 /// Also has the property of ordering by priority (highest first) following the triplet:
 /// `(rev(Ratio(msg.fee, max(msg.max_gas,1))), emission_slot, emission_index)`
-pub type AsyncMessageId = (std::cmp::Reverse<Amount>, Slot, u64);
+pub type AsyncMessageId = (std::cmp::Reverse<Ratio<u64>>, Slot, u64);
 
 #[derive(Clone)]
 pub struct AsyncMessageIdSerializer {
-    amount_serializer: AmountSerializer,
     slot_serializer: SlotSerializer,
     u64_serializer: U64VarIntSerializer,
 }
@@ -38,7 +36,6 @@ pub struct AsyncMessageIdSerializer {
 impl AsyncMessageIdSerializer {
     pub fn new() -> Self {
         Self {
-            amount_serializer: AmountSerializer::new(),
             slot_serializer: SlotSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
         }
@@ -83,7 +80,8 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
         value: &AsyncMessageId,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
-        self.amount_serializer.serialize(&value.0 .0, buffer)?;
+        self.u64_serializer.serialize(value.0 .0.numer(), buffer)?;
+        self.u64_serializer.serialize(value.0 .0.denom(), buffer)?;
         self.slot_serializer.serialize(&value.1, buffer)?;
         self.u64_serializer.serialize(&value.2, buffer)?;
         Ok(())
@@ -92,26 +90,18 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
 
 #[derive(Clone)]
 pub struct AsyncMessageIdDeserializer {
-    amount_deserializer: AmountDeserializer,
     slot_deserializer: SlotDeserializer,
-    emission_index_deserializer: U64VarIntDeserializer,
+    u64_deserializer: U64VarIntDeserializer,
 }
 
 impl AsyncMessageIdDeserializer {
     pub fn new(thread_count: u8) -> Self {
         Self {
-            amount_deserializer: AmountDeserializer::new(
-                Included(Amount::MIN),
-                Included(Amount::MAX),
-            ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
                 (Included(0), Excluded(thread_count)),
             ),
-            emission_index_deserializer: U64VarIntDeserializer::new(
-                Included(u64::MIN),
-                Included(u64::MAX),
-            ),
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
         }
     }
 }
@@ -155,17 +145,20 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
             "Failed AsyncMessageId deserialization",
             tuple((
                 context("Failed fee deserialization", |input| {
-                    self.amount_deserializer.deserialize(input)
+                    self.u64_deserializer.deserialize(input)
+                }),
+                context("Failed denum deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
                 }),
                 context("Failed emission_slot deserialization", |input| {
                     self.slot_deserializer.deserialize(input)
                 }),
                 context("Failed emission_index deserialization", |input| {
-                    self.emission_index_deserializer.deserialize(input)
+                    self.u64_deserializer.deserialize(input)
                 }),
             )),
         )
-        .map(|(amount, slot, index)| (std::cmp::Reverse(amount), slot, index))
+        .map(|(fee, denom, slot, index)| (std::cmp::Reverse(Ratio::new(fee, denom)), slot, index))
         .parse(buffer)
     }
 }
@@ -216,10 +209,7 @@ impl AsyncMessage {
     pub fn compute_id(&self) -> AsyncMessageId {
         let denom = if self.max_gas > 0 { self.max_gas } else { 1 };
         (
-            std::cmp::Reverse(
-                Amount::from_str(&Ratio::new(self.fee.to_raw(), denom).to_string())
-                    .unwrap_or_default(),
-            ),
+            std::cmp::Reverse(Ratio::new(self.fee.to_raw(), denom)),
             self.emission_slot,
             self.emission_index,
         )
