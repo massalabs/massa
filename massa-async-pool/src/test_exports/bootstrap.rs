@@ -1,8 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::{cmp::Reverse, collections::BTreeMap, str::FromStr};
+use std::{collections::BTreeMap, str::FromStr};
 
-use crate::{AsyncMessage, AsyncPool, AsyncPoolConfig};
+use crate::{AsyncMessage, AsyncMessageId, AsyncPool, AsyncPoolConfig};
 use massa_models::{address::Address, amount::Amount, config::THREAD_COUNT, slot::Slot};
 use massa_signature::KeyPair;
 use rand::Rng;
@@ -12,7 +12,7 @@ use rand::Rng;
 /// Creates a `AsyncPool` from pre-set values
 pub fn create_async_pool(
     config: AsyncPoolConfig,
-    messages: BTreeMap<(Reverse<Amount>, Slot, u64), AsyncMessage>,
+    messages: BTreeMap<AsyncMessageId, AsyncMessage>,
 ) -> AsyncPool {
     let mut async_pool = AsyncPool::new(config);
     async_pool.messages = messages;
