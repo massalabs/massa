@@ -16,6 +16,7 @@ use massa_models::{
 use massa_storage::Storage;
 use parking_lot::RwLock;
 use std::sync::{mpsc::SyncSender, Arc};
+use tracing::debug;
 
 use crate::{commands::ConsensusCommand, state::ConsensusState};
 
@@ -104,6 +105,7 @@ impl ConsensusController for ConsensusControllerImpl {
         let read_shared_state = self.shared_state.read();
         let required_final_blocks: PreHashSet<BlockId> =
             read_shared_state.list_required_active_blocks()?;
+        debug!("BOOT: required len {}", required_final_blocks.len());
 
         let (difference, previous_ids) = match cursor {
             StreamingStep::Started => (required_final_blocks, PreHashSet::default()),
@@ -121,17 +123,21 @@ impl ConsensusController for ConsensusControllerImpl {
             if let Some(BlockStatus::Active { a_block, storage }) =
                 read_shared_state.block_statuses.get(b_id)
             {
+                // IMPORTANT TODO: use a config parameter for this raw value
+                if final_blocks.len() >= 100 {
+                    break;
+                }
                 if let StreamingStep::Finished(Some(slot)) = execution_cursor {
                     if a_block.slot > slot {
+                        debug!("BOOT: one block after the execution cursor avoided");
                         continue;
                     }
                 }
-                // IMPORTANT TODO: use a config parameter for this raw value
-                if a_block.is_final && final_blocks.len() < 100 {
+                if a_block.is_final {
                     final_blocks.push(ExportActiveBlock::from_active_block(a_block, storage));
                     retrieved_ids.insert(*b_id);
                 } else {
-                    break;
+                    debug!("BOOT: one non-final block avoided");
                 }
             }
         }
@@ -145,7 +151,6 @@ impl ConsensusController for ConsensusControllerImpl {
 
         Ok((BootstrapableGraph { final_blocks }, cursor))
     }
-
     /// Get the stats of the consensus
     fn get_stats(&self) -> Result<ConsensusStats, ConsensusError> {
         self.shared_state.read().get_stats()
