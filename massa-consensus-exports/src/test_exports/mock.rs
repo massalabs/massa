@@ -12,7 +12,7 @@ use massa_models::{
     slot::Slot,
     stats::ConsensusStats,
     streaming_step::StreamingStep,
-    wrapped::Wrapped,
+    wrapped::Wrapped, prehash::PreHashSet,
 };
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -44,10 +44,10 @@ pub enum MockConsensusControllerMessage {
         response_tx: mpsc::Sender<Vec<Clique>>,
     },
     GetBootstrapableGraph {
-        cursor: StreamingStep<Vec<BlockId>>,
+        cursor: StreamingStep<PreHashSet<BlockId>>,
         execution_cursor: StreamingStep<Slot>,
         response_tx:
-            mpsc::Sender<Result<(BootstrapableGraph, StreamingStep<Vec<BlockId>>), ConsensusError>>,
+            mpsc::Sender<Result<(BootstrapableGraph, StreamingStep<PreHashSet<BlockId>>), ConsensusError>>,
     },
     GetStats {
         response_tx: mpsc::Sender<Result<ConsensusStats, ConsensusError>>,
@@ -160,9 +160,9 @@ impl ConsensusController for MockConsensusController {
 
     fn get_bootstrap_part(
         &self,
-        cursor: StreamingStep<Vec<BlockId>>,
+        cursor: StreamingStep<PreHashSet<BlockId>>,
         execution_cursor: StreamingStep<Slot>,
-    ) -> Result<(BootstrapableGraph, StreamingStep<Vec<BlockId>>), ConsensusError> {
+    ) -> Result<(BootstrapableGraph, StreamingStep<PreHashSet<BlockId>>), ConsensusError> {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
             .lock()

@@ -234,7 +234,7 @@ async fn test_bootstrap_server() {
                     })
                 {
                     response_tx
-                        .send(Ok((sent_graph_clone.clone(), *execution_cursor)))
+                        .send(Ok((sent_graph_clone.clone(), StreamingStep::Started)))
                         .unwrap();
                 } else {
                     response_tx
@@ -242,7 +242,7 @@ async fn test_bootstrap_server() {
                             BootstrapableGraph {
                                 final_blocks: Vec::new(),
                             },
-                            *execution_cursor,
+                            StreamingStep::Finished(None),
                         )))
                         .unwrap();
                 }
